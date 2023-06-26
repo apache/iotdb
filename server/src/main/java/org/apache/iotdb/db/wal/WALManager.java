@@ -202,7 +202,7 @@ public class WALManager implements IService {
   }
 
   public boolean shouldThrottle() {
-    return getTotalDiskUsage() >= config.getThrottleThreshold();
+    return getTotalDiskUsage() >= config.getThrottleThreshold() * 0.8;
   }
 
   public long getTotalDiskUsage() {

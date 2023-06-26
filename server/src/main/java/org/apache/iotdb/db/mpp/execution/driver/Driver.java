@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.driver;
 
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -58,6 +59,9 @@ import static org.apache.iotdb.db.mpp.metric.QueryExecutionMetricSet.DRIVER_INTE
 public abstract class Driver implements IDriver {
 
   protected static final Logger LOGGER = LoggerFactory.getLogger(Driver.class);
+  protected static final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
+  protected static final QueryExecutionMetricSet QUERY_EXECUTION_METRICS =
+      QueryExecutionMetricSet.getInstance();
 
   protected final DriverContext driverContext;
   protected final Operator root;
@@ -66,10 +70,6 @@ public abstract class Driver implements IDriver {
   protected final AtomicReference<State> state = new AtomicReference<>(State.ALIVE);
 
   protected final DriverLock exclusiveLock = new DriverLock();
-
-  protected final QueryMetricsManager QUERY_METRICS = QueryMetricsManager.getInstance();
-  protected final QueryExecutionMetricSet QUERY_EXECUTION_METRICS =
-      QueryExecutionMetricSet.getInstance();
 
   protected enum State {
     ALIVE,
@@ -104,13 +104,13 @@ public abstract class Driver implements IDriver {
   }
 
   /**
-   * do initialization
+   * do initialization.
    *
    * @return true if init succeed, false otherwise
    */
   protected abstract boolean init(SettableFuture<?> blockedFuture);
 
-  /** release resource this driver used */
+  /** release resource this driver used. */
   protected abstract void releaseResource();
 
   public int getDependencyDriverIndex() {
@@ -194,6 +194,7 @@ public abstract class Driver implements IDriver {
     return sink;
   }
 
+  @SuppressWarnings("squid:S112")
   @GuardedBy("exclusiveLock")
   private boolean isFinishedInternal() {
     checkLockHeld("Lock must be held to call isFinishedInternal");
@@ -214,6 +215,7 @@ public abstract class Driver implements IDriver {
     return finished;
   }
 
+  @SuppressWarnings({"squid:S1181", "squid:S112"})
   private ListenableFuture<?> processInternal() {
     long startTimeNanos = System.nanoTime();
     try {
@@ -261,7 +263,7 @@ public abstract class Driver implements IDriver {
     driverBlockedFuture.set(newDriverBlockedFuture);
     sourceBlockedFuture.addListener(() -> newDriverBlockedFuture.set(null), directExecutor());
 
-    // TODO Although we don't have memory management for operator now, we should consider it for
+    // Although we don't have memory management for operator now, we should consider it for
     // future
     // it's possible that memory revoking is requested for some operator
     // before we update driverBlockedFuture above and we don't want to miss that
@@ -340,6 +342,7 @@ public abstract class Driver implements IDriver {
     return result;
   }
 
+  @SuppressWarnings({"squid:S1181", "squid:S112"})
   @GuardedBy("exclusiveLock")
   private void destroyIfNecessary() {
     checkLockHeld("Lock must be held to call destroyIfNecessary");
@@ -372,6 +375,7 @@ public abstract class Driver implements IDriver {
     }
   }
 
+  @SuppressWarnings("squid:S1181")
   private Throwable closeAndDestroyOperators() {
     // record the current interrupted status (and clear the flag); we'll reset it later
     boolean wasInterrupted = Thread.interrupted();
@@ -405,7 +409,6 @@ public abstract class Driver implements IDriver {
       // don't record the stack
       wasInterrupted = true;
     } catch (Throwable t) {
-      // TODO currently, we won't know exact operator which is failed in closing
       inFlightException =
           addSuppressedException(
               inFlightException,
@@ -431,7 +434,9 @@ public abstract class Driver implements IDriver {
             + driverContext.getPipelineId()
             + File.separator;
     File tmpPipeLineDir = new File(pipeLineSortDir);
-    if (!tmpPipeLineDir.exists()) return;
+    if (!tmpPipeLineDir.exists()) {
+      return;
+    }
     FileUtils.deleteDirectory(tmpPipeLineDir);
   }
 

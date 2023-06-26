@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.plan.statement.crud;
 
 import org.apache.iotdb.commons.path.PartialPath;
@@ -25,6 +26,7 @@ import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DuplicateInsertException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -293,22 +295,22 @@ public abstract class InsertBaseStatement extends Statement {
     Map<PartialPath, List<Pair<String, Integer>>> mapFromDeviceToMeasurementAndIndex =
         new HashMap<>();
     for (int i = 0; i < this.measurements.length; i++) {
-      PartialPath devicePath;
+      PartialPath targetDevicePath;
       String measurementName;
       if (isLogicalView[i]) {
         int viewIndex = indexMapToLogicalViewList[i];
-        devicePath =
+        targetDevicePath =
             this.logicalViewSchemaList.get(viewIndex).getSourcePathIfWritable().getDevicePath();
         measurementName =
             this.logicalViewSchemaList.get(viewIndex).getSourcePathIfWritable().getMeasurement();
       } else {
-        devicePath = this.devicePath;
+        targetDevicePath = this.devicePath;
         measurementName = this.measurements[i];
       }
       int index = i;
       final String finalMeasurementName = measurementName;
       mapFromDeviceToMeasurementAndIndex.compute(
-          devicePath,
+          targetDevicePath,
           (k, v) -> {
             if (v == null) {
               List<Pair<String, Integer>> valueList = new ArrayList<>();
@@ -340,7 +342,7 @@ public abstract class InsertBaseStatement extends Statement {
         boolean measurementNotExists = measurementSet.add(thisPair.left);
         if (!measurementNotExists) {
           PartialPath devicePath = entry.getKey();
-          throw new RuntimeException(
+          throw new SemanticException(
               new DuplicateInsertException(devicePath.getFullPath(), thisPair.left));
         }
       }

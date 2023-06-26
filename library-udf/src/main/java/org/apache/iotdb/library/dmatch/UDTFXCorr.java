@@ -31,12 +31,13 @@ import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /** This function calculates cross correlation between two input series. */
 public class UDTFXCorr implements UDTF {
 
-  private final ArrayList<Double> valueArrayList0 = new ArrayList<>();
-  private final ArrayList<Double> valueArrayList1 = new ArrayList<>();
+  private final List<Double> valueArrayList0 = new ArrayList<>();
+  private final List<Double> valueArrayList1 = new ArrayList<>();
 
   @Override
   public void beforeStart(UDFParameters udfParameters, UDTFConfigurations udtfConfigurations)
@@ -61,7 +62,7 @@ public class UDTFXCorr implements UDTF {
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
-    ArrayList<Double> correlationArrayList =
+    List<Double> correlationArrayList =
         CrossCorrelation.calculateCrossCorrelation(valueArrayList0, valueArrayList1);
     for (int i = 0; i < correlationArrayList.size(); i++) {
       collector.putDouble(i, correlationArrayList.get(i));

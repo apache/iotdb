@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator.process.last;
 
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
@@ -133,30 +134,22 @@ public class LastQuerySortOperator implements ProcessOperator {
       return res;
     }
 
+    return buildResult();
+  }
+
+  private TsBlock buildResult() throws Exception {
     // start stopwatch
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
 
     int endIndex = getEndIndex();
 
-    while ((System.nanoTime() - start < maxRuntime)
-        && (currentIndex < endIndex
-            || (previousTsBlock != null
-                && previousTsBlockIndex < previousTsBlock.getPositionCount()))
-        && !tsBlockBuilder.isFull()) {
-      if (previousTsBlock == null || previousTsBlock.getPositionCount() <= previousTsBlockIndex) {
-        if (children.get(currentIndex).hasNextWithTimer()) {
-          previousTsBlock = children.get(currentIndex).nextWithTimer();
-          previousTsBlockIndex = 0;
-          if (previousTsBlock == null) {
-            return null;
-          }
-        } else {
-          children.get(currentIndex).close();
-          children.set(currentIndex, null);
-        }
-        currentIndex++;
+    while (keepGoing(start, maxRuntime, endIndex)) {
+
+      if (prepareData()) {
+        return null;
       }
+
       if (previousTsBlockIndex < previousTsBlock.getPositionCount()) {
         if (canUseDataFromCachedTsBlock(previousTsBlock, previousTsBlockIndex)) {
           LastQueryUtil.appendLastValue(tsBlockBuilder, cachedTsBlock, cachedTsBlockRowIndex++);
@@ -169,6 +162,31 @@ public class LastQuerySortOperator implements ProcessOperator {
     TsBlock res = tsBlockBuilder.build();
     tsBlockBuilder.reset();
     return res;
+  }
+
+  private boolean keepGoing(long start, long maxRuntime, int endIndex) {
+    return (System.nanoTime() - start < maxRuntime)
+        && (currentIndex < endIndex
+            || (previousTsBlock != null
+                && previousTsBlockIndex < previousTsBlock.getPositionCount()))
+        && !tsBlockBuilder.isFull();
+  }
+
+  private boolean prepareData() throws Exception {
+    if (previousTsBlock == null || previousTsBlock.getPositionCount() <= previousTsBlockIndex) {
+      if (children.get(currentIndex).hasNextWithTimer()) {
+        previousTsBlock = children.get(currentIndex).nextWithTimer();
+        previousTsBlockIndex = 0;
+        if (previousTsBlock == null) {
+          return true;
+        }
+      } else {
+        children.get(currentIndex).close();
+        children.set(currentIndex, null);
+      }
+      currentIndex++;
+    }
+    return false;
   }
 
   @Override

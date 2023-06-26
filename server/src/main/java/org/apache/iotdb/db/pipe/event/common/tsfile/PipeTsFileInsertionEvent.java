@@ -170,12 +170,12 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       final String errorMsg =
           String.format(
               "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath());
-      LOGGER.warn(errorMsg);
+      LOGGER.warn(errorMsg, e);
       Thread.currentThread().interrupt();
       throw new PipeException(errorMsg);
     } catch (IOException e) {
       final String errorMsg = String.format("Read TsFile %s error.", resource.getTsFilePath());
-      LOGGER.warn(errorMsg);
+      LOGGER.warn(errorMsg, e);
       throw new PipeException(errorMsg);
     }
   }

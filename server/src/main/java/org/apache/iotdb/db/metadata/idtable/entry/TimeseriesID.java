@@ -16,17 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.metadata.idtable.entry;
 
 import org.apache.iotdb.commons.path.PartialPath;
 
-/** A po class contains device id and measurement, represents a timeseries */
+/** A po class contains device id and measurement, represents a timeseries. */
 public class TimeseriesID {
 
   private IDeviceID deviceID;
   private String measurement;
 
-  /** build timeseries id from full path */
+  /** Build timeseries id from full path. */
   public TimeseriesID(PartialPath fullPath) {
     deviceID = DeviceIDFactory.getInstance().getDeviceID(fullPath.getDevicePath());
     measurement = fullPath.getMeasurement();

@@ -127,9 +127,11 @@ public class HeartbeatService {
     heartbeatReq.setSchemaQuotaCount(configManager.getClusterSchemaManager().getSchemaQuotaCount());
     // We collect pipe meta in every 100 heartbeat loop
     heartbeatReq.setNeedPipeMetaList(
-        heartbeatCounter.get()
-                % PipeConfig.getInstance().getHeartbeatLoopCyclesForCollectingPipeMeta()
-            == 0);
+        !PipeConfig.getInstance().isSeperatedPipeHeartbeatEnabled()
+            && heartbeatCounter.get()
+                    % PipeConfig.getInstance()
+                        .getPipeHeartbeatIntervalSecondsForCollectingPipeMeta()
+                == 0);
     if (!configManager.getClusterQuotaManager().hasSpaceQuotaLimit()) {
       heartbeatReq.setSchemaRegionIds(configManager.getClusterQuotaManager().getSchemaRegionIds());
       heartbeatReq.setDataRegionIds(configManager.getClusterQuotaManager().getDataRegionIds());

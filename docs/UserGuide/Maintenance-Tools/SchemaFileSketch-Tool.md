@@ -23,16 +23,16 @@
 
 Since version 1.1, IoTDB could store schema into a persistent slotted file.
 
-If you want to parse PB-Tree file into a human-readable way, you can use this tool to parse the specified PB-Tree file.
+If you want to parse PBTree file into a human-readable way, you can use this tool to parse the specified PBTree file.
 
 The tool can sketch .pst file.
 
 ### How to use
 
 Linux/MacOS
-> ./print-pb-tree-file.sh -f your/path/to/pb_tree.pst -o /your/path/to/sketch.txt
+> ./print-pbtree-file.sh -f your/path/to/pbtree.pst -o /your/path/to/sketch.txt
 
 Windows
 
-> ./print-pb-tree-file.bat -f your/path/to/pb_tree.pst -o /your/path/to/sketch.txt
+> ./print-pbtree-file.bat -f your/path/to/pbtree.pst -o /your/path/to/sketch.txt
 

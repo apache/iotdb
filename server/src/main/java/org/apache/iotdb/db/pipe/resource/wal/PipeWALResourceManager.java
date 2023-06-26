@@ -9,11 +9,10 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class PipeWALResourceManager implements AutoCloseable {
+public class PipeWALResourceManager {
 
   private final Map<Long, PipeWALResource> memtableIdToPipeWALResourceMap;
 
@@ -23,7 +22,6 @@ public class PipeWALResourceManager implements AutoCloseable {
   private static final ScheduledExecutorService PIPE_WAL_RESOURCE_TTL_CHECKER =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
           ThreadName.PIPE_WAL_RESOURCE_TTL_CHECKER.getName());
-  private final ScheduledFuture<?> ttlCheckerFuture;
 
   public PipeWALResourceManager() {
     // memtableIdToPipeWALResourceMap can be concurrently accessed by multiple threads
@@ -34,30 +32,29 @@ public class PipeWALResourceManager implements AutoCloseable {
       memtableIdSegmentLocks[i] = new ReentrantLock();
     }
 
-    ttlCheckerFuture =
-        ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-            PIPE_WAL_RESOURCE_TTL_CHECKER,
-            () -> {
-              Iterator<Map.Entry<Long, PipeWALResource>> iterator =
-                  memtableIdToPipeWALResourceMap.entrySet().iterator();
-              while (iterator.hasNext()) {
-                final Map.Entry<Long, PipeWALResource> entry = iterator.next();
-                final ReentrantLock lock =
-                    memtableIdSegmentLocks[(int) (entry.getKey() % SEGMENT_LOCK_COUNT)];
+    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+        PIPE_WAL_RESOURCE_TTL_CHECKER,
+        () -> {
+          Iterator<Map.Entry<Long, PipeWALResource>> iterator =
+              memtableIdToPipeWALResourceMap.entrySet().iterator();
+          while (iterator.hasNext()) {
+            final Map.Entry<Long, PipeWALResource> entry = iterator.next();
+            final ReentrantLock lock =
+                memtableIdSegmentLocks[(int) (entry.getKey() % SEGMENT_LOCK_COUNT)];
 
-                lock.lock();
-                try {
-                  if (entry.getValue().invalidateIfPossible()) {
-                    iterator.remove();
-                  }
-                } finally {
-                  lock.unlock();
-                }
+            lock.lock();
+            try {
+              if (entry.getValue().invalidateIfPossible()) {
+                iterator.remove();
               }
-            },
-            PipeWALResource.MIN_TIME_TO_LIVE_IN_MS,
-            PipeWALResource.MIN_TIME_TO_LIVE_IN_MS,
-            TimeUnit.MILLISECONDS);
+            } finally {
+              lock.unlock();
+            }
+          }
+        },
+        PipeWALResource.MIN_TIME_TO_LIVE_IN_MS,
+        PipeWALResource.MIN_TIME_TO_LIVE_IN_MS,
+        TimeUnit.MILLISECONDS);
   }
 
   public void pin(long memtableId, WALEntryHandler walEntryHandler) {
@@ -79,36 +76,6 @@ public class PipeWALResourceManager implements AutoCloseable {
     lock.lock();
     try {
       memtableIdToPipeWALResourceMap.get(memtableId).unpin();
-    } finally {
-      lock.unlock();
-    }
-  }
-
-  @Override
-  public void close() throws Exception {
-    if (ttlCheckerFuture != null) {
-      ttlCheckerFuture.cancel(true);
-    }
-
-    for (final long memtableId : memtableIdToPipeWALResourceMap.keySet()) {
-      final ReentrantLock lock = memtableIdSegmentLocks[(int) (memtableId % SEGMENT_LOCK_COUNT)];
-
-      lock.lock();
-      try {
-        memtableIdToPipeWALResourceMap.get(memtableId).close();
-        memtableIdToPipeWALResourceMap.remove(memtableId);
-      } finally {
-        lock.unlock();
-      }
-    }
-  }
-
-  public int getReferenceCount(long memtableId) {
-    final ReentrantLock lock = memtableIdSegmentLocks[(int) (memtableId % SEGMENT_LOCK_COUNT)];
-
-    lock.lock();
-    try {
-      return memtableIdToPipeWALResourceMap.get(memtableId).getReferenceCount();
     } finally {
       lock.unlock();
     }

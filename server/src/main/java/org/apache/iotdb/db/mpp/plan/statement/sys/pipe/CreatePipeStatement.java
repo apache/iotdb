@@ -33,7 +33,7 @@ import java.util.Map;
 public class CreatePipeStatement extends Statement implements IConfigStatement {
 
   private String pipeName;
-  private Map<String, String> collectorAttributes;
+  private Map<String, String> extractorAttributes;
   private Map<String, String> processorAttributes;
   private Map<String, String> connectorAttributes;
 
@@ -45,8 +45,8 @@ public class CreatePipeStatement extends Statement implements IConfigStatement {
     return pipeName;
   }
 
-  public Map<String, String> getCollectorAttributes() {
-    return collectorAttributes;
+  public Map<String, String> getExtractorAttributes() {
+    return extractorAttributes;
   }
 
   public Map<String, String> getProcessorAttributes() {
@@ -61,8 +61,8 @@ public class CreatePipeStatement extends Statement implements IConfigStatement {
     this.pipeName = pipeName;
   }
 
-  public void setCollectorAttributes(Map<String, String> collectorAttributes) {
-    this.collectorAttributes = collectorAttributes;
+  public void setExtractorAttributes(Map<String, String> extractorAttributes) {
+    this.extractorAttributes = extractorAttributes;
   }
 
   public void setProcessorAttributes(Map<String, String> processorAttributes) {

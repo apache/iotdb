@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.library.dprofile.util;
 
 import java.io.Serializable;
@@ -23,7 +24,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-/** Util for UDAFPercentile */
+/** Util for UDAFPercentile. */
 public class GKArray {
 
   private final double rankAccuracy;
@@ -105,21 +106,10 @@ public class GKArray {
     final ArrayList<Tuple> mergedEntries =
         new ArrayList<>(entries.size() + additionalEntries.size() / 3);
 
-    int i = 0, j = 0;
+    int i = 0;
+    int j = 0;
     while (i < additionalEntries.size() || j < entries.size()) {
-      if (i == additionalEntries.size()) {
-        if (j + 1 < entries.size()
-            && entries.get(j).g + entries.get(j + 1).g + entries.get(j + 1).delta
-                <= removalThreshold) {
-          // Removable from sketch.
-          entries.get(j + 1).g += entries.get(j).g;
-        } else {
-          mergedEntries.add(entries.get(j));
-        }
-
-        j++;
-
-      } else if (j == entries.size()) {
+      if (j == entries.size()) {
         // Done with sketch; now only considering incoming.
         if (i + 1 < additionalEntries.size()
             && additionalEntries.get(i).g
@@ -146,7 +136,7 @@ public class GKArray {
 
         i++;
 
-      } else {
+      } else { // the same as i == additionalEntries.size()
         if (j + 1 < entries.size()
             && entries.get(j).g + entries.get(j + 1).g + entries.get(j + 1).delta
                 <= removalThreshold) {

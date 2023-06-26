@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -51,8 +52,8 @@ public class TsFileWriteWithTablet {
     try {
       String path = "Tablet.tsfile";
       File f = FSFactoryProducer.getFSFactory().getFile(path);
-      if (f.exists() && !f.delete()) {
-        throw new RuntimeException("can not delete " + f.getAbsolutePath());
+      if (f.exists()) {
+        Files.delete(f.toPath());
       }
 
       try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {

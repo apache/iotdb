@@ -26,6 +26,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,6 +37,8 @@ import java.util.List;
  * includes Aligned Timeseries and Normal Timeseries
  */
 public class HybridTimeseriesSessionExample {
+
+  private static Logger logger = LoggerFactory.getLogger(HybridTimeseriesSessionExample.class);
 
   private static Session session;
   private static final String ROOT_SG1_ALIGNEDDEVICE = "root.sg_1.aligned_device";
@@ -59,9 +64,9 @@ public class HybridTimeseriesSessionExample {
 
   private static void selectTest() throws StatementExecutionException, IoTDBConnectionException {
     SessionDataSet dataSet = session.executeQueryStatement("select ** from root.sg_1");
-    System.out.println(dataSet.getColumnNames());
+    logger.info("columnNames = {}", dataSet.getColumnNames());
     while (dataSet.hasNext()) {
-      System.out.println(dataSet.next());
+      logger.info("data = {}", dataSet.next());
     }
 
     dataSet.closeOperationHandle();

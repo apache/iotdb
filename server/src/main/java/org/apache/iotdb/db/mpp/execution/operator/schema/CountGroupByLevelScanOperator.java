@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
+import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.query.info.ISchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
@@ -126,7 +127,7 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
       }
     }
     if (!schemaReader.isSuccess()) {
-      throw new RuntimeException(schemaReader.getFailure());
+      throw new SchemaExecutionException(schemaReader.getFailure());
     }
 
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(OUTPUT_DATA_TYPES);

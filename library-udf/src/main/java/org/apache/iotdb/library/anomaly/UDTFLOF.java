@@ -27,14 +27,15 @@ import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
+import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.type.Type;
 
 /** This function is used to detect density anomaly of time series. */
 public class UDTFLOF implements UDTF {
-  private double threshold;
   private int multipleK;
   private int dim;
-  private String method = "default";
+  private static final String DEFAULT_METHOD = "default";
+  private String method = DEFAULT_METHOD;
   private int window;
 
   int partition(Double[][] a, int left, int right) {
@@ -94,7 +95,6 @@ public class UDTFLOF implements UDTF {
 
   public Double[] findKthPoint(Double[][] knn, Double[] x, int length) {
     int index;
-    double minDist = dist(knn[0], x);
     Double[][] d = new Double[length][2];
     for (int i = 0; i < length; i++) {
       d[i][0] = (double) i;
@@ -130,13 +130,13 @@ public class UDTFLOF implements UDTF {
         .setOutputDataType(Type.DOUBLE);
     this.multipleK = parameters.getIntOrDefault("k", 3);
     this.dim = parameters.getChildExpressionsSize();
-    this.method = parameters.getStringOrDefault("method", "default");
+    this.method = parameters.getStringOrDefault("method", DEFAULT_METHOD);
     this.window = parameters.getIntOrDefault("window", 5);
   }
 
   @Override
   public void transform(RowWindow rowWindow, PointCollector collector) throws Exception {
-    if (this.method.equals("default")) {
+    if (this.method.equals(DEFAULT_METHOD)) {
       int size = rowWindow.windowSize();
       Double[][] knn = new Double[size][dim];
       long[] timestamp = new long[size];
@@ -163,7 +163,7 @@ public class UDTFLOF implements UDTF {
             lof[m] = getLOF(knn, knn[m], size);
             collector.putDouble(timestamp[m], lof[m]);
           } catch (Exception e) {
-            throw new Exception("Fail to get LOF " + m, e);
+            throw new UDFException("Fail to get LOF " + m, e);
           }
         }
       }
@@ -201,7 +201,7 @@ public class UDTFLOF implements UDTF {
               lof[m] = getLOF(knn, knn[m], size);
               collector.putDouble(timestamp[m], lof[m]);
             } catch (Exception e) {
-              throw new Exception("Fail to get LOF " + m, e);
+              throw new UDFException("Fail to get LOF " + m, e);
             }
           }
         }
@@ -210,5 +210,7 @@ public class UDTFLOF implements UDTF {
   }
 
   @Override
-  public void terminate(PointCollector collector) throws Exception {}
+  public void terminate(PointCollector collector)
+      throws Exception { // default implementation ignored
+  }
 }

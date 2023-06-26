@@ -106,6 +106,7 @@ public abstract class SingleInputAggregationOperator implements ProcessOperator 
     child.close();
   }
 
+  @SuppressWarnings("squid:S112")
   protected abstract boolean calculateNextAggregationResult() throws Exception;
 
   protected abstract void updateResultTsBlock();

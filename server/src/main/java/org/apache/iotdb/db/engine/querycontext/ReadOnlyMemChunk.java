@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.engine.querycontext;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -41,7 +42,7 @@ import java.util.Map;
 
 /**
  * ReadOnlyMemChunk is a snapshot of the working MemTable and flushing memtable in the memory used
- * for querying
+ * for querying.
  */
 public class ReadOnlyMemChunk {
 
@@ -137,7 +138,7 @@ public class ReadOnlyMemChunk {
     return dataType;
   }
 
-  public boolean isEmpty() throws IOException {
+  public boolean isEmpty() {
     return tsBlock.isEmpty();
   }
 

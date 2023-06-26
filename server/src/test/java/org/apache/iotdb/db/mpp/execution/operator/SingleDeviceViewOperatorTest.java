@@ -110,7 +110,7 @@ public class SingleDeviceViewOperatorTest {
       PlanNodeId planNodeId2 = new PlanNodeId("2");
       driverContext.addOperatorContext(2, planNodeId2, SeriesScanOperator.class.getSimpleName());
       driverContext.addOperatorContext(
-          3, new PlanNodeId("3"), TimeJoinOperatorTest.class.getSimpleName());
+          3, new PlanNodeId("3"), RowBasedTimeJoinOperator.class.getSimpleName());
       driverContext.addOperatorContext(
           4, new PlanNodeId("4"), SingleDeviceViewOperator.class.getSimpleName());
 

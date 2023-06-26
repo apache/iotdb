@@ -28,8 +28,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
-import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
-import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.TimeseriesID;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
@@ -42,18 +40,17 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 public interface IDTable {
-  /** logger */
+  // logger
   Logger logger = LoggerFactory.getLogger(IDTable.class);
 
-  /** iotdb config */
+  // iotdb confi
   IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   /**
-   * create aligned timeseries
+   * Create aligned timeseries.
    *
    * @param plan create aligned timeseries plan
    * @throws MetadataException if the device is not aligned, throw it
@@ -61,7 +58,7 @@ public interface IDTable {
   void createAlignedTimeseries(ICreateAlignedTimeSeriesPlan plan) throws MetadataException;
 
   /**
-   * create timeseries
+   * Create timeseries.
    *
    * @param plan create timeseries plan
    * @throws MetadataException if the device is aligned, throw it
@@ -69,28 +66,23 @@ public interface IDTable {
   void createTimeseries(ICreateTimeSeriesPlan plan) throws MetadataException;
 
   /**
-   * Delete all timeseries matching the given paths
+   * Delete all timeseries matching the given paths.
    *
    * @param fullPaths paths to be deleted
    * @return deletion failed Timeseries
-   * @throws MetadataException
+   * @throws MetadataException metadata exception
    */
   Pair<Integer, Set<String>> deleteTimeseries(List<PartialPath> fullPaths) throws MetadataException;
 
   /**
-   * check inserting timeseries existence and fill their measurement mnode
+   * Clear id table and close file.
    *
-   * @param plan insert plan
-   * @return reusable device id
-   * @throws MetadataException if insert plan's aligned value is inconsistent with device
+   * @throws IOException IOException
    */
-  // IDeviceID getSeriesSchemas(InsertPlan plan) throws MetadataException;
-
-  /** clear id table and close file */
   void clear() throws IOException;
 
   /**
-   * get device entry from device path
+   * Get device entry from device path.
    *
    * @param deviceName device name of the time series
    * @return device entry of the timeseries
@@ -98,7 +90,7 @@ public interface IDTable {
   DeviceEntry getDeviceEntry(String deviceName);
 
   /**
-   * get schema from device and measurements
+   * Get schema from device and measurements.
    *
    * @param deviceName device name of the time series
    * @param measurementName measurement name of the time series
@@ -107,26 +99,27 @@ public interface IDTable {
   IMeasurementSchema getSeriesSchema(String deviceName, String measurementName);
 
   /**
-   * get all device entries
+   * Get all device entries.
    *
    * @return all device entries
    */
   List<DeviceEntry> getAllDeviceEntry();
 
   /**
-   * put schema entry to id table, currently used in recover
+   * Put schema entry to id table, currently used in recover.
    *
    * @param devicePath device path (can be device id formed path)
    * @param measurement measurement name
    * @param schemaEntry schema entry to put
    * @param isAligned is the device aligned
+   * @throws MetadataException metadata exception
    */
   void putSchemaEntry(
       String devicePath, String measurement, SchemaEntry schemaEntry, boolean isAligned)
       throws MetadataException;
 
   /**
-   * translate query path's device path to device id
+   * Translate query path's device path to device id.
    *
    * @param fullPath full query path
    * @return translated query path
@@ -159,18 +152,6 @@ public interface IDTable {
       throw new IllegalArgumentException("can't translate path to device id, path is: " + fullPath);
     }
   }
-
-  /**
-   * get DiskSchemaEntries from disk file
-   *
-   * @param schemaEntries get the disk pointers from schemaEntries
-   * @return DiskSchemaEntries
-   */
-  @TestOnly
-  List<DiskSchemaEntry> getDiskSchemaEntries(List<SchemaEntry> schemaEntries);
-
-  @TestOnly
-  Map<IDeviceID, DeviceEntry>[] getIdTables();
 
   @TestOnly
   IDiskSchemaManager getIDiskSchemaManager();

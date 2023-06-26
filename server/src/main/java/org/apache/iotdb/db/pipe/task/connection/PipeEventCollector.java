@@ -32,9 +32,9 @@ public class PipeEventCollector implements EventCollector {
 
   // buffer queue is used to store events that are not offered to pending queue
   // because the pending queue is full. when pending queue is full, pending queue
-  // will notify tasks to stop collecting events, and buffer queue will be used to store
+  // will notify tasks to stop extracting events, and buffer queue will be used to store
   // events before tasks are stopped. when pending queue is not full and tasks are
-  // notified by the pending queue to start collecting events, buffer queue will be used to store
+  // notified by the pending queue to start extracting events, buffer queue will be used to store
   // events before events in buffer queue are offered to pending queue.
   private final Queue<Event> bufferQueue;
 

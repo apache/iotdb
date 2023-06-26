@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.query.dataset;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -72,7 +73,7 @@ public class DataSetWithTimeGenerator extends QueryDataSet {
     for (int i = 0; i < paths.size(); i++) {
 
       // get value from readers in time generator
-      if (cached.get(i)) {
+      if (Boolean.TRUE.equals(cached.get(i))) {
         Object value = timeGenerator.getValue(paths.get(i));
         if (dataTypes.get(i) == TSDataType.VECTOR) {
           TsPrimitiveType v = ((TsPrimitiveType[]) value)[0];

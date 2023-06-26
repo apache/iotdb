@@ -83,9 +83,11 @@ public class SettleTask extends WrappedRunnable {
         | IOException
         | org.apache.iotdb.tsfile.exception.write.WriteProcessException e) {
       resourceToBeSettled.readUnlock();
-      logger.error("Exception to parse the tsfile in settling", e);
       throw new WriteProcessException(
-          "Meet error when settling file: " + resourceToBeSettled.getTsFile().getAbsolutePath(), e);
+          String.format(
+              "Exception to parse the tsfile: %s in settling",
+              resourceToBeSettled.getTsFile().getAbsolutePath()),
+          e);
     }
     resourceToBeSettled.getSettleTsFileCallBack().call(resourceToBeSettled, settledResources);
 

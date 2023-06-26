@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator.source;
 
 import org.apache.iotdb.commons.path.AlignedPath;
@@ -71,6 +72,7 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
     return checkTsBlockSizeAndGetResult();
   }
 
+  @SuppressWarnings("squid:S112")
   @Override
   public boolean hasNext() throws Exception {
     if (retainedTsBlock != null) {
@@ -85,26 +87,13 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
       // here use do-while to promise doing this at least once
       do {
         /*
-         * consume page data firstly
+         * 1. consume page data firstly
+         * 2. consume chunk data secondly
+         * 3. consume next file finally
          */
-        if (readPageData()) {
-          continue;
+        if (!readPageData() && !readChunkData() && !readFileData()) {
+          break;
         }
-
-        /*
-         * consume chunk data secondly
-         */
-        if (readChunkData()) {
-          continue;
-        }
-
-        /*
-         * consume next file finally
-         */
-        if (readFileData()) {
-          continue;
-        }
-        break;
 
       } while (System.nanoTime() - start < maxRuntime && !builder.isFull());
 
@@ -178,20 +167,24 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
     for (int columnIndex = 0, columnSize = tsBlock.getValueColumnCount();
         columnIndex < columnSize;
         columnIndex++) {
-      ColumnBuilder columnBuilder = builder.getColumnBuilder(columnIndex);
-      Column column = tsBlock.getColumn(columnIndex);
-      if (column.mayHaveNull()) {
-        for (int i = 0; i < size; i++) {
-          if (column.isNull(i)) {
-            columnBuilder.appendNull();
-          } else {
-            columnBuilder.write(column, i);
-          }
-        }
-      } else {
-        for (int i = 0; i < size; i++) {
+      appendOneColumn(columnIndex, tsBlock, size);
+    }
+  }
+
+  private void appendOneColumn(int columnIndex, TsBlock tsBlock, int size) {
+    ColumnBuilder columnBuilder = builder.getColumnBuilder(columnIndex);
+    Column column = tsBlock.getColumn(columnIndex);
+    if (column.mayHaveNull()) {
+      for (int i = 0; i < size; i++) {
+        if (column.isNull(i)) {
+          columnBuilder.appendNull();
+        } else {
           columnBuilder.write(column, i);
         }
+      }
+    } else {
+      for (int i = 0; i < size; i++) {
+        columnBuilder.write(column, i);
       }
     }
   }

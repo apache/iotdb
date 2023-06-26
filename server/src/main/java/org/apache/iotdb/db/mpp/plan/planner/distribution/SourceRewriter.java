@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
@@ -63,7 +64,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
-import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -313,7 +313,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           .getSchemaPartitionMap()
           .forEach(
               (storageGroup, deviceGroup) -> {
-                if (storageGroup.equals(IoTDBMetricsUtils.DATABASE)) {
+                if (storageGroup.equals(IoTDBConfig.SYSTEM_DATABASE)) {
                   deviceGroup.forEach(
                       (deviceGroupId, schemaRegionReplicaSet) ->
                           regionsOfSystemDatabase.add(schemaRegionReplicaSet));
@@ -353,7 +353,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           .getSchemaPartitionMap()
           .forEach(
               (storageGroup, deviceGroup) -> {
-                if (storageGroup.equals(IoTDBMetricsUtils.DATABASE)) {
+                if (storageGroup.equals(IoTDBConfig.SYSTEM_DATABASE)) {
                   deviceGroup.forEach(
                       (deviceGroupId, schemaRegionReplicaSet) ->
                           regionsOfSystemDatabase.add(schemaRegionReplicaSet));
@@ -384,7 +384,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           });
       if (!regionsOfSystemDatabase.isEmpty()) {
         List<PartialPath> filteredPathPatternList =
-            filterPathPattern(patternTree, IoTDBMetricsUtils.DATABASE);
+            filterPathPattern(patternTree, IoTDBConfig.SYSTEM_DATABASE);
         regionsOfSystemDatabase.forEach(
             region -> {
               addSchemaSourceNode(

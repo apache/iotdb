@@ -111,10 +111,9 @@ public class ReaderTest {
         metadataQuerierByFile.getChunkMetaDataList(new Path("d1", "s1", true));
 
     Filter filter =
-        new FilterFactory()
-            .or(
-                FilterFactory.and(TimeFilter.gt(1480563570029L), TimeFilter.lt(1480563570033L)),
-                FilterFactory.and(ValueFilter.gtEq(9520331), ValueFilter.ltEq(9520361)));
+        FilterFactory.or(
+            FilterFactory.and(TimeFilter.gt(1480563570029L), TimeFilter.lt(1480563570033L)),
+            FilterFactory.and(ValueFilter.gtEq(9520331), ValueFilter.ltEq(9520361)));
     SingleSeriesExpression singleSeriesExp =
         new SingleSeriesExpression(new Path("d1", "s1", true), filter);
     AbstractFileSeriesReader seriesReader =

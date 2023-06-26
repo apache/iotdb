@@ -105,6 +105,7 @@ public enum ThreadName {
   PIPE_CONNECTOR_EXECUTOR_POOL("Pipe-Connector-Executor-Pool"),
   PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL("Pipe-SubTask-Callback-Executor-Pool"),
   PIPE_RUNTIME_META_SYNCER("Pipe-Runtime-Meta-Syncer"),
+  PIPE_RUNTIME_HEARTBEAT("Pipe-Runtime-Heartbeat"),
   PIPE_RUNTIME_PROCEDURE_SUBMITTER("Pipe-Runtime-Procedure-Submitter"),
   PIPE_WAL_RESOURCE_TTL_CHECKER("Pipe-WAL-Resource-TTL-Checker"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
@@ -305,7 +306,6 @@ public enum ThreadName {
           DataNodeThreadModule.IOT_CONSENSUS,
           DataNodeThreadModule.RATIS_CONSENSUS,
           DataNodeThreadModule.COMPUTE,
-          DataNodeThreadModule.SYNC,
           DataNodeThreadModule.JVM,
           DataNodeThreadModule.METRICS,
           DataNodeThreadModule.OTHER

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.metadata.metric;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
@@ -109,7 +110,7 @@ public class SchemaRegionCachedMetric implements ISchemaRegionMetric {
         Metric.SCHEMA_REGION.toString(),
         MetricLevel.IMPORTANT,
         regionStatistics,
-        CachedSchemaRegionStatistics::getMLogLength,
+        CachedSchemaRegionStatistics::getMlogLength,
         Tag.NAME.toString(),
         MLOG_LENGTH,
         Tag.REGION.toString(),
@@ -118,7 +119,7 @@ public class SchemaRegionCachedMetric implements ISchemaRegionMetric {
         Metric.SCHEMA_REGION.toString(),
         MetricLevel.IMPORTANT,
         regionStatistics,
-        CachedSchemaRegionStatistics::getMLogCheckPoint,
+        CachedSchemaRegionStatistics::getMlogCheckPoint,
         Tag.NAME.toString(),
         MLOG_CHECKPOINT,
         Tag.REGION.toString(),

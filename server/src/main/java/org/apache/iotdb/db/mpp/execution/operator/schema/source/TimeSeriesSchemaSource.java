@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.execution.operator.schema.source;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.view.ViewType;
@@ -77,7 +78,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
           SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
               pathPattern, templateMap, limit, offset, isPrefixMatch, schemaFilter));
     } catch (MetadataException e) {
-      throw new RuntimeException(e.getMessage(), e);
+      throw new SchemaExecutionException(e.getMessage(), e);
     }
   }
 
@@ -89,7 +90,6 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
   @Override
   public void transformToTsBlockColumns(
       ITimeSeriesSchemaInfo series, TsBlockBuilder builder, String database) {
-    Pair<String, String> deadbandInfo = MetaUtils.parseDeadbandInfo(series.getSchema().getProps());
     builder.getTimeColumnBuilder().writeLong(0);
     builder.writeNullableText(0, series.getFullPath());
     builder.writeNullableText(1, series.getAlias());
@@ -106,6 +106,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
     }
     builder.writeNullableText(6, mapToString(series.getTags()));
     builder.writeNullableText(7, mapToString(series.getAttributes()));
+    Pair<String, String> deadbandInfo = MetaUtils.parseDeadbandInfo(series.getSchema().getProps());
     builder.writeNullableText(8, deadbandInfo.left);
     builder.writeNullableText(9, deadbandInfo.right);
     builder.declarePosition();

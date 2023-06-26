@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.schedule;
 
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
@@ -23,7 +24,7 @@ import org.apache.iotdb.db.utils.stats.CpuTimer;
 
 import io.airlift.units.Duration;
 
-/** The execution context of a {@link DriverTask} */
+/** The execution context of a {@link DriverTask}. */
 public class ExecutionContext {
   private CpuTimer.CpuDuration cpuDuration;
 

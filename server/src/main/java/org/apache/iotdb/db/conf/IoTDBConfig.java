@@ -91,6 +91,7 @@ public class IoTDBConfig {
       "([" + PATH_SEPARATOR + "])?" + NODE_NAME_MATCHER + "(" + PARTIAL_NODE_MATCHER + ")*";
 
   public static final Pattern NODE_PATTERN = Pattern.compile(NODE_MATCHER);
+  public static final String SYSTEM_DATABASE = "root.__system";
 
   /** whether to enable the mqtt service. */
   private boolean enableMQTTService = false;
@@ -842,10 +843,10 @@ public class IoTDBConfig {
   /** the memory used for metadata cache when using persistent schema */
   private int cachedMNodeSizeInPBTreeMode = -1;
 
-  /** the minimum size (in bytes) of segment inside a pb-tree file page */
+  /** the minimum size (in bytes) of segment inside a pbtree file page */
   private short minimumSegmentInPBTree = 0;
 
-  /** cache size for pages in one pb-tree file */
+  /** cache size for pages in one pbtree file */
   private int pageCacheSizeInPBTree = 1024;
 
   /** maximum number of logged pages before log erased */

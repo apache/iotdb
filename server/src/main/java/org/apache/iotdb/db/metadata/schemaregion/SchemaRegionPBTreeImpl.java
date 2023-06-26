@@ -35,7 +35,6 @@ import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
-import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
@@ -129,7 +128,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  * </ol>
  */
 @SuppressWarnings("java:S1135") // ignore todos
-@SchemaRegion(mode = "PB_Tree")
+@SchemaRegion(mode = "PBTree")
 public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaRegionPBTreeImpl.class);
@@ -246,7 +245,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     if (usingMLog && !isRecovering) {
       try {
         logDescriptionWriter.updateCheckPoint(logWriter.position());
-        regionStatistics.setMLogCheckPoint(logWriter.position());
+        regionStatistics.setMlogCheckPoint(logWriter.position());
       } catch (IOException e) {
         logger.warn(
             "Update {} failed because {}",
@@ -299,7 +298,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   public void writeToMLog(ISchemaRegionPlan schemaRegionPlan) throws IOException {
     if (usingMLog && !isRecovering) {
       logWriter.write(schemaRegionPlan);
-      regionStatistics.setMLogLength(logWriter.position());
+      regionStatistics.setMlogLength(logWriter.position());
     }
   }
 
@@ -566,14 +565,6 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       try {
         createTimeseries(plan, offset);
         done = true;
-      } catch (SeriesOverflowException e) {
-        logger.warn("Too many timeseries during recovery from MLog, waiting for PBTree swapping.");
-        try {
-          Thread.sleep(3000L);
-        } catch (InterruptedException e2) {
-          logger.error("Exception occurs during timeseries recovery.");
-          throw new MetadataException(e2.getMessage());
-        }
       } catch (AliasAlreadyExistException | PathAlreadyExistException e) {
         // skip
         done = true;
@@ -664,21 +655,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   }
 
   public void recoverAlignedTimeSeries(ICreateAlignedTimeSeriesPlan plan) throws MetadataException {
-    boolean done = false;
-    while (!done) {
-      try {
-        createAlignedTimeSeries(plan);
-        done = true;
-      } catch (SeriesOverflowException e) {
-        logger.warn("Too many timeseries during recovery from MLog, waiting for PBTree swapping.");
-        try {
-          Thread.sleep(3000L);
-        } catch (InterruptedException e2) {
-          logger.error("Exception occurs during timeseries recovery.");
-          throw new MetadataException(e2.getMessage());
-        }
-      }
-    }
+    createAlignedTimeSeries(plan);
   }
 
   /**

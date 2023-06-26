@@ -54,7 +54,7 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
       OperatorContext operatorContext, Set<TSchemaNode> data, Operator child) {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
     this.data = data;
-    nameSet = data.stream().map(schemaNode -> schemaNode.getNodeName()).collect(Collectors.toSet());
+    nameSet = data.stream().map(TSchemaNode::getNodeName).collect(Collectors.toSet());
     this.child = requireNonNull(child, "child operator is null");
     isReadingMemory = true;
     this.outputDataTypes =

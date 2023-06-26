@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.filter.factory;
 
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
@@ -38,6 +39,10 @@ import org.apache.iotdb.tsfile.read.filter.operator.Regexp;
 import java.nio.ByteBuffer;
 
 public class FilterFactory {
+
+  private FilterFactory() {
+    // forbidden construction
+  }
 
   public static AndFilter and(Filter left, Filter right) {
     return new AndFilter(left, right);

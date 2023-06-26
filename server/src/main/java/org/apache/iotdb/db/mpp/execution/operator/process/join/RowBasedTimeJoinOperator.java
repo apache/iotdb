@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator.process.join;
 
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -42,10 +43,10 @@ import static com.google.common.util.concurrent.Futures.successfulAsList;
 
 public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
 
-  /** start index for each input TsBlocks and size of it is equal to inputTsBlocks */
+  /** start index for each input TsBlocks and size of it is equal to inputTsBlocks. */
   private final int[] inputIndex;
 
-  /** used to record current index for input TsBlocks after merging */
+  /** used to record current index for input TsBlocks after merging. */
   private final int[] shadowInputIndex;
 
   /**
@@ -61,7 +62,7 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
 
   /**
    * this field indicates each data type for output columns(not including time column) of
-   * TimeJoinOperator its size should be equal to outputColumnCount
+   * TimeJoinOperator its size should be equal to outputColumnCount.
    */
   private final List<TSDataType> dataTypes;
 
@@ -149,8 +150,8 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
 
     if (timeSelector.isEmpty()) {
       // return empty TsBlock
-      TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(0, dataTypes);
-      return tsBlockBuilder.build();
+      TsBlockBuilder emptyTsBlockBuilder = new TsBlockBuilder(0, dataTypes);
+      return emptyTsBlockBuilder.build();
     }
 
     TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
@@ -158,29 +159,39 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
     do {
       currentTime = timeSelector.pollFirst();
       timeBuilder.writeLong(currentTime);
-      for (int i = 0; i < outputColumnCount; i++) {
-        ColumnMerger merger = mergers.get(i);
-        merger.mergeColumn(
-            inputTsBlocks,
-            inputIndex,
-            shadowInputIndex,
-            currentTime,
-            tsBlockBuilder.getColumnBuilder(i));
-      }
 
-      for (int i = 0; i < inputOperatorsCount; i++) {
-        if (inputIndex[i] != shadowInputIndex[i]) {
-          inputIndex[i] = shadowInputIndex[i];
-          if (!isEmpty(i)) {
-            updateTimeSelector(i);
-          }
-        }
-      }
+      appendOneRow(currentTime);
       tsBlockBuilder.declarePosition();
+
+      prepareForTimeHeap();
+
     } while (comparator.canContinue(currentTime, currentEndTime) && !timeSelector.isEmpty());
 
     resultTsBlock = tsBlockBuilder.build();
     return checkTsBlockSizeAndGetResult();
+  }
+
+  private void appendOneRow(long currentTime) {
+    for (int i = 0; i < outputColumnCount; i++) {
+      ColumnMerger merger = mergers.get(i);
+      merger.mergeColumn(
+          inputTsBlocks,
+          inputIndex,
+          shadowInputIndex,
+          currentTime,
+          tsBlockBuilder.getColumnBuilder(i));
+    }
+  }
+
+  private void prepareForTimeHeap() {
+    for (int i = 0; i < inputOperatorsCount; i++) {
+      if (inputIndex[i] != shadowInputIndex[i]) {
+        inputIndex[i] = shadowInputIndex[i];
+        if (!isEmpty(i)) {
+          updateTimeSelector(i);
+        }
+      }
+    }
   }
 
   @Override
@@ -250,7 +261,8 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    long currentRetainedSize = 0, minChildReturnSize = Long.MAX_VALUE;
+    long currentRetainedSize = 0;
+    long minChildReturnSize = Long.MAX_VALUE;
     for (Operator child : children) {
       long maxReturnSize = child.calculateMaxReturnSize();
       currentRetainedSize += (maxReturnSize + child.calculateRetainedSizeAfterCallingNext());
@@ -274,7 +286,7 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
   protected boolean prepareInput() throws Exception {
     boolean allReady = true;
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (noMoreTsBlocks[i] || !isEmpty(i) || children.get(i) == null) {
+      if (needCallNext(i)) {
         continue;
       }
       if (canCallNext[i]) {
@@ -300,6 +312,10 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
     return allReady;
   }
 
+  private boolean needCallNext(int i) {
+    return noMoreTsBlocks[i] || !isEmpty(i) || children.get(i) == null;
+  }
+
   @TestOnly
   public List<Operator> getChildren() {
     return children;
@@ -313,7 +329,7 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
 
   /**
    * If the tsBlock of columnIndex is null or has no more data in the tsBlock, return true; else
-   * return false;
+   * return false.
    */
   @Override
   protected boolean isEmpty(int columnIndex) {

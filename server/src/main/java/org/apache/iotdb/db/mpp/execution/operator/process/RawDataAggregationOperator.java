@@ -84,6 +84,7 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
     return windowManager.hasNext(hasMoreData());
   }
 
+  @SuppressWarnings({"squid:S3776", "squid:S135"})
   @Override
   protected boolean calculateNextAggregationResult() throws Exception {
 
@@ -110,7 +111,9 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
         // If the window is not initialized, it just returns to avoid invoking
         // updateResultTsBlock()
         // but if it's skipping the last window, just break and keep skipping.
-        if (needSkip || windowManager.isCurWindowInit()) break;
+        if (needSkip || windowManager.isCurWindowInit()) {
+          break;
+        }
         return false;
       }
     }
@@ -138,6 +141,7 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
     return true;
   }
 
+  @SuppressWarnings({"squid:S3776", "squid:S135"})
   private boolean calculateFromRawData() {
     // if window is not initialized, we should init window status and reset aggregators
     if (!windowManager.isCurWindowInit() && !skipPreviousWindowAndInitCurWindow()) {
@@ -179,7 +183,9 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
       }
 
       // if no row needs to skip, just send a null parameter.
-      if (!hasSkip) needProcess = null;
+      if (!hasSkip) {
+        needProcess = null;
+      }
 
       for (Aggregator aggregator : aggregators) {
         // Current agg method has been calculated

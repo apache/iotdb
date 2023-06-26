@@ -93,7 +93,11 @@ public class LayerCacheUtils {
     return YieldableState.YIELDABLE;
   }
 
-  /** @return number of actually collected, which may be less than or equals to rowsNumber */
+  /**
+   * try to generate rows from source.
+   *
+   * @return number of actually collected, which may be less than or equals to rowsNumber.
+   */
   public static YieldableState yieldRows(
       IUDFInputDataSet source, ElasticSerializableRowRecordList target, int rowsNumber)
       throws Exception {
@@ -118,7 +122,11 @@ public class LayerCacheUtils {
     return yieldableState;
   }
 
-  /** @return number of actually collected, which may be less than or equals to pointNumber */
+  /**
+   * cachePoints in ElasticSerializableTVList.
+   *
+   * @return number of actually collected, which may be less than or equals to pointNumber.
+   */
   public static int cachePoints(
       TSDataType dataType,
       LayerPointReader source,
@@ -173,7 +181,11 @@ public class LayerCacheUtils {
     return true;
   }
 
-  /** @return number of actually collected, which may be less than or equals to rowsNumber */
+  /**
+   * cache rows in ElasticSerializableRowRecordList.
+   *
+   * @return number of actually collected, which may be less than or equals to rowsNumber.
+   */
   public static int cacheRows(
       IUDFInputDataSet source, ElasticSerializableRowRecordList target, int rowsNumber)
       throws QueryProcessException, IOException {

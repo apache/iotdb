@@ -41,8 +41,6 @@ public class SSLClient {
 
   private static SSLConnectionSocketFactory sslConnectionSocketFactory = null;
   private static PoolingHttpClientConnectionManager poolingHttpClientConnectionManager = null;
-  private static SSLContextBuilder sslContextBuilder = null;
-  private static ConnectionSocketFactory plainsf = null;
 
   private static class SSLClientInstance {
     private static final SSLClient instance = new SSLClient();
@@ -53,8 +51,12 @@ public class SSLClient {
   }
 
   private SSLClient() {
+    build();
+  }
+
+  private static void build() {
     try {
-      sslContextBuilder =
+      SSLContextBuilder sslContextBuilder =
           new SSLContextBuilder()
               .loadTrustMaterial(
                   null,
@@ -65,7 +67,7 @@ public class SSLClient {
                       return true;
                     }
                   });
-      plainsf = PlainConnectionSocketFactory.getSocketFactory();
+      ConnectionSocketFactory plainsf = PlainConnectionSocketFactory.getSocketFactory();
       sslConnectionSocketFactory =
           new SSLConnectionSocketFactory(
               sslContextBuilder.build(),
@@ -85,12 +87,10 @@ public class SSLClient {
   }
 
   public CloseableHttpClient getHttpClient() {
-    CloseableHttpClient httpClient =
-        HttpClients.custom()
-            .setSSLSocketFactory(sslConnectionSocketFactory)
-            .setConnectionManager(poolingHttpClientConnectionManager)
-            .setConnectionManagerShared(true)
-            .build();
-    return httpClient;
+    return HttpClients.custom()
+        .setSSLSocketFactory(sslConnectionSocketFactory)
+        .setConnectionManager(poolingHttpClientConnectionManager)
+        .setConnectionManagerShared(true)
+        .build();
   }
 }

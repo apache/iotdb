@@ -256,10 +256,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   }
 
   public boolean isNeedSplit() {
-    if (this.indexOfSourcePathsOfLogicalViews == null) {
-      return false;
-    }
-    return !this.indexOfSourcePathsOfLogicalViews.isEmpty();
+    return hasLogicalViewNeedProcess();
   }
 
   public List<InsertRowStatement> getSplitList() {
@@ -278,13 +275,13 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       statement.setNeedInferType(this.isNeedInferType);
       statement.setDevicePath(entry.getKey());
       statement.setAligned(this.isAligned);
-      Object[] values = new Object[pairList.size()];
+      Object[] copiedValues = new Object[pairList.size()];
       String[] measurements = new String[pairList.size()];
       MeasurementSchema[] measurementSchemas = new MeasurementSchema[pairList.size()];
       TSDataType[] dataTypes = new TSDataType[pairList.size()];
       for (int i = 0; i < pairList.size(); i++) {
         int realIndex = pairList.get(i).right;
-        values[i] = this.values[realIndex];
+        copiedValues[i] = this.values[realIndex];
         measurements[i] = pairList.get(i).left;
         measurementSchemas[i] = this.measurementSchemas[realIndex];
         dataTypes[i] = this.dataTypes[realIndex];
@@ -292,7 +289,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
           statement.setAligned(this.measurementIsAligned[realIndex]);
         }
       }
-      statement.setValues(values);
+      statement.setValues(copiedValues);
       statement.setMeasurements(measurements);
       statement.setMeasurementSchemas(measurementSchemas);
       statement.setDataTypes(dataTypes);

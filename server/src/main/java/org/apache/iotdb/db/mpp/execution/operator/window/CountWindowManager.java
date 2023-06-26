@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator.window;
 
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
@@ -81,14 +82,18 @@ public class CountWindowManager implements IWindowManager {
     TimeColumn timeColumn = inputTsBlock.getTimeColumn();
     Column controlColumn = countWindow.getControlColumn(inputTsBlock);
     long leftCount = countWindow.getLeftCount();
-    int i = 0, size = inputTsBlock.getPositionCount();
+    int i = 0;
+    int size = inputTsBlock.getPositionCount();
 
-    for (; i < size; i++) {
-      if (isIgnoringNull() && controlColumn.isNull(i)) continue;
-      // A Count Window has exactly the row number of countNumber
-      // if leftCount is zero, the window is finished.
-      if (leftCount == 0) break;
-      leftCount--;
+    for (; i < size && leftCount != 0; i++) {
+
+      if (isIgnoringNull() && controlColumn.isNull(i)) {
+        continue;
+      } else {
+        // A Count Window has exactly the row number of countNumber
+        // if leftCount is zero, the window is finished.
+        leftCount--;
+      }
 
       long currentTime = timeColumn.getLong(i);
       // judge whether we need update endTime
@@ -123,7 +128,9 @@ public class CountWindowManager implements IWindowManager {
   @Override
   public void appendAggregationResult(
       TsBlockBuilder resultTsBlockBuilder, List<Aggregator> aggregators) {
-    if (countWindow.getLeftCount() != 0) return;
+    if (countWindow.getLeftCount() != 0) {
+      return;
+    }
     long endTime = countWindow.isNeedOutputEndTime() ? countWindow.getEndTime() : -1;
     outputAggregators(aggregators, resultTsBlockBuilder, countWindow.getStartTime(), endTime);
   }
@@ -133,7 +140,6 @@ public class CountWindowManager implements IWindowManager {
     return true;
   }
 
-  // ignoreNull in CountWindow may be ambiguous.
   @Override
   public boolean isIgnoringNull() {
     return countWindow.isIgnoreNull();

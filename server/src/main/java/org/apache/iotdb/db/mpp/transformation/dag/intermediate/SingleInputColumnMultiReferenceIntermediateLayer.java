@@ -250,7 +250,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
       }
 
       @Override
-      public boolean isCurrentNull() throws IOException {
+      public boolean isCurrentNull() {
         return tvList.isNull(currentRowIndex);
       }
     };
@@ -282,7 +282,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
         final int endIndex = beginIndex + windowSize;
         if (beginIndex < 0 || endIndex < 0) {
           LOGGER.warn(
-              "SingleInputColumnMultiReferenceIntermediateLayer$LayerRowWindowReader: index overflow. beginIndex: {}, endIndex: {}, windowSize: {}.",
+              "LayerRowWindowReader index overflow. beginIndex: {}, endIndex: {}, windowSize: {}.",
               beginIndex,
               endIndex,
               windowSize);
@@ -330,7 +330,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
         int endIndex = beginIndex + windowSize;
         if (beginIndex < 0 || endIndex < 0) {
           LOGGER.warn(
-              "SingleInputColumnMultiReferenceIntermediateLayer$LayerRowWindowReader: index overflow. beginIndex: {}, endIndex: {}, windowSize: {}.",
+              "LayerRowWindowReader index overflow. beginIndex: {}, endIndex: {}, windowSize: {}.",
               beginIndex,
               endIndex,
               windowSize);

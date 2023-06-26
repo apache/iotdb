@@ -30,21 +30,23 @@ public class SortBufferManager {
 
   private long bufferUsed;
 
-  private final long BUFFER_SIZE_FOR_ONE_BRANCH = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+  private static final long BUFFER_SIZE_FOR_ONE_BRANCH = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
-  private final long BUFFER_AVAILABLE_FOR_ALL_BRANCH;
+  private final long bufferAvailableForAllBranch;
   private long readerBuffer = 0;
   private long branchNum = 0;
 
   public SortBufferManager() {
-    this.BUFFER_AVAILABLE_FOR_ALL_BRANCH = SORT_BUFFER_SIZE - DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+    this.bufferAvailableForAllBranch = SORT_BUFFER_SIZE - DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
     // the initial value is the buffer for output.
     this.bufferUsed = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
 
   public void allocateOneSortBranch() {
     boolean success = allocate(BUFFER_SIZE_FOR_ONE_BRANCH);
-    if (!success) throw new IllegalArgumentException("Not enough memory for sorting");
+    if (!success) {
+      throw new IllegalArgumentException("Not enough memory for sorting");
+    }
     branchNum++;
   }
 
@@ -62,12 +64,16 @@ public class SortBufferManager {
 
   public void releaseOneSortBranch() {
     branchNum--;
-    if (branchNum != 0) readerBuffer = BUFFER_AVAILABLE_FOR_ALL_BRANCH / branchNum;
+    if (branchNum != 0) {
+      readerBuffer = bufferAvailableForAllBranch / branchNum;
+    }
   }
 
   public long getReaderBufferAvailable() {
-    if (readerBuffer != 0) return readerBuffer;
-    readerBuffer = BUFFER_AVAILABLE_FOR_ALL_BRANCH / branchNum;
+    if (readerBuffer != 0) {
+      return readerBuffer;
+    }
+    readerBuffer = bufferAvailableForAllBranch / branchNum;
     return readerBuffer;
   }
 }

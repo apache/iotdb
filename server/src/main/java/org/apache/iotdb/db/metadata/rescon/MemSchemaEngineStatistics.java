@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.metadata.rescon;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -29,12 +30,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-/** This class is used to record the global statistics of SchemaEngine in Memory mode */
+/** This class is used to record the global statistics of SchemaEngine in Memory mode. */
 public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
 
   private static final Logger logger = LoggerFactory.getLogger(MemSchemaEngineStatistics.class);
 
-  /** Total size of schema region */
+  // Total size of schema region
   private final long memoryCapacity =
       IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchemaRegion();
 

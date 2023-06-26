@@ -59,16 +59,7 @@ public class QueryContext {
 
   private boolean debug;
 
-  /**
-   * To reduce the cost of memory, we only keep the a certain size statement. For statement whose
-   * length is over this, we keep its head and tail.
-   */
-  private static final int MAX_STATEMENT_LENGTH = 64;
-
   private long startTime;
-
-  private String statement;
-
   private long timeout;
 
   private volatile boolean isInterrupted = false;
@@ -84,7 +75,6 @@ public class QueryContext {
     this.queryId = queryId;
     this.debug = debug;
     this.startTime = startTime;
-    this.statement = statement;
     this.timeout = timeout;
   }
 
@@ -93,8 +83,6 @@ public class QueryContext {
    * them from 'modFile' and put then into the cache.
    */
   public List<Modification> getPathModifications(ModificationFile modFile, PartialPath path) {
-    // TODO change a way to do the existing check to avoid this IO call each time.
-
     // if the mods file does not exist, do not add it to the cache
     if (!modFile.exists()) {
       return Collections.emptyList();
@@ -115,6 +103,19 @@ public class QueryContext {
           }
           return sortAndMerge(allModifications.getOverlapped(path));
         });
+  }
+
+  /**
+   * Find the modifications of all aligned 'paths' in 'modFile'. If they are not in the cache, read
+   * them from 'modFile' and put then into the cache.
+   */
+  public List<List<Modification>> getPathModifications(ModificationFile modFile, AlignedPath path) {
+    int n = path.getMeasurementList().size();
+    List<List<Modification>> ans = new ArrayList<>(n);
+    for (int i = 0; i < n; i++) {
+      ans.add(getPathModifications(modFile, path.getPathWithMeasurement(i)));
+    }
+    return ans;
   }
 
   private List<Modification> sortAndMerge(List<Modification> modifications) {
@@ -152,19 +153,6 @@ public class QueryContext {
     return result;
   }
 
-  /**
-   * Find the modifications of all aligned 'paths' in 'modFile'. If they are not in the cache, read
-   * them from 'modFile' and put then into the cache.
-   */
-  public List<List<Modification>> getPathModifications(ModificationFile modFile, AlignedPath path) {
-    int n = path.getMeasurementList().size();
-    List<List<Modification>> ans = new ArrayList<>(n);
-    for (int i = 0; i < n; i++) {
-      ans.add(getPathModifications(modFile, path.getPathWithMeasurement(i)));
-    }
-    return ans;
-  }
-
   public long getQueryId() {
     return queryId;
   }
@@ -189,17 +177,9 @@ public class QueryContext {
     return startTime;
   }
 
-  public String getStatement() {
-    return statement;
-  }
-
   public QueryContext setStartTime(long startTime) {
     this.startTime = startTime;
     return this;
-  }
-
-  public void getStatement(String statement) {
-    this.statement = statement;
   }
 
   public long getTimeout() {
@@ -208,18 +188,6 @@ public class QueryContext {
 
   public QueryContext setTimeout(long timeout) {
     this.timeout = timeout;
-    return this;
-  }
-
-  public QueryContext setStatement(String statement) {
-    if (statement.length() <= 64) {
-      this.statement = statement;
-    } else {
-      this.statement =
-          statement.substring(0, MAX_STATEMENT_LENGTH / 2)
-              + "..."
-              + statement.substring(statement.length() - MAX_STATEMENT_LENGTH / 2);
-    }
     return this;
   }
 

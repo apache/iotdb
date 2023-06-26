@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaEntityNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaInternalNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
@@ -40,7 +41,6 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.rmi.UnexpectedException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -184,11 +184,9 @@ public class ClusterSchemaTree implements ISchemaTree {
       if (node == null) {
         indexOfMissingMeasurements.add(index);
       } else {
-        if (firstNonViewMeasurement) {
-          if (!node.getAsMeasurementNode().isLogicalView()) {
-            schemaComputation.computeDevice(cur.getAsEntityNode().isAligned());
-            firstNonViewMeasurement = false;
-          }
+        if (firstNonViewMeasurement && !node.getAsMeasurementNode().isLogicalView()) {
+          schemaComputation.computeDevice(cur.getAsEntityNode().isAligned());
+          firstNonViewMeasurement = false;
         }
         schemaComputation.computeMeasurement(index, node.getAsMeasurementNode());
       }
@@ -202,9 +200,11 @@ public class ClusterSchemaTree implements ISchemaTree {
    *
    * @param schemaComputation the statement
    * @param indexOfTargetLogicalView the index list of logicalViewSchemaList that you want to check
+   * @throws SemanticException path not exist or different source path of view
    */
   public void computeSourceOfLogicalView(
-      ISchemaComputation schemaComputation, List<Integer> indexOfTargetLogicalView) {
+      ISchemaComputation schemaComputation, List<Integer> indexOfTargetLogicalView)
+      throws SemanticException {
     if (!schemaComputation.hasLogicalViewNeedProcess()) {
       return;
     }
@@ -214,16 +214,14 @@ public class ClusterSchemaTree implements ISchemaTree {
       PartialPath fullPath = logicalViewSchema.getSourcePathIfWritable();
       Pair<List<MeasurementPath>, Integer> searchResult = this.searchMeasurementPaths(fullPath);
       List<MeasurementPath> measurementPathList = searchResult.left;
-      if (measurementPathList.size() <= 0) {
-        throw new RuntimeException(
+      if (measurementPathList.isEmpty()) {
+        throw new SemanticException(
             new PathNotExistException(
                 String.format(
                     "The source path of view [%s] does not exist.", fullPath.getFullPath())));
       } else if (measurementPathList.size() > 1) {
-        throw new RuntimeException(
-            new UnexpectedException(
-                String.format(
-                    "The source paths of view [%s] are multiple.", fullPath.getFullPath())));
+        throw new SemanticException(
+            String.format("The source paths of view [%s] are multiple.", fullPath.getFullPath()));
       } else {
         Integer realIndex = schemaComputation.getIndexListOfLogicalViewPaths().get(index);
         MeasurementPath measurementPath = measurementPathList.get(0);
@@ -301,11 +299,6 @@ public class ClusterSchemaTree implements ISchemaTree {
     }
   }
 
-  @Override
-  public boolean hasLogicalViewMeasurement() {
-    return this.hasLogicalMeasurementPath;
-  }
-
   public void mergeSchemaTree(ClusterSchemaTree schemaTree) {
     this.hasLogicalMeasurementPath =
         this.hasLogicalMeasurementPath || schemaTree.hasLogicalViewMeasurement();
@@ -340,6 +333,11 @@ public class ClusterSchemaTree implements ISchemaTree {
         traverseAndMerge(thisChild, thisNode, thatChild);
       }
     }
+  }
+
+  @Override
+  public boolean hasLogicalViewMeasurement() {
+    return this.hasLogicalMeasurementPath;
   }
 
   public void serialize(OutputStream outputStream) throws IOException {
@@ -399,6 +397,7 @@ public class ClusterSchemaTree implements ISchemaTree {
    *
    * @param pathName only full path, cannot be path pattern
    * @return database in the given path
+   * @throws SemanticException no matched database
    */
   @Override
   public String getBelongedDatabase(String pathName) {
@@ -407,7 +406,7 @@ public class ClusterSchemaTree implements ISchemaTree {
         return database;
       }
     }
-    throw new RuntimeException("No matched database. Please check the path " + pathName);
+    throw new SemanticException("No matched database. Please check the path " + pathName);
   }
 
   @Override

@@ -25,7 +25,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.RouteChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.StatisticsChangeEvent;
-import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.HashMap;
@@ -61,13 +61,16 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
               if (regionGroupId.getType().equals(TConsensusGroupType.DataRegion)) {
                 final String databaseName =
                     configManager.getPartitionManager().getRegionStorageGroup(regionGroupId);
-                if (databaseName != null && !databaseName.equals(IoTDBMetricsUtils.DATABASE)) {
-                  // pipe only collect user's data, filter metric database here.
-                  dataRegionGroupToOldAndNewLeaderPairMap.put(
-                      regionGroupId,
-                      new Pair<>( // null or -1 means empty origin leader
-                          pair.left == null ? -1 : pair.left,
-                          pair.right == null ? -1 : pair.right));
+                // pipe only collect user's data, filter metric database here.
+                if (databaseName != null && !databaseName.equals(IoTDBConfig.SYSTEM_DATABASE)) {
+                  // null or -1 means empty origin leader
+                  final int oldLeaderDataNodeId = (pair.left == null ? -1 : pair.left);
+                  final int newLeaderDataNodeId = (pair.right == null ? -1 : pair.right);
+
+                  if (oldLeaderDataNodeId != newLeaderDataNodeId) {
+                    dataRegionGroupToOldAndNewLeaderPairMap.put(
+                        regionGroupId, new Pair<>(oldLeaderDataNodeId, newLeaderDataNodeId));
+                  }
                 }
               }
             });
@@ -78,10 +81,14 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
     }
 
     // submit procedure in an async way to avoid blocking the caller
-    PipeRuntimeCoordinator.PROCEDURE_SUBMITTER.submit(
-        () ->
-            configManager
-                .getProcedureManager()
-                .pipeHandleLeaderChange(dataRegionGroupToOldAndNewLeaderPairMap));
+    configManager
+        .getPipeManager()
+        .getPipeRuntimeCoordinator()
+        .getProcedureSubmitter()
+        .submit(
+            () ->
+                configManager
+                    .getProcedureManager()
+                    .pipeHandleLeaderChange(dataRegionGroupToOldAndNewLeaderPairMap));
   }
 }

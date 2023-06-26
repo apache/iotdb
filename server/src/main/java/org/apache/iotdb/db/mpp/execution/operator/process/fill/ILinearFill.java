@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator.process.fill;
 
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -25,7 +26,7 @@ public interface ILinearFill {
 
   /**
    * Before we call this method, we need to make sure the nextValue has been prepared or noMoreNext
-   * has been set to true
+   * has been set to true.
    *
    * @param timeColumn TimeColumn of valueColumn
    * @param valueColumn valueColumn that need to be filled
@@ -35,6 +36,8 @@ public interface ILinearFill {
   Column fill(TimeColumn timeColumn, Column valueColumn, long currentRowIndex);
 
   /**
+   * Whether need prepare for next.
+   *
    * @param rowIndex row index for end time of current valueColumn that need to be filled
    * @param valueColumn valueColumn that need to be filled
    * @return true if valueColumn can't be filled using current information, and we need to get next
@@ -44,6 +47,8 @@ public interface ILinearFill {
   boolean needPrepareForNext(long rowIndex, Column valueColumn);
 
   /**
+   * prepare for next.
+   *
    * @param startRowIndex row index for start time of nextValueColumn
    * @param endRowIndex row index for end time of current valueColumn that need to be filled
    * @param nextTimeColumn TimeColumn of next TsBlock

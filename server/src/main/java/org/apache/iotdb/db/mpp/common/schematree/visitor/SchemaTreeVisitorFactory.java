@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.common.schematree.visitor;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -23,6 +24,11 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode;
 
 public class SchemaTreeVisitorFactory {
+
+  private SchemaTreeVisitorFactory() {
+    // forbidden instantiation
+  }
+
   public static SchemaTreeDeviceVisitor createSchemaTreeDeviceVisitor(
       SchemaNode root, PartialPath pathPattern, boolean isPrefixMatch) {
     return new SchemaTreeDeviceVisitor(root, pathPattern, isPrefixMatch);

@@ -37,6 +37,9 @@ public class RegionReadExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RegionReadExecutor.class);
 
+  private static final String ERROR_MSG_FORMAT = "Execute FragmentInstance failed: %s";
+
+  @SuppressWarnings("squid:S1181")
   public RegionExecutionResult execute(
       ConsensusGroupId groupId, FragmentInstance fragmentInstance) {
     // execute fragment instance in state machine
@@ -59,8 +62,9 @@ public class RegionReadExecutor {
             readResponse.getException());
         resp.setAccepted(false);
         resp.setMessage(
-            "Execute FragmentInstance failed: "
-                + (readResponse.getException() == null
+            String.format(
+                ERROR_MSG_FORMAT,
+                readResponse.getException() == null
                     ? ""
                     : readResponse.getException().getMessage()));
       } else {
@@ -73,11 +77,12 @@ public class RegionReadExecutor {
       LOGGER.error("Execute FragmentInstance in ConsensusGroup {} failed.", groupId, t);
       RegionExecutionResult resp = new RegionExecutionResult();
       resp.setAccepted(false);
-      resp.setMessage("Execute FragmentInstance failed: " + t.getMessage());
+      resp.setMessage(String.format(ERROR_MSG_FORMAT, t.getMessage()));
       return resp;
     }
   }
 
+  @SuppressWarnings("squid:S1181")
   public RegionExecutionResult execute(FragmentInstance fragmentInstance) {
     // execute fragment instance in state machine
     try (SetThreadName threadName = new SetThreadName(fragmentInstance.getId().getFullId())) {
@@ -93,7 +98,7 @@ public class RegionReadExecutor {
       LOGGER.error("Execute FragmentInstance in QueryExecutor failed.", t);
       RegionExecutionResult resp = new RegionExecutionResult();
       resp.setAccepted(false);
-      resp.setMessage("Execute FragmentInstance failed: " + t.getMessage());
+      resp.setMessage(String.format(ERROR_MSG_FORMAT, t.getMessage()));
       return resp;
     }
   }

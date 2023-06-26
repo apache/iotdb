@@ -35,6 +35,8 @@ public class SafetyLine {
   }
 
   /**
+   * Get the safe index.
+   *
    * @return the index of the first element that cannot be evicted. in other words, elements whose
    *     index are <b>less than</b> the return value can be evicted.
    */
@@ -70,6 +72,8 @@ public class SafetyLine {
     }
 
     /**
+     * Set safetyIndex for corresponding safetyPile.
+     *
      * @param safetyPilePosition the index of the first element that cannot be evicted. in other
      *     words, elements whose index are <b>less than</b> the safetyPilePosition can be evicted.
      */

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.controller;
 
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;

@@ -44,10 +44,7 @@ public class FloatStatistics extends Statistics<Float> {
     return TSDataType.FLOAT;
   }
 
-  /**
-   * The output of this method should be identical to the method "serializeStats(OutputStream
-   * outputStream)"
-   */
+  /** The output of this method should be identical to the method "serializeStats(outputStream)". */
   @Override
   public int getStatsSize() {
     return 24;
@@ -205,9 +202,15 @@ public class FloatStatistics extends Statistics<Float> {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
     double e = 0.00001;
     FloatStatistics that = (FloatStatistics) o;
     return Math.abs(that.minValue - minValue) < e

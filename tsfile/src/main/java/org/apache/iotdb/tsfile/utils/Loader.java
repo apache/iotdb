@@ -19,6 +19,8 @@
 package org.apache.iotdb.tsfile.utils;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Enumeration;
 import java.util.HashSet;
@@ -28,13 +30,14 @@ public class Loader {
   private Loader() {}
 
   /** function for getting resources. */
-  public static Set<URL> getResources(String resource, ClassLoader classLoader) throws IOException {
-    Set<URL> urlSet = new HashSet<>();
+  public static Set<URI> getResources(String resource, ClassLoader classLoader)
+      throws IOException, URISyntaxException {
+    Set<URI> uriSet = new HashSet<>();
     Enumeration<URL> urlEnum = classLoader.getResources(resource);
     while (urlEnum.hasMoreElements()) {
-      urlSet.add(urlEnum.nextElement());
+      uriSet.add(urlEnum.nextElement().toURI());
     }
-    return urlSet;
+    return uriSet;
   }
 
   public static URL getResource(String resource, ClassLoader classLoader) {

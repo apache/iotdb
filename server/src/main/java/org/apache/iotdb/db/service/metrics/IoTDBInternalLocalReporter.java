@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
@@ -44,7 +45,6 @@ import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.reporter.iotdb.IoTDBInternalReporter;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
-import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
 import org.apache.iotdb.metrics.utils.ReporterType;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -87,11 +87,11 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TShowDatabaseResp showDatabaseResp =
-          client.showDatabase(Arrays.asList(IoTDBMetricsUtils.DATABASE.split("\\.")));
+          client.showDatabase(Arrays.asList(IoTDBConfig.SYSTEM_DATABASE.split("\\.")));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == showDatabaseResp.getStatus().getCode()
           && showDatabaseResp.getDatabaseInfoMapSize() == 0) {
         TDatabaseSchema databaseSchema = new TDatabaseSchema();
-        databaseSchema.setName(IoTDBMetricsUtils.DATABASE);
+        databaseSchema.setName(IoTDBConfig.SYSTEM_DATABASE);
         databaseSchema.setSchemaReplicationFactor(1);
         databaseSchema.setDataReplicationFactor(1);
         databaseSchema.setMaxSchemaRegionGroupNum(1);

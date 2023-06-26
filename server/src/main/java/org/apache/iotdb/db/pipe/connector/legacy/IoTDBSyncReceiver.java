@@ -105,12 +105,11 @@ public class IoTDBSyncReceiver {
       new File(getFileDataDir(identityInfo)).mkdirs();
     }
     createConnection(identityInfo);
-    if (!StringUtils.isEmpty(identityInfo.getDatabase())) {
-      if (!registerDatabase(identityInfo.getDatabase(), partitionFetcher, schemaFetcher)) {
-        return RpcUtils.getStatus(
-            TSStatusCode.PIPESERVER_ERROR,
-            String.format("Auto register database %s error.", identityInfo.getDatabase()));
-      }
+    if (!StringUtils.isEmpty(identityInfo.getDatabase())
+        && !registerDatabase(identityInfo.getDatabase(), partitionFetcher, schemaFetcher)) {
+      return RpcUtils.getStatus(
+          TSStatusCode.PIPESERVER_ERROR,
+          String.format("Auto register database %s error.", identityInfo.getDatabase()));
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");
   }
@@ -245,7 +244,9 @@ public class IoTDBSyncReceiver {
                 targetFile
                     .getName()
                     .substring(0, targetFile.getName().length() - PATCH_SUFFIX.length()));
-        targetFile.renameTo(newFile);
+        if (!targetFile.renameTo(newFile)) {
+          LOGGER.error("Fail to rename file {} to {}", targetFile, newFile);
+        }
       }
     }
     tsFilePipeData.setParentDirPath(dir.getAbsolutePath());
@@ -276,14 +277,9 @@ public class IoTDBSyncReceiver {
     File file = new File(fileDir, fileName + PATCH_SUFFIX);
 
     // step2. check startIndex
-    try {
-      IndexCheckResult result = checkStartIndexValid(new File(fileDir, fileName), startIndex);
-      if (!result.isResult()) {
-        return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_REDIRECTION_ERROR, result.getIndex());
-      }
-    } catch (IOException e) {
-      LOGGER.error(e.getMessage());
-      return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_ERROR, e.getMessage());
+    IndexCheckResult result = checkStartIndexValid(new File(fileDir, fileName), startIndex);
+    if (!result.isResult()) {
+      return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_REDIRECTION_ERROR, result.getIndex());
     }
 
     // step3. append file
@@ -294,14 +290,7 @@ public class IoTDBSyncReceiver {
       buff.get(byteArray);
       randomAccessFile.write(byteArray);
       recordStartIndex(new File(fileDir, fileName), startIndex + length);
-      LOGGER.debug(
-          "Sync "
-              + fileName
-              + " start at "
-              + startIndex
-              + " to "
-              + (startIndex + length)
-              + " is done.");
+      LOGGER.debug("Sync {} start at {} to {} is done.", fileName, startIndex, startIndex + length);
     } catch (IOException e) {
       LOGGER.error(e.getMessage());
       return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_ERROR, e.getMessage());
@@ -310,7 +299,7 @@ public class IoTDBSyncReceiver {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");
   }
 
-  private IndexCheckResult checkStartIndexValid(File file, long startIndex) throws IOException {
+  private IndexCheckResult checkStartIndexValid(File file, long startIndex) {
     // get local index from memory map
     long localIndex = getCurrentFileStartIndex(file.getAbsolutePath());
     // get local index from file

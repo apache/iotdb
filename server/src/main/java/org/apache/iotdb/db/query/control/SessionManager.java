@@ -43,7 +43,6 @@ import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,10 +53,10 @@ import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Consumer;
+import java.util.function.LongConsumer;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNpeOrUnexpectedException;
 
 public class SessionManager implements SessionManagerMBean {
   private static final Logger LOGGER = LoggerFactory.getLogger(SessionManager.class);
@@ -82,7 +81,7 @@ public class SessionManager implements SessionManagerMBean {
   public static final TSProtocolVersion CURRENT_RPC_VERSION =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
 
-  private static final boolean enableAuditLog =
+  private static final boolean ENABLE_AUDIT_LOG =
       IoTDBDescriptor.getInstance().getConfig().isEnableAuditLog();
 
   protected SessionManager() {
@@ -99,8 +98,7 @@ public class SessionManager implements SessionManagerMBean {
       String password,
       String zoneId,
       TSProtocolVersion tsProtocolVersion,
-      IoTDBConstant.ClientVersion clientVersion)
-      throws TException {
+      IoTDBConstant.ClientVersion clientVersion) {
     TSStatus loginStatus;
     BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
 
@@ -126,7 +124,7 @@ public class SessionManager implements SessionManagerMBean {
             openSessionResp.getMessage(),
             username,
             session);
-        if (enableAuditLog) {
+        if (ENABLE_AUDIT_LOG) {
           AuditLogger.log(
               String.format(
                   "%s: Login status: %s. User : %s, opens Session-%s",
@@ -135,7 +133,7 @@ public class SessionManager implements SessionManagerMBean {
         }
       }
     } else {
-      if (enableAuditLog) {
+      if (ENABLE_AUDIT_LOG) {
         AuditLogger.log(
             String.format("User %s opens Session failed with an incorrect password", username),
             AUTHOR_STATEMENT);
@@ -146,7 +144,7 @@ public class SessionManager implements SessionManagerMBean {
     return openSessionResp;
   }
 
-  public boolean closeSession(IClientSession session, Consumer<Long> releaseByQueryId) {
+  public boolean closeSession(IClientSession session, LongConsumer releaseByQueryId) {
     releaseSessionResource(session, releaseByQueryId);
     MetricService.getInstance()
         .remove(
@@ -154,16 +152,10 @@ public class SessionManager implements SessionManagerMBean {
             Metric.SESSION_IDLE_TIME.toString(),
             Tag.NAME.toString(),
             String.valueOf(session.getId()));
-    // TODO we only need to do so when query is killed by time out
-    //    // close the socket.
-    //    // currently, we only focus on RPC service.
-    //    // TODO do we need to consider MQTT ClientSession and Internal Client?
-    //    if (session instanceof ClientSession) {
-    //      ((ClientSession) session).shutdownStream();
-    //    }
+    // TODO we only need to do so when query is killed by time out  close the socket.
     IClientSession session1 = currSession.get();
     if (session1 != null && session != session1) {
-      if (enableAuditLog) {
+      if (ENABLE_AUDIT_LOG) {
         AuditLogger.log(
             String.format(
                 "The client-%s is trying to close another session %s, pls check if it's a bug",
@@ -172,14 +164,14 @@ public class SessionManager implements SessionManagerMBean {
       }
       return false;
     } else {
-      if (enableAuditLog) {
+      if (ENABLE_AUDIT_LOG) {
         AuditLogger.log(String.format("Session-%s is closing", session), AUTHOR_STATEMENT);
       }
       return true;
     }
   }
 
-  private void releaseSessionResource(IClientSession session, Consumer<Long> releaseQueryResource) {
+  private void releaseSessionResource(IClientSession session, LongConsumer releaseQueryResource) {
     Iterable<Long> statementIds = session.getStatementIds();
     if (statementIds != null) {
       for (Long statementId : statementIds) {
@@ -199,7 +191,7 @@ public class SessionManager implements SessionManagerMBean {
       long statementId,
       boolean haveStatementId,
       boolean haveSetQueryId,
-      Consumer<Long> releaseByQueryId) {
+      LongConsumer releaseByQueryId) {
     if (!checkLogin(session)) {
       return RpcUtils.getStatus(
           TSStatusCode.NOT_LOGIN,
@@ -219,7 +211,7 @@ public class SessionManager implements SessionManagerMBean {
             TSStatusCode.CLOSE_OPERATION_ERROR, "statement id not set by client.");
       }
     } catch (Exception e) {
-      return onNPEOrUnexpectedException(
+      return onNpeOrUnexpectedException(
           e, OperationType.CLOSE_OPERATION, TSStatusCode.CLOSE_OPERATION_ERROR);
     }
   }
@@ -246,7 +238,7 @@ public class SessionManager implements SessionManagerMBean {
   }
 
   public void closeStatement(
-      IClientSession session, long statementId, Consumer<Long> releaseByQueryId) {
+      IClientSession session, long statementId, LongConsumer releaseByQueryId) {
     Set<Long> queryIdSet = session.removeStatementId(statementId);
     if (queryIdSet != null) {
       for (Long queryId : queryIdSet) {
@@ -349,7 +341,7 @@ public class SessionManager implements SessionManagerMBean {
   }
 
   public void closeDataset(
-      IClientSession session, Long statementId, Long queryId, Consumer<Long> releaseByQueryId) {
+      IClientSession session, Long statementId, Long queryId, LongConsumer releaseByQueryId) {
     releaseByQueryId.accept(queryId);
     session.removeQueryId(statementId, queryId);
   }
