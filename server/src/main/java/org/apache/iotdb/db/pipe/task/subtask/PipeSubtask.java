@@ -42,18 +42,23 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSubtask.class);
 
+  // used for identifying the subtask
   protected final String taskID;
 
-  private ListeningExecutorService subtaskWorkerThreadPoolExecutor;
-  private ExecutorService subtaskCallbackListeningExecutor;
-  private final DecoratingLock callbackDecoratingLock = new DecoratingLock();
-  private final AtomicBoolean shouldStopSubmittingSelf = new AtomicBoolean(true);
+  // for thread pool to execute subtasks
+  protected ListeningExecutorService subtaskWorkerThreadPoolExecutor;
 
-  private PipeSubtaskScheduler subtaskScheduler;
+  // for thread pool to execute callbacks
+  protected final DecoratingLock callbackDecoratingLock = new DecoratingLock();
+  protected ExecutorService subtaskCallbackListeningExecutor;
 
+  // for controlling the subtask execution
+  protected final AtomicBoolean shouldStopSubmittingSelf = new AtomicBoolean(true);
+  protected PipeSubtaskScheduler subtaskScheduler;
+
+  // for fail-over
   protected static final int MAX_RETRY_TIMES = 5;
-  private final AtomicInteger retryCount = new AtomicInteger(0);
-
+  protected final AtomicInteger retryCount = new AtomicInteger(0);
   protected Event lastEvent;
 
   protected PipeSubtask(String taskID) {
