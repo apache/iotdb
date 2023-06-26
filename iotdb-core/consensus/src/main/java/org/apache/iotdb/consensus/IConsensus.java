@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.consensus;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -40,9 +41,10 @@ public interface IConsensus {
   void stop() throws IOException;
 
   // write API
-  ConsensusWriteResponse write(ConsensusGroupId groupId, IConsensusRequest IConsensusRequest);
+  ConsensusWriteResponse write(ConsensusGroupId groupId, IConsensusRequest iConsensusRequest);
+
   // read API
-  ConsensusReadResponse read(ConsensusGroupId groupId, IConsensusRequest IConsensusRequest);
+  ConsensusReadResponse read(ConsensusGroupId groupId, IConsensusRequest iConsensusRequest);
 
   // multi consensus group API
 

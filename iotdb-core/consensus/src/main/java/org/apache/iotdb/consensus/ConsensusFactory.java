@@ -38,6 +38,10 @@ public class ConsensusFactory {
 
   private static final Logger logger = LoggerFactory.getLogger(ConsensusFactory.class);
 
+  private ConsensusFactory() {
+    throw new IllegalStateException("Utility class ConsensusFactory");
+  }
+
   public static Optional<IConsensus> getConsensusImpl(
       String className, ConsensusConfig config, IStateMachine.Registry registry) {
     try {

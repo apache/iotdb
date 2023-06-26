@@ -165,31 +165,45 @@ public class IndexController {
                         }));
   }
 
+  private long[] getMaxVersion(long[] fileVersions) {
+    long maxVersion = 0;
+    int maxVersionIndex = 0;
+    for (int i = 0; i < fileVersions.length; i++) {
+      if (fileVersions[i] > maxVersion) {
+        maxVersion = fileVersions[i];
+        maxVersionIndex = i;
+      }
+    }
+    return new long[] {maxVersion, maxVersionIndex};
+  }
+
+  private void deleteVersionFiles(File[] versionFiles, int maxVersionIndex) {
+    for (int i = 0; i < versionFiles.length; i++) {
+      if (i != maxVersionIndex) {
+        try {
+          Files.delete(versionFiles[i].toPath());
+        } catch (IOException e) {
+          logger.error(
+              "Delete outdated version file {} failed", versionFiles[i].getAbsolutePath(), e);
+        }
+      }
+    }
+  }
+
   private void restore() {
     File directory = new File(storageDir);
     File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(prefix));
     File versionFile;
     if (versionFiles != null && versionFiles.length > 0) {
-      long maxVersion = 0;
-      int maxVersionIndex = 0;
+      long[] fileVersions = new long[versionFiles.length];
       for (int i = 0; i < versionFiles.length; i++) {
-        long fileVersion = Long.parseLong(versionFiles[i].getName().split(SEPARATOR)[1]);
-        if (fileVersion > maxVersion) {
-          maxVersion = fileVersion;
-          maxVersionIndex = i;
-        }
+        fileVersions[i] = Long.parseLong(versionFiles[i].getName().split(SEPARATOR)[1]);
       }
+      long[] res = getMaxVersion(fileVersions);
+      long maxVersion = res[0];
+      int maxVersionIndex = (int) res[1];
       lastFlushedIndex = maxVersion;
-      for (int i = 0; i < versionFiles.length; i++) {
-        if (i != maxVersionIndex) {
-          try {
-            Files.delete(versionFiles[i].toPath());
-          } catch (IOException e) {
-            logger.error(
-                "Delete outdated version file {} failed", versionFiles[i].getAbsolutePath(), e);
-          }
-        }
-      }
+      deleteVersionFiles(versionFiles, maxVersionIndex);
       currentIndex = lastFlushedIndex;
     } else {
       currentIndex = initialIndex;
