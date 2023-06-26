@@ -26,10 +26,8 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
-import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
-import org.apache.iotdb.db.metadata.idtable.entry.TimeseriesID;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.write.ICreateTimeSeriesPlan;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -54,18 +52,16 @@ public class IDTableHashmapImpl implements IDTable {
 
   // number of table slot
   private static final int NUM_OF_SLOTS = 256;
-  /** logger */
+  // logger
   private static final Logger logger = LoggerFactory.getLogger(IDTableHashmapImpl.class);
 
-  /**
-   * 256 hashmap for avoiding rehash performance issue and lock competition device ID ->
-   * (measurement name -> schema entry)
-   */
+  // 256 hashmap for avoiding rehash performance issue and lock competition
+  // device ID -> (measurement name -> schema entry)
   private Map<IDeviceID, DeviceEntry>[] idTables;
 
-  /** disk schema manager to manage disk schema entry */
+  // disk schema manager to manage disk schema entry
   private IDiskSchemaManager IDiskSchemaManager;
-  /** iotdb config */
+  // iotdb config
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   public IDTableHashmapImpl(File storageGroupDir) {
@@ -80,7 +76,7 @@ public class IDTableHashmapImpl implements IDTable {
   }
 
   /**
-   * create aligned timeseries
+   * Create aligned timeseries.
    *
    * @param plan create aligned timeseries plan
    * @throws MetadataException if the device is not aligned, throw it
@@ -107,7 +103,7 @@ public class IDTableHashmapImpl implements IDTable {
   }
 
   /**
-   * create timeseries
+   * Create timeseries.
    *
    * @param plan create timeseries plan
    * @throws MetadataException if the device is aligned, throw it
@@ -128,11 +124,11 @@ public class IDTableHashmapImpl implements IDTable {
   }
 
   /**
-   * Delete all timeseries matching the given paths
+   * Delete all timeseries matching the given paths.
    *
    * @param fullPaths paths to be deleted
    * @return deletion failed Timeseries
-   * @throws MetadataException
+   * @throws MetadataException metadata exception
    */
   @Override
   public synchronized Pair<Integer, Set<String>> deleteTimeseries(List<PartialPath> fullPaths)
@@ -158,7 +154,6 @@ public class IDTableHashmapImpl implements IDTable {
     for (Pair<PartialPath, Long> pair : deletedPairs) {
       try {
         getIDiskSchemaManager().deleteDiskSchemaEntryByOffset(pair.right);
-        DeviceEntry deviceEntry = getDeviceEntry(pair.left.getDevice());
         Map<String, SchemaEntry> map = getDeviceEntry(pair.left.getDevice()).getMeasurementMap();
         map.keySet().remove(pair.left.getMeasurement());
         deletedNum++;
@@ -177,7 +172,7 @@ public class IDTableHashmapImpl implements IDTable {
   }
 
   /**
-   * get device entry from device path
+   * Get device entry from device path.
    *
    * @param deviceName device name of the time series
    * @return device entry of the timeseries
@@ -192,7 +187,7 @@ public class IDTableHashmapImpl implements IDTable {
   }
 
   /**
-   * get schema from device and measurements
+   * Get schema from device and measurements.
    *
    * @param deviceName device name of the time series
    * @param measurementName measurement name of the time series
@@ -237,27 +232,12 @@ public class IDTableHashmapImpl implements IDTable {
   }
 
   /**
-   * get DiskSchemaEntries from disk file
-   *
-   * @param schemaEntries get the disk pointers from schemaEntries
-   * @return DiskSchemaEntries
-   */
-  @Override
-  @TestOnly
-  public synchronized List<DiskSchemaEntry> getDiskSchemaEntries(List<SchemaEntry> schemaEntries) {
-    List<Long> offsets = new ArrayList<>(schemaEntries.size());
-    for (SchemaEntry schemaEntry : schemaEntries) {
-      offsets.add(schemaEntry.getDiskPointer());
-    }
-    return getIDiskSchemaManager().getDiskSchemaEntriesByOffset(offsets);
-  }
-
-  /**
-   * get device id from device path and check is aligned,
+   * Get device id from device path and check is aligned.
    *
    * @param deviceName device name of the time series
    * @param isAligned whether the insert plan is aligned
    * @return device entry of the timeseries
+   * @throws MetadataException metadata exception
    */
   private DeviceEntry getDeviceEntryWithAlignedCheck(String deviceName, boolean isAligned)
       throws MetadataException {
@@ -287,7 +267,7 @@ public class IDTableHashmapImpl implements IDTable {
   }
 
   /**
-   * calculate slot that this deviceID should in
+   * Calculate slot that this deviceID should be in.
    *
    * @param deviceID device id
    * @return slot number
@@ -295,38 +275,6 @@ public class IDTableHashmapImpl implements IDTable {
   private int calculateSlot(IDeviceID deviceID) {
     int hashVal = deviceID.hashCode();
     return Math.abs(hashVal == Integer.MIN_VALUE ? 0 : hashVal) % NUM_OF_SLOTS;
-  }
-
-  /**
-   * get schema entry
-   *
-   * @param timeseriesID the timeseries ID
-   * @return schema entry of the timeseries
-   * @throws MetadataException throw if this timeseries is not exist
-   */
-  private SchemaEntry getSchemaEntry(TimeseriesID timeseriesID) throws MetadataException {
-    IDeviceID deviceID = timeseriesID.getDeviceID();
-    int slot = calculateSlot(deviceID);
-
-    DeviceEntry deviceEntry = idTables[slot].get(deviceID);
-    if (deviceEntry == null) {
-      throw new MetadataException(
-          "get non exist timeseries's schema entry, timeseries id is: " + timeseriesID);
-    }
-
-    SchemaEntry schemaEntry = deviceEntry.getSchemaEntry(timeseriesID.getMeasurement());
-    if (schemaEntry == null) {
-      throw new MetadataException(
-          "get non exist timeseries's schema entry, timeseries id is: " + timeseriesID);
-    }
-
-    return schemaEntry;
-  }
-
-  @Override
-  @TestOnly
-  public Map<IDeviceID, DeviceEntry>[] getIdTables() {
-    return idTables;
   }
 
   @Override

@@ -124,28 +124,14 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
   protected void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleLeaderChangeProcedure: rollbackFromHandleOnConfigNodes");
 
-    final Map<TConsensusGroupId, Integer> oldDataRegionGroupIdToLeaderDataRegionIdMap =
-        new HashMap<>();
-    dataRegionGroupToOldAndNewLeaderPairMap.forEach(
-        (regionGroupId, oldNewLeaderPair) ->
-            oldDataRegionGroupIdToLeaderDataRegionIdMap.put(
-                regionGroupId, oldNewLeaderPair.getLeft()));
-
-    final PipeHandleLeaderChangePlan pipeHandleLeaderChangePlan =
-        new PipeHandleLeaderChangePlan(oldDataRegionGroupIdToLeaderDataRegionIdMap);
-
-    final ConsensusWriteResponse response =
-        env.getConfigManager().getConsensusManager().write(pipeHandleLeaderChangePlan);
-    if (!response.isSuccessful()) {
-      throw new PipeException(response.getErrorMessage());
-    }
+    // nothing to do
   }
 
   @Override
   protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleLeaderChangeProcedure: rollbackFromCreateOnDataNodes");
 
-    pushPipeMetaToDataNodesIgnoreException(env);
+    // nothing to do
   }
 
   @Override

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 
+import com.google.common.collect.Lists;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -30,7 +31,6 @@ import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
-import org.testcontainers.shaded.com.google.common.collect.Lists;
 
 import java.util.List;
 

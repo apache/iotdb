@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.metadata.tag;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -26,8 +27,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.plan.schemaregion.read.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResult;
@@ -65,16 +64,14 @@ public class TagManager {
       "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b";
 
   private static final Logger logger = LoggerFactory.getLogger(TagManager.class);
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
-  private String sgSchemaDirPath;
   private TagLogFile tagLogFile;
   // tag key -> tag value -> LeafMNode
-  private Map<String, Map<String, Set<IMeasurementMNode<?>>>> tagIndex = new ConcurrentHashMap<>();
+  private final Map<String, Map<String, Set<IMeasurementMNode<?>>>> tagIndex =
+      new ConcurrentHashMap<>();
 
   public TagManager(String sgSchemaDirPath) throws IOException {
-    this.sgSchemaDirPath = sgSchemaDirPath;
     tagLogFile = new TagLogFile(sgSchemaDirPath, MetadataConstant.TAG_LOG);
   }
 
@@ -86,27 +83,35 @@ public class TagManager {
     try {
       tagLogFile.copyTo(tagLogSnapshotTmp);
       if (tagLogSnapshot.exists() && !tagLogSnapshot.delete()) {
-        logger.error(
+        logger.warn(
             "Failed to delete old snapshot {} while creating tagManager snapshot.",
             tagLogSnapshot.getName());
         return false;
       }
       if (!tagLogSnapshotTmp.renameTo(tagLogSnapshot)) {
-        logger.error(
+        logger.warn(
             "Failed to rename {} to {} while creating tagManager snapshot.",
             tagLogSnapshotTmp.getName(),
             tagLogSnapshot.getName());
-        tagLogSnapshot.delete();
+        if (!tagLogSnapshot.delete()) {
+          logger.warn("Failed to delete {} after renaming failure.", tagLogSnapshot.getName());
+        }
         return false;
       }
 
       return true;
     } catch (IOException e) {
       logger.error("Failed to create tagManager snapshot due to {}", e.getMessage(), e);
-      tagLogSnapshot.delete();
+      if (!tagLogSnapshot.delete()) {
+        logger.warn(
+            "Failed to delete {} after creating tagManager snapshot failure.",
+            tagLogSnapshot.getName());
+      }
       return false;
     } finally {
-      tagLogSnapshotTmp.delete();
+      if (!tagLogSnapshotTmp.delete()) {
+        logger.warn("Failed to delete {}.", tagLogSnapshotTmp.getName());
+      }
     }
   }
 
@@ -115,15 +120,18 @@ public class TagManager {
     File tagSnapshot =
         SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.TAG_LOG_SNAPSHOT);
     File tagFile = SystemFileFactory.INSTANCE.getFile(sgSchemaDirPath, MetadataConstant.TAG_LOG);
-    if (tagFile.exists()) {
-      tagFile.delete();
+    if (tagFile.exists() && !tagFile.delete()) {
+      logger.warn("Failed to delete existing {} when loading snapshot.", tagFile.getName());
     }
 
     try {
       FileUtils.copyFile(tagSnapshot, tagFile);
       return new TagManager(sgSchemaDirPath);
     } catch (IOException e) {
-      tagFile.delete();
+      if (!tagFile.delete()) {
+        logger.warn(
+            "Failed to delete existing {} when copying snapshot failure.", tagFile.getName());
+      }
       throw e;
     }
   }
@@ -237,7 +245,9 @@ public class TagManager {
       }
 
       @Override
-      public void close() {}
+      public void close() {
+        // do nothing
+      }
 
       @Override
       public boolean hasNext() {
@@ -289,7 +299,11 @@ public class TagManager {
     };
   }
 
-  /** remove the node from the tag inverted index */
+  /**
+   * Remove the node from the tag inverted index.
+   *
+   * @throws IOException error occurred when reading disk
+   */
   public void removeFromTagInvertedIndex(IMeasurementMNode<?> node) throws IOException {
     if (node.getOffset() < 0) {
       return;
@@ -331,8 +345,11 @@ public class TagManager {
   }
 
   /**
-   * upsert tags and attributes key-value for the timeseries if the key has existed, just use the
+   * Upsert tags and attributes key-value for the timeseries if the key has existed, just use the
    * new value to update it.
+   *
+   * @throws MetadataException metadata exception
+   * @throws IOException error occurred when reading disk
    */
   public void updateTagsAndAttributes(
       Map<String, String> tagsMap,
@@ -395,10 +412,11 @@ public class TagManager {
   }
 
   /**
-   * add new attributes key-value for the timeseries
+   * Add new attributes key-value for the timeseries.
    *
    * @param attributesMap newly added attributes map
    * @throws MetadataException tagLogFile write error or attributes already exist
+   * @throws IOException error occurred when reading disk
    */
   public void addAttributes(
       Map<String, String> attributesMap, PartialPath fullPath, IMeasurementMNode<?> leafMNode)
@@ -422,11 +440,12 @@ public class TagManager {
   }
 
   /**
-   * add new tags key-value for the timeseries
+   * Add new tags key-value for the timeseries.
    *
    * @param tagsMap newly added tags map
    * @param fullPath timeseries
    * @throws MetadataException tagLogFile write error or tag already exists
+   * @throws IOException error occurred when reading disk
    */
   public void addTags(
       Map<String, String> tagsMap, PartialPath fullPath, IMeasurementMNode<?> leafMNode)
@@ -457,6 +476,8 @@ public class TagManager {
    * exist.
    *
    * @param keySet tags key or attributes key
+   * @throws MetadataException metadata exception
+   * @throws IOException error occurred when reading disk
    */
   public void dropTagsOrAttributes(
       Set<String> keySet, PartialPath fullPath, IMeasurementMNode<?> leafMNode)
@@ -483,15 +504,15 @@ public class TagManager {
     tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
 
     Map<String, Set<IMeasurementMNode<?>>> tagVal2LeafMNodeSet;
-    Set<IMeasurementMNode<?>> MMNodes;
+    Set<IMeasurementMNode<?>> nodeSet;
     for (Map.Entry<String, String> entry : deleteTag.entrySet()) {
       String key = entry.getKey();
       String value = entry.getValue();
       // change the tag inverted index map
       tagVal2LeafMNodeSet = tagIndex.get(key);
       if (tagVal2LeafMNodeSet != null) {
-        MMNodes = tagVal2LeafMNodeSet.get(value);
-        if (MMNodes != null) {
+        nodeSet = tagVal2LeafMNodeSet.get(value);
+        if (nodeSet != null) {
           if (logger.isDebugEnabled()) {
             logger.debug(
                 String.format(
@@ -501,8 +522,8 @@ public class TagManager {
                     leafMNode.getOffset()));
           }
 
-          MMNodes.remove(leafMNode);
-          if (MMNodes.isEmpty()) {
+          nodeSet.remove(leafMNode);
+          if (nodeSet.isEmpty()) {
             tagVal2LeafMNodeSet.remove(value);
             if (tagVal2LeafMNodeSet.isEmpty()) {
               tagIndex.remove(key);
@@ -524,10 +545,11 @@ public class TagManager {
   }
 
   /**
-   * set/change the values of tags or attributes
+   * Set/change the values of tags or attributes.
    *
    * @param alterMap the new tags or attributes key-value
    * @throws MetadataException tagLogFile write error or tags/attributes do not exist
+   * @throws IOException error occurred when reading disk
    */
   public void setTagsOrAttributesValue(
       Map<String, String> alterMap, PartialPath fullPath, IMeasurementMNode<?> leafMNode)
@@ -592,12 +614,13 @@ public class TagManager {
   }
 
   /**
-   * Rename the tag or attribute's key of the timeseries
+   * Rename the tag or attribute's key of the timeseries.
    *
    * @param oldKey old key of tag or attribute
    * @param newKey new key of tag or attribute
    * @throws MetadataException tagLogFile write error or does not have tag/attribute or already has
    *     a tag/attribute named newKey
+   * @throws IOException error occurred when reading disk
    */
   public void renameTagOrAttributeKey(
       String oldKey, String newKey, PartialPath fullPath, IMeasurementMNode<?> leafMNode)

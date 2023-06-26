@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
@@ -34,9 +35,6 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
@@ -47,9 +45,6 @@ import java.util.Optional;
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 public class SchemaFetchScanOperator implements SourceOperator {
-
-  private static final Logger logger = LoggerFactory.getLogger(SchemaFetchScanOperator.class);
-
   private final PlanNodeId sourceId;
   private final OperatorContext operatorContext;
   private final PathPatternTree patternTree;
@@ -89,8 +84,7 @@ public class SchemaFetchScanOperator implements SourceOperator {
     try {
       return fetchSchema();
     } catch (MetadataException e) {
-      logger.error("Error occurred during execute SchemaFetchOperator {}", sourceId, e);
-      throw new RuntimeException(e);
+      throw new SchemaExecutionException(e);
     }
   }
 

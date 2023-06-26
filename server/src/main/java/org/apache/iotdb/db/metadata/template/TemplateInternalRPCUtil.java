@@ -42,6 +42,7 @@ public class TemplateInternalRPCUtil {
       ReadWriteIOUtils.write(1, outputStream);
       ReadWriteIOUtils.write(templateSetPath, outputStream);
     } catch (IOException ignored) {
+      // won't reach here
     }
     return outputStream.toByteArray();
   }
@@ -79,6 +80,7 @@ public class TemplateInternalRPCUtil {
         }
       }
     } catch (IOException ignored) {
+      // won't reach here
     }
     return outputStream.toByteArray();
   }
@@ -110,7 +112,7 @@ public class TemplateInternalRPCUtil {
       ReadWriteIOUtils.write(templateId, outputStream);
       ReadWriteIOUtils.write(path, outputStream);
     } catch (IOException ignored) {
-
+      // won't reach here
     }
     return outputStream.toByteArray();
   }

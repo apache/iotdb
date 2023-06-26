@@ -43,9 +43,7 @@ public abstract class SchemaNode implements ITreeNode {
     return name;
   }
 
-  public SchemaNode getChild(String name) {
-    return null;
-  }
+  public abstract SchemaNode getChild(String name);
 
   public void addChild(String name, SchemaNode child) {}
 

@@ -26,7 +26,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 /**
- * the disk schema entry of schema entry of id table. This is a po class, so every field is public
+ * The disk schema entry of schema entry of id table. This is a po class, so every field is public.
  */
 public class DiskSchemaEntry {
 

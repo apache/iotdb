@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
+import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.db.metadata.query.info.ISchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
@@ -88,7 +89,7 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
         count++;
       }
       if (!schemaReader.isSuccess()) {
-        throw new RuntimeException(schemaReader.getFailure());
+        throw new SchemaExecutionException(schemaReader.getFailure());
       }
     }
 

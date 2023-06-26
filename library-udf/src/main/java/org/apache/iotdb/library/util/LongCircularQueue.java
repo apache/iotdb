@@ -16,28 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.library.util;
 
-/** Circular queue for long */
+/** Circular queue for long. */
 public class LongCircularQueue {
 
-  private static int INITCAP = 64;
+  private static final int INIT_CAP = 64;
 
-  private int head, tail, size, minLen;
+  private int head;
+  private int tail;
+  private int size;
+  private int minLen;
   private long[] data;
 
   public LongCircularQueue(int capacity) {
     head = tail = size = 0;
     data = new long[capacity];
-    minLen = Math.max(INITCAP, capacity);
+    minLen = Math.max(INIT_CAP, capacity);
   }
 
   public LongCircularQueue() {
-    this(INITCAP);
+    this(INIT_CAP);
   }
 
   /**
-   * push value into the back of queue
+   * push value into the back of queue.
    *
    * @param value value to push
    */
@@ -51,7 +55,7 @@ public class LongCircularQueue {
   }
 
   /**
-   * pop value from the front of queue
+   * pop value from the front of queue.
    *
    * @return value in the front
    */
@@ -59,7 +63,7 @@ public class LongCircularQueue {
     if (isEmpty()) {
       throw new IllegalArgumentException("Error: Queue is Empty!");
     }
-    long ret = data[head];
+    final long ret = data[head];
     head = (head + 1) % data.length;
     size--;
     if (size < data.length / 4 && data.length / 2 >= minLen) {
@@ -69,7 +73,7 @@ public class LongCircularQueue {
   }
 
   /**
-   * judge if circular queue is empty
+   * judge if circular queue is empty.
    *
    * @return if empty, return true; else return false
    */
@@ -77,12 +81,11 @@ public class LongCircularQueue {
     if (isEmpty()) {
       throw new IllegalArgumentException("Error: Queue is Empty!");
     }
-    long ret = data[head];
-    return ret;
+    return data[head];
   }
 
   /**
-   * judge if circular queue is empty
+   * judge if circular queue is empty.
    *
    * @return if empty, return true; else return false
    */
@@ -91,7 +94,7 @@ public class LongCircularQueue {
   }
 
   /**
-   * judge if circular queue is full
+   * judge if circular queue is full.
    *
    * @return if full, return true; else return false
    */
@@ -100,7 +103,7 @@ public class LongCircularQueue {
   }
 
   /**
-   * change size of queue
+   * change size of queue.
    *
    * @param newLength new length of queue
    */
@@ -115,7 +118,7 @@ public class LongCircularQueue {
   }
 
   /**
-   * get value of given index
+   * get value of given index.
    *
    * @param index index
    * @return value to queue
@@ -128,7 +131,7 @@ public class LongCircularQueue {
   }
 
   /**
-   * get number of values in queue
+   * get number of values in queue.
    *
    * @return number of values
    */

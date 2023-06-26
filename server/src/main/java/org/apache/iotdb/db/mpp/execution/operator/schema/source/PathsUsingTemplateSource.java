@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.schema.source;
 
+import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.read.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.metadata.query.info.IDeviceSchemaInfo;
@@ -126,7 +127,7 @@ public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo
         }
         return false;
       } catch (Exception e) {
-        throw new RuntimeException(e.getMessage(), e);
+        throw new SchemaExecutionException(e.getMessage(), e);
       }
     }
 

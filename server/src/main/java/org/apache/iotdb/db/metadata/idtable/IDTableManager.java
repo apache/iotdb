@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.metadata.idtable;
 
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -33,16 +34,16 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 
-/** This class manages one id table for each logical database */
+/** This class manages one id table for each logical database. */
 public class IDTableManager {
 
-  /** logger */
+  // logger
   Logger logger = LoggerFactory.getLogger(IDTableManager.class);
 
-  /** database path -> id table */
+  // database path -> id table
   HashMap<String, IDTable> idTableMap;
 
-  /** system dir */
+  // system dir
   private final String systemDir =
       FilePathUtils.regularizePath(IoTDBDescriptor.getInstance().getConfig().getSystemDir())
           + "databases";
@@ -58,7 +59,7 @@ public class IDTableManager {
   }
 
   /**
-   * get instance
+   * Get instance.
    *
    * @return instance of the factory
    */
@@ -72,10 +73,11 @@ public class IDTableManager {
   // endregion
 
   /**
-   * get id table by device path
+   * Get id table by device path.
    *
    * @param devicePath device path
    * @return id table belongs to path's database
+   * @throws UnsupportedOperationException not supported yet
    */
   public synchronized IDTable getIDTable(PartialPath devicePath) {
     //    try {
@@ -95,7 +97,7 @@ public class IDTableManager {
   }
 
   /**
-   * get id table by database path
+   * Get id table by database path.
    *
    * @param sgPath database path
    * @return id table belongs to path's database
@@ -109,11 +111,12 @@ public class IDTableManager {
   }
 
   /**
-   * get schema from device and measurements
+   * Get schema from device and measurements.
    *
    * @param deviceName device name of the time series
    * @param measurementName measurement name of the time series
    * @return schema entry of the time series
+   * @throws MetadataException path may not exist
    */
   public synchronized IMeasurementSchema getSeriesSchema(String deviceName, String measurementName)
       throws MetadataException {
@@ -127,7 +130,11 @@ public class IDTableManager {
     throw new PathNotExistException(new PartialPath(deviceName, measurementName).toString());
   }
 
-  /** clear id table map */
+  /**
+   * Clear id table map.
+   *
+   * @throws IOException IOException
+   */
   public void clear() throws IOException {
     for (IDTable idTable : idTableMap.values()) {
       idTable.clear();

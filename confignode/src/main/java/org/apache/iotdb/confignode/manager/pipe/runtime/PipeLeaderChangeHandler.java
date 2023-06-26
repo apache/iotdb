@@ -61,13 +61,16 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
               if (regionGroupId.getType().equals(TConsensusGroupType.DataRegion)) {
                 final String databaseName =
                     configManager.getPartitionManager().getRegionStorageGroup(regionGroupId);
+                // pipe only collect user's data, filter metric database here.
                 if (databaseName != null && !databaseName.equals(IoTDBConfig.SYSTEM_DATABASE)) {
-                  // pipe only collect user's data, filter metric database here.
-                  dataRegionGroupToOldAndNewLeaderPairMap.put(
-                      regionGroupId,
-                      new Pair<>( // null or -1 means empty origin leader
-                          pair.left == null ? -1 : pair.left,
-                          pair.right == null ? -1 : pair.right));
+                  // null or -1 means empty origin leader
+                  final int oldLeaderDataNodeId = (pair.left == null ? -1 : pair.left);
+                  final int newLeaderDataNodeId = (pair.right == null ? -1 : pair.right);
+
+                  if (oldLeaderDataNodeId != newLeaderDataNodeId) {
+                    dataRegionGroupToOldAndNewLeaderPairMap.put(
+                        regionGroupId, new Pair<>(oldLeaderDataNodeId, newLeaderDataNodeId));
+                  }
                 }
               }
             });

@@ -16,8 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
+import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.query.info.ISchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
@@ -140,7 +142,7 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
       }
     }
     if (!schemaReader.isSuccess()) {
-      throw new RuntimeException(schemaReader.getFailure());
+      throw new SchemaExecutionException(schemaReader.getFailure());
     }
     return tsBlockBuilder.build();
   }

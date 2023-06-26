@@ -35,7 +35,7 @@ import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncodin
 
 /**
  * Schema entry of id table <br>
- * Notice that this class is also a last cache container for last cache
+ * Notice that this class is also a last cache container for last cache.
  */
 public class SchemaEntry {
 
@@ -45,7 +45,7 @@ public class SchemaEntry {
   /*    1 byte of type      */
   private long schema;
 
-  /** This static field will not occupy memory */
+  // This static field will not occupy memory
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   @TestOnly
@@ -75,7 +75,7 @@ public class SchemaEntry {
       IDeviceID deviceID,
       PartialPath fullPath,
       boolean isAligned,
-      IDiskSchemaManager IDiskSchemaManager) {
+      IDiskSchemaManager diskSchemaManager) {
     schema |= dataType.serialize();
     schema |= (((long) encoding.serialize()) << 8);
     schema |= (((long) compressionType.serialize()) << 16);
@@ -91,12 +91,12 @@ public class SchemaEntry {
               encoding.serialize(),
               compressionType.serialize(),
               isAligned);
-      schema |= (IDiskSchemaManager.serialize(diskSchemaEntry) << 24);
+      schema |= (diskSchemaManager.serialize(diskSchemaEntry) << 24);
     }
   }
 
   /**
-   * get disk pointer of ts from long value of schema
+   * Get disk pointer of ts from long value of schema.
    *
    * @return disk pointer
    */
@@ -105,7 +105,7 @@ public class SchemaEntry {
   }
 
   /**
-   * get ts data type from long value of schema
+   * Get ts data type from long value of schema.
    *
    * @return ts data type
    */
@@ -114,7 +114,7 @@ public class SchemaEntry {
   }
 
   /**
-   * get ts encoding from long value of schema
+   * Get ts encoding from long value of schema.
    *
    * @return ts encoding
    */
@@ -123,7 +123,7 @@ public class SchemaEntry {
   }
 
   /**
-   * get compression type from long value of schema
+   * Get compression type from long value of schema.
    *
    * @return compression type
    */

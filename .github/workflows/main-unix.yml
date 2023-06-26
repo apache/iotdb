@@ -63,4 +63,4 @@ jobs:
         # we do not compile client-cpp for saving time, it is tested in client.yml
         run: |
           mvn clean install -DskipTests
-          mvn -B clean test -Dtest.port.closed=true -P '!testcontainer' -P get-jar-with-dependencies
+          mvn -B clean test -Dtest.port.closed=true -P get-jar-with-dependencies

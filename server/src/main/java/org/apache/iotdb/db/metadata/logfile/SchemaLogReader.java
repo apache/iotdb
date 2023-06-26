@@ -41,11 +41,14 @@ import java.util.NoSuchElementException;
  * truncate during read process. If some middle part of the log file is corrupted, the read process
  * will end and the file will be marked corrupted.
  *
- * @param <T>
+ * @param <T> the generic type
  */
 public class SchemaLogReader<T> implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SchemaLogReader.class);
+
+  private static final String FILE_CORRUPTED_MSG_TEMPLATE =
+      "File {} is corrupted. The uncorrupted size is {}.";
 
   private final File logFile;
 
@@ -105,8 +108,7 @@ public class SchemaLogReader<T> implements AutoCloseable {
       // failed to read file
       nextSchemaPlan = null;
       isFileCorrupted = true;
-      LOGGER.error(
-          "File {} is corrupted. The uncorrupted size is {}.", logFile.getPath(), currentIndex, e);
+      LOGGER.error(FILE_CORRUPTED_MSG_TEMPLATE, logFile.getPath(), currentIndex, e);
     } catch (Exception e) {
       // error occurred when deserializing the entry
       nextSchemaPlan = null;
@@ -114,11 +116,7 @@ public class SchemaLogReader<T> implements AutoCloseable {
         if (inputStream.available() > 0) {
           // error occurred when deserializing some middle part of the file
           isFileCorrupted = true;
-          LOGGER.error(
-              "File {} is corrupted. The uncorrupted size is {}.",
-              logFile.getPath(),
-              currentIndex,
-              e);
+          LOGGER.error(FILE_CORRUPTED_MSG_TEMPLATE, logFile.getPath(), currentIndex, e);
         } else {
           // the file has already been all read out, but error occurred during deserializing the
           // last entry in file ending.
@@ -128,11 +126,7 @@ public class SchemaLogReader<T> implements AutoCloseable {
       } catch (IOException ex) {
         // failed to read file
         isFileCorrupted = true;
-        LOGGER.error(
-            "File {} is corrupted. The uncorrupted size is {}.",
-            logFile.getPath(),
-            currentIndex,
-            e);
+        LOGGER.error(FILE_CORRUPTED_MSG_TEMPLATE, logFile.getPath(), currentIndex, e);
       }
     }
   }
@@ -152,7 +146,9 @@ public class SchemaLogReader<T> implements AutoCloseable {
         FileChannel channel = outputStream.getChannel()) {
       if (currentIndex != channel.size()) {
         LOGGER.warn(
-            "The end of log file {} is corrupted. Start truncate it. The unbroken size is {}. The file size is {}.",
+            "The end of log file {} is corrupted. "
+                + "Start truncate it. "
+                + "The unbroken size is {}. The file size is {}.",
             logFile.getName(),
             currentIndex,
             channel.size());
@@ -170,7 +166,9 @@ public class SchemaLogReader<T> implements AutoCloseable {
     ReadWriteIOUtils.skip(inputStream, n);
   }
 
-  /** This class provides the ability to record the num of read bytes from the nested InputStream */
+  /**
+   * This class provides the ability to record the num of read bytes from the nested InputStream.
+   */
   private static class RecordableInputStream extends InputStream {
 
     private final InputStream inputStream;

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.library.drepair;
 
 import org.apache.iotdb.library.drepair.util.ARFill;
@@ -32,6 +33,7 @@ import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
+import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.type.Type;
 
 /** This function is used to interpolate time series. */
@@ -70,7 +72,7 @@ public class UDTFValueFill implements UDTF {
     } else if ("likelihood".equalsIgnoreCase(method)) {
       vf = new LikelihoodFill(rowWindow.getRowIterator());
     } else {
-      throw new Exception("Illegal method");
+      throw new UDFException("Illegal method");
     }
     vf.fill();
     double[] repaired = vf.getFilled();
@@ -97,7 +99,7 @@ public class UDTFValueFill implements UDTF {
         }
         break;
       default:
-        throw new Exception();
+        throw new UDFException("");
     }
   }
 }
