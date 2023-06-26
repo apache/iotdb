@@ -195,12 +195,12 @@ public class AlignedChunkData implements ChunkData {
     dataSize += ReadWriteIOUtils.write(satisfiedLength, stream);
 
     for (int i = 0; i < times.length; i++) {
-      if (times[i] < startTime) {
-        continue;
-      } else if (times[i] >= endTime) {
+      if (times[i] >= endTime) {
         break;
       }
-      dataSize += ReadWriteIOUtils.write(times[i], stream);
+      if (times[i] >= startTime) {
+        dataSize += ReadWriteIOUtils.write(times[i], stream);
+      }
     }
   }
 
@@ -215,39 +215,38 @@ public class AlignedChunkData implements ChunkData {
     satisfiedLengthQueue.offer(satisfiedLength);
 
     for (int i = 0; i < times.length; i++) {
-      if (times[i] < startTime) {
-        continue;
-      } else if (times[i] >= endTime) {
+      if (times[i] >= endTime) {
         break;
       }
-
-      if (values[i] == null) {
-        dataSize += ReadWriteIOUtils.write(true, stream);
-        continue;
-      }
-      dataSize += ReadWriteIOUtils.write(false, stream);
-      switch (dataType) {
-        case INT32:
-          dataSize += ReadWriteIOUtils.write(values[i].getInt(), stream);
-          break;
-        case INT64:
-          dataSize += ReadWriteIOUtils.write(values[i].getLong(), stream);
-          break;
-        case FLOAT:
-          dataSize += ReadWriteIOUtils.write(values[i].getFloat(), stream);
-          break;
-        case DOUBLE:
-          dataSize += ReadWriteIOUtils.write(values[i].getDouble(), stream);
-          break;
-        case BOOLEAN:
-          dataSize += ReadWriteIOUtils.write(values[i].getBoolean(), stream);
-          break;
-        case TEXT:
-          dataSize += ReadWriteIOUtils.write(values[i].getBinary(), stream);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", dataType));
+      if (times[i] >= startTime) {
+        if (values[i] == null) {
+          dataSize += ReadWriteIOUtils.write(true, stream);
+        } else {
+          dataSize += ReadWriteIOUtils.write(false, stream);
+          switch (dataType) {
+            case INT32:
+              dataSize += ReadWriteIOUtils.write(values[i].getInt(), stream);
+              break;
+            case INT64:
+              dataSize += ReadWriteIOUtils.write(values[i].getLong(), stream);
+              break;
+            case FLOAT:
+              dataSize += ReadWriteIOUtils.write(values[i].getFloat(), stream);
+              break;
+            case DOUBLE:
+              dataSize += ReadWriteIOUtils.write(values[i].getDouble(), stream);
+              break;
+            case BOOLEAN:
+              dataSize += ReadWriteIOUtils.write(values[i].getBoolean(), stream);
+              break;
+            case TEXT:
+              dataSize += ReadWriteIOUtils.write(values[i].getBinary(), stream);
+              break;
+            default:
+              throw new UnSupportedDataTypeException(
+                  String.format("Data type %s is not supported.", dataType));
+          }
+        }
       }
     }
   }
@@ -294,6 +293,7 @@ public class AlignedChunkData implements ChunkData {
     timeBatch = null;
   }
 
+  @SuppressWarnings({"squid:S6541", "squid:S3776"})
   private void buildChunk(
       InputStream stream,
       ChunkHeader chunkHeader,

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.wal.buffer;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -23,14 +24,15 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.wal.utils.WALMode;
 
-/** This entry class stores info for persistence */
+import java.util.Objects;
+
+/** This entry class stores info for persistence. */
 public class WALInfoEntry extends WALEntry {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-
-  /** wal entry type 1 byte, memTable id 8 bytes */
+  // wal entry type 1 byte, memTable id 8 bytes
   public static final int FIXED_SERIALIZED_SIZE = Byte.BYTES + Long.BYTES;
 
-  /** extra info for InsertTablet type value */
+  // extra info for InsertTablet type value
   private TabletInfo tabletInfo;
 
   public WALInfoEntry(long memTableId, WALEntryValue value, boolean wait) {
@@ -51,6 +53,9 @@ public class WALInfoEntry extends WALEntry {
 
   WALInfoEntry(WALEntryType type, long memTableId, WALEntryValue value) {
     super(type, memTableId, value, false);
+    if (value instanceof InsertTabletNode) {
+      tabletInfo = new TabletInfo(0, ((InsertTabletNode) value).getRowCount());
+    }
   }
 
   @Override
@@ -78,19 +83,53 @@ public class WALInfoEntry extends WALEntry {
   }
 
   private static class TabletInfo {
-    /** start row of insert tablet */
+    // start row of insert tablet
     private final int tabletStart;
-    /** end row of insert tablet */
+    // end row of insert tablet
     private final int tabletEnd;
 
     public TabletInfo(int tabletStart, int tabletEnd) {
       this.tabletStart = tabletStart;
       this.tabletEnd = tabletEnd;
     }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(tabletStart, tabletEnd);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (obj == this) {
+        return true;
+      }
+      if (obj == null) {
+        return false;
+      }
+      if (!(obj instanceof TabletInfo)) {
+        return false;
+      }
+      TabletInfo other = (TabletInfo) obj;
+      return this.tabletStart == other.tabletStart && this.tabletEnd == other.tabletEnd;
+    }
   }
 
   @Override
   public boolean isSignal() {
     return false;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), tabletInfo);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (!super.equals(obj)) {
+      return false;
+    }
+    WALInfoEntry other = (WALInfoEntry) obj;
+    return Objects.equals(this.tabletInfo, other.tabletInfo);
   }
 }

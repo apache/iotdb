@@ -34,7 +34,6 @@ import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
@@ -42,6 +41,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -66,6 +66,9 @@ public class LoadTsFileManager {
 
   private final ScheduledExecutorService cleanupExecutors;
   private final Map<String, ScheduledFuture<?>> uuid2Future;
+
+  private static final String EXCEPTION_LOG = "%s TsFileWriterManager has been closed.";
+  private static final String ERROR_LOG = "delete {} fail.";
 
   public LoadTsFileManager() {
     this.loadDir = SystemFileFactory.INSTANCE.getFile(config.getLoadTsFileDir());
@@ -98,7 +101,7 @@ public class LoadTsFileManager {
   }
 
   public void writeToDataRegion(DataRegion dataRegion, LoadTsFilePieceNode pieceNode, String uuid)
-      throws PageException, IOException {
+      throws IOException {
     if (!uuid2WriterManager.containsKey(uuid)) {
       uuid2Future.put(
           uuid,
@@ -130,7 +133,7 @@ public class LoadTsFileManager {
     return true;
   }
 
-  public boolean deleteAll(String uuid) throws IOException {
+  public boolean deleteAll(String uuid) {
     if (!uuid2WriterManager.containsKey(uuid)) {
       return false;
     }
@@ -144,8 +147,11 @@ public class LoadTsFileManager {
     uuid2Future.get(uuid).cancel(true);
     uuid2Future.remove(uuid);
 
-    if (loadDir.delete()) { // this method will check if there sub-dir in this dir.
+    try {
+      Files.delete(loadDir.toPath());
       logger.info("Delete load dir {}.", loadDir.getPath());
+    } catch (IOException e) {
+      logger.error(ERROR_LOG, loadDir.getPath(), e);
     }
   }
 
@@ -154,8 +160,11 @@ public class LoadTsFileManager {
     uuid2WriterManager.remove(uuid);
     uuid2Future.remove(uuid);
 
-    if (loadDir.delete()) { // this method will check if there sub-dir in this dir.
+    try {
+      Files.delete(loadDir.toPath());
       logger.info("Delete load dir {}.", loadDir.getPath());
+    } catch (IOException e) {
+      logger.error(ERROR_LOG, loadDir.getPath(), e);
     }
   }
 
@@ -183,9 +192,10 @@ public class LoadTsFileManager {
       }
     }
 
+    @SuppressWarnings("squid:S3824")
     private void write(DataPartitionInfo partitionInfo, ChunkData chunkData) throws IOException {
       if (isClosed) {
-        throw new IOException(String.format("%s TsFileWriterManager has been closed.", taskDir));
+        throw new IOException(String.format(EXCEPTION_LOG, taskDir));
       }
       if (!dataPartition2Writer.containsKey(partitionInfo)) {
         File newTsFile =
@@ -211,7 +221,7 @@ public class LoadTsFileManager {
 
     private void writeDeletion(TsFileData deletionData) throws IOException {
       if (isClosed) {
-        throw new IOException(String.format("%s TsFileWriterManager has been closed.", taskDir));
+        throw new IOException(String.format(EXCEPTION_LOG, taskDir));
       }
       for (Map.Entry<DataPartitionInfo, TsFileIOWriter> entry : dataPartition2Writer.entrySet()) {
         deletionData.writeToFileWriter(entry.getValue());
@@ -220,7 +230,7 @@ public class LoadTsFileManager {
 
     private void loadAll() throws IOException, LoadFileException {
       if (isClosed) {
-        throw new IOException(String.format("%s TsFileWriterManager has been closed.", taskDir));
+        throw new IOException(String.format(EXCEPTION_LOG, taskDir));
       }
       for (Map.Entry<DataPartitionInfo, TsFileIOWriter> entry : dataPartition2Writer.entrySet()) {
         TsFileIOWriter writer = entry.getValue();
@@ -249,9 +259,7 @@ public class LoadTsFileManager {
             if (writer.canWrite()) {
               writer.close();
             }
-            if (writer.getFile().exists() && !writer.getFile().delete()) {
-              logger.warn("Delete File {} error.", writer.getFile());
-            }
+            Files.delete(writer.getFile().toPath());
           } catch (IOException e) {
             logger.warn(
                 String.format(
@@ -260,8 +268,10 @@ public class LoadTsFileManager {
           }
         }
       }
-      if (!taskDir.delete()) {
-        logger.warn("Can not delete load dir {}.", taskDir.getPath());
+      try {
+        Files.delete(taskDir.toPath());
+      } catch (IOException e) {
+        logger.error(ERROR_LOG, taskDir.getPath(), e);
       }
       dataPartition2Writer = null;
       dataPartition2LastDevice = null;

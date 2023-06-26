@@ -87,7 +87,7 @@ public class AlertManagerEvent implements Event {
 
   public String toJsonString() {
     Gson gson = new Gson();
-    Type gsonType = new TypeToken<Map>() {}.getType();
+    Type gsonType = new TypeToken<Map<Object, Object>>() {}.getType();
 
     StringBuilder sb = new StringBuilder();
     sb.append("{\"labels\":");

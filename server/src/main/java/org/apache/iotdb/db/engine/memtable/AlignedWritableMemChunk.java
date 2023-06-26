@@ -33,9 +33,6 @@ import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -53,11 +50,10 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   private final List<IMeasurementSchema> schemaList;
   private AlignedTVList list;
 
-  private static final int maxNumberOfPointsInPage =
+  private static final int MAX_NUMBER_OF_POINTS_IN_PAGE =
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
 
   private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
-  private static final Logger LOGGER = LoggerFactory.getLogger(AlignedWritableMemChunk.class);
 
   public AlignedWritableMemChunk(List<IMeasurementSchema> schemaList) {
     this.measurementIndexMap = new LinkedHashMap<>();
@@ -322,6 +318,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     return new AlignedChunkWriterImpl(schemaList);
   }
 
+  @SuppressWarnings({"squid:S6541", "squid:S3776"})
   @Override
   public void encode(IChunkWriter chunkWriter) {
     AlignedChunkWriterImpl alignedChunkWriter = (AlignedChunkWriterImpl) chunkWriter;
@@ -335,7 +332,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
         pageRange.add(sortedRowIndex);
       }
       range++;
-      if (range == maxNumberOfPointsInPage) {
+      if (range == MAX_NUMBER_OF_POINTS_IN_PAGE) {
         pageRange.add(sortedRowIndex);
         range = 0;
       }
@@ -426,7 +423,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
         alignedChunkWriter.nextColumn();
       }
 
-      long[] times = new long[maxNumberOfPointsInPage];
+      long[] times = new long[MAX_NUMBER_OF_POINTS_IN_PAGE];
       int pointsInPage = 0;
       for (int sortedRowIndex = pageRange.get(pageNum * 2);
           sortedRowIndex <= pageRange.get(pageNum * 2 + 1);

@@ -16,15 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.wal.checkpoint;
 
-/** Type of {@link Checkpoint} */
+/** Type of {@link Checkpoint}. */
 public enum CheckpointType {
-  /** record all existing memtables' info */
+  // record all existing memTables info
   GLOBAL_MEMORY_TABLE_INFO((byte) 0, "global memory table info"),
-  /** record create info of one memtable */
+  // record create info of one memTable
   CREATE_MEMORY_TABLE((byte) 1, "create memory table"),
-  /** record flush info of one memtable */
+  // record flush info of one memTable
   FLUSH_MEMORY_TABLE((byte) 2, "flush memory table");
 
   private final byte code;

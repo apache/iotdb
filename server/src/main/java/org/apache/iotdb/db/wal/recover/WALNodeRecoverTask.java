@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.wal.recover;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -55,13 +56,12 @@ public class WALNodeRecoverTask implements Runnable {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final WALRecoverManager walRecoverManger = WALRecoverManager.getInstance();
 
-  /** this directory store one wal node's .wal and .checkpoint files */
+  // this directory store one wal node's .wal and .checkpoint files
   private final File logDirectory;
-  /** latch to collect all nodes' recovery end information */
+  // latch to collect all nodes' recovery end information
   private final CountDownLatch allNodesRecoveredLatch;
-  /** version id of first valid .wal file */
+  // version id of first valid .wal file
   private long firstValidVersionId = Long.MAX_VALUE;
-
   private Map<Long, MemTableInfo> memTableId2Info;
   private Map<Long, UnsealedTsFileRecoverPerformer> memTableId2RecoverPerformer;
 
