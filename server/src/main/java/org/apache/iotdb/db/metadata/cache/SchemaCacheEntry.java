@@ -38,6 +38,7 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
   private final Map<String, String> tagMap;
   private final boolean isAligned;
 
+  @SuppressWarnings("java:S3077")
   private volatile ILastCacheContainer lastCacheContainer = null;
 
   SchemaCacheEntry(

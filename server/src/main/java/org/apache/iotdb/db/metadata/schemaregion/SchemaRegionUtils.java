@@ -25,9 +25,15 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.slf4j.Logger;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Objects;
 
 public class SchemaRegionUtils {
+
+  private SchemaRegionUtils() {
+    // not allowed construction
+  }
 
   public static void deleteSchemaRegionFolder(String schemaRegionDirPath, Logger logger)
       throws MetadataException {
@@ -38,26 +44,33 @@ public class SchemaRegionUtils {
           String.format("Can't get files in schema region dir %s", schemaRegionDirPath));
     }
     for (File file : sgFiles) {
-      if (file.delete()) {
-        logger.info("delete schema region file {}", file.getAbsolutePath());
-      } else {
-        logger.info("delete schema region file {} failed.", file.getAbsolutePath());
+      try {
+        Files.delete(file.toPath());
+        logger.info("Delete schema region file {}", file.getAbsolutePath());
+      } catch (IOException e) {
+        logger.warn("Delete schema region file {} failed.", file.getAbsolutePath());
         throw new MetadataException(
             String.format("Failed to delete schema region file %s", file.getAbsolutePath()));
       }
     }
 
-    if (schemaRegionDir.delete()) {
-      logger.info("delete schema region folder {}", schemaRegionDir.getAbsolutePath());
-    } else {
-      logger.info("delete schema region folder {} failed.", schemaRegionDir.getAbsolutePath());
+    try {
+      Files.delete(schemaRegionDir.toPath());
+      logger.info("Delete schema region folder {}", schemaRegionDir.getAbsolutePath());
+    } catch (IOException e) {
+      logger.warn("Delete schema region folder {} failed.", schemaRegionDir.getAbsolutePath());
       throw new MetadataException(
           String.format(
               "Failed to delete schema region folder %s", schemaRegionDir.getAbsolutePath()));
     }
     final File storageGroupDir = schemaRegionDir.getParentFile();
     if (Objects.requireNonNull(storageGroupDir.listFiles()).length == 0) {
-      storageGroupDir.delete();
+      try {
+        Files.delete(storageGroupDir.toPath());
+        logger.info("Delete database schema folder {}", storageGroupDir.getAbsolutePath());
+      } catch (IOException e) {
+        logger.warn("Delete database schema folder {} failed", storageGroupDir.getAbsolutePath());
+      }
     }
   }
 }

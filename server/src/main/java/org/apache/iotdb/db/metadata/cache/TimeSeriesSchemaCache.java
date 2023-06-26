@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.view.InsertNonWritableViewException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.cache.dualkeycache.IDualKeyCache;
 import org.apache.iotdb.db.metadata.cache.dualkeycache.IDualKeyCacheComputation;
 import org.apache.iotdb.db.metadata.cache.dualkeycache.impl.DualKeyCacheBuilder;
@@ -34,9 +35,6 @@ import org.apache.iotdb.db.mpp.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -48,7 +46,6 @@ import java.util.function.Function;
 
 public class TimeSeriesSchemaCache {
 
-  private static final Logger logger = LoggerFactory.getLogger(DataNodeSchemaCache.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final IDualKeyCache<PartialPath, String, SchemaCacheEntry> dualKeyCache;
@@ -76,10 +73,10 @@ public class TimeSeriesSchemaCache {
   }
 
   /**
-   * Get SchemaEntity info without auto create schema
+   * Get SchemaEntity info without auto create schema.
    *
    * @param devicePath should not be measurementPath or AlignedPath
-   * @param measurements
+   * @param measurements target measurement
    * @return timeseries partialPath and its SchemaEntity
    */
   public ClusterSchemaTree get(PartialPath devicePath, String[] measurements) {
@@ -176,7 +173,7 @@ public class TimeSeriesSchemaCache {
       if (!logicalViewSchema.isWritable()) {
         PartialPath path = schemaComputation.getDevicePath();
         path = path.concatNode(schemaComputation.getMeasurements()[realIndex]);
-        throw new RuntimeException(new InsertNonWritableViewException(path.getFullPath()));
+        throw new SemanticException(new InsertNonWritableViewException(path.getFullPath()));
       }
       PartialPath fullPath = logicalViewSchema.getSourcePathIfWritable();
       dualKeyCache.compute(
@@ -193,7 +190,6 @@ public class TimeSeriesSchemaCache {
 
             @Override
             public void computeValue(int index, SchemaCacheEntry value) {
-              index = realIndex;
               if (value == null) {
                 indexOfMissingMeasurements.add(recordMissingIndex);
               } else {
@@ -202,14 +198,14 @@ public class TimeSeriesSchemaCache {
                 // computation between them is miss matched.
                 if (value.isLogicalView()) {
                   // does not support views in views
-                  throw new RuntimeException(
+                  throw new SemanticException(
                       new UnsupportedOperationException(
                           String.format(
                               "The source of view [%s] is also a view! Nested view is unsupported! "
                                   + "Please check it.",
                               fullPath)));
                 }
-                schemaComputation.computeMeasurementOfView(index, value, value.isAligned());
+                schemaComputation.computeMeasurementOfView(realIndex, value, value.isAligned());
               }
             }
           });
@@ -247,7 +243,7 @@ public class TimeSeriesSchemaCache {
     return DataNodeLastCacheManager.getLastCache(entry);
   }
 
-  /** get SchemaCacheEntry and update last cache */
+  /** Get SchemaCacheEntry and update last cache. */
   public void updateLastCache(
       PartialPath devicePath,
       String measurement,
@@ -263,7 +259,7 @@ public class TimeSeriesSchemaCache {
         entry, timeValuePair, highPriorityUpdate, latestFlushedTime);
   }
 
-  /** get SchemaCacheEntry and update last cache by device */
+  /** Get SchemaCacheEntry and update last cache by device. */
   public void updateLastCache(
       String database,
       PartialPath devicePath,
@@ -339,7 +335,7 @@ public class TimeSeriesSchemaCache {
           entry =
               new SchemaCacheEntry(
                   storageGroup,
-                  (MeasurementSchema) measurementPath.getMeasurementSchema(),
+                  measurementPath.getMeasurementSchema(),
                   measurementPath.getTagMap(),
                   measurementPath.isUnderAlignedEntity());
           dualKeyCache.put(seriesPath.getDevicePath(), seriesPath.getMeasurement(), entry);

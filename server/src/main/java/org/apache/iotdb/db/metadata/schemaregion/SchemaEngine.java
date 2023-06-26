@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -67,7 +68,7 @@ public class SchemaEngine {
 
   private final SchemaRegionLoader schemaRegionLoader;
 
-  private volatile Map<SchemaRegionId, ISchemaRegion> schemaRegionMap;
+  private Map<SchemaRegionId, ISchemaRegion> schemaRegionMap;
 
   private ScheduledExecutorService timedForceMLogThread;
 
@@ -93,7 +94,7 @@ public class SchemaEngine {
     return SchemaEngineManagerHolder.INSTANCE;
   }
 
-  public void init() {
+  public synchronized void init() {
     logger.info(
         "used schema engine mode: {}.",
         CommonDescriptor.getInstance().getConfig().getSchemaEngineMode());
@@ -131,6 +132,7 @@ public class SchemaEngine {
    * Scan the database and schema region directories to recover schema regions and return the
    * collected local schema partition info for localSchemaPartitionTable recovery.
    */
+  @SuppressWarnings("java:S2142")
   private void initSchemaRegion() {
     File schemaDir = new File(config.getSchemaDir());
     File[] sgDirList = schemaDir.listFiles();
@@ -186,7 +188,7 @@ public class SchemaEngine {
       try {
         ISchemaRegion schemaRegion = future.get();
         schemaRegionMap.put(schemaRegion.getSchemaRegionId(), schemaRegion);
-      } catch (ExecutionException | InterruptedException | RuntimeException e) {
+      } catch (ExecutionException | InterruptedException | SchemaExecutionException e) {
         logger.error("Something wrong happened during SchemaRegion recovery: {}", e.getMessage());
         e.printStackTrace();
       }
@@ -203,15 +205,15 @@ public class SchemaEngine {
   }
 
   public void forceMlog() {
-    Map<SchemaRegionId, ISchemaRegion> schemaRegionMap = this.schemaRegionMap;
-    if (schemaRegionMap != null) {
-      for (ISchemaRegion schemaRegion : schemaRegionMap.values()) {
+    Map<SchemaRegionId, ISchemaRegion> existingSchemaRegionMap = this.schemaRegionMap;
+    if (existingSchemaRegionMap != null) {
+      for (ISchemaRegion schemaRegion : existingSchemaRegionMap.values()) {
         schemaRegion.forceMlog();
       }
     }
   }
 
-  public void clear() {
+  public synchronized void clear() {
     schemaRegionLoader.clear();
 
     // clearSchemaResource will shut down release and flush task in PBTree mode, which must be
@@ -282,7 +284,7 @@ public class SchemaEngine {
             String.format(
                 "SchemaRegion [%d] in StorageGroup [%s] failed to recover.",
                 schemaRegionId.getId(), storageGroup.getFullPath()));
-        throw new RuntimeException(e);
+        throw new SchemaExecutionException(e);
       }
     };
   }
@@ -320,10 +322,8 @@ public class SchemaEngine {
               }
             });
     // remove the empty sg dir
-    if (regionDirList == null || regionDirList.length == 0) {
-      if (sgDir.exists()) {
-        FileUtils.deleteDirectory(sgDir);
-      }
+    if (regionDirList == null || regionDirList.length == 0 && sgDir.exists()) {
+      FileUtils.deleteDirectory(sgDir);
     }
   }
 
@@ -369,6 +369,7 @@ public class SchemaEngine {
    *
    * @param totalCount cluster schema usage
    * @param resp heartbeat response
+   * @throws UnsupportedOperationException unrecognized quota level
    */
   public void updateAndFillSchemaCountMap(long totalCount, THeartbeatResp resp) {
     // update DataNodeSchemaQuotaManager

@@ -75,7 +75,7 @@ public interface ISchemaRegion {
   // region Interfaces for initialization、recover and clear
   void init() throws MetadataException;
 
-  /** clear all metadata components of this schemaRegion */
+  /** Clear all metadata components of this schemaRegion. */
   void clear();
 
   void forceMlog();
@@ -104,8 +104,8 @@ public interface ISchemaRegion {
    * Create timeseries.
    *
    * @param plan a plan describes how to create the timeseries.
-   * @param offset
-   * @throws MetadataException
+   * @param offset the offset in tagFile
+   * @throws MetadataException create timeseries failure
    */
   void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException;
 
@@ -113,7 +113,7 @@ public interface ISchemaRegion {
    * Create aligned timeseries.
    *
    * @param plan a plan describes how to create the timeseries.
-   * @throws MetadataException
+   * @throws MetadataException create aligned timeseries failure
    */
   void createAlignedTimeSeries(ICreateAlignedTimeSeriesPlan plan) throws MetadataException;
 
@@ -143,34 +143,34 @@ public interface ISchemaRegion {
   /**
    * Construct schema black list via setting matched timeseries to pre deleted.
    *
-   * @param patternTree
-   * @throws MetadataException
+   * @param patternTree target timeseries
    * @return preDeletedNum. If there are intersections of patterns in the patternTree, there may be
    *     more than are actually pre-deleted.
+   * @throws MetadataException construct schema black list failure
    */
   long constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
 
   /**
    * Rollback schema black list via setting matched timeseries to not pre deleted.
    *
-   * @param patternTree
-   * @throws MetadataException
+   * @param patternTree target timeseries
+   * @throws MetadataException rollback failure
    */
   void rollbackSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
 
   /**
    * Fetch schema black list (timeseries that has been pre deleted).
    *
-   * @param patternTree
-   * @throws MetadataException
+   * @param patternTree target timeseries
+   * @throws MetadataException fetch schema failure
    */
   Set<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
 
   /**
    * Delete timeseries in schema black list.
    *
-   * @param patternTree
-   * @throws MetadataException
+   * @param patternTree target timeseries
+   * @throws MetadataException delete timeseries failure
    */
   void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException;
   // endregion
@@ -209,6 +209,8 @@ public interface ISchemaRegion {
    * @param tagsMap newly added tags map
    * @param attributesMap newly added attributes map
    * @param fullPath timeseries
+   * @throws MetadataException upsert failure
+   * @throws IOException disk IO failure
    */
   void upsertAliasAndTagsAndAttributes(
       String alias,
@@ -218,21 +220,23 @@ public interface ISchemaRegion {
       throws MetadataException, IOException;
 
   /**
-   * Add new attributes key-value for the timeseries
+   * Add new attributes key-value for the timeseries.
    *
    * @param attributesMap newly added attributes map
    * @param fullPath timeseries
    * @throws MetadataException tagLogFile write error or attributes already exist
+   * @throws IOException disk IO failure
    */
   void addAttributes(Map<String, String> attributesMap, PartialPath fullPath)
       throws MetadataException, IOException;
 
   /**
-   * Add new tags key-value for the timeseries
+   * Add new tags key-value for the timeseries.
    *
    * @param tagsMap newly added tags map
    * @param fullPath timeseries
    * @throws MetadataException tagLogFile write error or tags already exist
+   * @throws IOException disk IO failure
    */
   void addTags(Map<String, String> tagsMap, PartialPath fullPath)
       throws MetadataException, IOException;
@@ -243,28 +247,32 @@ public interface ISchemaRegion {
    *
    * @param keySet tags key or attributes key
    * @param fullPath timeseries path
+   * @throws MetadataException drop failure
+   * @throws IOException disk IO failure
    */
   void dropTagsOrAttributes(Set<String> keySet, PartialPath fullPath)
       throws MetadataException, IOException;
 
   /**
-   * Set/change the values of tags or attributes
+   * Set/change the values of tags or attributes.
    *
    * @param alterMap the new tags or attributes key-value
    * @param fullPath timeseries
    * @throws MetadataException tagLogFile write error or tags/attributes do not exist
+   * @throws IOException disk IO failure
    */
   void setTagsOrAttributesValue(Map<String, String> alterMap, PartialPath fullPath)
       throws MetadataException, IOException;
 
   /**
-   * Rename the tag or attribute's key of the timeseries
+   * Rename the tag or attribute's key of the timeseries.
    *
    * @param oldKey old key of tag or attribute
    * @param newKey new key of tag or attribute
    * @param fullPath timeseries
    * @throws MetadataException tagLogFile write error or does not have tag/attribute or already has
    *     a tag/attribute named newKey
+   * @throws IOException disk IO failure
    */
   void renameTagOrAttributeKey(String oldKey, String newKey, PartialPath fullPath)
       throws MetadataException, IOException;
@@ -295,6 +303,8 @@ public interface ISchemaRegion {
   /**
    * The iterated result shall be consumed before calling reader.hasNext() or reader.next(). Its
    * implementation is based on the reader's process context.
+   *
+   * @throws MetadataException get timeseries reader failure
    */
   ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(IShowTimeSeriesPlan showTimeSeriesPlan)
       throws MetadataException;
