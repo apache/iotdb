@@ -59,13 +59,13 @@ public abstract class GorillaEncoderV2 extends Encoder {
     bitsLeft = Byte.SIZE;
   }
 
-  /** Stores a 0 and increases the count of bits by 1 */
+  /** Stores a 0 and increases the count of bits by 1. */
   protected void skipBit(ByteArrayOutputStream out) {
     bitsLeft--;
     flipByte(out);
   }
 
-  /** Stores a 1 and increases the count of bits by 1 */
+  /** Stores a 1 and increases the count of bits by 1. */
   protected void writeBit(ByteArrayOutputStream out) {
     buffer |= (1 << (bitsLeft - 1));
     bitsLeft--;

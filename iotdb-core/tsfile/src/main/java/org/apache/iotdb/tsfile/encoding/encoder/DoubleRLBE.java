@@ -26,7 +26,7 @@ public class DoubleRLBE extends RLBE {
   private final double[] diffValue = new double[blockSize + 1];
 
   // repeat times on length code
-  private final long[] lengthRLE = new long[blockSize + 1];
+  private final long[] lengRLE = new long[blockSize + 1];
 
   // previous value of original value
   private double previousValue;
@@ -45,7 +45,7 @@ public class DoubleRLBE extends RLBE {
       LengthCode[i] = 0;
       byteBuffer = 0;
       numberLeftInBuffer = 0;
-      lengthRLE[i] = 0;
+      lengRLE[i] = 0;
     }
   }
 
@@ -160,7 +160,7 @@ public class DoubleRLBE extends RLBE {
         temprlecal++;
       }
       // store repeat time at the first repeating value's position
-      lengthRLE[i] = temprlecal;
+      lengRLE[i] = temprlecal;
       i = j;
     }
   }
@@ -179,7 +179,7 @@ public class DoubleRLBE extends RLBE {
     // calculate length code of delta binary length
     rleonlengthcode();
     for (int i = 0; i <= writeIndex; i++) {
-      if (lengthRLE[i] > 0) { // flush the adjacent same length delta values
+      if (lengRLE[i] > 0) { // flush the adjacent same length delta values
         flushSegment(i, out);
       }
     }
@@ -203,7 +203,7 @@ public class DoubleRLBE extends RLBE {
       }
     }
     // write the fibonacci code in normal direction
-    long fib = calcFibonacci(lengthRLE[i]);
+    long fib = calcFibonacci(lengRLE[i]);
     int fiblen = calBinarylength(fib);
     for (int j = 0; j < fiblen; j++) {
       if ((fib & (1 << j)) > 0) {
@@ -228,7 +228,7 @@ public class DoubleRLBE extends RLBE {
         }
       }
       j++;
-    } while (lengthRLE[j] == 0 && j <= writeIndex);
+    } while (lengRLE[j] == 0 && j <= writeIndex);
   }
 
   @Override
