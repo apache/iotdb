@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -49,7 +50,7 @@ public class SnapshotTest {
   private static final File testDir = new File("target" + File.separator + "sm");
 
   // Mock Storage which only provides the state machine dir
-  private static class EmptyStorageWithOnlySMDir implements RaftStorage {
+  private static class EmptyStorageWithOnlySmDir implements RaftStorage {
 
     @Override
     public void initialize() throws IOException {}
@@ -105,7 +106,7 @@ public class SnapshotTest {
     final ApplicationStateMachineProxy proxy =
         new ApplicationStateMachineProxy(new TestUtils.IntegerCounter(), raftGroupId);
 
-    proxy.initialize(null, null, new EmptyStorageWithOnlySMDir());
+    proxy.initialize(null, null, new EmptyStorageWithOnlySmDir());
 
     final Predicate<String> snapshotExists = s -> new File(s).exists();
 
@@ -198,13 +199,13 @@ public class SnapshotTest {
     ApplicationStateMachineProxy proxy =
         new ApplicationStateMachineProxy(new CrossDiskLinkStatemachine(), raftGroupId);
 
-    proxy.initialize(null, null, new EmptyStorageWithOnlySMDir());
+    proxy.initialize(null, null, new EmptyStorageWithOnlySmDir());
     proxy.notifyTermIndexUpdated(20, 1005);
     proxy.takeSnapshot();
     String actualSnapshotName =
         CrossDiskLinkStatemachine.ensureSnapshotFileName(testDir, "20_1005");
     File actualSnapshotFile = new File(actualSnapshotName);
-    Assert.assertEquals(proxy.getLatestSnapshot().getFiles().size(), 1);
+    Assert.assertEquals(1, proxy.getLatestSnapshot().getFiles().size());
     Assert.assertEquals(
         proxy.getLatestSnapshot().getFiles().get(0).getPath().toFile().getAbsolutePath(),
         actualSnapshotFile.getAbsolutePath());

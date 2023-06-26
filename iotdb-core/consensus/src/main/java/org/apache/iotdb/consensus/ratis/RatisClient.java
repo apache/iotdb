@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.commons.client.ClientManager;
@@ -125,7 +126,7 @@ class RatisClient {
    */
   private static class RatisRetryPolicy implements RetryPolicy {
 
-    private static final Logger logger = LoggerFactory.getLogger(RatisClient.class);
+    private static final Logger logger = LoggerFactory.getLogger(RatisRetryPolicy.class);
     private final RetryPolicy defaultPolicy;
 
     RatisRetryPolicy(RatisConfig.Client config) {
@@ -148,9 +149,9 @@ class RatisClient {
       // retried.
       Optional<Throwable> unexpectedCause =
           Optional.ofNullable(event.getCause())
-              .filter(t -> t instanceof RaftException)
+              .filter(RaftException.class::isInstance)
               .map(Throwable::getCause)
-              .filter(t -> t instanceof StatusRuntimeException);
+              .filter(StatusRuntimeException.class::isInstance);
 
       if (unexpectedCause.isPresent()) {
         logger.info(

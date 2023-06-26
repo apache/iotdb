@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
@@ -163,7 +164,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
       } catch (InterruptedException i) {
         logger.warn("{} interrupted when retry sleep", this);
         Thread.currentThread().interrupt();
-      } catch (Throwable rte) {
+      } catch (Exception rte) {
         logger.error("application statemachine throws a runtime exception: ", rte);
         ret =
             new ResponseMessage(
@@ -196,7 +197,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
       try {
         TimeUnit.SECONDS.sleep(60);
       } catch (InterruptedException e) {
-        logger.warn("{}: interrupted when waiting until system ready: {}", this, e);
+        logger.warn("{}: interrupted when waiting until system ready: ", this, e);
         Thread.currentThread().interrupt();
       }
     }
