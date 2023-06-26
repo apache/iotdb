@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.consensus.ratis.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
@@ -64,7 +65,7 @@ public class Utils {
     return String.format("%s_%d", endpoint.getIp(), endpoint.getPort());
   }
 
-  /** Encode the ConsensusGroupId into 6 bytes: 2 Bytes for Group Type and 4 Bytes for Group ID */
+  /** Encode the ConsensusGroupId into 6 bytes: 2 Bytes for Group Type and 4 Bytes for Group ID. */
   public static long groupEncode(ConsensusGroupId consensusGroupId) {
     // use abbreviations to prevent overflow
     long groupType = consensusGroupId.getType().getValue();
@@ -128,20 +129,20 @@ public class Utils {
         .collect(Collectors.toList());
   }
 
-  /** Given ConsensusGroupId, generate a deterministic RaftGroupId current scheme: */
+  /** Given ConsensusGroupId, generate a deterministic RaftGroupId current scheme. */
   public static RaftGroupId fromConsensusGroupIdToRaftGroupId(ConsensusGroupId consensusGroupId) {
     long groupCode = groupEncode(consensusGroupId);
-    byte[] bGroupCode = ByteBuffer.allocate(Long.BYTES).putLong(groupCode).array();
-    byte[] bPaddedGroupName = new byte[16];
+    byte[] byteGroupCode = ByteBuffer.allocate(Long.BYTES).putLong(groupCode).array();
+    byte[] bytePaddedGroupName = new byte[16];
     for (int i = 0; i < 10; i++) {
-      bPaddedGroupName[i] = PADDING_MAGIC;
+      bytePaddedGroupName[i] = PADDING_MAGIC;
     }
-    System.arraycopy(bGroupCode, 2, bPaddedGroupName, 10, bGroupCode.length - 2);
+    System.arraycopy(byteGroupCode, 2, bytePaddedGroupName, 10, byteGroupCode.length - 2);
 
-    return RaftGroupId.valueOf(ByteString.copyFrom(bPaddedGroupName));
+    return RaftGroupId.valueOf(ByteString.copyFrom(bytePaddedGroupName));
   }
 
-  /** Given raftGroupId, decrypt ConsensusGroupId out of it */
+  /** Given raftGroupId, decrypt ConsensusGroupId out of it. */
   public static ConsensusGroupId fromRaftGroupIdToConsensusGroupId(RaftGroupId raftGroupId) {
     byte[] padded = raftGroupId.toByteString().toByteArray();
     long type = (long) ((padded[10] & 0xff) << 8) + (padded[11] & 0xff);
@@ -151,7 +152,7 @@ public class Utils {
     return ConsensusGroupId.Factory.create((int) type, byteBuffer.getInt());
   }
 
-  public static ByteBuffer serializeTSStatus(TSStatus status) throws TException {
+  public static ByteBuffer serializeStatus(TSStatus status) throws TException {
     AutoScalingBufferWriteTransport byteBuffer =
         new AutoScalingBufferWriteTransport(TEMP_BUFFER_SIZE);
     TCompactProtocol protocol = new TCompactProtocol(byteBuffer);

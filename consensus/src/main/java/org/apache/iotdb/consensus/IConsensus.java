@@ -41,10 +41,10 @@ public interface IConsensus {
   void stop() throws IOException;
 
   // write API
-  ConsensusWriteResponse write(ConsensusGroupId groupId, IConsensusRequest iConsensusRequest);
+  ConsensusWriteResponse write(ConsensusGroupId groupId, IConsensusRequest request);
 
   // read API
-  ConsensusReadResponse read(ConsensusGroupId groupId, IConsensusRequest iConsensusRequest);
+  ConsensusReadResponse read(ConsensusGroupId groupId, IConsensusRequest request);
 
   // multi consensus group API
 
