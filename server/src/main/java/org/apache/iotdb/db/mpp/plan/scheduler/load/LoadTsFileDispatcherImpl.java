@@ -93,7 +93,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
               dispatchOneInstance(instance);
             } catch (FragmentInstanceDispatchException e) {
               return new FragInstanceDispatchResult(e.getFailureStatus());
-            } catch (Throwable t) {
+            } catch (Exception t) {
               logger.warn("cannot dispatch FI for load operation", t);
               return new FragInstanceDispatchResult(
                   RpcUtils.getStatus(
@@ -140,11 +140,45 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
         throw new FragmentInstanceDispatchException(loadResp.status);
       }
     } catch (ClientManagerException | TException e) {
+      String warning = "Can't connect to node {}";
+      logger.warn(warning, endPoint, e);
+      TSStatus status = new TSStatus();
+      status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
+      status.setMessage(warning + endPoint);
+      throw new FragmentInstanceDispatchException(status);
+    }
+  }
+
+  private void dispatchRemote(TLoadCommandReq loadCommandReq, TEndPoint endPoint)
+      throws FragmentInstanceDispatchException {
+    try (SyncDataNodeInternalServiceClient client =
+        internalServiceClientManager.borrowClient(endPoint)) {
+      TLoadResp loadResp = client.sendLoadCommand(loadCommandReq);
+      if (!loadResp.isAccepted()) {
+        logger.warn(loadResp.message);
+        throw new FragmentInstanceDispatchException(loadResp.status);
+      }
+    } catch (ClientManagerException | TException e) {
       logger.warn("can't connect to node {}", endPoint, e);
       TSStatus status = new TSStatus();
       status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
-      status.setMessage("can't connect to node {}" + endPoint);
+      status.setMessage(
+          "can't connect to node {}, please reset longer dn_connection_timeout_ms "
+              + "in iotdb-common.properties and restart iotdb."
+              + endPoint);
       throw new FragmentInstanceDispatchException(status);
+    }
+  }
+
+  private void dispatchLocally(TLoadCommandReq loadCommandReq)
+      throws FragmentInstanceDispatchException {
+    TSStatus resultStatus =
+        StorageEngine.getInstance()
+            .executeLoadCommand(
+                LoadTsFileScheduler.LoadCommand.values()[loadCommandReq.commandType],
+                loadCommandReq.uuid);
+    if (!RpcUtils.SUCCESS_STATUS.equals(resultStatus)) {
+      throw new FragmentInstanceDispatchException(resultStatus);
     }
   }
 
@@ -206,7 +240,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
         }
       } catch (FragmentInstanceDispatchException e) {
         return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
-      } catch (Throwable t) {
+      } catch (Exception t) {
         logger.warn("cannot dispatch LoadCommand for load operation", t);
         return immediateFuture(
             new FragInstanceDispatchResult(
@@ -217,38 +251,8 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
     return immediateFuture(new FragInstanceDispatchResult(true));
   }
 
-  private void dispatchRemote(TLoadCommandReq loadCommandReq, TEndPoint endPoint)
-      throws FragmentInstanceDispatchException {
-    try (SyncDataNodeInternalServiceClient client =
-        internalServiceClientManager.borrowClient(endPoint)) {
-      TLoadResp loadResp = client.sendLoadCommand(loadCommandReq);
-      if (!loadResp.isAccepted()) {
-        logger.warn(loadResp.message);
-        throw new FragmentInstanceDispatchException(loadResp.status);
-      }
-    } catch (ClientManagerException | TException e) {
-      logger.warn("can't connect to node {}", endPoint, e);
-      TSStatus status = new TSStatus();
-      status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
-      status.setMessage(
-          "can't connect to node {}, please reset longer dn_connection_timeout_ms in iotdb-common.properties and restart iotdb."
-              + endPoint);
-      throw new FragmentInstanceDispatchException(status);
-    }
-  }
-
-  private void dispatchLocally(TLoadCommandReq loadCommandReq)
-      throws FragmentInstanceDispatchException {
-    TSStatus resultStatus =
-        StorageEngine.getInstance()
-            .executeLoadCommand(
-                LoadTsFileScheduler.LoadCommand.values()[loadCommandReq.commandType],
-                loadCommandReq.uuid);
-    if (!RpcUtils.SUCCESS_STATUS.equals(resultStatus)) {
-      throw new FragmentInstanceDispatchException(resultStatus);
-    }
-  }
-
   @Override
-  public void abort() {}
+  public void abort() {
+    // Do nothing
+  }
 }

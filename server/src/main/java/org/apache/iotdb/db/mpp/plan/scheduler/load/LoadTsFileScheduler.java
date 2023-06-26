@@ -137,9 +137,8 @@ public class LoadTsFileScheduler implements IScheduler {
       try {
         if (node.isTsFileEmpty()) {
           logger.info(
-              String.format(
-                  "Load skip TsFile %s, because it has no data.",
-                  node.getTsFileResource().getTsFilePath()));
+              "Load skip TsFile {}, because it has no data.",
+              node.getTsFileResource().getTsFilePath());
 
         } else if (!node.needDecodeTsFile(
             partitionFetcher::queryDataPartition)) { // do not decode, load locally
@@ -162,15 +161,17 @@ public class LoadTsFileScheduler implements IScheduler {
         }
         if (isLoadSingleTsFileSuccess) {
           logger.info(
-              String.format(
-                  "Load TsFile %s Successfully, load process [%s/%s]",
-                  node.getTsFileResource().getTsFilePath(), i + 1, tsFileNodeListSize));
+              "Load TsFile {} Successfully, load process [{}/{}]",
+              node.getTsFileResource().getTsFilePath(),
+              i + 1,
+              tsFileNodeListSize);
         } else {
           isLoadSuccess = false;
           logger.warn(
-              String.format(
-                  "Can not Load TsFile %s, load process [%s/%s]",
-                  node.getTsFileResource().getTsFilePath(), i + 1, tsFileNodeListSize));
+              "Can not Load TsFile {}, load process [{}/{}]",
+              node.getTsFileResource().getTsFilePath(),
+              i + 1,
+              tsFileNodeListSize);
         }
       } catch (Exception e) {
         isLoadSuccess = false;
@@ -236,12 +237,12 @@ public class LoadTsFileScheduler implements IScheduler {
       if (!result.isSuccessful()) {
         // TODO: retry.
         logger.warn(
-            String.format(
-                "Dispatch one piece to ReplicaSet %s error. Result status code %s. Result status message %s. Dispatch piece node error:%n%s",
-                replicaSet,
-                TSStatusCode.representOf(result.getFailureStatus().getCode()).name(),
-                result.getFailureStatus().getMessage(),
-                pieceNode));
+            "Dispatch one piece to ReplicaSet {} error. Result status code {}. "
+                + "Result status message {}. Dispatch piece node error:%n{}",
+            replicaSet,
+            TSStatusCode.representOf(result.getFailureStatus().getCode()).name(),
+            result.getFailureStatus().getMessage(),
+            pieceNode);
         if (result.getFailureStatus().getSubStatus() != null) {
           for (TSStatus status : result.getFailureStatus().getSubStatus()) {
             logger.warn(
@@ -287,13 +288,13 @@ public class LoadTsFileScheduler implements IScheduler {
       if (!result.isSuccessful()) {
         // TODO: retry.
         logger.warn(
-            String.format(
-                "Dispatch load command %s of TsFile %s error to replicaSets %s error. Result status code %s. Result status message %s.",
-                loadCommandReq,
-                tsFile,
-                allReplicaSets,
-                TSStatusCode.representOf(result.getFailureStatus().getCode()).name(),
-                result.getFailureStatus().getMessage()));
+            "Dispatch load command {} of TsFile {} error to replicaSets {} error. "
+                + "Result status code {}. Result status message {}.",
+            loadCommandReq,
+            tsFile,
+            allReplicaSets,
+            TSStatusCode.representOf(result.getFailureStatus().getCode()).name(),
+            result.getFailureStatus().getMessage());
         TSStatus status = result.getFailureStatus();
         status.setMessage(
             String.format("Load %s error in 2nd phase. Because ", tsFile) + status.getMessage());
@@ -327,7 +328,8 @@ public class LoadTsFileScheduler implements IScheduler {
     } catch (FragmentInstanceDispatchException e) {
       logger.warn(
           String.format(
-              "Dispatch tsFile %s error to local error. Result status code %s. Result status message %s.",
+              "Dispatch tsFile %s error to local error. Result status code %s. "
+                  + "Result status message %s.",
               node.getTsFileResource().getTsFile(),
               TSStatusCode.representOf(e.getFailureStatus().getCode()).name(),
               e.getFailureStatus().getMessage()));
@@ -338,7 +340,9 @@ public class LoadTsFileScheduler implements IScheduler {
   }
 
   @Override
-  public void stop(Throwable t) {}
+  public void stop(Throwable t) {
+    // Do nothing
+  }
 
   @Override
   public Duration getTotalCpuTime() {
@@ -351,10 +355,14 @@ public class LoadTsFileScheduler implements IScheduler {
   }
 
   @Override
-  public void abortFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause) {}
+  public void abortFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause) {
+    // Do nothing
+  }
 
   @Override
-  public void cancelFragment(PlanFragmentId planFragmentId) {}
+  public void cancelFragment(PlanFragmentId planFragmentId) {
+    // Do nothing
+  }
 
   public enum LoadCommand {
     EXECUTE,
@@ -399,7 +407,9 @@ public class LoadTsFileScheduler implements IScheduler {
 
         for (TRegionReplicaSet sortedReplicaSet : sortedReplicaSets) {
           LoadTsFilePieceNode pieceNode = replicaSet2Piece.get(sortedReplicaSet);
-          if (pieceNode.getDataSize() == 0) { // total data size has been reduced to 0
+          if (pieceNode.getDataSize() == 0
+              || dataSize - pieceNode.getDataSize()
+                  <= MAX_MEMORY_SIZE) { // total data size has been reduced to 0
             break;
           }
           if (!scheduler.dispatchOnePieceNode(pieceNode, sortedReplicaSet)) {
@@ -414,9 +424,6 @@ public class LoadTsFileScheduler implements IScheduler {
                   singleTsFileNode
                       .getTsFileResource()
                       .getTsFile())); // can not just remove, because of deletion
-          if (dataSize <= MAX_MEMORY_SIZE) {
-            break;
-          }
         }
       }
 
