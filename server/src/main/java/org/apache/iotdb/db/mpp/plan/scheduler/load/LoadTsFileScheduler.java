@@ -327,12 +327,11 @@ public class LoadTsFileScheduler implements IScheduler {
       dispatcher.dispatchLocally(instance);
     } catch (FragmentInstanceDispatchException e) {
       logger.warn(
-          String.format(
-              "Dispatch tsFile %s error to local error. Result status code %s. "
-                  + "Result status message %s.",
-              node.getTsFileResource().getTsFile(),
-              TSStatusCode.representOf(e.getFailureStatus().getCode()).name(),
-              e.getFailureStatus().getMessage()));
+          "Dispatch tsFile {} error to local error. Result status code {}. "
+              + "Result status message {}.",
+          node.getTsFileResource().getTsFile(),
+          TSStatusCode.representOf(e.getFailureStatus().getCode()).name(),
+          e.getFailureStatus().getMessage());
       stateMachine.transitionToFailed(e.getFailureStatus());
       return false;
     }

@@ -32,28 +32,35 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import static org.junit.Assert.assertEquals;
+
 public class StatementGeneratorTest {
 
   @Test
-  public void testRawDataQuery() {
-    List<String> selectExprList = Arrays.asList("s1", "s2");
-    List<String> prefixPaths = Collections.singletonList("root.sg1.d1");
+  public void rawDataQueryTest() {
+    String sql = "SELECT s1, s2 FROM root.sg1.d1 WHERE time > 1 and s3 > 2 LIMIT 10 OFFSET 11";
     checkQueryStatement(
-        "SELECT s1, s2 FROM root.sg1.d1 LIMIT 10 OFFSET 10", selectExprList, prefixPaths, 10, 10);
+        sql,
+        Arrays.asList("s1", "s2"),
+        Collections.singletonList("root.sg1.d1"),
+        "Time > 1 & s3 > 2",
+        10,
+        11);
   }
 
   @Test
-  public void testGroupByTagWithDuplicatedKeys() {
+  public void groupByTagWithDuplicatedKeysTest() {
     try {
       checkQueryStatement(
           "SELECT avg(*) FROM root.sg.** GROUP BY TAGS(k1, k2, k1)",
           Collections.emptyList(),
           Collections.emptyList(),
+          "",
           10,
           10);
       Assert.fail();
     } catch (SemanticException e) {
-      Assert.assertEquals("duplicated key in GROUP BY TAGS: k1", e.getMessage());
+      assertEquals("duplicated key in GROUP BY TAGS: k1", e.getMessage());
     }
   }
 
@@ -62,7 +69,8 @@ public class StatementGeneratorTest {
   private void checkQueryStatement(
       String sql,
       List<String> selectExprList,
-      List<String> prefixPaths,
+      List<String> fromPrefixPaths,
+      String wherePredicateString,
       int rowLimit,
       int rowOffset) {
     QueryStatement statement =
@@ -72,20 +80,24 @@ public class StatementGeneratorTest {
     int cnt = 0;
     for (ResultColumn resultColumn : statement.getSelectComponent().getResultColumns()) {
       String selectExpr = resultColumn.getExpression().toString();
-      Assert.assertEquals(selectExprList.get(cnt++), selectExpr);
+      assertEquals(selectExprList.get(cnt++), selectExpr);
     }
-    Assert.assertEquals(selectExprList.size(), cnt);
+    assertEquals(selectExprList.size(), statement.getSelectComponent().getResultColumns().size());
 
     // check FROM clause
     cnt = 0;
     for (PartialPath path : statement.getFromComponent().getPrefixPaths()) {
-      Assert.assertEquals(prefixPaths.get(cnt++), path.toString());
+      assertEquals(fromPrefixPaths.get(cnt++), path.toString());
     }
-    Assert.assertEquals(prefixPaths.size(), cnt);
+    assertEquals(fromPrefixPaths.size(), statement.getFromComponent().getPrefixPaths().size());
+
+    // check WHERE clause
+    assertEquals(
+        wherePredicateString, statement.getWhereCondition().getPredicate().getExpressionString());
 
     // check LIMIT & OFFSET clause
-    Assert.assertEquals(rowLimit, statement.getRowLimit());
-    Assert.assertEquals(rowOffset, statement.getRowOffset());
+    assertEquals(rowLimit, statement.getRowLimit());
+    assertEquals(rowOffset, statement.getRowOffset());
 
     // TODO: add more clause
   }
