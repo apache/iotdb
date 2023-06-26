@@ -67,6 +67,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     initAlignedChunkMetaFromTsBlock();
   }
 
+  @SuppressWarnings({"squid:S3776", "squid:S6541", "squid:S3740"})
   private void initAlignedChunkMetaFromTsBlock() throws QueryProcessException {
     // time chunk
     Statistics timeStatistics = Statistics.getStatsByType(TSDataType.VECTOR);

@@ -36,7 +36,7 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
@@ -65,7 +65,7 @@ public class ReadOnlyMemChunk {
       TVList tvList,
       Map<String, String> props,
       List<TimeRange> deletionList)
-      throws IOException, QueryProcessException {
+      throws QueryProcessException {
     this.measurementUid = measurementUid;
     this.dataType = dataType;
     int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
@@ -89,8 +89,9 @@ public class ReadOnlyMemChunk {
     initChunkMetaFromTsBlock();
   }
 
-  private void initChunkMetaFromTsBlock() throws IOException, QueryProcessException {
-    Statistics statsByType = Statistics.getStatsByType(dataType);
+  @SuppressWarnings("squid:S3776")
+  private void initChunkMetaFromTsBlock() throws QueryProcessException {
+    Statistics<? extends Serializable> statsByType = Statistics.getStatsByType(dataType);
     IChunkMetadata metaData = new ChunkMetadata(measurementUid, dataType, 0, statsByType);
     if (!isEmpty()) {
       switch (dataType) {
