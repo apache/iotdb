@@ -42,7 +42,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 public class LoadTsFilePieceNode extends WritePlanNode {
   private static final Logger logger = LoggerFactory.getLogger(LoadTsFilePieceNode.class);
@@ -87,11 +89,13 @@ public class LoadTsFilePieceNode extends WritePlanNode {
 
   @Override
   public List<PlanNode> getChildren() {
-    return null;
+    return Collections.emptyList();
   }
 
   @Override
-  public void addChild(PlanNode child) {}
+  public void addChild(PlanNode child) {
+    // Do nothing
+  }
 
   @Override
   public PlanNode clone() {
@@ -105,7 +109,7 @@ public class LoadTsFilePieceNode extends WritePlanNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return null;
+    return Collections.emptyList();
   }
 
   @Override
@@ -159,6 +163,25 @@ public class LoadTsFilePieceNode extends WritePlanNode {
       logger.error(String.format("Deserialize %s error.", LoadTsFilePieceNode.class.getName()), e);
       return null;
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    LoadTsFilePieceNode loadTsFilePieceNode = (LoadTsFilePieceNode) o;
+    return Objects.equals(tsFile, loadTsFilePieceNode.tsFile)
+        && Objects.equals(dataSize, loadTsFilePieceNode.dataSize)
+        && Objects.equals(tsFileDataList, loadTsFilePieceNode.tsFileDataList);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(tsFile, dataSize, tsFileDataList);
   }
 
   @Override
