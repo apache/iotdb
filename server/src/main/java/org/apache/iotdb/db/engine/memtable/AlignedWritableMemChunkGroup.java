@@ -94,6 +94,7 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
     return Collections.singletonMap("", memChunk);
   }
 
+  @SuppressWarnings("squid:S3776")
   @Override
   public int delete(
       PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp) {

@@ -69,12 +69,10 @@ public class MQTTConnectionFactory extends BasePooledObjectFactory<BlockingConne
     try {
       connection.connect();
     } catch (Exception e) {
-      if (connection != null) {
-        if (connection.isConnected()) {
-          connection.disconnect();
-        }
-        connection.kill();
+      if (connection.isConnected()) {
+        connection.disconnect();
       }
+      connection.kill();
       throw new SinkException("MQTT Connection activate error", e);
     }
     return connection;

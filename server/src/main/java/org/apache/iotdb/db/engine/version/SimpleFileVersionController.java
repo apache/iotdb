@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 
 /** SimpleFileVersionController uses a local file and its file name to store the version. */
 public class SimpleFileVersionController implements VersionController {
@@ -140,7 +141,7 @@ public class SimpleFileVersionController implements VersionController {
       prevVersion = maxVersion;
       for (int i = 0; i < versionFiles.length; i++) {
         if (i != maxVersionIndex) {
-          versionFiles[i].delete();
+          Files.delete(versionFiles[i].toPath());
         }
       }
     } else {

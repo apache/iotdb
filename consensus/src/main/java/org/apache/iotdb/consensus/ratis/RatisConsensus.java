@@ -71,6 +71,7 @@ import org.apache.ratis.protocol.RaftPeer;
 import org.apache.ratis.protocol.RaftPeerId;
 import org.apache.ratis.protocol.SnapshotManagementRequest;
 import org.apache.ratis.protocol.exceptions.NotLeaderException;
+import org.apache.ratis.protocol.exceptions.RaftException;
 import org.apache.ratis.protocol.exceptions.ResourceUnavailableException;
 import org.apache.ratis.server.DivisionInfo;
 import org.apache.ratis.server.RaftServer;
@@ -97,7 +98,7 @@ class RatisConsensus implements IConsensus {
 
   private static final Logger logger = LoggerFactory.getLogger(RatisConsensus.class);
 
-  /** the unique net communication endpoint. */
+  /** the unique net communication endpoint */
   private final RaftPeer myself;
 
   private final RaftServer server;
@@ -115,7 +116,7 @@ class RatisConsensus implements IConsensus {
   private static final int DEFAULT_PRIORITY = 0;
   private static final int LEADER_PRIORITY = 1;
 
-  /** TODO make it configurable. */
+  /** TODO make it configurable */
   private static final int DEFAULT_WAIT_LEADER_READY_TIMEOUT = (int) TimeUnit.SECONDS.toMillis(20);
 
   private final ExecutorService addExecutor;
@@ -190,13 +191,62 @@ class RatisConsensus implements IConsensus {
     MetricService.getInstance().removeMetricSet(this.ratisMetricSet);
   }
 
+  private boolean shouldRetry(RaftClientReply reply) {
+    // currently, we only retry when ResourceUnavailableException is caught
+    return !reply.isSuccess() && (reply.getException() instanceof ResourceUnavailableException);
+  }
+
+  /** launch a consensus write with retry mechanism */
+  private RaftClientReply writeWithRetry(CheckedSupplier<RaftClientReply, IOException> caller)
+      throws IOException {
+
+    final int maxRetryTimes = config.getImpl().getRetryTimesMax();
+    final long waitMillis = config.getImpl().getRetryWaitMillis();
+
+    int retry = 0;
+    RaftClientReply reply = null;
+    while (retry < maxRetryTimes) {
+      retry++;
+
+      reply = caller.get();
+      if (!shouldRetry(reply)) {
+        return reply;
+      }
+      logger.debug("{} sending write request with retry = {} and reply = {}", this, retry, reply);
+
+      try {
+        Thread.sleep(waitMillis);
+      } catch (InterruptedException e) {
+        logger.warn("{} retry write sleep is interrupted: {}", this, e);
+        Thread.currentThread().interrupt();
+      }
+    }
+    if (reply == null) {
+      return RaftClientReply.newBuilder()
+          .setSuccess(false)
+          .setException(
+              new RaftException("null reply received in writeWithRetry for request " + caller))
+          .build();
+    }
+    return reply;
+  }
+
+  private RaftClientReply writeLocallyWithRetry(RaftClientRequest request) throws IOException {
+    return writeWithRetry(() -> server.submitClientRequest(request));
+  }
+
+  private RaftClientReply writeRemotelyWithRetry(RatisClient client, Message message)
+      throws IOException {
+    return writeWithRetry(() -> client.getRaftClient().io().send(message));
+  }
+
   /**
    * write will first send request to local server use method call if local server is not leader, it
-   * will use RaftClient to send RPC to read leader.
+   * will use RaftClient to send RPC to read leader
    */
   @Override
   public ConsensusWriteResponse write(
-      ConsensusGroupId consensusGroupId, IConsensusRequest request) {
+      ConsensusGroupId consensusGroupId, IConsensusRequest IConsensusRequest) {
     // pre-condition: group exists and myself server serves this group
     RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(consensusGroupId);
     RaftGroup raftGroup = getGroupInfo(raftGroupId);
@@ -215,7 +265,7 @@ class RatisConsensus implements IConsensus {
     }
 
     // serialize request into Message
-    Message message = new RequestMessage(request);
+    Message message = new RequestMessage(IConsensusRequest);
 
     // 1. first try the local server
     RaftClientRequest clientRequest =
@@ -279,9 +329,10 @@ class RatisConsensus implements IConsensus {
     return ConsensusWriteResponse.newBuilder().setStatus(writeResult).build();
   }
 
-  /** Read directly from LOCAL COPY notice: May read stale data (not linearizable). */
+  /** Read directly from LOCAL COPY notice: May read stale data (not linearizable) */
   @Override
-  public ConsensusReadResponse read(ConsensusGroupId consensusGroupId, IConsensusRequest request) {
+  public ConsensusReadResponse read(
+      ConsensusGroupId consensusGroupId, IConsensusRequest IConsensusRequest) {
     RaftGroupId groupId = Utils.fromConsensusGroupIdToRaftGroupId(consensusGroupId);
     RaftGroup group = getGroupInfo(groupId);
     if (group == null || !group.getPeers().contains(myself)) {
@@ -290,7 +341,7 @@ class RatisConsensus implements IConsensus {
 
     RaftClientReply reply;
     try {
-      RequestMessage message = new RequestMessage(request);
+      RequestMessage message = new RequestMessage(IConsensusRequest);
       RaftClientRequest clientRequest =
           buildRawRequest(groupId, message, RaftClientRequest.staleReadRequestType(-1));
       long readRatisStartTime = System.nanoTime();
@@ -326,6 +377,29 @@ class RatisConsensus implements IConsensus {
     RaftGroup group = buildRaftGroup(groupId, peers);
     // add RaftPeer myself to this RaftGroup
     return addNewGroupToServer(group, myself);
+  }
+
+  private ConsensusGenericResponse addNewGroupToServer(RaftGroup group, RaftPeer server) {
+    RaftClientReply reply;
+    RatisClient client = null;
+    try {
+      if (group.getPeers().isEmpty()) {
+        client = getRaftClient(RaftGroup.valueOf(group.getGroupId(), server));
+      } else {
+        client = getRaftClient(group);
+      }
+      reply = client.getRaftClient().getGroupManagementApi(server.getId()).add(group);
+      if (!reply.isSuccess()) {
+        return failed(new RatisRequestFailedException(reply.getException()));
+      }
+    } catch (Exception e) {
+      return failed(new RatisRequestFailedException(e));
+    } finally {
+      if (client != null) {
+        client.returnSelf();
+      }
+    }
+    return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
   }
 
   /**
@@ -521,6 +595,29 @@ class RatisConsensus implements IConsensus {
     return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
   }
 
+  private void forceStepDownLeader(RaftGroup group) throws ClientManagerException, IOException {
+    // when newLeaderPeerId == null, ratis forces current leader to step down and raise new
+    // election
+    transferLeader(group, null);
+  }
+
+  private RaftClientReply transferLeader(RaftGroup group, RaftPeer newLeader)
+      throws ClientManagerException, IOException {
+    RatisClient client = null;
+    try {
+      client = getRaftClient(group);
+      // TODO tuning for timeoutMs
+      return client
+          .getRaftClient()
+          .admin()
+          .transferLeadership(newLeader != null ? newLeader.getId() : null, 10000);
+    } finally {
+      if (client != null) {
+        client.returnSelf();
+      }
+    }
+  }
+
   @Override
   public boolean isLeader(ConsensusGroupId groupId) {
     RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
@@ -534,6 +631,33 @@ class RatisConsensus implements IConsensus {
       isLeader = false;
     }
     return isLeader;
+  }
+
+  private boolean waitUntilLeaderReady(RaftGroupId groupId) {
+    DivisionInfo divisionInfo;
+    try {
+      divisionInfo = server.getDivision(groupId).getInfo();
+    } catch (IOException e) {
+      // if the query fails, simply return not leader
+      logger.info("isLeaderReady checking failed with exception: ", e);
+      return false;
+    }
+    long startTime = System.currentTimeMillis();
+    try {
+      while (divisionInfo.isLeader() && !divisionInfo.isLeaderReady()) {
+        Thread.sleep(10);
+        long consumedTime = System.currentTimeMillis() - startTime;
+        if (consumedTime >= DEFAULT_WAIT_LEADER_READY_TIMEOUT) {
+          logger.warn("{}: leader is still not ready after {}ms", groupId, consumedTime);
+          return false;
+        }
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.warn("Unexpected interruption", e);
+      return false;
+    }
+    return divisionInfo.isLeader();
   }
 
   /**
@@ -594,125 +718,6 @@ class RatisConsensus implements IConsensus {
     }
 
     return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
-  }
-
-  private ConsensusGenericResponse addNewGroupToServer(RaftGroup group, RaftPeer server) {
-    RaftClientReply reply;
-    RatisClient client = null;
-    try {
-      if (group.getPeers().isEmpty()) {
-        client = getRaftClient(RaftGroup.valueOf(group.getGroupId(), server));
-      } else {
-        client = getRaftClient(group);
-      }
-      reply = client.getRaftClient().getGroupManagementApi(server.getId()).add(group);
-      if (!reply.isSuccess()) {
-        return failed(new RatisRequestFailedException(reply.getException()));
-      }
-    } catch (Exception e) {
-      return failed(new RatisRequestFailedException(e));
-    } finally {
-      if (client != null) {
-        client.returnSelf();
-      }
-    }
-    return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
-  }
-
-  private boolean shouldRetry(RaftClientReply reply) {
-    // currently, we only retry when ResourceUnavailableException is caught
-    return !reply.isSuccess() && (reply.getException() instanceof ResourceUnavailableException);
-  }
-
-  /**
-   * launch a consensus write with retry mechanism.
-   *
-   * @throws IOException
-   */
-  private RaftClientReply writeWithRetry(CheckedSupplier<RaftClientReply, IOException> caller)
-      throws IOException {
-
-    final int maxRetryTimes = config.getImpl().getRetryTimesMax();
-    final long waitMillis = config.getImpl().getRetryWaitMillis();
-
-    int retry = 0;
-    RaftClientReply reply = null;
-    while (retry < maxRetryTimes) {
-      retry++;
-
-      reply = caller.get();
-      if (!shouldRetry(reply)) {
-        return reply;
-      }
-      logger.debug("{} sending write request with retry = {} and reply = {}", this, retry, reply);
-
-      try {
-        Thread.sleep(waitMillis);
-      } catch (InterruptedException e) {
-        logger.warn("{} retry write sleep is interrupted: {}", this, e);
-        Thread.currentThread().interrupt();
-      }
-    }
-    return reply;
-  }
-
-  private RaftClientReply writeLocallyWithRetry(RaftClientRequest request) throws IOException {
-    return writeWithRetry(() -> server.submitClientRequest(request));
-  }
-
-  private RaftClientReply writeRemotelyWithRetry(RatisClient client, Message message)
-      throws IOException {
-    return writeWithRetry(() -> client.getRaftClient().io().send(message));
-  }
-
-  private void forceStepDownLeader(RaftGroup group) throws ClientManagerException, IOException {
-    // when newLeaderPeerId == null, ratis forces current leader to step down and raise new
-    // election
-    transferLeader(group, null);
-  }
-
-  private RaftClientReply transferLeader(RaftGroup group, RaftPeer newLeader)
-      throws ClientManagerException, IOException {
-    RatisClient client = null;
-    try {
-      client = getRaftClient(group);
-      // TODO tuning for timeoutMs
-      return client
-          .getRaftClient()
-          .admin()
-          .transferLeadership(newLeader != null ? newLeader.getId() : null, 10000);
-    } finally {
-      if (client != null) {
-        client.returnSelf();
-      }
-    }
-  }
-
-  private boolean waitUntilLeaderReady(RaftGroupId groupId) {
-    DivisionInfo divisionInfo;
-    try {
-      divisionInfo = server.getDivision(groupId).getInfo();
-    } catch (IOException e) {
-      // if the query fails, simply return not leader
-      logger.info("isLeaderReady checking failed with exception: ", e);
-      return false;
-    }
-    long startTime = System.currentTimeMillis();
-    try {
-      while (divisionInfo.isLeader() && !divisionInfo.isLeaderReady()) {
-        Thread.sleep(10);
-        long consumedTime = System.currentTimeMillis() - startTime;
-        if (consumedTime >= DEFAULT_WAIT_LEADER_READY_TIMEOUT) {
-          logger.warn("{}: leader is still not ready after {}ms", groupId, consumedTime);
-          return false;
-        }
-      }
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      logger.warn("Unexpected interruption", e);
-      return false;
-    }
-    return divisionInfo.isLeader();
   }
 
   private void triggerSnapshotByCustomize() {

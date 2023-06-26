@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.version;
 
 /** SysTimeVersionController uses system timestamp as the version number. */
+@SuppressWarnings("squid:S6548")
 public class SysTimeVersionController implements VersionController {
 
   public static final SysTimeVersionController INSTANCE = new SysTimeVersionController();
