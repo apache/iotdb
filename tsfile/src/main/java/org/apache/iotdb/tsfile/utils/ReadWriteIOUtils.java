@@ -89,6 +89,17 @@ public class ReadWriteIOUtils {
     return flag == 1;
   }
 
+  /** read a Boolean from byteBuffer. */
+  public static Boolean readBoolObject(InputStream inputStream) throws IOException {
+    int flag = inputStream.read();
+    if (flag == 1) {
+      return true;
+    } else if (flag == 0) {
+      return false;
+    }
+    return null;
+  }
+
   /** read a bool from byteBuffer. */
   public static boolean readBool(ByteBuffer buffer) {
     byte a = buffer.get();
