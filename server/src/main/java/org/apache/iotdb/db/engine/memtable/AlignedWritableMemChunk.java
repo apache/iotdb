@@ -1,3 +1,5 @@
+package org.apache.iotdb.db.engine.memtable;
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -16,7 +18,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
@@ -158,6 +159,12 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
+  public boolean writeWithFlushCheck(
+      long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start, int end) {
+    throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
+  }
+
+  @Override
   public boolean writeWithFlushCheck(long insertTime, Object objectValue) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
@@ -168,12 +175,6 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     Object[] reorderedValue =
         checkAndReorderColumnValuesInInsertPlan(schemaList, objectValue, null).left;
     return putAlignedValueWithFlushCheck(insertTime, reorderedValue);
-  }
-
-  @Override
-  public boolean writeWithFlushCheck(
-      long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start, int end) {
-    throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
@@ -193,7 +194,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   /**
-   * Check schema of columns and return array that mapping existed schema to index of data column
+   * Check schema of columns and return array that mapping existed schema to index of data column.
    *
    * @param schemaListInInsertPlan Contains all existed schema in InsertPlan. If some timeseries
    *     have been deleted, there will be null in its slot.
@@ -231,7 +232,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public TVList getTVList() {
+  public TVList getTvList() {
     return list;
   }
 
@@ -256,7 +257,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public synchronized TVList getSortedTvListForQuery() {
-    sortTVList();
+    sortTvList();
     // increase reference count
     list.increaseReferenceCount();
     return list;
@@ -264,7 +265,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public synchronized TVList getSortedTvListForQuery(List<IMeasurementSchema> schemaList) {
-    sortTVList();
+    sortTvList();
     // increase reference count
     list.increaseReferenceCount();
     List<Integer> columnIndexList = new ArrayList<>();
@@ -277,7 +278,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     return list.getTvListByColumnIndex(columnIndexList, dataTypeList);
   }
 
-  private void sortTVList() {
+  private void sortTvList() {
     // check reference count
     if ((list.getReferenceCount() > 0 && !list.isSorted())) {
       list = list.clone();
@@ -290,7 +291,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public synchronized void sortTvListForFlush() {
-    sortTVList();
+    sortTvList();
   }
 
   @Override
@@ -327,7 +328,6 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     List<Integer> pageRange = new ArrayList<>();
     int range = 0;
     for (int sortedRowIndex = 0; sortedRowIndex < list.rowCount(); sortedRowIndex++) {
-      long time = list.getTime(sortedRowIndex);
       if (range == 0) {
         pageRange.add(sortedRowIndex);
       }
@@ -336,7 +336,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
         pageRange.add(sortedRowIndex);
         range = 0;
       }
-
+      long time = list.getTime(sortedRowIndex);
       if (sortedRowIndex != list.rowCount() - 1 && time == list.getTime(sortedRowIndex + 1)) {
         if (Objects.isNull(timeDuplicateInfo)) {
           timeDuplicateInfo = new boolean[list.rowCount()];

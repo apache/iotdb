@@ -1,3 +1,5 @@
+package org.apache.iotdb.db.engine.memtable;
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -16,8 +18,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 

@@ -165,7 +165,7 @@ public class WALNode implements IWALNode {
     // remove snapshot info
     memTableSnapshotCount.remove(memTable.getMemTableId());
     // update cost info
-    long cost = config.isEnableMemControl() ? memTable.getTVListsRamCost() : 1;
+    long cost = config.isEnableMemControl() ? memTable.getTvListsRamCost() : 1;
     long currentWALFileVersion = buffer.getCurrentWALFileVersion();
     walFileVersionId2MemTablesTotalCost.compute(
         currentWALFileVersion, (k, v) -> v == null ? cost : v + cost);
@@ -397,7 +397,7 @@ public class WALNode implements IWALNode {
       // snapshot or flush memTable, flush memTable when it belongs to an old time partition, or
       // it's snapshot count or size reach threshold.
       int snapshotCount = memTableSnapshotCount.getOrDefault(oldestMemTable.getMemTableId(), 0);
-      long oldestMemTableTVListsRamCost = oldestMemTable.getTVListsRamCost();
+      long oldestMemTableTVListsRamCost = oldestMemTable.getTvListsRamCost();
       if (TsFileUtils.getTimePartition(new File(oldestMemTableInfo.getTsFilePath()))
               < dataRegion.getLatestTimePartition()
           || snapshotCount >= config.getMaxWalMemTableSnapshotNum()
@@ -425,7 +425,7 @@ public class WALNode implements IWALNode {
             tsFile,
             effectiveInfoRatio,
             config.getWalMinEffectiveInfoRatio(),
-            memTable.getTVListsRamCost());
+            memTable.getTvListsRamCost());
       }
 
       // it's fine to wait until memTable has been flushed, because deleting files is not urgent.
@@ -491,7 +491,7 @@ public class WALNode implements IWALNode {
               memTable.getMemTableId(),
               effectiveInfoRatio,
               config.getWalMinEffectiveInfoRatio(),
-              memTable.getTVListsRamCost());
+              memTable.getTvListsRamCost());
         }
       } finally {
         dataRegion.writeUnlock();

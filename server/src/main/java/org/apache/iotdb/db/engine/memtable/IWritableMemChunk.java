@@ -1,3 +1,4 @@
+package org.apache.iotdb.db.engine.memtable;
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -16,7 +17,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.wal.buffer.WALEntryValue;
@@ -59,17 +59,17 @@ public interface IWritableMemChunk extends WALEntryValue {
   boolean putAlignedValuesWithFlushCheck(
       long[] t, Object[] v, BitMap[] bitMaps, int start, int end);
 
-  boolean writeWithFlushCheck(long insertTime, Object objectValue);
-
-  boolean writeAlignedValueWithFlushCheck(
-      long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList);
-
   /**
-   * write data in the range [start, end). Null value in the valueList will be replaced by the
+   * Write data in the range [start, end). Null value in the valueList will be replaced by the
    * subsequent non-null value, e.g., {1, null, 3, null, 5} will be {1, 3, 5, null, 5}
    */
   boolean writeWithFlushCheck(
       long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start, int end);
+
+  boolean writeWithFlushCheck(long insertTime, Object objectValue);
+
+  boolean writeAlignedValueWithFlushCheck(
+      long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList);
 
   boolean writeAlignedValuesWithFlushCheck(
       long[] times,
@@ -84,7 +84,7 @@ public interface IWritableMemChunk extends WALEntryValue {
   IMeasurementSchema getSchema();
 
   /**
-   * served for query requests.
+   * Served for query requests.
    *
    * <p>if tv list has been sorted, just return reference of it
    *
@@ -102,7 +102,7 @@ public interface IWritableMemChunk extends WALEntryValue {
   TVList getSortedTvListForQuery();
 
   /**
-   * served for vector query requests.
+   * Served for vector query requests.
    *
    * <p>the mechanism is just like copy on write
    *
@@ -113,14 +113,14 @@ public interface IWritableMemChunk extends WALEntryValue {
   TVList getSortedTvListForQuery(List<IMeasurementSchema> schemaList);
 
   /**
-   * served for flush requests. The logic is just same as getSortedTVListForQuery, but without add
+   * Served for flush requests. The logic is just same as getSortedTVListForQuery, but without add
    * reference count
    *
    * <p>This interface should be synchronized for concurrent with getSortedTvListForQuery
    */
   void sortTvListForFlush();
 
-  default TVList getTVList() {
+  default TVList getTvList() {
     return null;
   }
 
@@ -128,7 +128,13 @@ public interface IWritableMemChunk extends WALEntryValue {
     return Long.MAX_VALUE;
   }
 
-  /** @return how many points are deleted */
+  /**
+   * Delete points by lower bound and upper bound.
+   *
+   * @param lowerBound deletion lower bound
+   * @param upperBound deletion upper bound
+   * @return how many points are deleted
+   */
   int delete(long lowerBound, long upperBound);
 
   IChunkWriter createIChunkWriter();

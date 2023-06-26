@@ -1,3 +1,5 @@
+package org.apache.iotdb.db.engine.memtable;
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -16,8 +18,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -132,8 +132,8 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public long getCurrentTVListSize(String measurement) {
-    return memChunk.getTVList().rowCount();
+  public long getCurrentTvListSize(String measurement) {
+    return memChunk.getTvList().rowCount();
   }
 
   @Override
