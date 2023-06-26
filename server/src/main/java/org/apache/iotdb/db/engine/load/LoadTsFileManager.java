@@ -29,7 +29,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.LoadFileException;
-import org.apache.iotdb.db.exception.LoadFileRuntimeException;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.mpp.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
@@ -68,7 +67,8 @@ public class LoadTsFileManager {
   private final ScheduledExecutorService cleanupExecutors;
   private final Map<String, ScheduledFuture<?>> uuid2Future;
 
-  private static final String ERROR_LOG = "%s TsFileWriterManager has been closed.";
+  private static final String EXCEPTION_LOG = "%s TsFileWriterManager has been closed.";
+  private static final String ERROR_LOG = "delete {} fail.";
 
   public LoadTsFileManager() {
     this.loadDir = SystemFileFactory.INSTANCE.getFile(config.getLoadTsFileDir());
@@ -151,7 +151,7 @@ public class LoadTsFileManager {
       Files.delete(loadDir.toPath());
       logger.info("Delete load dir {}.", loadDir.getPath());
     } catch (IOException e) {
-      logger.error("delete {} fail.", loadDir.getPath(), e);
+      logger.error(ERROR_LOG, loadDir.getPath(), e);
     }
   }
 
@@ -164,7 +164,7 @@ public class LoadTsFileManager {
       Files.delete(loadDir.toPath());
       logger.info("Delete load dir {}.", loadDir.getPath());
     } catch (IOException e) {
-      logger.error("delete {} fail.", loadDir.getPath(), e);
+      logger.error(ERROR_LOG, loadDir.getPath(), e);
     }
   }
 
@@ -192,9 +192,10 @@ public class LoadTsFileManager {
       }
     }
 
+    @SuppressWarnings("squid:S3824")
     private void write(DataPartitionInfo partitionInfo, ChunkData chunkData) throws IOException {
       if (isClosed) {
-        throw new IOException(String.format(ERROR_LOG, taskDir));
+        throw new IOException(String.format(EXCEPTION_LOG, taskDir));
       }
       if (!dataPartition2Writer.containsKey(partitionInfo)) {
         File newTsFile =
@@ -209,24 +210,18 @@ public class LoadTsFileManager {
       }
       TsFileIOWriter writer = dataPartition2Writer.get(partitionInfo);
       if (!chunkData.getDevice().equals(dataPartition2LastDevice.getOrDefault(partitionInfo, ""))) {
-        dataPartition2LastDevice.computeIfAbsent(
-            partitionInfo,
-            key -> {
-              try {
-                writer.startChunkGroup(chunkData.getDevice());
-              } catch (IOException e) {
-                throw new LoadFileRuntimeException("start chunk group error.", e.getCause());
-              }
-              return chunkData.getDevice();
-            });
-        writer.endChunkGroup();
+        if (dataPartition2LastDevice.containsKey(partitionInfo)) {
+          writer.endChunkGroup();
+        }
+        writer.startChunkGroup(chunkData.getDevice());
+        dataPartition2LastDevice.put(partitionInfo, chunkData.getDevice());
       }
       chunkData.writeToFileWriter(writer);
     }
 
     private void writeDeletion(TsFileData deletionData) throws IOException {
       if (isClosed) {
-        throw new IOException(String.format(ERROR_LOG, taskDir));
+        throw new IOException(String.format(EXCEPTION_LOG, taskDir));
       }
       for (Map.Entry<DataPartitionInfo, TsFileIOWriter> entry : dataPartition2Writer.entrySet()) {
         deletionData.writeToFileWriter(entry.getValue());
@@ -235,7 +230,7 @@ public class LoadTsFileManager {
 
     private void loadAll() throws IOException, LoadFileException {
       if (isClosed) {
-        throw new IOException(String.format(ERROR_LOG, taskDir));
+        throw new IOException(String.format(EXCEPTION_LOG, taskDir));
       }
       for (Map.Entry<DataPartitionInfo, TsFileIOWriter> entry : dataPartition2Writer.entrySet()) {
         TsFileIOWriter writer = entry.getValue();
@@ -276,7 +271,7 @@ public class LoadTsFileManager {
       try {
         Files.delete(taskDir.toPath());
       } catch (IOException e) {
-        logger.error("delete {} fail.", taskDir.getPath(), e);
+        logger.error(ERROR_LOG, taskDir.getPath(), e);
       }
       dataPartition2Writer = null;
       dataPartition2LastDevice = null;
