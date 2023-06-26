@@ -16,12 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.wal.utils.listener;
 
 /** This class helps judge whether some TsFile is recovered. */
 public class WALRecoverListener extends AbstractResultListener {
 
-  /** path of recovering TsFile */
+  // path of recovering TsFile
   private final String filePath;
 
   public WALRecoverListener(String filePath) {

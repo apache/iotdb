@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.wal.recover;
 
 import org.apache.iotdb.db.wal.checkpoint.Checkpoint;
@@ -32,7 +33,7 @@ import java.util.Map;
 public class CheckpointRecoverUtils {
   private CheckpointRecoverUtils() {}
 
-  /** Recover memTable information from checkpoint folder */
+  /** Recover memTable information from checkpoint folder. */
   public static CheckpointInfo recoverMemTableInfo(File logDirectory) {
     // find all .checkpoint file
     File[] checkpointFiles = CheckpointFileUtils.listAllCheckpointFiles(logDirectory);
@@ -70,6 +71,8 @@ public class CheckpointRecoverUtils {
           for (MemTableInfo memTableInfo : checkpoint.getMemTableInfos()) {
             memTableId2Info.remove(memTableInfo.getMemTableId());
           }
+          break;
+        default:
           break;
       }
     }

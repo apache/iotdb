@@ -300,12 +300,6 @@ public interface ISchemaRegion {
   ISchemaReader<IDeviceSchemaInfo> getDeviceReader(IShowDevicesPlan showDevicesPlan)
       throws MetadataException;
 
-  /**
-   * The iterated result shall be consumed before calling reader.hasNext() or reader.next(). Its
-   * implementation is based on the reader's process context.
-   *
-   * @throws MetadataException get timeseries reader failure
-   */
   ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(IShowTimeSeriesPlan showTimeSeriesPlan)
       throws MetadataException;
 

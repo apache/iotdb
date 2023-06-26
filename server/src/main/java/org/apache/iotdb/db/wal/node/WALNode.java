@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.wal.node;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -49,6 +50,7 @@ import org.apache.iotdb.db.wal.exception.MemTablePinException;
 import org.apache.iotdb.db.wal.io.WALByteBufReader;
 import org.apache.iotdb.db.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.wal.utils.WALFileUtils;
+import org.apache.iotdb.db.wal.utils.listener.AbstractResultListener.Status;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.utils.TsFileUtils;
@@ -81,35 +83,29 @@ import java.util.regex.Pattern;
 public class WALNode implements IWALNode {
   private static final Logger logger = LoggerFactory.getLogger(WALNode.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  /** no iot consensus, all insert nodes can be safely deleted */
+  // no iot consensus, all insert nodes can be safely deleted
   public static final long DEFAULT_SAFELY_DELETED_SEARCH_INDEX = Long.MAX_VALUE;
-
-  /** timeout threshold when waiting for next wal entry */
+  // timeout threshold when waiting for next wal entry
   private static final long WAIT_FOR_NEXT_WAL_ENTRY_TIMEOUT_IN_SEC = 30;
-
   private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
 
-  /** unique identifier of this WALNode */
+  // unique identifier of this WALNode
   private final String identifier;
-  /** directory to store this node's files */
+  // directory to store this node's files
   private final File logDirectory;
-  /** wal buffer */
+  // wal buffer
   private final WALBuffer buffer;
-  /** manage checkpoints */
+  // manage checkpoints
   private final CheckpointManager checkpointManager;
-  /**
-   * memTable id -> memTable snapshot count, used to avoid write amplification caused by frequent
-   * snapshot
-   */
+  // memTable id -> memTable snapshot count
+  // used to avoid write amplification caused by frequent snapshot
   private final Map<Long, Integer> memTableSnapshotCount = new ConcurrentHashMap<>();
-  /**
-   * total cost of flushedMemTables. when memControl enabled, cost is memTable ram cost, otherwise
-   * cost is memTable count
-   */
+  // total cost of flushedMemTables
+  // when memControl enabled, cost is memTable ram cost, otherwise cost is memTable count
   private final AtomicLong totalCostOfFlushedMemTables = new AtomicLong();
-  /** version id -> cost sum of memTables flushed at this file version */
+  // version id -> cost sum of memTables flushed at this file version
   private final Map<Long, Long> walFileVersionId2MemTablesTotalCost = new ConcurrentHashMap<>();
-  /** insert nodes whose search index are before this value can be deleted safely */
+  // insert nodes whose search index are before this value can be deleted safely
   private volatile long safelyDeletedSearchIndex = DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
 
   public WALNode(String identifier, String logDirectory) throws FileNotFoundException {
@@ -188,19 +184,28 @@ public class WALNode implements IWALNode {
   }
 
   // region methods for pipe
-  /** Pin the wal files of the given memory table */
+  /**
+   * Pin the wal files of the given memory table. Notice: cannot pin one memTable too long,
+   * otherwise the wal disk usage may too large.
+   *
+   * @throws MemTablePinException If the memTable has been flushed
+   */
   public void pinMemTable(long memTableId) throws MemTablePinException {
     checkpointManager.pinMemTable(memTableId);
   }
 
-  /** Unpin the wal files of the given memory table */
+  /**
+   * Unpin the wal files of the given memory table.
+   *
+   * @throws MemTablePinException If there aren't corresponding pin operations
+   */
   public void unpinMemTable(long memTableId) throws MemTablePinException {
     checkpointManager.unpinMemTable(memTableId);
   }
   // endregion
 
   // region Task to delete outdated .wal files
-  /** Delete outdated .wal files */
+  /** Delete outdated .wal files. */
   public void deleteOutdatedFiles() {
     try {
       new DeleteOutdatedFileTask().run();
@@ -211,11 +216,11 @@ public class WALNode implements IWALNode {
 
   private class DeleteOutdatedFileTask implements Runnable {
     private static final int MAX_RECURSION_TIME = 5;
-    /** .wal files whose version ids are less than first valid version id should be deleted */
+    // .wal files whose version ids are less than first valid version id should be deleted
     private long firstValidVersionId;
-    /** the effective information ratio */
+    // the effective information ratio
     private double effectiveInfoRatio;
-    /** recursion time of calling deletion */
+    // recursion time of calling deletion
     private int recursionTime = 0;
 
     @Override
@@ -280,7 +285,7 @@ public class WALNode implements IWALNode {
       }
     }
 
-    /** Return true iff cannot delete all outdated files because of IoTConsensus */
+    /** Return true iff cannot delete all outdated files because of IoTConsensus. */
     private boolean deleteOutdatedFiles() {
       // find all files to delete
       // delete files whose version < firstValidVersionId
@@ -348,14 +353,14 @@ public class WALNode implements IWALNode {
       return toDelete;
     }
 
-    /** Return true iff effective information ratio is too small or disk usage is too large */
+    /** Return true iff effective information ratio is too small or disk usage is too large. */
     private boolean shouldSnapshotOrFlush() {
       return effectiveInfoRatio < config.getWalMinEffectiveInfoRatio()
           || WALManager.getInstance().shouldThrottle();
     }
 
     /**
-     * Snapshot or flush one memTable,
+     * Snapshot or flush one memTable.
      *
      * @return true if snapshot or flush is executed successfully
      */
@@ -442,10 +447,7 @@ public class WALNode implements IWALNode {
       }
     }
 
-    /**
-     * synchronize memTable to make sure snapshot is made before memTable flush operation, {@link
-     * org.apache.iotdb.db.engine.storagegroup.TsFileProcessor#flushOneMemTable}
-     */
+    // synchronize memTable to make sure snapshot is made before memTable flush operation
     private void snapshotMemTable(DataRegion dataRegion, File tsFile, MemTableInfo memTableInfo) {
       IMemTable memTable = memTableInfo.getMemTable();
 
@@ -465,7 +467,7 @@ public class WALNode implements IWALNode {
           WALEntry rollWALFileSignal =
               new WALSignalEntry(WALEntryType.ROLL_WAL_LOG_WRITER_SIGNAL, true);
           WALFlushListener fileRolledListener = log(rollWALFileSignal);
-          if (fileRolledListener.waitForResult() == WALFlushListener.Status.FAILURE) {
+          if (fileRolledListener.waitForResult() == Status.FAILURE) {
             logger.error("Fail to roll wal log writer.", fileRolledListener.getCause());
             return;
           }
@@ -480,7 +482,7 @@ public class WALNode implements IWALNode {
 
           // wait until getting the result
           // it's low-risk to block writes awhile because this memTable accumulates slowly
-          if (flushListener.waitForResult() == WALFlushListener.Status.FAILURE) {
+          if (flushListener.waitForResult() == Status.FAILURE) {
             logger.error("Fail to snapshot memTable of {}", tsFile, flushListener.getCause());
           }
           logger.info(

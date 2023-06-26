@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.wal.utils;
 
 import java.io.File;
@@ -61,17 +62,17 @@ public class WALFileUtils {
           + "%d"
           + WAL_FILE_SUFFIX;
 
-  /** Return true when this file is .wal file */
+  /** Return true when this file is .wal file. */
   public static boolean walFilenameFilter(File dir, String name) {
     return WAL_FILE_NAME_PATTERN.matcher(name).find();
   }
 
-  /** List all .wal files in the directory */
+  /** List all .wal files in the directory. */
   public static File[] listAllWALFiles(File dir) {
     return dir.listFiles(WALFileUtils::walFilenameFilter);
   }
 
-  /** Get the .wal file starts with the specified version id in the directory */
+  /** Get the .wal file starts with the specified version id in the directory. */
   public static File getWALFile(File dir, long versionId) {
     String filePrefix = WAL_FILE_PREFIX + versionId + FILE_NAME_SEPARATOR;
     File[] files =
@@ -82,7 +83,7 @@ public class WALFileUtils {
     return files[0];
   }
 
-  /** Parse version id from filename */
+  /** Parse version id from filename. */
   public static long parseVersionId(String filename) {
     Matcher matcher = WAL_FILE_NAME_PATTERN.matcher(filename);
     if (matcher.find()) {
@@ -91,7 +92,7 @@ public class WALFileUtils {
     throw new RuntimeException("Invalid wal file name: " + filename);
   }
 
-  /** Parse start search index from filename */
+  /** Parse start search index from filename. */
   public static long parseStartSearchIndex(String filename) {
     Matcher matcher = WAL_FILE_NAME_PATTERN.matcher(filename);
     if (matcher.find()) {
@@ -100,7 +101,7 @@ public class WALFileUtils {
     throw new RuntimeException("Invalid wal file name: " + filename);
   }
 
-  /** Parse status code from filename */
+  /** Parse status code from filename. */
   public static WALFileStatus parseStatusCode(String filename) {
     Matcher matcher = WAL_FILE_NAME_PATTERN.matcher(filename);
     if (matcher.find()) {
@@ -109,7 +110,7 @@ public class WALFileUtils {
     throw new RuntimeException("Invalid wal file name: " + filename);
   }
 
-  /** Sort wal files by version id with ascending order */
+  /** Sort wal files by version id with ascending order. */
   public static void ascSortByVersionId(File[] walFiles) {
     Arrays.sort(walFiles, Comparator.comparingLong(file -> parseVersionId(file.getName())));
   }
@@ -159,7 +160,7 @@ public class WALFileUtils {
     return low - 1;
   }
 
-  /** Get .wal filename */
+  /** Get .wal filename. */
   public static String getLogFileName(long versionId, long startSearchIndex, WALFileStatus status) {
     return String.format(WAL_FILE_NAME_FORMAT, versionId, startSearchIndex, status.getCode());
   }

@@ -24,9 +24,11 @@ import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.execution.operator.schema.source.ISchemaSource;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import org.mockito.Mockito;
 
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 public class SchemaOperatorTestUtil {
   public static final String EXCEPTION_MESSAGE = "ExceptionMessage";
@@ -50,7 +52,9 @@ public class SchemaOperatorTestUtil {
               }
 
               @Override
-              public void close() {}
+              public ListenableFuture<?> isBlocked() {
+                return NOT_BLOCKED;
+              }
 
               @Override
               public boolean hasNext() {
@@ -58,7 +62,13 @@ public class SchemaOperatorTestUtil {
               }
 
               @Override
+              public void close() {}
+
+              @Override
               public T next() {
+                if (!hasNext()) {
+                  throw new NoSuchElementException();
+                }
                 return iterator.next();
               }
             });

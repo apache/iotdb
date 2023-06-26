@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.wal.node;
 
 import org.apache.iotdb.consensus.common.DataSet;
@@ -30,16 +31,16 @@ import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 /** This interface provides uniform interface for writing wal and making checkpoints. */
 public interface IWALNode extends FlushListener, AutoCloseable, ConsensusReqReader, DataSet {
 
-  /** Log InsertRowNode */
+  /** Log InsertRowNode. */
   WALFlushListener log(long memTableId, InsertRowNode insertRowNode);
 
-  /** Log InsertTabletNode */
+  /** Log InsertTabletNode. */
   WALFlushListener log(long memTableId, InsertTabletNode insertTabletNode, int start, int end);
 
-  /** Log DeleteDataNode */
+  /** Log DeleteDataNode. */
   WALFlushListener log(long memTableId, DeleteDataNode deleteDataNode);
 
-  /** Callback when memTable created */
+  /** Callback when memTable created. */
   void onMemTableCreated(IMemTable memTable, String targetTsFile);
 
   @Override

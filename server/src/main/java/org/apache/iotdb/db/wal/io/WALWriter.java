@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.wal.io;
 
 import org.apache.iotdb.db.wal.buffer.WALEntry;
@@ -34,15 +35,18 @@ public class WALWriter extends LogWriter {
   public static final int MAGIC_STRING_BYTES = MAGIC_STRING.getBytes().length;
 
   private WALFileStatus walFileStatus = WALFileStatus.CONTAINS_NONE_SEARCH_INDEX;
-
-  /** wal files' metadata */
+  // wal files' metadata
   protected final WALMetaData metaData = new WALMetaData();
 
   public WALWriter(File logFile) throws FileNotFoundException {
     super(logFile);
   }
 
-  /** Writes buffer and update its' metadata */
+  /**
+   * Writes buffer and update its' metadata.
+   *
+   * @throws IOException when failing to write
+   */
   public void write(ByteBuffer buffer, WALMetaData metaData) throws IOException {
     // update metadata
     updateMetaData(metaData);
