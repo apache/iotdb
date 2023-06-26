@@ -457,8 +457,14 @@ public class DataNode implements DataNodeMBean {
   }
 
   private void prepareResources() throws StartupException {
+    long startTime = System.currentTimeMillis();
     prepareUDFResources();
+    logger.info("Prepare UDF resources cost {} ms.", System.currentTimeMillis() - startTime);
+
+    startTime = System.currentTimeMillis();
     prepareTriggerResources();
+    logger.info("Prepare trigger resources cost {} ms.", System.currentTimeMillis() - startTime);
+
     preparePipeResources();
   }
 
@@ -836,7 +842,10 @@ public class DataNode implements DataNodeMBean {
   }
 
   private void preparePipeResources() throws StartupException {
+    logger.info("!!! start to prepare pipe resources ...");
+    final long currentTime = System.currentTimeMillis();
     PipeAgent.runtime().preparePipeResources(resourcesInformationHolder);
+    logger.info("!!! prepare pipe resources cost {}ms", System.currentTimeMillis() - currentTime);
   }
 
   private void getPipeInformationList(List<ByteBuffer> allPipeInformation) {

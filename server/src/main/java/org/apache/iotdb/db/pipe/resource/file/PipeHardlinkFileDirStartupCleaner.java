@@ -40,6 +40,8 @@ public class PipeHardlinkFileDirStartupCleaner {
    */
   public static void clean() {
     for (String dataDir : IoTDBDescriptor.getInstance().getConfig().getDataDirs()) {
+      long startTs = System.currentTimeMillis();
+      LOGGER.info("PipeHardlinkFileDirStartupCleaner.clean started, dataDir: {}", dataDir);
       for (File file :
           FileUtils.listFilesAndDirs(
               new File(dataDir), DirectoryFileFilter.INSTANCE, DirectoryFileFilter.INSTANCE)) {
@@ -51,6 +53,9 @@ public class PipeHardlinkFileDirStartupCleaner {
               FileUtils.deleteQuietly(file));
         }
       }
+      LOGGER.info(
+          "PipeHardlinkFileDirStartupCleaner finished, cost: {}ms",
+          System.currentTimeMillis() - startTs);
     }
   }
 

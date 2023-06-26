@@ -51,17 +51,38 @@ public class PipeRuntimeAgent implements IService {
 
   public synchronized void preparePipeResources(
       ResourcesInformationHolder resourcesInformationHolder) throws StartupException {
+    long startTs = System.currentTimeMillis();
+    LOGGER.info("PipeHardlinkFileDirStartupCleaner.clean started");
     PipeHardlinkFileDirStartupCleaner.clean();
+    LOGGER.info(
+        "PipeHardlinkFileDirStartupCleaner finished, cost: {}ms",
+        System.currentTimeMillis() - startTs);
+
+    startTs = System.currentTimeMillis();
+    LOGGER.info("PipeAgentLauncher.launchPipePluginAgent started");
     PipeAgentLauncher.launchPipePluginAgent(resourcesInformationHolder);
+    LOGGER.info(
+        "PipeAgentLauncher.launchPipePluginAgent finished, cost: {}ms",
+        System.currentTimeMillis() - startTs);
+
+    startTs = System.currentTimeMillis();
+    LOGGER.info("PipeAgentLauncher.launchPipeTaskAgent started");
     simpleConsensusProgressIndexAssigner.start();
+    LOGGER.info(
+        "PipeAgentLauncher.launchPipeTaskAgent finished, cost: {}ms",
+        System.currentTimeMillis() - startTs);
   }
 
   @Override
   public synchronized void start() throws StartupException {
+    long startTs = System.currentTimeMillis();
+
     PipeConfig.getInstance().printAllConfigs();
     PipeAgentLauncher.launchPipeTaskAgent();
 
     isShutdown.set(false);
+
+    LOGGER.info("PipeRuntimeAgent started in {}ms", System.currentTimeMillis() - startTs);
   }
 
   @Override
@@ -92,10 +113,15 @@ public class PipeRuntimeAgent implements IService {
   ////////////////////// Recover ProgressIndex Assigner //////////////////////
 
   public void assignRecoverProgressIndexForTsFileRecovery(TsFileResource tsFileResource) {
+    long startTs = System.currentTimeMillis();
     tsFileResource.updateProgressIndex(
         new RecoverProgressIndex(
             DATA_NODE_ID,
             simpleConsensusProgressIndexAssigner.getSimpleProgressIndexForTsFileRecovery()));
+    LOGGER.info(
+        "Assign RecoverProgressIndex for TsFileRecovery, tsFileResource: {}, cost: {}ms",
+        tsFileResource,
+        System.currentTimeMillis() - startTs);
   }
 
   //////////////////////////// Runtime Exception Handlers ////////////////////////////
