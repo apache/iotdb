@@ -90,7 +90,7 @@ public abstract class TsFileOutputFormat<T> extends FileOutputFormat<T> {
         out = new LocalTsFileOutput(fos);
       }
     } catch (URISyntaxException e) {
-      throw new RuntimeException(e);
+      throw new IOException("Failed to create HDFSOutput due to invalid URI: " + actualFilePath.getPath(), e);
     }
     writer = new TsFileWriter(out, schema);
   }
