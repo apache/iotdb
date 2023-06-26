@@ -1,3 +1,5 @@
+package org.apache.iotdb.db.engine.memtable;
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -16,8 +18,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.wal.buffer.WALEntryValue;
@@ -51,7 +51,7 @@ public interface IWritableMemChunkGroup extends WALEntryValue {
   int delete(
       PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp);
 
-  long getCurrentTVListSize(String measurement);
+  long getCurrentTvListSize(String measurement);
 
   long getMaxTime();
 }

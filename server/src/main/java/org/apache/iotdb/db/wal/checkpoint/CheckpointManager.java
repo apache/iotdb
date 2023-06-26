@@ -340,7 +340,7 @@ public class CheckpointManager implements AutoCloseable {
         continue;
       }
       if (config.isEnableMemControl()) {
-        totalCost += memTableInfo.getMemTable().getTVListsRamCost();
+        totalCost += memTableInfo.getMemTable().getTvListsRamCost();
       } else {
         totalCost++;
       }

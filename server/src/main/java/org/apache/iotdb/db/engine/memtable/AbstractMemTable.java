@@ -1,3 +1,5 @@
+package org.apache.iotdb.db.engine.memtable;
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -16,7 +18,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -56,18 +57,18 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 public abstract class AbstractMemTable implements IMemTable {
-  /** each memTable node has a unique int value identifier, init when recovering wal */
+  /** each memTable node has a unique int value identifier, init when recovering wal. */
   public static final AtomicLong memTableIdCounter = new AtomicLong(-1);
 
   private static final int FIXED_SERIALIZED_SIZE = Byte.BYTES + 2 * Integer.BYTES + 6 * Long.BYTES;
 
   private static final DeviceIDFactory deviceIDFactory = DeviceIDFactory.getInstance();
 
-  /** DeviceId -> chunkGroup(MeasurementId -> chunk) */
+  /** DeviceId -> chunkGroup(MeasurementId -> chunk). */
   private final Map<IDeviceID, IWritableMemChunkGroup> memTableMap;
 
   /**
-   * The initial value is true because we want calculate the text data size when recover memTable!!
+   * The initial value is true because we want calculate the text data size when recover memTable.
    */
   protected boolean disableMemControl = true;
 
@@ -75,11 +76,11 @@ public abstract class AbstractMemTable implements IMemTable {
   private volatile FlushStatus flushStatus = FlushStatus.WORKING;
   private final int avgSeriesPointNumThreshold =
       IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
-  /** memory size of data points, including TEXT values */
+  /** memory size of data points, including TEXT values. */
   private long memSize = 0;
   /**
    * memory usage of all TVLists memory usage regardless of whether these TVLists are full,
-   * including TEXT values
+   * including TEXT values.
    */
   private long tvListRamCost = 0;
 
@@ -113,7 +114,7 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   /**
-   * create this MemChunk if it's not exist
+   * create this MemChunk if it's not exist.
    *
    * @param deviceId device id
    * @param schemaList measurement schemaList
@@ -281,32 +282,6 @@ public abstract class AbstractMemTable implements IMemTable {
     }
   }
 
-  @Override
-  public void write(
-      IDeviceID deviceId,
-      List<IMeasurementSchema> schemaList,
-      long insertTime,
-      Object[] objectValue) {
-    IWritableMemChunkGroup memChunkGroup =
-        createMemChunkGroupIfNotExistAndGet(deviceId, schemaList);
-    if (memChunkGroup.writeWithFlushCheck(insertTime, objectValue, schemaList)) {
-      shouldFlush = true;
-    }
-  }
-
-  @Override
-  public void writeAlignedRow(
-      IDeviceID deviceId,
-      List<IMeasurementSchema> schemaList,
-      long insertTime,
-      Object[] objectValue) {
-    IWritableMemChunkGroup memChunkGroup =
-        createAlignedMemChunkGroupIfNotExistAndGet(deviceId, schemaList);
-    if (memChunkGroup.writeWithFlushCheck(insertTime, objectValue, schemaList)) {
-      shouldFlush = true;
-    }
-  }
-
   public void write(InsertTabletNode insertTabletNode, int start, int end) {
     // if this insert plan isn't from storage engine, we should set a temp device id for it
     if (insertTabletNode.getDeviceID() == null) {
@@ -330,6 +305,32 @@ public abstract class AbstractMemTable implements IMemTable {
         schemaList,
         start,
         end)) {
+      shouldFlush = true;
+    }
+  }
+
+  @Override
+  public void write(
+      IDeviceID deviceId,
+      List<IMeasurementSchema> schemaList,
+      long insertTime,
+      Object[] objectValue) {
+    IWritableMemChunkGroup memChunkGroup =
+        createMemChunkGroupIfNotExistAndGet(deviceId, schemaList);
+    if (memChunkGroup.writeWithFlushCheck(insertTime, objectValue, schemaList)) {
+      shouldFlush = true;
+    }
+  }
+
+  @Override
+  public void writeAlignedRow(
+      IDeviceID deviceId,
+      List<IMeasurementSchema> schemaList,
+      long insertTime,
+      Object[] objectValue) {
+    IWritableMemChunkGroup memChunkGroup =
+        createAlignedMemChunkGroupIfNotExistAndGet(deviceId, schemaList);
+    if (memChunkGroup.writeWithFlushCheck(insertTime, objectValue, schemaList)) {
       shouldFlush = true;
     }
   }
@@ -374,9 +375,9 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public long getCurrentTVListSize(IDeviceID deviceId, String measurement) {
+  public long getCurrentTvListSize(IDeviceID deviceId, String measurement) {
     IWritableMemChunkGroup memChunkGroup = memTableMap.get(deviceId);
-    return memChunkGroup.getCurrentTVListSize(measurement);
+    return memChunkGroup.getCurrentTvListSize(measurement);
   }
 
   @Override
@@ -437,12 +438,14 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   /**
+   * Delete data in memTable.
+   *
    * @param originalPath the original path pattern or full path to be used to match timeseries, e.g.
-   *     root.sg.**, root.sg.*.s, root.sg.d.s
+   *     root.sg.**, root.sg.*.s, root.sg.d.s .
    * @param devicePath one of the device path patterns generated by original path, e.g. given
-   *     original path root.sg.** and the device path may be root.sg or root.sg.**
+   *     original path root.sg.** and the device path may be root.sg or root.sg.** .
    * @param startTimestamp the lower-bound of deletion time.
-   * @param endTimestamp the upper-bound of deletion time
+   * @param endTimestamp the upper-bound of deletion time.
    */
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
   @Override
@@ -489,17 +492,17 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public void addTVListRamCost(long cost) {
+  public void addTvListRamCost(long cost) {
     this.tvListRamCost += cost;
   }
 
   @Override
-  public void releaseTVListRamCost(long cost) {
+  public void releaseTvListRamCost(long cost) {
     this.tvListRamCost -= cost;
   }
 
   @Override
-  public long getTVListsRamCost() {
+  public long getTvListsRamCost() {
     return tvListRamCost;
   }
 
@@ -560,7 +563,7 @@ public abstract class AbstractMemTable implements IMemTable {
     this.flushStatus = flushStatus;
   }
 
-  /** Notice: this method is concurrent unsafe */
+  /** Notice: this method is concurrent unsafe. */
   @Override
   public int serializedSize() {
     if (isSignalMemTable()) {
@@ -575,7 +578,7 @@ public abstract class AbstractMemTable implements IMemTable {
     return size;
   }
 
-  /** Notice: this method is concurrent unsafe */
+  /** Notice: this method is concurrent unsafe. */
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
     WALWriteUtils.write(isSignalMemTable(), buffer);

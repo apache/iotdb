@@ -444,7 +444,7 @@ public class TsFileProcessor {
         memTableIncrement += TVList.tvListArrayMemCost(dataTypes[i]);
       } else {
         // here currentChunkPointNum >= 1
-        long currentChunkPointNum = workMemTable.getCurrentTVListSize(deviceID, measurements[i]);
+        long currentChunkPointNum = workMemTable.getCurrentTvListSize(deviceID, measurements[i]);
         memTableIncrement +=
             (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
                 ? TVList.tvListArrayMemCost(dataTypes[i])
@@ -480,7 +480,7 @@ public class TsFileProcessor {
     } else {
       // here currentChunkPointNum >= 1
       long currentChunkPointNum =
-          workMemTable.getCurrentTVListSize(deviceID, AlignedPath.VECTOR_PLACEHOLDER);
+          workMemTable.getCurrentTvListSize(deviceID, AlignedPath.VECTOR_PLACEHOLDER);
       memTableIncrement +=
           (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
               ? AlignedTVList.alignedTvListArrayMemCost(dataTypes)
@@ -580,7 +580,7 @@ public class TsFileProcessor {
           ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
               * TVList.tvListArrayMemCost(dataType);
     } else {
-      long currentChunkPointNum = workMemTable.getCurrentTVListSize(deviceId, measurement);
+      long currentChunkPointNum = workMemTable.getCurrentTvListSize(deviceId, measurement);
       if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
         memIncrements[0] +=
             ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
@@ -620,7 +620,7 @@ public class TsFileProcessor {
               * AlignedTVList.alignedTvListArrayMemCost(dataTypes);
     } else {
       int currentChunkPointNum =
-          (int) workMemTable.getCurrentTVListSize(deviceId, AlignedPath.VECTOR_PLACEHOLDER);
+          (int) workMemTable.getCurrentTvListSize(deviceId, AlignedPath.VECTOR_PLACEHOLDER);
       if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
         memIncrements[0] +=
             ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
@@ -677,7 +677,7 @@ public class TsFileProcessor {
         throw e;
       }
     }
-    workMemTable.addTVListRamCost(memTableIncrement);
+    workMemTable.addTvListRamCost(memTableIncrement);
     workMemTable.addTextDataSize(textDataIncrement);
   }
 
@@ -690,7 +690,7 @@ public class TsFileProcessor {
     dataRegionInfo.releaseStorageGroupMemCost(memTableIncrement);
     tsFileProcessorInfo.releaseTSPMemCost(chunkMetadataIncrement);
     SystemInfo.getInstance().resetStorageGroupStatus(dataRegionInfo);
-    workMemTable.releaseTVListRamCost(memTableIncrement);
+    workMemTable.releaseTvListRamCost(memTableIncrement);
     workMemTable.releaseTextDataSize(textDataIncrement);
   }
 
@@ -999,7 +999,7 @@ public class TsFileProcessor {
     updateLatestFlushTimeCallback.call(this, lastTimeForEachDevice, lastWorkMemtableFlushTime);
 
     if (enableMemControl) {
-      SystemInfo.getInstance().addFlushingMemTableCost(tobeFlushed.getTVListsRamCost());
+      SystemInfo.getInstance().addFlushingMemTableCost(tobeFlushed.getTvListsRamCost());
     }
     flushingMemTables.addLast(tobeFlushed);
     if (logger.isDebugEnabled()) {
@@ -1045,7 +1045,7 @@ public class TsFileProcessor {
       MemTableManager.getInstance().decreaseMemtableNumber();
       if (enableMemControl) {
         // reset the mem cost in StorageGroupProcessorInfo
-        dataRegionInfo.releaseStorageGroupMemCost(memTable.getTVListsRamCost());
+        dataRegionInfo.releaseStorageGroupMemCost(memTable.getTvListsRamCost());
         if (logger.isDebugEnabled()) {
           logger.debug(
               "[mem control] {}: {} flush finished, try to reset system memcost, "
@@ -1056,7 +1056,7 @@ public class TsFileProcessor {
         }
         // report to System
         SystemInfo.getInstance().resetStorageGroupStatus(dataRegionInfo);
-        SystemInfo.getInstance().resetFlushingMemTableCost(memTable.getTVListsRamCost());
+        SystemInfo.getInstance().resetFlushingMemTableCost(memTable.getTvListsRamCost());
       }
       if (logger.isDebugEnabled()) {
         logger.debug(
@@ -1512,7 +1512,7 @@ public class TsFileProcessor {
   }
 
   public long getWorkMemTableRamCost() {
-    return workMemTable != null ? workMemTable.getTVListsRamCost() : 0;
+    return workMemTable != null ? workMemTable.getTvListsRamCost() : 0;
   }
 
   /** Return Long.MAX_VALUE if workMemTable is null */
