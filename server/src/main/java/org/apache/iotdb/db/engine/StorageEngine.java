@@ -64,7 +64,6 @@ import org.apache.iotdb.db.wal.exception.WALException;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -787,15 +786,6 @@ public class StorageEngine implements IService {
 
     try {
       loadTsFileManager.writeToDataRegion(getDataRegion(dataRegionId), pieceNode, uuid);
-    } catch (PageException e) {
-      logger.error(
-          String.format(
-              "Parse Page error when writing piece node of TsFile %s to DataRegion %s.",
-              pieceNode.getTsFile(), dataRegionId),
-          e);
-      status.setCode(TSStatusCode.LOAD_PIECE_OF_TSFILE_ERROR.getStatusCode());
-      status.setMessage(e.getMessage());
-      return status;
     } catch (IOException e) {
       logger.error(
           String.format(
