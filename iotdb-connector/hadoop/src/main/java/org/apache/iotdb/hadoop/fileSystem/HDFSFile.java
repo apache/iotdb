@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.hadoop.filesystem;
+package org.apache.iotdb.hadoop.fileSystem;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;

@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.hadoop.tsfile;
 
-import org.apache.iotdb.hadoop.filesystem.HDFSInput;
+import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
 import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;

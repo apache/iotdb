@@ -24,7 +24,7 @@ import java.nio.ByteBuffer;
 
 import org.apache.iotdb.spark.constant.TestConstant;
 import org.apache.iotdb.spark.tool.TsFileWriteTool;
-import org.apache.iotdb.hadoop.filesystem.HDFSInput;
+import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

@@ -23,7 +23,7 @@ import java.util
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileStatus
-import org.apache.iotdb.hadoop.filesystem.HDFSInput
+import org.apache.iotdb.hadoop.fileSystem.HDFSInput
 import org.apache.iotdb.tsfile.common.constant.QueryConstant
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata
 import org.apache.iotdb.tsfile.file.metadata.enums.{TSDataType, TSEncoding}

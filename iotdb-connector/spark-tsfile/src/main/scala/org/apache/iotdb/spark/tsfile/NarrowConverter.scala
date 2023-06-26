@@ -21,7 +21,7 @@ package org.apache.iotdb.spark.tsfile
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileStatus
-import org.apache.iotdb.hadoop.filesystem.HDFSInput
+import org.apache.iotdb.hadoop.fileSystem.HDFSInput
 import org.apache.iotdb.spark.tsfile.qp.QueryProcessor
 import org.apache.iotdb.spark.tsfile.qp.common.{BasicOperator, FilterOperator, SQLConstant, TSQueryPlan}
 import org.apache.iotdb.tsfile.common.constant.QueryConstant

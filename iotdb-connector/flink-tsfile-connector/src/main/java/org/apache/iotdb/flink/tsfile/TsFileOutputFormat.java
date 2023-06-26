@@ -20,7 +20,7 @@
 package org.apache.iotdb.flink.tsfile;
 
 import org.apache.iotdb.flink.tsfile.util.TSFileConfigUtil;
-import org.apache.iotdb.hadoop.filesystem.HDFSOutput;
+import org.apache.iotdb.hadoop.fileSystem.HDFSOutput;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.schema.Schema;
@@ -91,13 +91,6 @@ public abstract class TsFileOutputFormat<T> extends FileOutputFormat<T> {
       }
     } catch (URISyntaxException e) {
       throw new RuntimeException(e);
-    } finally {
-      if (out != null) {
-        out.close();
-      }
-      if (fos != null) {
-        fos.close();
-      }
     }
     writer = new TsFileWriter(out, schema);
   }

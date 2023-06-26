@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.hadoop.filesystem;
+package org.apache.iotdb.hadoop.fileSystem;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
