@@ -21,9 +21,6 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -37,7 +34,6 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TsFileManager {
-  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileManager.class);
   private String storageGroupName;
   private String dataRegionId;
   private String storageGroupDir;

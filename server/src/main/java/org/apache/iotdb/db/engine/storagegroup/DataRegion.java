@@ -180,9 +180,6 @@ public class DataRegion implements IDataRegionForQuery {
 
   private static final Logger logger = LoggerFactory.getLogger(DataRegion.class);
 
-  /** indicating the file to be loaded overlap with some files. */
-  private static final int POS_OVERLAP = -3;
-
   private final boolean enableMemControl = config.isEnableMemControl();
   /**
    * a read write lock for guaranteeing concurrent safety when accessing all fields in this class
@@ -280,7 +277,7 @@ public class DataRegion implements IDataRegionForQuery {
 
   private IDTable idTable;
 
-  private final QueryResourceMetricSet QUERY_RESOURCE_METRIC_SET =
+  private static final QueryResourceMetricSet QUERY_RESOURCE_METRIC_SET =
       QueryResourceMetricSet.getInstance();
 
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
@@ -429,6 +426,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /** recover from file */
+  @SuppressWarnings({"squid:S3776","squid:S6541"}) // Suppress high Cognitive Complexity warning
   private void recover() throws DataRegionException {
     try {
       recoverCompaction();
@@ -976,7 +974,7 @@ public class DataRegion implements IDataRegionForQuery {
    *
    * @throws BatchProcessException if some of the rows failed to be inserted
    */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  @SuppressWarnings({"squid:S3776","squid:S6541"}) // Suppress high Cognitive Complexity warning
   public void insertTablet(InsertTabletNode insertTabletNode)
       throws BatchProcessException, WriteProcessException {
     if (enableMemControl) {
