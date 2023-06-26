@@ -106,7 +106,7 @@ public class IoTConsensusServerImpl {
   private final AtomicLong searchIndex;
   private final LogDispatcher logDispatcher;
   private final IoTConsensusConfig config;
-  private final ConsensusReqReader reader;
+  private final ConsensusReqReader consensusReqReader;
   private volatile boolean active;
   private String newSnapshotDirName;
   private final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager;
@@ -135,8 +135,8 @@ public class IoTConsensusServerImpl {
     }
     this.config = config;
     this.consensusGroupId = thisNode.getGroupId().toString();
-    reader = (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
-    this.searchIndex = new AtomicLong(reader.getCurrentSearchIndex());
+    consensusReqReader = (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
+    this.searchIndex = new AtomicLong(consensusReqReader.getCurrentSearchIndex());
     this.ioTConsensusServerMetrics = new IoTConsensusServerMetrics(this);
     this.logDispatcher = new LogDispatcher(this, clientManager, ioTConsensusServerMetrics);
     // Since the underlying wal does not persist safelyDeletedSearchIndex, IoTConsensus needs to
@@ -548,7 +548,11 @@ public class IoTConsensusServerImpl {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
-  /** build SyncLog channel with safeIndex as the default initial sync index */
+  /**
+   * build SyncLog channel with safeIndex as the default initial sync index.
+   *
+   * @throws ConsensusGroupModifyPeerException
+   */
   public void buildSyncLogChannel(Peer targetPeer) throws ConsensusGroupModifyPeerException {
     buildSyncLogChannel(targetPeer, getCurrentSafelyDeletedSearchIndex());
   }
@@ -699,8 +703,8 @@ public class IoTConsensusServerImpl {
     return config;
   }
 
-  public long getLogEntriesFromWAL() {
-    return logDispatcher.getLogEntriesFromWAL();
+  public long getLogEntriesFromWal() {
+    return logDispatcher.getLogEntriesFromWal();
   }
 
   public long getLogEntriesFromQueue() {
@@ -708,11 +712,11 @@ public class IoTConsensusServerImpl {
   }
 
   public boolean needBlockWrite() {
-    return reader.getTotalSize() > config.getReplication().getWalThrottleThreshold();
+    return consensusReqReader.getTotalSize() > config.getReplication().getWalThrottleThreshold();
   }
 
   public boolean unblockWrite() {
-    return reader.getTotalSize() < config.getReplication().getWalThrottleThreshold();
+    return consensusReqReader.getTotalSize() < config.getReplication().getWalThrottleThreshold();
   }
 
   public void signal() {
@@ -777,7 +781,7 @@ public class IoTConsensusServerImpl {
    */
   public void checkAndLockSafeDeletedSearchIndex() {
     if (configuration.size() == 1) {
-      reader.setSafelyDeletedSearchIndex(searchIndex.get());
+      consensusReqReader.setSafelyDeletedSearchIndex(searchIndex.get());
     }
   }
 
@@ -787,9 +791,9 @@ public class IoTConsensusServerImpl {
    */
   public void checkAndUpdateSafeDeletedSearchIndex() {
     if (configuration.size() == 1) {
-      reader.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
+      consensusReqReader.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
     } else {
-      reader.setSafelyDeletedSearchIndex(getCurrentSafelyDeletedSearchIndex());
+      consensusReqReader.setSafelyDeletedSearchIndex(getCurrentSafelyDeletedSearchIndex());
     }
   }
 
@@ -862,26 +866,25 @@ public class IoTConsensusServerImpl {
                 !queueSortCondition.await(
                     config.getReplication().getMaxWaitingTimeForWaitBatchInMs(),
                     TimeUnit.MILLISECONDS);
-            if (timeout) {
-              // although the timeout is triggered, current thread cannot write its request
-              // if current thread does not hold the peek request. And there should be some
-              // other thread who hold the peek request. In this scenario, current thread
-              // should go into await again and wait until its request becoming peek request
-              if (requestCache.peek() != null
-                  && requestCache.peek().getStartSyncIndex() == request.getStartSyncIndex()) {
-                // current thread hold the peek request thus it can write the peek immediately.
-                logger.info(
-                    "waiting target request timeout. current index: {}, target index: {}",
-                    request.getStartSyncIndex(),
-                    nextSyncIndex);
-                requestCache.remove(request);
-                nextSyncIndex = Math.max(nextSyncIndex, request.getEndSyncIndex() + 1);
-                break;
-              }
+            // although the timeout is triggered, current thread cannot write its request
+            // if current thread does not hold the peek request. And there should be some
+            // other thread who hold the peek request. In this scenario, current thread
+            // should go into await again and wait until its request becoming peek request
+            if (timeout
+                && requestCache.peek() != null
+                && requestCache.peek().getStartSyncIndex() == request.getStartSyncIndex()) {
+              // current thread hold the peek request thus it can write the peek immediately.
+              logger.info(
+                  "waiting target request timeout. current index: {}, target index: {}",
+                  request.getStartSyncIndex(),
+                  nextSyncIndex);
+              requestCache.remove(request);
+              nextSyncIndex = Math.max(nextSyncIndex, request.getEndSyncIndex() + 1);
+              break;
             }
           } catch (InterruptedException e) {
             logger.warn(
-                "current waiting is interrupted. SyncIndex: {}. Exception: {}",
+                "current waiting is interrupted. SyncIndex: {}. Exception: ",
                 request.getStartSyncIndex(),
                 e);
             Thread.currentThread().interrupt();

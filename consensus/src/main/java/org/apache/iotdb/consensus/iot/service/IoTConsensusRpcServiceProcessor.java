@@ -59,13 +59,16 @@ import org.slf4j.LoggerFactory;
 import java.util.Collections;
 import java.util.stream.Collectors;
 
-public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.AsyncIface {
+public class IoTConsensusRpcServiceProcessor implements IoTConsensusIService.AsyncIface {
 
-  private final Logger logger = LoggerFactory.getLogger(IoTConsensusRPCServiceProcessor.class);
+  private final Logger logger = LoggerFactory.getLogger(IoTConsensusRpcServiceProcessor.class);
 
   private final IoTConsensus consensus;
 
-  public IoTConsensusRPCServiceProcessor(IoTConsensus consensus) {
+  private static final String BUILD_SYNC_LOG_CHANNEL =
+      "unexpected consensusGroupId %s for buildSyncLogChannel request";
+
+  public IoTConsensusRpcServiceProcessor(IoTConsensus consensus) {
     this.consensus = consensus;
   }
 
@@ -178,8 +181,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
     IoTConsensusServerImpl impl = consensus.getImpl(groupId);
     if (impl == null) {
-      String message =
-          String.format("unexpected consensusGroupId %s for buildSyncLogChannel request", groupId);
+      String message = String.format(BUILD_SYNC_LOG_CHANNEL, groupId);
       logger.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
@@ -205,8 +207,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
     IoTConsensusServerImpl impl = consensus.getImpl(groupId);
     if (impl == null) {
-      String message =
-          String.format("unexpected consensusGroupId %s for buildSyncLogChannel request", groupId);
+      String message = String.format(BUILD_SYNC_LOG_CHANNEL, groupId);
       logger.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
@@ -254,8 +255,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
     IoTConsensusServerImpl impl = consensus.getImpl(groupId);
     if (impl == null) {
-      String message =
-          String.format("unexpected consensusGroupId %s for buildSyncLogChannel request", groupId);
+      String message = String.format(BUILD_SYNC_LOG_CHANNEL, groupId);
       logger.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
@@ -281,8 +281,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
     IoTConsensusServerImpl impl = consensus.getImpl(groupId);
     if (impl == null) {
-      String message =
-          String.format("unexpected consensusGroupId %s for buildSyncLogChannel request", groupId);
+      String message = String.format(BUILD_SYNC_LOG_CHANNEL, groupId);
       logger.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
@@ -303,8 +302,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
     IoTConsensusServerImpl impl = consensus.getImpl(groupId);
     if (impl == null) {
-      String message =
-          String.format("unexpected consensusGroupId %s for buildSyncLogChannel request", groupId);
+      String message = String.format(BUILD_SYNC_LOG_CHANNEL, groupId);
       logger.error(message);
       TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       status.setMessage(message);
@@ -323,5 +321,7 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Asy
     resultHandler.onComplete(new TCleanupTransferredSnapshotRes(responseStatus));
   }
 
-  public void handleClientExit() {}
+  public void handleClientExit() {
+    // Empty method, since it is not needed now
+  }
 }

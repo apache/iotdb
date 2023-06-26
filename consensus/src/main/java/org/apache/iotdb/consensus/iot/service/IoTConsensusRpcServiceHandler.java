@@ -24,16 +24,18 @@ import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TTransport;
 
-public class IoTConsensusRPCServiceHandler implements TServerEventHandler {
+public class IoTConsensusRpcServiceHandler implements TServerEventHandler {
 
-  private final IoTConsensusRPCServiceProcessor processor;
+  private final IoTConsensusRpcServiceProcessor processor;
 
-  public IoTConsensusRPCServiceHandler(IoTConsensusRPCServiceProcessor processor) {
+  public IoTConsensusRpcServiceHandler(IoTConsensusRpcServiceProcessor processor) {
     this.processor = processor;
   }
 
   @Override
-  public void preServe() {}
+  public void preServe() {
+    // Empty method, since it is not needed now
+  }
 
   @Override
   public ServerContext createContext(TProtocol input, TProtocol output) {
@@ -47,5 +49,7 @@ public class IoTConsensusRPCServiceHandler implements TServerEventHandler {
 
   @Override
   public void processContext(
-      ServerContext serverContext, TTransport inputTransport, TTransport outputTransport) {}
+      ServerContext serverContext, TTransport inputTransport, TTransport outputTransport) {
+    // Empty method, since it is not needed now
+  }
 }

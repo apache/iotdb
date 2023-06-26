@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
+import org.apache.iotdb.commons.service.AbstractThriftServiceThread;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
@@ -33,13 +34,13 @@ import org.apache.thrift.TBaseAsyncProcessor;
 
 import java.lang.reflect.InvocationTargetException;
 
-public class IoTConsensusRPCService extends ThriftService implements IoTConsensusRPCServiceMBean {
+public class IoTConsensusRpcService extends ThriftService implements IoTConsensusRpcServiceMBean {
 
   private final TEndPoint thisNode;
   private final IoTConsensusConfig config;
-  private IoTConsensusRPCServiceProcessor iotConsensusRPCServiceProcessor;
+  private IoTConsensusRpcServiceProcessor iotConsensusRpcServiceProcessor;
 
-  public IoTConsensusRPCService(TEndPoint thisNode, IoTConsensusConfig config) {
+  public IoTConsensusRpcService(TEndPoint thisNode, IoTConsensusConfig config) {
     this.thisNode = thisNode;
     this.config = config;
   }
@@ -50,20 +51,20 @@ public class IoTConsensusRPCService extends ThriftService implements IoTConsensu
   }
 
   @Override
-  public void initAsyncedServiceImpl(Object iotConsensusRPCServiceProcessor) {
-    this.iotConsensusRPCServiceProcessor =
-        (IoTConsensusRPCServiceProcessor) iotConsensusRPCServiceProcessor;
+  public void initAsyncedServiceImpl(Object iotConsensusRpcServiceProcessor) {
+    this.iotConsensusRpcServiceProcessor =
+        (IoTConsensusRpcServiceProcessor) iotConsensusRpcServiceProcessor;
     super.mbeanName =
         String.format(
             "%s:%s=%s", this.getClass().getPackage(), IoTDBConstant.JMX_TYPE, getID().getJmxName());
-    super.initAsyncedServiceImpl(this.iotConsensusRPCServiceProcessor);
+    super.initAsyncedServiceImpl(this.iotConsensusRpcServiceProcessor);
   }
 
   @Override
   public void initTProcessor()
       throws ClassNotFoundException, IllegalAccessException, InstantiationException,
           NoSuchMethodException, InvocationTargetException {
-    processor = new IoTConsensusIService.AsyncProcessor<>(iotConsensusRPCServiceProcessor);
+    processor = new IoTConsensusIService.AsyncProcessor<>(iotConsensusRpcServiceProcessor);
   }
 
   @Override
@@ -81,11 +82,11 @@ public class IoTConsensusRPCService extends ThriftService implements IoTConsensu
               config.getRpc().getRpcMinConcurrentClientNum(),
               config.getRpc().getRpcMaxConcurrentClientNum(),
               config.getRpc().getThriftServerAwaitTimeForStopService(),
-              new IoTConsensusRPCServiceHandler(iotConsensusRPCServiceProcessor),
+              new IoTConsensusRpcServiceHandler(iotConsensusRpcServiceProcessor),
               config.getRpc().isRpcThriftCompressionEnabled(),
               config.getRpc().getConnectionTimeoutInMs(),
               config.getRpc().getThriftMaxFrameSize(),
-              ThriftServiceThread.ServerType.SELECTOR);
+              AbstractThriftServiceThread.ServerType.SELECTOR);
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }

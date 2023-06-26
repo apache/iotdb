@@ -47,8 +47,8 @@ import org.apache.iotdb.consensus.iot.client.IoTConsensusClientPool.AsyncIoTCons
 import org.apache.iotdb.consensus.iot.client.IoTConsensusClientPool.SyncIoTConsensusServiceClientPoolFactory;
 import org.apache.iotdb.consensus.iot.client.SyncIoTConsensusServiceClient;
 import org.apache.iotdb.consensus.iot.logdispatcher.IoTConsensusMemoryManager;
-import org.apache.iotdb.consensus.iot.service.IoTConsensusRPCService;
-import org.apache.iotdb.consensus.iot.service.IoTConsensusRPCServiceProcessor;
+import org.apache.iotdb.consensus.iot.service.IoTConsensusRpcService;
+import org.apache.iotdb.consensus.iot.service.IoTConsensusRpcServiceProcessor;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -76,7 +76,7 @@ public class IoTConsensus implements IConsensus {
   private final IStateMachine.Registry registry;
   private final Map<ConsensusGroupId, IoTConsensusServerImpl> stateMachineMap =
       new ConcurrentHashMap<>();
-  private final IoTConsensusRPCService service;
+  private final IoTConsensusRpcService service;
   private final RegisterManager registerManager = new RegisterManager();
   private final IoTConsensusConfig config;
   private final IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager;
@@ -88,7 +88,7 @@ public class IoTConsensus implements IConsensus {
     this.storageDir = new File(config.getStorageDir());
     this.config = config.getIoTConsensusConfig();
     this.registry = registry;
-    this.service = new IoTConsensusRPCService(thisNode, config.getIoTConsensusConfig());
+    this.service = new IoTConsensusRpcService(thisNode, config.getIoTConsensusConfig());
     this.clientManager =
         new IClientManager.Factory<TEndPoint, AsyncIoTConsensusServiceClient>()
             .createClientManager(
@@ -107,7 +107,7 @@ public class IoTConsensus implements IConsensus {
   @Override
   public void start() throws IOException {
     initAndRecover();
-    service.initAsyncedServiceImpl(new IoTConsensusRPCServiceProcessor(this));
+    service.initAsyncedServiceImpl(new IoTConsensusRpcServiceProcessor(this));
     try {
       registerManager.register(service);
     } catch (StartupException e) {

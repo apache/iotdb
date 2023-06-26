@@ -52,7 +52,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
-/** Manage all asynchronous replication threads and corresponding async clients */
+/** Manage all asynchronous replication threads and corresponding async clients. */
 public class LogDispatcher {
 
   private static final Logger logger = LoggerFactory.getLogger(LogDispatcher.class);
@@ -65,9 +65,8 @@ public class LogDispatcher {
 
   private boolean stopped = false;
 
-  private final AtomicLong logEntriesFromWAL = new AtomicLong(0);
+  private final AtomicLong logEntriesFromWal = new AtomicLong(0);
   private final AtomicLong logEntriesFromQueue = new AtomicLong(0);
-  private final IoTConsensusServerMetrics ioTConsensusServerMetrics;
 
   public LogDispatcher(
       IoTConsensusServerImpl impl,
@@ -84,7 +83,6 @@ public class LogDispatcher {
     if (!threads.isEmpty()) {
       initLogSyncThreadPool();
     }
-    this.ioTConsensusServerMetrics = ioTConsensusServerMetrics;
   }
 
   private void initLogSyncThreadPool() {
@@ -181,8 +179,8 @@ public class LogDispatcher {
     }
   }
 
-  public long getLogEntriesFromWAL() {
-    return logEntriesFromWAL.get();
+  public long getLogEntriesFromWal() {
+    return logEntriesFromWal.get();
   }
 
   public long getLogEntriesFromQueue() {
@@ -260,10 +258,10 @@ public class LogDispatcher {
       boolean success;
       try {
         success = pendingEntries.offer(indexedConsensusRequest);
-      } catch (Throwable t) {
+      } catch (Exception e) {
         // If exception occurs during request offer, the reserved memory should be released
         iotConsensusMemoryManager.free(indexedConsensusRequest.getSerializedSize(), true);
-        throw t;
+        throw e;
       }
       if (!success) {
         // If offer failed, the reserved memory should be released
@@ -322,9 +320,9 @@ public class LogDispatcher {
               (System.nanoTime() - startTime) / batch.getLogEntries().size());
           // we may block here if the synchronization pipeline is full
           syncStatus.addNextBatch(batch);
-          logEntriesFromWAL.addAndGet(batch.getLogEntriesNumFromWAL());
+          logEntriesFromWal.addAndGet(batch.getLogEntriesNumFromWal());
           logEntriesFromQueue.addAndGet(
-              batch.getLogEntries().size() - batch.getLogEntriesNumFromWAL());
+              batch.getLogEntries().size() - batch.getLogEntriesNumFromWal());
           // sends batch asynchronously and migrates the retry logic into the callback handler
           sendBatchAsync(batch, new DispatchLogHandler(this, logDispatcherThreadMetrics, batch));
         }
@@ -384,7 +382,7 @@ public class LogDispatcher {
       // up. To prevent inconsistency here, we use the synchronized logic when calculate value of
       // `maxIndex`
       if (bufferedEntries.isEmpty()) {
-        constructBatchFromWAL(startIndex, maxIndex, batches);
+        constructBatchFromWal(startIndex, maxIndex, batches);
         batches.buildIndex();
         logger.debug(
             "{} : accumulated a {} from wal when empty", impl.getThisNode().getGroupId(), batches);
@@ -396,7 +394,7 @@ public class LogDispatcher {
         // Prevents gap between logs. For example, some requests are not written into the queue when
         // the queue is full. In this case, requests need to be loaded from the WAL
         if (startIndex != prev.getSearchIndex()) {
-          constructBatchFromWAL(startIndex, prev.getSearchIndex(), batches);
+          constructBatchFromWal(startIndex, prev.getSearchIndex(), batches);
           if (!batches.canAccumulate()) {
             batches.buildIndex();
             logger.debug(
@@ -420,7 +418,7 @@ public class LogDispatcher {
           // Prevents gap between logs. For example, some logs are not written into the queue when
           // the queue is full. In this case, requests need to be loaded from the WAL
           if (current.getSearchIndex() != prev.getSearchIndex() + 1) {
-            constructBatchFromWAL(prev.getSearchIndex() + 1, current.getSearchIndex(), batches);
+            constructBatchFromWal(prev.getSearchIndex() + 1, current.getSearchIndex(), batches);
             if (!batches.canAccumulate()) {
               batches.buildIndex();
               logger.debug(
@@ -467,11 +465,13 @@ public class LogDispatcher {
       return syncStatus;
     }
 
-    private void constructBatchFromWAL(long currentIndex, long maxIndex, Batch logBatches) {
+    private void constructBatchFromWal(long currentIndex, long maxIndex, Batch logBatches) {
       logger.debug(
-          String.format(
-              "DataRegion[%s]->%s: currentIndex: %d, maxIndex: %d",
-              peer.getGroupId().getId(), peer.getEndpoint().getIp(), currentIndex, maxIndex));
+          "DataRegion[{}]->{}: currentIndex: {}, maxIndex: {}",
+          peer.getGroupId().getId(),
+          peer.getEndpoint().getIp(),
+          currentIndex,
+          maxIndex);
       // targetIndex is the index of request that we need to find
       long targetIndex = currentIndex;
       // Even if there is no WAL files, these code won't produce error.
