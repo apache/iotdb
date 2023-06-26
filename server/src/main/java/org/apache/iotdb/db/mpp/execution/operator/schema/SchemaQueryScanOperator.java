@@ -33,10 +33,13 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
+import com.google.common.util.concurrent.ListenableFuture;
+
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
+import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOperator {
@@ -60,6 +63,11 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
 
   private ISchemaReader<T> schemaReader;
 
+  private final TsBlockBuilder tsBlockBuilder;
+  private ListenableFuture<?> isBlocked;
+  private TsBlock next;
+  private boolean isFinished;
+
   protected SchemaQueryScanOperator(
       PlanNodeId sourceId,
       OperatorContext operatorContext,
@@ -76,6 +84,7 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
     this.sourceId = sourceId;
     this.outputDataTypes = outputDataTypes;
     this.schemaSource = null;
+    this.tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
   }
 
   public SchemaQueryScanOperator(
@@ -87,6 +96,7 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
         schemaSource.getInfoQueryColumnHeaders().stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
+    this.tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
   }
 
   protected ISchemaReader<T> createSchemaReader() {
@@ -94,7 +104,7 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
         ((SchemaDriverContext) operatorContext.getDriverContext()).getSchemaRegion());
   }
 
-  protected void setColumns(T element, TsBlockBuilder builder) {
+  private void setColumns(T element, TsBlockBuilder builder) {
     schemaSource.transformToTsBlockColumns(element, builder, getDatabase());
   }
 
@@ -128,36 +138,79 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
   }
 
   @Override
+  public ListenableFuture<?> isBlocked() {
+    if (isBlocked == null) {
+      isBlocked = tryGetNext();
+    }
+    return isBlocked;
+  }
+
+  /**
+   * Try to get next TsBlock. If the next is not ready, return a future. After success, {@link
+   * SchemaQueryScanOperator#next} will be set.
+   */
+  private ListenableFuture<?> tryGetNext() {
+    if (schemaReader == null) {
+      schemaReader = createSchemaReader();
+    }
+    while (true) {
+      try {
+        ListenableFuture<?> readerBlocked = schemaReader.isBlocked();
+        if (!readerBlocked.isDone()) {
+          readerBlocked.addListener(
+              () -> {
+                next = tsBlockBuilder.build();
+                tsBlockBuilder.reset();
+              },
+              directExecutor());
+          return readerBlocked;
+        } else if (schemaReader.hasNext()) {
+          T element = schemaReader.next();
+          setColumns(element, tsBlockBuilder);
+          if (tsBlockBuilder.getRetainedSizeInBytes() >= MAX_SIZE) {
+            next = tsBlockBuilder.build();
+            tsBlockBuilder.reset();
+            return NOT_BLOCKED;
+          }
+        } else {
+          if (tsBlockBuilder.isEmpty()) {
+            next = null;
+            isFinished = true;
+          } else {
+            next = tsBlockBuilder.build();
+          }
+          tsBlockBuilder.reset();
+          return NOT_BLOCKED;
+        }
+      } catch (Exception e) {
+        throw new SchemaExecutionException(e);
+      }
+    }
+  }
+
+  @Override
   public TsBlock next() throws Exception {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
-    T element;
-    while (schemaReader.hasNext()) {
-      element = schemaReader.next();
-      setColumns(element, tsBlockBuilder);
-      if (tsBlockBuilder.getRetainedSizeInBytes() >= MAX_SIZE) {
-        break;
-      }
-    }
-    if (!schemaReader.isSuccess()) {
-      throw new SchemaExecutionException(schemaReader.getFailure());
-    }
-    return tsBlockBuilder.build();
+    TsBlock ret = next;
+    next = null;
+    isBlocked = null;
+    return ret;
   }
 
   @Override
   public boolean hasNext() throws Exception {
-    if (schemaReader == null) {
-      schemaReader = createSchemaReader();
+    isBlocked().get(); // wait for the next TsBlock
+    if (!schemaReader.isSuccess()) {
+      throw new SchemaExecutionException(schemaReader.getFailure());
     }
-    return schemaReader.hasNext();
+    return next != null;
   }
 
   @Override
   public boolean isFinished() throws Exception {
-    return !hasNextWithTimer();
+    return isFinished;
   }
 
   @Override
