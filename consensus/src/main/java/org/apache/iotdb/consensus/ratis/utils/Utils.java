@@ -52,7 +52,7 @@ public class Utils {
   private static final byte PADDING_MAGIC = 0x47;
   private static final String DATA_REGION_GROUP = "group-0001";
   private static final String SCHEMA_REGION_GROUP = "group-0002";
-  private static volatile CommonConfig config = CommonDescriptor.getInstance().getConfig();
+  private static final CommonConfig config = CommonDescriptor.getInstance().getConfig();
 
   private Utils() {}
 

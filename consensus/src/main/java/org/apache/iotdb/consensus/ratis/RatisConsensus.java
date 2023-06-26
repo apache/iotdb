@@ -71,6 +71,7 @@ import org.apache.ratis.protocol.RaftPeer;
 import org.apache.ratis.protocol.RaftPeerId;
 import org.apache.ratis.protocol.SnapshotManagementRequest;
 import org.apache.ratis.protocol.exceptions.NotLeaderException;
+import org.apache.ratis.protocol.exceptions.RaftException;
 import org.apache.ratis.protocol.exceptions.ResourceUnavailableException;
 import org.apache.ratis.server.DivisionInfo;
 import org.apache.ratis.server.RaftServer;
@@ -219,6 +220,13 @@ class RatisConsensus implements IConsensus {
         logger.warn("{} retry write sleep is interrupted: {}", this, e);
         Thread.currentThread().interrupt();
       }
+    }
+    if (reply == null) {
+      return RaftClientReply.newBuilder()
+          .setSuccess(false)
+          .setException(
+              new RaftException("null reply received in writeWithRetry for request " + caller))
+          .build();
     }
     return reply;
   }
