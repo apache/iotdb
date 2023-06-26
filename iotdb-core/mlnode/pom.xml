@@ -145,7 +145,7 @@
                             <outputDirectory/>
                             <resources>
                                 <resource>
-                                    <directory>${basedir}/..</directory>
+                                    <directory>${basedir}/../..</directory>
                                     <includes>
                                         <include>LICENSE</include>
                                     </includes>
