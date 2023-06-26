@@ -61,6 +61,7 @@ public interface BackwardSort extends QuickSort {
    */
   default int setBlockLength(List<long[]> timestamps, int step) {
     double overlap = 0;
+    double ratio = 0;
     long last_time = timestamps.get(0)[0];
     int i = step, blocks = 0;
     while (i < timestamps.size()) {
@@ -72,7 +73,9 @@ public interface BackwardSort extends QuickSort {
       i += step;
       blocks += 1;
     }
-    double ratio = overlap / blocks;
+    if(blocks != 0){
+      ratio = overlap / blocks;
+    }
     int mul = (int) Math.ceil(ratio / INVERSION_RATIOS_THRESHOLD);
     // System.out.printf("Overlap ratio=%.4f mul=%d, step=%d\n", ratio, mul, step);
     // ensure inversion ratio < INVERSION_RATIOS_THRESHOLD
