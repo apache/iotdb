@@ -337,7 +337,7 @@ public class SessionConnection {
       try {
         dataSet = executeQueryStatement(String.format("SHOW TIMESERIES %s", path), timeout);
       } catch (RedirectException e) {
-        throw new StatementExecutionException("need to redirect read, should not see this.", e);
+        throw new StatementExecutionException("need to redirect query, should not see this.", e);
       }
       return dataSet.hasNext();
     } finally {

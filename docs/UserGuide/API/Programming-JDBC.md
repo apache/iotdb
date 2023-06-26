@@ -73,7 +73,7 @@ public class JDBCExample {
    * Before executing a SQL statement with a Statement object, you need to create a Statement object using the createStatement() method of the Connection object.
    * After creating a Statement object, you can use its execute() method to execute a SQL statement
    * Finally, remember to close the 'statement' and 'connection' objects by using their close() method
-   * For statements with read results, we can use the getResultSet() method of the Statement object to get the result set.
+   * For statements with query results, we can use the getResultSet() method of the Statement object to get the result set.
    */
   public static void main(String[] args) throws SQLException {
     Connection connection = getConnection();
@@ -127,25 +127,25 @@ public class JDBCExample {
     statement.executeBatch();
     statement.clearBatch();
 
-    //Full read statement
+    //Full query statement
     String sql = "select * from root.demo";
     ResultSet resultSet = statement.executeQuery(sql);
     System.out.println("sql: " + sql);
     outputResult(resultSet);
 
-    //Exact read statement
+    //Exact query statement
     sql = "select s0 from root.demo where time = 4;";
     resultSet= statement.executeQuery(sql);
     System.out.println("sql: " + sql);
     outputResult(resultSet);
 
-    //Time range read
+    //Time range query
     sql = "select s0 from root.demo where time >= 2 and time < 5;";
     resultSet = statement.executeQuery(sql);
     System.out.println("sql: " + sql);
     outputResult(resultSet);
 
-    //Aggregate read
+    //Aggregate query
     sql = "select count(s0) from root.demo;";
     resultSet = statement.executeQuery(sql);
     System.out.println("sql: " + sql);

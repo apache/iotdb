@@ -128,7 +128,7 @@ public class SessionPoolIT {
     ISessionPool pool = EnvFactory.getEnv().getSessionPool(3);
     ExecutorService service = Executors.newFixedThreadPool(10);
     write10Data(pool, true);
-    // now let's read
+    // now let's query
     for (int i = 0; i < 10; i++) {
       final int no = i;
       service.submit(
@@ -173,7 +173,7 @@ public class SessionPoolIT {
   private void correctQuery(ISessionPool pool, long timeoutInMs) {
     ExecutorService service = Executors.newFixedThreadPool(10);
     write10Data(pool, true);
-    // now let's read
+    // now let's query
     for (int i = 0; i < 10; i++) {
       final int no = i;
       service.submit(

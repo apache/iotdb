@@ -79,7 +79,7 @@ public class DataMigrationExample {
       total = deviceIter.getInt(1);
       logger.info("Total devices: {}", total);
     } else {
-      logger.error("Can not get devices schemaengine");
+      logger.error("Can not get devices schema");
       System.exit(1);
     }
     readerPool.closeResultSet(deviceDataSet);

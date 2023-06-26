@@ -78,7 +78,7 @@ public class UDTFConfigurations extends UDFConfigurations {
   }
 
   /**
-   * Used to specify the strategy for accessing raw read data in UDTF.
+   * Used to specify the strategy for accessing raw query data in UDTF.
    *
    * @param accessStrategy the specified access strategy. it should be an instance of {@link
    *     AccessStrategy}.

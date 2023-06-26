@@ -73,7 +73,7 @@ public class IoTDBReplaceFunctionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create function constvalue as 'org.apache.iotdb.db.read.udf.example.ConstValue'");
+          "create function constvalue as 'org.apache.iotdb.db.query.udf.example.ConstValue'");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }

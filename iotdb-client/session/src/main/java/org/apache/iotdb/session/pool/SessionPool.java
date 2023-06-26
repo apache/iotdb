@@ -61,11 +61,11 @@ import java.util.concurrent.ConcurrentMap;
  *
  * <p>The only thing you have to remember is that:
  *
- * <p>For a read, if you have get all data, i.e., SessionDataSetWrapper.hasNext() == false, it is
- * ok. Otherwise, i.e., you want to stop the read before you get all data
+ * <p>For a query, if you have get all data, i.e., SessionDataSetWrapper.hasNext() == false, it is
+ * ok. Otherwise, i.e., you want to stop the query before you get all data
  * (SessionDataSetWrapper.hasNext() == true), then you have to call
  * closeResultSet(SessionDataSetWrapper wrapper) manually. Otherwise the connection is occupied by
- * the read.
+ * the query.
  *
  * <p>Another case that you have to manually call closeResultSet() is that when there is exception
  * when you call SessionDataSetWrapper.hasNext() or next()
@@ -102,8 +102,8 @@ public class SessionPool implements ISessionPool {
   private int thriftMaxFrameSize;
 
   /**
-   * Timeout of read can be set by users. A negative number means using the default configuration of
-   * server. And value 0 will disable the function of read timeout.
+   * Timeout of query can be set by users. A negative number means using the default configuration
+   * of server. And value 0 will disable the function of query timeout.
    */
   private long queryTimeoutInMs = -1;
 
@@ -1750,7 +1750,7 @@ public class SessionPool implements ISessionPool {
   }
 
   /**
-   * delete a timeseries, including data and schemaengine
+   * delete a timeseries, including data and schema
    *
    * @param path timeseries to delete, should be a whole path
    */
@@ -1779,7 +1779,7 @@ public class SessionPool implements ISessionPool {
   }
 
   /**
-   * delete a timeseries, including data and schemaengine
+   * delete a timeseries, including data and schema
    *
    * @param paths timeseries to delete, should be a whole path
    */
@@ -2814,11 +2814,11 @@ public class SessionPool implements ISessionPool {
   }
 
   /**
-   * execure read sql users must call closeResultSet(SessionDataSetWrapper) if they do not use the
+   * execure query sql users must call closeResultSet(SessionDataSetWrapper) if they do not use the
    * SessionDataSet any more. users do not need to call sessionDataSet.closeOpeationHandler() any
    * more.
    *
-   * @param sql read statement
+   * @param sql query statement
    * @return result set Notice that you must get the result instance. Otherwise a data leakage will
    *     happen
    */
@@ -2851,12 +2851,12 @@ public class SessionPool implements ISessionPool {
   }
 
   /**
-   * execure read sql users must call closeResultSet(SessionDataSetWrapper) if they do not use the
+   * execure query sql users must call closeResultSet(SessionDataSetWrapper) if they do not use the
    * SessionDataSet any more. users do not need to call sessionDataSet.closeOpeationHandler() any
    * more.
    *
-   * @param sql read statement
-   * @param timeoutInMs the timeout of this read, in milliseconds
+   * @param sql query statement
+   * @param timeoutInMs the timeout of this query, in milliseconds
    * @return result set Notice that you must get the result instance. Otherwise a data leakage will
    *     happen
    */
@@ -2889,9 +2889,9 @@ public class SessionPool implements ISessionPool {
   }
 
   /**
-   * execute non read statement
+   * execute non query statement
    *
-   * @param sql non read statement
+   * @param sql non query statement
    */
   @Override
   public void executeNonQueryStatement(String sql)

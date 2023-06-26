@@ -1165,7 +1165,7 @@ public class ClusterTestResultSet implements ResultSet {
   }
 
   /**
-   * As each read operation in one ResultSet may send another RPCs to server, the request should be
+   * As each query operation in one ResultSet may send another RPCs to server, the request should be
    * executed in parallel in order to accelerate the test.
    */
   private <T> RequestDelegate<T> createRequestDelegate() {

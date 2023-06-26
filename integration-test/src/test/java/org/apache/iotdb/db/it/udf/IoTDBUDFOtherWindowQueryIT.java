@@ -147,7 +147,7 @@ public class IoTDBUDFOtherWindowQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create function window_start_end as 'org.apache.iotdb.db.read.udf.example.WindowStartEnd'");
+          "create function window_start_end as 'org.apache.iotdb.db.query.udf.example.WindowStartEnd'");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }

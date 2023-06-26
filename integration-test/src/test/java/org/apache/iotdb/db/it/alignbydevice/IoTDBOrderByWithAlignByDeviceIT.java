@@ -801,7 +801,7 @@ public class IoTDBOrderByWithAlignByDeviceIT {
     }
   }
 
-  // aggregation read
+  // aggregation query
   private static final int[][] countIn1000MSFiledWith100MSTimeGap =
       new int[][] {
         {10, 10, 0},

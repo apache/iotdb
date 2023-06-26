@@ -22,7 +22,7 @@ package org.apache.iotdb.isession.util;
 public enum SystemStatus {
   /** System can read and write normally */
   NORMAL,
-  /** Only read statements are permitted */
+  /** Only query statements are permitted */
   READ_ONLY,
   /**
    * Unrecoverable errors occur, system will be read-only or exit according to the param

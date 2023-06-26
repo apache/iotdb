@@ -84,7 +84,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       statement.execute("CREATE DATABASE root.sg2");
       statement.execute("CREATE DATABASE root.sg3");
 
-      // create schemaengine template
+      // create schema template
       statement.execute("CREATE SCHEMA TEMPLATE t1 (s1 INT64, s2 DOUBLE)");
       statement.execute("CREATE SCHEMA TEMPLATE t2 aligned (s1 INT64, s2 DOUBLE)");
       statement.execute("CREATE SCHEMA TEMPLATE t3 aligned (s1 INT64)");
@@ -93,7 +93,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
 
   @Test
   public void testCreateTemplateAndCreateTimeseries() throws SQLException {
-    // test create schemaengine template repeatedly
+    // test create schema template repeatedly
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       // test datatype and encoding check
@@ -119,7 +119,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
             e.getMessage());
       }
 
-      // set schemaengine template
+      // set schema template
       statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d1");
       statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg1.d2");
       statement.execute("SET SCHEMA TEMPLATE t3 TO root.sg1.d3");
@@ -139,7 +139,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
         Assert.assertFalse(resultSet.next());
       }
 
-      // create timeseries of schemaengine template
+      // create timeseries of schema template
       statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.d1");
       statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.d2");
       statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.d3");
@@ -202,7 +202,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
 
   @Test
   public void testCreateAndSetSchemaTemplate() throws SQLException {
-    // test create schemaengine template repeatedly
+    // test create schema template repeatedly
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try {
@@ -215,7 +215,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
             e.getMessage());
       }
 
-      // set schemaengine template
+      // set schema template
       statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d1");
       statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg1.d2");
 
@@ -223,7 +223,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
         Assert.assertFalse(resultSet.next());
       }
 
-      // set using schemaengine template
+      // set using schema template
       statement.execute("INSERT INTO root.sg1.d1(time,s1) VALUES (1,1)");
       statement.execute("INSERT INTO root.sg1.d2(time,s1) ALIGNED VALUES (1,1)");
 
@@ -283,7 +283,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
 
   @Test
   public void testDropAndShowSchemaTemplates() throws SQLException {
-    // show schemaengine templates
+    // show schema templates
     String[] expectedResult = new String[] {"t1", "t2", "t3"};
     Set<String> expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -297,7 +297,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       }
       Assert.assertEquals(0, expectedResultSet.size());
 
-      // drop schemaengine template
+      // drop schema template
       statement.execute("DROP SCHEMA TEMPLATE t2");
       expectedResult = new String[] {"t1", "t3"};
       expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
@@ -314,7 +314,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
 
   @Test
   public void testShowNodesInSchemaTemplate() throws SQLException {
-    // set schemaengine template
+    // set schema template
     Set<String> expectedResultSet =
         new HashSet<>(Arrays.asList("s1,INT64,RLE,SNAPPY", "s2,DOUBLE,GORILLA,SNAPPY"));
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -340,7 +340,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
   public void testShowPathsSetOrUsingSchemaTemplate() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      // set schemaengine template
+      // set schema template
       statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d1");
       statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d2");
       statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg2.d1");
@@ -357,11 +357,11 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
         }
       }
 
-      // activate schemaengine template
+      // activate schema template
       statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.d2");
       statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg2.d1");
 
-      // show paths set schemaengine template
+      // show paths set schema template
       String[] expectedResult =
           new String[] {"root.sg1.d1", "root.sg2.d2", "root.sg1.d2", "root.sg2.d1"};
       Set<String> expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
@@ -436,13 +436,13 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
   public void testDeleteTimeSeriesWhenUsingTemplate() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      // set schemaengine template
+      // set schema template
       statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d1");
       statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg1.d2");
 
       statement.execute("CREATE TIMESERIES root.sg3.d1.s1 INT64");
 
-      // set using schemaengine template
+      // set using schema template
       statement.execute("INSERT INTO root.sg1.d1(time,s1) VALUES (1,1)");
       statement.execute("INSERT INTO root.sg1.d2(time,s1) ALIGNED VALUES (1,1)");
       statement.execute("INSERT INTO root.sg3.d1(time,s1) VALUES (1,1)");
@@ -496,11 +496,11 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE SCHEMA TEMPLATE t4 (s3 INT64, s4 DOUBLE)");
 
-      // set schemaengine template
+      // set schema template
       statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d1");
       statement.execute("SET SCHEMA TEMPLATE t4 TO root.sg1.d2");
 
-      // set using schemaengine template
+      // set using schema template
       statement.execute("INSERT INTO root.sg1.d1(time,s1) VALUES (1,1)");
       statement.execute("INSERT INTO root.sg1.d2(time,s3) VALUES (1,1)");
 
@@ -543,15 +543,14 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
   public void testInsertDataWithMeasurementsBeyondTemplate() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      // set schemaengine template
+      // set schema template
       statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d1");
-      // insert data and auto activate schemaengine template
+      // insert data and auto activate schema template
       statement.execute("INSERT INTO root.sg1.d1(time,s1,s2) VALUES (1,1,1)");
       // insert twice to make sure the timeseries in template has been cached
       statement.execute("INSERT INTO root.sg1.d1(time,s1,s2) VALUES (2,1,1)");
 
-      // insert data with extra measurement s3 which should be checked by schemaengine fetch and
-      // auto
+      // insert data with extra measurement s3 which should be checked by schema fetch and auto
       // created
       statement.execute("INSERT INTO root.sg1.d1(time,s1,s2,s3) VALUES (2,1,1,1)");
 
@@ -567,9 +566,9 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
   public void testUnsetTemplate() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      // set schemaengine template
+      // set schema template
       statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d1");
-      // show paths set schemaengine template
+      // show paths set schema template
       String[] expectedResult = new String[] {"root.sg1.d1"};
       Set<String> expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
       try (ResultSet resultSet = statement.executeQuery("SHOW PATHS SET SCHEMA TEMPLATE t1")) {
@@ -581,7 +580,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
         }
       }
       Assert.assertEquals(0, expectedResultSet.size());
-      // unset schemaengine template
+      // unset schema template
       statement.execute("UNSET SCHEMA TEMPLATE t1 FROM root.sg1.d1");
       try (ResultSet resultSet = statement.executeQuery("SHOW PATHS SET SCHEMA TEMPLATE t1")) {
         Assert.assertFalse(resultSet.next());
@@ -593,9 +592,9 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
   public void testTemplateSetAndTimeSeriesExistenceCheck() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      // set schemaengine template
+      // set schema template
       statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d1");
-      // show paths set schemaengine template
+      // show paths set schema template
       String[] expectedResult = new String[] {"root.sg1.d1"};
       Set<String> expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
       try (ResultSet resultSet = statement.executeQuery("SHOW PATHS SET SCHEMA TEMPLATE t1")) {
@@ -613,11 +612,11 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
         fail();
       } catch (SQLException e) {
         Assert.assertEquals(
-            "516: Cannot create timeseries [root.sg1.d1.s] since schemaengine template [t1] already set on path [root.sg1.d1].",
+            "516: Cannot create timeseries [root.sg1.d1.s] since schema template [t1] already set on path [root.sg1.d1].",
             e.getMessage());
       }
 
-      // unset schemaengine template
+      // unset schema template
       statement.execute("UNSET SCHEMA TEMPLATE t1 FROM root.sg1.d1");
       try (ResultSet resultSet = statement.executeQuery("SHOW PATHS SET SCHEMA TEMPLATE t1")) {
         Assert.assertFalse(resultSet.next());
@@ -629,7 +628,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
         statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d1");
       } catch (SQLException e) {
         Assert.assertEquals(
-            "516: Cannot set schemaengine template [t1] to path [root.sg1.d1] since there's timeseries under path [root.sg1.d1].",
+            "516: Cannot set schema template [t1] to path [root.sg1.d1] since there's timeseries under path [root.sg1.d1].",
             e.getMessage());
       }
 
@@ -653,14 +652,14 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
         statement.execute("CREATE TIMESERIES root.sg1.d2 INT32");
       } catch (SQLException e) {
         Assert.assertEquals(
-            "516: Cannot create timeseries [root.sg1.d2] since schemaengine template [t1] already set on path [root.sg1.d2.tmp.m].",
+            "516: Cannot create timeseries [root.sg1.d2] since schema template [t1] already set on path [root.sg1.d2.tmp.m].",
             e.getMessage());
       }
       try {
         statement.execute("CREATE TIMESERIES root.sg1.d2.s(tmp) INT32");
       } catch (SQLException e) {
         Assert.assertEquals(
-            "516: Cannot create timeseries [root.sg1.d2.s] since schemaengine template [t1] already set on path [root.sg1.d2.tmp.m].",
+            "516: Cannot create timeseries [root.sg1.d2.s] since schema template [t1] already set on path [root.sg1.d2.tmp.m].",
             e.getMessage());
       }
       statement.execute("CREATE TIMESERIES root.sg1.d2.s INT32");
@@ -669,14 +668,14 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
 
   @Test
   public void testShowTemplateSeriesWithFuzzyQuery() throws Exception {
-    // test create schemaengine template repeatedly
+    // test create schema template repeatedly
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      // set schemaengine template
+      // set schema template
       statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1");
       statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg2");
       statement.execute("SET SCHEMA TEMPLATE t3 TO root.sg3");
-      // activate schemaengine template
+      // activate schema template
       statement.execute("create timeseries using schema template on root.sg1.d1");
       statement.execute("create timeseries using schema template on root.sg2.d2");
       statement.execute("create timeseries using schema template on root.sg3.d3");
@@ -732,9 +731,9 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
   public void testEmptySchemaTemplate() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      // create empty schemaengine template
+      // create empty schema template
       statement.execute("create schema template e_t");
-      // set schemaengine template
+      // set schema template
       statement.execute("SET SCHEMA TEMPLATE e_t TO root.sg1");
       try (ResultSet resultSet = statement.executeQuery("show nodes in schema template e_t")) {
         Assert.assertFalse(resultSet.next());

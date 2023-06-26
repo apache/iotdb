@@ -95,7 +95,7 @@ public class IoTDBUDTFHybridQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create function counter as 'org.apache.iotdb.db.read.udf.example.Counter'");
+          "create function counter as 'org.apache.iotdb.db.query.udf.example.Counter'");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }

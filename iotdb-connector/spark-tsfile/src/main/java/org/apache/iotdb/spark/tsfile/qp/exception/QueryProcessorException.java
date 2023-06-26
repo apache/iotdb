@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.spark.tsfile.qp.exception;
 
-/** This exception is threw whiling meeting error in read processor */
+/** This exception is threw whiling meeting error in query processor */
 public class QueryProcessorException extends Exception {
 
   private static final long serialVersionUID = -8987915921329335088L;

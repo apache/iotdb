@@ -61,7 +61,7 @@ public class TsFileTestHelper {
       // the number of values to include in the tablet
       int sensorNum = 10;
 
-      // add timeseries into file schemaengine (all with INT64 data type)
+      // add timeseries into file schema (all with INT64 data type)
       for (int i = 0; i < sensorNum; i++) {
         MeasurementSchema measurementSchema =
             new MeasurementSchema("sensor_" + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF);

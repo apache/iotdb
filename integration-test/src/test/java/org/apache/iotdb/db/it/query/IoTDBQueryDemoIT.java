@@ -473,13 +473,13 @@ public class IoTDBQueryDemoIT {
     } catch (Exception e) {
       Assert.assertEquals(
           e.getMessage(),
-          "411: Error occurred in read process: For Basic operator,TEXT type only support EQUAL or NOTEQUAL operator");
+          "411: Error occurred in query process: For Basic operator,TEXT type only support EQUAL or NOTEQUAL operator");
     }
   }
 
   @Test
   public void testRightTextQuery() {
-    // Text type uses the equal operator to read the correct result
+    // Text type uses the equal operator to query the correct result
     String[] retArray =
         new String[] {
           "1509465600000,v2,", "1509465660000,v2,",

@@ -318,7 +318,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       // udf class name should be STRING_LITERAL
-      statement.execute("create function udf as 'org.apache.iotdb.db.read.udf.example.Adder'");
+      statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
 
       // executed correctly
       try (ResultSet resultSet = statement.executeQuery("show functions")) {
@@ -354,7 +354,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     String errorMsg1 =
         TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
             + ": Error occurred while parsing SQL to physical plan: "
-            + "line 1:23 mismatched input '`org.apache.iotdb.db.read.udf.example.Adder`' "
+            + "line 1:23 mismatched input '`org.apache.iotdb.db.query.udf.example.Adder`' "
             + "expecting STRING_LITERAL";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

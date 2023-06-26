@@ -46,7 +46,7 @@ import scala.collection.mutable.ListBuffer
 
 
 /**
-  * This object contains methods that are used to convert schemaengine and data between SparkSQL
+  * This object contains methods that are used to convert schema and data between SparkSQL
   * and TSFile.
   *
   */
@@ -130,8 +130,8 @@ object WideConverter extends Converter {
       val fileSchema = WideConverter.getSeries(tsFileMetaData, reader)
       queriedSchema = StructType(toSqlField(fileSchema, false).toList)
 
-    } else { // Remove nonexistent schemaengine according to the current file's metadata.
-      // This may happen when queried TsFiles in the same folder do not have the same schemaengine.
+    } else { // Remove nonexistent schema according to the current file's metadata.
+      // This may happen when queried TsFiles in the same folder do not have the same schema.
 
       val devices = reader.getAllDevices
       val measurementIds = reader.getAllMeasurements.keySet()
@@ -155,10 +155,10 @@ object WideConverter extends Converter {
     *
     * @param schema  selected columns
     * @param filters filters
-    * @return read expression
+    * @return query expression
     */
   def toQueryExpression(schema: StructType, filters: Seq[Filter]): QueryExpression = {
-    //get paths from schemaengine
+    //get paths from schema
     val paths = new util.ArrayList[org.apache.iotdb.tsfile.read.common.Path]
     schema.foreach(f => {
       if (!QueryConstant.RESERVED_TIME.equals(f.name)) { // the time field is excluded
@@ -186,7 +186,7 @@ object WideConverter extends Converter {
       //convert filterTree to FilterOperator
       val finalFilter = transformFilter(schema, filterTree)
 
-      // create read expression
+      // create query expression
       val queryExpression = QueryExpression.create(paths, finalFilter)
 
       queryExpression
@@ -440,11 +440,11 @@ object WideConverter extends Converter {
   }
 
   /**
-    * Given a SparkSQL struct type, generate the TsFile schemaengine.
-    * Note: Measurements of the same name should have the same schemaengine.
+    * Given a SparkSQL struct type, generate the TsFile schema.
+    * Note: Measurements of the same name should have the same schema.
     *
-    * @param structType given sql schemaengine
-    * @return TsFile schemaengine
+    * @param structType given sql schema
+    * @return TsFile schema
     */
   def toTsFileSchema(structType: StructType, options: Map[String, String]): Schema = {
     val schema = new Schema()

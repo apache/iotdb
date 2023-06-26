@@ -98,17 +98,17 @@ public class IoTDBUDFWindowQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create function counter as 'org.apache.iotdb.db.read.udf.example.Counter'");
+          "create function counter as 'org.apache.iotdb.db.query.udf.example.Counter'");
       statement.execute(
-          "create function accumulator as 'org.apache.iotdb.db.read.udf.example.Accumulator'");
+          "create function accumulator as 'org.apache.iotdb.db.query.udf.example.Accumulator'");
       statement.execute(
-          "create function time_window_tester as 'org.apache.iotdb.db.read.udf.example.SlidingTimeWindowConstructionTester'");
+          "create function time_window_tester as 'org.apache.iotdb.db.query.udf.example.SlidingTimeWindowConstructionTester'");
       statement.execute(
-          "create function size_window_0 as 'org.apache.iotdb.db.read.udf.example.SlidingSizeWindowConstructorTester0'");
+          "create function size_window_0 as 'org.apache.iotdb.db.query.udf.example.SlidingSizeWindowConstructorTester0'");
       statement.execute(
-          "create function size_window_1 as 'org.apache.iotdb.db.read.udf.example.SlidingSizeWindowConstructorTester1'");
+          "create function size_window_1 as 'org.apache.iotdb.db.query.udf.example.SlidingSizeWindowConstructorTester1'");
       statement.execute(
-          "create function window_start_end as 'org.apache.iotdb.db.read.udf.example.WindowStartEnd'");
+          "create function window_start_end as 'org.apache.iotdb.db.query.udf.example.WindowStartEnd'");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }

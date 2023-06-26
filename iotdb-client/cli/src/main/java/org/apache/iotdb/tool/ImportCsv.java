@@ -599,7 +599,7 @@ public class ImportCsv extends AbstractCsvTool {
               // Get the data type directly if the CSV column have data type.
               if (!headerTypeMap.containsKey(headerNameWithoutType)) {
                 boolean hasResult = false;
-                // read the data type in iotdb
+                // query the data type in iotdb
                 if (!typeQueriedDevice.contains(deviceName.get())) {
                   try {
                     if (headerTypeMap.isEmpty()) {
@@ -812,7 +812,7 @@ public class ImportCsv extends AbstractCsvTool {
   }
 
   /**
-   * read data type of timeseries from IoTDB
+   * query data type of timeseries from IoTDB
    *
    * @param deviceNames
    * @param headerTypeMap
@@ -846,7 +846,8 @@ public class ImportCsv extends AbstractCsvTool {
           }
         }
       } catch (StatementExecutionException | IllegalPathException e) {
-        System.out.println("Meet error when read the type of timeseries because " + e.getMessage());
+        System.out.println(
+            "Meet error when query the type of timeseries because " + e.getMessage());
         return false;
       }
     }
@@ -879,8 +880,8 @@ public class ImportCsv extends AbstractCsvTool {
   }
 
   /**
-   * if data type of timeseries is not defined in headers of schemaengine, this method will be
-   * called to do type inference
+   * if data type of timeseries is not defined in headers of schema, this method will be called to
+   * do type inference
    *
    * @param strValue
    * @return

@@ -32,7 +32,7 @@
 CREATE TRIGGER `alert-listener-sg1d1s1`
 AFTER INSERT
 ON root.sg1.d1.s1
-AS 'org.apache.iotdb.db.storageengineeengine.trigger.example.AlertListener'
+AS 'org.apache.iotdb.db.engine.trigger.example.AlertListener'
 WITH (
   'lo' = '0', 
   'hi' = '100.0'
@@ -42,7 +42,7 @@ WITH (
 CREATE TRIGGER `alert-listener-sg1d1s1`
 AFTER INSERT
 ON root.sg1.d1.s1
-AS 'org.apache.iotdb.db.storageengineeengine.trigger.example.AlertListener'
+AS 'org.apache.iotdb.db.engine.trigger.example.AlertListener'
 WITH (
   lo = 0, 
   hi = 100.0

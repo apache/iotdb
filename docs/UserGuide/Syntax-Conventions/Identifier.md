@@ -49,7 +49,7 @@ Below are basic constraints of identifiers, specific identifiers may have other 
 
 ```sql
 # create template t1't"t
-create schemaengine template `t1't"t` 
+create schema template `t1't"t` 
 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
 
 # create template t1`t

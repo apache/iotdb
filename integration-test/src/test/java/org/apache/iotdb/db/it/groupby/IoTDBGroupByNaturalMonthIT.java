@@ -167,7 +167,7 @@ public class IoTDBGroupByNaturalMonthIT {
 
   /** StartTime: now() - 1mo, EndTime: now(). */
   @Test
-  @Ignore // TODO add it back after we can read with no DataRegion
+  @Ignore // TODO add it back after we can query with no DataRegion
   @Category(LocalStandaloneIT.class) // datasets are inconsistent in cluster
   public void groupByNaturalMonthWithNowTest() {
     try (Connection connection = EnvFactory.getEnv().getConnection();

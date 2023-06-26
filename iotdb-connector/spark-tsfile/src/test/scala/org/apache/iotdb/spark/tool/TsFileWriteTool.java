@@ -148,7 +148,7 @@ public class TsFileWriteTool {
     }
     TsFileWriter tsFileWriter = new TsFileWriter(f);
 
-    // add measurements into file schemaengine
+    // add measurements into file schema
     tsFileWriter.registerTimeseries(
         new Path("device_1"),
         new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
@@ -171,7 +171,7 @@ public class TsFileWriteTool {
     }
     TsFileWriter tsFileWriter = new TsFileWriter(f);
 
-    // add measurements into file schemaengine
+    // add measurements into file schema
     // NOTE the measurments here are different from those defined in create1 and
     // create2 function, despite their names are the same.
     tsFileWriter.registerTimeseries(

@@ -460,7 +460,7 @@ public abstract class AbstractCli {
 
   /**
    * if cli has not specified a zoneId, it will be set to cli's system timezone by default otherwise
-   * for insert and read accuracy cli should set timezone the same for all sessions.
+   * for insert and query accuracy cli should set timezone the same for all sessions.
    *
    * @param specialCmd
    * @param cmd

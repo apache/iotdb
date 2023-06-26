@@ -776,7 +776,7 @@ public class IoTDBAggregationIT {
     }
   }
 
-  /** test aggregation read with more than one functions on one series */
+  /** test aggregation query with more than one functions on one series */
   @Test
   public void mergeAggrOnOneSeriesTest() {
     double[][] retArray = {

@@ -86,7 +86,7 @@ val df = spark.read.format("org.apache.iotdb.spark.db")
   .option("user", "root")
   .option("password", "root")
   .option("url", "jdbc:iotdb://127.0.0.1:6667/")
-  .option("sql", "select ** from root") // read SQL
+  .option("sql", "select ** from root") // query SQL
   .option("lowerBound", "0") // lower timestamp bound
   .option("upperBound", "100000000") // upper timestamp bound
   .option("numPartition", "5") // number of partitions

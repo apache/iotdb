@@ -97,7 +97,7 @@ public class IoTDBAggregationWithDeletionIT {
         int cnt = 0;
         while (resultSet.next()) {
           String[] ans = new String[columnNames.length];
-          // No need to add time column for aggregation read
+          // No need to add time column for aggregation query
           for (int i = 0; i < columnNames.length; i++) {
             String columnName = columnNames[i];
             int index = map.get(columnName);
@@ -141,7 +141,7 @@ public class IoTDBAggregationWithDeletionIT {
         int cnt = 0;
         while (resultSet.next()) {
           String[] ans = new String[columnNames.length];
-          // No need to add time column for aggregation read
+          // No need to add time column for aggregation query
           for (int i = 0; i < columnNames.length; i++) {
             String columnName = columnNames[i];
             int index = map.get(columnName);
@@ -182,7 +182,7 @@ public class IoTDBAggregationWithDeletionIT {
         int cnt = 0;
         while (resultSet.next()) {
           String[] ans = new String[columnNames.length];
-          // No need to add time column for aggregation read
+          // No need to add time column for aggregation query
           for (int i = 0; i < columnNames.length; i++) {
             String columnName = columnNames[i];
             int index = map.get(columnName);
@@ -226,7 +226,7 @@ public class IoTDBAggregationWithDeletionIT {
         int cnt = 0;
         while (resultSet.next()) {
           double[] ans = new double[columnNames.length];
-          // No need to add time column for aggregation read
+          // No need to add time column for aggregation query
           for (int i = 0; i < columnNames.length; i++) {
             String columnName = columnNames[i];
             int index = map.get(columnName);
@@ -270,7 +270,7 @@ public class IoTDBAggregationWithDeletionIT {
         int cnt = 0;
         while (resultSet.next()) {
           double[] ans = new double[columnNames.length];
-          // No need to add time column for aggregation read
+          // No need to add time column for aggregation query
           for (int i = 0; i < columnNames.length; i++) {
             String columnName = columnNames[i];
             int index = map.get(columnName);
@@ -305,7 +305,7 @@ public class IoTDBAggregationWithDeletionIT {
         int cnt = 0;
         while (resultSet.next()) {
           StringBuilder builder = new StringBuilder();
-          // No need to add time column for aggregation read
+          // No need to add time column for aggregation query
           for (String columnName : columnNames) {
             int index = map.get(columnName);
             if (builder.length() != 0) {
@@ -342,7 +342,7 @@ public class IoTDBAggregationWithDeletionIT {
         int cnt = 0;
         while (resultSet.next()) {
           StringBuilder builder = new StringBuilder();
-          // No need to add time column for aggregation read
+          // No need to add time column for aggregation query
           for (String columnName : columnNames) {
             int index = map.get(columnName);
             if (builder.length() != 0) {
@@ -379,7 +379,7 @@ public class IoTDBAggregationWithDeletionIT {
         int cnt = 0;
         while (resultSet.next()) {
           StringBuilder builder = new StringBuilder();
-          // No need to add time column for aggregation read
+          // No need to add time column for aggregation query
           for (String columnName : columnNames) {
             int index = map.get(columnName);
             if (builder.length() != 0) {
@@ -417,7 +417,7 @@ public class IoTDBAggregationWithDeletionIT {
         int cnt = 0;
         while (resultSet.next()) {
           String[] ans = new String[columnNames.length];
-          // No need to add time column for aggregation read
+          // No need to add time column for aggregation query
           for (int i = 0; i < columnNames.length; i++) {
             String columnName = columnNames[i];
             int index = map.get(columnName);
@@ -457,7 +457,7 @@ public class IoTDBAggregationWithDeletionIT {
         int cnt = 0;
         while (resultSet.next()) {
           String[] ans = new String[columnNames.length];
-          // No need to add time column for aggregation read
+          // No need to add time column for aggregation query
           for (int i = 0; i < columnNames.length; i++) {
             String columnName = columnNames[i];
             int index = map.get(columnName);
@@ -495,7 +495,7 @@ public class IoTDBAggregationWithDeletionIT {
         int cnt = 0;
         while (resultSet.next()) {
           String[] ans = new String[columnNames.length];
-          // No need to add time column for aggregation read
+          // No need to add time column for aggregation query
           for (int i = 0; i < columnNames.length; i++) {
             String columnName = columnNames[i];
             int index = map.get(columnName);

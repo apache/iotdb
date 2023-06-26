@@ -42,7 +42,7 @@ public class TsFileExample {
     }
     TsFileWriter tsFileWriter = new TsFileWriter(f);
 
-    // add measurements into file schemaengine
+    // add measurements into file schema
     tsFileWriter.registerTimeseries(
         new Path("root.ln.wf01.wt01"),
         new MeasurementSchema("status", TSDataType.BOOLEAN, TSEncoding.PLAIN));

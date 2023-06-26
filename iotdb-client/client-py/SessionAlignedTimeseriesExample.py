@@ -188,12 +188,12 @@ session.insert_aligned_records_of_one_device(
     "root.sg_test_01.d_02", time_list, measurements_list, data_types_list, values_list
 )
 
-# execute non-read sql statement
+# execute non-query sql statement
 session.execute_non_query_statement(
     "insert into root.sg_test_01.d_02(timestamp, s_02) aligned values(16, 188)"
 )
 
-# execute sql read statement
+# execute sql query statement
 with session.execute_query_statement(
     "select * from root.sg_test_01.d_02"
 ) as session_data_set:

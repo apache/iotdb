@@ -172,7 +172,7 @@ public class IoTDBSessionInsertNullIT {
           assertEquals(3, nums);
           return;
         } catch (Exception e) {
-          LOGGER.info("read records failed, retry: " + i);
+          LOGGER.info("query records failed, retry: " + i);
           Thread.sleep(1000);
         }
       }

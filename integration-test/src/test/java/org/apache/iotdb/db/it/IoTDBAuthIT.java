@@ -337,7 +337,7 @@ public class IoTDBAuthIT {
         Assert.assertThrows(
             SQLException.class,
             () -> userStmt.execute("INSERT INTO root.a(timestamp, b) VALUES (1,100)"));
-        // grant privilege to read
+        // grant privilege to query
         Assert.assertThrows(SQLException.class, () -> userStmt.execute("SELECT * from root.a"));
 
         adminStmt.execute("GRANT USER tempuser PRIVILEGES READ_TIMESERIES on root.**");
@@ -346,7 +346,7 @@ public class IoTDBAuthIT {
         resultSet = userStmt.executeQuery("SELECT LAST b from root.a");
         resultSet.close();
 
-        // revoke privilege to read
+        // revoke privilege to query
         adminStmt.execute("REVOKE USER tempuser PRIVILEGES READ_TIMESERIES on root.**");
         Assert.assertThrows(SQLException.class, () -> userStmt.execute("SELECT * from root.a"));
       }

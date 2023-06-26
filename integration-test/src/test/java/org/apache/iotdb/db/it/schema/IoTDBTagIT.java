@@ -1155,7 +1155,7 @@ public class IoTDBTagIT extends AbstractSchemaIT {
     } catch (Exception e) {
       e.printStackTrace();
       assertEquals(
-          "411: Error occurred in read process: Query for measurement and its alias at the same time!",
+          "411: Error occurred in query process: Query for measurement and its alias at the same time!",
           e.getMessage());
     }
   }

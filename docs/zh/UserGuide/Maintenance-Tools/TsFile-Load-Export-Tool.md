@@ -119,10 +119,10 @@ TsFile 工具可帮您 通过执行指定sql、命令行sql、sql文件的方式
 
 ```shell
 # Unix/OS X
-> tools/export-tsfile.sh  -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-f <export filename> -q <read command> -s <sql file>]
+> tools/export-tsfile.sh  -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-f <export filename> -q <query command> -s <sql file>]
 
 # Windows
-> tools\export-tsfile.bat -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-f <export filename> -q <read command> -s <sql file>]
+> tools\export-tsfile.bat -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-f <export filename> -q <query command> -s <sql file>]
 ```
 
 参数:

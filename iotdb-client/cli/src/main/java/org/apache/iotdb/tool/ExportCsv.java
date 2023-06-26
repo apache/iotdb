@@ -137,7 +137,7 @@ public class ExportCsv extends AbstractCsvTool {
 
         if (sqlFile == null) {
           LineReader lineReader = JlineUtils.getLineReader(username, host, port);
-          sql = lineReader.readLine(TSFILEDB_CLI_PREFIX + "> please input read: ");
+          sql = lineReader.readLine(TSFILEDB_CLI_PREFIX + "> please input query: ");
           System.out.println(sql);
           String[] values = sql.trim().split(";");
           for (int i = 0; i < values.length; i++) {
@@ -272,7 +272,7 @@ public class ExportCsv extends AbstractCsvTool {
         Option.builder(QUERY_COMMAND_ARGS)
             .argName(QUERY_COMMAND_NAME)
             .hasArg()
-            .desc("The read command that you want to execute. (optional)")
+            .desc("The query command that you want to execute. (optional)")
             .build();
     options.addOption(opQuery);
 
@@ -296,14 +296,14 @@ public class ExportCsv extends AbstractCsvTool {
         Option.builder(TIMEOUT_ARGS)
             .longOpt(TIMEOUT_NAME)
             .hasArg()
-            .desc("Timeout for session read")
+            .desc("Timeout for session query")
             .build();
     options.addOption(opTimeout);
     return options;
   }
 
   /**
-   * This method will be called, if the read commands are written in a sql file.
+   * This method will be called, if the query commands are written in a sql file.
    *
    * @param filePath
    * @throws IOException

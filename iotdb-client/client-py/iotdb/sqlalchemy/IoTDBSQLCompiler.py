@@ -214,9 +214,9 @@ class IoTDBSQLCompiler(SQLCompiler):
             if inner_columns[i].startswith("count(DISTINCT"):
                 inner_columns[i] = inner_columns[i].replace("count(DISTINCT", "count(")
 
-        # IoTDB does not allow to read Time as column,
+        # IoTDB does not allow to query Time as column,
         # need to filter out Time and pass Time and Time's alias to DBAPI separately
-        # to achieve the read of Time by encoding.
+        # to achieve the query of Time by encoding.
         time_column_index = []
         time_column_names = []
         for i in range(len(inner_columns)):
@@ -268,7 +268,7 @@ class IoTDBSQLCompiler(SQLCompiler):
             if per_dialect:
                 text += " " + self.get_statement_hint_text(per_dialect)
 
-        # In compound read, CTEs are shared at the compound level
+        # In compound query, CTEs are shared at the compound level
         if self.ctes and (not is_embedded_select or toplevel):
             nesting_level = len(self.stack) if not toplevel else None
             text = (

@@ -44,8 +44,9 @@ public class SessionTimeWindowAccessStrategy implements AccessStrategy {
   }
 
   /**
-   * Display window begin will be set to the same as the minimum timestamp of the read result set,
-   * and display window end will be set to the same as the maximum timestamp of the read result set.
+   * Display window begin will be set to the same as the minimum timestamp of the query result set,
+   * and display window end will be set to the same as the maximum timestamp of the query result
+   * set.
    *
    * @param sessionTimeGap 0 <= sessionTimeGap
    */

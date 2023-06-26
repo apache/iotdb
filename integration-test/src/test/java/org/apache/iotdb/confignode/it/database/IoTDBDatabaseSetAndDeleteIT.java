@@ -97,7 +97,7 @@ public class IoTDBDatabaseSetAndDeleteIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), countResp.getStatus().getCode());
       Assert.assertEquals(1, countResp.getCount());
 
-      // test read all DatabaseSchemas
+      // test query all DatabaseSchemas
       TDatabaseSchemaResp getResp = client.getMatchedDatabaseSchemas(Arrays.asList("root", "**"));
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getResp.getStatus().getCode());

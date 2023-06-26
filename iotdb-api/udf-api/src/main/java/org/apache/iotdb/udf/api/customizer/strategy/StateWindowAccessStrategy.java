@@ -56,8 +56,9 @@ public class StateWindowAccessStrategy implements AccessStrategy {
   }
 
   /**
-   * Display window begin will be set to the same as the minimum timestamp of the read result set,
-   * and display window end will be set to the same as the maximum timestamp of the read result set.
+   * Display window begin will be set to the same as the minimum timestamp of the query result set,
+   * and display window end will be set to the same as the maximum timestamp of the query result
+   * set.
    *
    * @param delta 0 < delta
    */
@@ -68,9 +69,9 @@ public class StateWindowAccessStrategy implements AccessStrategy {
   }
 
   /**
-   * Display window begin will be set to the same as the minimum timestamp of the read result set,
-   * and display window end will be set to the same as the maximum timestamp of the read result set.
-   * delta default equals 0.
+   * Display window begin will be set to the same as the minimum timestamp of the query result set,
+   * and display window end will be set to the same as the maximum timestamp of the query result
+   * set. delta default equals 0.
    */
   public StateWindowAccessStrategy() {
     this.displayWindowBegin = Long.MIN_VALUE;

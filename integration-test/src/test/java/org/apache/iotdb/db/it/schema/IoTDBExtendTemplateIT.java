@@ -73,7 +73,7 @@ public class IoTDBExtendTemplateIT extends AbstractSchemaIT {
       // create database
       statement.execute("CREATE DATABASE root.db");
 
-      // create schemaengine template
+      // create schema template
       statement.execute(
           "CREATE SCHEMA TEMPLATE t1 (s1 INT64 ENCODING=PLAIN, s2 DOUBLE ENCODING=RLE)");
 
@@ -90,7 +90,7 @@ public class IoTDBExtendTemplateIT extends AbstractSchemaIT {
       } catch (SQLException e) {
         Assert.assertTrue(
             e.getMessage()
-                .contains("Duplicated measurement [s5] in schemaengine template alter request"));
+                .contains("Duplicated measurement [s5] in schema template alter request"));
       }
 
       String[] sqls =
@@ -136,7 +136,7 @@ public class IoTDBExtendTemplateIT extends AbstractSchemaIT {
       // create database
       statement.execute("CREATE DATABASE root.db");
 
-      // create schemaengine template
+      // create schema template
       statement.execute(
           "CREATE SCHEMA TEMPLATE t1 (s1 INT64 ENCODING=PLAIN, s2 DOUBLE ENCODING=RLE)");
 
@@ -197,7 +197,7 @@ public class IoTDBExtendTemplateIT extends AbstractSchemaIT {
       // create database
       statement.execute("CREATE DATABASE root.db");
 
-      // create schemaengine template
+      // create schema template
       statement.execute(
           "CREATE SCHEMA TEMPLATE t1 (s1 INT64 ENCODING=PLAIN, s2 DOUBLE ENCODING=RLE)");
 

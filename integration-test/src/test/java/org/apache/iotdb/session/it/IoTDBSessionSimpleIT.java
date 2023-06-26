@@ -1291,7 +1291,7 @@ public class IoTDBSessionSimpleIT {
         "8\t4\t5\t4.0\t8.0\ttrue"
       };
 
-      // read
+      // query
       String[] casts = new String[targetTypes.length];
       StringBuffer buffer = new StringBuffer();
       buffer.append("select ");

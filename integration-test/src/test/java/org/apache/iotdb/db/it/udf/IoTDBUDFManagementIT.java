@@ -72,7 +72,7 @@ public class IoTDBUDFManagementIT {
   public void testCreateReflectShowDrop() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("create function udf as 'org.apache.iotdb.db.read.udf.example.Adder'");
+      statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       statement.executeQuery("select udf(*, *) from root.vehicle");
 
       try (ResultSet resultSet = statement.executeQuery("show functions")) {
@@ -101,7 +101,7 @@ public class IoTDBUDFManagementIT {
   public void testCreateAndDropSeveralTimes() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("create function udf as 'org.apache.iotdb.db.read.udf.example.Adder'");
+      statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       statement.executeQuery("select udf(*, *) from root.vehicle");
 
       try (ResultSet resultSet = statement.executeQuery("show functions")) {
@@ -115,7 +115,7 @@ public class IoTDBUDFManagementIT {
         assertEquals(3, resultSet.getMetaData().getColumnCount());
         statement.execute("drop function udf");
 
-        statement.execute("create function udf as 'org.apache.iotdb.db.read.udf.example.Adder'");
+        statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
         statement.executeQuery("select udf(*, *) from root.vehicle");
       }
 
@@ -149,7 +149,7 @@ public class IoTDBUDFManagementIT {
   public void testReflectAfterDrop() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("create function udf as 'org.apache.iotdb.db.read.udf.example.Adder'");
+      statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       statement.execute("drop function udf");
       statement.executeQuery("select udf(*, *) from root.vehicle");
     } catch (SQLException throwable) {
@@ -161,7 +161,7 @@ public class IoTDBUDFManagementIT {
   public void testCreateFunctionWithBuiltinFunctionName1() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("create function aVg as 'org.apache.iotdb.db.read.udf.example.Adder'");
+      statement.execute("create function aVg as 'org.apache.iotdb.db.query.udf.example.Adder'");
       fail();
     } catch (SQLException throwable) {
       assertTrue(
@@ -176,7 +176,7 @@ public class IoTDBUDFManagementIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create function MAX_VALUE as 'org.apache.iotdb.db.read.udf.example.Adder'");
+          "create function MAX_VALUE as 'org.apache.iotdb.db.query.udf.example.Adder'");
       fail();
     } catch (SQLException throwable) {
       assertTrue(
@@ -190,10 +190,10 @@ public class IoTDBUDFManagementIT {
   public void testCreateFunction1() throws SQLException { // create function twice
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("create function udf as 'org.apache.iotdb.db.read.udf.example.Adder'");
+      statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
 
       try {
-        statement.execute("create function udf as 'org.apache.iotdb.db.read.udf.example.Adder'");
+        statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
         fail();
       } catch (SQLException throwable) {
         assertTrue(throwable.getMessage().contains("Failed to create"));
@@ -205,10 +205,10 @@ public class IoTDBUDFManagementIT {
   public void testCreateFunction3() throws SQLException { // create function twice
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("create function udf as 'org.apache.iotdb.db.read.udf.example.Adder'");
+      statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
 
       try {
-        statement.execute("create function udf as 'org.apache.iotdb.db.read.udf.example.Adder'");
+        statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
         fail();
       } catch (SQLException throwable) {
         assertTrue(throwable.getMessage().contains("the same name UDF has been created"));
@@ -248,7 +248,7 @@ public class IoTDBUDFManagementIT {
   public void testDropFunction1() throws SQLException { // create + drop twice
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("create function udf as 'org.apache.iotdb.db.read.udf.example.Adder'");
+      statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       statement.execute("drop function udf");
 
       try {
@@ -308,7 +308,7 @@ public class IoTDBUDFManagementIT {
   public void testCreateBuiltinFunction() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("create function sin as 'org.apache.iotdb.db.read.udf.example.Adder'");
+      statement.execute("create function sin as 'org.apache.iotdb.db.query.udf.example.Adder'");
       fail();
     } catch (SQLException throwable) {
       assertTrue(throwable.getMessage().contains("the same name UDF has been created"));
@@ -319,7 +319,7 @@ public class IoTDBUDFManagementIT {
   public void testReflectBuiltinFunction() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("create function adder as 'org.apache.iotdb.db.read.udf.example.Adder'");
+      statement.execute("create function adder as 'org.apache.iotdb.db.query.udf.example.Adder'");
       statement.executeQuery("select adder(*, *) from root.vehicle");
       statement.execute("drop function adder");
     } catch (SQLException throwable) {
@@ -331,7 +331,7 @@ public class IoTDBUDFManagementIT {
   public void testShowBuiltinFunction() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("create function udf as 'org.apache.iotdb.db.read.udf.example.Adder'");
+      statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
 
       try (ResultSet resultSet = statement.executeQuery("show functions")) {
         assertEquals(3, resultSet.getMetaData().getColumnCount());
@@ -349,7 +349,7 @@ public class IoTDBUDFManagementIT {
           if (result.contains(FUNCTION_TYPE_EXTERNAL_UDTF)) {
             Assert.assertEquals(
                 String.format(
-                    "UDF,%s,org.apache.iotdb.db.read.udf.example.Adder,",
+                    "UDF,%s,org.apache.iotdb.db.query.udf.example.Adder,",
                     FUNCTION_TYPE_EXTERNAL_UDTF),
                 result);
             ++count;

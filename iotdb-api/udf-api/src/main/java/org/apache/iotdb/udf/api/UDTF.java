@@ -53,8 +53,8 @@ import org.apache.iotdb.udf.api.customizer.strategy.SlidingTimeWindowAccessStrat
  * UDTF#transform(Row, PointCollector)} 4. {@link UDTF#terminate(PointCollector)} 5. {@link
  * UDTF#beforeDestroy()}
  *
- * <p>The read storageengine will instantiate an independent UDTF instance for each udf read column,
- * and different UDTF instances will not affect each other.
+ * <p>The query engine will instantiate an independent UDTF instance for each udf query column, and
+ * different UDTF instances will not affect each other.
  */
 public interface UDTF extends UDF {
 
@@ -83,7 +83,7 @@ public interface UDTF extends UDF {
   /**
    * When the user specifies {@link RowByRowAccessStrategy} to access the original data in {@link
    * UDTFConfigurations}, this method will be called to process the transformation. In a single UDF
-   * read, this method may be called multiple times.
+   * query, this method may be called multiple times.
    *
    * @param row original input data row (aligned by time)
    * @param collector used to collect output data points
@@ -98,8 +98,8 @@ public interface UDTF extends UDF {
   /**
    * When the user specifies {@link SlidingSizeWindowAccessStrategy} or {@link
    * SlidingTimeWindowAccessStrategy} to access the original data in {@link UDTFConfigurations},
-   * this method will be called to process the transformation. In a single UDF read, this method may
-   * be called multiple times.
+   * this method will be called to process the transformation. In a single UDF query, this method
+   * may be called multiple times.
    *
    * @param rowWindow original input data window (rows inside the window are aligned by time)
    * @param collector used to collect output data points
@@ -115,7 +115,7 @@ public interface UDTF extends UDF {
   /**
    * When the user specifies {@link MappableRowByRowAccessStrategy} to access the original data in
    * {@link UDTFConfigurations}, this method will be called to process the transformation. In a
-   * single UDF read, this method may be called multiple times.
+   * single UDF query, this method may be called multiple times.
    *
    * @param row original input data row (aligned by time)
    * @throws Exception the user can throw errors if necessary

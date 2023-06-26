@@ -23,11 +23,11 @@ import org.apache.iotdb.pipe.api.event.Event;
 
 import java.io.IOException;
 
-/** Used to collect events in pipe storageengine. */
+/** Used to collect events in pipe engine. */
 public interface EventCollector {
 
   /**
-   * Collects a Event in pipe storageengine.
+   * Collects a Event in pipe engine.
    *
    * @param event Event to be collected
    * @throws IOException if any I/O errors occur

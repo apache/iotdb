@@ -116,7 +116,7 @@ public class ExportTsFile extends AbstractTsFileTool {
 
         if (sqlFile == null) {
           LineReader lineReader = JlineUtils.getLineReader(username, host, port);
-          sql = lineReader.readLine(TSFILEDB_CLI_PREFIX + "> please input read: ");
+          sql = lineReader.readLine(TSFILEDB_CLI_PREFIX + "> please input query: ");
           System.out.println(sql);
           String[] values = sql.trim().split(";");
           for (int i = 0; i < values.length; i++) {
@@ -167,7 +167,7 @@ public class ExportTsFile extends AbstractTsFileTool {
         || sqlLower.contains("last_value(")
         || sqlLower.contains("max_time(")
         || sqlLower.contains("min_time(")) {
-      System.out.println("The sql you entered is invalid, please don't use aggregate read.");
+      System.out.println("The sql you entered is invalid, please don't use aggregate query.");
       System.exit(CODE_ERROR);
     }
   }
@@ -226,7 +226,7 @@ public class ExportTsFile extends AbstractTsFileTool {
         Option.builder(QUERY_COMMAND_ARGS)
             .argName(QUERY_COMMAND_NAME)
             .hasArg()
-            .desc("The read command that you want to execute. (optional)")
+            .desc("The query command that you want to execute. (optional)")
             .build();
     options.addOption(opQuery);
 
@@ -242,14 +242,14 @@ public class ExportTsFile extends AbstractTsFileTool {
         Option.builder(TIMEOUT_ARGS)
             .longOpt(TIMEOUT_NAME)
             .hasArg()
-            .desc("Timeout for session read")
+            .desc("Timeout for session query")
             .build();
     options.addOption(opTimeout);
     return options;
   }
 
   /**
-   * This method will be called, if the read commands are written in a sql file.
+   * This method will be called, if the query commands are written in a sql file.
    *
    * @param filePath:file path
    * @throws IOException: exception

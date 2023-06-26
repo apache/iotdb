@@ -114,9 +114,9 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
   /**
    * Deprecated since v0.14.
    *
-   * <p>Display window begin will be set to the same as the minimum timestamp of the read result
-   * set, and display window end will be set to the same as the maximum timestamp of the read result
-   * set.
+   * <p>Display window begin will be set to the same as the minimum timestamp of the query result
+   * set, and display window end will be set to the same as the maximum timestamp of the query
+   * result set.
    *
    * @param timeIntervalString time interval in string. examples: 12d8m9ns, 1y1mo, etc. supported
    *     units: y, mo, w, d, h, m, s, ms, us, ns.
@@ -134,8 +134,8 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
    * Deprecated since v0.14.
    *
    * <p>Sliding step will be set to the same as the time interval, display window begin will be set
-   * to the same as the minimum timestamp of the read result set, and display window end will be set
-   * to the same as the maximum timestamp of the read result set.
+   * to the same as the minimum timestamp of the query result set, and display window end will be
+   * set to the same as the maximum timestamp of the query result set.
    *
    * @param timeIntervalString time interval in string. examples: 12d8m9ns, 1y1mo, etc. supported
    *     units: y, mo, w, d, h, m, s, ms, us, ns.
@@ -162,8 +162,9 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
   }
 
   /**
-   * Display window begin will be set to the same as the minimum timestamp of the read result set,
-   * and display window end will be set to the same as the maximum timestamp of the read result set.
+   * Display window begin will be set to the same as the minimum timestamp of the query result set,
+   * and display window end will be set to the same as the maximum timestamp of the query result
+   * set.
    *
    * @param timeInterval 0 < timeInterval
    * @param slidingStep 0 < slidingStep
@@ -177,8 +178,8 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
 
   /**
    * Sliding step will be set to the same as the time interval, display window begin will be set to
-   * the same as the minimum timestamp of the read result set, and display window end will be set to
-   * the same as the maximum timestamp of the read result set.
+   * the same as the minimum timestamp of the query result set, and display window end will be set
+   * to the same as the maximum timestamp of the query result set.
    *
    * @param timeInterval 0 < timeInterval
    */

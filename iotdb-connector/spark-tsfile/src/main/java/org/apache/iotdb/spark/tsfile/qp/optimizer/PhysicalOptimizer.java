@@ -37,7 +37,7 @@ import java.util.Set;
 
 public class PhysicalOptimizer {
 
-  // determine whether to read all delta_objects from TsFile. true means do read.
+  // determine whether to query all delta_objects from TsFile. true means do read.
   private boolean flag;
   private List<String> validDeltaObjects = new ArrayList<>();
   private List<String> columnNames;
@@ -224,7 +224,7 @@ public class PhysicalOptimizer {
       switch (columnFilterOperator.getTokenIntType()) {
         case SQLConstant.KW_AND:
           ret.right.retainAll(temp.right);
-          // example: "where device = d1 and device = d2" should not read data
+          // example: "where device = d1 and device = d2" should not query data
           if (ret.right.isEmpty()) {
             flag = false;
           }

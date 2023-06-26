@@ -125,14 +125,14 @@ public class IoTDBUDTFAlignByTimeQueryIT {
   private static void registerUDF() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("create function udf as 'org.apache.iotdb.db.read.udf.example.Adder'");
+      statement.execute("create function udf as 'org.apache.iotdb.db.query.udf.example.Adder'");
       statement.execute(
-          "create function multiplier as 'org.apache.iotdb.db.read.udf.example.Multiplier'");
-      statement.execute("create function max as 'org.apache.iotdb.db.read.udf.example.Max'");
+          "create function multiplier as 'org.apache.iotdb.db.query.udf.example.Multiplier'");
+      statement.execute("create function max as 'org.apache.iotdb.db.query.udf.example.Max'");
       statement.execute(
-          "create function terminate as 'org.apache.iotdb.db.read.udf.example.TerminateTester'");
+          "create function terminate as 'org.apache.iotdb.db.query.udf.example.TerminateTester'");
       statement.execute(
-          "create function validate as 'org.apache.iotdb.db.read.udf.example.ValidateTester'");
+          "create function validate as 'org.apache.iotdb.db.query.udf.example.ValidateTester'");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }

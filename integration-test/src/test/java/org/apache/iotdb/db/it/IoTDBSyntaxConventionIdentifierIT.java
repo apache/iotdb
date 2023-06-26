@@ -588,20 +588,20 @@ public class IoTDBSyntaxConventionIdentifierIT {
       }
 
       try {
-        statement.execute("create function 111 as 'org.apache.iotdb.db.read.udf.example.Adder'");
+        statement.execute("create function 111 as 'org.apache.iotdb.db.query.udf.example.Adder'");
         fail();
       } catch (Exception ignored) {
       }
 
       try {
-        statement.execute("create function 'udf' as 'org.apache.iotdb.db.read.udf.example.Adder'");
+        statement.execute("create function 'udf' as 'org.apache.iotdb.db.query.udf.example.Adder'");
         fail();
       } catch (Exception ignored) {
       }
 
       try {
         statement.execute(
-            "create function \"udf\" as 'org.apache.iotdb.db.read.udf.example.Adder'");
+            "create function \"udf\" as 'org.apache.iotdb.db.query.udf.example.Adder'");
         fail();
       } catch (Exception ignored) {
       }
@@ -995,7 +995,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
       for (String templateName : templateNames) {
         String createTemplateSql =
             String.format(
-                "create schemaengine template %s (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)",
+                "create schema template %s (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)",
                 templateName);
         statement.execute(createTemplateSql);
       }

@@ -60,7 +60,7 @@ public class TSMRWriteExample {
     // the number of values to include in the row record
     int sensorNum = 3;
 
-    // add measurements into file schemaengine (all with INT64 data type)
+    // add measurements into file schema (all with INT64 data type)
     for (int i = 0; i < 2; i++) {
       schema.registerTimeseries(
           new org.apache.iotdb.tsfile.read.common.Path(Constant.DEVICE_1),

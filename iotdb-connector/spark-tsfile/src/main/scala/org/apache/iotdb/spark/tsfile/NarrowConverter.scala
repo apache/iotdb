@@ -45,7 +45,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 /**
- * This object contains methods that are used to convert schemaengine and data between SparkSQL
+ * This object contains methods that are used to convert schema and data between SparkSQL
  * and TSFile.
  *
  */
@@ -138,8 +138,8 @@ object NarrowConverter extends Converter {
       queriedSchema = StructType(toSqlField(fileSchema, false).toList)
 
     } else {
-      // Remove nonexistent schemaengine according to the current file's metadata.
-      // This may happen when queried TsFiles in the same folder do not have the same schemaengine.
+      // Remove nonexistent schema according to the current file's metadata.
+      // This may happen when queried TsFiles in the same folder do not have the same schema.
 
       val measurementIds = reader.getAllMeasurements.keySet()
       requiredSchema.foreach(f => {
@@ -159,10 +159,10 @@ object NarrowConverter extends Converter {
   /**
    * Construct queryExpression based on queriedSchema and filters.
    *
-   * @param schema           schemaengine
+   * @param schema           schema
    * @param device_name      device_names
    * @param measurement_name measurement_names
-   * @return read expression
+   * @return query expression
    */
   def toQueryExpression(schema: StructType,
                         device_name: util.List[String],
@@ -175,7 +175,7 @@ object NarrowConverter extends Converter {
     var finalFilter: FilterOperator = null
     //remove invalid filters
     val validFilters = new ListBuffer[Filter]()
-    //read processor
+    //query processor
     val queryProcessor = new QueryProcessor()
     filters.foreach(f => {
       if (isValidFilter(f))
@@ -209,10 +209,10 @@ object NarrowConverter extends Converter {
   }
 
   /**
-   * Used in toQueryConfigs() to convert one read plan to one QueryConfig.
+   * Used in toQueryConfigs() to convert one query plan to one QueryConfig.
    *
-   * @param queryPlan TsFile logical read plan
-   * @return TsFile physical read plan
+   * @param queryPlan TsFile logical query plan
+   * @return TsFile physical query plan
    */
   private def queryToExpression(schema: StructType, queryPlan: TSQueryPlan): QueryExpression = {
     val selectedColumns = queryPlan.getPaths
@@ -542,11 +542,11 @@ object NarrowConverter extends Converter {
   }
 
   /**
-   * Given a SparkSQL struct type, generate the TsFile schemaengine.
-   * Note: Measurements of the same name should have the same schemaengine.
+   * Given a SparkSQL struct type, generate the TsFile schema.
+   * Note: Measurements of the same name should have the same schema.
    *
-   * @param structType given sql schemaengine
-   * @return TsFile schemaengine
+   * @param structType given sql schema
+   * @return TsFile schema
    */
   def toTsFileSchema(structType: StructType, options: Map[String, String]): Schema = {
     val schema = new Schema()

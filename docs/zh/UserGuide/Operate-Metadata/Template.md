@@ -36,13 +36,13 @@ CREATE SCHEMA TEMPLATE <templateName> ALIGNED? '(' <measurementId> <attributeCla
 **示例1：** 创建包含两个非对齐序列的元数据模板
 
 ```shell
-IoTDB> create schemaengine template t1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
+IoTDB> create schema template t1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
 ```
 
 **示例2：** 创建包含一组对齐序列的元数据模板
 
 ```shell
-IoTDB> create schemaengine template t2 aligned (lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla)
+IoTDB> create schema template t2 aligned (lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla)
 ```
 
 其中，物理量 `lat` 和 `lon` 是对齐的。
@@ -60,7 +60,7 @@ IoTDB> create schemaengine template t2 aligned (lat FLOAT encoding=Gorilla, lon 
 挂载元数据模板的 SQL 语句如下所示：
 
 ```shell
-IoTDB> set schemaengine template t1 to root.sg1.d1
+IoTDB> set schema template t1 to root.sg1.d1
 ```
 
 ### 激活元数据模板
@@ -70,15 +70,15 @@ IoTDB> set schemaengine template t1 to root.sg1.d1
 **注意**：在插入数据之前或系统未开启自动注册序列功能，模板定义的时间序列不会被创建。可以使用如下SQL语句在插入数据前创建时间序列即激活模板：
 
 ```shell
-IoTDB> create timeseries using schemaengine template on root.sg1.d1
+IoTDB> create timeseries using schema template on root.sg1.d1
 ```
 
 **示例：** 执行以下语句
 ```shell
-IoTDB> set schemaengine template t1 to root.sg1.d1
-IoTDB> set schemaengine template t2 to root.sg1.d2
-IoTDB> create timeseries using schemaengine template on root.sg1.d1
-IoTDB> create timeseries using schemaengine template on root.sg1.d2
+IoTDB> set schema template t1 to root.sg1.d1
+IoTDB> set schema template t2 to root.sg1.d2
+IoTDB> create timeseries using schema template on root.sg1.d1
+IoTDB> create timeseries using schema template on root.sg1.d2
 ```
 
 查看此时的时间序列：
@@ -118,7 +118,7 @@ show devices root.sg1.**
 SQL 语句如下所示：
 
 ```shell
-IoTDB> show schemaengine templates
+IoTDB> show schema templates
 ```
 
 执行结果如下：
@@ -136,7 +136,7 @@ IoTDB> show schemaengine templates
 SQL 语句如下所示：
 
 ```shell
-IoTDB> show nodes in schemaengine template t1
+IoTDB> show nodes in schema template t1
 ```
 
 执行结果如下：
@@ -152,7 +152,7 @@ IoTDB> show nodes in schemaengine template t1
 - 查看挂载了某个元数据模板的路径
 
 ```shell
-IoTDB> show paths set schemaengine template t1
+IoTDB> show paths set schema template t1
 ```
 
 执行结果如下：
@@ -167,7 +167,7 @@ IoTDB> show paths set schemaengine template t1
 - 查看使用了某个元数据模板的路径（即模板在该路径上已激活，序列已创建）
 
 ```shell
-IoTDB> show paths using schemaengine template t1
+IoTDB> show paths using schema template t1
 ```
 
 执行结果如下：
@@ -184,25 +184,25 @@ IoTDB> show paths using schemaengine template t1
 若需删除模板表示的某一组时间序列，可采用解除模板操作，SQL语句如下所示：
 
 ```shell
-IoTDB> delete timeseries of schemaengine template t1 from root.sg1.d1
+IoTDB> delete timeseries of schema template t1 from root.sg1.d1
 ```
 
 或
 
 ```shell
-IoTDB> deactivate schemaengine template t1 from root.sg1.d1
+IoTDB> deactivate schema template t1 from root.sg1.d1
 ```
 
 解除操作支持批量处理，SQL语句如下所示：
 
 ```shell
-IoTDB> delete timeseries of schemaengine template t1 from root.sg1.*, root.sg2.*
+IoTDB> delete timeseries of schema template t1 from root.sg1.*, root.sg2.*
 ```
 
 或
 
 ```shell
-IoTDB> deactivate schemaengine template t1 from root.sg1.*, root.sg2.*
+IoTDB> deactivate schema template t1 from root.sg1.*, root.sg2.*
 ```
 
 若解除命令不指定模板名称，则会将给定路径涉及的所有模板使用情况均解除。
@@ -212,7 +212,7 @@ IoTDB> deactivate schemaengine template t1 from root.sg1.*, root.sg2.*
 卸载元数据模板的 SQL 语句如下所示：
 
 ```shell
-IoTDB> unset schemaengine template t1 from root.sg1.d1
+IoTDB> unset schema template t1 from root.sg1.d1
 ```
 
 **注意**：不支持卸载仍处于激活状态的模板，需保证执行卸载操作前解除对该模板的所有使用，即删除所有该模板表示的序列。
@@ -222,7 +222,7 @@ IoTDB> unset schemaengine template t1 from root.sg1.d1
 删除元数据模板的 SQL 语句如下所示：
 
 ```shell
-IoTDB> drop schemaengine template t1
+IoTDB> drop schema template t1
 ```
 
 **注意**：不支持删除已经挂载的模板，需在删除操作前保证该模板卸载成功。
@@ -234,7 +234,7 @@ IoTDB> drop schemaengine template t1
 修改元数据模板的 SQL 语句如下所示：
 
 ```shell
-IoTDB> alter schemaengine template t1 add (speed FLOAT encoding=RLE, FLOAT TEXT encoding=PLAIN compression=SNAPPY)
+IoTDB> alter schema template t1 add (speed FLOAT encoding=RLE, FLOAT TEXT encoding=PLAIN compression=SNAPPY)
 ```
 
 **向已挂载模板的路径下的设备中写入数据，若写入请求中的物理量不在模板中，将自动扩展模板。**

@@ -105,11 +105,11 @@ public class IoTDBNestedQueryIT {
   private static void registerUDF() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("create function adder as 'org.apache.iotdb.db.read.udf.example.Adder'");
+      statement.execute("create function adder as 'org.apache.iotdb.db.query.udf.example.Adder'");
       statement.execute(
-          "create function time_window_counter as 'org.apache.iotdb.db.read.udf.example.Counter'");
+          "create function time_window_counter as 'org.apache.iotdb.db.query.udf.example.Counter'");
       statement.execute(
-          "create function size_window_counter as 'org.apache.iotdb.db.read.udf.example.Counter'");
+          "create function size_window_counter as 'org.apache.iotdb.db.query.udf.example.Counter'");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }

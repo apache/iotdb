@@ -37,13 +37,13 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * This class is used to convert information given by sparkSQL to construct TSFile's read plans. For
- * TSFile's schemaengine differ from SparkSQL's table schemaengine e.g. TSFile's SQL: select s1,s2
- * from root.car.d1 where s1 = 10 SparkSQL's SQL: select s1,s2 from XXX where delta_object = d1
+ * This class is used to convert information given by sparkSQL to construct TSFile's query plans.
+ * For TSFile's schema differ from SparkSQL's table schema e.g. TSFile's SQL: select s1,s2 from
+ * root.car.d1 where s1 = 10 SparkSQL's SQL: select s1,s2 from XXX where delta_object = d1
  */
 public class QueryProcessor {
 
-  // construct logical read plans first, then convert them to physical ones
+  // construct logical query plans first, then convert them to physical ones
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public List<TSQueryPlan> generatePlans(
       FilterOperator filter,
@@ -63,7 +63,7 @@ public class QueryProcessor {
       DNFFilterOptimizer dnf = new DNFFilterOptimizer();
       filter = dnf.optimize(filter);
 
-      // merge different read path
+      // merge different query path
       // e.g. or (sensor_1 > 20, sensor_1 <10, sensor_2 > 10)
       // => or (or (sensor_1 > 20, sensor_1 < 10), sensor_2 > 10)
       MergeSingleFilterOptimizer merge = new MergeSingleFilterOptimizer();
@@ -81,7 +81,7 @@ public class QueryProcessor {
     } else {
       queryPlans.addAll(new PhysicalOptimizer(columnNames).optimize(null, paths, in, start, end));
     }
-    // merge read plan
+    // merge query plan
     Map<List<String>, List<TSQueryPlan>> pathMap = new HashMap<>();
     for (TSQueryPlan tsQueryPlan : queryPlans) {
       if (pathMap.containsKey(tsQueryPlan.getPaths())) {
@@ -146,7 +146,7 @@ public class QueryProcessor {
       singleFilterList.add(filterOperator);
 
     } else if (filterOperator.getTokenIntType() == SQLConstant.KW_AND) {
-      // original read plan has been dealt with merge optimizer, thus all nodes with same
+      // original query plan has been dealt with merge optimizer, thus all nodes with same
       // path have been merged to one node
       singleFilterList = filterOperator.getChildren();
     }

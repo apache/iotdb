@@ -122,7 +122,7 @@ public class IoTDBAliasIT {
   }
 
   @Test
-  @Ignore // TODO: remove @Ignore after support alias in last read
+  @Ignore // TODO: remove @Ignore after support alias in last query
   public void lastQueryAliasTest() {
     String[] retArray =
         new String[] {"400,root.sg.d1.speed,50.4", "400,root.sg.d1.temperature,28.3"};
@@ -132,7 +132,7 @@ public class IoTDBAliasIT {
   }
 
   @Test
-  @Ignore // TODO: remove @Ignore after support alias in last read
+  @Ignore // TODO: remove @Ignore after support alias in last query
   public void lastQueryWithDuplicatedColumnsAliasTest() {
     String[] retArray =
         new String[] {
@@ -316,7 +316,7 @@ public class IoTDBAliasIT {
   }
 
   @Test
-  @Ignore // TODO: remove @Ignore after support alias in last read
+  @Ignore // TODO: remove @Ignore after support alias in last query
   public void lastQueryAsTest() {
     String[] retArray = new String[] {"400,speed,50.4,FLOAT,", "400,root.sg2.d1.s2,28.3,FLOAT,"};
 
@@ -324,7 +324,7 @@ public class IoTDBAliasIT {
   }
 
   @Test
-  @Ignore // TODO: remove @Ignore after support alias in last read
+  @Ignore // TODO: remove @Ignore after support alias in last query
   public void lastQueryAsTest2() {
     String[] retArray =
         new String[] {
@@ -338,7 +338,7 @@ public class IoTDBAliasIT {
   }
 
   @Test
-  @Ignore // TODO: remove @Ignore after support alias in last read
+  @Ignore // TODO: remove @Ignore after support alias in last query
   public void lastQueryAsFailTest() {
     // root.sg2.*.s1 matches root.sg2.d1.s1 and root.sg2.d2.s1 both
     assertTestFail(
