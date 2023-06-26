@@ -173,7 +173,7 @@ public class PerformanceOverviewMetrics implements IMetricSet {
   private Timer triggerTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer storageTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
-  /** Record the time cost of schemaengine validate stage in local schedule. */
+  /** Record the time cost of schema validate stage in local schedule. */
   public void recordScheduleSchemaValidateCost(long costTimeInNanos) {
     schemaValidateTimer.updateNanos(costTimeInNanos);
   }
@@ -193,7 +193,7 @@ public class PerformanceOverviewMetrics implements IMetricSet {
   // region storage
   private static final String PERFORMANCE_OVERVIEW_STORAGE_DETAIL =
       Metric.PERFORMANCE_OVERVIEW_STORAGE_DETAIL.toString();
-  private static final String ENGINE = "storageengine";
+  private static final String ENGINE = "engine";
 
   static {
     metricInfoMap.put(
@@ -210,7 +210,7 @@ public class PerformanceOverviewMetrics implements IMetricSet {
 
   // endregion
 
-  // region storageengine
+  // region engine
 
   private static final String PERFORMANCE_OVERVIEW_ENGINE_DETAIL =
       Metric.PERFORMANCE_OVERVIEW_ENGINE_DETAIL.toString();

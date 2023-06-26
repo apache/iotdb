@@ -25,7 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public enum HandleSystemErrorStrategy {
-  /** set system status to read-only and the system only accepts read operations */
+  /** set system status to read-only and the system only accepts query operations */
   CHANGE_TO_READ_ONLY,
   /** the system will be shutdown */
   SHUTDOWN;
@@ -35,7 +35,7 @@ public enum HandleSystemErrorStrategy {
   public void handle() {
     if (this == HandleSystemErrorStrategy.CHANGE_TO_READ_ONLY) {
       logger.error(
-          "Unrecoverable error occurs! Change system status to read-only because handle_system_error is CHANGE_TO_READ_ONLY. Only read statements are permitted!",
+          "Unrecoverable error occurs! Change system status to read-only because handle_system_error is CHANGE_TO_READ_ONLY. Only query statements are permitted!",
           new RuntimeException("System mode is set to READ_ONLY"));
       CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.ReadOnly);
     } else if (this == HandleSystemErrorStrategy.SHUTDOWN) {

@@ -39,9 +39,9 @@ public abstract class QueryDataSet {
   protected int fetchSize = 10000;
   protected boolean ascending;
   /*
-   *  whether current data group has data for read.
+   *  whether current data group has data for query.
    *  If not null(must be in cluster mode),
-   *  we need to redirect the read to any data group which has some data to speed up read.
+   *  we need to redirect the query to any data group which has some data to speed up query.
    */
   protected EndPoint endPoint = null;
 
@@ -56,7 +56,7 @@ public abstract class QueryDataSet {
 
   protected int columnNum;
 
-  /** For redirect read. Need keep consistent with EndPoint in rpc.thrift. */
+  /** For redirect query. Need keep consistent with EndPoint in rpc.thrift. */
   public static class EndPoint {
     private String ip = null;
     private int port = 0;
@@ -182,7 +182,7 @@ public abstract class QueryDataSet {
 
   public abstract boolean hasNextWithoutConstraint() throws IOException;
 
-  /** This method is used for batch read, return RowRecord. */
+  /** This method is used for batch query, return RowRecord. */
   public RowRecord next() throws IOException {
     if (rowLimit > 0) {
       alreadyReturnedRowNum++;

@@ -46,7 +46,7 @@ public class ExpressionOptimizer {
    *
    * @param expression IExpression to be transferred
    * @param selectedSeries selected series
-   * @return an executable read filter, whether a GlobalTimeExpression or All leaf nodes are
+   * @return an executable query filter, whether a GlobalTimeExpression or All leaf nodes are
    *     SingleSeriesExpression
    */
   public IExpression optimize(IExpression expression, List<Path> selectedSeries)
@@ -175,7 +175,7 @@ public class ExpressionOptimizer {
    * QueryFilterOR( SingleSeriesExpression(path1, timeFilter), SingleSeriesExpression(path2,
    * timeFilter) ), SingleSeriesExpression(path3, timeFilter) )
    *
-   * @return a DNF read filter without GlobalTimeExpression
+   * @return a DNF query filter without GlobalTimeExpression
    */
   private IExpression pushGlobalTimeFilterToAllSeries(
       GlobalTimeExpression timeFilter, List<Path> selectedSeries)

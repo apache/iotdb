@@ -206,7 +206,7 @@ public class DataPartitionTable {
   public List<TTimePartitionSlot> getTimeSlotList(
       TSeriesPartitionSlot seriesSlotId, TConsensusGroupId regionId, long startTime, long endTime) {
     if (seriesSlotId.getSlotId() == -1) {
-      // read timePartition of specific database or region
+      // query timePartition of specific database or region
       List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
       dataPartitionMap.forEach(
           (seriesPartitionSlot, seriesPartitionTable) ->
@@ -216,7 +216,7 @@ public class DataPartitionTable {
     } else if (!dataPartitionMap.containsKey(seriesSlotId)) {
       return new ArrayList<>();
     } else {
-      // read timePartition of specific seriesPartition
+      // query timePartition of specific seriesPartition
       SeriesPartitionTable seriesPartitionTable = dataPartitionMap.get(seriesSlotId);
       return seriesPartitionTable.getTimeSlotList(regionId, startTime, endTime);
     }

@@ -92,7 +92,7 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   private Statistics<?> firstPageStatistics;
 
-  /** @param schema schemaengine of this measurement */
+  /** @param schema schema of this measurement */
   public ChunkWriterImpl(IMeasurementSchema schema) {
     this.measurementSchema = schema;
     this.compressor = ICompressor.getCompressor(schema.getCompressor());
@@ -112,7 +112,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     this.pageWriter.setTimeEncoder(measurementSchema.getTimeEncoder());
     this.pageWriter.setValueEncoder(measurementSchema.getValueEncoder());
 
-    // check if the measurement schemaengine uses SDT
+    // check if the measurement schema uses SDT
     checkSdtEncoding();
   }
 

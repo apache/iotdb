@@ -49,7 +49,7 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
   // Used for batch writing
   private long remainingPointsNumber;
 
-  /** @param schema schemaengine of this measurement */
+  /** @param schema schema of this measurement */
   public AlignedChunkWriterImpl(VectorMeasurementSchema schema) {
     timeChunkWriter =
         new TimeChunkWriter(
@@ -82,8 +82,8 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
    * This is used to rewrite file. The encoding and compression of the time column should be the
    * same as the source file.
    *
-   * @param timeSchema time schemaengine
-   * @param valueSchemaList value schemaengine list
+   * @param timeSchema time schema
+   * @param valueSchemaList value schema list
    */
   public AlignedChunkWriterImpl(
       IMeasurementSchema timeSchema, List<IMeasurementSchema> valueSchemaList) {
@@ -114,7 +114,7 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
    * configuration by default. The encoding of the time column is 'TS_2DIFF' in the configuration by
    * default.
    *
-   * @param schemaList value schemaengine list
+   * @param schemaList value schema list
    */
   public AlignedChunkWriterImpl(List<IMeasurementSchema> schemaList) {
     TSEncoding timeEncoding =

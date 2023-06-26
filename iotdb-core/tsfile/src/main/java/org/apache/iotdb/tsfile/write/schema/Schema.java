@@ -27,8 +27,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * The schemaengine of timeseries that exist in this file. The schemaTemplates is a simplified
- * manner to batch create schemaengine of timeseries.
+ * The schema of timeseries that exist in this file. The schemaTemplates is a simplified manner to
+ * batch create schema of timeseries.
  */
 public class Schema implements Serializable {
 
@@ -98,7 +98,7 @@ public class Schema implements Serializable {
     return schemaTemplates;
   }
 
-  /** check if this schemaengine contains a measurement named measurementId. */
+  /** check if this schema contains a measurement named measurementId. */
   public boolean containsDevice(Path devicePath) {
     return registeredTimeseries.containsKey(devicePath);
   }

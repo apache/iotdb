@@ -1335,7 +1335,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     return ChunkHeader.deserializeCompressionTypeAndEncoding(tsFileInput.wrapAsInputStream());
   }
 
-  /** Get measurement schemaengine by chunkMetadatas. */
+  /** Get measurement schema by chunkMetadatas. */
   public MeasurementSchema getMeasurementSchema(List<IChunkMetadata> chunkMetadataList)
       throws IOException {
     if (chunkMetadataList.isEmpty()) {
@@ -1491,7 +1491,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   /**
    * Self Check the file and return the position before where the data is safe.
    *
-   * @param newSchema the schemaengine on each time series in the file
+   * @param newSchema the schema on each time series in the file
    * @param chunkGroupMetadataList ChunkGroupMetadata List
    * @param fastFinish if true and the file is complete, then newSchema and chunkGroupMetadataList
    *     parameter will be not modified.
@@ -1701,7 +1701,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             // because we can not guarantee the correctness of the deviceId.
             truncatedSize = this.position() - 1;
             if (lastDeviceId != null) {
-              // schemaengine of last chunk group
+              // schema of last chunk group
               if (newSchema != null) {
                 for (IMeasurementSchema tsSchema : measurementSchemaList) {
                   newSchema.putIfAbsent(
@@ -1720,7 +1720,7 @@ public class TsFileSequenceReader implements AutoCloseable {
           case MetaMarker.OPERATION_INDEX_RANGE:
             truncatedSize = this.position() - 1;
             if (lastDeviceId != null) {
-              // schemaengine of last chunk group
+              // schema of last chunk group
               if (newSchema != null) {
                 for (IMeasurementSchema tsSchema : measurementSchemaList) {
                   newSchema.putIfAbsent(
@@ -1743,7 +1743,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       // now we read the tail of the data section, so we are sure that the last
       // ChunkGroupFooter is complete.
       if (lastDeviceId != null) {
-        // schemaengine of last chunk group
+        // schema of last chunk group
         if (newSchema != null) {
           for (IMeasurementSchema tsSchema : measurementSchemaList) {
             newSchema.putIfAbsent(

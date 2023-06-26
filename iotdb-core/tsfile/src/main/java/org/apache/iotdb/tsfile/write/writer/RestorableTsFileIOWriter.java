@@ -51,7 +51,7 @@ import java.util.Map;
  * <p>(2) Otherwise, the writer generates metadata for already flushed Chunks and truncate crashed
  * data. The hasCrashed()=true and canWrite()=true
  *
- * <p>Notice!!! If you want to read this file through the generated metadata, remember to call the
+ * <p>Notice!!! If you want to query this file through the generated metadata, remember to call the
  * makeMetadataVisible()
  */
 public class RestorableTsFileIOWriter extends TsFileIOWriter {
@@ -171,7 +171,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
   }
 
   /**
-   * For read.
+   * For query.
    *
    * <p>get chunks' metadata from memory.
    *

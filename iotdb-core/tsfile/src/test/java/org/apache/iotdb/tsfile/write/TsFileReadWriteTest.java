@@ -157,11 +157,11 @@ public class TsFileReadWriteTest {
 
   // If no dataPoint in "device_1.sensor_2", it will throws a nomeasurement
   // exception,
-  // cause no schemaengine in tsfilemetadata anymore.
+  // cause no schema in tsfilemetadata anymore.
   @Test
   public void readEmptyMeasurementTest() throws IOException, WriteProcessException {
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
-      // add measurements into file schemaengine
+      // add measurements into file schema
       tsFileWriter.registerTimeseries(
           new Path("device_1"),
           new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
@@ -206,7 +206,7 @@ public class TsFileReadWriteTest {
       TSDataType dataType, DataPointProxy proxy, TSEncoding encodingType)
       throws IOException, WriteProcessException {
     int floatCount = 1024 * 1024 * 13 + 1023;
-    // add measurements into file schemaengine
+    // add measurements into file schema
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
       tsFileWriter.registerTimeseries(
           new Path("device_1"), new MeasurementSchema("sensor_1", dataType, encodingType));

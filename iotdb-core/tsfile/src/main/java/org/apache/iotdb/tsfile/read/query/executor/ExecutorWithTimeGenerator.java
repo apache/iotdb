@@ -51,7 +51,7 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
 
   /**
    * All leaf nodes of queryFilter in queryExpression are SeriesFilters, We use a TimeGenerator to
-   * control read processing. for more information, see DataSetWithTimeGenerator
+   * control query processing. for more information, see DataSetWithTimeGenerator
    *
    * @return DataSet with TimeGenerator
    */

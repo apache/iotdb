@@ -29,7 +29,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-/** used in read. */
+/** used in query. */
 public class Chunk {
 
   private ChunkHeader chunkHeader;

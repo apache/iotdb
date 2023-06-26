@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.tsfile.common.constant;
 
-/** This class define several constant string variables used in tsfile schemaengine's keys. */
+/** This class define several constant string variables used in tsfile schema's keys. */
 public class JsonFormatConstant {
-  public static final String JSON_SCHEMA = "schemaengine";
+  public static final String JSON_SCHEMA = "schema";
   public static final String DELTA_TYPE = "delta_type";
   public static final String MEASUREMENT_UID = "measurement_id";
   public static final String DATA_TYPE = "data_type";

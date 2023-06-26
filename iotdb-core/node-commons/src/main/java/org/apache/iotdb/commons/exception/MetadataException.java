@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.exception;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 /**
- * If read metadata constructs schemaengine but passes illegal parameters to EncodingConvertor or
+ * If query metadata constructs schema but passes illegal parameters to EncodingConvertor or
  * DataTypeConverter,this exception will be threw.
  */
 public class MetadataException extends IoTDBException {

@@ -179,7 +179,7 @@ public class BitmapDecoder extends Decoder {
   }
 
   /**
-   * In current version, boolean value is equal to Enums value in schemaengine.
+   * In current version, boolean value is equal to Enums value in schema.
    *
    * @param buffer : decoded data saved in InputStream
    * @throws TsFileDecodingException cannot read next value

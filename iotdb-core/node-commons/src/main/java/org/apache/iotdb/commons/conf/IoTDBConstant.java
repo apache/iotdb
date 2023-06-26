@@ -227,10 +227,10 @@ public class IoTDBConstant {
 
   // system folder name
   public static final String SYSTEM_FOLDER_NAME = "system";
-  public static final String SCHEMA_FOLDER_NAME = "schemaengine";
+  public static final String SCHEMA_FOLDER_NAME = "schema";
   public static final String LOAD_TSFILE_FOLDER_NAME = "load";
   public static final String SYNC_FOLDER_NAME = "sync";
-  public static final String QUERY_FOLDER_NAME = "read";
+  public static final String QUERY_FOLDER_NAME = "query";
   public static final String EXT_FOLDER_NAME = "ext";
   public static final String UDF_FOLDER_NAME = "udf";
   public static final String TRIGGER_FOLDER_NAME = "trigger";

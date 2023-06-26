@@ -67,7 +67,7 @@ public abstract class SchemaFilter {
       case AND:
         return new AndFilter(byteBuffer);
       default:
-        throw new IllegalArgumentException("Unsupported schemaengine filter type: " + type);
+        throw new IllegalArgumentException("Unsupported schema filter type: " + type);
     }
   }
 

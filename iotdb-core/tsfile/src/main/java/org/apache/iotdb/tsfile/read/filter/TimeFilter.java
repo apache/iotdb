@@ -220,7 +220,7 @@ public class TimeFilter {
   }
 
   /**
-   * returns a default time filter by whether it's an ascending read.
+   * returns a default time filter by whether it's an ascending query.
    *
    * <p>If the data is read in descending order, we use the largest timestamp to set to the filter,
    * so the filter should be TimeLtEq. If the data is read in ascending order, we use the smallest

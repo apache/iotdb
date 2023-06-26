@@ -59,7 +59,7 @@ public class TsFileWriter implements AutoCloseable {
 
   protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
   private static final Logger LOG = LoggerFactory.getLogger(TsFileWriter.class);
-  /** schemaengine of this TsFile. */
+  /** schema of this TsFile. */
   protected final Schema schema;
   /** IO writer of this TsFile. */
   private final TsFileIOWriter fileWriter;
@@ -111,7 +111,7 @@ public class TsFileWriter implements AutoCloseable {
    * init this TsFileWriter.
    *
    * @param file the File to be written by this TsFileWriter
-   * @param schema the schemaengine of this TsFile
+   * @param schema the schema of this TsFile
    */
   public TsFileWriter(File file, Schema schema) throws IOException {
     this(new TsFileIOWriter(file), schema, TSFileDescriptor.getInstance().getConfig());
@@ -121,7 +121,7 @@ public class TsFileWriter implements AutoCloseable {
    * init this TsFileWriter.
    *
    * @param output the TsFileOutput of the file to be written by this TsFileWriter
-   * @param schema the schemaengine of this TsFile
+   * @param schema the schema of this TsFile
    * @throws IOException
    */
   public TsFileWriter(TsFileOutput output, Schema schema) throws IOException {
@@ -132,7 +132,7 @@ public class TsFileWriter implements AutoCloseable {
    * init this TsFileWriter.
    *
    * @param file the File to be written by this TsFileWriter
-   * @param schema the schemaengine of this TsFile
+   * @param schema the schema of this TsFile
    * @param conf the configuration of this TsFile
    */
   public TsFileWriter(File file, Schema schema, TSFileConfig conf) throws IOException {
@@ -143,7 +143,7 @@ public class TsFileWriter implements AutoCloseable {
    * init this TsFileWriter.
    *
    * @param fileWriter the io writer of this TsFile
-   * @param schema the schemaengine of this TsFile
+   * @param schema the schema of this TsFile
    * @param conf the configuration of this TsFile
    */
   protected TsFileWriter(TsFileIOWriter fileWriter, Schema schema, TSFileConfig conf)

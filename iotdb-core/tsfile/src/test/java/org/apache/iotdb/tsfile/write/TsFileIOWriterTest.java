@@ -65,7 +65,7 @@ public class TsFileIOWriterTest {
   public void before() throws IOException {
     TsFileIOWriter writer = new TsFileIOWriter(new File(FILE_PATH));
 
-    // file schemaengine
+    // file schema
     MeasurementSchema measurementSchema = TestHelper.createSimpleMeasurementSchema(SENSOR_1);
     VectorMeasurementSchema vectorMeasurementSchema =
         new VectorMeasurementSchema(

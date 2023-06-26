@@ -26,7 +26,7 @@ import javax.annotation.Nonnull;
 
 import java.util.Objects;
 
-/** StorageExecutor indicates execution of this read need data from StorageEngine */
+/** StorageExecutor indicates execution of this query need data from StorageEngine */
 public class StorageExecutor implements ExecutorType {
   private final TRegionReplicaSet regionReplicaSet;
 

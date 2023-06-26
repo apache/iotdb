@@ -35,7 +35,7 @@ public class UDFClassLoader extends URLClassLoader {
   private final String libRoot;
 
   /**
-   * If activeQueriesCount is equals to 0, it means that there is no read using this classloader.
+   * If activeQueriesCount is equals to 0, it means that there is no query using this classloader.
    * This classloader can only be closed when activeQueriesCount is equals to 0.
    */
   private final AtomicLong activeQueriesCount;

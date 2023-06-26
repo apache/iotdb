@@ -55,7 +55,7 @@ public interface IMetadataQuerier {
   /**
    * Convert the space partition constraint to the time partition constraint.
    *
-   * @param paths selected paths in a read expression
+   * @param paths selected paths in a query expression
    * @param spacePartitionStartPos the start position of the space partition
    * @param spacePartitionEndPos the end position of the space partition
    * @return the converted time partition constraint

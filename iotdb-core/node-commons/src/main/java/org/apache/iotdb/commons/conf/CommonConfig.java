@@ -165,7 +165,7 @@ public class CommonConfig {
   private long pipeMetaSyncerInitialSyncDelayMinutes = 3;
   private long pipeMetaSyncerSyncIntervalMinutes = 3;
 
-  /** whether to use persistent schemaengine mode. */
+  /** whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
 
   /** Whether to enable Last cache. */
@@ -379,7 +379,7 @@ public class CommonConfig {
 
     switch (newStatus) {
       case ReadOnly:
-        logger.warn("Change system status to ReadOnly! Only read statements are permitted!");
+        logger.warn("Change system status to ReadOnly! Only query statements are permitted!");
         break;
       case Removing:
         logger.info(

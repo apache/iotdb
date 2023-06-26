@@ -30,7 +30,7 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * read processing: (1) generate time by series that has filter (2) get value of series that does
+ * query processing: (1) generate time by series that has filter (2) get value of series that does
  * not have filter (3) construct RowRecord.
  */
 public class DataSetWithTimeGenerator extends QueryDataSet {

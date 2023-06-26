@@ -45,7 +45,7 @@ public enum Metric {
   IOT_CONSENSUS("iot_consensus"),
   RATIS_CONSENSUS_WRITE("ratis_consensus_write"),
   RATIS_CONSENSUS_READ("ratis_consensus_read"),
-  // storage storageengine related
+  // storage engine related
   POINTS("points"),
   COST_TASK("cost_task"),
   QUEUE("queue"),
@@ -62,14 +62,14 @@ public enum Metric {
   DATA_WRITTEN("data_written"),
   DATA_READ("data_read"),
   COMPACTION_TASK_COUNT("compaction_task_count"),
-  // schemaengine storageengine related
+  // schema engine related
   MEM("mem"),
   CACHE("cache"),
   CACHE_HIT_RATE("cache_hit"),
   QUANTITY("quantity"),
   SCHEMA_REGION("schema_region"),
   SCHEMA_ENGINE("schema_engine"),
-  // read storageengine related
+  // query engine related
   QUERY_PLAN_COST("query_plan_cost"),
   OPERATOR_EXECUTION_COST("operator_execution_cost"),
   OPERATOR_EXECUTION_COUNT("operator_execution_count"),

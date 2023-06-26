@@ -451,7 +451,7 @@ public class MetadataIndexConstructorTest {
             String measurementName =
                 measurementPrefix + generateIndexString(measurementIndex, measurementNum);
             logger.info("generating vector measurement {}...", measurementName);
-            // add measurements into file schemaengine (all with INT64 data type)
+            // add measurements into file schema (all with INT64 data type)
             MeasurementSchema schema1 =
                 new MeasurementSchema(measurementName, TSDataType.INT64, TSEncoding.RLE);
             schemas.add(schema1);

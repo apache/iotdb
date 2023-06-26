@@ -99,7 +99,7 @@ public class TsFileExecutor implements QueryExecutor {
   /**
    * Query with the space partition constraint.
    *
-   * @param queryExpression read expression
+   * @param queryExpression query expression
    * @param spacePartitionStartPos the start position of the space partition
    * @param spacePartitionEndPos the end position of the space partition
    * @return QueryDataSet
@@ -128,7 +128,7 @@ public class TsFileExecutor implements QueryExecutor {
           BinaryExpression.or(addTimeExpression, resTimeRanges.get(i).getExpression());
     }
 
-    // combine the original read expression and the additional time filter
+    // combine the original query expression and the additional time filter
     if (queryExpression.hasQueryFilter()) {
       IExpression combinedExpression =
           BinaryExpression.and(queryExpression.getExpression(), addTimeExpression);
@@ -138,7 +138,7 @@ public class TsFileExecutor implements QueryExecutor {
     }
 
     // Having converted the space partition constraint to an additional time filter, we can now
-    // read as normal.
+    // query as normal.
     return execute(queryExpression);
   }
 

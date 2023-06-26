@@ -28,11 +28,11 @@ public class DataPartitionQueryParam {
   private String devicePath;
   private List<TTimePartitionSlot> timePartitionSlotList = new ArrayList<>();
 
-  // it will be set to true in read when there exist filter like: time <= XXX
+  // it will be set to true in query when there exist filter like: time <= XXX
   // (-oo, timePartitionSlotList.get(0))
   private boolean needLeftAll = false;
 
-  // it will be set to true read when there exist filter like: time >= XXX
+  // it will be set to true query when there exist filter like: time >= XXX
   // (timePartitionSlotList.get(timePartitionSlotList.size() - 1), +oo)
   private boolean needRightAll = false;
 

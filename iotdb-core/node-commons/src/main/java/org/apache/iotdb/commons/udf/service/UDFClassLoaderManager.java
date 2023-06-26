@@ -37,7 +37,7 @@ public class UDFClassLoaderManager implements IService {
 
   private final String libRoot;
 
-  /** The keys in the map are the read IDs of the UDF queries being executed. */
+  /** The keys in the map are the query IDs of the UDF queries being executed. */
   private final Map<String, UDFClassLoader> queryIdToUDFClassLoaderMap;
 
   /**

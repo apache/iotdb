@@ -45,7 +45,7 @@ import static org.apache.iotdb.tsfile.file.metadata.enums.CompressionType.LZMA2;
 import static org.apache.iotdb.tsfile.file.metadata.enums.CompressionType.SNAPPY;
 import static org.apache.iotdb.tsfile.file.metadata.enums.CompressionType.ZSTD;
 
-/** compress data according to type in schemaengine. */
+/** compress data according to type in schema. */
 public interface ICompressor extends Serializable {
 
   static ICompressor getCompressor(String name) {

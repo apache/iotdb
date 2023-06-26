@@ -30,7 +30,7 @@ public enum RegionStatus {
   /** Region is in removing */
   Removing("Removing"),
 
-  /** Only read statements are permitted */
+  /** Only query statements are permitted */
   ReadOnly("ReadOnly");
 
   private final String status;

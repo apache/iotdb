@@ -148,7 +148,7 @@ public class TsFileIntegrityCheckingTool {
   }
 
   /**
-   * This method checks the integrity of the file by mimicking the process of the read, which reads
+   * This method checks the integrity of the file by mimicking the process of the query, which reads
    * the metadata index tree first, and get the timeseries metadata list and chunk metadata list.
    * After that, this method acquires single chunk according to chunk metadata, then it deserializes
    * the chunk, and verifies the correctness of the data.

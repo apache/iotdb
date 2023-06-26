@@ -46,7 +46,7 @@ import java.util.List;
  * <p>This class records a time list and a value list, which could be replaced by TVList in the
  * future
  *
- * <p>When you use BatchData in read process, it does not contain duplicated timestamps. The batch
+ * <p>When you use BatchData in query process, it does not contain duplicated timestamps. The batch
  * data may be empty.
  *
  * <p>If you get a batch data, you can iterate the data as the following codes:

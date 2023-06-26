@@ -44,7 +44,7 @@ public class RecordUtils {
    * separated by ","
    *
    * @param str - input string
-   * @param schema - constructed file schemaengine
+   * @param schema - constructed file schema
    * @return TSRecord constructed from str
    */
   public static TSRecord parseSimpleTupleRecord(String str, Schema schema) {

@@ -30,7 +30,7 @@ public enum NodeStatus {
   /** Node is in removing */
   Removing("Removing"),
 
-  /** Only read statements are permitted */
+  /** Only query statements are permitted */
   ReadOnly("ReadOnly");
   public static final String DISK_FULL = "DiskFull";
 

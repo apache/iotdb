@@ -48,7 +48,7 @@ import java.util.List;
 /*
  This test is designed for the TsFileExecutor's execute(queryExpression, params) function.
 
- The test target here is the logic of converting the read partition constraint to an additional time filter.
+ The test target here is the logic of converting the query partition constraint to an additional time filter.
 
  Note that the correctness of the constructed additional time filter, which is guaranteed and tested in
  IMetadataQuerierByFileImplTest and TimeRangeTest, is not the test focus here.
@@ -114,7 +114,7 @@ public class ReadInPartitionTest {
     // test the transformed expression
     Assert.assertNull(queryExpression.getExpression());
 
-    // test the equivalence of the read result
+    // test the equivalence of the query result
     Assert.assertFalse(queryDataSet.hasNext());
   }
 
@@ -143,7 +143,7 @@ public class ReadInPartitionTest {
             .toString();
     Assert.assertEquals(expected, transformedExpression.toString());
 
-    // test the equivalence of the read result:
+    // test the equivalence of the query result:
     QueryDataSet queryDataSet_eq = roTsFile.query(queryExpression);
     while (queryDataSet.hasNext() && queryDataSet_eq.hasNext()) {
       RowRecord r = queryDataSet.next();
@@ -180,7 +180,7 @@ public class ReadInPartitionTest {
             .toString();
     Assert.assertEquals(expected, transformedExpression.toString());
 
-    // test the equivalence of the read result:
+    // test the equivalence of the query result:
     QueryDataSet queryDataSet_eq = roTsFile.query(queryExpression);
     while (queryDataSet.hasNext() && queryDataSet_eq.hasNext()) {
       RowRecord r = queryDataSet.next();
@@ -218,7 +218,7 @@ public class ReadInPartitionTest {
             .toString();
     Assert.assertEquals(expected, transformedExpression.toString());
 
-    // test the equivalence of the read result:
+    // test the equivalence of the query result:
     QueryDataSet queryDataSet_eq = roTsFile.query(queryExpression);
     while (queryDataSet.hasNext() && queryDataSet_eq.hasNext()) {
       RowRecord r = queryDataSet.next();

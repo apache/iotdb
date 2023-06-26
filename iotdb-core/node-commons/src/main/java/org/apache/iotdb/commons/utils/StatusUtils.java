@@ -91,7 +91,7 @@ public class StatusUtils {
         status.setMessage("Database processor related error.");
         break;
       case STORAGE_ENGINE_ERROR:
-        status.setMessage("Storage storageengine related error.");
+        status.setMessage("Storage engine related error.");
         break;
       case TSFILE_PROCESSOR_ERROR:
         status.setMessage("TsFile processor related error.");

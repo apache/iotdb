@@ -33,8 +33,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Series reader is used to read one series of one TsFile, and this reader has a filter operating on
- * the same series.
+ * Series reader is used to query one series of one TsFile, and this reader has a filter operating
+ * on the same series.
  */
 public class FileSeriesReader extends AbstractFileSeriesReader {
 

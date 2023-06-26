@@ -86,7 +86,7 @@ public class TsFileReaderTest {
       TSRecord t = new TSRecord(i, "t");
       if (i % 100 == 0) {
         // Add a large max_value to the page statistics,
-        // and get a very large number of invalid pages when the read is executed
+        // and get a very large number of invalid pages when the query is executed
         t.addTuple(new IntDataPoint("id", 9000001));
       } else {
         t.addTuple(new IntDataPoint("id", i));
@@ -247,7 +247,7 @@ public class TsFileReaderTest {
     TsFileGeneratorForTest.generateAlignedTsFile(10, 100, 30);
     String filePath = TsFileGeneratorForTest.alignedOutputDataFile;
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
-      // timeseries path for read
+      // timeseries path for query
       ArrayList<Path> paths = new ArrayList<>();
       paths.add(new Path("d1", "s1", true));
       paths.add(new Path("d1", "s2", true));
@@ -265,7 +265,7 @@ public class TsFileReaderTest {
     TsFileGeneratorForTest.generateAlignedTsFile(100000, 1024, 100);
     String filePath = TsFileGeneratorForTest.alignedOutputDataFile;
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
-      // timeseries path for read
+      // timeseries path for query
       ArrayList<Path> paths = new ArrayList<>();
       paths.add(new Path("d1", "s1", true));
       paths.add(new Path("d1", "s2", true));
@@ -287,7 +287,7 @@ public class TsFileReaderTest {
     TsFileGeneratorForTest.generateAlignedTsFile(100000, 1024, 100);
     String filePath = TsFileGeneratorForTest.alignedOutputDataFile;
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
-      // timeseries path for read
+      // timeseries path for query
       ArrayList<Path> paths = new ArrayList<>();
       paths.add(new Path("d1", "s1", true));
       paths.add(new Path("d1", "s2", true));
@@ -307,7 +307,7 @@ public class TsFileReaderTest {
     TsFileGeneratorForTest.generateAlignedTsFile(100000, 1024, 100);
     String filePath = TsFileGeneratorForTest.alignedOutputDataFile;
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
-      // timeseries path for read
+      // timeseries path for query
       ArrayList<Path> paths = new ArrayList<>();
       paths.add(new Path("d1", "s1", true));
       paths.add(new Path("d1", "s2", true));
@@ -330,7 +330,7 @@ public class TsFileReaderTest {
     TsFileGeneratorForTest.generateAlignedTsFile(100000, 1024, 100);
     String filePath = TsFileGeneratorForTest.alignedOutputDataFile;
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
-      // timeseries path for read
+      // timeseries path for query
       ArrayList<Path> paths = new ArrayList<>();
       paths.add(new Path("d1", "s1", true));
       paths.add(new Path("d1", "s2", true));
@@ -357,7 +357,7 @@ public class TsFileReaderTest {
     TsFileGeneratorForTest.generateAlignedTsFile(100000, 1024, 100);
     String filePath = TsFileGeneratorForTest.alignedOutputDataFile;
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
-      // timeseries path for read
+      // timeseries path for query
       ArrayList<Path> paths = new ArrayList<>();
       paths.add(new Path("d1", "s1", true));
       paths.add(new Path("d1", "s2", true));
@@ -385,7 +385,7 @@ public class TsFileReaderTest {
     TsFileGeneratorForTest.generateAlignedTsFile(100000, 1024, 100);
     String filePath = TsFileGeneratorForTest.alignedOutputDataFile;
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
-      // timeseries path for read
+      // timeseries path for query
       ArrayList<Path> paths = new ArrayList<>();
       paths.add(new Path("d1", "s1", true));
       paths.add(new Path("d1", "s3", true));
@@ -413,7 +413,7 @@ public class TsFileReaderTest {
     TsFileGeneratorForTest.generateAlignedTsFile(100000, 1024, 100);
     String filePath = TsFileGeneratorForTest.alignedOutputDataFile;
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
-      // timeseries path for read
+      // timeseries path for query
       ArrayList<Path> paths = new ArrayList<>();
       paths.add(new Path("d1", "s1", true));
       paths.add(new Path("d1", "s9", true));
@@ -442,7 +442,7 @@ public class TsFileReaderTest {
     TsFileGeneratorForTest.generateAlignedTsFile(100000, 1024, 100);
     String filePath = TsFileGeneratorForTest.alignedOutputDataFile;
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
-      // timeseries path for read
+      // timeseries path for query
       ArrayList<Path> paths = new ArrayList<>();
       paths.add(new Path("d1", "s1", true));
       paths.add(new Path("d1", "s9", true));
@@ -485,14 +485,14 @@ public class TsFileReaderTest {
     TsFileGeneratorForTest.generateAlignedTsFile(10, 100, 30);
     String filePath = TsFileGeneratorForTest.alignedOutputDataFile;
     try (TsFileSequenceReader reader = new TsFileSequenceReader(filePath)) {
-      // read for non-exist device
+      // query for non-exist device
       try {
         reader.getAlignedChunkMetadata("d3");
       } catch (IOException e) {
         Assert.assertEquals("Device {d3} is not in tsFileMetaData", e.getMessage());
       }
 
-      // read for non-aligned device
+      // query for non-aligned device
       try {
         reader.getAlignedChunkMetadata("d2");
       } catch (IOException e) {
