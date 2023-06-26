@@ -45,7 +45,6 @@ import org.apache.thrift.transport.TByteBuffer;
 import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 public class Utils {
@@ -53,8 +52,7 @@ public class Utils {
   private static final byte PADDING_MAGIC = 0x47;
   private static final String DATA_REGION_GROUP = "group-0001";
   private static final String SCHEMA_REGION_GROUP = "group-0002";
-  private static final AtomicReference<CommonConfig> config =
-      new AtomicReference<>(CommonDescriptor.getInstance().getConfig());
+  private static final CommonConfig config = CommonDescriptor.getInstance().getConfig();
 
   private Utils() {}
 
@@ -195,7 +193,7 @@ public class Utils {
   }
 
   public static boolean rejectWrite() {
-    return config.get().isReadOnly();
+    return config.isReadOnly();
   }
 
   /**
@@ -205,7 +203,7 @@ public class Utils {
    * statemachine to apply while rejecting new client write requests.
    */
   public static boolean stallApply() {
-    return config.get().isReadOnly() && !config.get().isStopping();
+    return config.isReadOnly() && !config.isStopping();
   }
 
   public static void initRatisConfig(RaftProperties properties, RatisConfig config) {
