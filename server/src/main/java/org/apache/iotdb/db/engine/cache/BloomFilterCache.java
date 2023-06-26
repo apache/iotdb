@@ -40,6 +40,7 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
 /** This class is used to cache <code>BloomFilter</code> in IoTDB. The caching strategy is LRU. */
+@SuppressWarnings("squid:S6548")
 public class BloomFilterCache {
 
   private static final Logger logger = LoggerFactory.getLogger(BloomFilterCache.class);
@@ -69,17 +70,9 @@ public class BloomFilterCache {
             .recordStats()
             .build(
                 key -> {
-                  try {
-                    TsFileSequenceReader reader =
-                        FileReaderManager.getInstance().get(key.filePath, true);
-                    return reader.readBloomFilter();
-                  } catch (IOException e) {
-                    logger.error(
-                        "Something wrong happened in reading bloom filter in tsfile {}",
-                        key.filePath,
-                        e);
-                    throw e;
-                  }
+                  TsFileSequenceReader reader =
+                      FileReaderManager.getInstance().get(key.filePath, true);
+                  return reader.readBloomFilter();
                 });
   }
 
