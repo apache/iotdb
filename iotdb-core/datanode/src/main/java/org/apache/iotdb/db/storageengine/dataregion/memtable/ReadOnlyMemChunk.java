@@ -89,7 +89,7 @@ public class ReadOnlyMemChunk {
     initChunkMetaFromTsBlock();
   }
 
-  private void initChunkMetaFromTsBlock() throws IOException, QueryProcessException {
+  private void initChunkMetaFromTsBlock() throws QueryProcessException {
     Statistics statsByType = Statistics.getStatsByType(dataType);
     IChunkMetadata metaData = new ChunkMetadata(measurementUid, dataType, 0, statsByType);
     if (!isEmpty()) {
