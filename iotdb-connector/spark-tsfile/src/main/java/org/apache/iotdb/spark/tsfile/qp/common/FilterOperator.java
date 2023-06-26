@@ -30,7 +30,7 @@ import java.util.List;
  */
 public class FilterOperator extends Operator implements Comparable<FilterOperator> {
 
-  public List<FilterOperator> childOperators;
+  protected List<FilterOperator> childOperators;
   // leaf filter operator means it doesn't have left and right child filterOperator. Leaf filter
   // should be BasicOperator.
   protected boolean isLeaf = false;
@@ -93,6 +93,14 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
 
   public String getSinglePath() {
     return singlePath;
+  }
+
+  public List<FilterOperator> getChildOperators() {
+    return childOperators;
+  }
+
+  public void setChildOperators(List<FilterOperator> childOperators) {
+    this.childOperators = childOperators;
   }
 
   public void addChildOPerator(FilterOperator op) {
