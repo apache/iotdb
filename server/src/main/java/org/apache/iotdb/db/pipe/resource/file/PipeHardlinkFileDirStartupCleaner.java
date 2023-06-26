@@ -28,6 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.concurrent.CompletableFuture;
 
 public class PipeHardlinkFileDirStartupCleaner {
 
@@ -39,24 +40,36 @@ public class PipeHardlinkFileDirStartupCleaner {
    * PipeConfig.PIPE_TSFILE_DIR_NAME directory.
    */
   public static void clean() {
+    CompletableFuture.runAsync(PipeHardlinkFileDirStartupCleaner::doClean);
+  }
+
+  private static void doClean() {
+    long totalStartTs = System.currentTimeMillis();
     for (String dataDir : IoTDBDescriptor.getInstance().getConfig().getDataDirs()) {
       long startTs = System.currentTimeMillis();
       LOGGER.info("PipeHardlinkFileDirStartupCleaner.clean started, dataDir: {}", dataDir);
-      for (File file :
-          FileUtils.listFilesAndDirs(
-              new File(dataDir), DirectoryFileFilter.INSTANCE, DirectoryFileFilter.INSTANCE)) {
-        if (file.isDirectory()
-            && file.getName().equals(PipeConfig.getInstance().getPipeHardlinkTsFileDirName())) {
-          LOGGER.info(
-              "pipe hardlink tsfile dir found, deleting it: {}, result: {}",
-              file,
-              FileUtils.deleteQuietly(file));
+      try {
+        for (File file :
+            FileUtils.listFilesAndDirs(
+                new File(dataDir), DirectoryFileFilter.INSTANCE, DirectoryFileFilter.INSTANCE)) {
+          if (file.isDirectory()
+              && file.getName().equals(PipeConfig.getInstance().getPipeHardlinkTsFileDirName())) {
+            LOGGER.info(
+                "pipe hardlink tsfile dir found, deleting it: {}, result: {}",
+                file,
+                FileUtils.deleteQuietly(file));
+          }
         }
+      } catch (Exception e) {
+        LOGGER.warn("PipeHardlinkFileDirStartupCleaner.clean failed", e);
       }
       LOGGER.info(
           "PipeHardlinkFileDirStartupCleaner finished, cost: {}ms",
           System.currentTimeMillis() - startTs);
     }
+    LOGGER.info(
+        "PipeHardlinkFileDirStartupCleaner finished, total cost: {}ms",
+        System.currentTimeMillis() - totalStartTs);
   }
 
   private PipeHardlinkFileDirStartupCleaner() {
