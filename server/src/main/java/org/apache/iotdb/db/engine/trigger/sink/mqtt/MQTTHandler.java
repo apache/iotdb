@@ -25,7 +25,10 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.fusesource.mqtt.client.BlockingConnection;
 import org.fusesource.mqtt.client.MQTT;
+import org.fusesource.mqtt.client.MQTTException;
+import org.fusesource.mqtt.codec.CONNACK;
 
+import java.io.IOException;
 import java.net.InetAddress;
 
 public class MQTTHandler implements Handler<MQTTConfiguration, MQTTEvent> {
@@ -48,10 +51,12 @@ public class MQTTHandler implements Handler<MQTTConfiguration, MQTTEvent> {
     payloadFormatter = generatePayloadFormatter(configuration);
   }
 
-  private void ping(String host) throws Exception {
+  private void ping(String host) throws IOException {
     InetAddress inet = InetAddress.getByName(host);
     if (!inet.isReachable(1000)) {
-      throw new Exception("Connection refused");
+      throw new MQTTException(
+          "Connection refused",
+          new CONNACK().code(CONNACK.Code.CONNECTION_REFUSED_SERVER_UNAVAILABLE));
     }
   }
 
