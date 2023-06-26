@@ -159,35 +159,34 @@ public class NonAlignedChunkData implements ChunkData {
     dataSize += ReadWriteIOUtils.write(satisfiedLength, stream);
 
     for (int i = 0; i < times.length; i++) {
-      if (times[i] < startTime) {
-        continue;
-      } else if (times[i] >= endTime) {
+      if (times[i] >= endTime) {
         break;
       }
-
-      dataSize += ReadWriteIOUtils.write(times[i], stream);
-      switch (chunkHeader.getDataType()) {
-        case INT32:
-          dataSize += ReadWriteIOUtils.write((int) values[i], stream);
-          break;
-        case INT64:
-          dataSize += ReadWriteIOUtils.write((long) values[i], stream);
-          break;
-        case FLOAT:
-          dataSize += ReadWriteIOUtils.write((float) values[i], stream);
-          break;
-        case DOUBLE:
-          dataSize += ReadWriteIOUtils.write((double) values[i], stream);
-          break;
-        case BOOLEAN:
-          dataSize += ReadWriteIOUtils.write((boolean) values[i], stream);
-          break;
-        case TEXT:
-          dataSize += ReadWriteIOUtils.write((Binary) values[i], stream);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", chunkHeader.getDataType()));
+      if (times[i] >= startTime) {
+        dataSize += ReadWriteIOUtils.write(times[i], stream);
+        switch (chunkHeader.getDataType()) {
+          case INT32:
+            dataSize += ReadWriteIOUtils.write((int) values[i], stream);
+            break;
+          case INT64:
+            dataSize += ReadWriteIOUtils.write((long) values[i], stream);
+            break;
+          case FLOAT:
+            dataSize += ReadWriteIOUtils.write((float) values[i], stream);
+            break;
+          case DOUBLE:
+            dataSize += ReadWriteIOUtils.write((double) values[i], stream);
+            break;
+          case BOOLEAN:
+            dataSize += ReadWriteIOUtils.write((boolean) values[i], stream);
+            break;
+          case TEXT:
+            dataSize += ReadWriteIOUtils.write((Binary) values[i], stream);
+            break;
+          default:
+            throw new UnSupportedDataTypeException(
+                String.format("Data type %s is not supported.", chunkHeader.getDataType()));
+        }
       }
     }
   }

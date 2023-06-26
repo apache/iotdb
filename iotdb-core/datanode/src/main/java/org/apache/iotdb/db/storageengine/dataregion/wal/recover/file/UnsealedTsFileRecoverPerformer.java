@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
 import org.apache.iotdb.db.exception.DataRegionException;
@@ -60,13 +61,13 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
   private static final Logger logger =
       LoggerFactory.getLogger(UnsealedTsFileRecoverPerformer.class);
 
-  /** sequence file or not */
+  // sequence file or not
   private final boolean sequence;
-  /** add recovered TsFile back to data region */
+  // add recovered TsFile back to data region
   private final Consumer<UnsealedTsFileRecoverPerformer> callbackAfterUnsealedTsFileRecovered;
-  /** redo wal log to recover TsFile */
+  // redo wal log to recover TsFile
   private final TsFilePlanRedoer walRedoer;
-  /** trace result of this recovery */
+  // trace result of this recovery
   private final WALRecoverListener recoverListener;
 
   public UnsealedTsFileRecoverPerformer(
@@ -83,6 +84,9 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
   /**
    * Make preparation for recovery, including load .resource file (reconstruct when necessary) and
    * truncate the file to remaining corrected data.
+   *
+   * @throws DataRegionException when failing to recover.
+   * @throws IOException when failing to recover.
    */
   public void startRecovery() throws DataRegionException, IOException {
     super.recoverWithWriter();
@@ -176,7 +180,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
     return modificationsForResource;
   }
 
-  /** Redo log */
+  /** Redo log. */
   public void redoLog(WALEntry walEntry) {
     // skip redo wal log when this TsFile is not crashed
     if (!hasCrashed()) {
@@ -207,7 +211,11 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
     }
   }
 
-  /** Run last procedures to end this recovery */
+  /**
+   * Run last procedures to end this recovery.
+   *
+   * @throws WALRecoverException when failing to flush the recovered memTable.
+   */
   public void endRecovery() throws WALRecoverException {
     // skip update info when this TsFile is not crashed
     if (hasCrashed()) {
@@ -244,7 +252,8 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
         // set recover progress index for pipe
         PipeAgent.runtime().assignRecoverProgressIndexForTsFileRecovery(tsFileResource);
 
-        // if we put following codes in if clause above, this file can be continued writing into it
+        // if we put following codes in the 'if' clause above, this file can be continued writing
+        // into it
         // currently, we close this file anyway
         writer.endFile();
         tsFileResource.serialize();

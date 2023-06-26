@@ -30,6 +30,8 @@ public class StateWindowAccessStrategy implements AccessStrategy {
   private ZoneId zoneId;
 
   /**
+   * Display window begin, display window end and delta will be set by the parameters.
+   *
    * @param displayWindowBegin displayWindowBegin < displayWindowEnd
    * @param displayWindowEnd displayWindowBegin < displayWindowEnd
    * @param delta delta >= 0
@@ -41,6 +43,9 @@ public class StateWindowAccessStrategy implements AccessStrategy {
   }
 
   /**
+   * Display window begin and display window end will be set by the parameters. delta default equals
+   * 0.
+   *
    * @param displayWindowBegin displayWindowBegin < displayWindowEnd
    * @param displayWindowEnd displayWindowBegin < displayWindowEnd
    */

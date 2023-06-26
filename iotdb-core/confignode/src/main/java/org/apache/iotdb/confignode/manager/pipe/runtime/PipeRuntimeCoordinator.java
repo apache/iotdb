@@ -41,15 +41,15 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
   private final ExecutorService procedureSubmitter;
 
   private final PipeLeaderChangeHandler pipeLeaderChangeHandler;
-  private final PipeHeartbeatParser pipeHeartbeatParser;
   private final PipeMetaSyncer pipeMetaSyncer;
+  private final PipeHeartbeatScheduler pipeHeartbeatScheduler;
 
   public PipeRuntimeCoordinator(ConfigManager configManager) {
     if (procedureSubmitterHolder.get() == null) {
       synchronized (PipeRuntimeCoordinator.class) {
         if (procedureSubmitterHolder.get() == null) {
           procedureSubmitterHolder.set(
-              IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+              IoTDBThreadPoolFactory.newSingleThreadExecutor(
                   ThreadName.PIPE_RUNTIME_PROCEDURE_SUBMITTER.getName()));
         }
       }
@@ -57,8 +57,8 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
     procedureSubmitter = procedureSubmitterHolder.get();
 
     pipeLeaderChangeHandler = new PipeLeaderChangeHandler(configManager);
-    pipeHeartbeatParser = new PipeHeartbeatParser(configManager);
     pipeMetaSyncer = new PipeMetaSyncer(configManager);
+    pipeHeartbeatScheduler = new PipeHeartbeatScheduler(configManager);
   }
 
   public ExecutorService getProcedureSubmitter() {
@@ -75,16 +75,24 @@ public class PipeRuntimeCoordinator implements IClusterStatusSubscriber {
     pipeLeaderChangeHandler.onRegionGroupLeaderChanged(event);
   }
 
-  public void parseHeartbeat(
-      int dataNodeId, @NotNull List<ByteBuffer> pipeMetaByteBufferListFromDataNode) {
-    pipeHeartbeatParser.parseHeartbeat(dataNodeId, pipeMetaByteBufferListFromDataNode);
-  }
-
   public void startPipeMetaSync() {
     pipeMetaSyncer.start();
   }
 
   public void stopPipeMetaSync() {
     pipeMetaSyncer.stop();
+  }
+
+  public void startPipeHeartbeat() {
+    pipeHeartbeatScheduler.start();
+  }
+
+  public void stopPipeHeartbeat() {
+    pipeHeartbeatScheduler.stop();
+  }
+
+  public void parseHeartbeat(
+      int dataNodeId, @NotNull List<ByteBuffer> pipeMetaByteBufferListFromDataNode) {
+    pipeHeartbeatScheduler.parseHeartbeat(dataNodeId, pipeMetaByteBufferListFromDataNode);
   }
 }

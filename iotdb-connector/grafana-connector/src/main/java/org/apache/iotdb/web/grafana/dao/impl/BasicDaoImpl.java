@@ -101,7 +101,8 @@ public class BasicDaoImpl implements BasicDao {
       default:
         timestampRadioX = 1L;
     }
-    logger.info("Use timestamp precision {}", timestampPrecision.replaceAll("[\n\r\t]", "_"));
+    timestampPrecision = timestampPrecision.replaceAll("[\n\r\t]", "_");
+    logger.info("Use timestamp precision {}", timestampPrecision);
   }
 
   /**
@@ -164,7 +165,7 @@ public class BasicDaoImpl implements BasicDao {
   }
 
   public String getInterval(final long hours) {
-    if (!isDownSampling || !(hours > 1)) {
+    if (!isDownSampling || hours <= 1) {
       return "";
     }
 

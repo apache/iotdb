@@ -16,11 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 
 import java.nio.ByteBuffer;
 
-/** This entry class provides a signal to help wal buffer dealing with some special cases */
+/** This entry class provides a signal to help wal buffer dealing with some special cases. */
 public class WALSignalEntry extends WALEntry {
   public WALSignalEntry(WALEntryType signalType) {
     this(signalType, false);

@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.runtime.FlushRunTimeException;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IDeviceID;
@@ -100,6 +99,7 @@ public class MemTableFlushTask {
   }
 
   /** the function for flushing memtable. */
+  @SuppressWarnings("squid:S3776")
   public void syncFlushMemTable() throws ExecutionException, InterruptedException {
     long avgSeriesPointsNum =
         memTable.getSeriesNumber() == 0
@@ -338,7 +338,7 @@ public class MemTableFlushTask {
           } catch (IOException e) {
             LOGGER.error(
                 "Database {} memtable {}, io task meets error.", storageGroup, memTable, e);
-            throw new FlushRunTimeException(e);
+            return;
           }
           long subTaskTime = System.currentTimeMillis() - starTime;
           ioTime += subTaskTime;

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
@@ -64,28 +65,34 @@ public class WALBuffer extends AbstractWALBuffer {
   private static final int QUEUE_CAPACITY = config.getWalBufferQueueCapacity();
   private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
 
-  /** whether close method is called */
+  // whether close method is called
   private volatile boolean isClosed = false;
-  /** WALEntries */
+  // WALEntries
   private final BlockingQueue<WALEntry> walEntries = new ArrayBlockingQueue<>(QUEUE_CAPACITY);
-  /** lock to provide synchronization for double buffers mechanism, protecting buffers status */
+  // lock to provide synchronization for double buffers mechanism, protecting buffers status
   private final Lock buffersLock = new ReentrantLock();
-  /** condition to guarantee correctness of switching buffers */
+  // condition to guarantee correctness of switching buffers
   private final Condition idleBufferReadyCondition = buffersLock.newCondition();
   // region these variables should be protected by buffersLock
-  /** two buffers switch between three statuses (there is always 1 buffer working) */
+  /** two buffers switch between three statuses (there is always 1 buffer working). */
   // buffer in working status, only updated by serializeThread
+  // it's safe to use volatile here to make this reference thread-safe.
+  @SuppressWarnings("squid:S3077")
   private volatile ByteBuffer workingBuffer;
   // buffer in idle status
+  // it's safe to use volatile here to make this reference thread-safe.
+  @SuppressWarnings("squid:S3077")
   private volatile ByteBuffer idleBuffer;
   // buffer in syncing status, serializeThread makes sure no more writes to syncingBuffer
+  // it's safe to use volatile here to make this reference thread-safe.
+  @SuppressWarnings("squid:S3077")
   private volatile ByteBuffer syncingBuffer;
   // endregion
-  /** file status of working buffer, updating file writer's status when syncing */
+  // file status of working buffer, updating file writer's status when syncing
   protected volatile WALFileStatus currentFileStatus;
-  /** single thread to serialize WALEntry to workingBuffer */
+  // single thread to serialize WALEntry to workingBuffer
   private final ExecutorService serializeThread;
-  /** single thread to sync syncingBuffer to disk */
+  // single thread to sync syncingBuffer to disk
   private final ExecutorService syncBufferThread;
 
   public WALBuffer(String identifier, String logDirectory) throws FileNotFoundException {
@@ -137,7 +144,7 @@ public class WALBuffer extends AbstractWALBuffer {
   }
 
   // region Task of serializeThread
-  /** This info class traverses some extra info from serializeThread to syncBufferThread */
+  /** This info class traverses some extra info from serializeThread to syncBufferThread. */
   private static class SerializeInfo {
     final WALMetaData metaData = new WALMetaData();
     final List<WALFlushListener> fsyncListeners = new ArrayList<>();
@@ -161,7 +168,7 @@ public class WALBuffer extends AbstractWALBuffer {
       }
     }
 
-    /** In order to control memory usage of blocking queue, get 1 and then serialize 1 */
+    // In order to control memory usage of blocking queue, get 1 and then serialize 1
     private void serialize() {
       // try to get first WALEntry with blocking interface
       long start = System.nanoTime();
@@ -214,6 +221,8 @@ public class WALBuffer extends AbstractWALBuffer {
     }
 
     /**
+     * Handle wal info and signal entry.
+     *
      * @return true if fsyncWorkingBuffer has been called, which means this serialization task
      *     should be ended.
      */
@@ -226,7 +235,7 @@ public class WALBuffer extends AbstractWALBuffer {
       return false;
     }
 
-    /** Handle a normal WALEntry. */
+    /** Handle a normal info WALEntry. */
     private void handleInfoEntry(WALEntry walEntry) {
       int size = byteBufferView.position();
       try {
@@ -261,6 +270,8 @@ public class WALBuffer extends AbstractWALBuffer {
     }
 
     /**
+     * Handle a signal entry.
+     *
      * @return true if fsyncWorkingBuffer has been called, which means this serialization task
      *     should be ended.
      */
@@ -433,7 +444,7 @@ public class WALBuffer extends AbstractWALBuffer {
 
     @Override
     public void run() {
-      long start = System.nanoTime();
+      final long startTime = System.nanoTime();
       long walFileVersionId = currentWALFileVersion;
       long position = currentWALFileWriter.size();
       currentWALFileWriter.updateFileStatus(fileStatus);
@@ -502,7 +513,7 @@ public class WALBuffer extends AbstractWALBuffer {
         }
       }
       WRITING_METRICS.recordWALBufferEntriesCount(info.fsyncListeners.size());
-      WRITING_METRICS.recordSyncWALBufferCost(System.nanoTime() - start, forceFlag);
+      WRITING_METRICS.recordSyncWALBufferCost(System.nanoTime() - startTime, forceFlag);
     }
   }
 
@@ -550,6 +561,7 @@ public class WALBuffer extends AbstractWALBuffer {
         walEntries.put(new WALSignalEntry(WALEntryType.CLOSE_SIGNAL));
       } catch (InterruptedException e) {
         logger.error("Fail to put CLOSE_SIGNAL to walEntries.", e);
+        Thread.currentThread().interrupt();
       }
       isClosed = true;
       shutdownThread(serializeThread, ThreadName.WAL_SERIALIZE);

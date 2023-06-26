@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
@@ -31,7 +32,6 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
-import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl.SchemaReaderLimitOffsetWrapper;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.Collections;
@@ -63,20 +63,17 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
   @Override
   public ISchemaReader<ITimeSeriesSchemaInfo> getSchemaReader(ISchemaRegion schemaRegion) {
     try {
-      return new SchemaReaderLimitOffsetWrapper<>(
-          schemaRegion.getTimeSeriesReader(
-              SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-                  pathPattern,
-                  Collections.emptyMap(),
-                  0,
-                  0,
-                  false,
-                  SchemaFilterFactory.and(
-                      schemaFilter, SchemaFilterFactory.createViewTypeFilter(ViewType.VIEW)))),
-          limit,
-          offset);
+      return schemaRegion.getTimeSeriesReader(
+          SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+              pathPattern,
+              Collections.emptyMap(),
+              limit,
+              offset,
+              false,
+              SchemaFilterFactory.and(
+                  schemaFilter, SchemaFilterFactory.createViewTypeFilter(ViewType.VIEW))));
     } catch (MetadataException e) {
-      throw new RuntimeException(e.getMessage(), e);
+      throw new SchemaExecutionException(e.getMessage(), e);
     }
   }
 

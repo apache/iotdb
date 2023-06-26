@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -35,11 +36,13 @@ public class WALEntryHandler {
   private static final Logger logger = LoggerFactory.getLogger(WALEntryHandler.class);
 
   private long memTableId = -1;
-  /** cached value, null after this value is flushed to wal successfully */
+  // cached value, null after this value is flushed to wal successfully
   private volatile WALEntryValue value;
-  /** wal entry's position in the wal, valid after the value is flushed to wal successfully */
+  // wal entry's position in the wal, valid after the value is flushed to wal successfully
+  // it's safe to use volatile here to make this reference thread-safe.
+  @SuppressWarnings("squid:S3077")
   private final WALEntryPosition walEntryPosition = new WALEntryPosition();
-  /** wal node, null when wal is disabled */
+  // wal node, null when wal is disabled
   private WALNode walNode = null;
 
   public WALEntryHandler(WALEntryValue value) {
@@ -71,7 +74,11 @@ public class WALEntryHandler {
     walNode.unpinMemTable(memTableId);
   }
 
-  /** Get this handler's value */
+  /**
+   * Get this handler's value.
+   *
+   * @throws WALPipeException when failing to get the value.
+   */
   public InsertNode getValue() throws WALPipeException {
     // return local cache
     WALEntryValue res = value;

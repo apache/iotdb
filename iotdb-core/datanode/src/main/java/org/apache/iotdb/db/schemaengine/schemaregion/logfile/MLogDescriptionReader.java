@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.schemaregion.logfile;
 
 import java.io.File;
@@ -32,14 +33,14 @@ public class MLogDescriptionReader {
 
   private MLogDescription deserializeMLogDescription() throws IOException {
     try (FileInputStream fileInputStream = new FileInputStream(file)) {
-      MLogDescription mLogDescription = new MLogDescription();
-      mLogDescription.deserialize(fileInputStream);
-      return mLogDescription;
+      MLogDescription mlogdescription = new MLogDescription();
+      mlogdescription.deserialize(fileInputStream);
+      return mlogdescription;
     }
   }
 
   public long readCheckPoint() throws IOException {
-    MLogDescription mLogDescription = deserializeMLogDescription();
-    return mLogDescription.getCheckPoint();
+    MLogDescription mlogdescription = deserializeMLogDescription();
+    return mlogdescription.getCheckPoint();
   }
 }

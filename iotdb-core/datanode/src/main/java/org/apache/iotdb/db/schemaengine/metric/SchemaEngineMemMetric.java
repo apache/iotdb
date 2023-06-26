@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.metric;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -133,7 +134,11 @@ public class SchemaEngineMemMetric implements ISchemaEngineMetric {
         MetricType.AUTO_GAUGE, Metric.SCHEMA_ENGINE.toString(), Tag.NAME.toString(), REGION_NUMBER);
   }
 
-  /** Encode SchemaRegionConsensusProtocol to ordinal */
+  /**
+   * Encode SchemaRegionConsensusProtocol to ordinal.
+   *
+   * @throws IllegalArgumentException if the protocol is not supported.
+   */
   private int getSchemaRegionConsensusProtocol() {
     switch (IoTDBDescriptor.getInstance().getConfig().getSchemaRegionConsensusProtocolClass()) {
       case ConsensusFactory.RATIS_CONSENSUS:

@@ -58,6 +58,7 @@ public class TemplateExtendInfo extends TemplateAlterInfo {
     this.compressors = compressors;
   }
 
+  @Override
   public String getTemplateName() {
     return templateName;
   }
@@ -148,30 +149,30 @@ public class TemplateExtendInfo extends TemplateAlterInfo {
   public List<String> updateAsDifferenceAndGetIntersection(Set<String> targetMeasurementSet) {
     List<String> removedMeasurements = new ArrayList<>();
 
-    List<String> measurements = new ArrayList<>();
-    List<TSDataType> dataTypes = new ArrayList<>();
-    List<TSEncoding> encodings = this.encodings == null ? null : new ArrayList<>();
-    List<CompressionType> compressors = this.compressors == null ? null : new ArrayList<>();
+    List<String> updatedMeasurements = new ArrayList<>();
+    List<TSDataType> updatedDataTypes = new ArrayList<>();
+    List<TSEncoding> updatedEncodings = this.encodings == null ? null : new ArrayList<>();
+    List<CompressionType> updatedCompressors = this.compressors == null ? null : new ArrayList<>();
 
     for (int i = 0; i < this.measurements.size(); i++) {
       if (targetMeasurementSet.contains(this.measurements.get(i))) {
         removedMeasurements.add(this.measurements.get(i));
         continue;
       }
-      measurements.add(this.measurements.get(i));
-      dataTypes.add(this.dataTypes.get(i));
+      updatedMeasurements.add(this.measurements.get(i));
+      updatedDataTypes.add(this.dataTypes.get(i));
       if (this.encodings != null) {
-        encodings.add(this.encodings.get(i));
+        updatedEncodings.add(this.encodings.get(i));
       }
       if (this.compressors != null) {
-        compressors.add(this.compressors.get(i));
+        updatedCompressors.add(this.compressors.get(i));
       }
     }
 
-    this.measurements = measurements;
-    this.dataTypes = dataTypes;
-    this.encodings = encodings;
-    this.compressors = compressors;
+    this.measurements = updatedMeasurements;
+    this.dataTypes = updatedDataTypes;
+    this.encodings = updatedEncodings;
+    this.compressors = updatedCompressors;
 
     return removedMeasurements;
   }
@@ -180,6 +181,7 @@ public class TemplateExtendInfo extends TemplateAlterInfo {
     return measurements == null || measurements.isEmpty();
   }
 
+  @Override
   public void serialize(OutputStream outputStream) throws IOException {
     super.serialize(outputStream);
     ReadWriteIOUtils.write(measurements.size(), outputStream);
@@ -209,6 +211,7 @@ public class TemplateExtendInfo extends TemplateAlterInfo {
     }
   }
 
+  @Override
   public void deserialize(ByteBuffer buffer) {
     super.deserialize(buffer);
     int size = ReadWriteIOUtils.readInt(buffer);

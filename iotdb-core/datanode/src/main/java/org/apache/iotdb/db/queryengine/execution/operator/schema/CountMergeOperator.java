@@ -16,12 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.execution.operator.schema;
 
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -36,7 +36,6 @@ import java.util.NoSuchElementException;
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
 public class CountMergeOperator implements ProcessOperator {
-  private final PlanNodeId planNodeId;
   private final OperatorContext operatorContext;
 
   private final TsBlock[] childrenTsBlocks;
@@ -46,9 +45,7 @@ public class CountMergeOperator implements ProcessOperator {
 
   private final List<Operator> children;
 
-  public CountMergeOperator(
-      PlanNodeId planNodeId, OperatorContext operatorContext, List<Operator> children) {
-    this.planNodeId = planNodeId;
+  public CountMergeOperator(OperatorContext operatorContext, List<Operator> children) {
     this.operatorContext = operatorContext;
     this.children = children;
 
@@ -87,16 +84,14 @@ public class CountMergeOperator implements ProcessOperator {
     }
     boolean allChildrenReady = true;
     for (int i = 0; i < children.size(); i++) {
-      if (childrenTsBlocks[i] == null) {
+      if (childrenTsBlocks[i] == null && children.get(i).hasNextWithTimer()) {
         // when this operator is not blocked, it means all children that have not return TsBlock is
         // not blocked.
-        if (children.get(i).hasNextWithTimer()) {
-          TsBlock tsBlock = children.get(i).nextWithTimer();
-          if (tsBlock == null || tsBlock.isEmpty()) {
-            allChildrenReady = false;
-          } else {
-            childrenTsBlocks[i] = tsBlock;
-          }
+        TsBlock tsBlock = children.get(i).nextWithTimer();
+        if (tsBlock == null || tsBlock.isEmpty()) {
+          allChildrenReady = false;
+        } else {
+          childrenTsBlocks[i] = tsBlock;
         }
       }
     }

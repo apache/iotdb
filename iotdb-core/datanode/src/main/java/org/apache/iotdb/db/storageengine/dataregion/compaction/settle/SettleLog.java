@@ -51,7 +51,11 @@ public class SettleLog {
       if (!settleLogPath.getParentFile().exists()) {
         settleLogPath.getParentFile().mkdirs();
       }
-      settleLogPath.createNewFile();
+      boolean success = settleLogPath.createNewFile();
+      if (!success && settleLogPath.isDirectory()) {
+        logger.error("meet error when creating settle log, file path:{}", settleLogPath);
+        return false;
+      }
       settleLogWriter = new BufferedWriter(new FileWriter(getSettleLogPath(), true));
       return true;
     } catch (IOException e) {

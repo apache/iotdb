@@ -17,14 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.library.util;
+package org.apache.iotdb.commons.exception.runtime;
 
-/** throw when the value got is not numeric. */
-public class NoNumberException extends Exception {
+public class SchemaExecutionException extends RuntimeException {
 
-  @Override
-  public String toString() {
-    String s = "The value of the input time series is not numeric.\n";
-    return s + super.toString();
+  public SchemaExecutionException(String message) {
+    super(message);
+  }
+
+  public SchemaExecutionException(String message, Throwable cause) {
+    super(message, cause);
+  }
+
+  public SchemaExecutionException(Throwable cause) {
+    super(cause);
   }
 }

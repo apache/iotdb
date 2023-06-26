@@ -16,14 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception.metadata;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.rpc.TSStatusCode;
+package org.apache.iotdb.commons.exception.runtime;
 
-public class SeriesNumberOverflowException extends MetadataException {
+public class SchemaExecutionException extends RuntimeException {
 
-  public SeriesNumberOverflowException() {
-    super("exceed max allowed series number.", TSStatusCode.SERIES_OVERFLOW.getStatusCode());
+  public SchemaExecutionException(String message) {
+    super(message);
+  }
+
+  public SchemaExecutionException(String message, Throwable cause) {
+    super(message, cause);
+  }
+
+  public SchemaExecutionException(Throwable cause) {
+    super(cause);
   }
 }

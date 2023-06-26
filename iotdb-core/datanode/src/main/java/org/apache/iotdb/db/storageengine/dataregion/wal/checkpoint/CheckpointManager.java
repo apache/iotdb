@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -36,6 +37,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -44,31 +46,31 @@ import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-/** This class is used to manage checkpoints of one wal node */
+/** This class is used to manage checkpoints of one wal node. */
 public class CheckpointManager implements AutoCloseable {
   private static final Logger logger = LoggerFactory.getLogger(CheckpointManager.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
 
-  /** WALNode identifier of this checkpoint manager */
+  // WALNode identifier of this checkpoint manager
   protected final String identifier;
-  /** directory to store .checkpoint file */
+  // directory to store .checkpoint file
   protected final String logDirectory;
-  /**
-   * protect concurrent safety of checkpoint info, including memTableId2Info, cachedByteBuffer,
-   * currentLogVersion and currentLogWriter
-   */
+  // protect concurrent safety of checkpoint info
+  // including memTableId2Info, cachedByteBuffer, currentLogVersion and currentLogWriter
   private final Lock infoLock = new ReentrantLock();
   // region these variables should be protected by infoLock
-  /** memTable id -> memTable info */
+  // memTable id -> memTable info
   private final Map<Long, MemTableInfo> memTableId2Info = new HashMap<>();
-  /** cache the biggest byte buffer to serialize checkpoint */
+  // cache the biggest byte buffer to serialize checkpoint
+  // it's safe to use volatile here to make this reference thread-safe.
+  @SuppressWarnings("squid:S3077")
   private volatile ByteBuffer cachedByteBuffer;
-  /** max memTable id */
+  // max memTable id
   private long maxMemTableId = 0;
-  /** current checkpoint file version id, only updated by fsyncAndDeleteThread */
-  private int currentCheckPointFileVersion = 0;
-  /** current checkpoint file log writer, only updated by fsyncAndDeleteThread */
+  // current checkpoint file version id, only updated by fsyncAndDeleteThread
+  private long currentCheckPointFileVersion = 0;
+  // current checkpoint file log writer, only updated by fsyncAndDeleteThread
   private ILogWriter currentLogWriter;
   // endregion
 
@@ -114,8 +116,8 @@ public class CheckpointManager implements AutoCloseable {
   }
 
   /**
-   * make checkpoint for global memTables' info, this checkpoint only exists in the beginning of
-   * each checkpoint file
+   * Make checkpoint for global memTables info, this checkpoint only exists in the beginning of each
+   * checkpoint file.
    */
   private void makeGlobalInfoCP() {
     long start = System.nanoTime();
@@ -126,7 +128,7 @@ public class CheckpointManager implements AutoCloseable {
     WRITING_METRICS.recordMakeCheckpointCost(checkpoint.getType(), System.nanoTime() - start);
   }
 
-  /** make checkpoint for create memTable info */
+  /** Make checkpoint for create memTable info. */
   public void makeCreateMemTableCP(MemTableInfo memTableInfo) {
     infoLock.lock();
     long start = System.nanoTime();
@@ -144,7 +146,7 @@ public class CheckpointManager implements AutoCloseable {
     }
   }
 
-  /** make checkpoint for flush memTable info */
+  /** Make checkpoint for flush memTable info. */
   public void makeFlushMemTableCP(long memTableId) {
     infoLock.lock();
     long start = System.nanoTime();
@@ -188,7 +190,7 @@ public class CheckpointManager implements AutoCloseable {
   }
 
   // region Task to fsync checkpoint file
-  /** Fsync checkpoints to the disk */
+  /** Fsync checkpoints to the disk. */
   private void fsyncCheckpointFile() {
     infoLock.lock();
     try {
@@ -211,7 +213,7 @@ public class CheckpointManager implements AutoCloseable {
               SystemFileFactory.INSTANCE.getFile(
                   logDirectory,
                   CheckpointFileUtils.getLogFileName(currentCheckPointFileVersion - 1));
-          oldFile.delete();
+          Files.delete(oldFile.toPath());
         }
       } catch (IOException e) {
         logger.error(
@@ -298,7 +300,7 @@ public class CheckpointManager implements AutoCloseable {
   }
   // endregion
 
-  /** Get MemTableInfo of oldest MemTable, whose first version id is smallest */
+  /** Get MemTableInfo of oldest MemTable, whose first version id is smallest. */
   public MemTableInfo getOldestMemTableInfo() {
     // find oldest memTable
     List<MemTableInfo> memTableInfos = snapshotMemTableInfos();
@@ -328,7 +330,7 @@ public class CheckpointManager implements AutoCloseable {
     return firstValidVersionId;
   }
 
-  /** Get total cost of active memTables */
+  /** Get total cost of active memTables. */
   public long getTotalCostOfActiveMemTables() {
     List<MemTableInfo> memTableInfos = snapshotMemTableInfos();
     long totalCost = 0;

@@ -22,7 +22,12 @@ package org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ISchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+
 import java.util.NoSuchElementException;
+
+import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 
 public class SchemaReaderLimitOffsetWrapper<T extends ISchemaInfo> implements ISchemaReader<T> {
 
@@ -33,20 +38,14 @@ public class SchemaReaderLimitOffsetWrapper<T extends ISchemaInfo> implements IS
   private final boolean hasLimit;
 
   private int count = 0;
-  int curOffset = 0;
+  private int curOffset = 0;
+  private ListenableFuture<?> isBlocked = null;
 
   public SchemaReaderLimitOffsetWrapper(ISchemaReader<T> schemaReader, long limit, long offset) {
     this.schemaReader = schemaReader;
     this.limit = limit;
     this.offset = offset;
     this.hasLimit = limit > 0 || offset > 0;
-
-    if (hasLimit) {
-      while (curOffset < offset && schemaReader.hasNext()) {
-        schemaReader.next();
-        curOffset++;
-      }
-    }
   }
 
   @Override
@@ -65,11 +64,45 @@ public class SchemaReaderLimitOffsetWrapper<T extends ISchemaInfo> implements IS
   }
 
   @Override
-  public boolean hasNext() {
+  public ListenableFuture<?> isBlocked() {
+    if (isBlocked != null) {
+      return isBlocked;
+    }
+    isBlocked = tryGetNext();
+    return isBlocked;
+  }
+
+  private ListenableFuture<?> tryGetNext() {
     if (hasLimit) {
-      return count < limit && schemaReader.hasNext();
+      if (curOffset < offset) {
+        // first time
+        return Futures.submit(
+            () -> {
+              while (curOffset < offset && schemaReader.hasNext()) {
+                schemaReader.next();
+                curOffset++;
+              }
+              return schemaReader.hasNext();
+            },
+            directExecutor());
+      }
+      if (count >= limit) {
+        return NOT_BLOCKED;
+      } else {
+        return schemaReader.isBlocked();
+      }
     } else {
-      return schemaReader.hasNext();
+      return schemaReader.isBlocked();
+    }
+  }
+
+  @Override
+  public boolean hasNext() {
+    try {
+      isBlocked().get();
+      return schemaReader.hasNext() && count < limit;
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
   }
 

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 
+import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
@@ -29,8 +30,11 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaRea
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import com.google.common.util.concurrent.ListenableFuture;
+
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo> {
 
@@ -96,6 +100,11 @@ public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo
     }
 
     @Override
+    public ListenableFuture<?> isBlocked() {
+      return NOT_BLOCKED;
+    }
+
+    @Override
     public boolean hasNext() {
       try {
         if (throwable != null) {
@@ -126,12 +135,15 @@ public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo
         }
         return false;
       } catch (Exception e) {
-        throw new RuntimeException(e.getMessage(), e);
+        throw new SchemaExecutionException(e.getMessage(), e);
       }
     }
 
     @Override
     public IDeviceSchemaInfo next() {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
       return currentDeviceReader.next();
     }
 

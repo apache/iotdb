@@ -31,7 +31,7 @@ import java.util.Map;
 
 public class SchemaSourceFactory {
 
-  private SchemaSourceFactory() {};
+  private SchemaSourceFactory() {}
 
   public static ISchemaSource<ITimeSeriesSchemaInfo> getTimeSeriesSchemaSource(
       PartialPath pathPattern) {

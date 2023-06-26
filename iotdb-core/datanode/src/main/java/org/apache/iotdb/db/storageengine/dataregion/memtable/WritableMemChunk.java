@@ -330,7 +330,7 @@ public class WritableMemChunk implements IWritableMemChunk {
 
       // store last point for SDT
       if (sortedRowIndex + 1 == list.rowCount()) {
-        ((ChunkWriterImpl) chunkWriterImpl).setLastPoint(true);
+        chunkWriterImpl.setLastPoint(true);
       }
 
       switch (schema.getType()) {

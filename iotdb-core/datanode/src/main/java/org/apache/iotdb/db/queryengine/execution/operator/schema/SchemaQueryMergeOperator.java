@@ -16,12 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.execution.operator.schema;
 
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -29,16 +29,13 @@ import com.google.common.util.concurrent.ListenableFuture;
 import java.util.List;
 
 public class SchemaQueryMergeOperator implements ProcessOperator {
-  private final PlanNodeId planNodeId;
   private final OperatorContext operatorContext;
 
   private final List<Operator> children;
 
   private int currentIndex;
 
-  public SchemaQueryMergeOperator(
-      PlanNodeId planNodeId, OperatorContext operatorContext, List<Operator> children) {
-    this.planNodeId = planNodeId;
+  public SchemaQueryMergeOperator(OperatorContext operatorContext, List<Operator> children) {
     this.operatorContext = operatorContext;
     this.children = children;
     this.currentIndex = 0;

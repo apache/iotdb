@@ -29,7 +29,11 @@ public interface IMeasurementSchemaInfo {
 
   IMeasurementSchema getSchema();
 
-  /** @return if the IMeasurementSchema is MeasurementSchema, return itself; else return null. */
+  /**
+   * If the IMeasurementSchema is MeasurementSchema, return itself; else return null.
+   *
+   * @return measurementSchema or null if IMeasurementSchema is not MeasurementSchema
+   */
   MeasurementSchema getSchemaAsMeasurementSchema();
 
   LogicalViewSchema getSchemaAsLogicalViewSchema();

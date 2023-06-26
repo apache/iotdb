@@ -28,6 +28,7 @@ public interface FlushListener {
 
   void onMemTableFlushed(IMemTable memTable);
 
+  @SuppressWarnings("squid:S6548")
   class DefaultMemTableFLushListener implements FlushListener {
 
     public static final DefaultMemTableFLushListener INSTANCE = new DefaultMemTableFLushListener();

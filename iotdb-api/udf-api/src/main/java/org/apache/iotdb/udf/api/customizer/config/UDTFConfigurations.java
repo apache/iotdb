@@ -34,16 +34,18 @@ import java.time.ZoneId;
 
 /**
  * Used in {@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}.
- * <p>
- * Supports calling methods in a chain.
- * <p>
- * Sample code:
+ *
+ * <p>Supports calling methods in a chain.
+ *
+ * <p>Sample code:
+ *
  * <pre>{@code
  * @Override
  * public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
  *   configurations
  *       .setOutputDataType(TSDataType.INT64)
  *       .setAccessStrategy(new RowByRowAccessStrategy());
+ * }
  * }</pre>
  */
 public class UDTFConfigurations extends UDFConfigurations {

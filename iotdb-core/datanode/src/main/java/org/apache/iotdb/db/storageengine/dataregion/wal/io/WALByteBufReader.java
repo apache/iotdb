@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
@@ -65,12 +66,16 @@ public class WALByteBufReader implements Closeable {
     channel.position(0);
   }
 
-  /** Like {@link Iterator#hasNext()} */
+  /** Like {@link Iterator#hasNext()}. */
   public boolean hasNext() {
     return sizeIterator.hasNext();
   }
 
-  /** Like {@link Iterator#next()} */
+  /**
+   * Like {@link Iterator#next()}.
+   *
+   * @throws IOException when failing to read from channel.
+   */
   public ByteBuffer next() throws IOException {
     int size = sizeIterator.next();
     ByteBuffer buffer = ByteBuffer.allocate(size);

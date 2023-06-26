@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.metric;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;

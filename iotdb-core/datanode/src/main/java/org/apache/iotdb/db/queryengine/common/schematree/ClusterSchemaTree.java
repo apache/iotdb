@@ -200,9 +200,11 @@ public class ClusterSchemaTree implements ISchemaTree {
    *
    * @param schemaComputation the statement
    * @param indexOfTargetLogicalView the index list of logicalViewSchemaList that you want to check
+   * @throws SemanticException path not exist or different source path of view
    */
   public void computeSourceOfLogicalView(
-      ISchemaComputation schemaComputation, List<Integer> indexOfTargetLogicalView) {
+      ISchemaComputation schemaComputation, List<Integer> indexOfTargetLogicalView)
+      throws SemanticException {
     if (!schemaComputation.hasLogicalViewNeedProcess()) {
       return;
     }
@@ -297,11 +299,6 @@ public class ClusterSchemaTree implements ISchemaTree {
     }
   }
 
-  @Override
-  public boolean hasLogicalViewMeasurement() {
-    return this.hasLogicalMeasurementPath;
-  }
-
   public void mergeSchemaTree(ClusterSchemaTree schemaTree) {
     this.hasLogicalMeasurementPath =
         this.hasLogicalMeasurementPath || schemaTree.hasLogicalViewMeasurement();
@@ -336,6 +333,11 @@ public class ClusterSchemaTree implements ISchemaTree {
         traverseAndMerge(thisChild, thisNode, thatChild);
       }
     }
+  }
+
+  @Override
+  public boolean hasLogicalViewMeasurement() {
+    return this.hasLogicalMeasurementPath;
   }
 
   public void serialize(OutputStream outputStream) throws IOException {
@@ -395,6 +397,7 @@ public class ClusterSchemaTree implements ISchemaTree {
    *
    * @param pathName only full path, cannot be path pattern
    * @return database in the given path
+   * @throws SemanticException no matched database
    */
   @Override
   public String getBelongedDatabase(String pathName) {

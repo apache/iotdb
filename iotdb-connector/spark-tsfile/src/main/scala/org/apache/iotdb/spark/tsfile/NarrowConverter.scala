@@ -310,7 +310,7 @@ object NarrowConverter extends Converter {
         throw new Exception("NOT filter is not supported now")
 
       case SQLConstant.KW_AND =>
-        node.childOperators.foreach((child: FilterOperator) => {
+        node.getChildOperators.foreach((child: FilterOperator) => {
           if (filter == null) {
             filter = transformFilterToExpression(schema, child, device_name)
           }
@@ -322,7 +322,7 @@ object NarrowConverter extends Converter {
         filter
 
       case SQLConstant.KW_OR =>
-        node.childOperators.foreach((child: FilterOperator) => {
+        node.getChildOperators.foreach((child: FilterOperator) => {
           if (filter == null) {
             filter = transformFilterToExpression(schema, child, device_name)
           }

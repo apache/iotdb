@@ -54,7 +54,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskInfo.class);
   private static final String SNAPSHOT_FILE_NAME = "pipe_task_info.bin";
 
-  private final ReentrantLock pipeTaskInfoLock = new ReentrantLock();
+  private final ReentrantLock pipeTaskInfoLock = new ReentrantLock(true);
 
   private final PipeMetaKeeper pipeMetaKeeper;
 

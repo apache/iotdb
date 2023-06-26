@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.queryengine.common.NodeRef;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -37,6 +38,11 @@ import org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.GetSourcePaths
 import org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.TransformToExpressionVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -46,12 +52,19 @@ import java.util.NoSuchElementException;
 import java.util.Queue;
 
 public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesSchemaInfo> {
-
+  private static final Logger LOGGER = LoggerFactory.getLogger(TimeseriesReaderWithViewFetch.class);
   private final Traverser<ITimeSeriesSchemaInfo, ?> traverser;
   private final Queue<ITimeSeriesSchemaInfo> cachedViewList = new ArrayDeque<>();
   private ITimeSeriesSchemaInfo next = null;
   private boolean consumeView = false;
   private final SchemaFilter schemaFilter;
+
+  /**
+   * If isBlocked is null, it means the next is not fetched yet. If isBlocked.isDone() is false, it
+   * means the next is being fetched. If isBlocked.get() is true, it means hasNext, otherwise, it
+   * means no more info to be fetched.
+   */
+  private ListenableFuture<Boolean> isBlocked = null;
 
   private static final int BATCH_CACHED_SIZE = 1000;
   private static final TimeseriesFilterVisitor FILTER_VISITOR = new TimeseriesFilterVisitor();
@@ -62,42 +75,19 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
     this.schemaFilter = schemaFilter;
   }
 
+  @Override
   public boolean isSuccess() {
     return traverser.isSuccess();
   }
 
+  @Override
   public Throwable getFailure() {
     return traverser.getFailure();
   }
 
+  @Override
   public void close() {
     traverser.close();
-  }
-
-  public boolean hasNext() {
-    if (next == null && !consumeView) {
-      fetchAndCacheNextResult();
-    }
-    if (consumeView) {
-      return !cachedViewList.isEmpty();
-    } else {
-      return next != null;
-    }
-  }
-
-  public ITimeSeriesSchemaInfo next() {
-    if (!hasNext()) {
-      throw new NoSuchElementException();
-    }
-    ITimeSeriesSchemaInfo result;
-    if (!consumeView) {
-      result = next;
-      next = null;
-    } else {
-      result = cachedViewList.poll();
-      consumeView = !cachedViewList.isEmpty();
-    }
-    return result;
   }
 
   /**
@@ -111,31 +101,103 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
    *   <li>no more info to be fetched. consumeView is false and next is null.
    * </ol>
    */
-  private void fetchAndCacheNextResult() {
-    ITimeSeriesSchemaInfo temp;
-    while (traverser.hasNext()) {
-      temp = traverser.next();
-      if (temp.isLogicalView()) {
-        cachedViewList.add(temp.snapshot());
-        if (cachedViewList.size() >= BATCH_CACHED_SIZE) {
-          fetchViewTimeSeriesSchemaInfo();
-          if (consumeView) {
+  @Override
+  public ListenableFuture<Boolean> isBlocked() {
+    if (isBlocked != null) {
+      return isBlocked;
+    }
+    ListenableFuture<Boolean> res = NOT_BLOCKED_FALSE;
+    if (consumeView) {
+      // consume view list
+      res = NOT_BLOCKED_TRUE;
+    } else if (next == null) {
+      // get next from traverser
+      ITimeSeriesSchemaInfo temp;
+      while (traverser.hasNext()) {
+        temp = traverser.next();
+        if (temp.isLogicalView()) {
+          // view timeseries
+          cachedViewList.add(temp.snapshot());
+          if (cachedViewList.size() >= BATCH_CACHED_SIZE) {
+            res = asyncGetNext();
             break;
           }
-        }
-      } else {
-        if (FILTER_VISITOR.process(schemaFilter, temp)) {
+        } else if (FILTER_VISITOR.process(schemaFilter, temp)) {
+          // normal timeseries
           next = temp;
+          res = NOT_BLOCKED_TRUE;
           break;
         }
       }
+      if (res == NOT_BLOCKED_FALSE && !cachedViewList.isEmpty()) {
+        // all schema info has been fetched, but there mau be still some view schema info in
+        // cachedViewList
+        res = asyncGetNext();
+      }
+    } else {
+      // next is not null
+      res = NOT_BLOCKED_TRUE;
     }
-    if (next == null && !cachedViewList.isEmpty()) {
-      // all schemaengine info has been fetched, but there mau be still some view schemaengine info
-      // in
-      // cachedViewList
-      fetchViewTimeSeriesSchemaInfo();
+    isBlocked = res;
+    return res;
+  }
+
+  @Override
+  public boolean hasNext() {
+    try {
+      return isBlocked().get();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
+  }
+
+  @Override
+  public ITimeSeriesSchemaInfo next() {
+    if (!hasNext()) {
+      throw new NoSuchElementException();
+    }
+    ITimeSeriesSchemaInfo result;
+    if (!consumeView) {
+      result = next;
+      next = null;
+    } else {
+      // it may return null if cachedViewList is empty but consumeView is true
+      result = cachedViewList.poll();
+      consumeView = !cachedViewList.isEmpty();
+    }
+    isBlocked = null;
+    return result;
+  }
+
+  private ListenableFuture<Boolean> asyncGetNext() {
+    // enter this function only when viewList is full or all schema info has been fetched and
+    // viewList is not empty
+    return Futures.submit(
+        () -> {
+          fetchViewTimeSeriesSchemaInfo();
+          if (consumeView) {
+            return true;
+          } else {
+            // all cache view is no satisfied
+            while (traverser.hasNext()) {
+              ITimeSeriesSchemaInfo temp = traverser.next();
+              if (temp.isLogicalView()) {
+                cachedViewList.add(temp.snapshot());
+                if (cachedViewList.size() >= BATCH_CACHED_SIZE) {
+                  fetchViewTimeSeriesSchemaInfo();
+                  if (consumeView) {
+                    return true;
+                  }
+                }
+              } else if (FILTER_VISITOR.process(schemaFilter, temp)) {
+                next = temp;
+                return true;
+              }
+            }
+            return false;
+          }
+        },
+        FragmentInstanceManager.getInstance().getIntoOperationExecutor());
   }
 
   private void fetchViewTimeSeriesSchemaInfo() {
@@ -156,6 +218,7 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
     }
     // clear cachedViewList, all cached view will be added in the last step
     cachedViewList.clear();
+
     ISchemaTree schemaTree = ClusterSchemaFetcher.getInstance().fetchSchema(patternTree, null);
     // process each view expression and get data type
     TransformToExpressionVisitor transformToExpressionVisitor = new TransformToExpressionVisitor();
@@ -181,8 +244,6 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
         cachedViewList.add(delayedLogicalViewList.get(i));
       }
     }
-    if (!cachedViewList.isEmpty()) {
-      consumeView = true;
-    }
+    consumeView = !cachedViewList.isEmpty();
   }
 }

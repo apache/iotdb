@@ -24,7 +24,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-/** Using device id path as id */
+/** Using device id path as id. */
 public class PlainDeviceID implements IDeviceID {
   String deviceID;
 

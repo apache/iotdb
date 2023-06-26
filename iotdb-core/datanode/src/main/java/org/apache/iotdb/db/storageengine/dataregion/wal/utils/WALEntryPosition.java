@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -29,8 +30,8 @@ import java.nio.file.StandardOpenOption;
 import java.util.Objects;
 
 /**
- * This class uses the tuple(file, position, size) to denote the position of the wal entry, and give
- * some methods to read the content from the disk.
+ * This class uses the tuple(identifier, file, position) to denote the position of the wal entry,
+ * and give some methods to read the content from the disk.
  */
 public class WALEntryPosition {
   private static final WALInsertNodeCache CACHE = WALInsertNodeCache.getInstance();
@@ -38,9 +39,9 @@ public class WALEntryPosition {
   private volatile long walFileVersionId = -1;
   private volatile long position;
   private volatile int size;
-  /** wal node, null when wal is disabled */
+  // wal node, null when wal is disabled
   private WALNode walNode = null;
-  /** wal file is not null when openReadFileChannel method has been called */
+  // wal file is not null when openReadFileChannel method has been called
   private File walFile = null;
 
   public WALEntryPosition() {}
@@ -52,7 +53,11 @@ public class WALEntryPosition {
     this.size = size;
   }
 
-  /** Read the wal entry and parse it to the InsertNode. Use LRU cache to accelerate read. */
+  /**
+   * Read the wal entry and parse it to the InsertNode. Use LRU cache to accelerate read.
+   *
+   * @throws IOException failing to read.
+   */
   public InsertNode readInsertNodeViaCache() throws IOException {
     if (!canRead()) {
       throw new IOException("This entry isn't ready for read.");
@@ -60,7 +65,11 @@ public class WALEntryPosition {
     return CACHE.get(this);
   }
 
-  /** Read the byte buffer directly. */
+  /**
+   * Read the byte buffer directly.
+   *
+   * @throws IOException failing to read.
+   */
   ByteBuffer read() throws IOException {
     if (!canRead()) {
       throw new IOException("Target file hasn't been specified.");
@@ -75,8 +84,10 @@ public class WALEntryPosition {
   }
 
   /**
-   * open the read file channel for this wal entry, this method will retry automatically when the
-   * file is sealed when opening the file channel
+   * Open the read file channel for this wal entry, this method will retry automatically when the
+   * file is sealed when opening the file channel.
+   *
+   * @throws IOException failing to open the file channel.
    */
   public FileChannel openReadFileChannel() throws IOException {
     if (isInSealedFile()) {

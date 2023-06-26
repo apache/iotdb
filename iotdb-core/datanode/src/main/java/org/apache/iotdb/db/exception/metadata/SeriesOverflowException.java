@@ -28,8 +28,10 @@ public class SeriesOverflowException extends MetadataException {
   public SeriesOverflowException(long memoryUsage, long seriesNum) {
     super(
         String.format(
-            "There are too many timeseries in memory. Current memory usage is %s and series num is %s. "
-                + "Please increase MAX_HEAP_SIZE in datanode-env.sh/bat, restart and create timeseries again.",
+            "There are too many timeseries in memory. "
+                + "Current memory usage is %s and series num is %s. "
+                + "Please increase MAX_HEAP_SIZE in datanode-env.sh/bat, "
+                + "restart and create timeseries again.",
             memoryUsage, seriesNum),
         TSStatusCode.SERIES_OVERFLOW.getStatusCode());
   }

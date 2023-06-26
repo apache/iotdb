@@ -69,6 +69,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,6 +82,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -1047,6 +1049,10 @@ public class MTreeBelowSGCachedImpl {
             collector.close();
           }
 
+          public ListenableFuture<?> isBlocked() {
+            return NOT_BLOCKED;
+          }
+
           public boolean hasNext() {
             while (next == null && collector.hasNext()) {
               IDeviceSchemaInfo temp = collector.next();
@@ -1058,6 +1064,9 @@ public class MTreeBelowSGCachedImpl {
           }
 
           public IDeviceSchemaInfo next() {
+            if (!hasNext()) {
+              throw new NoSuchElementException();
+            }
             IDeviceSchemaInfo result = next;
             next = null;
             return result;
@@ -1169,11 +1178,18 @@ public class MTreeBelowSGCachedImpl {
         collector.close();
       }
 
+      public ListenableFuture<?> isBlocked() {
+        return NOT_BLOCKED;
+      }
+
       public boolean hasNext() {
         return collector.hasNext();
       }
 
       public INodeSchemaInfo next() {
+        if (!hasNext()) {
+          throw new NoSuchElementException();
+        }
         return collector.next();
       }
     };

@@ -31,6 +31,8 @@ import java.util.Objects;
 public class FlushManagerMetrics implements IMetricSet {
   private FlushManager flushManager;
 
+  private static final String FLUSH = "flush";
+
   public FlushManagerMetrics(FlushManager flushManager) {
     this.flushManager = flushManager;
   }
@@ -43,7 +45,7 @@ public class FlushManagerMetrics implements IMetricSet {
         flushManager,
         FlushManager::getNumberOfWaitingTasks,
         Tag.NAME.toString(),
-        "flush",
+        FLUSH,
         Tag.STATUS.toString(),
         "waiting");
     metricService.createAutoGauge(
@@ -52,7 +54,7 @@ public class FlushManagerMetrics implements IMetricSet {
         flushManager,
         FlushManager::getNumberOfWorkingTasks,
         Tag.NAME.toString(),
-        "flush",
+        FLUSH,
         Tag.STATUS.toString(),
         "running");
   }
@@ -63,14 +65,14 @@ public class FlushManagerMetrics implements IMetricSet {
         MetricType.AUTO_GAUGE,
         Metric.QUEUE.toString(),
         Tag.NAME.toString(),
-        "flush",
+        FLUSH,
         Tag.STATUS.toString(),
         "waiting");
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.QUEUE.toString(),
         Tag.NAME.toString(),
-        "flush",
+        FLUSH,
         Tag.STATUS.toString(),
         "running");
   }

@@ -47,6 +47,7 @@ import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.REA
  * This class is used to cache <code>Chunk</code> of <code>ChunkMetaData</code> in IoTDB. The
  * caching strategy is LRU.
  */
+@SuppressWarnings("squid:S6548")
 public class ChunkCache {
 
   private static final Logger logger = LoggerFactory.getLogger(ChunkCache.class);
@@ -84,9 +85,6 @@ public class ChunkCache {
                         FileReaderManager.getInstance()
                             .get(chunkMetadata.getFilePath(), chunkMetadata.isClosed());
                     return reader.readMemChunk(chunkMetadata);
-                  } catch (IOException e) {
-                    logger.error("Something wrong happened in reading {}", chunkMetadata, e);
-                    throw e;
                   } finally {
                     SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
                         READ_CHUNK_FILE, System.nanoTime() - startTime);

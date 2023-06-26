@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.tools;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
@@ -98,7 +97,7 @@ public class WalChecker {
     } catch (FileNotFoundException e) {
       logger.debug("Wal file doesn't exist, skipping");
       return true;
-    } catch (IOException | IllegalPathException e) {
+    } catch (IOException e) {
       logger.error("{} fails the check because", walFile, e);
       return false;
     }

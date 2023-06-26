@@ -71,6 +71,7 @@ public class TsFileSplitter {
     this.consumer = consumer;
   }
 
+  @SuppressWarnings({"squid:S3776", "squid:S6541"})
   public void splitTsFileByDataPartition() throws IOException, IllegalStateException {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       TreeMap<Long, List<Deletion>> offset2Deletions = new TreeMap<>();
@@ -358,7 +359,7 @@ public class TsFileSplitter {
       allChunkData.addAll(entry.getValue());
     }
     for (ChunkData chunkData : allChunkData) {
-      if (!consumer.apply(chunkData)) {
+      if (Boolean.FALSE.equals(consumer.apply(chunkData))) {
         throw new IllegalStateException(
             String.format(
                 "Consume aligned chunk data error, next chunk offset: %d, chunkData: %s",
@@ -369,7 +370,7 @@ public class TsFileSplitter {
   }
 
   private void consumeChunkData(String measurement, long offset, ChunkData chunkData) {
-    if (!consumer.apply(chunkData)) {
+    if (Boolean.FALSE.equals(consumer.apply(chunkData))) {
       throw new IllegalStateException(
           String.format(
               "Consume chunkData error, chunk offset: %d, measurement: %s, chunkData: %s",

@@ -28,7 +28,7 @@ import java.nio.ByteBuffer;
  * This interface defines the behaviour of a Serializer of T. An instance of this interface provides
  * the ability to serialize an instance of T to InputStream or Bytebuffer.
  *
- * @param <T>
+ * @param <T> the generic type
  */
 public interface ISerializer<T> {
 

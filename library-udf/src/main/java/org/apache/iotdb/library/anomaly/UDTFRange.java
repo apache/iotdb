@@ -27,6 +27,7 @@ import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.type.Type;
 
 /** This function is used to detect range anomaly of time series. */
@@ -87,10 +88,12 @@ public class UDTFRange implements UDTF {
         }
         break;
       default:
-        throw new Exception("No such kind of data type.");
+        throw new UDFException("No such kind of data type.");
     }
   }
 
   @Override
-  public void terminate(PointCollector collector) throws Exception {}
+  public void terminate(PointCollector collector)
+      throws Exception { // default implementation ignored
+  }
 }

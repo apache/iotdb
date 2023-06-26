@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.schemaregion.tag;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -88,7 +89,12 @@ public class TagLogFile implements AutoCloseable {
     FileUtils.copyFile(tagFile, targetFile);
   }
 
-  /** @return tags map, attributes map */
+  /**
+   * Read tags and attributes from tag file.
+   *
+   * @return tags map, attributes map
+   * @throws IOException error occurred when reading disk
+   */
   public Pair<Map<String, String>, Map<String, String>> read(int size, long position)
       throws IOException {
     if (position < 0) {
@@ -113,7 +119,12 @@ public class TagLogFile implements AutoCloseable {
     return write(byteBuffer, -1);
   }
 
-  /** This method does not modify this file's current position. */
+  /**
+   * This method does not modify this file's current position.
+   *
+   * @throws IOException IOException
+   * @throws MetadataException metadata exception
+   */
   public void write(Map<String, String> tagMap, Map<String, String> attributeMap, long position)
       throws IOException, MetadataException {
     ByteBuffer byteBuffer = convertMapToByteBuffer(tagMap, attributeMap);

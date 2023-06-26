@@ -21,9 +21,32 @@ package org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader;
 
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ISchemaInfo;
 
-import java.util.Iterator;
+import com.google.common.util.concurrent.ListenableFuture;
 
-public interface ISchemaReader<T extends ISchemaInfo> extends Iterator<T>, AutoCloseable {
+import static com.google.common.util.concurrent.Futures.immediateFuture;
+import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
+
+/**
+ * ISchemaReader is a non-blocking iterator.
+ *
+ * <ol>
+ *   <li>The isBlock interface is used to determine if it is blocking. If isDone() is false, it is
+ *       blocking.
+ *   <li>The hasNext interface is responsible for determining whether the next result is available,
+ *       and if the current iterator is still in the isBlock state, it will synchronously wait for
+ *       the isBlock state to be lifted.
+ *   <li>The next interface is responsible for consuming the next result, if the current iterator
+ *       hasNext returns false, throw NoSuchElementException.
+ * </ol>
+ *
+ * @param <T>
+ */
+public interface ISchemaReader<T extends ISchemaInfo> extends AutoCloseable {
+
+  ListenableFuture<Boolean> NOT_BLOCKED_TRUE = immediateFuture(true);
+  ListenableFuture<Boolean> NOT_BLOCKED_FALSE = immediateFuture(false);
+  ListenableFuture<Void> NOT_BLOCKED = immediateVoidFuture();
+
   /**
    * Determines if the iteration is successful when it completes.
    *
@@ -37,4 +60,21 @@ public interface ISchemaReader<T extends ISchemaInfo> extends Iterator<T>, AutoC
    * @return Throwable, null if no exception.
    */
   Throwable getFailure();
+
+  /**
+   * Returns a future that will be completed when the schemaReader becomes unblocked. It may be
+   * called several times before next and will return the same value.
+   *
+   * @return isDone is false if is Blocked.
+   */
+  ListenableFuture<?> isBlocked();
+
+  boolean hasNext();
+
+  /**
+   * The next interface is responsible for consuming the next result.
+   *
+   * @throws java.util.NoSuchElementException if the current iterator hasNext is false
+   */
+  T next();
 }

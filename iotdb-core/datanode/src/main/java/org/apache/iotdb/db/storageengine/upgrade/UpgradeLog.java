@@ -43,12 +43,17 @@ public class UpgradeLog {
       SystemFileFactory.INSTANCE.getFile(
           SystemFileFactory.INSTANCE.getFile(config.getSystemDir(), UPGRADE_DIR), UPGRADE_LOG_NAME);
 
+  private UpgradeLog() {}
+
   public static boolean createUpgradeLog() {
     try {
       if (!upgradeLogPath.getParentFile().exists()) {
         upgradeLogPath.getParentFile().mkdirs();
       }
-      upgradeLogPath.createNewFile();
+      if (!upgradeLogPath.createNewFile()) {
+        logger.warn("create upgrade log file fail");
+      }
+
       upgradeLogWriter = new BufferedWriter(new FileWriter(getUpgradeLogPath(), true));
       return true;
     } catch (IOException e) {

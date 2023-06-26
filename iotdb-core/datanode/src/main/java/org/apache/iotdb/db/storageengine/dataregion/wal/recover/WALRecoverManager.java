@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
@@ -50,13 +51,13 @@ public class WALRecoverManager {
   private static final Logger logger = LoggerFactory.getLogger(WALRecoverManager.class);
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
-  /** true when the recover procedure has started */
+  // true when the recover procedure has started
   private volatile boolean hasStarted = false;
-  /** start recovery after all data regions have submitted unsealed zero-level TsFiles */
+  // start recovery after all data regions have submitted unsealed zero-level TsFiles
   private volatile CountDownLatch allDataRegionScannedLatch;
-  /** threads to recover wal nodes */
+  // threads to recover wal nodes
   private ExecutorService recoverThreadPool;
-  /** stores all UnsealedTsFileRecoverPerformer submitted by data region processors */
+  // stores all UnsealedTsFileRecoverPerformer submitted by data region processors
   private final Map<String, UnsealedTsFileRecoverPerformer> absolutePath2RecoverPerformer =
       new ConcurrentHashMap<>();
 

@@ -21,11 +21,11 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import java.nio.ByteBuffer;
 
-/** device id interface */
+/** Device id interface. */
 public interface IDeviceID {
 
   /**
-   * to string format
+   * To string format.
    *
    * @return string format device id
    */

@@ -25,8 +25,6 @@ import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
@@ -36,10 +34,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ConcurrentLinkedDeque;
 
+@SuppressWarnings("squid:S6548")
 public class FlushManager implements FlushManagerMBean, IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FlushManager.class);
-  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private ConcurrentLinkedDeque<TsFileProcessor> tsFileProcessorQueue =
       new ConcurrentLinkedDeque<>();

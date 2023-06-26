@@ -31,22 +31,20 @@ import java.util.Map;
 public interface ITemplateManager {
 
   /**
+   * Create schema template by sending request to ConfigNode.
+   *
    * @param statement CreateSchemaTemplateStatement
    * @return TSStatus
    */
   TSStatus createSchemaTemplate(CreateSchemaTemplateStatement statement);
 
-  /**
-   * show schemaengine templates
-   *
-   * @return List<Template>
-   */
+  /** Show schema templates. */
   List<Template> getAllTemplates();
 
   /**
    * show nodes in schemaengine template xx
    *
-   * @param name
+   * @param name template name
    * @return Template
    */
   Template getTemplate(String name) throws IoTDBException;
@@ -54,18 +52,17 @@ public interface ITemplateManager {
   Template getTemplate(int id);
 
   /**
-   * mount template
+   * Set template to given path.
    *
    * @param name templateName
-   * @param path mount path
+   * @param path set path
    */
   void setSchemaTemplate(String queryId, String name, PartialPath path);
 
   /**
-   * get info of mounted template
+   * Get info of mounted template.
    *
-   * @param name
-   * @return
+   * @param name template name
    */
   List<PartialPath> getPathsSetTemplate(String name);
 

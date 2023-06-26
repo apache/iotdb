@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.template;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -45,8 +46,6 @@ public class Template implements Serializable {
   private boolean isDirectAligned;
   private Map<String, IMeasurementSchema> schemaMap;
 
-  private transient int rehashCode;
-
   public Template() {
     schemaMap = new ConcurrentHashMap<>();
   }
@@ -56,8 +55,7 @@ public class Template implements Serializable {
       List<String> measurements,
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
-      List<CompressionType> compressors)
-      throws IllegalPathException {
+      List<CompressionType> compressors) {
     this(name, measurements, dataTypes, encodings, compressors, false);
   }
 
@@ -67,8 +65,7 @@ public class Template implements Serializable {
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
       List<CompressionType> compressors,
-      boolean isAligned)
-      throws IllegalPathException {
+      boolean isAligned) {
     this.isDirectAligned = isAligned;
     this.schemaMap = new ConcurrentHashMap<>();
     this.name = name;
@@ -184,7 +181,7 @@ public class Template implements Serializable {
     try {
       serialize(outputStream);
     } catch (IOException ignored) {
-
+      // won't reach here
     }
     return ByteBuffer.wrap(outputStream.toByteArray());
   }
@@ -222,8 +219,6 @@ public class Template implements Serializable {
 
   @Override
   public int hashCode() {
-    return rehashCode != 0
-        ? rehashCode
-        : new HashCodeBuilder(17, 37).append(name).append(schemaMap).toHashCode();
+    return new HashCodeBuilder(17, 37).append(name).append(schemaMap).toHashCode();
   }
 }

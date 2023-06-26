@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
@@ -40,7 +40,7 @@ import java.util.NoSuchElementException;
  */
 public class WALReader implements Closeable {
   private static final Logger logger = LoggerFactory.getLogger(WALReader.class);
-  /** 1/10 of .wal file size as buffer size */
+  // use 1/10 of .wal file size as buffer size
   private static final int STREAM_BUFFER_SIZE =
       (int) IoTDBDescriptor.getInstance().getConfig().getWalFileSizeThresholdInByte() / 10;
 
@@ -62,7 +62,7 @@ public class WALReader implements Closeable {
             new BufferedInputStream(Files.newInputStream(logFile.toPath()), STREAM_BUFFER_SIZE));
   }
 
-  /** Like {@link Iterator#hasNext()} */
+  /** Like {@link Iterator#hasNext()}. */
   public boolean hasNext() {
     if (nextEntry != null) {
       return true;
@@ -77,10 +77,6 @@ public class WALReader implements Closeable {
         nextEntry = null;
         return false;
       }
-    } catch (IllegalPathException e) {
-      fileCorrupted = true;
-      logger.warn(
-          "WALEntry of wal file {} contains illegal path, skip illegal WALEntries.", logFile, e);
     } catch (Exception e) {
       fileCorrupted = true;
       // log only when file should be complete
@@ -92,7 +88,11 @@ public class WALReader implements Closeable {
     return nextEntry != null;
   }
 
-  /** Like {@link Iterator#next()} */
+  /**
+   * Like {@link Iterator#next()}.
+   *
+   * @throws NoSuchElementException when not calling hasNext before.
+   */
   public WALEntry next() {
     if (nextEntry == null) {
       throw new NoSuchElementException();

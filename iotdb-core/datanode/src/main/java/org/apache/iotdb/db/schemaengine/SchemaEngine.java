@@ -77,6 +77,8 @@ public class SchemaEngine {
 
   private ISchemaEngineStatistics schemaEngineStatistics;
 
+  private SchemaMetricManager schemaMetricManager;
+
   private final DataNodeSchemaQuotaManager schemaQuotaManager =
       DataNodeSchemaQuotaManager.getInstance();
 
@@ -106,7 +108,7 @@ public class SchemaEngine {
     SchemaResourceManager.initSchemaResource(schemaEngineStatistics);
     // CachedSchemaEngineMetric depend on CacheMemoryManager, so it should be initialized after
     // CacheMemoryManager
-    SchemaMetricManager.getInstance().init(schemaEngineStatistics);
+    schemaMetricManager = new SchemaMetricManager(schemaEngineStatistics);
 
     schemaRegionMap = new ConcurrentHashMap<>();
 
@@ -233,7 +235,9 @@ public class SchemaEngine {
       schemaRegionMap = null;
     }
     // SchemaMetric should be cleared lastly
-    SchemaMetricManager.getInstance().clear();
+    if (schemaMetricManager != null) {
+      schemaMetricManager.clear();
+    }
   }
 
   public ISchemaRegion getSchemaRegion(SchemaRegionId regionId) {
@@ -292,7 +296,7 @@ public class SchemaEngine {
     ISchemaRegionParams schemaRegionParams =
         new SchemaRegionParams(database, schemaRegionId, schemaEngineStatistics);
     ISchemaRegion schemaRegion = schemaRegionLoader.createSchemaRegion(schemaRegionParams);
-    SchemaMetricManager.getInstance().createSchemaRegionMetric(schemaRegion);
+    schemaMetricManager.createSchemaRegionMetric(schemaRegion);
     return schemaRegion;
   }
 
@@ -304,7 +308,7 @@ public class SchemaEngine {
       return;
     }
     schemaRegion.deleteSchemaRegion();
-    SchemaMetricManager.getInstance().deleteSchemaRegionMetric(schemaRegionId.getId());
+    schemaMetricManager.deleteSchemaRegionMetric(schemaRegionId.getId());
     schemaRegionMap.remove(schemaRegionId);
 
     // check whether the sg dir is empty

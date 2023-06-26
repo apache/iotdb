@@ -221,6 +221,8 @@ public class ConfigRegionStateMachine
 
       threadPool.submit(
           () -> configManager.getPipeManager().getPipeRuntimeCoordinator().startPipeMetaSync());
+      threadPool.submit(
+          () -> configManager.getPipeManager().getPipeRuntimeCoordinator().startPipeHeartbeat());
     } else {
       LOGGER.info(
           "Current node [nodeId:{}, ip:port: {}] is not longer the leader, the new leader is [nodeId:{}]",
@@ -230,6 +232,7 @@ public class ConfigRegionStateMachine
 
       // Stop leader scheduling services
       configManager.getPipeManager().getPipeRuntimeCoordinator().stopPipeMetaSync();
+      configManager.getPipeManager().getPipeRuntimeCoordinator().stopPipeHeartbeat();
       configManager.getLoadManager().stopLoadServices();
       configManager.getProcedureManager().shiftExecutor(false);
       configManager.getRetryFailedTasksThread().stopRetryFailedTasksService();

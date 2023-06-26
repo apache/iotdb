@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
@@ -71,7 +72,7 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
           SchemaRegionReadPlanFactory.getShowDevicesPlan(
               pathPattern, limit, offset, isPrefixMatch, schemaFilter));
     } catch (MetadataException e) {
-      throw new RuntimeException(e.getMessage(), e);
+      throw new SchemaExecutionException(e.getMessage(), e);
     }
   }
 

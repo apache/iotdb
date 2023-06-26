@@ -175,6 +175,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadSample;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
@@ -942,6 +944,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       LOGGER.error("Error occurred when pushing pipe meta", e);
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
+  }
+
+  @Override
+  public TPipeHeartbeatResp pipeHeartbeat(TPipeHeartbeatReq req) throws TException {
+    final TPipeHeartbeatResp resp = new TPipeHeartbeatResp();
+    PipeAgent.task().collectPipeMetaList(req, resp);
+    return resp;
   }
 
   private TSStatus executeInternalSchemaTask(

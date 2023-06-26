@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
@@ -59,7 +60,7 @@ public class NodeSchemaSource implements ISchemaSource<INodeSchemaInfo> {
     try {
       return schemaRegion.getNodeReader(showNodesPlan);
     } catch (MetadataException e) {
-      throw new RuntimeException(e.getMessage(), e);
+      throw new SchemaExecutionException(e.getMessage(), e);
     }
   }
 

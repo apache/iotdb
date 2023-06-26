@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint;
 
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
@@ -33,20 +34,20 @@ import java.util.Objects;
  * file version id of its first {@link WALEntry}.
  */
 public class MemTableInfo implements SerializedSize {
-  /** memTable id 8 bytes, first version id 8 bytes */
+  // memTable id 8 bytes, first version id 8 bytes
   private static final int FIXED_SERIALIZED_SIZE = Long.BYTES * 2;
 
-  /** memTable */
+  // memTable
   private IMemTable memTable;
-  /** memTable pin count */
+  // memTable pin count
   private int pinCount;
-  /** memTable is flushed or not */
+  // memTable is flushed or not
   private boolean flushed;
-  /** memTable id */
+  // memTable id
   private long memTableId;
-  /** path of the tsFile which this memTable will be flushed to */
+  // path of the tsFile which this memTable will be flushed to
   private String tsFilePath;
-  /** version id of the file where this memTable's first WALEntry is located */
+  // version id of the file where this memTable's first WALEntry is located
   private volatile long firstFileVersionId;
 
   private MemTableInfo() {}
@@ -75,6 +76,11 @@ public class MemTableInfo implements SerializedSize {
     memTableInfo.tsFilePath = ReadWriteIOUtils.readString(stream);
     memTableInfo.firstFileVersionId = stream.readLong();
     return memTableInfo;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(memTableId, tsFilePath, firstFileVersionId);
   }
 
   @Override
@@ -115,7 +121,7 @@ public class MemTableInfo implements SerializedSize {
   }
 
   public void setFlushed() {
-    // avoid memory leak;
+    // avoid memory leak
     this.memTable = null;
     this.flushed = true;
   }

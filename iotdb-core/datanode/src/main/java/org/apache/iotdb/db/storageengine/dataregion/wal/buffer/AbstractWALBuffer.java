@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -35,19 +36,21 @@ import java.util.Arrays;
 public abstract class AbstractWALBuffer implements IWALBuffer {
   private static final Logger logger = LoggerFactory.getLogger(AbstractWALBuffer.class);
 
-  /** WALNode identifier of this buffer */
+  // WALNode identifier of this buffer
   protected final String identifier;
-  /** directory to store .wal files */
+  // directory to store .wal files
   protected final String logDirectory;
-  /** disk usage of this node‘s wal files */
+  // disk usage of this node‘s wal files
   protected long diskUsage = 0;
-  /** number of this node‘s wal files */
+  // number of this node‘s wal files
   protected long fileNum = 0;
-  /** current wal file version id */
+  // current wal file version id
   protected volatile long currentWALFileVersion;
-  /** current search index */
+  // current search index
   protected volatile long currentSearchIndex;
-  /** current wal file log writer */
+  // current wal file log writer
+  // it's safe to use volatile here to make this reference thread-safe.
+  @SuppressWarnings("squid:S3077")
   protected volatile WALWriter currentWALFileWriter;
 
   protected AbstractWALBuffer(
@@ -87,14 +90,15 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
    * Notice: only called by syncBufferThread and old log writer will be closed by this function.
    *
    * @return last wal file
+   * @throws IOException If failing to close or open the log writer
    */
   protected File rollLogWriter(long searchIndex, WALFileStatus fileStatus) throws IOException {
     // close file
-    File lastFile = currentWALFileWriter.getLogFile();
-    String lastName = lastFile.getName();
     currentWALFileWriter.close();
     addDiskUsage(currentWALFileWriter.size());
     addFileNum(1);
+    File lastFile = currentWALFileWriter.getLogFile();
+    String lastName = lastFile.getName();
     if (WALFileUtils.parseStatusCode(lastName) != fileStatus) {
       String targetName =
           WALFileUtils.getLogFileName(

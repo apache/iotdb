@@ -27,6 +27,10 @@ import java.nio.ByteBuffer;
 
 public class TemplateAlterOperationUtil {
 
+  private TemplateAlterOperationUtil() {
+    // not allowed construction
+  }
+
   public static byte[] generateExtendTemplateReqInfo(
       TemplateAlterOperationType operationType, TemplateAlterInfo templateAlterInfo) {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -34,7 +38,7 @@ public class TemplateAlterOperationUtil {
       operationType.serialize(outputStream);
       templateAlterInfo.serialize(outputStream);
     } catch (IOException ignored) {
-
+      // won't reach here
     }
     return outputStream.toByteArray();
   }

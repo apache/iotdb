@@ -50,8 +50,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+@SuppressWarnings("squid:S6548")
 public class SettleRequestHandler {
   private static final Logger logger = LoggerFactory.getLogger(SettleRequestHandler.class);
+
+  private SettleRequestHandler() {}
 
   private boolean testMode = false;
 
@@ -101,8 +104,9 @@ public class SettleRequestHandler {
       this.config = IoTDBDescriptor.getInstance().getConfig();
     }
 
+    @SuppressWarnings("squid:S3776")
     private TSStatus validate() {
-      if (paths == null || paths.size() == 0) {
+      if (paths == null || paths.isEmpty()) {
         return RpcUtils.getStatus(
             TSStatusCode.ILLEGAL_PARAMETER, "The files to settle is not offered.");
       }
@@ -235,9 +239,7 @@ public class SettleRequestHandler {
                 "The TsFile is not valid: " + tsFile.getAbsolutePath());
           }
           continuousCount++;
-          continue;
-        }
-        if (continuousCount != 0) {
+        } else if (continuousCount != 0) {
           break;
         }
       }
@@ -282,6 +284,7 @@ public class SettleRequestHandler {
             "meet error when adding task-{} to compaction waiting queue: {}",
             task.getSerialId(),
             e.getMessage());
+        Thread.currentThread().interrupt();
         return RpcUtils.getStatus(
             TSStatusCode.COMPACTION_ERROR, "meet error when submit settle task.");
       }

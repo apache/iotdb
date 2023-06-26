@@ -96,7 +96,7 @@ public class ConfigNodeProcedureEnv {
   /** pipe operation lock */
   private final LockQueue pipeLock = new LockQueue();
 
-  private final ReentrantLock schedulerLock = new ReentrantLock();
+  private final ReentrantLock schedulerLock = new ReentrantLock(true);
 
   private final ConfigManager configManager;
 

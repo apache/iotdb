@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.exception.metadata.view;
 
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -29,13 +30,13 @@ public class BrokenViewException extends MetadataException {
     super(
         String.format(
             "View is broken! The source path [%s] maps to unmatched %s path(s): %s.",
-            sourcePath, matchedPaths.size(), matchedPaths.toString()));
+            sourcePath, matchedPaths.size(), matchedPaths));
   }
 
   public BrokenViewException(String viewPath, String sourcePath, List<PartialPath> matchedPaths) {
     super(
         String.format(
             "View [%s] is broken! The source path [%s] maps to unmatched %s path(s): %s.",
-            viewPath, sourcePath, matchedPaths.size(), matchedPaths.toString()));
+            viewPath, sourcePath, matchedPaths.size(), matchedPaths));
   }
 }

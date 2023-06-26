@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener;
 
 import org.slf4j.Logger;
@@ -25,10 +26,12 @@ import org.slf4j.LoggerFactory;
 public abstract class AbstractResultListener {
   private static final Logger logger = LoggerFactory.getLogger(AbstractResultListener.class);
 
-  /** true means waiting until getting the result */
+  // true means waiting until getting the result
   protected final boolean wait;
 
   protected volatile Status status;
+  // it's safe to use volatile here to make this reference thread-safe.
+  @SuppressWarnings("squid:S3077")
   protected volatile Exception cause;
 
   protected AbstractResultListener(boolean wait) {

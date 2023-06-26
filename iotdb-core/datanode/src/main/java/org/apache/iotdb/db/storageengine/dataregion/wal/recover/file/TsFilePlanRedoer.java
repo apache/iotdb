@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
 import org.apache.iotdb.commons.path.PartialPath;
@@ -30,9 +31,6 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.util.List;
 
@@ -42,12 +40,11 @@ import java.util.List;
  * guarantee concurrency safety.
  */
 public class TsFilePlanRedoer {
-  private static final Logger logger = LoggerFactory.getLogger(TsFilePlanRedoer.class);
-
   private final TsFileResource tsFileResource;
-  /** only unsequence file tolerates duplicated data */
+  // only unsequence file tolerates duplicated data
   private final boolean sequence;
-  /** store data when redoing logs */
+
+  // store data when redoing logs
   private IMemTable recoveryMemTable = new PrimitiveMemTable();
 
   public TsFilePlanRedoer(TsFileResource tsFileResource, boolean sequence) {
@@ -75,7 +72,6 @@ public class TsFilePlanRedoer {
     }
   }
 
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   void redoInsert(InsertNode node) throws WriteProcessException {
     if (!node.hasValidMeasurements()) {
       return;

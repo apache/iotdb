@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.wal.allocation;
 
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -26,12 +27,14 @@ import java.util.List;
 
 /** This interface */
 public interface NodeAllocationStrategy {
-  /** Allocate one wal node for the applicant */
+
+  /** Allocate one wal node for the applicant. */
   IWALNode applyForWALNode(String applicantUniqueId);
-  /** Get all wal nodes */
+
+  /** Get all wal nodes. */
   List<WALNode> getNodesSnapshot();
 
-  /** Get all wal nodes num */
+  /** Get all wal nodes num. Not thread-safe, used for metrics only. */
   int getNodesNum();
 
   @TestOnly

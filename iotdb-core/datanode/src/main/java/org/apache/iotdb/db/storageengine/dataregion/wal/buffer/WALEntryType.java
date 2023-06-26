@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.wal.buffer;
 
-/** Type of {@link WALEntry}, including info type and signal type */
+/** Type of {@link WALEntry}, including info type and signal type. */
 public enum WALEntryType {
   // region info entry type
   @Deprecated
@@ -27,6 +28,7 @@ public enum WALEntryType {
   INSERT_TABLET_PLAN((byte) 1),
   @Deprecated
   DELETE_PLAN((byte) 2),
+  /** {@link org.apache.iotdb.db.engine.memtable.AbstractMemTable} */
   MEMORY_TABLE_SNAPSHOT((byte) 3),
   /** {@link org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode} */
   INSERT_ROW_NODE((byte) 4),
@@ -36,14 +38,13 @@ public enum WALEntryType {
   DELETE_DATA_NODE((byte) 6),
   // endregion
   // region signal entry type
-  /** signal wal buffer has been closed */
+  // signal wal buffer has been closed
   CLOSE_SIGNAL(Byte.MIN_VALUE),
-  /** signal wal buffer to roll wal log writer */
+  // signal wal buffer to roll wal log writer
   ROLL_WAL_LOG_WRITER_SIGNAL((byte) (Byte.MIN_VALUE + 1)),
-  /** mark the wal file info part ends */
-  WAL_FILE_INFO_END_MARKER((byte) (Byte.MIN_VALUE + 2)),
-// endregion
-;
+  // mark the wal file info part ends
+  WAL_FILE_INFO_END_MARKER((byte) (Byte.MIN_VALUE + 2));
+  // endregion
 
   private final byte code;
 
@@ -55,7 +56,7 @@ public enum WALEntryType {
     return code;
   }
 
-  /** Returns true when this type should be searched */
+  /** Returns true when this type should be searched. */
   public boolean needSearch() {
     return this == INSERT_TABLET_NODE || this == INSERT_ROW_NODE || this == DELETE_DATA_NODE;
   }

@@ -265,6 +265,14 @@ struct THeartbeatResp {
   10: optional list<binary> pipeMetaList
 }
 
+struct TPipeHeartbeatReq {
+  1: required i64 heartbeatId
+}
+
+struct TPipeHeartbeatResp {
+  1: required list<binary> pipeMetaList
+}
+
 enum TSchemaLimitLevel{
     DEVICE,
     TIMESERIES
@@ -796,6 +804,11 @@ service IDataNodeRPCService {
   * Send pipeMetas to DataNodes, for synchronization
   */
   common.TSStatus pushPipeMeta(TPushPipeMetaReq req)
+
+  /**
+  * ConfigNode will ask DataNode for pipe meta in every few seconds
+  **/
+  TPipeHeartbeatResp pipeHeartbeat(TPipeHeartbeatReq req)
 
  /**
   * Execute CQ on DataNode

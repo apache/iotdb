@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.schemaregion.logfile;
 
 import java.io.File;
@@ -26,25 +27,24 @@ import java.nio.file.StandardOpenOption;
 public class MLogDescriptionWriter {
 
   private final FileChannel fileChannel;
-  private final MLogDescription mLogDescription;
+
+  private final MLogDescription mlogdescription;
 
   public MLogDescriptionWriter(String schemaDir, String logFileName) throws IOException {
     File file = new File(schemaDir, logFileName);
-    if (!file.exists()) {
-      if (!file.createNewFile()) {
-        throw new IOException(
-            String.format(
-                "Failed to create file %s because the named file already exists", file.getName()));
-      }
+    if (!file.exists() && !file.createNewFile()) {
+      throw new IOException(
+          String.format(
+              "Failed to create file %s because the named file already exists", file.getName()));
     }
     fileChannel =
         FileChannel.open(new File(schemaDir, logFileName).toPath(), StandardOpenOption.WRITE);
-    mLogDescription = new MLogDescription();
+    mlogdescription = new MLogDescription();
   }
 
   public synchronized void updateCheckPoint(long checkPoint) throws IOException {
-    mLogDescription.setCheckPoint(checkPoint);
-    mLogDescription.serialize(fileChannel);
+    mlogdescription.setCheckPoint(checkPoint);
+    mlogdescription.serialize(fileChannel);
   }
 
   public synchronized void close() throws IOException {

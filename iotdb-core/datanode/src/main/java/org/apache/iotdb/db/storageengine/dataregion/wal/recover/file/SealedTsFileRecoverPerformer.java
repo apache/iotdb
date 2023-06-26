@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
 import org.apache.iotdb.db.exception.DataRegionException;
@@ -31,7 +32,10 @@ public class SealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerformer
 
   /**
    * Recover sealed TsFile, including load .resource file (reconstruct when necessary) and truncate
-   * the file to remaining corrected data
+   * the file to remaining corrected data.
+   *
+   * @throws DataRegionException when failing to recover.
+   * @throws IOException when failing to end file.
    */
   public void recover() throws DataRegionException, IOException {
     super.recoverWithWriter();
