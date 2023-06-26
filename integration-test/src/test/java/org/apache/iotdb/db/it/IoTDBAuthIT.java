@@ -524,7 +524,7 @@ public class IoTDBAuthIT {
         adminStmt.execute("GRANT ROLE role1 PRIVILEGES READ_SCHEMA,WRITE_DATA ON root.a.b.c");
         adminStmt.execute("GRANT ROLE role1 PRIVILEGES READ_SCHEMA,WRITE_DATA ON root.d.b.c");
         resultSet = adminStmt.executeQuery("LIST PRIVILEGES ROLE role1");
-        ans = "root.a.b.c : WRITE_DATA READ_SCHEMA,\n" + "root.d.b.c : WRITE_DATA READ_SCHEMAS,\n";
+        ans = "root.a.b.c : WRITE_DATA READ_SCHEMA,\n" + "root.d.b.c : WRITE_DATA READ_SCHEMA,\n";
         validateResultSet(resultSet, ans);
 
         resultSet = adminStmt.executeQuery("LIST PRIVILEGES ROLE role1 ON root.a.b.c");
@@ -534,11 +534,11 @@ public class IoTDBAuthIT {
         adminStmt.execute("REVOKE ROLE role1 PRIVILEGES READ_SCHEMA,WRITE_DATA ON root.a.b.c");
 
         resultSet = adminStmt.executeQuery("LIST PRIVILEGES ROLE role1");
-        ans = "root.a.b.c : READ_SCHEMA,\n" + "root.d.b.c : WRITE_DATA READ_SCHEMA,\n";
+        ans = "root.d.b.c : WRITE_DATA READ_SCHEMA,\n";
         validateResultSet(resultSet, ans);
 
         resultSet = adminStmt.executeQuery("LIST PRIVILEGES ROLE role1 ON root.a.b.c");
-        ans = "root.a.b.c : READ_SCHEMA,\n";
+        ans = "";
         validateResultSet(resultSet, ans);
       } finally {
         resultSet.close();
@@ -743,7 +743,7 @@ public class IoTDBAuthIT {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("CREATE USER tempuser 'temppw'");
-      adminStmt.execute("GRANT USER tempuser PRIVILEGES WRITE_SCHEMA on root.sg1.**");
+      adminStmt.execute("GRANT USER tempuser PRIVILEGES WRITE_DATA on root.sg1.**");
 
       try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw");
           Statement userStatement = userCon.createStatement()) {
@@ -780,7 +780,7 @@ public class IoTDBAuthIT {
         Statement adminStatement = adminConnection.createStatement()) {
       adminStatement.execute("CREATE USER a_application 'a_application'");
       adminStatement.execute("CREATE ROLE application_role");
-      adminStatement.execute("GRANT ROLE application_role PRIVILEGES READ_SCHEMA ON root.test.**");
+      adminStatement.execute("GRANT ROLE application_role PRIVILEGES READ_DATA ON root.test.**");
       adminStatement.execute("GRANT application_role TO a_application");
 
       adminStatement.execute("INSERT INTO root.test(time, s1, s2, s3) VALUES(1, 2, 3, 4)");
@@ -804,8 +804,7 @@ public class IoTDBAuthIT {
       adminStatement.execute("CREATE USER user01 'pass1234'");
       adminStatement.execute("CREATE USER user02 'pass1234'");
       adminStatement.execute("CREATE ROLE manager");
-      adminStatement.execute("GRANT USER user01 PRIVILEGES ROLE_PRIVILEGE on root.**");
-      adminStatement.execute("GRANT USER user01 PRIVILEGES ROLE_PRIVILEGE on root.**");
+      adminStatement.execute("GRANT USER user01 PRIVILEGES GRANT_PRIVILEGE on root.**");
     }
 
     try (Connection userCon = EnvFactory.getEnv().getConnection("user01", "pass1234");
