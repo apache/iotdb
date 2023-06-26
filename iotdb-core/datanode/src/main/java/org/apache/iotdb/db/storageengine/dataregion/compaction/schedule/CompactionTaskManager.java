@@ -217,6 +217,7 @@ public class CompactionTaskManager implements IService {
    * This method submit the compaction task to the PriorityQueue in CompactionTaskManager. Notice!
    * The task will not be submitted immediately. If the queue size is larger than max size, the task
    * with last priority will be removed from the task.
+   *
    * @throws InterruptedException if there is an issue when put compaction task
    */
   public synchronized boolean addTaskToWaitingQueue(AbstractCompactionTask compactionTask)
