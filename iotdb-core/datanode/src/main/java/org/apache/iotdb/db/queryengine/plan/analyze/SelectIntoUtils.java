@@ -166,7 +166,7 @@ public class SelectIntoUtils {
                   "The data type of target path (%s[%s]) is not compatible with the data type of source column (%s[%s]).",
                   targetPath, actualTargetPath.getSeriesType(), sourceColumn, sourceColumnType));
         }
-        // no need to check alignment, because the interface is universal
+        // no need to check alignment, because the interface is common
         targetPathWithSchema = actualTargetPath;
       }
       sourceTypeBoundTargetPathPairList.add(new Pair<>(sourceColumn, targetPathWithSchema));

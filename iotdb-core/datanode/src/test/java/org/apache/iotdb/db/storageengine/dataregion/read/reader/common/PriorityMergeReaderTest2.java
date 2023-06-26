@@ -17,9 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.reader.universal;
+package org.apache.iotdb.db.storageengine.dataregion.read.reader.common;
 
-import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.PriorityMergeReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 
 import org.junit.Assert;

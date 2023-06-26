@@ -40,7 +40,7 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
 
   private volatile ILastCacheContainer lastCacheContainer = null;
 
-  SchemaCacheEntry(
+  public SchemaCacheEntry(
       String storageGroup,
       IMeasurementSchema iMeasurementSchema,
       Map<String, String> tagMap,
