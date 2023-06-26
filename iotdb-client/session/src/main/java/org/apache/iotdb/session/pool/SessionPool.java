@@ -123,6 +123,36 @@ public class SessionPool implements ISessionPool {
   // formatted nodeUrls for logging e.g. "host:port" or "[host:port, host:port, host:port]"
   private final String formattedNodeUrls;
 
+  private static final String INSERT_RECORD_FAIL = "insertRecord failed";
+
+  private static final String INSERT_RECORD_ERROR_MSG = "unexpected error in insertRecord";
+
+  private static final String INSERT_RECORDS_ERROR_MSG = "unexpected error in insertRecords";
+
+  private static final String EXECUTE_LASTDATAQUERY_FAIL = "executeLastDataQuery failed";
+
+  private static final String EXECUTE_LASTDATAQUERY_ERROR =
+      "unexpected error in executeLastDataQuery";
+
+  private static final String EXECUTE_AGGREGATION_QUERY_FAIL = "executeAggregationQuery failed";
+
+  private static final String INSERT_RECORDS_OF_ONE_DEVICE_ERROR_MSG =
+      "unexpected error in insertRecordsOfOneDevice";
+
+  private static final String DELETE_DATA_ERROR_MSG = "unexpected error in deleteData";
+
+  private static final String CREATE_SCHEMA_TEMPLATE_ERROR_MSG =
+      "unexpected error in createSchemaTemplate";
+
+  private static final String EXECUTE_AGGREGATION_QUERY_ERROR_MSG =
+      "unexpected error in executeAggregationQuery";
+
+  private static final String DELETE_DATA_FAIL = "deleteData failed";
+
+  private static final String INSERT_RECORDS_OF_ONE_DEVICE_FAIL = "insertRecordsOfOneDevice failed";
+
+  private static final String CREATE_SCHEMA_TEMPLATE_FAIL = "createSchemaTemplate failed";
+
   public SessionPool(String host, int port, String user, String password, int maxSize) {
     this(
         host,
@@ -317,6 +347,7 @@ public class SessionPool implements ISessionPool {
     this.formattedNodeUrls = String.format("%s:%s", host, port);
   }
 
+  @SuppressWarnings("squid:S107")
   public SessionPool(
       List<String> nodeUrls,
       String user,
@@ -436,6 +467,8 @@ public class SessionPool implements ISessionPool {
             }
           }
         } catch (InterruptedException e) {
+          logger.warn("Interrupted!", e);
+          Thread.currentThread().interrupt();
           // wake up from this.wait(1000) by this.notify()
         }
 
@@ -496,11 +529,6 @@ public class SessionPool implements ISessionPool {
     synchronized (this) {
       // we do not need to notifyAll as any waited thread can continue to work after waked up.
       this.notify();
-      // comment the following codes as putBack is too frequently called.
-      //      if (logger.isTraceEnabled()) {
-      //        logger.trace("put a session back and notify others..., queue.size = {}",
-      // queue.size());
-      //      }
     }
   }
 
@@ -533,6 +561,7 @@ public class SessionPool implements ISessionPool {
     occupied.clear();
   }
 
+  @SuppressWarnings({"squid:S2589"})
   @Override
   public void closeResultSet(SessionDataSetWrapper wrapper) {
     boolean putback = true;
@@ -626,6 +655,7 @@ public class SessionPool implements ISessionPool {
    * @param tablet a tablet data of one device
    * @param sorted whether times in Tablet are in ascending order
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -680,6 +710,7 @@ public class SessionPool implements ISessionPool {
    * @param tablet a tablet data of one device
    * @param sorted whether times in Tablet are in ascending order
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertAlignedTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -731,6 +762,7 @@ public class SessionPool implements ISessionPool {
    *
    * @param tablets multiple batch
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -760,6 +792,7 @@ public class SessionPool implements ISessionPool {
    *
    * @param tablets multiple batch
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertAlignedTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -791,6 +824,7 @@ public class SessionPool implements ISessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertRecords(
       List<String> deviceIds,
@@ -813,7 +847,7 @@ public class SessionPool implements ISessionPool {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in insertRecords", e);
+        logger.error(INSERT_RECORDS_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -827,6 +861,7 @@ public class SessionPool implements ISessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertAlignedRecords(
       List<String> multiSeriesIds,
@@ -864,6 +899,7 @@ public class SessionPool implements ISessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertRecordsOfOneDevice(
       String deviceId,
@@ -881,13 +917,13 @@ public class SessionPool implements ISessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("insertRecordsOfOneDevice failed", e);
+        logger.warn(INSERT_RECORDS_OF_ONE_DEVICE_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in insertRecordsOfOneDevice", e);
+        logger.error(INSERT_RECORDS_OF_ONE_DEVICE_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -900,7 +936,9 @@ public class SessionPool implements ISessionPool {
    * send them to server If you want improve your performance, please see insertTablet method
    *
    * @see Session#insertTablet(Tablet)
+   * @deprecated
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181", "squid:S1133"})
   @Deprecated
   @Override
   public void insertOneDeviceRecords(
@@ -919,13 +957,13 @@ public class SessionPool implements ISessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("insertRecordsOfOneDevice failed", e);
+        logger.warn(INSERT_RECORDS_OF_ONE_DEVICE_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in insertRecordsOfOneDevice", e);
+        logger.error(INSERT_RECORDS_OF_ONE_DEVICE_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -940,6 +978,7 @@ public class SessionPool implements ISessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertStringRecordsOfOneDevice(
       String deviceId,
@@ -977,6 +1016,7 @@ public class SessionPool implements ISessionPool {
    * @param haveSorted whether the times list has been ordered.
    * @see Session#insertTablet(Tablet)
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertRecordsOfOneDevice(
       String deviceId,
@@ -995,13 +1035,13 @@ public class SessionPool implements ISessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("insertRecordsOfOneDevice failed", e);
+        logger.warn(INSERT_RECORDS_OF_ONE_DEVICE_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in insertRecordsOfOneDevice", e);
+        logger.error(INSERT_RECORDS_OF_ONE_DEVICE_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -1015,7 +1055,9 @@ public class SessionPool implements ISessionPool {
    *
    * @param haveSorted whether the times list has been ordered.
    * @see Session#insertTablet(Tablet)
+   * @deprecated
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181", "squid:S1133"})
   @Override
   @Deprecated
   public void insertOneDeviceRecords(
@@ -1035,13 +1077,13 @@ public class SessionPool implements ISessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("insertRecordsOfOneDevice failed", e);
+        logger.warn(INSERT_RECORDS_OF_ONE_DEVICE_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in insertRecordsOfOneDevice", e);
+        logger.error(INSERT_RECORDS_OF_ONE_DEVICE_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -1057,6 +1099,7 @@ public class SessionPool implements ISessionPool {
    * @param haveSorted whether the times list has been ordered.
    * @see Session#insertTablet(Tablet)
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertStringRecordsOfOneDevice(
       String deviceId,
@@ -1095,6 +1138,7 @@ public class SessionPool implements ISessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertAlignedRecordsOfOneDevice(
       String deviceId,
@@ -1133,6 +1177,7 @@ public class SessionPool implements ISessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertAlignedStringRecordsOfOneDevice(
       String deviceId,
@@ -1171,6 +1216,7 @@ public class SessionPool implements ISessionPool {
    * @param haveSorted whether the times list has been ordered.
    * @see Session#insertTablet(Tablet)
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertAlignedRecordsOfOneDevice(
       String deviceId,
@@ -1211,6 +1257,7 @@ public class SessionPool implements ISessionPool {
    * @param haveSorted whether the times list has been ordered.
    * @see Session#insertTablet(Tablet)
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertAlignedStringRecordsOfOneDevice(
       String deviceId,
@@ -1248,6 +1295,7 @@ public class SessionPool implements ISessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertRecords(
       List<String> deviceIds,
@@ -1269,7 +1317,7 @@ public class SessionPool implements ISessionPool {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in insertRecords", e);
+        logger.error(INSERT_RECORDS_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -1283,6 +1331,7 @@ public class SessionPool implements ISessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertAlignedRecords(
       List<String> multiSeriesIds,
@@ -1319,6 +1368,7 @@ public class SessionPool implements ISessionPool {
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertRecord(
       String deviceId,
@@ -1335,13 +1385,13 @@ public class SessionPool implements ISessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("insertRecord failed", e);
+        logger.error(INSERT_RECORD_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in insertRecord", e);
+        logger.error(INSERT_RECORD_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -1355,6 +1405,7 @@ public class SessionPool implements ISessionPool {
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertRecord(
       String deviceId,
@@ -1371,19 +1422,20 @@ public class SessionPool implements ISessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("insertRecord failed", e);
+        logger.warn(INSERT_RECORD_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in insertRecord", e);
+        logger.error(INSERT_RECORD_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
     }
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public String getTimestampPrecision()
       throws IoTDBConnectionException, StatementExecutionException {
@@ -1417,6 +1469,7 @@ public class SessionPool implements ISessionPool {
    * @see Session#insertAlignedRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertAlignedRecord(
       String multiSeriesId,
@@ -1453,6 +1506,7 @@ public class SessionPool implements ISessionPool {
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertRecord(
       String deviceId, long time, List<String> measurements, List<String> values)
@@ -1465,13 +1519,13 @@ public class SessionPool implements ISessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("insertRecord failed", e);
+        logger.warn(INSERT_RECORD_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in insertRecord", e);
+        logger.error(INSERT_RECORD_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -1485,6 +1539,7 @@ public class SessionPool implements ISessionPool {
    * @see Session#insertAlignedRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertAlignedRecord(
       String multiSeriesId, long time, List<String> multiMeasurementComponents, List<String> values)
@@ -1514,6 +1569,7 @@ public class SessionPool implements ISessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void testInsertTablet(Tablet tablet)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -1542,6 +1598,7 @@ public class SessionPool implements ISessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void testInsertTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -1570,6 +1627,7 @@ public class SessionPool implements ISessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void testInsertTablets(Map<String, Tablet> tablets)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -1598,6 +1656,7 @@ public class SessionPool implements ISessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void testInsertTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -1626,6 +1685,7 @@ public class SessionPool implements ISessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void testInsertRecords(
       List<String> deviceIds,
@@ -1658,6 +1718,7 @@ public class SessionPool implements ISessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void testInsertRecords(
       List<String> deviceIds,
@@ -1691,6 +1752,7 @@ public class SessionPool implements ISessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void testInsertRecord(
       String deviceId, long time, List<String> measurements, List<String> values)
@@ -1720,6 +1782,7 @@ public class SessionPool implements ISessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void testInsertRecord(
       String deviceId,
@@ -1754,6 +1817,7 @@ public class SessionPool implements ISessionPool {
    *
    * @param path timeseries to delete, should be a whole path
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void deleteTimeseries(String path)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -1783,6 +1847,7 @@ public class SessionPool implements ISessionPool {
    *
    * @param paths timeseries to delete, should be a whole path
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void deleteTimeseries(List<String> paths)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -1813,6 +1878,7 @@ public class SessionPool implements ISessionPool {
    * @param path data in which time series to delete
    * @param time data with time stamp less than or equal to time will be deleted
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void deleteData(String path, long time)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -1824,13 +1890,13 @@ public class SessionPool implements ISessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("deleteData failed", e);
+        logger.warn(DELETE_DATA_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in deleteData", e);
+        logger.error(DELETE_DATA_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -1843,6 +1909,7 @@ public class SessionPool implements ISessionPool {
    * @param paths data in which time series to delete
    * @param time data with time stamp less than or equal to time will be deleted
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void deleteData(List<String> paths, long time)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -1854,13 +1921,13 @@ public class SessionPool implements ISessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("deleteData failed", e);
+        logger.warn(DELETE_DATA_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in deleteData", e);
+        logger.error(DELETE_DATA_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -1874,6 +1941,7 @@ public class SessionPool implements ISessionPool {
    * @param startTime delete range start time
    * @param endTime delete range end time
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void deleteData(List<String> paths, long startTime, long endTime)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -1885,13 +1953,13 @@ public class SessionPool implements ISessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("deleteData failed", e);
+        logger.warn(DELETE_DATA_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in deleteData", e);
+        logger.error(DELETE_DATA_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -1899,6 +1967,7 @@ public class SessionPool implements ISessionPool {
   }
 
   /** @deprecated Use {@link #createDatabase(String)} instead. */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181", "squid:S1133"})
   @Deprecated
   @Override
   public void setStorageGroup(String storageGroupId)
@@ -1925,6 +1994,7 @@ public class SessionPool implements ISessionPool {
   }
 
   /** @deprecated Use {@link #deleteDatabase(String)} instead. */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181", "squid:S1133"})
   @Deprecated
   @Override
   public void deleteStorageGroup(String storageGroup)
@@ -1951,6 +2021,7 @@ public class SessionPool implements ISessionPool {
   }
 
   /** @deprecated Use {@link #deleteDatabases(List)} instead. */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181", "squid:S1133"})
   @Deprecated
   @Override
   public void deleteStorageGroups(List<String> storageGroup)
@@ -1976,6 +2047,7 @@ public class SessionPool implements ISessionPool {
     }
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void createDatabase(String database)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -2000,6 +2072,7 @@ public class SessionPool implements ISessionPool {
     }
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void deleteDatabase(String database)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -2024,6 +2097,7 @@ public class SessionPool implements ISessionPool {
     }
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void deleteDatabases(List<String> databases)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -2048,6 +2122,7 @@ public class SessionPool implements ISessionPool {
     }
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void createTimeseries(
       String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor)
@@ -2073,6 +2148,7 @@ public class SessionPool implements ISessionPool {
     }
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void createTimeseries(
       String path,
@@ -2106,6 +2182,7 @@ public class SessionPool implements ISessionPool {
     }
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void createAlignedTimeseries(
       String deviceId,
@@ -2137,6 +2214,7 @@ public class SessionPool implements ISessionPool {
     }
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void createAlignedTimeseries(
       String deviceId,
@@ -2177,6 +2255,7 @@ public class SessionPool implements ISessionPool {
     }
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void createMultiTimeseries(
       List<String> paths,
@@ -2217,6 +2296,7 @@ public class SessionPool implements ISessionPool {
     }
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public boolean checkTimeseriesExists(String path)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -2248,6 +2328,7 @@ public class SessionPool implements ISessionPool {
    *
    * @see Template
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void createSchemaTemplate(Template template)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
@@ -2259,13 +2340,13 @@ public class SessionPool implements ISessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("createSchemaTemplate failed", e);
+        logger.warn(CREATE_SCHEMA_TEMPLATE_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in createSchemaTemplate", e);
+        logger.error(CREATE_SCHEMA_TEMPLATE_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -2283,6 +2364,7 @@ public class SessionPool implements ISessionPool {
    * @param compressors compression type of each measurement in the template
    * @param isAligned specify whether these flat measurements are aligned
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void createSchemaTemplate(
       String templateName,
@@ -2301,13 +2383,13 @@ public class SessionPool implements ISessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("createSchemaTemplate failed", e);
+        logger.warn(CREATE_SCHEMA_TEMPLATE_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in createSchemaTemplate", e);
+        logger.error(CREATE_SCHEMA_TEMPLATE_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -2331,7 +2413,9 @@ public class SessionPool implements ISessionPool {
    * @param compressors the compressor of each measurement
    * @throws IoTDBConnectionException
    * @throws StatementExecutionException
+   * @deprecated
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181", "squid:S1133"})
   @Deprecated
   @Override
   public void createSchemaTemplate(
@@ -2351,19 +2435,20 @@ public class SessionPool implements ISessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("createSchemaTemplate failed", e);
+        logger.warn(CREATE_SCHEMA_TEMPLATE_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in createSchemaTemplate", e);
+        logger.error(CREATE_SCHEMA_TEMPLATE_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
     }
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void addAlignedMeasurementsInTemplate(
       String templateName,
@@ -2394,6 +2479,7 @@ public class SessionPool implements ISessionPool {
     }
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void addAlignedMeasurementInTemplate(
       String templateName,
@@ -2424,6 +2510,7 @@ public class SessionPool implements ISessionPool {
     }
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void addUnalignedMeasurementsInTemplate(
       String templateName,
@@ -2454,6 +2541,7 @@ public class SessionPool implements ISessionPool {
     }
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void addUnalignedMeasurementInTemplate(
       String templateName,
@@ -2484,6 +2572,7 @@ public class SessionPool implements ISessionPool {
     }
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void deleteNodeInTemplate(String templateName, String path)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
@@ -2508,6 +2597,7 @@ public class SessionPool implements ISessionPool {
     }
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public int countMeasurementsInTemplate(String name)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -2533,6 +2623,7 @@ public class SessionPool implements ISessionPool {
     return -1;
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public boolean isMeasurementInTemplate(String templateName, String path)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -2558,6 +2649,7 @@ public class SessionPool implements ISessionPool {
     return false;
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public boolean isPathExistInTemplate(String templateName, String path)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -2583,6 +2675,7 @@ public class SessionPool implements ISessionPool {
     return false;
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181", "squid:S1168"})
   @Override
   public List<String> showMeasurementsInTemplate(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -2608,6 +2701,7 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181", "squid:S1168"})
   @Override
   public List<String> showMeasurementsInTemplate(String templateName, String pattern)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -2633,6 +2727,7 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181", "squid:S1168"})
   @Override
   public List<String> showAllTemplates()
       throws StatementExecutionException, IoTDBConnectionException {
@@ -2658,6 +2753,7 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181", "squid:S1168"})
   @Override
   public List<String> showPathsTemplateSetOn(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -2683,6 +2779,7 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181", "squid:S1168"})
   @Override
   public List<String> showPathsTemplateUsingOn(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -2715,6 +2812,7 @@ public class SessionPool implements ISessionPool {
     putBack(session);
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void setSchemaTemplate(String templateName, String prefixPath)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -2740,6 +2838,7 @@ public class SessionPool implements ISessionPool {
     }
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void unsetSchemaTemplate(String prefixPath, String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -2765,6 +2864,7 @@ public class SessionPool implements ISessionPool {
     }
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void dropSchemaTemplate(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -2789,6 +2889,7 @@ public class SessionPool implements ISessionPool {
     }
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   public void createTimeseriesUsingSchemaTemplate(List<String> devicePathList)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
@@ -2822,7 +2923,12 @@ public class SessionPool implements ISessionPool {
    * @return result set Notice that you must get the result instance. Otherwise a data leakage will
    *     happen
    */
-  @SuppressWarnings("squid:S2095") // Suppress wrapper not closed warning
+  @SuppressWarnings({
+    "squid:S2095",
+    "squid:S112",
+    "squid:S2139",
+    "squid:S1181"
+  }) // Suppress wrapper not closed warning
   @Override
   public SessionDataSetWrapper executeQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -2860,7 +2966,12 @@ public class SessionPool implements ISessionPool {
    * @return result set Notice that you must get the result instance. Otherwise a data leakage will
    *     happen
    */
-  @SuppressWarnings("squid:S2095") // Suppress wrapper not closed warning
+  @SuppressWarnings({
+    "squid:S2095",
+    "squid:S112",
+    "squid:S2139",
+    "squid:S1181"
+  }) // Suppress wrapper not closed warning
   @Override
   public SessionDataSetWrapper executeQueryStatement(String sql, long timeoutInMs)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -2893,6 +3004,7 @@ public class SessionPool implements ISessionPool {
    *
    * @param sql non query statement
    */
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void executeNonQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -2917,7 +3029,11 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @SuppressWarnings("squid:S2095") // Suppress wrapper not closed warning
+  @SuppressWarnings({
+    "squid:S112",
+    "squid:S2139",
+    "squid:S1181"
+  }) // Suppress wrapper not closed warning
   @Override
   public SessionDataSetWrapper executeRawDataQuery(
       List<String> paths, long startTime, long endTime, long timeOut)
@@ -2946,25 +3062,26 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
-  public SessionDataSetWrapper executeLastDataQuery(List<String> paths, long LastTime)
+  public SessionDataSetWrapper executeLastDataQuery(List<String> paths, long lastTime)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
       ISession session = getSession();
       try {
-        SessionDataSet resp = session.executeLastDataQuery(paths, LastTime);
+        SessionDataSet resp = session.executeLastDataQuery(paths, lastTime);
         SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
         occupy(session);
         return wrapper;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("executeLastDataQuery failed", e);
+        logger.warn(EXECUTE_LASTDATAQUERY_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in executeLastDataQuery", e);
+        logger.error(EXECUTE_LASTDATAQUERY_ERROR, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -2973,25 +3090,26 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
-  public SessionDataSetWrapper executeLastDataQuery(List<String> paths, long LastTime, long timeOut)
+  public SessionDataSetWrapper executeLastDataQuery(List<String> paths, long lastTime, long timeOut)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
       ISession session = getSession();
       try {
-        SessionDataSet resp = session.executeLastDataQuery(paths, LastTime, timeOut);
+        SessionDataSet resp = session.executeLastDataQuery(paths, lastTime, timeOut);
         SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
         occupy(session);
         return wrapper;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("executeLastDataQuery failed", e);
+        logger.warn(EXECUTE_LASTDATAQUERY_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in executeLastDataQuery", e);
+        logger.error(EXECUTE_LASTDATAQUERY_ERROR, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -3000,6 +3118,7 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public SessionDataSetWrapper executeLastDataQuery(List<String> paths)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3012,13 +3131,13 @@ public class SessionPool implements ISessionPool {
         return wrapper;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("executeLastDataQuery failed", e);
+        logger.warn(EXECUTE_LASTDATAQUERY_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in executeLastDataQuery", e);
+        logger.error(EXECUTE_LASTDATAQUERY_ERROR, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -3027,6 +3146,7 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public SessionDataSetWrapper executeAggregationQuery(
       List<String> paths, List<TAggregationType> aggregations)
@@ -3040,13 +3160,13 @@ public class SessionPool implements ISessionPool {
         return wrapper;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("executeAggregationQuery failed", e);
+        logger.warn(EXECUTE_AGGREGATION_QUERY_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in executeAggregationQuery", e);
+        logger.error(EXECUTE_AGGREGATION_QUERY_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -3055,6 +3175,7 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public SessionDataSetWrapper executeAggregationQuery(
       List<String> paths, List<TAggregationType> aggregations, long startTime, long endTime)
@@ -3069,13 +3190,13 @@ public class SessionPool implements ISessionPool {
         return wrapper;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("executeAggregationQuery failed", e);
+        logger.warn(EXECUTE_AGGREGATION_QUERY_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in executeAggregationQuery", e);
+        logger.error(EXECUTE_AGGREGATION_QUERY_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -3084,6 +3205,7 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public SessionDataSetWrapper executeAggregationQuery(
       List<String> paths,
@@ -3102,13 +3224,13 @@ public class SessionPool implements ISessionPool {
         return wrapper;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("executeAggregationQuery failed", e);
+        logger.warn(EXECUTE_AGGREGATION_QUERY_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in executeAggregationQuery", e);
+        logger.error(EXECUTE_AGGREGATION_QUERY_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -3117,6 +3239,7 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public SessionDataSetWrapper executeAggregationQuery(
       List<String> paths,
@@ -3137,13 +3260,13 @@ public class SessionPool implements ISessionPool {
         return wrapper;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("executeAggregationQuery failed", e);
+        logger.warn(EXECUTE_AGGREGATION_QUERY_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in executeAggregationQuery", e);
+        logger.error(EXECUTE_AGGREGATION_QUERY_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -3294,6 +3417,7 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
+  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public TSConnectionInfoResp fetchAllConnections() throws IoTDBConnectionException {
 
@@ -3354,7 +3478,7 @@ public class SessionPool implements ISessionPool {
     private List<String> nodeUrls = null;
     private int maxSize = SessionConfig.DEFAULT_SESSION_POOL_MAX_SIZE;
     private String user = SessionConfig.DEFAULT_USER;
-    private String password = SessionConfig.DEFAULT_PASSWORD;
+    private String pw = SessionConfig.DEFAULT_PASSWORD;
     private int fetchSize = SessionConfig.DEFAULT_FETCH_SIZE;
     private long waitToGetSessionTimeoutInMs = 60_000;
     private int thriftDefaultBufferSize = SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY;
@@ -3364,7 +3488,6 @@ public class SessionPool implements ISessionPool {
     private boolean enableRedirection = SessionConfig.DEFAULT_REDIRECTION_MODE;
     private int connectionTimeoutInMs = SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS;
     private Version version = SessionConfig.DEFAULT_VERSION;
-    private long timeOut = SessionConfig.DEFAULT_QUERY_TIME_OUT;
 
     public Builder host(String host) {
       this.host = host;
@@ -3392,7 +3515,7 @@ public class SessionPool implements ISessionPool {
     }
 
     public Builder password(String password) {
-      this.password = password;
+      this.pw = password;
       return this;
     }
 
@@ -3441,18 +3564,13 @@ public class SessionPool implements ISessionPool {
       return this;
     }
 
-    public Builder timeOut(long timeOut) {
-      this.timeOut = timeOut;
-      return this;
-    }
-
     public SessionPool build() {
       if (nodeUrls == null) {
         return new SessionPool(
             host,
             port,
             user,
-            password,
+            pw,
             maxSize,
             fetchSize,
             waitToGetSessionTimeoutInMs,
@@ -3467,7 +3585,7 @@ public class SessionPool implements ISessionPool {
         return new SessionPool(
             nodeUrls,
             user,
-            password,
+            pw,
             maxSize,
             fetchSize,
             waitToGetSessionTimeoutInMs,

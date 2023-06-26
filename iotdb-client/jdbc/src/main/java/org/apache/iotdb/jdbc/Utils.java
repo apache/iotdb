@@ -27,6 +27,7 @@ import java.util.regex.Pattern;
 /** Utils to convert between thrift format and TsFile format. */
 public class Utils {
 
+  @SuppressWarnings({"squid:S5843", "squid:S5998", "squid:S6353"})
   static final Pattern URL_PATTERN = Pattern.compile("([^:]+):([0-9]{1,5})(/|\\?.*=.*(&.*=.*)*)?");
 
   static final String RPC_COMPRESS = "rpc_compress";
@@ -45,10 +46,8 @@ public class Utils {
     if (url.startsWith(Config.IOTDB_URL_PREFIX)) {
       String subURL = url.substring(Config.IOTDB_URL_PREFIX.length());
       matcher = URL_PATTERN.matcher(subURL);
-      if (matcher.matches()) {
-        if (parseUrlParam(subURL, info)) {
-          isUrlLegal = true;
-        }
+      if (matcher.matches() && parseUrlParam(subURL, info)) {
+        isUrlLegal = true;
       }
     }
     if (!isUrlLegal) {
@@ -134,4 +133,6 @@ public class Utils {
     }
     return true;
   }
+
+  private Utils() {}
 }

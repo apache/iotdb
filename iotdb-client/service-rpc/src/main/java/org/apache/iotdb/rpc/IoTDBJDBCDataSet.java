@@ -42,10 +42,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+@SuppressWarnings("squid:S1104")
 public class IoTDBJDBCDataSet {
 
   public static final String TIMESTAMP_STR = "Time";
   public static final String VALUE_IS_NULL = "The value got by %s (column name) is NULL.";
+
+  public static final String DATA_TYPE_NOT_SUPPORTED = "Data type %s is not supported.";
   public static final int START_INDEX = 2;
   public String sql;
   public boolean isClosed = false;
@@ -78,7 +81,7 @@ public class IoTDBJDBCDataSet {
   public static final int FLAG =
       0x80; // used to do `and` operation with bitmap to judge whether the value is null
 
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  @SuppressWarnings({"squid:S3776", "squid:S107"}) // Suppress high Cognitive Complexity warning
   public IoTDBJDBCDataSet(
       String sql,
       List<String> columnNameList,
@@ -173,13 +176,14 @@ public class IoTDBJDBCDataSet {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
+              String.format(DATA_TYPE_NOT_SUPPORTED, columnTypeDeduplicatedList.get(i)));
       }
     }
     this.tsQueryDataSet = queryDataSet;
     this.emptyResultSet = (queryDataSet == null || !queryDataSet.time.hasRemaining());
   }
 
+  @SuppressWarnings({"squid:S3776", "squid:S107"})
   public IoTDBJDBCDataSet(
       String sql,
       List<String> columnNameList,
@@ -227,7 +231,7 @@ public class IoTDBJDBCDataSet {
       for (int i = 0; i < columnNameList.size(); i++) {
         String name = "";
         if (sgList != null
-            && sgList.size() > 0
+            && !sgList.isEmpty()
             && (aliasColumnMap == null || !aliasColumnMap.get(i))) {
           name = sgList.get(i) + "." + columnNameList.get(i);
         } else {
@@ -285,7 +289,7 @@ public class IoTDBJDBCDataSet {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
+              String.format(DATA_TYPE_NOT_SUPPORTED, columnTypeDeduplicatedList.get(i)));
       }
     }
     this.tsQueryDataSet = queryDataSet;
@@ -393,7 +397,7 @@ public class IoTDBJDBCDataSet {
             break;
           default:
             throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
+                String.format(DATA_TYPE_NOT_SUPPORTED, columnTypeDeduplicatedList.get(i)));
         }
       }
     }

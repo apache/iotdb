@@ -41,6 +41,7 @@ public class SessionDataSet implements AutoCloseable {
 
   private final IoTDBRpcDataSet ioTDBRpcDataSet;
 
+  @SuppressWarnings("squid:S107")
   public SessionDataSet(
       String sql,
       List<String> columnNameList,
@@ -70,6 +71,7 @@ public class SessionDataSet implements AutoCloseable {
             0);
   }
 
+  @SuppressWarnings("squid:S107")
   public SessionDataSet(
       String sql,
       List<String> columnNameList,
@@ -100,6 +102,7 @@ public class SessionDataSet implements AutoCloseable {
             timeout);
   }
 
+  @SuppressWarnings("squid:S107")
   public SessionDataSet(
       String sql,
       List<String> columnNameList,
@@ -243,7 +246,7 @@ public class SessionDataSet implements AutoCloseable {
       return ioTDBRpcDataSet.isNull(columnIndex);
     }
 
-    public boolean isNull(String columnName) throws StatementExecutionException {
+    public boolean isNull(String columnName) {
       return ioTDBRpcDataSet.isNull(columnName);
     }
 

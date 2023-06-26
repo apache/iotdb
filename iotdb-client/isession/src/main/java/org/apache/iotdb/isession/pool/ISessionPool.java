@@ -37,6 +37,7 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
+@SuppressWarnings("squid:S1133")
 public interface ISessionPool {
 
   int currentAvailableSize();
@@ -94,6 +95,7 @@ public interface ISessionPool {
       List<List<Object>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException;
 
+  /** @deprecated */
   @Deprecated
   void insertOneDeviceRecords(
       String deviceId,
@@ -119,6 +121,7 @@ public interface ISessionPool {
       boolean haveSorted)
       throws IoTDBConnectionException, StatementExecutionException;
 
+  /** @deprecated */
   @Deprecated
   void insertOneDeviceRecords(
       String deviceId,
@@ -267,14 +270,17 @@ public interface ISessionPool {
   void deleteData(List<String> paths, long startTime, long endTime)
       throws IoTDBConnectionException, StatementExecutionException;
 
+  /** @deprecated */
   @Deprecated
   void setStorageGroup(String storageGroupId)
       throws IoTDBConnectionException, StatementExecutionException;
 
+  /** @deprecated */
   @Deprecated
   void deleteStorageGroup(String storageGroup)
       throws IoTDBConnectionException, StatementExecutionException;
 
+  /** @deprecated */
   @Deprecated
   void deleteStorageGroups(List<String> storageGroup)
       throws IoTDBConnectionException, StatementExecutionException;
@@ -290,6 +296,7 @@ public interface ISessionPool {
       String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor)
       throws IoTDBConnectionException, StatementExecutionException;
 
+  @SuppressWarnings("squid:S107")
   void createTimeseries(
       String path,
       TSDataType dataType,
@@ -301,6 +308,7 @@ public interface ISessionPool {
       String measurementAlias)
       throws IoTDBConnectionException, StatementExecutionException;
 
+  @SuppressWarnings("squid:S107")
   void createAlignedTimeseries(
       String deviceId,
       List<String> measurements,
@@ -310,6 +318,9 @@ public interface ISessionPool {
       List<String> measurementAliasList)
       throws IoTDBConnectionException, StatementExecutionException;
 
+  /** @deprecated */
+  @Deprecated
+  @SuppressWarnings("squid:S107")
   void createAlignedTimeseries(
       String deviceId,
       List<String> measurements,
@@ -321,6 +332,7 @@ public interface ISessionPool {
       List<Map<String, String>> attributesList)
       throws IoTDBConnectionException, StatementExecutionException;
 
+  @SuppressWarnings("squid:S107")
   void createMultiTimeseries(
       List<String> paths,
       List<TSDataType> dataTypes,
@@ -347,6 +359,7 @@ public interface ISessionPool {
       boolean isAligned)
       throws IOException, IoTDBConnectionException, StatementExecutionException;
 
+  /** @deprecated */
   @Deprecated
   void createSchemaTemplate(
       String name,
@@ -448,7 +461,7 @@ public interface ISessionPool {
   SessionDataSetWrapper executeLastDataQuery(List<String> paths, long lastTime)
       throws StatementExecutionException, IoTDBConnectionException;
 
-  SessionDataSetWrapper executeLastDataQuery(List<String> paths, long LastTime, long timeOut)
+  SessionDataSetWrapper executeLastDataQuery(List<String> paths, long lastTime, long timeOut)
       throws StatementExecutionException, IoTDBConnectionException;
 
   SessionDataSetWrapper executeLastDataQuery(List<String> paths)
@@ -526,14 +539,17 @@ public interface ISessionPool {
 
   long getQueryTimeout();
 
+  /** @deprecated */
   @Deprecated
   default void createTimeseriesOfTemplateOnPath(String path)
       throws IoTDBConnectionException, StatementExecutionException {}
 
+  /** @deprecated */
   @Deprecated
   default void deactivateTempalte(String templateName, String prefixPath)
       throws IoTDBConnectionException, StatementExecutionException {}
 
+  /** @deprecated */
   @Deprecated
   default SessionDataSetWrapper executeRawDataQuery(
       List<String> paths, long startTime, long endTime)
@@ -541,17 +557,20 @@ public interface ISessionPool {
     return null;
   }
 
+  /** @deprecated */
   @Deprecated
   default boolean operationSyncTransmit(ByteBuffer buffer)
       throws IoTDBConnectionException, StatementExecutionException {
     return false;
   }
 
+  /** @deprecated */
   @Deprecated
   default SystemStatus getSystemStatus() throws IoTDBConnectionException {
     return SystemStatus.NORMAL;
   }
 
+  /** @deprecated */
   @Deprecated
   default boolean isEnableCacheLeader() {
     return false;

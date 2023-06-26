@@ -38,7 +38,9 @@ import java.util.BitSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
+@SuppressWarnings("squid:S1104")
 public class IoTDBRpcDataSet {
 
   public static final String TIMESTAMP_STR = "Time";
@@ -75,7 +77,7 @@ public class IoTDBRpcDataSet {
   public int tsBlockSize; // the size of current tsBlock
   public int tsBlockIndex; // the row index in current tsBlock
 
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  @SuppressWarnings({"squid:S3776", "squid:S107"}) // Suppress high Cognitive Complexity warning
   public IoTDBRpcDataSet(
       String sql,
       List<String> columnNameList,
@@ -134,15 +136,14 @@ public class IoTDBRpcDataSet {
       }
     } else {
       this.columnTypeDeduplicatedList = new ArrayList<>();
-      int index = START_INDEX;
+      AtomicInteger index = new AtomicInteger(START_INDEX);
       for (int i = 0; i < columnNameList.size(); i++) {
         String name = columnNameList.get(i);
         this.columnNameList.add(name);
-        this.columnTypeList.add(columnTypeList.get(i));
-        if (!columnOrdinalMap.containsKey(name)) {
-          columnOrdinalMap.put(name, index++);
-          columnTypeDeduplicatedList.add(TSDataType.valueOf(columnTypeList.get(i)));
-        }
+        String columnType = columnTypeList.get(i);
+        this.columnTypeList.add(columnType);
+        columnOrdinalMap.computeIfAbsent(
+            name, v -> addColumnTypeListReturnIndex(index, TSDataType.valueOf(columnType)));
       }
     }
 
@@ -156,6 +157,12 @@ public class IoTDBRpcDataSet {
     this.tsBlockIndex = -1;
   }
 
+  public Integer addColumnTypeListReturnIndex(AtomicInteger index, TSDataType dataType) {
+    columnTypeDeduplicatedList.add(dataType);
+    return index.getAndIncrement();
+  }
+
+  @SuppressWarnings({"squid:S3776", "squid:S107"})
   public IoTDBRpcDataSet(
       String sql,
       List<String> columnNameList,
@@ -205,7 +212,7 @@ public class IoTDBRpcDataSet {
       for (int i = 0; i < columnNameList.size(); i++) {
         String name;
         if (sgList != null
-            && sgList.size() > 0
+            && !sgList.isEmpty()
             && (aliasColumnMap == null || !aliasColumnMap.get(i))) {
           name = sgList.get(i) + "." + columnNameList.get(i);
         } else {

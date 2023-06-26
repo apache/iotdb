@@ -55,6 +55,7 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
   private byte[][] times; // used for disable align
   private List<String> sgColumns = null;
   // for disable align clause
+  @SuppressWarnings("squid:S107")
   IoTDBNonAlignJDBCResultSet(
       Statement statement,
       List<String> columnNameList,
@@ -100,7 +101,7 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
     List<String> newSgColumns = new ArrayList<>();
     for (int i = 0; i < columnNameList.size(); i++) {
       String name = "";
-      if (sgColumns != null && sgColumns.size() > 0) {
+      if (sgColumns != null && !sgColumns.isEmpty()) {
         name = sgColumns.get(i) + "." + columnNameList.get(i);
         newSgColumns.add(sgColumns.get(i));
         newSgColumns.add(sgColumns.get(i));
@@ -152,6 +153,7 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
     }
   }
 
+  @SuppressWarnings("squid:S1141")
   @Override
   protected boolean fetchResults() throws SQLException {
     TSFetchResultsReq req =

@@ -24,6 +24,7 @@ import java.util.List;
 
 public class BatchExecutionException extends StatementExecutionException {
 
+  @SuppressWarnings("squid:S1165")
   private List<TSStatus> statusList;
 
   public BatchExecutionException(String message) {

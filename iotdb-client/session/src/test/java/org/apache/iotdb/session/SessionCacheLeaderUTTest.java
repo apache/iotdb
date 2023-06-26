@@ -49,7 +49,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
-public class SessionCacheLeaderUT {
+public class SessionCacheLeaderUTTest {
 
   private static final List<TEndPoint> endpoints =
       new ArrayList<TEndPoint>() {

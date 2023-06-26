@@ -32,6 +32,14 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
   private String operationType = "";
   private boolean nonAlign = false;
 
+  private static final String INT64 = "INT64";
+  private static final String BOOLEAN = "BOOLEAN";
+  private static final String INT32 = "INT32";
+  private static final String FLOAT = "FLOAT";
+  private static final String DOUBLE = "DOUBLE";
+
+  private static final String TEXT = "TEXT";
+
   /** Constructor of IoTDBResultMetadata. */
   public IoTDBResultMetadata(
       Boolean nonAlign,
@@ -58,15 +66,16 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
+  @SuppressWarnings({"squid:S3776"})
   @Override
   public String getCatalogName(int column) throws SQLException {
-    String system_schmea = "_system_schmea";
+    String systemSchmea = "_system_schmea";
     String system = "_system";
-    String system_user = "_system_user";
-    String system_role = "_system_role";
-    String system_auths = "_system_auths";
-    String system_database = "_system_database";
-    String system_null = "";
+    String systemUser = "_system_user";
+    String systemRole = "_system_role";
+    String systemAuths = "_system_auths";
+    String systemDatabase = "_system_database";
+    String systemNull = "";
     String columnName = columnInfoList.get(column - 1);
     List<String> listColumns = columnInfoList;
     if (column < 1 || column > columnInfoList.size()) {
@@ -74,7 +83,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     }
     if ("SHOW".equals(operationType)) {
       if ("count".equals(listColumns.get(0))) {
-        return system_database;
+        return systemDatabase;
       } else if ("database".equals(listColumns.get(0))
           && listColumns.size() > 1
           && "ttl".equals(listColumns.get(1))) {
@@ -86,32 +95,31 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
           || "child paths".equals(listColumns.get(0))
           || "child nodes".equals(listColumns.get(0))
           || "timeseries".equals(listColumns.get(0))) {
-        return system_schmea;
+        return systemSchmea;
       }
     } else if ("LIST_USER".equals(operationType)) {
-      return system_user;
+      return systemUser;
     } else if ("LIST_ROLE".equals(operationType)) {
-      return system_role;
+      return systemRole;
     } else if ("LIST_USER_PRIVILEGE".equals(operationType)) {
-      return system_auths;
+      return systemAuths;
     } else if ("LIST_ROLE_PRIVILEGE".equals(operationType)) {
-      return system_auths;
+      return systemAuths;
     } else if ("LIST_USER_ROLES".equals(operationType)) {
-      return system_role;
+      return systemRole;
     } else if ("LIST_ROLE_USERS".equals(operationType)) {
-      return system_user;
+      return systemUser;
     } else if ("QUERY".equals(operationType)) {
-      if (("time".equals(columnName.toLowerCase()) && columnInfoList.size() != 2)
-          || "timeseries".equals(columnName.toLowerCase())
-          || "device".equals(columnName.toLowerCase())) {
-        return system_null;
-      } else if (columnInfoList.size() >= 2
-          && "time".equals(columnInfoList.get(0).toLowerCase())
-          && "device".equals(columnInfoList.get(1).toLowerCase())) {
-        return system_null;
+      if ((("time".equalsIgnoreCase(columnName) && columnInfoList.size() != 2)
+              || "timeseries".equalsIgnoreCase(columnName)
+              || "device".equalsIgnoreCase(columnName))
+          || (columnInfoList.size() >= 2
+              && "time".equalsIgnoreCase(columnInfoList.get(0))
+              && "device".equalsIgnoreCase(columnInfoList.get(1)))) {
+        return systemNull;
       }
     } else if (!"FILL".equals(operationType)) {
-      return system_null;
+      return systemNull;
     }
     if (nonAlign) {
       return sgColumns.get(column - 1);
@@ -125,17 +133,17 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     String columnTypeName = getColumnTypeName(column);
     switch (columnTypeName) {
       case "TIMESTAMP":
-      case "INT64":
+      case INT64:
         return Long.class.getName();
-      case "BOOLEAN":
+      case BOOLEAN:
         return Boolean.class.getName();
-      case "INT32":
+      case INT32:
         return Integer.class.getName();
-      case "FLOAT":
+      case FLOAT:
         return Float.class.getName();
-      case "DOUBLE":
+      case DOUBLE:
         return Double.class.getName();
-      case "TEXT":
+      case TEXT:
         return String.class.getName();
       default:
         break;
@@ -185,17 +193,17 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     String columnType = columnTypeList.get(column - 1);
 
     switch (columnType.toUpperCase()) {
-      case "BOOLEAN":
+      case BOOLEAN:
         return Types.BOOLEAN;
-      case "INT32":
+      case INT32:
         return Types.INTEGER;
-      case "INT64":
+      case INT64:
         return Types.BIGINT;
-      case "FLOAT":
+      case FLOAT:
         return Types.FLOAT;
-      case "DOUBLE":
+      case DOUBLE:
         return Types.DOUBLE;
-      case "TEXT":
+      case TEXT:
         return Types.VARCHAR;
       default:
         break;
@@ -211,12 +219,12 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     }
     String columnType = columnTypeList.get(column - 1);
     String typeString = columnType.toUpperCase();
-    if ("BOOLEAN".equals(typeString)
-        || "INT32".equals(typeString)
-        || "INT64".equals(typeString)
-        || "FLOAT".equals(typeString)
-        || "DOUBLE".equals(typeString)
-        || "TEXT".equals(typeString)) {
+    if (BOOLEAN.equals(typeString)
+        || INT32.equals(typeString)
+        || INT64.equals(typeString)
+        || FLOAT.equals(typeString)
+        || DOUBLE.equals(typeString)
+        || TEXT.equals(typeString)) {
       return typeString;
     }
     return null;
@@ -230,17 +238,17 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     }
     String columnType = columnTypeList.get(column - 1);
     switch (columnType.toUpperCase()) {
-      case "BOOLEAN":
+      case BOOLEAN:
         return 1;
-      case "INT32":
+      case INT32:
         return 10;
-      case "INT64":
+      case INT64:
         return 19;
-      case "FLOAT":
+      case FLOAT:
         return 38;
-      case "DOUBLE":
+      case DOUBLE:
         return 308;
-      case "TEXT":
+      case TEXT:
         return Integer.MAX_VALUE;
       default:
         break;
@@ -256,14 +264,14 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     }
     String columnType = columnTypeList.get(column - 1);
     switch (columnType.toUpperCase()) {
-      case "BOOLEAN":
-      case "INT32":
-      case "INT64":
-      case "TEXT":
+      case BOOLEAN:
+      case INT32:
+      case INT64:
+      case TEXT:
         return 0;
-      case "FLOAT":
+      case FLOAT:
         return 6;
-      case "DOUBLE":
+      case DOUBLE:
         return 15;
       default:
         break;

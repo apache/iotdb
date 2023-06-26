@@ -26,6 +26,8 @@ import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 
 import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 import java.io.Reader;
@@ -55,6 +57,8 @@ import java.util.Map;
 
 public class IoTDBJDBCResultSet implements ResultSet {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBJDBCResultSet.class);
+
   protected Statement statement;
   protected SQLWarning warningChain = null;
   protected List<String> columnTypeList;
@@ -64,6 +68,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   private List<String> columns = null;
   private List<String> sgColumns = null;
 
+  @SuppressWarnings("squid:S107")
   public IoTDBJDBCResultSet(
       Statement statement,
       List<String> columnNameList,
@@ -111,6 +116,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
     this.sgColumns = sgColumns;
   }
 
+  @SuppressWarnings("squid:S107")
   public IoTDBJDBCResultSet(
       Statement statement,
       List<String> columnNameList,
@@ -467,20 +473,20 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public ResultSetMetaData getMetaData() {
-    String operationType = "";
+    String operationTypeColumn = "";
     boolean nonAlign = false;
     try {
       if (statement.getResultSet() != null) {
-        operationType = ((IoTDBJDBCResultSet) statement.getResultSet()).getOperationType();
+        operationTypeColumn = ((IoTDBJDBCResultSet) statement.getResultSet()).getOperationType();
         this.sgColumns = ((IoTDBJDBCResultSet) statement.getResultSet()).getSgColumns();
       }
     } catch (SQLException throwables) {
-      throwables.printStackTrace();
+      LOGGER.error(String.format("get meta data error:%s", throwables.getMessage()));
     }
     return new IoTDBResultMetadata(
         nonAlign,
         sgColumns,
-        operationType,
+        operationTypeColumn,
         ioTDBRpcDataSet.columnNameList,
         ioTDBRpcDataSet.columnTypeList,
         ioTDBRpcDataSet.ignoreTimeStamp);
@@ -733,14 +739,6 @@ public class IoTDBJDBCResultSet implements ResultSet {
   public boolean next() throws SQLException {
     try {
       return ioTDBRpcDataSet.next();
-    } catch (StatementExecutionException | IoTDBConnectionException e) {
-      throw new SQLException(e.getMessage());
-    }
-  }
-
-  private boolean fetchResults() throws SQLException {
-    try {
-      return ioTDBRpcDataSet.fetchResults();
     } catch (StatementExecutionException | IoTDBConnectionException e) {
       throw new SQLException(e.getMessage());
     }

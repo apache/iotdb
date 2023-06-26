@@ -27,7 +27,9 @@ public class IoTDBTracingInfo {
 
   private TSTracingInfo tsTracingInfo;
 
-  public IoTDBTracingInfo() {}
+  public IoTDBTracingInfo() {
+    // Do Nothing
+  }
 
   public void setTsTracingInfo(TSTracingInfo tsTracingInfo) {
     this.tsTracingInfo = tsTracingInfo;
@@ -45,6 +47,7 @@ public class IoTDBTracingInfo {
     return tsTracingInfo.getElapsedTimeList();
   }
 
+  @SuppressWarnings("squid:S112")
   public long getStatisticsByName(String name) throws Exception {
     switch (name) {
       case "seriesPathNum":
@@ -70,6 +73,7 @@ public class IoTDBTracingInfo {
     }
   }
 
+  @SuppressWarnings("squid:S112")
   public String getStatisticsInfoByName(String name) throws Exception {
     switch (name) {
       case "seriesPathNum":

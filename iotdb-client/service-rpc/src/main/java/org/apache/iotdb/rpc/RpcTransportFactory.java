@@ -24,11 +24,14 @@ import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
 
-@SuppressWarnings("java:S1135") // ignore todos
+@SuppressWarnings({"java:S1135"}) // ignore todos
 public class RpcTransportFactory extends TTransportFactory {
 
   // TODO: make it a config
+  @SuppressWarnings({"squid:S3008", "squid:S1444"})
   public static boolean USE_SNAPPY = false;
+
+  @SuppressWarnings({"squid:S3008", "squid:S1444"})
   public static RpcTransportFactory INSTANCE;
 
   private static int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;

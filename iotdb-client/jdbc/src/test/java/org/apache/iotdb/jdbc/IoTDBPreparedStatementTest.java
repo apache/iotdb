@@ -36,6 +36,8 @@ import java.sql.Types;
 import java.time.ZoneId;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -86,17 +88,17 @@ public class IoTDBPreparedStatementTest {
     IoTDBPreparedStatement ps =
         new IoTDBPreparedStatement(connection, client, sessionId, sql, zoneId);
     ps.setString(1, "123");
-    ps.execute();
+    assertTrue(ps.execute());
   }
 
-  @SuppressWarnings("resource")
+  @SuppressWarnings({"resource", "squid:S5777"})
   @Test(expected = SQLException.class)
   public void unsetArgument() throws SQLException {
     String sql =
         "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > ?";
     IoTDBPreparedStatement ps =
         new IoTDBPreparedStatement(connection, client, sessionId, sql, zoneId);
-    ps.execute();
+    assertThrows(SQLException.class, () -> ps.execute());
   }
 
   @SuppressWarnings("resource")
@@ -116,7 +118,7 @@ public class IoTDBPreparedStatementTest {
         argument.getValue().getStatement());
   }
 
-  @SuppressWarnings("resource")
+  @SuppressWarnings({"resource", "squid:S5976"})
   @Test
   public void oneLongArgument() throws Exception {
     String sql =
@@ -184,7 +186,7 @@ public class IoTDBPreparedStatementTest {
         argument.getValue().getStatement());
   }
 
-  @SuppressWarnings("resource")
+  @SuppressWarnings({"resource", "squid:S5976"})
   @Test
   public void oneStringArgument1() throws Exception {
     String sql =
