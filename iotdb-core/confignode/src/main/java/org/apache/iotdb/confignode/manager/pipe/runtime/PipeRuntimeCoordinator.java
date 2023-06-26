@@ -26,7 +26,7 @@ import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscri
 import org.apache.iotdb.confignode.manager.load.subscriber.RouteChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.StatisticsChangeEvent;
 
-import org.jetbrains.annotations.NotNull;
+import javax.validation.constraints.NotNull;
 
 import java.nio.ByteBuffer;
 import java.util.List;
