@@ -79,7 +79,7 @@ public class SchemaFile implements ISchemaFile {
 
   private final IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
 
-  // todo refactor constructor for schemaengine file in Jan.
+  // todo refactor constructor for schema file in Jan.
   private SchemaFile(
       String sgName, int schemaRegionId, boolean override, long ttl, boolean isEntity)
       throws IOException, MetadataException {

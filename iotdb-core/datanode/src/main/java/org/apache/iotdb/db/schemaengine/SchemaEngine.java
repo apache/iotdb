@@ -99,7 +99,7 @@ public class SchemaEngine {
 
   public void init() {
     logger.info(
-        "used schemaengine storageengine mode: {}.",
+        "used schema engine mode: {}.",
         CommonDescriptor.getInstance().getConfig().getSchemaEngineMode());
 
     schemaRegionLoader.init(CommonDescriptor.getInstance().getConfig().getSchemaEngineMode());
@@ -132,8 +132,8 @@ public class SchemaEngine {
   }
 
   /**
-   * Scan the database and schemaengine region directories to recover schemaengine regions and
-   * return the collected local schemaengine partition info for localSchemaPartitionTable recovery.
+   * Scan the database and schema region directories to recover schema regions and return the
+   * collected local schema partition info for localSchemaPartitionTable recovery.
    */
   private void initSchemaRegion() {
     File schemaDir = new File(config.getSchemaDir());
@@ -219,7 +219,7 @@ public class SchemaEngine {
     schemaRegionLoader.clear();
 
     // clearSchemaResource will shut down release and flush task in PBTree mode, which must be
-    // down before clear schemaengine region
+    // down before clear schema region
     SchemaResourceManager.clearSchemaResource();
     if (timedForceMLogThread != null) {
       timedForceMLogThread.shutdown();
@@ -227,7 +227,7 @@ public class SchemaEngine {
     }
 
     if (schemaRegionMap != null) {
-      // SchemaEngineStatistics will be clear after clear all schemaengine region
+      // SchemaEngineStatistics will be clear after clear all schema region
       for (ISchemaRegion schemaRegion : schemaRegionMap.values()) {
         schemaRegion.clear();
       }
@@ -268,7 +268,7 @@ public class SchemaEngine {
 
   private Callable<ISchemaRegion> recoverSchemaRegionTask(
       PartialPath storageGroup, SchemaRegionId schemaRegionId) {
-    // this method is called for concurrent recovery of schemaengine regions
+    // this method is called for concurrent recovery of schema regions
     return () -> {
       long timeRecord = System.currentTimeMillis();
       try {
@@ -367,11 +367,11 @@ public class SchemaEngine {
   }
 
   /**
-   * Update total count in schemaengine quota manager and generate local count map response. If
-   * limit is not -1 and deviceNumMap/timeSeriesNumMap is null, fill deviceNumMap/timeSeriesNumMap
-   * of the SchemaRegion whose current node is the leader
+   * Update total count in schema quota manager and generate local count map response. If limit is
+   * not -1 and deviceNumMap/timeSeriesNumMap is null, fill deviceNumMap/timeSeriesNumMap of the
+   * SchemaRegion whose current node is the leader
    *
-   * @param totalCount cluster schemaengine usage
+   * @param totalCount cluster schema usage
    * @param resp heartbeat response
    */
   public void updateAndFillSchemaCountMap(long totalCount, THeartbeatResp resp) {

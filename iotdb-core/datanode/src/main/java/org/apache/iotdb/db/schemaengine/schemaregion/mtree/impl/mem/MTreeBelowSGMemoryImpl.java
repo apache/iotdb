@@ -625,7 +625,7 @@ public class MTreeBelowSGMemoryImpl {
   // region Entity/Device operation
   // including device auto creation and transform from InternalMNode to EntityMNode
   /**
-   * Add an interval path to MTree. This is only used for automatically creating schemaengine
+   * Add an interval path to MTree. This is only used for automatically creating schema
    *
    * <p>e.g., get root.sg.d1, get or create all internal nodes and return the node of d1
    */
@@ -675,7 +675,7 @@ public class MTreeBelowSGMemoryImpl {
           protected Void collectMeasurement(IMeasurementMNode<IMemMNode> node) {
             MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
             if (nodes[nodes.length - 1].equals(node.getAlias())) {
-              // only when user read with alias, the alias in path will be set
+              // only when user query with alias, the alias in path will be set
               path.setMeasurementAlias(node.getAlias());
             }
             if (withTags) {
@@ -733,7 +733,7 @@ public class MTreeBelowSGMemoryImpl {
 
   // endregion
 
-  // region Interfaces and Implementation for Template check and read
+  // region Interfaces and Implementation for Template check and query
 
   public void activateTemplate(PartialPath activatePath, Template template)
       throws MetadataException {
@@ -876,7 +876,7 @@ public class MTreeBelowSGMemoryImpl {
 
   // endregion
 
-  // region Interfaces for schemaengine reader
+  // region Interfaces for schema reader
 
   public ISchemaReader<IDeviceSchemaInfo> getDeviceReader(IShowDevicesPlan showDevicesPlan)
       throws MetadataException {

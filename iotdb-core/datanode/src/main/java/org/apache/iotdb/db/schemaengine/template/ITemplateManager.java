@@ -42,7 +42,7 @@ public interface ITemplateManager {
   List<Template> getAllTemplates();
 
   /**
-   * show nodes in schemaengine template xx
+   * show nodes in schema template xx
    *
    * @param name template name
    * @return Template

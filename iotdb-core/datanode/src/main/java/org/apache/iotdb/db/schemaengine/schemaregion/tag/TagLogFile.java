@@ -61,9 +61,9 @@ public class TagLogFile implements AutoCloseable {
     File metadataDir = SystemFileFactory.INSTANCE.getFile(schemaDir);
     if (!metadataDir.exists()) {
       if (metadataDir.mkdirs()) {
-        logger.info("create schemaengine folder {}.", metadataDir);
+        logger.info("create schema folder {}.", metadataDir);
       } else {
-        logger.info("create schemaengine folder {} failed.", metadataDir);
+        logger.info("create schema folder {} failed.", metadataDir);
       }
     }
 

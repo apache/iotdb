@@ -128,8 +128,8 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
                   .isPreDeactivateTemplate())) { // the template should not skip
         int templateId = parent.getAsDeviceMNode().getSchemaTemplateId();
         Template template = templateMap.get(templateId);
-        // if null, it means the template on this device is not covered in this read, refer to the
-        // queryengine analyzing stage
+        // if null, it means the template on this device is not covered in this query, refer to the
+        // mpp analyzing stage
         if (template != null && nodeFactory != null) {
           child = MNodeUtils.getChild(templateMap.get(templateId), childName, nodeFactory);
         }

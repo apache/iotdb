@@ -52,7 +52,7 @@ public class SchemaFileConfig {
   public static final long PAGE_INDEX_MASK = 0xffff_ffffL; // highest bit is not included
   public static final short PAGE_HEADER_SIZE = 32;
 
-  // value of type flag of a schemaengine page
+  // value of type flag of a schema page
   public static final int PAGE_HEADER_INDEX_OFFSET = 1; // offset of page index among page header
   public static final byte SEGMENTED_PAGE = 0x00;
   public static final byte INTERNAL_PAGE = 0x01;

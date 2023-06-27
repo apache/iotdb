@@ -140,7 +140,7 @@ public class LogicalViewInfo implements IMeasurementInfo {
    *   <li>object header, 8B
    *   <li>offset, 8B
    *   <li>boolean preDeleted, 1B
-   *   <li>estimated schemaengine size, 32B
+   *   <li>estimated schema size, 32B
    *   <li>viewExpression
    * </ol>
    */

@@ -105,9 +105,9 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
 
 /**
  * This class takes the responsibility of serialization of all the metadata info of one certain
- * schemaengine region and persistent it into files. This class contains the interfaces to modify
- * the metadata in schemaengine region for delta system. All the operations will be inserted into
- * the logs temporary in case the downtime of the delta system.
+ * schema region and persistent it into files. This class contains the interfaces to modify the
+ * metadata in schema region for delta system. All the operations will be inserted into the logs
+ * temporary in case the downtime of the delta system.
  *
  * <p>Since there are too many interfaces and methods in this class, we use code region to help
  * manage code. The code region starts with //region and ends with //endregion. When using Intellij
@@ -118,13 +118,13 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  *
  * <ol>
  *   <li>Interfaces and Implementation for initialization、recover and clear
- *   <li>Interfaces and Implementation for schemaengine region Info read and operation
+ *   <li>Interfaces and Implementation for schema region Info query and operation
  *   <li>Interfaces and Implementation for Timeseries operation
  *   <li>Interfaces for auto create device
  *   <li>Interfaces for metadata info Query
  *       <ol>
  *         <li>Interfaces for Entity/Device info Query
- *         <li>Interfaces for timeseries, measurement and schemaengine info Query
+ *         <li>Interfaces for timeseries, measurement and schema info Query
  *       </ol>
  *   <li>Interfaces for alias and tag/attribute operations
  *   <li>Interfaces and Implementation for Template operations
@@ -214,7 +214,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       isRecovering = false;
     } catch (IOException e) {
       logger.error(
-          "Cannot recover all schemaengine info from {}, we try to recover as possible as we can",
+          "Cannot recover all schema info from {}, we try to recover as possible as we can",
           schemaRegionDirPath,
           e);
     }
@@ -225,10 +225,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(storageGroupDirPath);
     if (!sgSchemaFolder.exists()) {
       if (sgSchemaFolder.mkdirs()) {
-        logger.info("create database schemaengine folder {}", storageGroupDirPath);
+        logger.info("create database schema folder {}", storageGroupDirPath);
       } else {
         if (!sgSchemaFolder.exists()) {
-          logger.error("create database schemaengine folder {} failed.", storageGroupDirPath);
+          logger.error("create database schema folder {} failed.", storageGroupDirPath);
           throw new SchemaDirCreationFailureException(storageGroupDirPath);
         }
       }
@@ -237,10 +237,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     File schemaRegionFolder = SystemFileFactory.INSTANCE.getFile(schemaRegionDirPath);
     if (!schemaRegionFolder.exists()) {
       if (schemaRegionFolder.mkdirs()) {
-        logger.info("create schemaengine region folder {}", schemaRegionDirPath);
+        logger.info("create schema region folder {}", schemaRegionDirPath);
       } else {
         if (!schemaRegionFolder.exists()) {
-          logger.error("create schemaengine region folder {} failed.", schemaRegionDirPath);
+          logger.error("create schema region folder {} failed.", schemaRegionDirPath);
           throw new SchemaDirCreationFailureException(schemaRegionDirPath);
         }
       }
@@ -276,7 +276,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           logWriter.force();
         }
       } catch (IOException e) {
-        logger.error("Cannot force {} mlog to the schemaengine region", schemaRegionId, e);
+        logger.error("Cannot force {} mlog to the schema region", schemaRegionId, e);
       }
     }
   }
@@ -359,7 +359,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     return idx;
   }
 
-  /** function for clearing metadata components of one schemaengine region */
+  /** function for clearing metadata components of one schema region */
   @Override
   public synchronized void clear() {
     try {
@@ -382,7 +382,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   // endregion
 
-  // region Interfaces for schemaengine region Info read and operation
+  // region Interfaces for schema region Info query and operation
 
   @Override
   public String getDatabaseFullPath() {
@@ -399,7 +399,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     // clear all the components and release all the file handlers
     clear();
 
-    // delete all the schemaengine region files
+    // delete all the schema region files
     SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
   }
 
@@ -880,7 +880,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   // region Interfaces for get and auto create device
   /**
-   * get device node, if the schemaengine region is not set, create it when autoCreateSchema is true
+   * get device node, if the schema region is not set, create it when autoCreateSchema is true
    *
    * <p>(we develop this method as we need to get the node's lock after we get the lock.writeLock())
    *
@@ -907,7 +907,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   // region Interfaces for Entity/Device info Query
 
-  // region Interfaces for timeseries, measurement and schemaengine info Query
+  // region Interfaces for timeseries, measurement and schema info Query
 
   @Override
   public List<MeasurementPath> fetchSchema(

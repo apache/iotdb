@@ -31,7 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A class to save all paths' info in targetPaths and sourcePaths except read statement.
+ * A class to save all paths' info in targetPaths and sourcePaths except query statement.
  *
  * <p>fullPathList: CREATE VIEW root.db.device.temp AS root.ln.d.s01 PathGroup: CREATE VIEW
  * root.db(device.temp, status) AS root.ln(d.s01, wf.abc.s02)

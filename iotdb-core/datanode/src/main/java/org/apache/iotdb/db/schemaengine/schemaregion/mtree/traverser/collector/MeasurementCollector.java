@@ -45,7 +45,7 @@ public abstract class MeasurementCollector<R, N extends IMNode<N>>
   /**
    * collect the information of one measurement
    *
-   * @param node MeasurementMNode holding the measurement schemaengine
+   * @param node MeasurementMNode holding the measurement schema
    */
   protected abstract R collectMeasurement(IMeasurementMNode<N> node);
 

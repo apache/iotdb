@@ -32,7 +32,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.Traverser;
  */
 public abstract class MNodeTraverser<R, N extends IMNode<N>> extends Traverser<R, N> {
 
-  // Level read option started from 0. For example, level of root.sg.d1.s1 is 3.
+  // Level query option started from 0. For example, level of root.sg.d1.s1 is 3.
   protected int targetLevel = -1;
   protected N lastVisitNode = null;
 

@@ -59,12 +59,12 @@ import java.util.Set;
  *
  * <ol>
  *   <li>Interfaces for initialization、recover and clear
- *   <li>Interfaces for schemaengine region Info read and operation
+ *   <li>Interfaces for schema region Info query and operation
  *   <li>Interfaces for Timeseries operation
  *   <li>Interfaces for metadata info Query
  *       <ol>
  *         <li>Interfaces for Entity/Device info Query
- *         <li>Interfaces for timeseries, measurement and schemaengine info Query
+ *         <li>Interfaces for timeseries, measurement and schema info Query
  *       </ol>
  *   <li>Interfaces for alias and tag/attribute operations
  *   <li>Interfaces for Template operations
@@ -86,7 +86,7 @@ public interface ISchemaRegion {
   ISchemaRegionMetric createSchemaRegionMetric();
   // endregion
 
-  // region Interfaces for schemaengine region Info read and operation
+  // region Interfaces for schema region Info query and operation
   SchemaRegionId getSchemaRegionId();
 
   String getDatabaseFullPath();
@@ -141,7 +141,7 @@ public interface ISchemaRegion {
       throws SchemaQuotaExceededException;
 
   /**
-   * Construct schemaengine black list via setting matched timeseries to pre deleted.
+   * Construct schema black list via setting matched timeseries to pre deleted.
    *
    * @param patternTree
    * @throws MetadataException
@@ -151,7 +151,7 @@ public interface ISchemaRegion {
   long constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
 
   /**
-   * Rollback schemaengine black list via setting matched timeseries to not pre deleted.
+   * Rollback schema black list via setting matched timeseries to not pre deleted.
    *
    * @param patternTree
    * @throws MetadataException
@@ -159,7 +159,7 @@ public interface ISchemaRegion {
   void rollbackSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
 
   /**
-   * Fetch schemaengine black list (timeseries that has been pre deleted).
+   * Fetch schema black list (timeseries that has been pre deleted).
    *
    * @param patternTree
    * @throws MetadataException
@@ -167,7 +167,7 @@ public interface ISchemaRegion {
   Set<PartialPath> fetchSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
 
   /**
-   * Delete timeseries in schemaengine black list.
+   * Delete timeseries in schema black list.
    *
    * @param patternTree
    * @throws MetadataException
@@ -190,7 +190,7 @@ public interface ISchemaRegion {
 
   // region Interfaces for metadata info Query
 
-  // region Interfaces for timeseries, measurement and schemaengine info Query
+  // region Interfaces for timeseries, measurement and schema info Query
 
   List<MeasurementPath> fetchSchema(
       PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)

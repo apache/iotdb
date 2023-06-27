@@ -54,9 +54,9 @@ public class SchemaLogWriter<T> implements AutoCloseable {
     File dir = SystemFileFactory.INSTANCE.getFile(schemaDir);
     if (!dir.exists()) {
       if (dir.mkdirs()) {
-        LOGGER.info("create schemaengine folder {}.", dir);
+        LOGGER.info("create schema folder {}.", dir);
       } else {
-        LOGGER.warn("create schemaengine folder {} failed.", dir);
+        LOGGER.warn("create schema folder {} failed.", dir);
       }
     }
 

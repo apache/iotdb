@@ -35,7 +35,7 @@ public class MemSchemaEngineStatistics implements ISchemaEngineStatistics {
 
   private static final Logger logger = LoggerFactory.getLogger(MemSchemaEngineStatistics.class);
 
-  // Total size of schemaengine region
+  // Total size of schema region
   private final long memoryCapacity =
       IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchemaRegion();
 

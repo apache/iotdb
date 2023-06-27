@@ -114,7 +114,7 @@ public class ClusterTemplateManager implements ITemplateManager {
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.error(
-            "Failed to execute create schemaengine template {} in config node, status is {}.",
+            "Failed to execute create schema template {} in config node, status is {}.",
             statement.getName(),
             tsStatus);
       }
@@ -222,7 +222,7 @@ public class ClusterTemplateManager implements ITemplateManager {
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.warn(
-            "Failed to execute set schemaengine template {} on path {} in config node, status is {}.",
+            "Failed to execute set schema template {} on path {} in config node, status is {}.",
             name,
             path,
             tsStatus);

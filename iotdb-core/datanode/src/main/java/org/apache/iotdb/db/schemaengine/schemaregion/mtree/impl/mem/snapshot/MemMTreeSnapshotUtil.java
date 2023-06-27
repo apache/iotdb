@@ -118,7 +118,7 @@ public class MemMTreeSnapshotUtil {
       return deserializeFrom(inputStream, measurementProcess, deviceProcess, regionStatistics);
     } catch (Throwable e) {
       // This method is only invoked during recovery. If failed, the memory usage should be cleared
-      // since the loaded schemaengine will not be used.
+      // since the loaded schema will not be used.
       regionStatistics.clear();
       throw e;
     }
@@ -294,7 +294,7 @@ public class MemMTreeSnapshotUtil {
         serializeBasicMNode(node.getBasicMNode(), outputStream);
         ReadWriteIOUtils.write(0, outputStream); // for compatibly
         ReadWriteIOUtils.write(false, outputStream); // for compatibly
-        // database node in schemaRegion doesn't store any database schemaengine
+        // database node in schemaRegion doesn't store any database schema
         return true;
       } catch (IOException e) {
         logger.error(SERIALIZE_ERROR_INFO, e);
@@ -311,7 +311,7 @@ public class MemMTreeSnapshotUtil {
         ReadWriteIOUtils.write(node.getSchemaTemplateIdWithState(), outputStream);
         ReadWriteIOUtils.write(node.isUseTemplate(), outputStream);
         ReadWriteIOUtils.write(node.isAlignedNullable(), outputStream);
-        // database node in schemaRegion doesn't store any database schemaengine
+        // database node in schemaRegion doesn't store any database schema
         return true;
       } catch (IOException e) {
         logger.error(SERIALIZE_ERROR_INFO, e);

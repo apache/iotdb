@@ -60,7 +60,7 @@ public interface ICreateLogicalViewPlan extends ISchemaRegionPlan {
 
   //  /**
   //   * @param partialPaths a list of partialPaths. Will be transformed into expressions then set
-  // as source. (source timeseries or expressions in read statement)
+  // as source. (source timeseries or expressions in query statement)
   //   */
   //  void setSourceByPartialPath(List<PartialPath> partialPaths);
 }

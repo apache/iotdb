@@ -93,7 +93,7 @@ public class MetaFormatUtils {
     checkNameFormat(name);
   }
 
-  /** check whether the measurement ids in schemaengine is well formatted */
+  /** check whether the measurement ids in schema is well formatted */
   public static void checkSchemaMeasurementNames(List<String> measurements)
       throws MetadataException {
     for (String measurement : measurements) {

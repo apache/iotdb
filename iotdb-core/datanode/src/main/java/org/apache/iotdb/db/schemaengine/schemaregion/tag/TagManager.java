@@ -701,7 +701,7 @@ public class TagManager {
   /**
    * Read the tags of this node.
    *
-   * @param node the node to read.
+   * @param node the node to query.
    * @return the tag key-value map.
    * @throws RuntimeException If any IOException happens.
    */

@@ -124,7 +124,7 @@ public class RecordUtils {
 
   /**
    * It is convenient to expand the semantic of the statusBytes for further status of a measurement,
-   * e.g., preDelete, since 8 bytes are far more sufficient to represent the schemaengine of it.
+   * e.g., preDelete, since 8 bytes are far more sufficient to represent the schema of it.
    *
    * <p>Measurement MNode Record Structure: <br>
    * (var length record, with length member)
@@ -338,7 +338,7 @@ public class RecordUtils {
     return node.getOffset();
   }
 
-  /** Including schemaengine and pre-delete flag of a measurement, could be expanded further. */
+  /** Including schema and pre-delete flag of a measurement, could be expanded further. */
   private static long convertMeasStat2Long(IMeasurementMNode<ICachedMNode> node) {
     byte dataType = node.getSchema().getTypeInByte();
     byte encoding = node.getSchema().getEncodingType().serialize();

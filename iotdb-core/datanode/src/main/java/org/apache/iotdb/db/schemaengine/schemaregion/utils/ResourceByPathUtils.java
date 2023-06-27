@@ -112,7 +112,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
 
   /**
    * Because the unclosed tsfile don't have TimeSeriesMetadata and memtables in the memory don't
-   * have chunkMetadata, but read will use these, so we need to generate it for them.
+   * have chunkMetadata, but query will use these, so we need to generate it for them.
    */
   @Override
   public AlignedTimeSeriesMetadata generateTimeSeriesMetadata(
@@ -206,7 +206,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     if (!containsMeasurement) {
       return null;
     }
-    // get sorted tv list is synchronized so different read can get right sorted list reference
+    // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList alignedTvListCopy = alignedMemChunk.getSortedTvListForQuery(partialPath.getSchemaList());
     List<List<TimeRange>> deletionList = null;
     if (modsToMemtable != null) {
@@ -308,7 +308,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
 
   /**
    * Because the unclosed tsfile don't have TimeSeriesMetadata and memtables in the memory don't
-   * have chunkMetadata, but read will use these, so we need to generate it for them.
+   * have chunkMetadata, but query will use these, so we need to generate it for them.
    */
   @Override
   public ITimeSeriesMetadata generateTimeSeriesMetadata(
@@ -349,7 +349,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
     }
     IWritableMemChunk memChunk =
         memTableMap.get(deviceID).getMemChunkMap().get(partialPath.getMeasurement());
-    // get sorted tv list is synchronized so different read can get right sorted list reference
+    // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList chunkCopy = memChunk.getSortedTvListForQuery();
     List<TimeRange> deletionList = null;
     if (modsToMemtable != null) {

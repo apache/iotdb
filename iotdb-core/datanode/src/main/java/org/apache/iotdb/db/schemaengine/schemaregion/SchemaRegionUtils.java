@@ -35,26 +35,25 @@ public class SchemaRegionUtils {
     File[] sgFiles = schemaRegionDir.listFiles();
     if (sgFiles == null) {
       throw new MetadataException(
-          String.format("Can't get files in schemaengine region dir %s", schemaRegionDirPath));
+          String.format("Can't get files in schema region dir %s", schemaRegionDirPath));
     }
     for (File file : sgFiles) {
       if (file.delete()) {
-        logger.info("delete schemaengine region file {}", file.getAbsolutePath());
+        logger.info("delete schema region file {}", file.getAbsolutePath());
       } else {
-        logger.info("delete schemaengine region file {} failed.", file.getAbsolutePath());
+        logger.info("delete schema region file {} failed.", file.getAbsolutePath());
         throw new MetadataException(
-            String.format("Failed to delete schemaengine region file %s", file.getAbsolutePath()));
+            String.format("Failed to delete schema region file %s", file.getAbsolutePath()));
       }
     }
 
     if (schemaRegionDir.delete()) {
-      logger.info("delete schemaengine region folder {}", schemaRegionDir.getAbsolutePath());
+      logger.info("delete schema region folder {}", schemaRegionDir.getAbsolutePath());
     } else {
-      logger.info(
-          "delete schemaengine region folder {} failed.", schemaRegionDir.getAbsolutePath());
+      logger.info("delete schema region folder {} failed.", schemaRegionDir.getAbsolutePath());
       throw new MetadataException(
           String.format(
-              "Failed to delete schemaengine region folder %s", schemaRegionDir.getAbsolutePath()));
+              "Failed to delete schema region folder %s", schemaRegionDir.getAbsolutePath()));
     }
     final File storageGroupDir = schemaRegionDir.getParentFile();
     if (Objects.requireNonNull(storageGroupDir.listFiles()).length == 0) {

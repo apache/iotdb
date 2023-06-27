@@ -51,7 +51,7 @@ public enum SchemaRegionPlanType {
   DELETE_LOGICAL_VIEW((byte) 69),
   ALTER_LOGICAL_VIEW((byte) 70),
 
-  // read plan doesn't need any ser/deSer, thus use one type to represent all
+  // query plan doesn't need any ser/deSer, thus use one type to represent all
   READ_SCHEMA(Byte.MAX_VALUE);
 
   public static final int MAX_NUM = Byte.MAX_VALUE + 1;
