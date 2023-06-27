@@ -25,11 +25,10 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import com.google.common.base.Objects;
-
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class AddTriggerInTablePlan extends ConfigPhysicalPlan {
 
@@ -96,11 +95,11 @@ public class AddTriggerInTablePlan extends ConfigPhysicalPlan {
       return false;
     }
     AddTriggerInTablePlan that = (AddTriggerInTablePlan) o;
-    return Objects.equal(triggerInformation, that.triggerInformation);
+    return Objects.equals(triggerInformation, that.triggerInformation);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hashCode(super.hashCode(), triggerInformation);
+    return Objects.hash(super.hashCode(), triggerInformation);
   }
 }

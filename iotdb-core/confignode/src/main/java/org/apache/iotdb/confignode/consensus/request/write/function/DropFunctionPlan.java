@@ -23,11 +23,10 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import com.google.common.base.Objects;
-
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class DropFunctionPlan extends ConfigPhysicalPlan {
 
@@ -69,11 +68,11 @@ public class DropFunctionPlan extends ConfigPhysicalPlan {
       return false;
     }
     DropFunctionPlan that = (DropFunctionPlan) o;
-    return Objects.equal(functionName, that.functionName);
+    return Objects.equals(functionName, that.functionName);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hashCode(super.hashCode(), functionName);
+    return Objects.hash(super.hashCode(), functionName);
   }
 }

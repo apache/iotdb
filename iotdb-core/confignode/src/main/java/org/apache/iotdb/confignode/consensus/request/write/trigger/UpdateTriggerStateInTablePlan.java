@@ -24,11 +24,10 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import com.google.common.base.Objects;
-
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class UpdateTriggerStateInTablePlan extends ConfigPhysicalPlan {
 
@@ -87,11 +86,11 @@ public class UpdateTriggerStateInTablePlan extends ConfigPhysicalPlan {
       return false;
     }
     UpdateTriggerStateInTablePlan that = (UpdateTriggerStateInTablePlan) o;
-    return Objects.equal(triggerName, that.triggerName) && triggerState == that.triggerState;
+    return Objects.equals(triggerName, that.triggerName) && triggerState == that.triggerState;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hashCode(super.hashCode(), triggerName, triggerState);
+    return Objects.hash(super.hashCode(), triggerName, triggerState);
   }
 }

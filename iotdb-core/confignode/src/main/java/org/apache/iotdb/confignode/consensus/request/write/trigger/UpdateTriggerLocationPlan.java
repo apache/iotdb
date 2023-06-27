@@ -25,11 +25,10 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import com.google.common.base.Objects;
-
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class UpdateTriggerLocationPlan extends ConfigPhysicalPlan {
 
@@ -88,12 +87,12 @@ public class UpdateTriggerLocationPlan extends ConfigPhysicalPlan {
       return false;
     }
     UpdateTriggerLocationPlan that = (UpdateTriggerLocationPlan) o;
-    return Objects.equal(triggerName, that.triggerName)
-        && Objects.equal(dataNodeLocation, that.dataNodeLocation);
+    return Objects.equals(triggerName, that.triggerName)
+        && Objects.equals(dataNodeLocation, that.dataNodeLocation);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hashCode(super.hashCode(), triggerName, dataNodeLocation);
+    return Objects.hash(super.hashCode(), triggerName, dataNodeLocation);
   }
 }

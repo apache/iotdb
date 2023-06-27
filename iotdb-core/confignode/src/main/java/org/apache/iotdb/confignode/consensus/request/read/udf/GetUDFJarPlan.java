@@ -23,13 +23,12 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import com.google.common.base.Objects;
-
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class GetUDFJarPlan extends ConfigPhysicalPlan {
 
@@ -80,11 +79,11 @@ public class GetUDFJarPlan extends ConfigPhysicalPlan {
       return false;
     }
     GetUDFJarPlan that = (GetUDFJarPlan) o;
-    return Objects.equal(jarNames, that.jarNames);
+    return Objects.equals(jarNames, that.jarNames);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hashCode(super.hashCode(), jarNames);
+    return Objects.hash(super.hashCode(), jarNames);
   }
 }

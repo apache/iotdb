@@ -23,11 +23,10 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import com.google.common.base.Objects;
-
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class GetTriggerTablePlan extends ConfigPhysicalPlan {
 
@@ -79,6 +78,6 @@ public class GetTriggerTablePlan extends ConfigPhysicalPlan {
 
   @Override
   public int hashCode() {
-    return Objects.hashCode(super.hashCode(), onlyStateful);
+    return Objects.hash(super.hashCode(), onlyStateful);
   }
 }

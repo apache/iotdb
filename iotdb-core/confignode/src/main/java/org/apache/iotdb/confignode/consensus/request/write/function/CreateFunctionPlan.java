@@ -25,11 +25,10 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import com.google.common.base.Objects;
-
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class CreateFunctionPlan extends ConfigPhysicalPlan {
 
@@ -88,11 +87,11 @@ public class CreateFunctionPlan extends ConfigPhysicalPlan {
       return false;
     }
     CreateFunctionPlan that = (CreateFunctionPlan) o;
-    return Objects.equal(udfInformation, that.udfInformation);
+    return Objects.equals(udfInformation, that.udfInformation);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hashCode(super.hashCode(), udfInformation);
+    return Objects.hash(super.hashCode(), udfInformation);
   }
 }
