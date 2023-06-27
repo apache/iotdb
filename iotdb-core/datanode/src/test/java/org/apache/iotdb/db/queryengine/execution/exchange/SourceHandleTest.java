@@ -191,7 +191,7 @@ public class SourceHandleTest {
     final String localPlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
 
-    // Construct a mock LocalMemoryManager with capacity 5 * MOCK_TSBLOCK_SIZE per read.
+    // Construct a mock LocalMemoryManager with capacity 5 * MOCK_TSBLOCK_SIZE per query.
     LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
     MemoryPool spyMemoryPool =
         Mockito.spy(new MemoryPool("test", 10 * MOCK_TSBLOCK_SIZE, 5 * MOCK_TSBLOCK_SIZE));
