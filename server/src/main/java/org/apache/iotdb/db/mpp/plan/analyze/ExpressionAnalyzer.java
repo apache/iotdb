@@ -662,15 +662,20 @@ public class ExpressionAnalyzer {
   }
 
   /**
-   * Remove alias from expression. eg: root.sg.d1.status + 1 -> root.sg.d1.s2 + 1, and reconstruct
-   * the name of FunctionExpression to lowercase.
+   * Remove view and measurement alias from expression, and reconstruct the name of
+   * FunctionExpression to lowercase.
    *
-   * @return expression after removing alias
+   * @return normalized expression
    */
   public static Expression normalizeExpression(Expression expression) {
     return new ExpressionNormalizeVisitor().process(expression, null);
   }
 
+  /**
+   * Reconstruct the name of FunctionExpression to lowercase.
+   *
+   * @return normalized expression
+   */
   public static Expression semiNormalizeExpression(Expression expression) {
     return new ExpressionSemiNormalizeVisitor().process(expression, null);
   }

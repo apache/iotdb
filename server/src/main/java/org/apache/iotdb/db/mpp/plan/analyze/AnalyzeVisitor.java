@@ -815,13 +815,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         continue;
       }
       if (paginationController.hasCurLimit()) {
-        Pair<Expression, String> outputExpression =
-            removeAliasFromExpression(
-                groupedExpression,
-                groupByLevelController.getAlias(groupedExpression.getExpressionString()));
-        Expression groupedExpressionWithoutAlias = outputExpression.left;
-        analyzeExpressionType(analysis, groupedExpressionWithoutAlias);
-        outputExpressions.add(outputExpression);
+        Expression normalizedGroupedExpression =
+            ExpressionAnalyzer.normalizeExpression(groupedExpression);
+        analyzeExpressionType(analysis, normalizedGroupedExpression);
+        outputExpressions.add(
+            new Pair<>(
+                normalizedGroupedExpression,
+                analyzeAlias(
+                    groupByLevelController.getAlias(groupedExpression.getExpressionString()),
+                    groupedExpression,
+                    normalizedGroupedExpression)));
         updateGroupByLevelExpressions(
             analysis,
             groupedExpression,
