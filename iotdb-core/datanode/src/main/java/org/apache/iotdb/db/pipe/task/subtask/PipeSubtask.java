@@ -143,7 +143,7 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
         LOGGER.warn(
             "The last event is an instance of EnrichedEvent, so the exception is reported. "
                 + "Stopping current pipe task {}({}) locally... "
-                + "Status shown when read the pipe will be 'STOPPED'. "
+                + "Status shown when query the pipe will be 'STOPPED'. "
                 + "Please restart the task by executing 'START PIPE' manually if needed.",
             taskID,
             this.getClass().getSimpleName(),
@@ -152,7 +152,7 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
         LOGGER.error(
             "The last event is not an instance of EnrichedEvent, so the exception cannot be reported. "
                 + "Stopping current pipe task {}({}) locally... "
-                + "Status shown when read the pipe will be 'RUNNING' instead of 'STOPPED', but the task is actually stopped. "
+                + "Status shown when query the pipe will be 'RUNNING' instead of 'STOPPED', but the task is actually stopped. "
                 + "Please restart the task by executing 'START PIPE' manually if needed.",
             taskID,
             this.getClass().getSimpleName(),

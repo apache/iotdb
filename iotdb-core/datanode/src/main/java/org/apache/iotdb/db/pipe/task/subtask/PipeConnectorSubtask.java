@@ -133,7 +133,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
         if (lastEvent instanceof EnrichedEvent) {
           LOGGER.warn(
               "Failed to reconnect to the target system after {} times, stopping current pipe task {}... "
-                  + "Status shown when read the pipe will be 'STOPPED'. "
+                  + "Status shown when query the pipe will be 'STOPPED'. "
                   + "Please restart the task by executing 'START PIPE' manually if needed.",
               MAX_RETRY_TIMES,
               taskID,
@@ -144,7 +144,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
         } else {
           LOGGER.error(
               "Failed to reconnect to the target system after {} times, stopping current pipe task {} locally... "
-                  + "Status shown when read the pipe will be 'RUNNING' instead of 'STOPPED', but the task is actually stopped. "
+                  + "Status shown when query the pipe will be 'RUNNING' instead of 'STOPPED', but the task is actually stopped. "
                   + "Please restart the task by executing 'START PIPE' manually if needed.",
               MAX_RETRY_TIMES,
               taskID,
