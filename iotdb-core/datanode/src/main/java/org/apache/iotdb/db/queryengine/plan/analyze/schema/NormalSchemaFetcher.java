@@ -115,13 +115,13 @@ class NormalSchemaFetcher {
         schemaCache.computeSourceOfLogicalView(schemaComputationWithAutoCreation);
     List<Integer> indexOfMissingLogicalView = missedIndexAndPathString.left;
     List<String> missedPathStringOfLogicalView = missedIndexAndPathString.right;
-    // all schemaengine can be taken from cache
+    // all schema can be taken from cache
     if (indexOfMissingMeasurements.isEmpty() && indexOfMissingLogicalView.isEmpty()) {
       return indexOfMissingMeasurements;
     }
-    // [Step 3] Fetch 1. fetch schemaengine from remote. Process logical view first; then process
+    // [Step 3] Fetch 1. fetch schema from remote. Process logical view first; then process
     // measurements.
-    // try fetch the missing raw schemaengine from remote and cache fetched schemaengine
+    // try fetch the missing raw schema from remote and cache fetched schema
     ClusterSchemaTree remoteSchemaTree;
     if (missedPathStringOfLogicalView.isEmpty()) {
       remoteSchemaTree =
@@ -141,7 +141,7 @@ class NormalSchemaFetcher {
     // make sure all missed views are computed.
     remoteSchemaTree.computeSourceOfLogicalView(
         schemaComputationWithAutoCreation, indexOfMissingLogicalView);
-    // check and compute the fetched schemaengine
+    // check and compute the fetched schema
     indexOfMissingMeasurements =
         remoteSchemaTree.compute(schemaComputationWithAutoCreation, indexOfMissingMeasurements);
     schemaComputationWithAutoCreation.recordRangeOfLogicalViewSchemaListNow();
@@ -158,12 +158,12 @@ class NormalSchemaFetcher {
           schemaComputationWithAutoCreation, indexOfMissingLogicalView);
     }
 
-    // all schemaengine has been taken and processed
+    // all schema has been taken and processed
     if (indexOfMissingMeasurements.isEmpty()) {
       return indexOfMissingMeasurements;
     }
 
-    // [Step 5] Auto Create and process the missing schemaengine
+    // [Step 5] Auto Create and process the missing schema
     if (config.isAutoCreateSchemaEnabled()) {
       // Check the isAligned value. If the input value is different from the actual value of the
       // existing device, throw exception.
@@ -222,13 +222,13 @@ class NormalSchemaFetcher {
       }
       missedIndexAndPathStringOfViewList.add(missedIndexAndPathString);
     }
-    // all schemaengine can be taken from cache
+    // all schema can be taken from cache
     if (indexOfDevicesWithMissingMeasurements.isEmpty() && (!hasUnFetchedLogicalView)) {
       return;
     }
-    // [Step 3] Fetch 1.fetch schemaengine from remote. Process logical view first; then process
+    // [Step 3] Fetch 1.fetch schema from remote. Process logical view first; then process
     // measurements.
-    // try fetch the missing schemaengine from remote
+    // try fetch the missing schema from remote
     ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation;
     ClusterSchemaTree remoteSchemaTree;
     if (!hasUnFetchedLogicalView) {
@@ -266,7 +266,7 @@ class NormalSchemaFetcher {
       remoteSchemaTree.computeSourceOfLogicalView(
           schemaComputationWithAutoCreation, missedIndexAndPathStringOfViewList.get(i).left);
     }
-    // check and compute the fetched schemaengine
+    // check and compute the fetched schema
     List<Integer> indexOfDevicesNeedAutoCreateSchema = new ArrayList<>();
     List<List<Integer>> indexOfMeasurementsNeedAutoCreate = new ArrayList<>();
     for (int i = 0; i < indexOfDevicesWithMissingMeasurements.size(); i++) {
@@ -307,12 +307,12 @@ class NormalSchemaFetcher {
       }
     }
 
-    // all schemaengine has been taken and processed
+    // all schema has been taken and processed
     if (indexOfDevicesNeedAutoCreateSchema.isEmpty()) {
       return;
     }
 
-    // [Step 5] Auto Create and process the missing schemaengine
+    // [Step 5] Auto Create and process the missing schema
     if (config.isAutoCreateSchemaEnabled()) {
       List<PartialPath> devicePathList =
           schemaComputationWithAutoCreationList.stream()
@@ -360,7 +360,7 @@ class NormalSchemaFetcher {
         }
       }
 
-      // all schemaengine has been taken and processed
+      // all schema has been taken and processed
       if (indexOfDevicesWithMissingMeasurements.isEmpty()) {
         return;
       }
@@ -369,7 +369,7 @@ class NormalSchemaFetcher {
       indexOfMissingMeasurementsList = indexOfMeasurementsNeedAutoCreate;
     }
 
-    // offer null for the rest missing schemaengine processing
+    // offer null for the rest missing schema processing
     for (int i = 0; i < indexOfDevicesWithMissingMeasurements.size(); i++) {
       schemaComputationWithAutoCreation =
           schemaComputationWithAutoCreationList.get(indexOfDevicesWithMissingMeasurements.get(i));

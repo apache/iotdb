@@ -31,25 +31,25 @@ import java.util.Map;
 
 public interface IPartitionFetcher {
 
-  /** Get schemaengine partition without automatically create, used in write and read scenarios. */
+  /** Get schema partition without automatically create, used in write and query scenarios. */
   SchemaPartition getSchemaPartition(PathPatternTree patternTree);
 
   /**
-   * Get or create schemaengine partition, used in insertion with enable_auto_create_schema is true.
-   * if schemaPartition does not exist, then automatically create.
+   * Get or create schema partition, used in insertion with enable_auto_create_schema is true. if
+   * schemaPartition does not exist, then automatically create.
    */
   SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree);
 
   /**
-   * Get data partition, used in read scenarios.
+   * Get data partition, used in query scenarios.
    *
    * @param sgNameToQueryParamsMap database name -> the list of DataPartitionQueryParams
    */
   DataPartition getDataPartition(Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
 
   /**
-   * Get data partition, used in read scenarios which contains time filter like: time < XX or time >
-   * XX
+   * Get data partition, used in query scenarios which contains time filter like: time < XX or time
+   * > XX
    *
    * @return sgNameToQueryParamsMap database name -> the list of DataPartitionQueryParams
    */
@@ -73,13 +73,13 @@ public interface IPartitionFetcher {
    */
   DataPartition getOrCreateDataPartition(List<DataPartitionQueryParam> dataPartitionQueryParams);
 
-  /** Get schemaengine partition and matched nodes according to path pattern tree. */
+  /** Get schema partition and matched nodes according to path pattern tree. */
   default SchemaNodeManagementPartition getSchemaNodeManagementPartition(
       PathPatternTree patternTree) {
     return getSchemaNodeManagementPartitionWithLevel(patternTree, null);
   }
 
-  /** Get schemaengine partition and matched nodes according to path pattern tree and node level. */
+  /** Get schema partition and matched nodes according to path pattern tree and node level. */
   SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
       PathPatternTree patternTree, Integer level);
 

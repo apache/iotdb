@@ -35,7 +35,7 @@ public class DataNodeLastCacheManager {
   /**
    * get the last cache value from time series
    *
-   * @param entry schemaengine cache entry in DataNodeSchemaCache
+   * @param entry schema cache entry in DataNodeSchemaCache
    * @return the last cache value
    */
   public static TimeValuePair getLastCache(SchemaCacheEntry entry) {
@@ -49,7 +49,7 @@ public class DataNodeLastCacheManager {
   /**
    * update the last cache value of time series
    *
-   * @param entry schemaengine cache entry in DataNodeSchemaCache
+   * @param entry schema cache entry in DataNodeSchemaCache
    * @param timeValuePair the latest point value
    * @param highPriorityUpdate the last value from insertPlan is high priority
    * @param latestFlushedTime latest flushed time
@@ -69,7 +69,7 @@ public class DataNodeLastCacheManager {
   /**
    * reset the last cache value of time series
    *
-   * @param entry schemaengine cache entry in DataNodeSchemaCache
+   * @param entry schema cache entry in DataNodeSchemaCache
    */
   public static void resetLastCache(SchemaCacheEntry entry) {
     if (!CACHE_ENABLED || null == entry) {

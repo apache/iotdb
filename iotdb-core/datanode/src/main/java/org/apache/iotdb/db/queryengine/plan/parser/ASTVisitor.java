@@ -1530,7 +1530,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   /**
-   * parse time interval or sliding step in group by read.
+   * parse time interval or sliding step in group by query.
    *
    * @param duration represent duration string like: 12d8m9ns, 1y1d, etc.
    * @return time in milliseconds, microseconds, or nanoseconds depending on the profile
@@ -3138,7 +3138,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new KillQueryStatement();
   }
 
-  // show read processlist
+  // show query processlist
 
   @Override
   public Statement visitShowQueries(IoTDBSqlParser.ShowQueriesContext ctx) {
@@ -3229,7 +3229,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new ShowConfigNodesStatement();
   }
 
-  // schemaengine template
+  // schema template
 
   @Override
   public Statement visitCreateSchemaTemplate(IoTDBSqlParser.CreateSchemaTemplateContext ctx) {
@@ -3315,7 +3315,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       List<TSEncoding> encodings,
       List<CompressionType> compressors) {
     if (ctx.aliasNodeName() != null) {
-      throw new SemanticException("schemaengine template: alias is not supported yet.");
+      throw new SemanticException("schema template: alias is not supported yet.");
     }
 
     TSDataType dataType = parseDataTypeAttribute(ctx);
@@ -3372,15 +3372,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     if (props.size() > 0) {
-      throw new SemanticException("schemaengine template: property is not supported yet.");
+      throw new SemanticException("schema template: property is not supported yet.");
     }
 
     if (ctx.tagClause() != null) {
-      throw new SemanticException("schemaengine template: tag is not supported yet.");
+      throw new SemanticException("schema template: tag is not supported yet.");
     }
 
     if (ctx.attributeClause() != null) {
-      throw new SemanticException("schemaengine template: attribute is not supported yet.");
+      throw new SemanticException("schema template: attribute is not supported yet.");
     }
   }
 

@@ -27,7 +27,7 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkState;
 
-/** The order of read result set */
+/** The order of query result set */
 public class OrderByComponent extends StatementNode {
 
   private final List<SortItem> sortItemList;

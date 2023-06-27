@@ -135,7 +135,7 @@ public class StatementGenerator {
   public static Statement createStatement(TSRawDataQueryReq rawDataQueryReq, ZoneId zoneId)
       throws IllegalPathException {
     final long startTime = System.nanoTime();
-    // construct read statement
+    // construct query statement
     SelectComponent selectComponent = new SelectComponent(zoneId);
     FromComponent fromComponent = new FromComponent();
     WhereCondition whereCondition = new WhereCondition();
@@ -154,7 +154,7 @@ public class StatementGenerator {
         new ResultColumn(
             new TimeSeriesOperand(new PartialPath("", false)), ResultColumn.ColumnType.RAW));
 
-    // set read filter
+    // set query filter
     GreaterEqualExpression leftPredicate =
         new GreaterEqualExpression(
             new TimestampOperand(),
@@ -177,7 +177,7 @@ public class StatementGenerator {
   public static Statement createStatement(TSLastDataQueryReq lastDataQueryReq, ZoneId zoneId)
       throws IllegalPathException {
     final long startTime = System.nanoTime();
-    // construct read statement
+    // construct query statement
     SelectComponent selectComponent = new SelectComponent(zoneId);
     FromComponent fromComponent = new FromComponent();
 
@@ -197,7 +197,7 @@ public class StatementGenerator {
         new ResultColumn(
             new TimeSeriesOperand(new PartialPath("", false)), ResultColumn.ColumnType.RAW));
 
-    // set read filter
+    // set query filter
     WhereCondition whereCondition = new WhereCondition();
     GreaterEqualExpression predicate =
         new GreaterEqualExpression(

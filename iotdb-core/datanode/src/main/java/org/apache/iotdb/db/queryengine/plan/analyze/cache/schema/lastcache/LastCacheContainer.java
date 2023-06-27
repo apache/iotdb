@@ -46,7 +46,7 @@ public class LastCacheContainer implements ILastCacheContainer {
     }
 
     if (lastCacheValue == null) {
-      // If no cached last, (1) a last read (2) an unseq insertion or (3) a seq insertion will
+      // If no cached last, (1) a last query (2) an unseq insertion or (3) a seq insertion will
       // update cache.
       if (!highPriorityUpdate || latestFlushedTime <= timeValuePair.getTimestamp()) {
         lastCacheValue = new LastCacheValue(timeValuePair.getTimestamp(), timeValuePair.getValue());

@@ -59,7 +59,7 @@ public class ClusterSchemaTree implements ISchemaTree {
 
   private final SchemaNode root;
 
-  /** a flag recording whether there is logical view in this schemaengine tree. */
+  /** a flag recording whether there is logical view in this schema tree. */
   private boolean hasLogicalMeasurementPath = false;
 
   public ClusterSchemaTree() {

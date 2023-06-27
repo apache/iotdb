@@ -71,10 +71,10 @@ public class LocalExecutionPlanContext {
 
   private List<TSDataType> cachedDataTypes;
 
-  // left is cached last value in last read
+  // left is cached last value in last query
   // right is full path for each cached last value
   private List<Pair<TimeValuePair, Binary>> cachedLastValueAndPathList;
-  // timeFilter for last read
+  // timeFilter for last query
   private Filter lastQueryTimeFilter;
   // whether we need to update last cache
   private boolean needUpdateLastCache;
@@ -107,7 +107,7 @@ public class LocalExecutionPlanContext {
         parentContext.getDriverContext().createSubDriverContext(getNextPipelineId());
   }
 
-  // for schemaengine region
+  // for schema region
   public LocalExecutionPlanContext(
       FragmentInstanceContext instanceContext, ISchemaRegion schemaRegion) {
     this.allSensorsMap = new ConcurrentHashMap<>();
@@ -115,7 +115,7 @@ public class LocalExecutionPlanContext {
     this.nextOperatorId = new AtomicInteger(0);
     this.nextPipelineId = new AtomicInteger(0);
 
-    // there is no ttl in schemaengine region, so we don't care this field
+    // there is no ttl in schema region, so we don't care this field
     this.dataRegionTTL = Long.MAX_VALUE;
     this.driverContext =
         new SchemaDriverContext(instanceContext, schemaRegion, getNextPipelineId());

@@ -44,8 +44,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
  *
  * <p><b>Rule:</b> The LIMIT OFFSET condition can be pushed down to the SeriesScanNode, when the
  * following conditions are met:
- * <li>Time series read (not aggregation read).
- * <li>The read expressions are all scalar expression.
+ * <li>Time series query (not aggregation query).
+ * <li>The query expressions are all scalar expression.
  * <li>Functions that need to be calculated based on before or after values are not used, such as
  *     trend functions, FILL(previous), FILL(linear).
  * <li>Only one scan node is included in the distributed plan. That is, only one single series or a

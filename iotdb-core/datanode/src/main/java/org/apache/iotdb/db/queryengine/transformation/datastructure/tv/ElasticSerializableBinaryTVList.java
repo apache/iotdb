@@ -97,7 +97,7 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
       return;
     }
 
-    throw new RuntimeException("Memory is not enough for current read.");
+    throw new RuntimeException("Memory is not enough for current query.");
   }
 
   protected void applyNewMemoryControlParameters(

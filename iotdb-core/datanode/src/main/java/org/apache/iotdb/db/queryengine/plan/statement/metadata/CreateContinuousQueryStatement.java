@@ -39,16 +39,16 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
 
   private String cqId;
 
-  // The read execution time interval, default value is group_by_interval in group by clause.
+  // The query execution time interval, default value is group_by_interval in group by clause.
   private long everyInterval;
 
   // A date that represents the execution time of a certain cq task, default value is 0.
   private long boundaryTime = 0;
 
-  // The start time of each read execution, default value is every_interval
+  // The start time of each query execution, default value is every_interval
   private long startTimeOffset;
 
-  // The end time of each read execution, default value is 0.
+  // The end time of each query execution, default value is 0.
   private long endTimeOffset = 0;
 
   // Specify how we deal with the cq task whose previous time interval execution is not finished
@@ -197,7 +197,7 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
     }
 
     if (!queryBodyStatement.isSelectInto()) {
-      throw new SemanticException("CQ: The read body misses an INTO clause.");
+      throw new SemanticException("CQ: The query body misses an INTO clause.");
     }
     GroupByTimeComponent groupByTimeComponent = queryBodyStatement.getGroupByTimeComponent();
     if (groupByTimeComponent != null
@@ -208,7 +208,7 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
     if (queryBodyStatement.getWhereCondition() != null
         && ExpressionAnalyzer.checkIfTimeFilterExist(
             queryBodyStatement.getWhereCondition().getPredicate())) {
-      throw new SemanticException("CQ: Specifying time filters in the read body is prohibited.");
+      throw new SemanticException("CQ: Specifying time filters in the query body is prohibited.");
     }
   }
 }

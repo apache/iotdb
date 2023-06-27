@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkState;
 
 /**
- * This class is used to control the row number of group by level read. For example, selected
+ * This class is used to control the row number of group by level query. For example, selected
  * series[root.sg.d1.s1, root.sg.d2.s1, root.sg2.d1.s1], level = 1; the result rows will be
  * [root.sg.*.s1, root.sg2.*.s1], sLimit and sOffset will be used to control the result numbers
  * rather than the selected series.

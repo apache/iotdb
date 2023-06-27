@@ -375,7 +375,7 @@ public class QueryStatement extends Statement {
     return orderByComponent.getDeviceOrder();
   }
 
-  // push down only support raw data read currently
+  // push down only support raw data query currently
   public boolean needPushDownSort() {
     return !isAggregationQuery() && hasOrderByExpression() && isOrderByBasedOnDevice();
   }
@@ -470,7 +470,7 @@ public class QueryStatement extends Statement {
   }
 
   private static final String RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG =
-      "Raw data and aggregation hybrid read is not supported.";
+      "Raw data and aggregation hybrid query is not supported.";
 
   public void semanticCheck() {
     if (isAggregationQuery()) {
@@ -503,7 +503,7 @@ public class QueryStatement extends Statement {
       }
       if (isGroupByTag()) {
         if (hasHaving()) {
-          throw new SemanticException("Having clause is not supported yet in GROUP BY TAGS read");
+          throw new SemanticException("Having clause is not supported yet in GROUP BY TAGS query");
         }
         for (String s : getGroupByTagComponent().getTagKeys()) {
           if (outputColumn.contains(s)) {
@@ -590,10 +590,10 @@ public class QueryStatement extends Statement {
 
     if (isLastQuery()) {
       if (isAlignByDevice()) {
-        throw new SemanticException("Last read doesn't support align by device.");
+        throw new SemanticException("Last query doesn't support align by device.");
       }
       if (disableAlign()) {
-        throw new SemanticException("Disable align cannot be applied to LAST read.");
+        throw new SemanticException("Disable align cannot be applied to LAST query.");
       }
       for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
         Expression expression = resultColumn.getExpression();

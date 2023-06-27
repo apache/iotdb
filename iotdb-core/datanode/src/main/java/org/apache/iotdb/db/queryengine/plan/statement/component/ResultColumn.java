@@ -25,7 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import java.util.Objects;
 
 /**
- * This class is used to represent a result column of a read.
+ * This class is used to represent a result column of a query.
  *
  * <p>Assume that we have time series in db as follows: <br>
  * [ root.sg.d.a, root.sg.d.b, root.sg.e.a, root.sg.e.b ]

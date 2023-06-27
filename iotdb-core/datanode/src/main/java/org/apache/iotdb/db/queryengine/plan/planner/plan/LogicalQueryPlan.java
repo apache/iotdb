@@ -22,7 +22,7 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 
 /**
- * LogicalQueryPlan represents a logical read plan. It stores the root node of corresponding read
+ * LogicalQueryPlan represents a logical query plan. It stores the root node of corresponding query
  * plan node tree.
  */
 public class LogicalQueryPlan {

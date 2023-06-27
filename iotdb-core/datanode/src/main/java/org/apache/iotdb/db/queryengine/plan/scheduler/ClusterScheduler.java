@@ -46,8 +46,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.WAIT_FOR_DISPATCH;
 
 /**
- * QueryScheduler is used to dispatch the fragment instances of a read to target nodes. And it will
- * continue to collect and monitor the read execution before the read is finished.
+ * QueryScheduler is used to dispatch the fragment instances of a query to target nodes. And it will
+ * continue to collect and monitor the query execution before the query is finished.
  *
  * <p>Later, we can add more control logic for a QueryExecution such as retry, kill and so on by
  * this scheduler.
@@ -129,7 +129,7 @@ public class ClusterScheduler implements IScheduler {
         return;
       }
     } catch (InterruptedException | ExecutionException e) {
-      // If the dispatch request cannot be sent or TException is caught, we will retry this read.
+      // If the dispatch request cannot be sent or TException is caught, we will retry this query.
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }

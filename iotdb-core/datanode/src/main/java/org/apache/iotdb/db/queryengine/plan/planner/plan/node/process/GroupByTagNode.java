@@ -222,7 +222,7 @@ public class GroupByTagNode extends MultiChildProcessNode {
    *   <li>root.sg.d3.s1(k1=v2)
    * </ul>
    *
-   * Then the read <code>
+   * Then the query <code>
    * SELECT avg(s1), avg(s2) FROM root.sg.** GROUP BY TAGS(k1)
    * </code>will generate a {@link GroupByTagNode} with the <code>TagValuesToAggregationDescriptors
    * </code> as below: <code>

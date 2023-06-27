@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 /**
- * This interface used for iteratively generating aggregated time windows in GROUP BY read.
+ * This interface used for iteratively generating aggregated time windows in GROUP BY query.
  *
  * <p>It will return a leftCloseRightClose time window, by decreasing maxTime if leftCloseRightOpen
  * and increasing minTime if leftOpenRightClose.

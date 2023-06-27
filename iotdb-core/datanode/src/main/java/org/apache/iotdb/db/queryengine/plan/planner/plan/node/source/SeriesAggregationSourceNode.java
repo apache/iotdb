@@ -44,7 +44,7 @@ public abstract class SeriesAggregationSourceNode extends SeriesSourceNode {
   // time filter for current series, could be null if it doesn't exist
   @Nullable protected Filter timeFilter;
 
-  // push-downing read filter for current series, could be null if it doesn't exist
+  // push-downing query filter for current series, could be null if it doesn't exist
   @Nullable protected Filter valueFilter;
 
   // The parameter of `group by time`

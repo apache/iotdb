@@ -612,7 +612,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
   @Override
   public List<PlanNode> visitLastQuery(LastQueryNode node, DistributionPlanContext context) {
-    // For last read, we need to keep every FI's root node is LastQueryMergeNode. So we
+    // For last query, we need to keep every FI's root node is LastQueryMergeNode. So we
     // force every region group have a parent node even if there is only 1 child for it.
     context.setForceAddParent(true);
     PlanNode root = processRawMultiChildNode(node, context);
@@ -762,7 +762,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     // Process the other children which are not SeriesSourceNode
     for (PlanNode child : node.getChildren()) {
       if (!(child instanceof SeriesSourceNode)) {
-        // In a general logical read plan, the children of TimeJoinNode should only be
+        // In a general logical query plan, the children of TimeJoinNode should only be
         // SeriesScanNode or SeriesAggregateScanNode
         // So this branch should not be touched.
         List<PlanNode> children = visit(child, context);
@@ -939,7 +939,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
         root.getChildren().size() == 1
             && root.getChildren().get(0) instanceof SlidingWindowAggregationNode;
 
-    // TODO: use 2 phase aggregation to optimize the read
+    // TODO: use 2 phase aggregation to optimize the query
     return Collections.singletonList(
         containsSlidingWindow
             ? groupSourcesForGroupByTagWithSlidingWindow(
@@ -950,9 +950,9 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
             : groupSourcesForGroupByTag(root, sourceGroup, context));
   }
 
-  // If the Aggregation Query contains value filter, we need to use the naive read plan
-  // for it. That is, do the raw data read and then do the aggregation operation.
-  // Currently, the method to judge whether the read should use naive read plan is whether
+  // If the Aggregation Query contains value filter, we need to use the naive query plan
+  // for it. That is, do the raw data query and then do the aggregation operation.
+  // Currently, the method to judge whether the query should use naive query plan is whether
   // AggregationNode is contained in the PlanNode tree of logical plan.
   private boolean shouldUseNaiveAggregation(PlanNode root) {
     if (root instanceof AggregationNode) {

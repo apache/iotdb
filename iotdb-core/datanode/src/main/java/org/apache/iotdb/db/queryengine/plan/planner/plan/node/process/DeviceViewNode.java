@@ -38,9 +38,9 @@ import java.util.Objects;
  * DeviceViewNode is responsible for constructing a device-based view of a set of series. And output
  * the result with specific order. The order could be 'order by device' or 'order by timestamp'
  *
- * <p>Each output from its children should have the same schemaengine. That means, the columns
- * should be same between these TsBlocks. If the input TsBlock contains n columns, the device-based
- * view will contain n+1 columns where the new column is Device column.
+ * <p>Each output from its children should have the same schema. That means, the columns should be
+ * same between these TsBlocks. If the input TsBlock contains n columns, the device-based view will
+ * contain n+1 columns where the new column is Device column.
  */
 public class DeviceViewNode extends MultiChildProcessNode {
 
@@ -54,7 +54,7 @@ public class DeviceViewNode extends MultiChildProcessNode {
   // Device column and measurement columns in result output
   private final List<String> outputColumnNames;
 
-  // e.g. [s1,s2,s3] is read, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
+  // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
   // not 0 because device is the first column
   private final Map<String, List<Integer>> deviceToMeasurementIndexesMap;
 

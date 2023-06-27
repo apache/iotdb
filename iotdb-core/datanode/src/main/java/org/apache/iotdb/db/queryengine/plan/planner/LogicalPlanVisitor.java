@@ -228,7 +228,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
 
     if (aggregationExpressions == null) {
-      // raw data read
+      // raw data query
       planBuilder =
           planBuilder
               .planRawDataSource(
@@ -242,7 +242,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                   queryStatement.getSelectComponent().getZoneId(),
                   queryStatement.getResultTimeOrder());
     } else {
-      // aggregation read
+      // aggregation query
       boolean isRawDataSource =
           analysis.hasValueFilter()
               || analysis.hasGroupByParameter()

@@ -31,7 +31,7 @@ public class DistributionPlanContext {
   // That the variable is true means there is some source series which is
   // distributed in multi DataRegions
   protected boolean oneSeriesInMultiRegion;
-  // That the variable is true means this read will be distributed in multi
+  // That the variable is true means this query will be distributed in multi
   // DataRegions
   protected boolean queryMultiRegion;
 

@@ -77,7 +77,7 @@ public class TimeSeriesSchemaCache {
   }
 
   /**
-   * Get SchemaEntity info without auto create schemaengine
+   * Get SchemaEntity info without auto create schema
    *
    * @param devicePath should not be measurementPath or AlignedPath
    * @param measurements

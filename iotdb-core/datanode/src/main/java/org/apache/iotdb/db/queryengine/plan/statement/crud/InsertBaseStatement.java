@@ -64,7 +64,7 @@ public abstract class InsertBaseStatement extends Statement {
 
   // region params used by analyzing logical views.
 
-  /** This param records the logical view schemaengine appeared in this statement. */
+  /** This param records the logical view schema appeared in this statement. */
   List<LogicalViewSchema> logicalViewSchemaList;
 
   /**

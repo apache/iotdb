@@ -471,7 +471,7 @@ public class PartitionCache {
 
   // endregion
 
-  // region schemaengine partition cache
+  // region schema partition cache
 
   /**
    * get schemaPartition
@@ -589,7 +589,7 @@ public class PartitionCache {
   // region data partition cache
 
   /**
-   * get dataPartition by read param map
+   * get dataPartition by query param map
    *
    * @param storageGroupToQueryParamsMap database to dataPartitionQueryParam map
    * @return DataPartition of storageGroupToQueryParamsMap
@@ -628,7 +628,7 @@ public class PartitionCache {
    *
    * @param dataPartitionMap result
    * @param storageGroupName database that need to get
-   * @param dataPartitionQueryParams specific read params of data partition
+   * @param dataPartitionQueryParams specific query params of data partition
    * @return whether hit
    */
   private boolean getStorageGroupDataPartition(
@@ -663,7 +663,7 @@ public class PartitionCache {
    * get dataPartition from device
    *
    * @param seriesSlotToTimePartitionMap result
-   * @param dataPartitionQueryParam specific read param of data partition
+   * @param dataPartitionQueryParam specific query param of data partition
    * @param cachedStorageGroupPartitionMap all cached data partition map of related database
    * @return whether hit
    */
@@ -694,7 +694,7 @@ public class PartitionCache {
         cachedSeriesPartitionTable.getSeriesPartitionMap();
     Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotListMap =
         seriesSlotToTimePartitionMap.computeIfAbsent(seriesPartitionSlot, k -> new HashMap<>());
-    // Notice: when read all time partition, then miss
+    // Notice: when query all time partition, then miss
     if (dataPartitionQueryParam.getTimePartitionSlotList().isEmpty()) {
       return false;
     }

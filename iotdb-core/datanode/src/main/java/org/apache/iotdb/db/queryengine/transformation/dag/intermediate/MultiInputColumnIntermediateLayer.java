@@ -525,7 +525,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
             if (yieldableState != YieldableState.YIELDABLE) {
               return yieldableState;
             }
-            // display window begin should be set to the same as the min timestamp of the read
+            // display window begin should be set to the same as the min timestamp of the query
             // result set
             nextWindowTimeBegin = rowRecordList.getTime(0);
           }
@@ -591,7 +591,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
           if (rowRecordList.size() == 0
               && LayerCacheUtils.cacheRow(udfInputDataSet, rowRecordList)
               && nextWindowTimeBegin == Long.MIN_VALUE) {
-            // display window begin should be set to the same as the min timestamp of the read
+            // display window begin should be set to the same as the min timestamp of the query
             // result set
             nextWindowTimeBegin = rowRecordList.getTime(0);
           }
@@ -748,7 +748,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
             nextIndexBegin = i;
             break;
           }
-          // The first window's beginning time is greater than all the timestamp of the read result
+          // The first window's beginning time is greater than all the timestamp of the query result
           // set
           if (i == rowRecordList.size() - 1) {
             return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;

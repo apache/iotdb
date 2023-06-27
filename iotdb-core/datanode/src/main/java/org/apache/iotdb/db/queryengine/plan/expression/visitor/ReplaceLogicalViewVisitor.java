@@ -83,7 +83,7 @@ public class ReplaceLogicalViewVisitor extends ExpressionVisitor<Expression, Lis
     // step 2. replace that TimeSeriesOperand with expression recorded in LogicalViewSchema (view
     // expression).
     // step 3. record paths that appeared in view expression. They should be fetched, then you can
-    // use fetched schemaengine
+    // use fetched schema
     // to complete new added TimeSeriesOperand.
     int oldSize = this.newAddedPathList.size();
     Expression result = this.process(expression, this.newAddedPathList);
