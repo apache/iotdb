@@ -28,30 +28,55 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeHardlinkFileDirStartupCleaner {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeHardlinkFileDirStartupCleaner.class);
 
+  private static final AtomicBoolean isCleaned = new AtomicBoolean(false);
+
   /**
    * Delete the data directory and all of its subdirectories that contain the
    * PipeConfig.PIPE_TSFILE_DIR_NAME directory.
    */
   public static void clean() {
+    isCleaned.set(false);
+    CompletableFuture.runAsync(PipeHardlinkFileDirStartupCleaner::doClean);
+  }
+
+  private static void doClean() {
+    long totalStartTs = System.currentTimeMillis();
     for (String dataDir : IoTDBDescriptor.getInstance().getConfig().getDataDirs()) {
-      for (File file :
-          FileUtils.listFilesAndDirs(
-              new File(dataDir), DirectoryFileFilter.INSTANCE, DirectoryFileFilter.INSTANCE)) {
-        if (file.isDirectory()
-            && file.getName().equals(PipeConfig.getInstance().getPipeHardlinkTsFileDirName())) {
-          LOGGER.info(
-              "pipe hardlink tsfile dir found, deleting it: {}, result: {}",
-              file,
-              FileUtils.deleteQuietly(file));
+      LOGGER.info("PipeHardlinkFileDirStartupCleaner.clean started, dataDir: {}", dataDir);
+      try {
+        for (File file :
+            FileUtils.listFilesAndDirs(
+                new File(dataDir), DirectoryFileFilter.INSTANCE, DirectoryFileFilter.INSTANCE)) {
+          if (file.isDirectory()
+              && file.getName().equals(PipeConfig.getInstance().getPipeHardlinkTsFileDirName())) {
+            LOGGER.info(
+                "pipe hardlink tsfile dir found, deleting it: {}, result: {}",
+                file,
+                FileUtils.deleteQuietly(file));
+          }
         }
+      } catch (Exception e) {
+        LOGGER.warn("PipeHardlinkFileDirStartupCleaner.clean failed", e);
       }
     }
+
+    LOGGER.info(
+        "PipeHardlinkFileDirStartupCleaner finished, total cost: {}ms",
+        System.currentTimeMillis() - totalStartTs);
+
+    isCleaned.set(true);
+  }
+
+  public static boolean isHardlinkCleaned() {
+    return isCleaned.get();
   }
 
   private PipeHardlinkFileDirStartupCleaner() {
