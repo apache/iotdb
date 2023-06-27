@@ -1085,6 +1085,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       alterTimeSeriesStatement.setPath(parseFullPath(ctx.fullPath()));
       parseAlterClause(ctx.alterClause(), alterTimeSeriesStatement);
       alterTimeSeriesStatement.setAlterView(true);
+      if (alterTimeSeriesStatement.getAlias() != null) {
+        throw new SemanticException("View doesn't support alias.");
+      }
       return alterTimeSeriesStatement;
     }
   }
