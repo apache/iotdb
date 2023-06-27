@@ -90,7 +90,7 @@ class ClusterSchemaFetchExecutor {
    *
    * @param fullPathList all the fullPath without wildcard split from rawPatternTree
    * @param rawPatternTree the pattern tree consisting of the fullPathList
-   * @return fetched schemaengine
+   * @return fetched schema
    */
   ClusterSchemaTree fetchSchemaOfPreciseMatchOrPreciseDeviceUsingTemplate(
       List<PartialPath> fullPathList, PathPatternTree rawPatternTree) {
@@ -176,14 +176,14 @@ class ClusterSchemaFetchExecutor {
       if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new RuntimeException(
             String.format(
-                "cannot fetch schemaengine, status is: %s, msg is: %s",
+                "cannot fetch schema, status is: %s, msg is: %s",
                 executionResult.status.getCode(), executionResult.status.getMessage()));
       }
       try (SetThreadName threadName = new SetThreadName(executionResult.queryId.getId())) {
         ClusterSchemaTree result = new ClusterSchemaTree();
         Set<String> databaseSet = new HashSet<>();
         while (coordinator.getQueryExecution(queryId).hasNextResult()) {
-          // The read will be transited to FINISHED when invoking getBatchResult() at the last time
+          // The query will be transited to FINISHED when invoking getBatchResult() at the last time
           // So we don't need to clean up it manually
           Optional<TsBlock> tsBlock;
           try {
@@ -225,7 +225,7 @@ class ClusterSchemaFetchExecutor {
         resultSchemaTree.mergeSchemaTree(ClusterSchemaTree.deserialize(inputStream));
       } else {
         throw new RuntimeException(
-            new MetadataException("Failed to fetch schemaengine because of unrecognized data"));
+            new MetadataException("Failed to fetch schema because of unrecognized data"));
       }
     } catch (Exception e) {
       throw new RuntimeException(e);

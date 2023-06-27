@@ -92,10 +92,10 @@ import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.WAI
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.DISTRIBUTION_PLANNER;
 
 /**
- * QueryExecution stores all the status of a read which is being prepared or running inside the MPP
- * frame. It takes three main responsibilities: 1. Prepare a read. Transform a read from statement
+ * QueryExecution stores all the status of a query which is being prepared or running inside the MPP
+ * frame. It takes three main responsibilities: 1. Prepare a query. Transform a query from statement
  * to DistributedQueryPlan with fragment instances. 2. Dispatch all the fragment instances to
- * corresponding physical nodes. 3. Collect and monitor the progress/states of this read.
+ * corresponding physical nodes. 3. Collect and monitor the progress/states of this query.
  */
 public class QueryExecution implements IQueryExecution {
   private static final Logger logger = LoggerFactory.getLogger(QueryExecution.class);
@@ -181,7 +181,7 @@ public class QueryExecution implements IQueryExecution {
             if (!state.isDone()) {
               return;
             }
-            // TODO: (xingtanzjr) If the read is in abnormal state, the releaseResource() should be
+            // TODO: (xingtanzjr) If the query is in abnormal state, the releaseResource() should be
             // invoked
             if (state == QueryState.FAILED
                 || state == QueryState.ABORTED
@@ -215,7 +215,7 @@ public class QueryExecution implements IQueryExecution {
       return;
     }
 
-    // check timeout for read first
+    // check timeout for query first
     checkTimeOutForQuery();
     doLogicalPlan();
     doDistributedPlan();
@@ -240,7 +240,7 @@ public class QueryExecution implements IQueryExecution {
   }
 
   private void checkTimeOutForQuery() {
-    // only check read operation's timeout because we will never limit write operation's execution
+    // only check query operation's timeout because we will never limit write operation's execution
     // time
     if (isQuery()) {
       long currentTime = System.currentTimeMillis();
@@ -257,7 +257,7 @@ public class QueryExecution implements IQueryExecution {
       stateMachine.transitionToFailed();
       return getStatus();
     }
-    logger.warn("error when executing read. {}", stateMachine.getFailureMessage());
+    logger.warn("error when executing query. {}", stateMachine.getFailureMessage());
     // stop and clean up resources the QueryExecution used
     this.stopAndCleanup(stateMachine.getFailureException());
     logger.info("[WaitBeforeRetry] wait {}ms.", RETRY_INTERVAL_IN_MS);
@@ -277,7 +277,7 @@ public class QueryExecution implements IQueryExecution {
     // re-stop
     this.stopped.compareAndSet(true, false);
     this.resultHandleCleanUp.compareAndSet(true, false);
-    // re-analyze the read
+    // re-analyze the query
     this.analysis = analyze(rawStatement, context, partitionFetcher, schemaFetcher);
     // re-start the QueryExecution
     this.start();
@@ -297,7 +297,7 @@ public class QueryExecution implements IQueryExecution {
     this.analysis.setRespDatasetHeader(memorySource.getDatasetHeader());
   }
 
-  // Analyze the statement in QueryContext. Generate the analysis this read need
+  // Analyze the statement in QueryContext. Generate the analysis this query need
   private Analysis analyze(
       Statement statement,
       MPPQueryContext context,
@@ -327,7 +327,7 @@ public class QueryExecution implements IQueryExecution {
       return;
     }
 
-    // TODO: (xingtanzjr) initialize the read scheduler according to configuration
+    // TODO: (xingtanzjr) initialize the query scheduler according to configuration
     this.scheduler =
         new ClusterScheduler(
             context,
@@ -343,7 +343,7 @@ public class QueryExecution implements IQueryExecution {
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleCost(System.nanoTime() - startTime);
   }
 
-  // Use LogicalPlanner to do the logical read plan and logical optimization
+  // Use LogicalPlanner to do the logical query plan and logical optimization
   public void doLogicalPlan() {
     LogicalPlanner planner = new LogicalPlanner(this.context, this.planOptimizers);
     this.logicalPlan = planner.plan(this.analysis);
@@ -384,7 +384,7 @@ public class QueryExecution implements IQueryExecution {
     return ret.toString();
   }
 
-  // Stop the workers for this read
+  // Stop the workers for this query
   public void stop(Throwable t) {
     // only stop once
     if (stopped.compareAndSet(false, true) && this.scheduler != null) {
@@ -392,7 +392,7 @@ public class QueryExecution implements IQueryExecution {
     }
   }
 
-  // Stop the read and clean up all the resources this read occupied
+  // Stop the query and clean up all the resources this query occupied
   public void stopAndCleanup() {
     stop(null);
     releaseResource();
@@ -437,7 +437,7 @@ public class QueryExecution implements IQueryExecution {
     }
   }
 
-  // Stop the read and clean up all the resources this read occupied
+  // Stop the query and clean up all the resources this query occupied
   public void stopAndCleanup(Throwable t) {
     stop(t);
     releaseResource(t);
@@ -465,7 +465,7 @@ public class QueryExecution implements IQueryExecution {
   /**
    * This method will be called by the request thread from client connection. This method will block
    * until one of these conditions occurs: 1. There is a batch of result 2. There is no more result
-   * 3. The read has been cancelled 4. The read is timeout This method will fetch the result from
+   * 3. The query has been cancelled 4. The query is timeout This method will fetch the result from
    * DataStreamManager use the virtual ResultOperator's ID (This part will be designed and
    * implemented with DataStreamManager)
    */

@@ -31,7 +31,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-/** This class defines the scanned result merge task of schemaengine fetcher. */
+/** This class defines the scanned result merge task of schema fetcher. */
 public class SchemaFetchMergeNode extends AbstractSchemaMergeNode {
 
   private List<String> storageGroupList;

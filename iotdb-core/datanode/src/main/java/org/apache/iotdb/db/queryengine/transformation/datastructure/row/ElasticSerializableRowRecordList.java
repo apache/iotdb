@@ -241,7 +241,7 @@ public class ElasticSerializableRowRecordList {
       return;
     }
 
-    throw new QueryProcessException("Memory is not enough for current read.");
+    throw new QueryProcessException("Memory is not enough for current query.");
   }
 
   protected void applyNewMemoryControlParameters(

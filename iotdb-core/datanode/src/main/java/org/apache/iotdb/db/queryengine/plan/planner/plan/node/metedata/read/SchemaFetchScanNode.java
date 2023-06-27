@@ -42,7 +42,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** This class defines the scan task of schemaengine fetcher. */
+/** This class defines the scan task of schema fetcher. */
 public class SchemaFetchScanNode extends SourceNode {
 
   private final PartialPath storageGroup;

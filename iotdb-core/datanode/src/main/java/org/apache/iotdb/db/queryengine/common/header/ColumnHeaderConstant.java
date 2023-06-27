@@ -31,13 +31,13 @@ public class ColumnHeaderConstant {
     // forbidding instantiation
   }
 
-  // column names for read statement
+  // column names for query statement
   public static final String TIME = "Time";
   public static final String ENDTIME = "__endTime";
   public static final String VALUE = "Value";
   public static final String DEVICE = "Device";
 
-  // column names for schemaengine statement
+  // column names for schema statement
   public static final String DATABASE = "Database";
   public static final String TIMESERIES = "Timeseries";
   public static final String ALIAS = "Alias";
@@ -141,7 +141,7 @@ public class ColumnHeaderConstant {
   public static final String SCHEMA_REGION_NUM = "SchemaRegionNum";
   public static final String DATA_REGION_NUM = "DataRegionNum";
 
-  // column names for show schemaengine template statement
+  // column names for show schema template statement
   public static final String TEMPLATE_NAME = "TemplateName";
 
   // column names for show pipe sink
@@ -165,7 +165,7 @@ public class ColumnHeaderConstant {
   public static final String CQID = "CQId";
   public static final String QUERY = "Query";
 
-  // column names for show read processlist
+  // column names for show query processlist
   public static final String QUERY_ID = "QueryId";
   public static final String ELAPSED_TIME = "ElapsedTime";
   public static final String STATEMENT = "Statement";

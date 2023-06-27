@@ -27,8 +27,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import java.util.List;
 
 /**
- * This interface defines the required behaviour invoked during schemaengine fetch/computation,
- * which is executed by schemaengine fetcher.
+ * This interface defines the required behaviour invoked during schema fetch/computation, which is
+ * executed by schema fetcher.
  */
 public interface ISchemaComputation {
 
@@ -41,7 +41,7 @@ public interface ISchemaComputation {
 
   /**
    * @param index the index of fetched measurement in array returned by getMeasurements
-   * @param measurementSchemaInfo the measurement schemaengine of fetched measurement
+   * @param measurementSchemaInfo the measurement schema of fetched measurement
    */
   void computeMeasurement(int index, IMeasurementSchemaInfo measurementSchemaInfo);
 
@@ -49,8 +49,8 @@ public interface ISchemaComputation {
   boolean hasLogicalViewNeedProcess();
 
   /**
-   * @return the logical view schemaengine list recorded by this statement. It may be NULL if it is
-   *     not used before.
+   * @return the logical view schema list recorded by this statement. It may be NULL if it is not
+   *     used before.
    */
   List<LogicalViewSchema> getLogicalViewSchemaList();
 
@@ -62,18 +62,18 @@ public interface ISchemaComputation {
   List<Integer> getIndexListOfLogicalViewPaths();
 
   /**
-   * Record the beginning and ending of logical schemaengine list. After calling this interface, the
-   * range should be record. For example, the range is [0,4) which means 4 schemas exist. Later,
-   * more 3 schemas are added, this function is called, then it records [4,7).
+   * Record the beginning and ending of logical schema list. After calling this interface, the range
+   * should be record. For example, the range is [0,4) which means 4 schemas exist. Later, more 3
+   * schemas are added, this function is called, then it records [4,7).
    */
   void recordRangeOfLogicalViewSchemaListNow();
 
-  /** @return the recorded range of logical view schemaengine list. */
+  /** @return the recorded range of logical view schema list. */
   Pair<Integer, Integer> getRangeOfLogicalViewSchemaListRecorded();
 
   /**
    * @param index the index of fetched measurement in array returned by getMeasurements
-   * @param measurementSchemaInfo the measurement schemaengine of source of the logical view
+   * @param measurementSchemaInfo the measurement schema of source of the logical view
    * @param isAligned whether the source of this view is aligned.
    */
   void computeMeasurementOfView(

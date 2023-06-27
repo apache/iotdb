@@ -74,7 +74,7 @@ public abstract class SerializableTVList extends BatchData implements Serializab
     }
 
     if (size <= 0) {
-      throw new RuntimeException("Memory is not enough for current read.");
+      throw new RuntimeException("Memory is not enough for current query.");
     }
     return size;
   }

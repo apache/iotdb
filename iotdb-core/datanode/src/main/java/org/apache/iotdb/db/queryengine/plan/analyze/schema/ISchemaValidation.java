@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.schema;
 
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 
-/** This interface defines the info and behaviour of a schemaengine validation task. */
+/** This interface defines the info and behaviour of a schema validation task. */
 public interface ISchemaValidation extends ISchemaComputationWithAutoCreation {
 
   @Override
@@ -44,7 +44,7 @@ public interface ISchemaValidation extends ISchemaComputationWithAutoCreation {
    * Record the real value of <code>isAligned</code> of this device. This will change the value of
    * <code>isAligned</code> in this insert statement.
    *
-   * @param isAligned The real value of attribute <code>isAligned</code> of this device schemaengine
+   * @param isAligned The real value of attribute <code>isAligned</code> of this device schema
    */
   void validateDeviceSchema(boolean isAligned);
 

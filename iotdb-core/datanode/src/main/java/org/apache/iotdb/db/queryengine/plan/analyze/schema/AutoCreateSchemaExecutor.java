@@ -407,7 +407,7 @@ class AutoCreateSchemaExecutor {
     }
   }
 
-  // try to create the target timeseries and merge schemaengine of successfully created
+  // try to create the target timeseries and merge schema of successfully created
   // timeseries and existing timeseries into given schemaTree
   private void internalCreateTimeSeries(
       ClusterSchemaTree schemaTree,

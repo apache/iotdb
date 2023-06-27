@@ -55,7 +55,7 @@ import java.util.concurrent.ScheduledExecutorService;
 
 /**
  * The coordinator for MPP. It manages all the queries which are executed in current Node. And it
- * will be responsible for the lifecycle of a read. A read request will be represented as a
+ * will be responsible for the lifecycle of a query. A query request will be represented as a
  * QueryExecution.
  */
 public class Coordinator {

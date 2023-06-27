@@ -34,7 +34,7 @@ import java.util.Objects;
 
 import static java.util.Objects.requireNonNull;
 
-/** The base class of read logical plan nodes, which is used to compose logical read plan. */
+/** The base class of query logical plan nodes, which is used to compose logical read plan. */
 public abstract class PlanNode implements IConsensusRequest {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PlanNode.class);

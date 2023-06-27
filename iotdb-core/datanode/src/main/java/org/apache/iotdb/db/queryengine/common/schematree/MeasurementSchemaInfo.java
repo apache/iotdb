@@ -24,10 +24,10 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
- * This class acts as common measurement schemaengine format during system module interactions,
- * mainly in analyzer and SchemaFetcher. Currently, this class cooperates with DeviceSchemaInfo and
- * wraps measurement name, alias and MeasurementSchema, which are necessary to construct schemaTree
- * for Query and Insertion.
+ * This class acts as common measurement schema format during system module interactions, mainly in
+ * analyzer and SchemaFetcher. Currently, this class cooperates with DeviceSchemaInfo and wraps
+ * measurement name, alias and MeasurementSchema, which are necessary to construct schemaTree for
+ * Query and Insertion.
  */
 public class MeasurementSchemaInfo implements IMeasurementSchemaInfo {
 

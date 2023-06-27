@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.component;
 
-/** The alignment of read result set */
+/** The alignment of query result set */
 public enum ResultSetFormat {
   ALIGN_BY_TIME,
   ALIGN_BY_DEVICE,

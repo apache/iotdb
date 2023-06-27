@@ -104,7 +104,7 @@ public class DataNodeSchemaCache {
   }
 
   /**
-   * Get SchemaEntity info without auto create schemaengine
+   * Get SchemaEntity info without auto create schema
    *
    * @param devicePath should not be measurementPath or AlignedPath
    * @param measurements
@@ -134,10 +134,10 @@ public class DataNodeSchemaCache {
   }
 
   /**
-   * This function is used to process logical view schemaengine list in statement. It will try to
-   * find the source paths of those views in cache. If it found sources, measurement schemas of
-   * sources will be recorded in measurement schemaengine list; else the views will be recorded as
-   * missed. The indexes of missed views and full paths of their source paths will be returned.
+   * This function is used to process logical view schema list in statement. It will try to find the
+   * source paths of those views in cache. If it found sources, measurement schemas of sources will
+   * be recorded in measurement schema list; else the views will be recorded as missed. The indexes
+   * of missed views and full paths of their source paths will be returned.
    *
    * @param schemaComputation the statement you want to process
    * @return The indexes of missed views and full paths of their source paths will be returned.
@@ -155,8 +155,8 @@ public class DataNodeSchemaCache {
   }
 
   /**
-   * Store the fetched schemaengine in either the schemaCache or templateSchemaCache, depending on
-   * its associated device.
+   * Store the fetched schema in either the schemaCache or templateSchemaCache, depending on its
+   * associated device.
    */
   public void put(ClusterSchemaTree tree) {
     Optional<Pair<Template, ?>> templateInfo;

@@ -77,7 +77,7 @@ class TemplateSchemaFetcher {
 
     List<Integer> indexOfMissingMeasurements =
         templateSchemaCache.computeWithTemplate(schemaComputationWithAutoCreation);
-    // all schemaengine can be taken from cache
+    // all schema can be taken from cache
     if (indexOfMissingMeasurements.isEmpty()) {
       return indexOfMissingMeasurements;
     }
@@ -88,24 +88,24 @@ class TemplateSchemaFetcher {
     }
 
     // not activated or not cached
-    // try fetch the missing schemaengine from remote and cache fetched schemaengine
+    // try fetch the missing schema from remote and cache fetched schema
     ClusterSchemaTree remoteSchemaTree =
         clusterSchemaFetchExecutor.fetchSchemaOfOneDevice(
             schemaComputationWithAutoCreation.getDevicePath(),
             schemaComputationWithAutoCreation.getMeasurements(),
             indexOfMissingMeasurements);
-    // check and compute the fetched schemaengine
+    // check and compute the fetched schema
     indexOfMissingMeasurements =
         remoteSchemaTree.compute(schemaComputationWithAutoCreation, indexOfMissingMeasurements);
 
-    // all schemaengine has been taken and processed
+    // all schema has been taken and processed
     if (indexOfMissingMeasurements.isEmpty()) {
       // already activated
       return indexOfMissingMeasurements;
     }
 
     // not activated
-    // auto create and process the missing schemaengine
+    // auto create and process the missing schema
     if (config.isAutoCreateSchemaEnabled()) {
       ClusterSchemaTree schemaTree = new ClusterSchemaTree();
       autoCreateSchemaExecutor.autoActivateTemplate(schemaTree, devicePath, template.getId());
@@ -160,12 +160,12 @@ class TemplateSchemaFetcher {
       }
     }
 
-    // all schemaengine can be taken from cache
+    // all schema can be taken from cache
     if (indexOfDevicesWithMissingMeasurements.isEmpty()) {
       return;
     }
 
-    // try fetch the missing schemaengine from remote
+    // try fetch the missing schema from remote
     ClusterSchemaTree remoteSchemaTree =
         clusterSchemaFetchExecutor.fetchSchemaOfMultiDevices(
             schemaComputationWithAutoCreationList.stream()
@@ -176,7 +176,7 @@ class TemplateSchemaFetcher {
                 .collect(Collectors.toList()),
             indexOfDevicesWithMissingMeasurements,
             indexOfMissingMeasurementsList);
-    // check and compute the fetched schemaengine
+    // check and compute the fetched schema
     List<Integer> indexOfDevicesNeedAutoCreateSchema = new ArrayList<>();
     List<List<Integer>> indexOfMeasurementsNeedAutoCreate = new ArrayList<>();
     for (int i = 0; i < indexOfDevicesWithMissingMeasurements.size(); i++) {
@@ -191,12 +191,12 @@ class TemplateSchemaFetcher {
       }
     }
 
-    // all schemaengine has been taken and processed
+    // all schema has been taken and processed
     if (indexOfDevicesNeedAutoCreateSchema.isEmpty()) {
       return;
     }
 
-    // auto create and process the missing schemaengine
+    // auto create and process the missing schema
     if (config.isAutoCreateSchemaEnabled()) {
       ClusterSchemaTree schemaTree = new ClusterSchemaTree();
       autoCreateSchemaExecutor.autoActivateTemplate(
@@ -221,7 +221,7 @@ class TemplateSchemaFetcher {
         }
       }
 
-      // all schemaengine has been taken and processed
+      // all schema has been taken and processed
       if (indexOfDevicesWithMissingMeasurements.isEmpty()) {
         return;
       }
@@ -230,7 +230,7 @@ class TemplateSchemaFetcher {
       indexOfMissingMeasurementsList = indexOfMeasurementsNeedAutoCreate;
     }
 
-    // offer null for the rest missing schemaengine processing
+    // offer null for the rest missing schema processing
     for (int i = 0; i < indexOfDevicesWithMissingMeasurements.size(); i++) {
       schemaComputationWithAutoCreation =
           schemaComputationWithAutoCreationList.get(indexOfDevicesWithMissingMeasurements.get(i));

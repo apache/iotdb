@@ -42,7 +42,7 @@ public class LastQueryNode extends MultiChildProcessNode {
 
   private final Filter timeFilter;
 
-  // the ordering of timeseries in the result of last read
+  // the ordering of timeseries in the result of last query
   // which is set to null if there is no need to sort
   private Ordering timeseriesOrdering;
 

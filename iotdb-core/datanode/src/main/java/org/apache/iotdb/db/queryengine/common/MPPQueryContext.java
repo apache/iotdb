@@ -26,7 +26,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 /**
- * This class is used to record the context of a read including QueryId, read statement, session
+ * This class is used to record the context of a query including QueryId, query statement, session
  * info and so on
  */
 public class MPPQueryContext {

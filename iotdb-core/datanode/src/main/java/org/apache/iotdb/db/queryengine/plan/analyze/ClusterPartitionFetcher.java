@@ -293,7 +293,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     partitionCache.invalidAllCache();
   }
 
-  /** split data partition read param by database */
+  /** split data partition query param by database */
   private Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParam(
       List<DataPartitionQueryParam> dataPartitionQueryParams, boolean isAutoCreate) {
     List<String> devicePaths = new ArrayList<>();
@@ -393,7 +393,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     return new TDataPartitionReq(partitionSlotsMap);
   }
 
-  /** For read, DataPartitionQueryParam is shared by each device */
+  /** For query, DataPartitionQueryParam is shared by each device */
   private TDataPartitionReq constructDataPartitionReqForQuery(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
     Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap = new HashMap<>();

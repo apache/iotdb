@@ -97,7 +97,7 @@ public class SimpleQueryTerminator implements IQueryTerminator {
   public Boolean syncTerminate() {
     boolean succeed = true;
     for (TEndPoint endPoint : relatedHost) {
-      // we only send cancel read request if there is remaining unfinished FI in that node
+      // we only send cancel query request if there is remaining unfinished FI in that node
       List<FragmentInstanceId> unfinishedFIs =
           stateTracker.filterUnFinishedFIs(ownedFragmentInstance.get(endPoint));
       if (unfinishedFIs.isEmpty()) {
@@ -128,7 +128,7 @@ public class SimpleQueryTerminator implements IQueryTerminator {
         // we shouldn't return here and need to cancel queryTasks in other nodes
         succeed = false;
       } catch (TException t) {
-        logger.warn("cancel read {} on node {} failed.", queryId.getId(), endPoint, t);
+        logger.warn("cancel query {} on node {} failed.", queryId.getId(), endPoint, t);
         // we shouldn't return here and need to cancel queryTasks in other nodes
         succeed = false;
       }
@@ -139,7 +139,7 @@ public class SimpleQueryTerminator implements IQueryTerminator {
   public Boolean syncTerminateThrowable() {
     boolean succeed = true;
     for (TEndPoint endPoint : relatedHost) {
-      // we only send cancel read request if there is remaining unfinished FI in that node
+      // we only send cancel query request if there is remaining unfinished FI in that node
       List<FragmentInstanceId> unfinishedFIs =
           stateTracker.filterUnFinishedFIs(ownedFragmentInstance.get(endPoint));
       if (unfinishedFIs.isEmpty()) {
@@ -170,7 +170,7 @@ public class SimpleQueryTerminator implements IQueryTerminator {
         // we shouldn't return here and need to cancel queryTasks in other nodes
         succeed = false;
       } catch (TException t) {
-        logger.warn("cancel read {} on node {} failed.", queryId.getId(), endPoint, t);
+        logger.warn("cancel query {} on node {} failed.", queryId.getId(), endPoint, t);
         // we shouldn't return here and need to cancel queryTasks in other nodes
         succeed = false;
       }

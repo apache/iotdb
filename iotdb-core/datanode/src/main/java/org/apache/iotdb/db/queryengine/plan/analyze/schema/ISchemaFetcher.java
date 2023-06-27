@@ -38,26 +38,26 @@ import java.util.Map;
 public interface ISchemaFetcher {
 
   /**
-   * Fetch all the schemaengine of existing timeseries matched by the given patternTree
+   * Fetch all the schema of existing timeseries matched by the given patternTree
    *
    * @param patternTree used for matching the timeseries
-   * @return the matched timeseries schemaengine organized as tree structure logically
+   * @return the matched timeseries schema organized as tree structure logically
    */
   ISchemaTree fetchSchema(PathPatternTree patternTree, MPPQueryContext context);
 
   /**
-   * Fetch all the schemaengine with tags of existing timeseries matched by the given patternTree
+   * Fetch all the schema with tags of existing timeseries matched by the given patternTree
    *
    * @param patternTree used for matching the timeseries
-   * @return the matched timeseries schemaengine organized as tree structure logically
+   * @return the matched timeseries schema organized as tree structure logically
    */
   ISchemaTree fetchSchemaWithTags(PathPatternTree patternTree);
 
   /**
-   * Fetch and compute the schemaengine of target timeseries, with device and measurement defined in
-   * given schemaComputationWithAutoCreation. The computation defined in given
-   * schemaComputationWithAutoCreation will be executed during scanning the fetched schemaengine. If
-   * some target timeseries doesn't exist, they will be auto created.
+   * Fetch and compute the schema of target timeseries, with device and measurement defined in given
+   * schemaComputationWithAutoCreation. The computation defined in given
+   * schemaComputationWithAutoCreation will be executed during scanning the fetched schema. If some
+   * target timeseries doesn't exist, they will be auto created.
    *
    * @param schemaComputationWithAutoCreation define the target device, measurements and computation
    */
@@ -65,10 +65,10 @@ public interface ISchemaFetcher {
       ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation);
 
   /**
-   * Fetch and compute the schemaengine of target timeseries, with device and measurement defined in
-   * given schemaComputationWithAutoCreation. The computation defined in given
-   * schemaComputationWithAutoCreation will be executed during scanning the fetched schemaengine. If
-   * some target timeseries doesn't exist, they will be auto created.
+   * Fetch and compute the schema of target timeseries, with device and measurement defined in given
+   * schemaComputationWithAutoCreation. The computation defined in given
+   * schemaComputationWithAutoCreation will be executed during scanning the fetched schema. If some
+   * target timeseries doesn't exist, they will be auto created.
    *
    * @param schemaComputationWithAutoCreationList define the target devices, measurements and
    *     computation

@@ -44,7 +44,7 @@ public class LogicalPlanner {
     long startTime = System.nanoTime();
     PlanNode rootNode = new LogicalPlanVisitor(analysis).process(analysis.getStatement(), context);
 
-    // optimize the read logical plan
+    // optimize the query logical plan
     if (analysis.getStatement().isQuery()) {
       QueryPlanCostMetricSet.getInstance()
           .recordPlanCost(LOGICAL_PLANNER, System.nanoTime() - startTime);

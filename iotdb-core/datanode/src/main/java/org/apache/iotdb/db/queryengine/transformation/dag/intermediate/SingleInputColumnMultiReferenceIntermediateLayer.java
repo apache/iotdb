@@ -413,7 +413,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
             }
           }
           if (nextWindowTimeBeginGivenByStrategy == Long.MIN_VALUE) {
-            // display window begin should be set to the same as the min timestamp of the read
+            // display window begin should be set to the same as the min timestamp of the query
             // result
             // set
             nextWindowTimeBegin = tvList.getTime(0);
@@ -483,7 +483,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
               && LayerCacheUtils.cachePoint(
                   parentLayerPointReaderDataType, parentLayerPointReader, tvList)
               && nextWindowTimeBeginGivenByStrategy == Long.MIN_VALUE) {
-            // display window begin should be set to the same as the min timestamp of the read
+            // display window begin should be set to the same as the min timestamp of the query
             // result
             // set
             nextWindowTimeBegin = tvList.getTime(0);
@@ -638,7 +638,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
             nextIndexBegin = i;
             break;
           }
-          // The first window's beginning time is greater than all the timestamp of the read result
+          // The first window's beginning time is greater than all the timestamp of the query result
           // set
           if (i == tvList.size() - 1) {
             return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
@@ -756,7 +756,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
             nextIndexBegin = i;
             break;
           }
-          // The first window's beginning time is greater than all the timestamp of the read result
+          // The first window's beginning time is greater than all the timestamp of the query result
           // set
           if (i == tvList.size() - 1) {
             return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;

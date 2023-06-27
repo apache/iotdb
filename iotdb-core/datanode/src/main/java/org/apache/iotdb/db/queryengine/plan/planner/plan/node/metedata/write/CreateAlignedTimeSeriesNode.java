@@ -57,8 +57,7 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode
   private List<Map<String, String>> attributesList;
 
   // only used inside schemaRegion to be serialized to mlog, no need to be serialized for
-  // queryengine
-  // transport
+  // mpp transport
   private List<Long> tagOffsets = null;
 
   private TRegionReplicaSet regionReplicaSet;

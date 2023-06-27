@@ -30,7 +30,7 @@ import java.io.IOException;
  *
  * <p>i.e. it's just the function f(x) = x.
  *
- * <p>It's mainly used for a UDF with aggregation read as its parameters.
+ * <p>It's mainly used for a UDF with aggregation query as its parameters.
  */
 public class TransparentTransformer extends UnaryTransformer {
 

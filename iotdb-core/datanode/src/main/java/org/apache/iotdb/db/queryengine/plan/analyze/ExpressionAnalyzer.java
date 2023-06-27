@@ -88,7 +88,7 @@ public class ExpressionAnalyzer {
 
   /**
    * Check if all suffix paths in expression are measurements or one-level wildcards, used in ALIGN
-   * BY DEVICE read or GroupByLevel read. If not, throw a {@link SemanticException}.
+   * BY DEVICE query or GroupByLevel query. If not, throw a {@link SemanticException}.
    *
    * @param expression expression to be checked
    */
@@ -270,7 +270,7 @@ public class ExpressionAnalyzer {
    *
    * @param expression expression in SELECT or WITHOUT NULL clause which may include suffix paths
    * @param prefixPaths prefix paths in the FROM clause
-   * @param patternTree a PathPatternTree contains all paths to read
+   * @param patternTree a PathPatternTree contains all paths to query
    * @return the concatenated expression list
    */
   public static List<Expression> concatExpressionWithSuffixPaths(
@@ -358,7 +358,7 @@ public class ExpressionAnalyzer {
    *
    * @param predicate expression in WHERE clause
    * @param prefixPaths prefix paths in the FROM clause
-   * @param patternTree a PathPatternTree contains all paths to read
+   * @param patternTree a PathPatternTree contains all paths to query
    */
   public static void constructPatternTreeFromExpression(
       Expression predicate, List<PartialPath> prefixPaths, PathPatternTree patternTree) {
@@ -407,11 +407,11 @@ public class ExpressionAnalyzer {
   }
 
   /**
-   * Bind schemaengine ({@link PartialPath} -> {@link MeasurementPath}) and removes wildcards in
+   * Bind schema ({@link PartialPath} -> {@link MeasurementPath}) and removes wildcards in
    * Expression. And all logical view will be replaced.
    *
-   * @param schemaTree interface for querying schemaengine information
-   * @return the expression list after binding schemaengine and whether there is logical view in
+   * @param schemaTree interface for querying schema information
+   * @return the expression list after binding schema and whether there is logical view in
    *     expressions
    */
   public static List<Expression> bindSchemaForExpression(
@@ -421,12 +421,12 @@ public class ExpressionAnalyzer {
 
   /**
    * Concat suffix path in WHERE and HAVING clause with the prefix path in the FROM clause. And
-   * then, bind schemaengine ({@link PartialPath} -> {@link MeasurementPath}) and removes wildcards
-   * in Expression. Logical view will be replaced.
+   * then, bind schema ({@link PartialPath} -> {@link MeasurementPath}) and removes wildcards in
+   * Expression. Logical view will be replaced.
    *
    * @param prefixPaths prefix paths in the FROM clause
-   * @param schemaTree interface for querying schemaengine information
-   * @return the expression list with full path and after binding schemaengine
+   * @param schemaTree interface for querying schema information
+   * @return the expression list with full path and after binding schema
    */
   public static List<Expression> bindSchemaForPredicate(
       Expression predicate, List<PartialPath> prefixPaths, ISchemaTree schemaTree, boolean isRoot) {
@@ -442,12 +442,12 @@ public class ExpressionAnalyzer {
   }
 
   /**
-   * Concat expression with the device path in the FROM clause.And then, bind schemaengine ({@link
+   * Concat expression with the device path in the FROM clause.And then, bind schema ({@link
    * PartialPath} -> {@link MeasurementPath}) and removes wildcards in Expression. This method used
-   * in ALIGN BY DEVICE read.
+   * in ALIGN BY DEVICE query.
    *
    * @param devicePath device path in the FROM clause
-   * @return expression list with full path and after binding schemaengine
+   * @return expression list with full path and after binding schema
    */
   public static List<Expression> concatDeviceAndBindSchemaForExpression(
       Expression expression, PartialPath devicePath, ISchemaTree schemaTree) {
@@ -458,10 +458,10 @@ public class ExpressionAnalyzer {
   }
 
   /**
-   * Concat measurement in WHERE and HAVING clause with device path. And then, bind schemaengine
-   * ({@link PartialPath} -> {@link MeasurementPath}) and removes wildcards.
+   * Concat measurement in WHERE and HAVING clause with device path. And then, bind schema ({@link
+   * PartialPath} -> {@link MeasurementPath}) and removes wildcards.
    *
-   * @return the expression list with full path and after binding schemaengine
+   * @return the expression list with full path and after binding schema
    */
   public static List<Expression> concatDeviceAndBindSchemaForPredicate(
       Expression predicate, PartialPath devicePath, ISchemaTree schemaTree, boolean isWhere) {
@@ -473,9 +473,9 @@ public class ExpressionAnalyzer {
   }
 
   /**
-   * Extract global time filter from read filter.
+   * Extract global time filter from query filter.
    *
-   * @param predicate raw read filter
+   * @param predicate raw query filter
    * @param canRewrite determined by the father of current expression
    * @param isFirstOr whether it is the first LogicOrExpression encountered
    * @return global time filter

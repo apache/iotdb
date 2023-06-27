@@ -125,7 +125,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       return clusterSchemaFetchExecutor.fetchSchemaOfFuzzyMatch(patternTree, false);
     }
 
-    // The schemaengine cache R/W and fetch operation must be locked together thus the cache clean
+    // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeseries will be effective.
     schemaCache.takeReadLock();
     try {
@@ -182,7 +182,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   @Override
   public void fetchAndComputeSchemaWithAutoCreate(
       ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation) {
-    // The schemaengine cache R/W and fetch operation must be locked together thus the cache clean
+    // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeseries will be effective.
     schemaCache.takeReadLock();
     try {
@@ -200,12 +200,12 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
                 templateSetInfo, schemaComputationWithAutoCreation);
       }
 
-      // all schemaengine has been taken and processed
+      // all schema has been taken and processed
       if (indexOfMissingMeasurements.isEmpty()) {
         return;
       }
 
-      // offer null for the rest missing schemaengine processing
+      // offer null for the rest missing schema processing
       for (int index : indexOfMissingMeasurements) {
         schemaComputationWithAutoCreation.computeMeasurement(index, null);
       }
@@ -217,7 +217,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   @Override
   public void fetchAndComputeSchemaWithAutoCreate(
       List<? extends ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList) {
-    // The schemaengine cache R/W and fetch operation must be locked together thus the cache clean
+    // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeseries will be effective.
     schemaCache.takeReadLock();
     try {
@@ -258,7 +258,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       List<TSEncoding[]> encodingsList,
       List<CompressionType[]> compressionTypesList,
       List<Boolean> isAlignedList) {
-    // The schemaengine cache R/W and fetch operation must be locked together thus the cache clean
+    // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeseries will be effective.
     schemaCache.takeReadLock();
     try {
@@ -275,12 +275,12 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         }
       }
 
-      // all schemaengine can be taken from cache
+      // all schema can be taken from cache
       if (indexOfDevicesWithMissingMeasurements.isEmpty()) {
         return schemaTree;
       }
 
-      // try fetch the missing schemaengine from remote and cache fetched schemaengine
+      // try fetch the missing schema from remote and cache fetched schema
       ClusterSchemaTree remoteSchemaTree =
           clusterSchemaFetchExecutor.fetchSchemaOfMultiDevices(
               devicePathList,
@@ -295,7 +295,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         return schemaTree;
       }
 
-      // auto create the still missing schemaengine and merge them into schemaTree
+      // auto create the still missing schema and merge them into schemaTree
       List<Integer> indexOfDevicesNeedAutoCreateSchema = new ArrayList<>();
       List<List<Integer>> indexOfMeasurementsNeedAutoCreate = new ArrayList<>();
       List<Integer> indexOfMissingMeasurements;

@@ -68,7 +68,7 @@ public class LocalExecutionPlanner {
     // TODO Replace operator with operatorFactory to build multiple driver for one pipeline
     Operator root = plan.accept(new OperatorTreeGenerator(), context);
 
-    // check whether current free memory is enough to execute current read
+    // check whether current free memory is enough to execute current query
     long estimatedMemorySize = checkMemory(root, instanceContext.getStateMachine());
 
     context.addPipelineDriverFactory(root, context.getDriverContext(), estimatedMemorySize);
@@ -89,7 +89,7 @@ public class LocalExecutionPlanner {
 
     Operator root = plan.accept(new OperatorTreeGenerator(), context);
 
-    // check whether current free memory is enough to execute current read
+    // check whether current free memory is enough to execute current query
     checkMemory(root, instanceContext.getStateMachine());
 
     context.addPipelineDriverFactory(root, context.getDriverContext(), 0);

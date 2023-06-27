@@ -253,7 +253,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           (QueryStatement) new ConcatPathRewriter().rewrite(queryStatement, patternTree);
       analysis.setStatement(queryStatement);
 
-      // request schemaengine fetch API
+      // request schema fetch API
       long startTime = System.nanoTime();
       ISchemaTree schemaTree;
       try {
@@ -263,7 +263,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         } else {
           schemaTree = schemaFetcher.fetchSchema(patternTree, context);
         }
-        // If there is no leaf node in the schemaengine tree, the read should be completed
+        // If there is no leaf node in the schema tree, the query should be completed
         // immediately
         if (schemaTree.isEmpty()) {
           return finishQuery(queryStatement, analysis);
@@ -273,10 +273,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         updateSchemaTreeByViews(analysis, schemaTree);
         if (analysis.useLogicalView()) {
           if (queryStatement.isAlignByDevice()) {
-            throw new SemanticException("Views cannot be used in ALIGN BY DEVICE read yet.");
+            throw new SemanticException("Views cannot be used in ALIGN BY DEVICE query yet.");
           }
           if (queryStatement.isGroupByTag()) {
-            throw new SemanticException("Views cannot be used in GROUP BY TAGS read yet.");
+            throw new SemanticException("Views cannot be used in GROUP BY TAGS query yet.");
           }
         }
       } finally {
@@ -286,12 +286,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
       analysis.setSchemaTree(schemaTree);
 
-      // extract global time filter from read filter and determine if there is a value filter
+      // extract global time filter from query filter and determine if there is a value filter
       analyzeGlobalTimeFilter(analysis, queryStatement);
 
       if (queryStatement.isLastQuery()) {
         if (analysis.hasValueFilter()) {
-          throw new SemanticException("Only time filters are supported in LAST read");
+          throw new SemanticException("Only time filters are supported in LAST query");
         }
         analyzeOrderBy(analysis, queryStatement);
 
@@ -382,7 +382,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     } catch (StatementAnalyzeException e) {
       throw new StatementAnalyzeException(
-          "Meet error when analyzing the read statement: " + e.getMessage());
+          "Meet error when analyzing the query statement: " + e.getMessage());
     }
     return analysis;
   }
@@ -449,7 +449,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           ExpressionAnalyzer.bindSchemaForExpression(selectExpression, schemaTree)) {
         if (!(sourceExpression instanceof TimeSeriesOperand)) {
           throw new SemanticException(
-              "Views with functions and expressions cannot be used in LAST read");
+              "Views with functions and expressions cannot be used in LAST query");
         }
         sourceExpressions.add(sourceExpression);
       }
@@ -869,7 +869,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   /**
-   * This method is used to analyze GROUP BY TAGS read.
+   * This method is used to analyze GROUP BY TAGS query.
    *
    * <p>TODO: support slimit/soffset/value filter
    */
@@ -881,7 +881,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return;
     }
     if (analysis.hasValueFilter()) {
-      throw new SemanticException("Only time filters are supported in GROUP BY TAGS read");
+      throw new SemanticException("Only time filters are supported in GROUP BY TAGS query");
     }
 
     List<String> tagKeys = queryStatement.getGroupByTagComponent().getTagKeys();
@@ -1305,7 +1305,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setRespDatasetHeader(new DatasetHeader(columnHeaders, isIgnoreTimestamp));
   }
 
-  // For last read
+  // For last query
   private void analyzeOrderBy(Analysis analysis, QueryStatement queryStatement) {
     if (!queryStatement.hasOrderBy()) return;
 
@@ -1319,7 +1319,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       if (!lastQueryColumnNames.contains(sortKey.toUpperCase())) {
         throw new SemanticException(
             String.format(
-                "%s in order by clause doesn't exist in the result of last read.", sortKey));
+                "%s in order by clause doesn't exist in the result of last query.", sortKey));
       }
     }
   }
@@ -1611,7 +1611,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (!queryStatement.isCqQueryBody()
         && (groupByTimeComponent.getStartTime() == 0 && groupByTimeComponent.getEndTime() == 0)) {
       throw new SemanticException(
-          "The read time range should be specified in the GROUP BY TIME clause.");
+          "The query time range should be specified in the GROUP BY TIME clause.");
     }
     analysis.setGroupByTimeParameter(new GroupByTimeParameter(groupByTimeComponent));
   }
@@ -1813,7 +1813,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
     deviceViewIntoPathDescriptor.validate();
 
-    // fetch schemaengine of target paths
+    // fetch schema of target paths
     long startTime = System.nanoTime();
     ISchemaTree targetSchemaTree = schemaFetcher.fetchSchema(targetPathTree, null);
     QueryPlanCostMetricSet.getInstance()
@@ -1867,7 +1867,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
     intoPathDescriptor.validate();
 
-    // fetch schemaengine of target paths
+    // fetch schema of target paths
     long startTime = System.nanoTime();
     ISchemaTree targetSchemaTree = schemaFetcher.fetchSchema(targetPathTree, null);
     updateSchemaTreeByViews(analysis, targetSchemaTree);
@@ -2392,7 +2392,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     autoCreateAndVerifySchema(loadTsFileStatement, device2Schemas, device2IsAligned);
 
-    // load function will read data partition in scheduler
+    // load function will query data partition in scheduler
     Analysis analysis = new Analysis();
     analysis.setStatement(loadTsFileStatement);
     return analysis;
@@ -2416,16 +2416,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       ISchemaTree schemaTree =
           autoCreateSchema(
               device2Schemas,
-              device2IsAligned); // schemaengine fetcher will not auto create if config set
+              device2IsAligned); // schema fetcher will not auto create if config set
       // isAutoCreateSchemaEnabled is false.
       if (loadTsFileStatement.isVerifySchema()) {
         verifySchema(schemaTree, device2Schemas, device2IsAligned);
       }
     } catch (Exception e) {
-      logger.warn("Auto create or verify schemaengine error.", e);
+      logger.warn("Auto create or verify schema error.", e);
       throw new SemanticException(
           String.format(
-              "Auto create or verify schemaengine error when executing statement %s.",
+              "Auto create or verify schema error when executing statement %s.",
               loadTsFileStatement));
     } finally {
       device2Schemas.clear();
@@ -2462,7 +2462,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       if (IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
           || statement.isVerifySchema()) {
-        // construct schemaengine
+        // construct schema
         for (Map.Entry<String, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
           String device = entry.getKey();
           List<TimeseriesMetadata> timeseriesMetadataList = entry.getValue();
@@ -2706,7 +2706,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     if (showTimeSeriesStatement.isOrderByHeat()) {
       patternTree.constructTree();
-      // request schemaengine fetch API
+      // request schema fetch API
       logger.debug("[StartFetchSchema]");
       ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, context);
       updateSchemaTreeByViews(analysis, schemaTree);
@@ -3280,7 +3280,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   // region view
 
   /**
-   * Compute how many paths exist, get the schemaengine tree and the number of existed paths.
+   * Compute how many paths exist, get the schema tree and the number of existed paths.
    *
    * @return a pair of ISchemaTree, and the number of exist paths.
    */
@@ -3288,7 +3288,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       List<PartialPath> pathList, Analysis analysis, MPPQueryContext context) {
     ISchemaTree schemaTree = analysis.getSchemaTree();
     if (schemaTree == null) {
-      // source is not represented by read, thus has not done fetch schemaengine.
+      // source is not represented by query, thus has not done fetch schema.
       PathPatternTree pathPatternTree = new PathPatternTree();
       for (PartialPath path : pathList) {
         pathPatternTree.appendPathPattern(path);
@@ -3307,9 +3307,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   /**
    * @param pathList the paths you want to check
-   * @param schemaTree the given schemaengine tree
-   * @return if all paths you give can be found in schemaengine tree, return a pair of view paths
-   *     and null; else return view paths and the non-exist path.
+   * @param schemaTree the given schema tree
+   * @return if all paths you give can be found in schema tree, return a pair of view paths and
+   *     null; else return view paths and the non-exist path.
    */
   private Pair<List<PartialPath>, PartialPath> findAllViewsInPaths(
       List<PartialPath> pathList, ISchemaTree schemaTree) {
@@ -3345,7 +3345,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
-              "Columns in the read statement is empty. Please check your SQL."));
+              "Columns in the query statement is empty. Please check your SQL."));
       return new Pair<>(null, analysis);
     }
     if (queryAnalysis.useLogicalView()) {
@@ -3353,7 +3353,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       analysis.setFailStatus(
           RpcUtils.getStatus(
               TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode(),
-              "Can not create a view based on existing views. Check the read in your SQL."));
+              "Can not create a view based on existing views. Check the query in your SQL."));
       return new Pair<>(null, analysis);
     }
     List<Expression> expressionList = new ArrayList<>();
@@ -3374,7 +3374,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Pair<ISchemaTree, Integer> schemaOfNeedToCheck =
         fetchSchemaOfPathsAndCount(pathsNeedCheck, analysis, context);
     if (schemaOfNeedToCheck.right != pathsNeedCheck.size()) {
-      // some source paths is not exist, and could not fetch schemaengine.
+      // some source paths is not exist, and could not fetch schema.
       analysis.setFinishQueryAfterAnalyze(true);
       analysis.setFailStatus(
           RpcUtils.getStatus(
@@ -3465,7 +3465,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setStatement(createLogicalViewStatement);
 
     if (createLogicalViewStatement.getViewExpression() == null) {
-      // analyze read in statement
+      // analyze query in statement
       QueryStatement queryStatement = createLogicalViewStatement.getQueryStatement();
       if (queryStatement != null) {
         Pair<List<Expression>, Analysis> queryAnalysisPair =
@@ -3500,7 +3500,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return analysis;
     }
 
-    // set schemaengine partition info, this info will be used to split logical plan node.
+    // set schema partition info, this info will be used to split logical plan node.
     PathPatternTree patternTree = new PathPatternTree();
     for (PartialPath thisFullPath : createLogicalViewStatement.getTargetPathList()) {
       patternTree.appendFullPath(thisFullPath);

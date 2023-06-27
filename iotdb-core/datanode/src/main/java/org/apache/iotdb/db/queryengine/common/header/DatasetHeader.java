@@ -31,7 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-/** The header of read result dataset. */
+/** The header of query result dataset. */
 public class DatasetHeader {
 
   public static final DatasetHeader EMPTY_HEADER = new DatasetHeader(new ArrayList<>(), false);

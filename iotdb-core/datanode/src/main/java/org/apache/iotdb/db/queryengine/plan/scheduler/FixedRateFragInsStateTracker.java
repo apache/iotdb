@@ -131,7 +131,7 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
         }
       } catch (ClientManagerException | TException e) {
         // TODO: do nothing ?
-        logger.warn("error happened while fetching read state", e);
+        logger.warn("error happened while fetching query state", e);
       }
     }
   }
