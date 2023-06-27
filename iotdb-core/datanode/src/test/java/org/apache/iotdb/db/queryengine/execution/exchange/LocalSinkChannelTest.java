@@ -43,7 +43,7 @@ public class LocalSinkChannelTest {
     final String remotePlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
 
-    // Construct a mock LocalMemoryManager with capacity 5 * mockTsBlockSize per read.
+    // Construct a mock LocalMemoryManager with capacity 5 * mockTsBlockSize per query.
     LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
     MemoryPool spyMemoryPool =
         Mockito.spy(new MemoryPool("test", 10 * mockTsBlockSize, 5 * mockTsBlockSize));

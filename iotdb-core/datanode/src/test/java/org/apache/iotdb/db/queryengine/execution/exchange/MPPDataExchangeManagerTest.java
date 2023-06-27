@@ -53,7 +53,7 @@ public class MPPDataExchangeManagerTest {
     final FragmentInstanceContext mockFragmentInstanceContext =
         Mockito.mock(FragmentInstanceContext.class);
 
-    // Construct a mock LocalMemoryManager with capacity 5 * mockTsBlockSize per read.
+    // Construct a mock LocalMemoryManager with capacity 5 * mockTsBlockSize per query.
     LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
     MemoryPool spyMemoryPool = Mockito.spy(new MemoryPool("test", 10240L, 5120L));
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(spyMemoryPool);
@@ -109,7 +109,7 @@ public class MPPDataExchangeManagerTest {
     final FragmentInstanceContext mockFragmentInstanceContext =
         Mockito.mock(FragmentInstanceContext.class);
 
-    // Construct a mock LocalMemoryManager with capacity 5 * mockTsBlockSize per read.
+    // Construct a mock LocalMemoryManager with capacity 5 * mockTsBlockSize per query.
     LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
     MemoryPool spyMemoryPool = Mockito.spy(new MemoryPool("test", 10240L, 5120L));
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(spyMemoryPool);
