@@ -37,6 +37,7 @@ import java.util.List;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.cartesianProduct;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructFunctionExpressions;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperands;
+import static org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForExpressionVisitor.transformViewPath;
 
 public class ConcatDeviceAndBindSchemaForPredicateVisitor
     extends CartesianProductVisitor<ConcatDeviceAndBindSchemaForPredicateVisitor.Context> {
