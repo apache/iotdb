@@ -29,20 +29,21 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeHardlinkFileDirStartupCleaner {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeHardlinkFileDirStartupCleaner.class);
 
-  private static boolean isCleaned = false;
+  private static final AtomicBoolean isCleaned = new AtomicBoolean(false);
 
   /**
    * Delete the data directory and all of its subdirectories that contain the
    * PipeConfig.PIPE_TSFILE_DIR_NAME directory.
    */
   public static void clean() {
-    isCleaned = false;
+    isCleaned.set(false);
     CompletableFuture.runAsync(PipeHardlinkFileDirStartupCleaner::doClean);
   }
 
@@ -71,11 +72,11 @@ public class PipeHardlinkFileDirStartupCleaner {
         "PipeHardlinkFileDirStartupCleaner finished, total cost: {}ms",
         System.currentTimeMillis() - totalStartTs);
 
-    isCleaned = true;
+    isCleaned.set(true);
   }
 
   public static boolean isHardlinkCleaned() {
-    return isCleaned;
+    return isCleaned.get();
   }
 
   private PipeHardlinkFileDirStartupCleaner() {
