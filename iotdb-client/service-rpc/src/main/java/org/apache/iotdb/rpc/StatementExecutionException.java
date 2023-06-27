@@ -23,7 +23,6 @@ import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxTSStatus;
 
 public class StatementExecutionException extends Exception {
 
-  @SuppressWarnings("squid:S1165")
   private int statusCode;
 
   public StatementExecutionException(TSStatus status) {

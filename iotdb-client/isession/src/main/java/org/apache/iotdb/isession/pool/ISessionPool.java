@@ -37,7 +37,6 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
-@SuppressWarnings("squid:S1133")
 public interface ISessionPool {
 
   int currentAvailableSize();
@@ -296,7 +295,7 @@ public interface ISessionPool {
       String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor)
       throws IoTDBConnectionException, StatementExecutionException;
 
-  @SuppressWarnings("squid:S107")
+  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
   void createTimeseries(
       String path,
       TSDataType dataType,
@@ -308,7 +307,7 @@ public interface ISessionPool {
       String measurementAlias)
       throws IoTDBConnectionException, StatementExecutionException;
 
-  @SuppressWarnings("squid:S107")
+  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
   void createAlignedTimeseries(
       String deviceId,
       List<String> measurements,
@@ -320,7 +319,7 @@ public interface ISessionPool {
 
   /** @deprecated */
   @Deprecated
-  @SuppressWarnings("squid:S107")
+  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
   void createAlignedTimeseries(
       String deviceId,
       List<String> measurements,
@@ -332,7 +331,7 @@ public interface ISessionPool {
       List<Map<String, String>> attributesList)
       throws IoTDBConnectionException, StatementExecutionException;
 
-  @SuppressWarnings("squid:S107")
+  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
   void createMultiTimeseries(
       List<String> paths,
       List<TSDataType> dataTypes,

@@ -91,8 +91,8 @@ public class IoTDBPreparedStatementTest {
     assertTrue(ps.execute());
   }
 
-  @SuppressWarnings({"resource", "squid:S5777"})
-  @Test(expected = SQLException.class)
+  @SuppressWarnings("resource")
+  @Test
   public void unsetArgument() throws SQLException {
     String sql =
         "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > ?";
@@ -118,7 +118,7 @@ public class IoTDBPreparedStatementTest {
         argument.getValue().getStatement());
   }
 
-  @SuppressWarnings({"resource", "squid:S5976"})
+  @SuppressWarnings("resource")
   @Test
   public void oneLongArgument() throws Exception {
     String sql =
@@ -186,7 +186,7 @@ public class IoTDBPreparedStatementTest {
         argument.getValue().getStatement());
   }
 
-  @SuppressWarnings({"resource", "squid:S5976"})
+  @SuppressWarnings("resource")
   @Test
   public void oneStringArgument1() throws Exception {
     String sql =

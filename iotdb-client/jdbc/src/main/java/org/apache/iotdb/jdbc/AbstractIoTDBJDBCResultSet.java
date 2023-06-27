@@ -63,12 +63,10 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
   protected IoTDBTracingInfo ioTDBRpcTracingInfo;
   private boolean isRpcFetchResult = true;
   private List<String> sgColumns;
-
-  @SuppressWarnings("squid:S1068")
   private BitSet aliasColumnMap;
 
-  @SuppressWarnings("squid:S107")
-  protected AbstractIoTDBJDBCResultSet(
+  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
+  public AbstractIoTDBJDBCResultSet(
       Statement statement,
       List<String> columnNameList,
       List<String> columnTypeList,
@@ -103,7 +101,7 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
     this.aliasColumnMap = aliasColumnMap;
   }
 
-  @SuppressWarnings("squid:S107")
+  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
   protected AbstractIoTDBJDBCResultSet(
       Statement statement,
       List<String> columnNameList,

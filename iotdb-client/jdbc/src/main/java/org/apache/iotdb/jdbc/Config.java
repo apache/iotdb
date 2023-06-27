@@ -53,7 +53,6 @@ public class Config {
 
   public static final String JDBC_DRIVER_NAME = "org.apache.iotdb.jdbc.IoTDBDriver";
 
-  @SuppressWarnings({"squid:S1104", "squid:S1444"})
   public static boolean rpcThriftCompressionEnable = false;
 
   /** key of thrift default buffer size */

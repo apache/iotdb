@@ -68,7 +68,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
   private List<String> columns = null;
   private List<String> sgColumns = null;
 
-  @SuppressWarnings("squid:S107")
+  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
   public IoTDBJDBCResultSet(
       Statement statement,
       List<String> columnNameList,
@@ -116,7 +116,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
     this.sgColumns = sgColumns;
   }
 
-  @SuppressWarnings("squid:S107")
+  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
   public IoTDBJDBCResultSet(
       Statement statement,
       List<String> columnNameList,

@@ -173,7 +173,7 @@ public class SessionConnection {
     }
   }
 
-  @SuppressWarnings({"squid:S1751"})
+  @SuppressWarnings({"squid:S1751"}) // Loops with at most one iteration should be refactored
   private void initClusterConn() throws IoTDBConnectionException {
     for (TEndPoint tEndPoint : endPointList) {
       try {
@@ -887,7 +887,9 @@ public class SessionConnection {
     }
   }
 
-  @SuppressWarnings({"squid:S3776", "squid:S135", "squid:S127"})
+  @SuppressWarnings({
+    "squid:S3776"
+  }) // ignore Cognitive Complexity of methods should not be too high
   private boolean reconnect() {
     boolean connectedSuccess = false;
     SecureRandom random = new SecureRandom();

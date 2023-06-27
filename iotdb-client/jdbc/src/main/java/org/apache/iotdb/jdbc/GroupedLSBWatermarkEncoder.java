@@ -46,7 +46,7 @@ public class GroupedLSBWatermarkEncoder implements WatermarkEncoder {
     this.maxBitPosition = minBitPosition;
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S4790"})
+  @SuppressWarnings("squid:S4790") // ignore Using weak hashing algorithms is security-sensitive
   public static int hashMod(String val, Integer base) {
     MessageDigest md;
     try {
@@ -67,7 +67,6 @@ public class GroupedLSBWatermarkEncoder implements WatermarkEncoder {
     return hashMod(String.format("%d%s", timestamp, secretKey), groupNumber);
   }
 
-  @SuppressWarnings("squid:S112")
   private int getBitPosition(long timestamp) {
     if (maxBitPosition <= minBitPosition) {
       throw new RuntimeException("Error: minBitPosition is bigger than maxBitPosition");

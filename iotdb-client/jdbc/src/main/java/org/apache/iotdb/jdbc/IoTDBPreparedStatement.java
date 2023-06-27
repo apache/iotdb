@@ -399,7 +399,11 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
     }
   }
 
-  @SuppressWarnings({"squid:S3776", "squid:S6541", "squid:S6397", "squid:S5852"})
+  @SuppressWarnings({
+    "squid:S3776",
+    "squid:S6541"
+  }) // ignore Cognitive Complexity of methods should not be too high
+  // ignore Methods should not perform too many tasks (aka Brain method)
   @Override
   public void setObject(int parameterIndex, Object parameterObj, int targetSqlType, int scale)
       throws SQLException {
@@ -422,7 +426,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
               } else if (java.util.regex.Pattern.compile("-?\\d+\\.?\\d*")
                   .matcher((String) parameterObj)
                   .matches()) {
-                setBoolean(parameterIndex, !((String) parameterObj).matches("-?[0]+[.]*[0]*"));
+                setBoolean(parameterIndex, !((String) parameterObj).matches("-?0+[.]*0*"));
               } else {
                 throw new SQLException(
                     "No conversion from " + parameterObj + " to Types.BOOLEAN possible.");
@@ -544,7 +548,11 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
     }
   }
 
-  @SuppressWarnings({"squid:S3776", "squid:S6541", "squid:S112"})
+  @SuppressWarnings({
+    "squid:S3776",
+    "squid:S6541"
+  }) // ignore Cognitive Complexity of methods should not be too high
+  // ignore Methods should not perform too many tasks (aka Brain method)
   private final String getDateTimePattern(String dt, boolean toTime) throws Exception {
     //
     // Special case
@@ -702,7 +710,8 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
     return format.toString();
   }
 
-  @SuppressWarnings({"squid:S3776", "squid:S3358"})
+  @SuppressWarnings({"squid:S3776", "squid:S3358"}) // ignore Ternary operators should not be nested
+  // ignore Cognitive Complexity of methods should not be too high
   private final char getSuccessor(char c, int n) {
     return ((c == 'y') && (n == 2))
         ? 'X'
@@ -733,7 +742,11 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
                                                         : 'W'))))))))))));
   }
 
-  @SuppressWarnings({"squid:S3776", "squid:S1874", "squid:S6541"})
+  @SuppressWarnings({
+    "squid:S3776",
+    "squid:S6541"
+  }) // ignore Cognitive Complexity of methods should not be too high
+  // ignore Methods should not perform too many tasks (aka Brain method)
   private void setNumericObject(
       int parameterIndex, Object parameterObj, int targetSqlType, int scale) throws SQLException {
     Number parameterAsNum;

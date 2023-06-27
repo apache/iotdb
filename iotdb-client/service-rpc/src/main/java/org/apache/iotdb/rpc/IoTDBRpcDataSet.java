@@ -40,7 +40,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-@SuppressWarnings("squid:S1104")
 public class IoTDBRpcDataSet {
 
   public static final String TIMESTAMP_STR = "Time";
@@ -162,7 +161,10 @@ public class IoTDBRpcDataSet {
     return index.getAndIncrement();
   }
 
-  @SuppressWarnings({"squid:S3776", "squid:S107"})
+  @SuppressWarnings({
+    "squid:S3776",
+    "squid:S107"
+  }) // ignore Cognitive Complexity of methods should not be too high
   public IoTDBRpcDataSet(
       String sql,
       List<String> columnNameList,

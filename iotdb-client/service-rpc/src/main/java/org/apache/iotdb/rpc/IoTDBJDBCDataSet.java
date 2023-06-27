@@ -42,12 +42,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-@SuppressWarnings("squid:S1104")
 public class IoTDBJDBCDataSet {
 
   public static final String TIMESTAMP_STR = "Time";
   public static final String VALUE_IS_NULL = "The value got by %s (column name) is NULL.";
-
   public static final String DATA_TYPE_NOT_SUPPORTED = "Data type %s is not supported.";
   public static final int START_INDEX = 2;
   public String sql;
@@ -81,7 +79,11 @@ public class IoTDBJDBCDataSet {
   public static final int FLAG =
       0x80; // used to do `and` operation with bitmap to judge whether the value is null
 
-  @SuppressWarnings({"squid:S3776", "squid:S107"}) // Suppress high Cognitive Complexity warning
+  @SuppressWarnings({
+    "squid:S3776",
+    "squid:S107"
+  }) // ignore Suppress high Cognitive Complexity warning
+  // ignore Methods should not have too many parameters
   public IoTDBJDBCDataSet(
       String sql,
       List<String> columnNameList,
@@ -183,7 +185,11 @@ public class IoTDBJDBCDataSet {
     this.emptyResultSet = (queryDataSet == null || !queryDataSet.time.hasRemaining());
   }
 
-  @SuppressWarnings({"squid:S3776", "squid:S107"})
+  @SuppressWarnings({
+    "squid:S3776",
+    "squid:S107"
+  }) // ignore Methods should not have too many parameters
+  // ignore Cognitive Complexity of methods should not be too high
   public IoTDBJDBCDataSet(
       String sql,
       List<String> columnNameList,

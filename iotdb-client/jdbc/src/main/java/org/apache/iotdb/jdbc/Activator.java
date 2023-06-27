@@ -28,8 +28,6 @@ public class Activator implements BundleActivator {
   @Override
   public void start(BundleContext context) {
     IoTDBDataSourceFactory dsf = new IoTDBDataSourceFactory();
-
-    @SuppressWarnings("squid:S1149")
     Dictionary<String, String> props = new Hashtable<>();
     props.put(DataSourceFactory.OSGI_JDBC_DRIVER_CLASS, IoTDBDriver.class.getName());
     props.put(DataSourceFactory.OSGI_JDBC_DRIVER_NAME, "iotdb");

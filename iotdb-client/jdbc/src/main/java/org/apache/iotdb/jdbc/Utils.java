@@ -27,7 +27,10 @@ import java.util.regex.Pattern;
 /** Utils to convert between thrift format and TsFile format. */
 public class Utils {
 
-  @SuppressWarnings({"squid:S5843", "squid:S5998", "squid:S6353"})
+  @SuppressWarnings({
+    "squid:S5843",
+    "squid:S5998"
+  }) // Regular expressions should not be too complicated
   static final Pattern URL_PATTERN = Pattern.compile("([^:]+):([0-9]{1,5})(/|\\?.*=.*(&.*=.*)*)?");
 
   static final String RPC_COMPRESS = "rpc_compress";

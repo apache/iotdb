@@ -47,7 +47,7 @@ public class IoTDBTracingInfo {
     return tsTracingInfo.getElapsedTimeList();
   }
 
-  @SuppressWarnings("squid:S112")
+  @SuppressWarnings("squid:S112") // Generic exceptions should never be throw
   public long getStatisticsByName(String name) throws Exception {
     switch (name) {
       case "seriesPathNum":
@@ -73,7 +73,7 @@ public class IoTDBTracingInfo {
     }
   }
 
-  @SuppressWarnings("squid:S112")
+  @SuppressWarnings("squid:S112") // Generic exceptions should never be throw
   public String getStatisticsInfoByName(String name) throws Exception {
     switch (name) {
       case "seriesPathNum":

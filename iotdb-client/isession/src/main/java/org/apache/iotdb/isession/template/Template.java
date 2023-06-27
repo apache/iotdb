@@ -87,7 +87,7 @@ public class Template {
   }
 
   /** Serialize: templateName[string] isShareTime[boolean] */
-  @SuppressWarnings("squid:S3776")
+  @SuppressWarnings("squid:S3776") // ignore Cognitive Complexity of methods should not be too high
   public void serialize(OutputStream baos) throws IOException {
     Deque<Pair<String, TemplateNode>> stack = new ArrayDeque<>();
     Set<String> alignedPrefix = new HashSet<>();

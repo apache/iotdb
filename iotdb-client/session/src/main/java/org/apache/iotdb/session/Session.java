@@ -135,10 +135,10 @@ public class Session implements ISession {
   // Cluster version cache
   protected boolean enableRedirection;
 
-  @SuppressWarnings("squid:S3077")
+  @SuppressWarnings("squid:S3077") // Non-primitive fields should not be "volatile"
   protected volatile Map<String, TEndPoint> deviceIdToEndpoint;
 
-  @SuppressWarnings("squid:S3077")
+  @SuppressWarnings("squid:S3077") // Non-primitive fields should not be "volatile"
   protected volatile Map<TEndPoint, SessionConnection> endPointToSessionConnection;
 
   protected boolean enableQueryRedirection = false;
@@ -1006,7 +1006,6 @@ public class Session implements ISession {
     insertRecord(deviceId, request);
   }
 
-  @SuppressWarnings({"squid:S108"})
   private void insertRecord(String prefixPath, TSInsertRecordReq request)
       throws IoTDBConnectionException, StatementExecutionException {
     try {
@@ -1024,6 +1023,7 @@ public class Session implements ISession {
         try {
           defaultSessionConnection.insertRecord(request);
         } catch (RedirectException ignored) {
+          logger.warn("session insertRecord fail:{}", ignored.getMessage());
         }
       } else {
         throw e;
@@ -1031,7 +1031,6 @@ public class Session implements ISession {
     }
   }
 
-  @SuppressWarnings({"squid:S108"})
   private void insertRecord(String deviceId, TSInsertStringRecordReq request)
       throws IoTDBConnectionException, StatementExecutionException {
     try {
@@ -1049,6 +1048,7 @@ public class Session implements ISession {
         try {
           defaultSessionConnection.insertRecord(request);
         } catch (RedirectException ignored) {
+          logger.warn("session insertRecord fail:{}", ignored.getMessage());
         }
       } else {
         throw e;
@@ -1327,7 +1327,6 @@ public class Session implements ISession {
    *
    * @see Session#insertTablet(Tablet)
    */
-  @SuppressWarnings({"squid:S108"})
   @Override
   public void insertRecords(
       List<String> deviceIds,
@@ -1355,6 +1354,7 @@ public class Session implements ISession {
       try {
         defaultSessionConnection.insertRecords(request);
       } catch (RedirectException ignored) {
+        logger.warn("session insertRecords fail:{}", ignored.getMessage());
       }
     }
   }
@@ -1543,7 +1543,6 @@ public class Session implements ISession {
     return false;
   }
 
-  @SuppressWarnings({"squid:S135", "squid:S3740"})
   private boolean hasNull(List valuesList) {
     boolean haveNull = false;
     for (int i1 = 0; i1 < valuesList.size(); i1++) {
@@ -1574,7 +1573,6 @@ public class Session implements ISession {
    *
    * @see Session#insertTablet(Tablet)
    */
-  @SuppressWarnings({"squid:S108"})
   @Override
   public void insertAlignedRecords(
       List<String> deviceIds,
@@ -1603,6 +1601,7 @@ public class Session implements ISession {
       try {
         defaultSessionConnection.insertRecords(request);
       } catch (RedirectException ignored) {
+        logger.warn("session insertRecords fail:{}", ignored.getMessage());
       }
     }
   }
@@ -1746,7 +1745,6 @@ public class Session implements ISession {
    *
    * @see Session#insertTablet(Tablet)
    */
-  @SuppressWarnings({"squid:S108"})
   @Override
   public void insertRecords(
       List<String> deviceIds,
@@ -1776,6 +1774,7 @@ public class Session implements ISession {
       try {
         defaultSessionConnection.insertRecords(request);
       } catch (RedirectException ignored) {
+        logger.warn("session insertRecords fail:{}", ignored.getMessage());
       }
     }
   }
@@ -1790,7 +1789,6 @@ public class Session implements ISession {
    *
    * @see Session#insertTablet(Tablet)
    */
-  @SuppressWarnings({"squid:S108"})
   @Override
   public void insertAlignedRecords(
       List<String> deviceIds,
@@ -1819,6 +1817,7 @@ public class Session implements ISession {
       try {
         defaultSessionConnection.insertRecords(request);
       } catch (RedirectException ignored) {
+        logger.warn("session insertRecords fail:{}", ignored.getMessage());
       }
     }
   }
@@ -1853,7 +1852,6 @@ public class Session implements ISession {
    * @param haveSorted deprecated, whether the times have been sorted
    * @see Session#insertTablet(Tablet)
    */
-  @SuppressWarnings({"squid:S108"})
   @Override
   public void insertRecordsOfOneDevice(
       String deviceId,
@@ -1891,6 +1889,7 @@ public class Session implements ISession {
         try {
           defaultSessionConnection.insertRecordsOfOneDevice(request);
         } catch (RedirectException ignored) {
+          logger.warn("session insertRecordsOfOneDevice fail:{}", ignored.getMessage());
         }
       } else {
         throw e;
@@ -1908,7 +1907,6 @@ public class Session implements ISession {
    *
    * @param haveSorted deprecated, whether the times have been sorted
    */
-  @SuppressWarnings({"squid:S108"})
   @Override
   public void insertStringRecordsOfOneDevice(
       String deviceId,
@@ -1945,6 +1943,7 @@ public class Session implements ISession {
         try {
           defaultSessionConnection.insertStringRecordsOfOneDevice(req);
         } catch (RedirectException ignored) {
+          logger.warn("session insertStringRecordsOfOneDevice fail:{}", ignored.getMessage());
         }
       } else {
         throw e;
@@ -2001,7 +2000,6 @@ public class Session implements ISession {
    * @param haveSorted deprecated, whether the times have been sorted
    * @see Session#insertTablet(Tablet)
    */
-  @SuppressWarnings({"squid:S108"})
   @Override
   public void insertAlignedRecordsOfOneDevice(
       String deviceId,
@@ -2040,6 +2038,7 @@ public class Session implements ISession {
         try {
           defaultSessionConnection.insertRecordsOfOneDevice(request);
         } catch (RedirectException ignored) {
+          logger.warn("session insertRecordsOfOneDevice fail:{}", ignored.getMessage());
         }
       } else {
         throw e;
@@ -2057,7 +2056,6 @@ public class Session implements ISession {
    *
    * @param haveSorted deprecated, whether the times have been sorted
    */
-  @SuppressWarnings({"squid:S108"})
   @Override
   public void insertAlignedStringRecordsOfOneDevice(
       String deviceId,
@@ -2094,6 +2092,7 @@ public class Session implements ISession {
         try {
           defaultSessionConnection.insertStringRecordsOfOneDevice(req);
         } catch (RedirectException ignored) {
+          logger.warn("session insertStringRecordsOfOneDevice fail:{}", ignored.getMessage());
         }
       } else {
         throw e;
@@ -2142,7 +2141,6 @@ public class Session implements ISession {
         prefixPath, times, measurementsList, typesList, valuesList, haveSorted, isAligned);
   }
 
-  @SuppressWarnings({"squid=S1172"})
   private TSInsertRecordsOfOneDeviceReq genTSInsertRecordsOfOneDeviceReq(
       String prefixPath,
       List<Long> times,
@@ -2202,7 +2200,6 @@ public class Session implements ISession {
         prefixPath, times, measurementsList, valuesList, haveSorted, isAligned);
   }
 
-  @SuppressWarnings({"squid=S1172"})
   private TSInsertStringRecordsOfOneDeviceReq genTSInsertStringRecordsOfOneDeviceReq(
       String prefixPath,
       List<Long> times,
@@ -2391,7 +2388,6 @@ public class Session implements ISession {
    * @param tablet data batch
    * @param sorted deprecated, whether times in Tablet are in ascending order
    */
-  @SuppressWarnings({"squid:S108"})
   @Override
   public void insertTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -2411,6 +2407,7 @@ public class Session implements ISession {
         try {
           defaultSessionConnection.insertTablet(request);
         } catch (RedirectException ignored) {
+          logger.warn("session insertTablet fail:{}", ignored.getMessage());
         }
       } else {
         throw e;
@@ -2440,7 +2437,6 @@ public class Session implements ISession {
    * @param tablet data batch
    * @param sorted deprecated, whether times in Tablet are in ascending order
    */
-  @SuppressWarnings({"squid:S108"})
   @Override
   public void insertAlignedTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -2460,6 +2456,7 @@ public class Session implements ISession {
         try {
           defaultSessionConnection.insertTablet(request);
         } catch (RedirectException ignored) {
+          logger.warn("session insertTablet fail:{}", ignored.getMessage());
         }
       } else {
         throw e;
@@ -2467,7 +2464,6 @@ public class Session implements ISession {
     }
   }
 
-  @SuppressWarnings({"squid:S1172"})
   private TSInsertTabletReq genTSInsertTabletReq(Tablet tablet, boolean sorted, boolean isAligned) {
     if (!checkSorted(tablet)) {
       sortTablet(tablet);
@@ -2509,7 +2505,6 @@ public class Session implements ISession {
    * @param tablets data batch in multiple device
    * @param sorted deprecated, whether times in each Tablet are in ascending order
    */
-  @SuppressWarnings({"squid:S108"})
   @Override
   public void insertTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -2521,6 +2516,7 @@ public class Session implements ISession {
       try {
         defaultSessionConnection.insertTablets(request);
       } catch (RedirectException ignored) {
+        logger.warn("session insertTablets fail:{}", ignored.getMessage());
       }
     }
   }
@@ -2546,7 +2542,6 @@ public class Session implements ISession {
    * @param tablets data batch in multiple device
    * @param sorted deprecated, whether times in each Tablet are in ascending order
    */
-  @SuppressWarnings({"squid:S108"})
   @Override
   public void insertAlignedTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -2558,6 +2553,7 @@ public class Session implements ISession {
       try {
         defaultSessionConnection.insertTablets(request);
       } catch (RedirectException ignored) {
+        logger.warn("session insertTablets fail:{}", ignored.getMessage());
       }
     }
   }
@@ -2588,7 +2584,6 @@ public class Session implements ISession {
     return request;
   }
 
-  @SuppressWarnings({"squid=S1172"})
   private void updateTSInsertTabletsReq(
       TSInsertTabletsReq request, Tablet tablet, boolean sorted, boolean isAligned) {
     if (!checkSorted(tablet)) {
@@ -2832,7 +2827,9 @@ public class Session implements ISession {
     return true;
   }
 
-  @SuppressWarnings({"squid:S3776"})
+  @SuppressWarnings({
+    "squid:S3776"
+  }) // ignore Cognitive Complexity of methods should not be too high
   public void sortTablet(Tablet tablet) {
     /*
      * following part of code sort the batch data by time,
@@ -3035,7 +3032,6 @@ public class Session implements ISession {
    */
   @Override
   @Deprecated
-  @SuppressWarnings({"squid:S1133"})
   public void createSchemaTemplate(
       String name,
       List<String> schemaNames,
@@ -3325,7 +3321,9 @@ public class Session implements ISession {
    * @throws IoTDBConnectionException
    * @throws StatementExecutionException
    */
-  @SuppressWarnings({"squid:S3776"})
+  @SuppressWarnings({
+    "squid:S3776"
+  }) // ignore Cognitive Complexity of methods should not be too high
   private <T> void insertByGroup(
       Map<SessionConnection, T> recordsGroup, InsertConsumer<T> insertConsumer)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -3420,8 +3418,6 @@ public class Session implements ISession {
     private int thriftMaxFrameSize = SessionConfig.DEFAULT_MAX_FRAME_SIZE;
     private boolean enableRedirection = SessionConfig.DEFAULT_REDIRECTION_MODE;
     private Version version = SessionConfig.DEFAULT_VERSION;
-
-    @SuppressWarnings({"squid:S1068"})
     private long timeOut = SessionConfig.DEFAULT_QUERY_TIME_OUT;
 
     private List<String> nodeUrls = null;

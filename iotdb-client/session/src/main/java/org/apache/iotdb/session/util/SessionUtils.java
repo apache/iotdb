@@ -165,7 +165,11 @@ public class SessionUtils {
     buffer.flip();
   }
 
-  @SuppressWarnings({"squid:S6541", "squid:S3776"})
+  @SuppressWarnings({
+    "squid:S6541",
+    "squid:S3776"
+  }) /// ignore Cognitive Complexity of methods should not be too high
+  // ignore Methods should not perform too many tasks (aka Brain method)
   private static void getValueBufferOfDataType(
       TSDataType dataType, Tablet tablet, int i, ByteBuffer valueBuffer) {
 

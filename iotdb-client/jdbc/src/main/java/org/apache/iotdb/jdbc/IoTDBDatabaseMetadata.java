@@ -51,7 +51,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-@SuppressWarnings({"squid:S3740", "squid:S2095", "squid:S4144"})
 public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   private IoTDBConnection connection;
@@ -767,7 +766,6 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false);
   }
 
-  @SuppressWarnings({"squid:"})
   public static ByteBuffer convertTsBlock(
       List<List<Object>> valuesList, List<TSDataType> tsDataTypeList) throws IOException {
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(tsDataTypeList);
@@ -863,7 +861,11 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false);
   }
 
-  @SuppressWarnings({"squid:S6541", "squid:S3776"})
+  @SuppressWarnings({
+    "squid:S6541",
+    "squid:S3776"
+  }) // ignore Cognitive Complexity of methods should not be too high
+  // ignore Methods should not perform too many tasks (aka Brain method)
   @Override
   public ResultSet getColumnPrivileges(
       String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern)
@@ -1066,7 +1068,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public String getDatabaseProductVersion() {
-    return DATABASE_VERSION;
+    return getDriverVersion();
   }
 
   @Override
@@ -1993,7 +1995,11 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     return result;
   }
 
-  @SuppressWarnings({"squid:S6541", "squid:S3776"})
+  @SuppressWarnings({
+    "squid:S6541",
+    "squid:S3776"
+  }) // ignore Cognitive Complexity of methods should not be too high
+  //  // ignore Methods should not perform too many tasks (aka Brain method)
   @Override
   public ResultSet getTablePrivileges(String catalog, String schemaPattern, String tableNamePattern)
       throws SQLException {
@@ -2134,7 +2140,11 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false);
   }
 
-  @SuppressWarnings({"squid:S6541", "squid:S3776"})
+  @SuppressWarnings({
+    "squid:S6541",
+    "squid:S3776"
+  }) // ignore Cognitive Complexity of methods should not be too high
+  // ignore Methods should not perform too many tasks (aka Brain method)
   @Override
   public ResultSet getColumns(
       String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern)
@@ -2318,7 +2328,6 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false);
   }
 
-  @SuppressWarnings("squid:S1854")
   private void close(ResultSet rs, Statement stmt) {
 
     try {
@@ -2395,7 +2404,11 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     return 0;
   }
 
-  @SuppressWarnings({"squid:S6541", "squid:S3776"})
+  @SuppressWarnings({
+    "squid:S6541",
+    "squid:S3776"
+  }) // ignore Cognitive Complexity of methods should not be too high
+  // ignore Methods should not perform too many tasks (aka Brain method)
   @Override
   public ResultSet getTables(
       String catalog, String schemaPattern, String tableNamePattern, String[] types)
@@ -3261,7 +3274,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   }
 
   /** @deprecated recommend using getMetadataInJson() instead of toString() */
-  @SuppressWarnings("squid:S1133")
+  @SuppressWarnings("squid:S1133") // ignore Deprecated code should be removed
   @Deprecated
   @Override
   public String toString() {

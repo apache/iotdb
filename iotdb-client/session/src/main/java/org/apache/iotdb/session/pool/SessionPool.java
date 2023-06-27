@@ -347,7 +347,7 @@ public class SessionPool implements ISessionPool {
     this.formattedNodeUrls = String.format("%s:%s", host, port);
   }
 
-  @SuppressWarnings("squid:S107")
+  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
   public SessionPool(
       List<String> nodeUrls,
       String user,
@@ -561,7 +561,6 @@ public class SessionPool implements ISessionPool {
     occupied.clear();
   }
 
-  @SuppressWarnings({"squid:S2589"})
   @Override
   public void closeResultSet(SessionDataSetWrapper wrapper) {
     boolean putback = true;
@@ -655,7 +654,7 @@ public class SessionPool implements ISessionPool {
    * @param tablet a tablet data of one device
    * @param sorted whether times in Tablet are in ascending order
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
+  @SuppressWarnings({"squid:S112"}) // ignore Generic exceptions should never be throw
   @Override
   public void insertTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -710,7 +709,7 @@ public class SessionPool implements ISessionPool {
    * @param tablet a tablet data of one device
    * @param sorted whether times in Tablet are in ascending order
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
+  @SuppressWarnings({"squid:S112"}) // ignore Generic exceptions should never be throw
   @Override
   public void insertAlignedTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -762,7 +761,7 @@ public class SessionPool implements ISessionPool {
    *
    * @param tablets multiple batch
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
+  @SuppressWarnings({"squid:S112"}) // ignore Generic exceptions should never be throw
   @Override
   public void insertTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -792,7 +791,7 @@ public class SessionPool implements ISessionPool {
    *
    * @param tablets multiple batch
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
+  @SuppressWarnings({"squid:S112"}) // ignore Generic exceptions should never be throw
   @Override
   public void insertAlignedTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -824,7 +823,7 @@ public class SessionPool implements ISessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
+  @SuppressWarnings({"squid:S112"}) // ignore Generic exceptions should never be throw
   @Override
   public void insertRecords(
       List<String> deviceIds,
@@ -861,7 +860,7 @@ public class SessionPool implements ISessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
+  @SuppressWarnings({"squid:S112"}) // ignore Generic exceptions should never be throw
   @Override
   public void insertAlignedRecords(
       List<String> multiSeriesIds,
@@ -899,7 +898,6 @@ public class SessionPool implements ISessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertRecordsOfOneDevice(
       String deviceId,
@@ -938,7 +936,6 @@ public class SessionPool implements ISessionPool {
    * @see Session#insertTablet(Tablet)
    * @deprecated
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181", "squid:S1133"})
   @Deprecated
   @Override
   public void insertOneDeviceRecords(
@@ -978,7 +975,6 @@ public class SessionPool implements ISessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertStringRecordsOfOneDevice(
       String deviceId,
@@ -1016,7 +1012,6 @@ public class SessionPool implements ISessionPool {
    * @param haveSorted whether the times list has been ordered.
    * @see Session#insertTablet(Tablet)
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertRecordsOfOneDevice(
       String deviceId,
@@ -1057,7 +1052,6 @@ public class SessionPool implements ISessionPool {
    * @see Session#insertTablet(Tablet)
    * @deprecated
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181", "squid:S1133"})
   @Override
   @Deprecated
   public void insertOneDeviceRecords(
@@ -1099,7 +1093,6 @@ public class SessionPool implements ISessionPool {
    * @param haveSorted whether the times list has been ordered.
    * @see Session#insertTablet(Tablet)
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertStringRecordsOfOneDevice(
       String deviceId,
@@ -1138,7 +1131,6 @@ public class SessionPool implements ISessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertAlignedRecordsOfOneDevice(
       String deviceId,
@@ -1177,7 +1169,6 @@ public class SessionPool implements ISessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertAlignedStringRecordsOfOneDevice(
       String deviceId,
@@ -1216,7 +1207,6 @@ public class SessionPool implements ISessionPool {
    * @param haveSorted whether the times list has been ordered.
    * @see Session#insertTablet(Tablet)
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertAlignedRecordsOfOneDevice(
       String deviceId,
@@ -1257,7 +1247,6 @@ public class SessionPool implements ISessionPool {
    * @param haveSorted whether the times list has been ordered.
    * @see Session#insertTablet(Tablet)
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertAlignedStringRecordsOfOneDevice(
       String deviceId,
@@ -1295,7 +1284,6 @@ public class SessionPool implements ISessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertRecords(
       List<String> deviceIds,
@@ -1331,7 +1319,6 @@ public class SessionPool implements ISessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertAlignedRecords(
       List<String> multiSeriesIds,
@@ -1368,7 +1355,6 @@ public class SessionPool implements ISessionPool {
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertRecord(
       String deviceId,
@@ -1405,7 +1391,6 @@ public class SessionPool implements ISessionPool {
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertRecord(
       String deviceId,
@@ -1435,7 +1420,6 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public String getTimestampPrecision()
       throws IoTDBConnectionException, StatementExecutionException {
@@ -1469,7 +1453,6 @@ public class SessionPool implements ISessionPool {
    * @see Session#insertAlignedRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertAlignedRecord(
       String multiSeriesId,
@@ -1506,7 +1489,6 @@ public class SessionPool implements ISessionPool {
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertRecord(
       String deviceId, long time, List<String> measurements, List<String> values)
@@ -1539,7 +1521,6 @@ public class SessionPool implements ISessionPool {
    * @see Session#insertAlignedRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void insertAlignedRecord(
       String multiSeriesId, long time, List<String> multiMeasurementComponents, List<String> values)
@@ -1569,7 +1550,6 @@ public class SessionPool implements ISessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void testInsertTablet(Tablet tablet)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -1598,7 +1578,6 @@ public class SessionPool implements ISessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void testInsertTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -1627,7 +1606,6 @@ public class SessionPool implements ISessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void testInsertTablets(Map<String, Tablet> tablets)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -1656,7 +1634,6 @@ public class SessionPool implements ISessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void testInsertTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -1685,7 +1662,6 @@ public class SessionPool implements ISessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void testInsertRecords(
       List<String> deviceIds,
@@ -1718,7 +1694,6 @@ public class SessionPool implements ISessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void testInsertRecords(
       List<String> deviceIds,
@@ -1752,7 +1727,6 @@ public class SessionPool implements ISessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void testInsertRecord(
       String deviceId, long time, List<String> measurements, List<String> values)
@@ -1782,7 +1756,6 @@ public class SessionPool implements ISessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void testInsertRecord(
       String deviceId,
@@ -1817,7 +1790,6 @@ public class SessionPool implements ISessionPool {
    *
    * @param path timeseries to delete, should be a whole path
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void deleteTimeseries(String path)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -1847,7 +1819,6 @@ public class SessionPool implements ISessionPool {
    *
    * @param paths timeseries to delete, should be a whole path
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void deleteTimeseries(List<String> paths)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -1878,7 +1849,6 @@ public class SessionPool implements ISessionPool {
    * @param path data in which time series to delete
    * @param time data with time stamp less than or equal to time will be deleted
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void deleteData(String path, long time)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -1909,7 +1879,6 @@ public class SessionPool implements ISessionPool {
    * @param paths data in which time series to delete
    * @param time data with time stamp less than or equal to time will be deleted
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void deleteData(List<String> paths, long time)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -1941,7 +1910,6 @@ public class SessionPool implements ISessionPool {
    * @param startTime delete range start time
    * @param endTime delete range end time
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void deleteData(List<String> paths, long startTime, long endTime)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -1967,7 +1935,6 @@ public class SessionPool implements ISessionPool {
   }
 
   /** @deprecated Use {@link #createDatabase(String)} instead. */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181", "squid:S1133"})
   @Deprecated
   @Override
   public void setStorageGroup(String storageGroupId)
@@ -1994,7 +1961,6 @@ public class SessionPool implements ISessionPool {
   }
 
   /** @deprecated Use {@link #deleteDatabase(String)} instead. */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181", "squid:S1133"})
   @Deprecated
   @Override
   public void deleteStorageGroup(String storageGroup)
@@ -2021,7 +1987,6 @@ public class SessionPool implements ISessionPool {
   }
 
   /** @deprecated Use {@link #deleteDatabases(List)} instead. */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181", "squid:S1133"})
   @Deprecated
   @Override
   public void deleteStorageGroups(List<String> storageGroup)
@@ -2047,7 +2012,6 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void createDatabase(String database)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -2072,7 +2036,6 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void deleteDatabase(String database)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -2097,7 +2060,6 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void deleteDatabases(List<String> databases)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -2122,7 +2084,6 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void createTimeseries(
       String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor)
@@ -2148,7 +2109,6 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void createTimeseries(
       String path,
@@ -2182,7 +2142,6 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void createAlignedTimeseries(
       String deviceId,
@@ -2214,7 +2173,6 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void createAlignedTimeseries(
       String deviceId,
@@ -2255,7 +2213,6 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void createMultiTimeseries(
       List<String> paths,
@@ -2296,7 +2253,6 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public boolean checkTimeseriesExists(String path)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -2328,7 +2284,6 @@ public class SessionPool implements ISessionPool {
    *
    * @see Template
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void createSchemaTemplate(Template template)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
@@ -2364,7 +2319,6 @@ public class SessionPool implements ISessionPool {
    * @param compressors compression type of each measurement in the template
    * @param isAligned specify whether these flat measurements are aligned
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void createSchemaTemplate(
       String templateName,
@@ -2415,7 +2369,6 @@ public class SessionPool implements ISessionPool {
    * @throws StatementExecutionException
    * @deprecated
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181", "squid:S1133"})
   @Deprecated
   @Override
   public void createSchemaTemplate(
@@ -2448,7 +2401,6 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void addAlignedMeasurementsInTemplate(
       String templateName,
@@ -2479,7 +2431,6 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void addAlignedMeasurementInTemplate(
       String templateName,
@@ -2510,7 +2461,6 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void addUnalignedMeasurementsInTemplate(
       String templateName,
@@ -2541,7 +2491,6 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void addUnalignedMeasurementInTemplate(
       String templateName,
@@ -2572,7 +2521,6 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void deleteNodeInTemplate(String templateName, String path)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
@@ -2597,7 +2545,6 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public int countMeasurementsInTemplate(String name)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -2623,7 +2570,6 @@ public class SessionPool implements ISessionPool {
     return -1;
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public boolean isMeasurementInTemplate(String templateName, String path)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -2649,7 +2595,6 @@ public class SessionPool implements ISessionPool {
     return false;
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public boolean isPathExistInTemplate(String templateName, String path)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -2675,7 +2620,6 @@ public class SessionPool implements ISessionPool {
     return false;
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181", "squid:S1168"})
   @Override
   public List<String> showMeasurementsInTemplate(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -2701,7 +2645,6 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181", "squid:S1168"})
   @Override
   public List<String> showMeasurementsInTemplate(String templateName, String pattern)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -2727,7 +2670,6 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181", "squid:S1168"})
   @Override
   public List<String> showAllTemplates()
       throws StatementExecutionException, IoTDBConnectionException {
@@ -2753,7 +2695,6 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181", "squid:S1168"})
   @Override
   public List<String> showPathsTemplateSetOn(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -2779,7 +2720,6 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181", "squid:S1168"})
   @Override
   public List<String> showPathsTemplateUsingOn(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -2812,7 +2752,6 @@ public class SessionPool implements ISessionPool {
     putBack(session);
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void setSchemaTemplate(String templateName, String prefixPath)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -2838,7 +2777,6 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void unsetSchemaTemplate(String prefixPath, String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -2864,7 +2802,6 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void dropSchemaTemplate(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -2889,7 +2826,6 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   public void createTimeseriesUsingSchemaTemplate(List<String> devicePathList)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
@@ -2923,12 +2859,7 @@ public class SessionPool implements ISessionPool {
    * @return result set Notice that you must get the result instance. Otherwise a data leakage will
    *     happen
    */
-  @SuppressWarnings({
-    "squid:S2095",
-    "squid:S112",
-    "squid:S2139",
-    "squid:S1181"
-  }) // Suppress wrapper not closed warning
+  @SuppressWarnings("squid:S2095") // Suppress wrapper not closed warning
   @Override
   public SessionDataSetWrapper executeQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -2966,12 +2897,7 @@ public class SessionPool implements ISessionPool {
    * @return result set Notice that you must get the result instance. Otherwise a data leakage will
    *     happen
    */
-  @SuppressWarnings({
-    "squid:S2095",
-    "squid:S112",
-    "squid:S2139",
-    "squid:S1181"
-  }) // Suppress wrapper not closed warning
+  @SuppressWarnings("squid:S2095") // Suppress wrapper not closed warning
   @Override
   public SessionDataSetWrapper executeQueryStatement(String sql, long timeoutInMs)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -3004,7 +2930,6 @@ public class SessionPool implements ISessionPool {
    *
    * @param sql non query statement
    */
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public void executeNonQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3029,11 +2954,7 @@ public class SessionPool implements ISessionPool {
     }
   }
 
-  @SuppressWarnings({
-    "squid:S112",
-    "squid:S2139",
-    "squid:S1181"
-  }) // Suppress wrapper not closed warning
+  @SuppressWarnings("squid:S2095") // Suppress wrapper not closed warning
   @Override
   public SessionDataSetWrapper executeRawDataQuery(
       List<String> paths, long startTime, long endTime, long timeOut)
@@ -3062,7 +2983,6 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public SessionDataSetWrapper executeLastDataQuery(List<String> paths, long lastTime)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3090,7 +3010,6 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public SessionDataSetWrapper executeLastDataQuery(List<String> paths, long lastTime, long timeOut)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3118,7 +3037,6 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public SessionDataSetWrapper executeLastDataQuery(List<String> paths)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -3146,7 +3064,6 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public SessionDataSetWrapper executeAggregationQuery(
       List<String> paths, List<TAggregationType> aggregations)
@@ -3175,7 +3092,6 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public SessionDataSetWrapper executeAggregationQuery(
       List<String> paths, List<TAggregationType> aggregations, long startTime, long endTime)
@@ -3205,7 +3121,6 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public SessionDataSetWrapper executeAggregationQuery(
       List<String> paths,
@@ -3239,7 +3154,6 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public SessionDataSetWrapper executeAggregationQuery(
       List<String> paths,
@@ -3417,7 +3331,6 @@ public class SessionPool implements ISessionPool {
     return null;
   }
 
-  @SuppressWarnings({"squid:S112", "squid:S2139", "squid:S1181"})
   @Override
   public TSConnectionInfoResp fetchAllConnections() throws IoTDBConnectionException {
 

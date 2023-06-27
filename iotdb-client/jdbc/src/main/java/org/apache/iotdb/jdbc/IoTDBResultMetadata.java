@@ -66,7 +66,9 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
-  @SuppressWarnings({"squid:S3776"})
+  @SuppressWarnings({
+    "squid:S3776"
+  }) // ignore Cognitive Complexity of methods should not be too high
   @Override
   public String getCatalogName(int column) throws SQLException {
     String systemSchmea = "_system_schmea";
