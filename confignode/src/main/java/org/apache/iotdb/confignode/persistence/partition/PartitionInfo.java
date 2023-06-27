@@ -72,8 +72,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -780,7 +780,9 @@ public class PartitionInfo implements SnapshotProcessor {
     // snapshot operation.
     File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
 
-    try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
+    try (BufferedOutputStream fileOutputStream =
+            new BufferedOutputStream(
+                Files.newOutputStream(tmpFile.toPath()), PARTITION_TABLE_BUFFER_SIZE);
         TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileOutputStream)) {
       TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
 
