@@ -67,9 +67,6 @@ public class DeserializedBatchIndexedConsensusRequest
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    if (!super.equals(o)) {
-      return false;
-    }
     DeserializedBatchIndexedConsensusRequest request = (DeserializedBatchIndexedConsensusRequest) o;
     return startSyncIndex == request.startSyncIndex
         && endSyncIndex == request.endSyncIndex
