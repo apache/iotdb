@@ -16,8 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.IllegalCompactionPerformerException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.IUnseqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
@@ -32,7 +34,8 @@ public enum InnerUnseqCompactionPerformer {
     } else if (FAST.toString().equalsIgnoreCase(name)) {
       return FAST;
     }
-    throw new RuntimeException("Illegal compaction performer for unseq inner compaction " + name);
+    throw new IllegalCompactionPerformerException(
+        "Illegal compaction performer for unseq inner compaction " + name);
   }
 
   public IUnseqCompactionPerformer createInstance() {
@@ -42,7 +45,7 @@ public enum InnerUnseqCompactionPerformer {
       case FAST:
         return new FastCompactionPerformer(false);
       default:
-        throw new RuntimeException(
+        throw new IllegalCompactionPerformerException(
             "Illegal compaction performer for unseq inner compaction " + this);
     }
   }

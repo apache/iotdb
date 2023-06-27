@@ -16,8 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.IllegalCompactionPerformerException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
@@ -32,7 +34,8 @@ public enum CrossCompactionPerformer {
     } else if (FAST.toString().equalsIgnoreCase(name)) {
       return FAST;
     }
-    throw new RuntimeException("Illegal compaction performer for cross compaction " + name);
+    throw new IllegalCompactionPerformerException(
+        "Illegal compaction performer for cross compaction " + name);
   }
 
   public ICrossCompactionPerformer createInstance() {
@@ -42,7 +45,8 @@ public enum CrossCompactionPerformer {
       case FAST:
         return new FastCompactionPerformer(true);
       default:
-        throw new RuntimeException("Illegal compaction performer for cross compaction " + this);
+        throw new IllegalCompactionPerformerException(
+            "Illegal compaction performer for cross compaction " + this);
     }
   }
 }
