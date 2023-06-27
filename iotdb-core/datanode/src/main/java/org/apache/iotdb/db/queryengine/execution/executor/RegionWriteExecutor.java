@@ -157,11 +157,11 @@ public class RegionWriteExecutor {
 
       if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
         response.setAccepted(false);
-        response.setMessage("Fail to do non-read operations because system is read-only.");
+        response.setMessage("Fail to do non-query operations because system is read-only.");
         response.setStatus(
             RpcUtils.getStatus(
                 TSStatusCode.SYSTEM_READ_ONLY,
-                "Fail to do non-read operations because system is read-only."));
+                "Fail to do non-query operations because system is read-only."));
         return response;
       }
 

@@ -320,7 +320,7 @@ public class FragmentInstanceContext extends QueryContext {
       // this file may be deleted just before we lock it
       if (tsFileResource.isDeleted()) {
         Set<TsFileResource> pathSet = isClosed ? closedFilePaths : unClosedFilePaths;
-        // This resource may be removed by other threads of this read.
+        // This resource may be removed by other threads of this query.
         if (pathSet.remove(tsFileResource)) {
           FileReaderManager.getInstance().decreaseFileReaderReference(tsFileResource, isClosed);
         }
@@ -371,7 +371,7 @@ public class FragmentInstanceContext extends QueryContext {
    * be decreased.
    */
   protected synchronized void releaseResource() {
-    // For schemaengine related read FI, closedFilePaths and unClosedFilePaths will be null
+    // For schema related query FI, closedFilePaths and unClosedFilePaths will be null
     if (closedFilePaths != null) {
       for (TsFileResource tsFile : closedFilePaths) {
         FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, true);

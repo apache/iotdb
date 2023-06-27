@@ -194,7 +194,7 @@ public class Util {
       aggregationExpression.put("root.sg.*.s2", s2Expression);
       // analysis.setAggregationExpressions(aggregationExpression);
 
-      // construct schemaengine partition
+      // construct schema partition
       SchemaPartition schemaPartition =
           new SchemaPartition(
               IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),

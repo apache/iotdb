@@ -24,7 +24,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 public class StorageEngineReadonlyException extends StorageEngineException {
 
   public static final String ERROR_MESSAGE =
-      "Database is read-only, and does not accept non-read operation now";
+      "Database is read-only, and does not accept non-query operation now";
 
   public StorageEngineReadonlyException() {
     super(ERROR_MESSAGE, TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());

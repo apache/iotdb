@@ -36,7 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** QueryContext contains the shared information with in a read. */
+/** QueryContext contains the shared information with in a query. */
 public class QueryContext {
 
   /**
@@ -48,7 +48,7 @@ public class QueryContext {
   /**
    * The key is the path of a ModificationFile and the value is all Modifications in this file. We
    * use this field because each call of Modification.getModifications() return a copy of the
-   * Modifications, and we do not want it to create multiple copies within a read.
+   * Modifications, and we do not want it to create multiple copies within a query.
    */
   private final Map<String, PatternTreeMap<Modification, ModsSerializer>> fileModCache =
       new HashMap<>();

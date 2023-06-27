@@ -62,7 +62,7 @@ public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
       return LAST_QUERY_EMPTY_TSBLOCK;
     }
 
-    checkArgument(res.getPositionCount() == 1, "last read result should only have one record");
+    checkArgument(res.getPositionCount() == 1, "last query result should only have one record");
 
     // last value is null
     if (res.getColumn(0).isNull(0)) {

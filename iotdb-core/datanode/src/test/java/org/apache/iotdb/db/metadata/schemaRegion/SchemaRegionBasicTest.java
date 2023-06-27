@@ -120,7 +120,7 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
         Assert.assertEquals(
             CompressionType.SNAPPY, measurementPath.getMeasurementSchema().getCompressor());
       } else if (measurementPath.getFullPath().equals("root.sg.wf01.wt01.temperature")) {
-        // only when user read with alias, the alias in path will be set
+        // only when user query with alias, the alias in path will be set
         Assert.assertEquals("", measurementPath.getMeasurementAlias());
         Assert.assertEquals(2, measurementPath.getTagMap().size());
         Assert.assertEquals(TSDataType.FLOAT, measurementPath.getMeasurementSchema().getType());

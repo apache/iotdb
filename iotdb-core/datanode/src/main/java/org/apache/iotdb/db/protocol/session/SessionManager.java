@@ -152,7 +152,7 @@ public class SessionManager implements SessionManagerMBean {
             Metric.SESSION_IDLE_TIME.toString(),
             Tag.NAME.toString(),
             String.valueOf(session.getId()));
-    // TODO we only need to do so when read is killed by time out  close the socket.
+    // TODO we only need to do so when query is killed by time out  close the socket.
     IClientSession session1 = currSession.get();
     if (session1 != null && session != session1) {
       if (ENABLE_AUDIT_LOG) {

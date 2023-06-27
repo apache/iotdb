@@ -30,7 +30,7 @@ public class TemplateImcompatibeException extends MetadataException {
       String path, String templateName, PartialPath templateSetPath) {
     super(
         String.format(
-            "Cannot create timeseries [%s] since schemaengine template [%s] already set on path [%s].",
+            "Cannot create timeseries [%s] since schema template [%s] already set on path [%s].",
             path, templateName, templateSetPath),
         TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode());
     this.isUserException = true;

@@ -25,7 +25,7 @@ import com.google.common.util.concurrent.SettableFuture;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
-/** One SchemaDriver is used to execute one FragmentInstance which is for metadata read. */
+/** One SchemaDriver is used to execute one FragmentInstance which is for metadata query. */
 @NotThreadSafe
 public class SchemaDriver extends Driver {
 

@@ -193,12 +193,12 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   /**
-   * Check schemaengine of columns and return array that mapping existed schemaengine to index of
-   * data column
+   * Check metadata of columns and return array that mapping existed metadata to index of data
+   * column
    *
-   * @param schemaListInInsertPlan Contains all existed schemaengine in InsertPlan. If some
-   *     timeseries have been deleted, there will be null in its slot.
-   * @return columnIndexArray: schemaList[i] is schemaengine of columns[columnIndexArray[i]]
+   * @param schemaListInInsertPlan Contains all existed schema in InsertPlan. If some timeseries
+   *     have been deleted, there will be null in its slot.
+   * @return columnIndexArray: schemaList[i] is schema of columns[columnIndexArray[i]]
    */
   private Pair<Object[], BitMap[]> checkAndReorderColumnValuesInInsertPlan(
       List<IMeasurementSchema> schemaListInInsertPlan, Object[] columnValues, BitMap[] bitMaps) {

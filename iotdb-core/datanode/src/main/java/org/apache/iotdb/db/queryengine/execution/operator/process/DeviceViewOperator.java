@@ -45,7 +45,7 @@ import java.util.List;
  * the result form.
  *
  * <p>Attention! If some columns are not existing in one device, those columns will be null. e.g.
- * [s1,s2,s3] is read, but only [s1, s3] exists in device1, then the column of s2 will be filled
+ * [s1,s2,s3] is query, but only [s1, s3] exists in device1, then the column of s2 will be filled
  * with NullColumn.
  */
 public class DeviceViewOperator implements ProcessOperator {
@@ -55,7 +55,7 @@ public class DeviceViewOperator implements ProcessOperator {
   private final List<String> devices;
   private final List<Operator> deviceOperators;
   // Used to fill columns and leave null columns which doesn't exist in some devices.
-  // e.g. [s1,s2,s3] is read, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
+  // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
   // not 0 because device is the first column
   private final List<List<Integer>> deviceColumnIndex;
   // Column dataTypes that includes device column

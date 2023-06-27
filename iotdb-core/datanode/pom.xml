@@ -299,7 +299,7 @@
                             <goal>copy-resources</goal>
                         </goals>
                         <configuration>
-                            <outputDirectory>target/codegen</outputDirectory>
+                            <outputDirectory>${project.build.directory}/codegen</outputDirectory>
                             <resources>
                                 <resource>
                                     <directory>src/main/codegen</directory>
@@ -323,9 +323,9 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <config>target/codegen/config.fmpp</config>
-                            <output>target/generated-sources/freemarker</output>
-                            <templates>target/codegen/templates</templates>
+                            <config>${project.build.directory}/codegen/config.fmpp</config>
+                            <output>${project.build.directory}/generated-sources/freemarker</output>
+                            <templates>${project.build.directory}/codegen/templates</templates>
                         </configuration>
                     </execution>
                 </executions>

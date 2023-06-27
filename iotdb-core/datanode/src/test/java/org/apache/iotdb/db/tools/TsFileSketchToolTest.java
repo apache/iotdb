@@ -76,7 +76,7 @@ public class TsFileSketchToolTest {
       Schema schema = new Schema();
 
       List<MeasurementSchema> measurementSchemas = new ArrayList<>();
-      // add measurements into file schemaengine (all with INT64 data type)
+      // add measurements into file schema (all with INT64 data type)
       for (int i = 0; i < sensorNum; i++) {
         MeasurementSchema measurementSchema =
             new MeasurementSchema(sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF);
@@ -85,7 +85,7 @@ public class TsFileSketchToolTest {
             new Path(device),
             new MeasurementSchema(sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
       }
-      // add aligned measurements into file schemaengine
+      // add aligned measurements into file schema
       List<MeasurementSchema> schemas = new ArrayList<>();
       List<MeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
       for (int i = 0; i < sensorNum; i++) {

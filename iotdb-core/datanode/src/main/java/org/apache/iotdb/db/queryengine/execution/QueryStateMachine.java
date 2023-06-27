@@ -47,7 +47,7 @@ import static org.apache.iotdb.db.queryengine.execution.QueryState.RUNNING;
 public class QueryStateMachine {
   private final StateMachine<QueryState> queryState;
 
-  // The executor will be used in all the state machines belonged to this read.
+  // The executor will be used in all the state machines belonged to this query.
   private Executor stateMachineExecutor;
   private Throwable failureException;
   private TSStatus failureStatus;

@@ -256,7 +256,7 @@ public class IoTDBConfig {
           + File.separator
           + IoTDBConstant.SCHEMA_FOLDER_NAME;
 
-  /** Query directory, stores temporary files of read */
+  /** Query directory, stores temporary files of query */
   private String queryDir =
       IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.QUERY_FOLDER_NAME;
 
@@ -331,7 +331,7 @@ public class IoTDBConfig {
   /** How many threads can concurrently flush. When <= 0, use CPU core number. */
   private int flushThreadCount = Runtime.getRuntime().availableProcessors();
 
-  /** How many threads can concurrently execute read statement. When <= 0, use CPU core number. */
+  /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
   private int queryThreadCount = Runtime.getRuntime().availableProcessors();
 
   private int degreeOfParallelism = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
@@ -559,8 +559,8 @@ public class IoTDBConfig {
   private long allocateMemoryForWALPipeCache = allocateMemoryForConsensus / 10;
 
   /**
-   * If true, we will estimate each read's possible memory footprint before executing it and deny it
-   * if its estimated memory exceeds current free memory
+   * If true, we will estimate each query's possible memory footprint before executing it and deny
+   * it if its estimated memory exceeds current free memory
    */
   private boolean enableQueryMemoryEstimation = true;
 
@@ -575,7 +575,7 @@ public class IoTDBConfig {
   /** Examining period of cache file reader : 100 seconds. Unit: millisecond */
   private long cacheFileReaderClearPeriod = 100000;
 
-  /** the max executing time of read in ms. Unit: millisecond */
+  /** the max executing time of query in ms. Unit: millisecond */
   private long queryTimeoutThreshold = 60000;
 
   /** the max time to live of a session in ms. Unit: millisecond */
@@ -602,7 +602,7 @@ public class IoTDBConfig {
   /** whether use chunkBufferPool. */
   private boolean chunkBufferPoolEnable = false;
 
-  /** Switch of creating schemaengine automatically */
+  /** Switch of creating schema automatically */
   private boolean enableAutoCreateSchema = true;
 
   /** register time series as which type when receiving boolean string "true" or "false" */
@@ -626,25 +626,25 @@ public class IoTDBConfig {
    */
   private TSDataType nanStringInferType = TSDataType.DOUBLE;
 
-  /** Database level when creating schemaengine automatically is enabled */
+  /** Database level when creating schema automatically is enabled */
   private int defaultStorageGroupLevel = 1;
 
-  /** BOOLEAN encoding when creating schemaengine automatically is enabled */
+  /** BOOLEAN encoding when creating schema automatically is enabled */
   private TSEncoding defaultBooleanEncoding = TSEncoding.RLE;
 
-  /** INT32 encoding when creating schemaengine automatically is enabled */
+  /** INT32 encoding when creating schema automatically is enabled */
   private TSEncoding defaultInt32Encoding = TSEncoding.RLE;
 
-  /** INT64 encoding when creating schemaengine automatically is enabled */
+  /** INT64 encoding when creating schema automatically is enabled */
   private TSEncoding defaultInt64Encoding = TSEncoding.RLE;
 
-  /** FLOAT encoding when creating schemaengine automatically is enabled */
+  /** FLOAT encoding when creating schema automatically is enabled */
   private TSEncoding defaultFloatEncoding = TSEncoding.GORILLA;
 
-  /** DOUBLE encoding when creating schemaengine automatically is enabled */
+  /** DOUBLE encoding when creating schema automatically is enabled */
   private TSEncoding defaultDoubleEncoding = TSEncoding.GORILLA;
 
-  /** TEXT encoding when creating schemaengine automatically is enabled */
+  /** TEXT encoding when creating schema automatically is enabled */
   private TSEncoding defaultTextEncoding = TSEncoding.PLAIN;
 
   /** How many threads will be set up to perform upgrade tasks. */
@@ -682,8 +682,8 @@ public class IoTDBConfig {
       Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
 
   /*
-   * Minimum every interval to perform continuous read.
-   * The every interval of continuous read instances should not be lower than this limit.
+   * Minimum every interval to perform continuous query.
+   * The every interval of continuous query instances should not be lower than this limit.
    */
   private long continuousQueryMinimumEveryInterval = 1000;
 
@@ -771,13 +771,13 @@ public class IoTDBConfig {
   private boolean enable13DataInsertAdapt = false;
 
   /**
-   * Used to estimate the memory usage of text fields in a UDF read. It is recommended to set this
+   * Used to estimate the memory usage of text fields in a UDF query. It is recommended to set this
    * value to be slightly larger than the average length of all text records.
    */
   private int udfInitialByteArrayLengthForMemoryControl = 48;
 
   /**
-   * How much memory may be used in ONE UDF read (in MB).
+   * How much memory may be used in ONE UDF query (in MB).
    *
    * <p>The upper limit is 20% of allocated memory for read.
    *
@@ -800,10 +800,10 @@ public class IoTDBConfig {
 
   private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
 
-  /** time interval in minute for calculating read frequency. Unit: minute */
+  /** time interval in minute for calculating query frequency. Unit: minute */
   private int frequencyIntervalInMinute = 1;
 
-  /** time cost(ms) threshold for slow read. Unit: millisecond */
+  /** time cost(ms) threshold for slow query. Unit: millisecond */
   private long slowQueryThreshold = 30000;
 
   private int patternMatchingThreshold = 1000000;
@@ -833,7 +833,7 @@ public class IoTDBConfig {
    */
   private boolean enableIDTableLogFile = false;
 
-  /** the memory used for metadata cache when using persistent schemaengine */
+  /** the memory used for metadata cache when using persistent schema */
   private int cachedMNodeSizeInPBTreeMode = -1;
 
   /** the minimum size (in bytes) of segment inside a pbtree file page */
@@ -881,9 +881,9 @@ public class IoTDBConfig {
   private String dataRegionConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
   /**
-   * The consensus protocol class for schemaengine region. The Datanode should communicate with
-   * ConfigNode on startup and set this variable so that the correct class name can be obtained
-   * later when the schemaengine region consensus layer singleton is initialized
+   * The consensus protocol class for schema region. The Datanode should communicate with ConfigNode
+   * on startup and set this variable so that the correct class name can be obtained later when the
+   * schema region consensus layer singleton is initialized
    */
   private String schemaRegionConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
@@ -898,16 +898,16 @@ public class IoTDBConfig {
   /** The number of series partitions in a database */
   private int seriesPartitionSlotNum = 10000;
 
-  /** Port that queryengine data exchange thrift service listen to. */
+  /** Port that mpp data exchange thrift service listen to. */
   private int mppDataExchangePort = 10740;
 
-  /** Core pool size of queryengine data exchange. */
+  /** Core pool size of mpp data exchange. */
   private int mppDataExchangeCorePoolSize = 10;
 
-  /** Max pool size of queryengine data exchange. */
+  /** Max pool size of mpp data exchange. */
   private int mppDataExchangeMaxPoolSize = 10;
 
-  /** Thread keep alive time in ms of queryengine data exchange. */
+  /** Thread keep alive time in ms of mpp data exchange. */
   private int mppDataExchangeKeepAliveTimeInMs = 1000;
 
   /** Thrift socket and connection timeout between data node and config node. */
@@ -1054,9 +1054,7 @@ public class IoTDBConfig {
   /** This configuration parameter sets the level at which the time series limit is applied.* */
   private String clusterSchemaLimitLevel = "timeseries";
 
-  /**
-   * This configuration parameter sets the maximum number of schemaengine allowed in the cluster.*
-   */
+  /** This configuration parameter sets the maximum number of schema allowed in the cluster.* */
   private long clusterSchemaLimitThreshold = -1;
 
   /** Output location of audit logs * */

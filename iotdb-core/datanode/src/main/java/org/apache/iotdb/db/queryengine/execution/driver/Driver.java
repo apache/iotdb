@@ -135,7 +135,7 @@ public abstract class Driver implements IDriver {
             TimeUnit.MILLISECONDS,
             false,
             () -> {
-              // only keep doing read processing if driver state is still alive
+              // only keep doing query processing if driver state is still alive
               if (state.get() == State.ALIVE) {
                 long start = System.nanoTime();
                 // initialization may be time-consuming, so we keep it in the processFor method
@@ -242,7 +242,7 @@ public abstract class Driver implements IDriver {
       }
 
       // Driver thread was interrupted which should only happen if the task is already finished.
-      // If this becomes the actual cause of a failed read there is a bug in the task state
+      // If this becomes the actual cause of a failed query there is a bug in the task state
       // machine.
       Exception exception = new Exception("Interrupted By");
       exception.setStackTrace(interrupterStack.toArray(new StackTraceElement[0]));

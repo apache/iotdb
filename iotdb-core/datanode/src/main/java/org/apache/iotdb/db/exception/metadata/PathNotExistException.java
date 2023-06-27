@@ -29,10 +29,10 @@ public class PathNotExistException extends MetadataException {
   private static final String PATH_NOT_EXIST_WRONG_MESSAGE = "Path [%s] does not exist";
 
   private static final String NORMAL_TIMESERIES_NOT_EXIST_WRONG_MESSAGE =
-      "Timeseries [%s] does not exist or is represented by schemaengine template";
+      "Timeseries [%s] does not exist or is represented by schema template";
 
   private static final String TEMPLATE_TIMESERIES_NOT_EXIST_WRONG_MESSAGE =
-      "Timeseries [%s] does not exist or is not represented by schemaengine template";
+      "Timeseries [%s] does not exist or is not represented by schema template";
 
   public PathNotExistException(String path) {
     super(

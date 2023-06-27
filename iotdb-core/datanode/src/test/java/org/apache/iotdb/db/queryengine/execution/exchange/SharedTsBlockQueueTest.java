@@ -41,7 +41,7 @@ public class SharedTsBlockQueueTest {
     final String queryId = "q0";
     final long mockTsBlockSize = 1024L * 1024L;
 
-    // Construct a mock LocalMemoryManager with capacity 5 * mockTsBlockSize per read.
+    // Construct a mock LocalMemoryManager with capacity 5 * mockTsBlockSize per query.
     LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
     MemoryPool spyMemoryPool =
         Mockito.spy(new MemoryPool("test", 10 * mockTsBlockSize, 5 * mockTsBlockSize));

@@ -232,7 +232,7 @@ public class EnvironmentUtils {
     }
     // delete system info
     cleanDir(config.getSystemDir());
-    // delete read
+    // delete query
     cleanDir(config.getQueryDir());
     // delete ulog
     cleanDir(config.getUdfDir());
@@ -324,7 +324,7 @@ public class EnvironmentUtils {
     createDir(sgDir);
     // create sync
     createDir(commonConfig.getSyncDir());
-    // create read
+    // create query
     createDir(config.getQueryDir());
     createDir(TestConstant.OUTPUT_DATA_DIR);
     // create wal

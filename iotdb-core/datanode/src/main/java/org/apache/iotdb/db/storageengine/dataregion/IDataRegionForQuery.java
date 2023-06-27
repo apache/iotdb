@@ -26,7 +26,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.List;
 
-/** It's an interface that storage storageengine must provide for read storageengine */
+/** It's an interface that storage engine must provide for query engine */
 public interface IDataRegionForQuery {
 
   /** lock the read lock for thread-safe */

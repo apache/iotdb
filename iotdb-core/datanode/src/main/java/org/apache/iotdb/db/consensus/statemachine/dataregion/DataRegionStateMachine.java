@@ -136,7 +136,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
       TimeSeriesMetadataCache.getInstance().clear();
       BloomFilterCache.getInstance().clear();
     } catch (Exception e) {
-      logger.error("Exception occurs when replacing data region in storage storageengine.", e);
+      logger.error("Exception occurs when replacing data region in storage engine.", e);
     }
   }
 

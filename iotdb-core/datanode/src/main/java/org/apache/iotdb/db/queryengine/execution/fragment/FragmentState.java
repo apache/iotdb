@@ -43,7 +43,7 @@ public enum FragmentState {
   PENDING(false, false),
   /** Fragment has finished executing and all output has been consumed. */
   FINISHED(true, false),
-  /** Fragment was aborted due to a failure in the read. The failure was not in this Fragment. */
+  /** Fragment was aborted due to a failure in the query. The failure was not in this Fragment. */
   ABORTED(true, true),
   /** Fragment execution failed. */
   FAILED(true, true);

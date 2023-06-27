@@ -53,7 +53,7 @@ public class IoTDBStartCheck {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
-  // this file is located in data/system/schemaengine/system.properties
+  // this file is located in data/system/schema/system.properties
   // If user delete folder "data", system.properties can reset.
   public static final String PROPERTIES_FILE_NAME = "system.properties";
   private static final String SCHEMA_DIR = config.getSchemaDir();
@@ -132,7 +132,7 @@ public class IoTDBStartCheck {
     File dir = SystemFileFactory.INSTANCE.getFile(SCHEMA_DIR);
     if (!dir.exists()) {
       if (!dir.mkdirs()) {
-        logger.error("Can not create schemaengine dir: {}", SCHEMA_DIR);
+        logger.error("Can not create schema dir: {}", SCHEMA_DIR);
         System.exit(-1);
       } else {
         logger.info(" {} dir has been created.", SCHEMA_DIR);

@@ -46,7 +46,7 @@ public class RPCServiceThriftHandler extends BaseServerContextHandler
 
   @Override
   public void deleteContext(ServerContext arg0, TProtocol in, TProtocol out) {
-    // release read resources.
+    // release query resources.
     eventHandler.handleClientExit();
     thriftConnectionNumber.decrementAndGet();
     super.deleteContext(arg0, in, out);

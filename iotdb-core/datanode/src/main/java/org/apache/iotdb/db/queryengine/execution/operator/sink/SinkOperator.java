@@ -38,7 +38,7 @@ public interface SinkOperator extends Operator {
 
   /**
    * Abort the sink handle, discarding all tsBlocks which may still in memory buffer, but blocking
-   * readers. It is expected that readers will be unblocked when the failed read is cleaned up.
+   * readers. It is expected that readers will be unblocked when the failed query is cleaned up.
    */
   void abort();
 }

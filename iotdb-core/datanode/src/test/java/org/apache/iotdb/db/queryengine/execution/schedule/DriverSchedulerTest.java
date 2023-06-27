@@ -59,7 +59,7 @@ public class DriverSchedulerTest {
     IMPPDataExchangeManager mockMPPDataExchangeManager =
         Mockito.mock(IMPPDataExchangeManager.class);
     manager.setBlockManager(mockMPPDataExchangeManager);
-    // submit 2 tasks in one read
+    // submit 2 tasks in one query
     QueryId queryId = new QueryId("test");
     PlanFragmentId fragmentId = new PlanFragmentId(queryId, 0);
     FragmentInstanceId instanceId1 = new FragmentInstanceId(fragmentId, "inst-0");
@@ -91,7 +91,7 @@ public class DriverSchedulerTest {
     Assert.assertEquals(DriverTaskStatus.READY, task1.getStatus());
     Assert.assertEquals(DriverTaskStatus.READY, task2.getStatus());
 
-    // Submit another task of the same read
+    // Submit another task of the same query
     IDriver mockDriver3 = Mockito.mock(IDriver.class);
     FragmentInstanceId instanceId3 = new FragmentInstanceId(fragmentId, "inst-2");
     DriverTaskId driverTaskId3 = new DriverTaskId(instanceId3, 0);
@@ -110,7 +110,7 @@ public class DriverSchedulerTest {
     Assert.assertEquals(task3.getDriverTaskId(), driverTaskId3);
     Assert.assertEquals(DriverTaskStatus.READY, task3.getStatus());
 
-    // Submit another task of the different read
+    // Submit another task of the different query
     QueryId queryId2 = new QueryId("test2");
     PlanFragmentId fragmentId2 = new PlanFragmentId(queryId2, 0);
     FragmentInstanceId instanceId4 = new FragmentInstanceId(fragmentId2, "inst-0");
@@ -148,7 +148,7 @@ public class DriverSchedulerTest {
     Mockito.verify(mockDriver1, Mockito.times(1)).failed(Mockito.any());
     Assert.assertEquals(DriverTaskAbortedException.BY_FRAGMENT_ABORT_CALLED, task1.getAbortCause());
 
-    // Abort the whole read
+    // Abort the whole query
     Mockito.reset(mockMPPDataExchangeManager);
     Mockito.reset(mockDriver1);
     Mockito.when(mockDriver1.getDriverTaskId()).thenReturn(driverTaskId1);
