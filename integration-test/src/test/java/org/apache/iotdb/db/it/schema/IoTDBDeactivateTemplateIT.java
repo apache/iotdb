@@ -242,7 +242,7 @@ public class IoTDBDeactivateTemplateIT extends AbstractSchemaIT {
       } catch (SQLException e) {
         Assert.assertEquals(
             TSStatusCode.TEMPLATE_NOT_ACTIVATED.getStatusCode()
-                + ": Target schemaengine Template is not activated on any path matched by given path pattern",
+                + ": Target schema Template is not activated on any path matched by given path pattern",
             e.getMessage());
       }
     }
@@ -292,7 +292,7 @@ public class IoTDBDeactivateTemplateIT extends AbstractSchemaIT {
         Assert.assertTrue(
             e.getMessage()
                 .contains(
-                    "Target schemaengine Template is not activated on any path matched by given path pattern"));
+                    "Target schema Template is not activated on any path matched by given path pattern"));
       }
     }
   }
