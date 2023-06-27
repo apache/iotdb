@@ -95,7 +95,7 @@ public class DeactivateTemplateProcedure
     try {
       switch (state) {
         case CONSTRUCT_BLACK_LIST:
-          LOGGER.info("Construct schemaengine black list with template {}", requestMessage);
+          LOGGER.info("Construct schema black list with template {}", requestMessage);
           if (constructBlackList(env) > 0) {
             setNextState(DeactivateTemplateState.CLEAN_DATANODE_SCHEMA_CACHE);
             break;
@@ -103,7 +103,7 @@ public class DeactivateTemplateProcedure
             setFailure(
                 new ProcedureException(
                     new IoTDBException(
-                        "Target schemaengine Template is not activated on any path matched by given path pattern",
+                        "Target schema Template is not activated on any path matched by given path pattern",
                         TSStatusCode.TEMPLATE_NOT_ACTIVATED.getStatusCode())));
             return Flow.NO_MORE_STATE;
           }
@@ -132,7 +132,7 @@ public class DeactivateTemplateProcedure
     }
   }
 
-  // return the total num of timeseries in schemaengine black list
+  // return the total num of timeseries in schema black list
   private long constructBlackList(ConfigNodeProcedureEnv env) {
     Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup =
         env.getConfigManager().getRelatedSchemaRegionGroup(timeSeriesPatternTree);
@@ -143,7 +143,7 @@ public class DeactivateTemplateProcedure
     DeactivateTemplateRegionTaskExecutor<TConstructSchemaBlackListWithTemplateReq>
         constructBlackListTask =
             new DeactivateTemplateRegionTaskExecutor<TConstructSchemaBlackListWithTemplateReq>(
-                "construct schemaengine black list",
+                "construct schema black list",
                 env,
                 targetSchemaRegionGroup,
                 DataNodeRequestType.CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE,
@@ -198,12 +198,10 @@ public class DeactivateTemplateProcedure
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (TSStatus status : statusMap.values()) {
-      // all dataNodes must clear the related schemaengine cache
+      // all dataNodes must clear the related schema cache
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error(
-            "Failed to invalidate schemaengine cache of template timeseries {}", requestMessage);
-        setFailure(
-            new ProcedureException(new MetadataException("Invalidate schemaengine cache failed")));
+        LOGGER.error("Failed to invalidate schema cache of template timeseries {}", requestMessage);
+        setFailure(new ProcedureException(new MetadataException("Invalidate schema cache failed")));
         return;
       }
     }
@@ -239,7 +237,7 @@ public class DeactivateTemplateProcedure
   private void deactivateTemplate(ConfigNodeProcedureEnv env) {
     DeactivateTemplateRegionTaskExecutor<TDeactivateTemplateReq> deleteTimeSeriesTask =
         new DeactivateTemplateRegionTaskExecutor<>(
-            "deactivate template schemaengine",
+            "deactivate template schema",
             env,
             env.getConfigManager().getRelatedSchemaRegionGroup(timeSeriesPatternTree),
             DataNodeRequestType.DEACTIVATE_TEMPLATE,
@@ -255,7 +253,7 @@ public class DeactivateTemplateProcedure
     DeactivateTemplateRegionTaskExecutor<TRollbackSchemaBlackListWithTemplateReq>
         rollbackStateTask =
             new DeactivateTemplateRegionTaskExecutor<>(
-                "roll back schemaengine black list",
+                "roll back schema black list",
                 env,
                 env.getConfigManager().getRelatedSchemaRegionGroup(timeSeriesPatternTree),
                 DataNodeRequestType.ROLLBACK_SCHEMA_BLACK_LIST_WITH_TEMPLATE,

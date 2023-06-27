@@ -552,7 +552,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
 
       String[] resultNames = {"udf", "udf.test", "012", "udf`"};
 
-      String createSql = "create function %s as 'org.apache.iotdb.db.read.udf.example.Adder'";
+      String createSql = "create function %s as 'org.apache.iotdb.db.query.udf.example.Adder'";
       for (String udfName : udfNames) {
         statement.execute(String.format(createSql, udfName));
       }
