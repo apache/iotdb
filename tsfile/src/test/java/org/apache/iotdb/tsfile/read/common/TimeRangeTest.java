@@ -455,7 +455,9 @@ public class TimeRangeTest {
    */
   public void intersect8() {
     TimeRange r1 = new TimeRange(Long.MIN_VALUE, 3);
+    r1.setLeftClose(false);
     TimeRange r2 = new TimeRange(Long.MIN_VALUE, 5);
+    r2.setLeftClose(false);
     assertTrue(r1.intersects(r2));
     assertTrue(r2.intersects(r1));
   }
@@ -466,7 +468,9 @@ public class TimeRangeTest {
    */
   public void intersect9() {
     TimeRange r1 = new TimeRange(1, Long.MAX_VALUE);
+    r1.setRightClose(false);
     TimeRange r2 = new TimeRange(3, Long.MAX_VALUE);
+    r2.setRightClose(false);
     assertTrue(r1.intersects(r2));
     assertTrue(r2.intersects(r1));
   }
@@ -477,7 +481,11 @@ public class TimeRangeTest {
    */
   public void intersect10() {
     TimeRange r1 = new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE);
+    r1.setLeftClose(false);
+    r1.setRightClose(false);
     TimeRange r2 = new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE);
+    r2.setLeftClose(false);
+    r2.setRightClose(false);
     assertTrue(r1.intersects(r2));
     assertTrue(r2.intersects(r1));
   }

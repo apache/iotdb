@@ -44,6 +44,10 @@ public class Deletion extends Modification implements Cloneable {
   public Deletion(PartialPath path, long fileOffset, long endTime) {
     super(Type.DELETION, path, fileOffset);
     this.timeRange = new TimeRange(Long.MIN_VALUE, endTime);
+    this.timeRange.setLeftClose(false);
+    if (endTime == Long.MAX_VALUE) {
+      this.timeRange.setRightClose(false);
+    }
   }
 
   /**
@@ -56,6 +60,12 @@ public class Deletion extends Modification implements Cloneable {
   public Deletion(PartialPath path, long fileOffset, long startTime, long endTime) {
     super(Type.DELETION, path, fileOffset);
     this.timeRange = new TimeRange(startTime, endTime);
+    if (startTime == Long.MIN_VALUE) {
+      this.timeRange.setLeftClose(false);
+    }
+    if (endTime == Long.MAX_VALUE) {
+      this.timeRange.setRightClose(false);
+    }
   }
 
   public long getStartTime() {
