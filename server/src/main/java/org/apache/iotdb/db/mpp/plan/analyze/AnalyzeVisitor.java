@@ -1112,7 +1112,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Map<String, List<String>> outputDeviceToQueriedDevicesMap = new LinkedHashMap<>();
     for (Map.Entry<String, Set<Expression>> deviceSourceExpressionsEntry :
         deviceToSourceExpressions.entrySet()) {
-      String deviceName = deviceSourceExpressionsEntry.getKey();
       Set<Expression> sourceExpressionsUnderDevice = deviceSourceExpressionsEntry.getValue();
       Set<Expression> actualSourceExpressions = new HashSet<>();
 
@@ -1127,9 +1126,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
       if (actualSourceExpressions.size() < sourceExpressionsUnderDevice.size()) {
         throw new SemanticException(
-            "Views or measurement aliases representing the same data source cannot be queried concurrently in ALIGN BY DEVICE queries.");
+            "Views or measurement aliases representing the same data source cannot be queried concurrently "
+                + " in ALIGN BY DEVICE queries.");
       }
-      outputDeviceToQueriedDevicesMap.put(deviceName, new ArrayList<>(queriedDevices));
+      outputDeviceToQueriedDevicesMap.put(
+          deviceSourceExpressionsEntry.getKey(), new ArrayList<>(queriedDevices));
     }
 
     analysis.setDeviceToSourceExpressions(deviceToSourceExpressions);
