@@ -67,7 +67,8 @@ public class PipePluginAgent {
 
   /////////////////////////////// Pipe Plugin Management ///////////////////////////////
 
-  public void register(PipePluginMeta pipePluginMeta, ByteBuffer jarFile) throws Exception {
+  public void register(PipePluginMeta pipePluginMeta, ByteBuffer jarFile)
+      throws IOException, PipeException {
     acquireLock();
     try {
       // try to deregister first to avoid inconsistent state
@@ -92,7 +93,8 @@ public class PipePluginAgent {
     if (information.isBuiltin()) {
       String errorMessage =
           String.format(
-              "Failed to register PipePlugin %s, because the given PipePlugin name is the same as a built-in PipePlugin name.",
+              "Failed to register PipePlugin %s, because "
+                  + "the given PipePlugin name is the same as a built-in PipePlugin name.",
               pluginName);
       LOGGER.warn(errorMessage);
       throw new PipeException(errorMessage);
@@ -103,8 +105,9 @@ public class PipePluginAgent {
         && !PipePluginExecutableManager.getInstance().isLocalJarMatched(pipePluginMeta)) {
       String errMsg =
           String.format(
-              "Failed to register PipePlugin %s, "
-                  + "because existed md5 of jar file for pipe plugin %s is different from the new jar file.",
+              "Failed to register PipePlugin %s, because "
+                  + "existed md5 of jar file for pipe plugin %s "
+                  + "is different from the new jar file.",
               pluginName, pluginName);
       LOGGER.warn(errMsg);
       throw new PipeException(errMsg);
@@ -152,7 +155,8 @@ public class PipePluginAgent {
         | ClassCastException e) {
       String errorMessage =
           String.format(
-              "Failed to register PipePlugin %s(%s), because its instance can not be constructed successfully. Exception: %s",
+              "Failed to register PipePlugin %s(%s), because "
+                  + "its instance can not be constructed successfully. Exception: %s",
               pluginName.toUpperCase(), className, e);
       LOGGER.warn(errorMessage, e);
       throw new PipeException(errorMessage);
@@ -214,7 +218,8 @@ public class PipePluginAgent {
   public PipeConnector reflectConnector(PipeParameters connectorParameters) {
     if (!connectorParameters.hasAttribute(PipeConnectorConstant.CONNECTOR_KEY)) {
       throw new PipeException(
-          "Failed to reflect PipeConnector instance because 'connector' is not specified in the parameters.");
+          "Failed to reflect PipeConnector instance because "
+              + "'connector' is not specified in the parameters.");
     }
     return (PipeConnector)
         reflect(connectorParameters.getString(PipeConnectorConstant.CONNECTOR_KEY));
@@ -225,7 +230,8 @@ public class PipePluginAgent {
     if (information == null) {
       String errorMessage =
           String.format(
-              "Failed to reflect PipePlugin instance, because PipePlugin %s has not been registered.",
+              "Failed to reflect PipePlugin instance, because "
+                  + "PipePlugin %s has not been registered.",
               pluginName.toUpperCase());
       LOGGER.warn(errorMessage);
       throw new PipeException(errorMessage);

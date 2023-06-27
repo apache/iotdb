@@ -66,6 +66,7 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
   /**
    * @return true if the subtask is out of life cycle, indicating that the subtask should never be
    *     used again
+   * @throws IllegalStateException if aliveTaskCount <= 0
    */
   public synchronized boolean deregister() {
     if (aliveTaskCount <= 0) {

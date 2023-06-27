@@ -83,7 +83,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     if (!event.getTsFileEpoch().getState(this).equals(TsFileEpoch.State.USING_TSFILE)
         && !pendingQueue.offer(event)) {
       LOGGER.warn(
-          "extractTabletInsertion: pending queue of PipeRealtimeDataRegionHybridExtractor {} has reached capacity, discard tablet event {}, current state {}",
+          "extractTabletInsertion: pending queue of PipeRealtimeDataRegionHybridExtractor {} "
+              + "has reached capacity, discard tablet event {}, current state {}",
           this,
           event,
           event.getTsFileEpoch().getState(this));
@@ -102,7 +103,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
 
     if (!pendingQueue.offer(event)) {
       LOGGER.warn(
-          "extractTsFileInsertion: pending queue of PipeRealtimeDataRegionHybridExtractor {} has reached capacity, discard TsFile event {}, current state {}",
+          "extractTsFileInsertion: pending queue of PipeRealtimeDataRegionHybridExtractor {} "
+              + "has reached capacity, discard TsFile event {}, current state {}",
           this,
           event,
           event.getTsFileEpoch().getState(this));
@@ -196,7 +198,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         // and report the exception to PipeRuntimeAgent.
         final String errorMessage =
             String.format(
-                "TsFile Event %s can not be supplied because the reference count can not be increased, "
+                "TsFile Event %s can not be supplied because "
+                    + "the reference count can not be increased, "
                     + "the data represented by this event is lost",
                 event.getEvent());
         LOGGER.warn(errorMessage);

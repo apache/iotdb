@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
 
 public class PipeConfig {
 
-  private final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   /////////////////////////////// File ///////////////////////////////
 

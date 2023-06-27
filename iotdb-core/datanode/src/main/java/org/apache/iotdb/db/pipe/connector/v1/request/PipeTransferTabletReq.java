@@ -121,12 +121,13 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
   }
 
   /**
-   * sort value list by index
+   * sort value list by index.
    *
    * @param valueList value list
    * @param dataType data type
    * @param index index
    * @return sorted list
+   * @throws UnSupportedDataTypeException if dataType is illegal
    */
   private static Object sortList(Object valueList, TSDataType dataType, Integer[] index) {
     switch (dataType) {
@@ -179,7 +180,7 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
   }
 
   /**
-   * sort BitMap by index
+   * sort BitMap by index.
    *
    * @param bitMap BitMap to be sorted
    * @param index index
