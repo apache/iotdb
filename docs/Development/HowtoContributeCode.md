@@ -76,7 +76,7 @@ Notes
 
 2.To modify the configuration parameters, the following files need to be modified 
 
-a.Configuration file: server/src/assembly/resources/conf/iotdb-datanode.properties
+a.Configuration file: iodtb-core/datanode/src/assembly/resources/conf/iotdb-datanode.properties
 
 b. Codes: IoTDBDescriptor, IoTDBConfig
 

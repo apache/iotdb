@@ -573,8 +573,8 @@ This part mainly introduces how external users can contribute their own UDFs to 
 
 #### UDF Source Code
 
-1. Create the UDF main class and related classes in `node-commons/src/main/java/org/apache/iotdb/commons/udf/builtin` or in its subfolders.
-2. Register your UDF in `node-commons/src/main/java/org/apache/iotdb/commons/udf/builtin/BuiltinTimeSeriesGeneratingFunction.java`.
+1. Create the UDF main class and related classes in `iotdb-core/node-commons/src/main/java/org/apache/iotdb/commons/udf/builtin` or in its subfolders.
+2. Register your UDF in `iotdb-core/node-commons/src/main/java/org/apache/iotdb/commons/udf/builtin/BuiltinTimeSeriesGeneratingFunction.java`.
 
 
 
