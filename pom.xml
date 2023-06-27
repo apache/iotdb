@@ -815,14 +815,14 @@
                     <sourceEncoding>UTF-8</sourceEncoding>
                     <sourceDirectories>
                         <!-- put all source folders not in src/main/java here-->
-                        <sourceDirectory>antlr/target/generated-sources/antlr4</sourceDirectory>
+                        <sourceDirectory>iotdb-core/antlr/target/generated-sources/antlr4</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/thrift/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/thrift-commons/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/thrift-confignode/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/thrift-iot-consensus/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/openapi/target/generated-sources/java/src/gen/java</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/openapi/target/generated-sources/java/src/main/java</sourceDirectory>
-                        <sourceDirectory>server/target/generated-sources/freemarker/</sourceDirectory>
+                        <sourceDirectory>iotdb-core/datanode/target/generated-sources/freemarker/</sourceDirectory>
                         <sourceDirectory>iotdb-connector/spark-iotdb-connector/src/main/scala</sourceDirectory>
                         <sourceDirectory>iotdb-connector/spark-tsfile/src/main/scala</sourceDirectory>
                     </sourceDirectories>
