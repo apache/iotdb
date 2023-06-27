@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -814,7 +814,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
   //      String createTimeSereisSql = "CREATE TIMESERIES %s FLOAT";
   //      String createTriggerSql =
   //          "create trigger %s before insert on %s "
-  //              + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'";
+  //              + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'";
   //      for (int i = 0; i < timeseries.length; ++i) {
   //        statement.execute(String.format(createTimeSereisSql, timeseries[i]));
   //        statement.execute(String.format(createTriggerSql, triggerNames[i], timeseries[i]));
@@ -840,14 +840,14 @@ public class IoTDBSyntaxConventionIdentifierIT {
   //      try {
   //        statement.execute(
   //            "create trigger trigger` before insert on root.sg1.d1  "
-  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+  //                + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'");
   //      } catch (Exception ignored) {
   //      }
   //
   //      try {
   //        statement.execute(
   //            "create trigger `trigger`` before insert on root.sg1.d1  "
-  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+  //                + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'");
   //        fail();
   //      } catch (Exception ignored) {
   //      }
@@ -855,7 +855,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
   //      try {
   //        statement.execute(
   //            "create trigger 111 before insert on root.sg1.d1  "
-  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+  //                + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'");
   //        fail();
   //      } catch (Exception ignored) {
   //      }
@@ -863,7 +863,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
   //      try {
   //        statement.execute(
   //            "create trigger 'tri' before insert on root.sg1.d1  "
-  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+  //                + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'");
   //        fail();
   //      } catch (Exception ignored) {
   //      }
@@ -871,7 +871,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
   //      try {
   //        statement.execute(
   //            "create trigger \"tri\" before insert on root.sg1.d1  "
-  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+  //                + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'");
   //        fail();
   //      } catch (Exception ignored) {
   //      }

@@ -36,6 +36,7 @@ import org.jtransforms.fft.DoubleFFT_1D;
 /** This function does Fast Fourier Transform for input series. */
 public class UDTFFFT implements UDTF {
 
+  private static final String COMPRESS_PARAM = "compress";
   private boolean compressed;
   private FFTUtil fftutil;
   private final DoubleArrayList list = new DoubleArrayList();
@@ -62,7 +63,7 @@ public class UDTFFFT implements UDTF {
         .validate(
             x -> (double) x > 0 && (double) x <= 1,
             "Compress should be within (0,1].",
-            validator.getParameters().getDoubleOrDefault("compress", 1));
+            validator.getParameters().getDoubleOrDefault(COMPRESS_PARAM, 1));
   }
 
   @Override
@@ -70,8 +71,8 @@ public class UDTFFFT implements UDTF {
       throws Exception {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
     String result = parameters.getStringOrDefault("result", "abs");
-    this.compressed = parameters.hasAttribute("compress");
-    double compressRate = parameters.getDoubleOrDefault("compress", 1);
+    this.compressed = parameters.hasAttribute(COMPRESS_PARAM);
+    double compressRate = parameters.getDoubleOrDefault(COMPRESS_PARAM, 1);
     this.fftutil = new FFTUtil(result, compressRate);
   }
 

@@ -16,19 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.library.dprofile.util;
 
 /** Interface for getting MAD with error. */
 public class Mad {
   public final double result;
-  public final double error_bound;
+  public final double errorBound;
 
-  public Mad(double result, double error_bound) {
+  public Mad(double result, double errorBound) {
     this.result = result;
-    this.error_bound = error_bound;
+    this.errorBound = errorBound;
   }
 
   public String toString() {
-    return result + " - " + error_bound;
+    return result + " - " + errorBound;
   }
 }

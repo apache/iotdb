@@ -25,10 +25,18 @@ import java.util.List;
 
 public interface Consumer extends AutoCloseable {
 
-  /** Open the subscription. */
+  /**
+   * Open the subscription.
+   *
+   * @throws SubscriptionException if the subscription cannot be opened
+   */
   void openSubscription() throws SubscriptionException;
 
-  /** Close the subscription. */
+  /**
+   * Close the subscription.
+   *
+   * @throws SubscriptionException if the subscription cannot be closed
+   */
   void closeSubscription() throws SubscriptionException;
 
   /**

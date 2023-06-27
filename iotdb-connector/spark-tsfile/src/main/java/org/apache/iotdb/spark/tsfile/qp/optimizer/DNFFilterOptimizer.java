@@ -113,14 +113,13 @@ public class DNFFilterOptimizer implements IFilterOptimizer {
    * @return List<FilterOperator>
    */
   private List<FilterOperator> getAndChild(FilterOperator child) {
-    switch (child.getTokenIntType()) {
-      case KW_OR:
-        return child.getChildren();
-      default:
-        // other token type means leaf node or "and" operator
-        List<FilterOperator> ret = new ArrayList<>();
-        ret.add(child);
-        return ret;
+    if (KW_OR == child.getTokenIntType()) {
+      return child.getChildren();
+    } else {
+      // other token type means leaf node or "and" operator
+      List<FilterOperator> ret = new ArrayList<>();
+      ret.add(child);
+      return ret;
     }
   }
 
