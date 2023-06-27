@@ -31,7 +31,7 @@ import org.apache.iotdb.udf.api.type.Type;
 
 /**
  * calculate the integral or the area under the curve of input series $unit$ is the time scale for
- * the area calculation, chosen from 1s(second, default), 1m(minute), 1h(hour), 1d(day)
+ * the area calculation, chosen from 1s(second, default), 1m(minute), 1h(hour), 1d(day).
  */
 public class UDAFIntegralAvg implements UDTF {
 

@@ -29,29 +29,30 @@ import java.time.ZoneId;
 
 /**
  * Used in {@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}.
- * <p>
- * When the access strategy of a UDTF is set to an instance of this class, the method {@link
+ *
+ * <p>When the access strategy of a UDTF is set to an instance of this class, the method {@link
  * UDTF#transform(RowWindow, PointCollector)} of the UDTF will be called to transform the original
  * data. You need to override the method in your own UDTF class.
- * <p>
- * Sliding time window is a kind of time-based window. To partition the raw query data set into
+ *
+ * <p>Sliding time window is a kind of time-based window. To partition the raw query data set into
  * sliding time windows, you need to give the following 4 parameters:
- * <p>
- * <li> display window begin: determines the start time of the first window
- * <li> display window end: if the start time of current window + sliding step > display window
- * end, then current window is the last window that your UDTF can process
- * <li> time interval: determines the time range of a window
- * <li> sliding step: the start time of the next window = the start time of current window +
- * sliding step
- * <p>
- * Each call of the method {@link UDTF#transform(RowWindow, PointCollector)} processes one time
- * window and can generate any number of data points. Note that the transform method will still be
- * called when there is no data point in a window. Note that the time range of the last few windows
- * may be less than the specified time interval.
- * <p>
- * Sample code:
- * <p>Style 1:
- * <pre>{@code
+ * <li>display window begin: determines the start time of the first window
+ * <li>display window end: if the start time of current window + sliding step > display window end,
+ *     then current window is the last window that your UDTF can process
+ * <li>time interval: determines the time range of a window
+ * <li>sliding step: the start time of the next window = the start time of current window + sliding
+ *     step
+ *
+ *     <p>Each call of the method {@link UDTF#transform(RowWindow, PointCollector)} processes one
+ *     time window and can generate any number of data points. Note that the transform method will
+ *     still be called when there is no data point in a window. Note that the time range of the last
+ *     few windows may be less than the specified time interval.
+ *
+ *     <p>Sample code:
+ *
+ *     <p>Style 1:
+ *
+ *     <pre>{@code
  * @Override
  * public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
  *   configurations.setAccessStrategy(new SlidingTimeWindowAccessStrategy(
@@ -59,9 +60,12 @@ import java.time.ZoneId;
  *       parameters.getLong(50),      // sliding step
  *       parameters.getLong(0),       // display window begin
  *       parameters.getLong(10000))); // display window end
+ * }
  * }</pre>
- * <p>Style 2 (deprecated since v0.14):
- * <pre>{@code
+ *
+ *     <p>Style 2 (deprecated since v0.14):
+ *
+ *     <pre>{@code
  * @Override
  * public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
  *   configurations.setAccessStrategy(new SlidingTimeWindowAccessStrategy(
@@ -69,6 +73,7 @@ import java.time.ZoneId;
  *       parameters.getLong("7d"),                    // sliding step
  *       parameters.getLong("2020-01-01T00:00:00"),   // display window begin
  *       parameters.getLong("2020-06-01T00:00:00"))); // display window end
+ * }
  * }</pre>
  *
  * @see UDTF
@@ -95,6 +100,7 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
    * @param displayWindowEndString display window end in string. format: 2011-12-03T10:15:30 or
    *     2011-12-03T10:15:30+01:00.
    * @throws UnsupportedOperationException deprecated since v0.14
+   * @deprecated use {@link #SlidingTimeWindowAccessStrategy(long, long, long, long)} instead.
    */
   @Deprecated
   public SlidingTimeWindowAccessStrategy(
@@ -117,6 +123,7 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
    * @param slidingStepString sliding step in string. examples: 12d8m9ns, 1y1mo, etc. supported
    *     units: y, mo, w, d, h, m, s, ms, us, ns.
    * @throws UnsupportedOperationException deprecated since v0.14
+   * @deprecated use {@link #SlidingTimeWindowAccessStrategy(long, long)} instead.
    */
   @Deprecated
   public SlidingTimeWindowAccessStrategy(String timeIntervalString, String slidingStepString) {
@@ -139,6 +146,8 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
   }
 
   /**
+   * Display window begin and display window end will be set by the parameters.
+   *
    * @param timeInterval 0 < timeInterval
    * @param slidingStep 0 < slidingStep
    * @param displayWindowBegin displayWindowBegin < displayWindowEnd

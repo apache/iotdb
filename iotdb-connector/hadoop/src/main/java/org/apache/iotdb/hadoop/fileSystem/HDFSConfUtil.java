@@ -35,6 +35,8 @@ import java.net.MalformedURLException;
 
 class HDFSConfUtil {
 
+  private HDFSConfUtil() {}
+
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(HDFSConfUtil.class);
 

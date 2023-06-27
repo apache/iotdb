@@ -46,7 +46,7 @@ import org.apache.iotdb.udf.api.customizer.strategy.SlidingTimeWindowAccessStrat
  *       PointCollector)}
  * </ul>
  *
- * In the life cycle of a UDTF instance, the calling sequence of each method is as follows:
+ * <p>In the life cycle of a UDTF instance, the calling sequence of each method is as follows:
  *
  * <p>1. {@link UDTF#validate(UDFParameterValidator)} 2. {@link UDTF#beforeStart(UDFParameters,
  * UDTFConfigurations)} 3. {@link UDTF#transform(RowWindow, PointCollector)} or {@link
@@ -91,7 +91,9 @@ public interface UDTF extends UDF {
    * @see RowByRowAccessStrategy
    */
   @SuppressWarnings("squid:S112")
-  default void transform(Row row, PointCollector collector) throws Exception {}
+  default void transform(Row row, PointCollector collector) throws Exception {
+    // do nothing
+  }
 
   /**
    * When the user specifies {@link SlidingSizeWindowAccessStrategy} or {@link
@@ -106,7 +108,9 @@ public interface UDTF extends UDF {
    * @see SlidingTimeWindowAccessStrategy
    */
   @SuppressWarnings("squid:S112")
-  default void transform(RowWindow rowWindow, PointCollector collector) throws Exception {}
+  default void transform(RowWindow rowWindow, PointCollector collector) throws Exception {
+    // do nothing
+  }
 
   /**
    * When the user specifies {@link MappableRowByRowAccessStrategy} to access the original data in
@@ -115,6 +119,7 @@ public interface UDTF extends UDF {
    *
    * @param row original input data row (aligned by time)
    * @throws Exception the user can throw errors if necessary
+   * @throws UnsupportedOperationException if the user does not override this method
    * @see MappableRowByRowAccessStrategy
    */
   default Object transform(Row row) throws Exception {
@@ -122,13 +127,15 @@ public interface UDTF extends UDF {
   }
 
   /**
-   * This method will be called once after all {@link UDTF#transform(Row, PointCollector) calls or
-   * {@link UDTF#transform(RowWindow, PointCollector) calls have been executed. In a single UDF
+   * This method will be called once after all {@link UDTF#transform(Row, PointCollector)} calls or
+   * {@link UDTF#transform(RowWindow, PointCollector)} calls have been executed. In a single UDF
    * query, this method will and will only be called once.
    *
    * @param collector used to collect output data points
    * @throws Exception the user can throw errors if necessary
    */
   @SuppressWarnings("squid:S112")
-  default void terminate(PointCollector collector) throws Exception {}
+  default void terminate(PointCollector collector) throws Exception {
+    // do nothing
+  }
 }

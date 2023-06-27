@@ -16,15 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.library.dprofile.util;
 
 import java.util.ArrayList;
+import java.util.List;
 
-/** util for UDTFXCorr and UDTFACF */
+/** util for UDTFXCorr and UDTFACF. */
 public class CrossCorrelation {
-  public static ArrayList<Double> calculateCrossCorrelation(
-      ArrayList<Double> valueArrayList1, ArrayList<Double> valueArrayList2) {
-    ArrayList<Double> correlationArrayList = new ArrayList<>();
+  private CrossCorrelation() {
+    throw new IllegalStateException("Utility class");
+  }
+
+  public static List<Double> calculateCrossCorrelation(
+      List<Double> valueArrayList1, List<Double> valueArrayList2) {
+    List<Double> correlationArrayList = new ArrayList<>();
     int length = valueArrayList1.size();
     for (int shift = 1; shift <= length; shift++) {
       double correlation = 0.0;

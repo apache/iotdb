@@ -44,8 +44,8 @@ tsfile-jdbc/src/main/resources/output/queryRes.csv
 !iotdb-client/client-cpp/src/test/CMakeLists.txt
 !example/rest-client-c-example/CMakeLists.txt
 !example/client-cpp-example/src/CMakeLists.txt
-!mlnode/requirements.txt
-!mlnode/requirements_dev.txt
+!iotdb-core/mlnode/requirements.txt
+!iotdb-core/mlnode/requirements_dev.txt
 
 
 *.jar
@@ -129,6 +129,6 @@ node3/
 /mlnode/LICENSE
 
 # ANTLR
-antlr/gen/
-antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/gen/
-antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/IoTDBSqlLexer.tokens
+iotdb-core/antlr/gen/
+iotdb-core/antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/gen/
+iotdb-core/antlr/src/main/antlr4/org/apache/iotdb/db/qp/sql/IoTDBSqlLexer.tokens

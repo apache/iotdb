@@ -35,7 +35,9 @@ import java.util.ArrayList;
 public class UDTFMinMax implements UDTF {
   ArrayList<Double> value = new ArrayList<>();
   ArrayList<Long> timestamp = new ArrayList<>();
-  String compute = "batch";
+  static final String BATCH_COMPUTE = "batch";
+  static final String STREAM_COMPUTE = "stream";
+  String compute = BATCH_COMPUTE;
   double min = 0.0d;
   double max = 0.0d;
   boolean flag = true;
@@ -46,9 +48,11 @@ public class UDTFMinMax implements UDTF {
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
         .validate(
-            x -> ((String) x).equalsIgnoreCase("batch") || ((String) x).equalsIgnoreCase("stream"),
+            x ->
+                ((String) x).equalsIgnoreCase(BATCH_COMPUTE)
+                    || ((String) x).equalsIgnoreCase(STREAM_COMPUTE),
             "Parameter \"compute\" is illegal. Please use \"batch\" (for default) or \"stream\".",
-            validator.getParameters().getStringOrDefault("compute", "batch"))
+            validator.getParameters().getStringOrDefault("compute", BATCH_COMPUTE))
         .validate(
             params -> (double) params[0] < (double) params[1],
             "parameter $min$ should be smaller than $max$.",
@@ -65,8 +69,8 @@ public class UDTFMinMax implements UDTF {
     max = 0.0d;
     flag = true;
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
-    compute = parameters.getStringOrDefault("compute", "batch");
-    if (compute.equalsIgnoreCase("stream")) {
+    compute = parameters.getStringOrDefault("compute", BATCH_COMPUTE);
+    if (compute.equalsIgnoreCase(STREAM_COMPUTE)) {
       min = parameters.getDouble("min");
       max = parameters.getDouble("max");
     }
@@ -74,9 +78,9 @@ public class UDTFMinMax implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
-    if (compute.equalsIgnoreCase("stream") && max > min) {
+    if (compute.equalsIgnoreCase(STREAM_COMPUTE) && max > min) {
       collector.putDouble(row.getTime(), (Util.getValueAsDouble(row) - min) / (max - min));
-    } else if (compute.equalsIgnoreCase("batch")) {
+    } else if (compute.equalsIgnoreCase(BATCH_COMPUTE)) {
       double v = Util.getValueAsDouble(row);
       if (Double.isFinite(v)) {
         value.add(v);
@@ -98,7 +102,7 @@ public class UDTFMinMax implements UDTF {
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
-    if (compute.equalsIgnoreCase("batch") && max > min) {
+    if (compute.equalsIgnoreCase(BATCH_COMPUTE) && max > min) {
       for (int i = 0; i < value.size(); i++) {
         collector.putDouble(timestamp.get(i), (value.get(i) - min) / (max - min));
       }
