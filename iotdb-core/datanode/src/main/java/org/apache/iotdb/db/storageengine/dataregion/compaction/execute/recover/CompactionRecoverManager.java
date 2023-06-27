@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -62,6 +63,7 @@ public class CompactionRecoverManager {
     recoverCompaction(false, true);
   }
 
+  @SuppressWarnings("squid:S3776")
   private void recoverCompaction(boolean isInnerSpace, boolean isLogSequence) {
     List<String> dirs;
     if (isLogSequence) {
@@ -81,7 +83,7 @@ public class CompactionRecoverManager {
       }
       for (File timePartitionDir : timePartitionDirs) {
         if (!timePartitionDir.isDirectory()
-            || !Pattern.compile("[0-9]*").matcher(timePartitionDir.getName()).matches()) {
+            || !Pattern.compile("\\d*").matcher(timePartitionDir.getName()).matches()) {
           continue;
         }
         File[] compactionLogs =
