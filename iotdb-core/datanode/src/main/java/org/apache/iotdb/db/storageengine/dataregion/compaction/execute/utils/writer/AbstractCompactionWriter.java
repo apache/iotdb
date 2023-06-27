@@ -99,7 +99,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     lastCheckIndex = 0;
     lastTime[subTaskId] = Long.MIN_VALUE;
     if (isAlign) {
-      // the first is time schemaengine and the rest is value schemaengine list
+      // the first is time metadata and the rest is value metadata list
       chunkWriters[subTaskId] =
           new AlignedChunkWriterImpl(measurementSchemaList.remove(0), measurementSchemaList);
       measurementId[subTaskId] = TsFileConstant.TIME_COLUMN_ID;

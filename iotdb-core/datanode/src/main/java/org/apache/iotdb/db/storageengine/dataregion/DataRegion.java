@@ -192,7 +192,7 @@ public class DataRegion implements IDataRegionForQuery {
   private final boolean enableMemControl = config.isEnableMemControl();
   /**
    * a read write lock for guaranteeing concurrent safety when accessing all fields in this class
-   * (i.e., schemaengine, (un)sequenceFileList, work(un)SequenceTsFileProcessor,
+   * (i.e., schema, (un)sequenceFileList, work(un)SequenceTsFileProcessor,
    * closing(Un)SequenceTsFileProcessor, latestTimeForEachDevice, and
    * partitionLatestFlushedTimeForEachDevice)
    */

@@ -132,7 +132,7 @@ public class TsFileProcessorTest {
       processor.insert(buildInsertRowNodeByTSRecord(record));
     }
 
-    // read data in memory
+    // query data in memory
     tsfileResourcesForQuery.clear();
     processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
 
@@ -191,7 +191,7 @@ public class TsFileProcessorTest {
       processor.insert(buildInsertRowNodeByTSRecord(record));
     }
 
-    // read data in memory
+    // query data in memory
     tsfileResourcesForQuery.clear();
     processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
     assertFalse(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk(fullPath).isEmpty());
@@ -394,7 +394,7 @@ public class TsFileProcessorTest {
       processor.insert(buildInsertRowNodeByTSRecord(record));
     }
 
-    // read data in memory
+    // query data in memory
     tsfileResourcesForQuery.clear();
     processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
     assertFalse(tsfileResourcesForQuery.isEmpty());
