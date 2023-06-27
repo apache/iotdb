@@ -51,6 +51,12 @@ public class TimeRange implements Comparable<TimeRange> {
    */
   public TimeRange(long min, long max) {
     set(min, max);
+    if (min == Long.MIN_VALUE) {
+      this.leftClose = false;
+    }
+    if (max == Long.MAX_VALUE) {
+      this.rightClose = false;
+    }
   }
 
   @Override
