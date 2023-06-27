@@ -87,7 +87,9 @@ public class PipeConnectorSubtask extends PipeSubtask {
       throw e;
     } catch (Exception e) {
       throw new PipeException(
-          "Error occurred during executing PipeConnector#transfer, perhaps need to check whether the implementation of PipeConnector is correct according to the pipe-api description.",
+          "Error occurred during executing PipeConnector#transfer, perhaps need to check "
+              + "whether the implementation of PipeConnector is correct "
+              + "according to the pipe-api description.",
           e);
     }
 
@@ -111,7 +113,8 @@ public class PipeConnectorSubtask extends PipeSubtask {
         } catch (Exception e) {
           retry++;
           LOGGER.warn(
-              "Failed to reconnect to the target system, retrying ... after [{}/{}] time(s) retries.",
+              "Failed to reconnect to the target system, retrying ... "
+                  + "after [{}/{}] time(s) retries.",
               retry,
               MAX_RETRY_TIMES,
               e);
@@ -119,7 +122,8 @@ public class PipeConnectorSubtask extends PipeSubtask {
             Thread.sleep(retry * PipeConfig.getInstance().getPipeConnectorRetryIntervalMs());
           } catch (InterruptedException interruptedException) {
             LOGGER.info(
-                "Interrupted while sleeping, perhaps need to check whether the thread is interrupted.",
+                "Interrupted while sleeping, perhaps need to check "
+                    + "whether the thread is interrupted.",
                 interruptedException);
             Thread.currentThread().interrupt();
           }
@@ -131,7 +135,8 @@ public class PipeConnectorSubtask extends PipeSubtask {
       if (retry == MAX_RETRY_TIMES) {
         if (lastEvent instanceof EnrichedEvent) {
           LOGGER.warn(
-              "Failed to reconnect to the target system after {} times, stopping current pipe task {}... "
+              "Failed to reconnect to the target system after {} times, "
+                  + "stopping current pipe task {}... "
                   + "Status shown when query the pipe will be 'STOPPED'. "
                   + "Please restart the task by executing 'START PIPE' manually if needed.",
               MAX_RETRY_TIMES,
@@ -142,8 +147,10 @@ public class PipeConnectorSubtask extends PipeSubtask {
               .reportException(new PipeRuntimeConnectorCriticalException(throwable.getMessage()));
         } else {
           LOGGER.error(
-              "Failed to reconnect to the target system after {} times, stopping current pipe task {} locally... "
-                  + "Status shown when query the pipe will be 'RUNNING' instead of 'STOPPED', but the task is actually stopped. "
+              "Failed to reconnect to the target system after {} times, "
+                  + "stopping current pipe task {} locally... "
+                  + "Status shown when query the pipe will be 'RUNNING' instead of 'STOPPED', "
+                  + "but the task is actually stopped. "
                   + "Please restart the task by executing 'START PIPE' manually if needed.",
               MAX_RETRY_TIMES,
               taskID,
@@ -184,7 +191,8 @@ public class PipeConnectorSubtask extends PipeSubtask {
     } catch (Exception e) {
       e.printStackTrace();
       LOGGER.info(
-          "Error occurred during closing PipeConnector, perhaps need to check whether the implementation of PipeConnector is correct according to the pipe-api description.",
+          "Error occurred during closing PipeConnector, perhaps need to check whether the "
+              + "implementation of PipeConnector is correct according to the pipe-api description.",
           e);
     }
   }

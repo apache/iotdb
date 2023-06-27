@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.pipe.connector.legacy.loader;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;

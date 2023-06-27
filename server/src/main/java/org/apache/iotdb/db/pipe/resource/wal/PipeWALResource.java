@@ -108,6 +108,7 @@ public class PipeWALResource implements Closeable {
    * Unpin the wal if it is out of time to live.
    *
    * @return true if the wal is unpinned physically (then it can be invalidated), false otherwise
+   * @throws PipeRuntimeNonCriticalException if failed to unpin WAL of memtable.
    */
   private boolean unpinPhysicallyIfOutOfTimeToLive() {
     if (isPhysicallyPinned.get()) {

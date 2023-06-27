@@ -54,10 +54,10 @@ public class PipePluginClassLoader extends URLClassLoader {
     this.libRoot = libRoot;
     activeInstanceCount = new AtomicLong(0);
     deprecated = false;
-    addURLs();
+    addUrls();
   }
 
-  private void addURLs() throws IOException {
+  private void addUrls() throws IOException {
     try (Stream<Path> pathStream =
         Files.walk(SystemFileFactory.INSTANCE.getFile(libRoot).toPath())) {
       // skip directory

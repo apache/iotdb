@@ -129,7 +129,8 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
     } else {
       final String errorMessage =
           String.format(
-              "Failed to execute subtask %s(%s), retry count exceeds the max retry times %d, last exception: %s",
+              "Failed to execute subtask %s(%s), "
+                  + "retry count exceeds the max retry times %d, last exception: %s",
               taskID, this.getClass().getSimpleName(), retryCount.get(), throwable.getMessage());
       LOGGER.warn(errorMessage, throwable);
 
@@ -149,9 +150,11 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
             throwable);
       } else {
         LOGGER.error(
-            "The last event is not an instance of EnrichedEvent, so the exception cannot be reported. "
+            "The last event is not an instance of EnrichedEvent, "
+                + "so the exception cannot be reported. "
                 + "Stopping current pipe task {}({}) locally... "
-                + "Status shown when query the pipe will be 'RUNNING' instead of 'STOPPED', but the task is actually stopped. "
+                + "Status shown when query the pipe will be 'RUNNING' "
+                + "instead of 'STOPPED', but the task is actually stopped. "
                 + "Please restart the task by executing 'START PIPE' manually if needed.",
             taskID,
             this.getClass().getSimpleName(),

@@ -87,17 +87,17 @@ public class PipePluginClassLoaderManager implements IService {
   // singleton instance holder
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  private static PipePluginClassLoaderManager INSTANCE = null;
+  private static PipePluginClassLoaderManager instance = null;
 
   public static synchronized PipePluginClassLoaderManager setupAndGetInstance(String libRoot)
       throws IOException {
-    if (INSTANCE == null) {
-      INSTANCE = new PipePluginClassLoaderManager(libRoot);
+    if (instance == null) {
+      instance = new PipePluginClassLoaderManager(libRoot);
     }
-    return INSTANCE;
+    return instance;
   }
 
   public static PipePluginClassLoaderManager getInstance() {
-    return INSTANCE;
+    return instance;
   }
 }

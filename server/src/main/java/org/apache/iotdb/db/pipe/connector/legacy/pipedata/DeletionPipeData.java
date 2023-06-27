@@ -17,6 +17,7 @@
  * under the License.
  *
  */
+
 package org.apache.iotdb.db.pipe.connector.legacy.pipedata;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -82,8 +83,12 @@ public class DeletionPipeData extends PipeData {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     DeletionPipeData that = (DeletionPipeData) o;
     return Objects.equals(deletion, that.deletion)
         && Objects.equals(serialNumber, that.serialNumber);
