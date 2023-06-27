@@ -57,4 +57,4 @@ jobs:
       - name: Integration test
         shell: bash
         run: |
-          pytest mlnode
+          pytest iotdb-core/mlnode
