@@ -476,33 +476,31 @@ public class ConfigPlanExecutor {
     }
 
     AtomicBoolean result = new AtomicBoolean(true);
-    snapshotProcessorList
-        .parallelStream()
-        .forEach(
-            x -> {
-              boolean takeSnapshotResult = true;
-              try {
-                long startTime = System.currentTimeMillis();
-                LOGGER.info(
-                    "[ConfigNodeSnapshot] Start to take snapshot for {} into {}",
-                    x.getClass().getName(),
-                    snapshotDir.getAbsolutePath());
-                takeSnapshotResult = x.processTakeSnapshot(snapshotDir);
-                LOGGER.info(
-                    "[ConfigNodeSnapshot] Finish to take snapshot for {}, time consumption: {} ms",
-                    x.getClass().getName(),
-                    System.currentTimeMillis() - startTime);
-              } catch (TException | IOException e) {
-                LOGGER.error("Take snapshot error: {}", e.getMessage());
-                takeSnapshotResult = false;
-              } finally {
-                // If any snapshot fails, the whole fails
-                // So this is just going to be false
-                if (!takeSnapshotResult) {
-                  result.set(false);
-                }
-              }
-            });
+    snapshotProcessorList.forEach(
+        x -> {
+          boolean takeSnapshotResult = true;
+          try {
+            long startTime = System.currentTimeMillis();
+            LOGGER.info(
+                "[ConfigNodeSnapshot] Start to take snapshot for {} into {}",
+                x.getClass().getName(),
+                snapshotDir.getAbsolutePath());
+            takeSnapshotResult = x.processTakeSnapshot(snapshotDir);
+            LOGGER.info(
+                "[ConfigNodeSnapshot] Finish to take snapshot for {}, time consumption: {} ms",
+                x.getClass().getName(),
+                System.currentTimeMillis() - startTime);
+          } catch (TException | IOException e) {
+            LOGGER.error("Take snapshot error: {}", e.getMessage());
+            takeSnapshotResult = false;
+          } finally {
+            // If any snapshot fails, the whole fails
+            // So this is just going to be false
+            if (!takeSnapshotResult) {
+              result.set(false);
+            }
+          }
+        });
     if (result.get()) {
       LOGGER.info("[ConfigNodeSnapshot] Task snapshot success, snapshotDir: {}", snapshotDir);
     }
