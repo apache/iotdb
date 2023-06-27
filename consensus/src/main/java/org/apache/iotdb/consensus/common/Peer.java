@@ -85,9 +85,6 @@ public class Peer {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    if (!super.equals(o)) {
-      return false;
-    }
     Peer peer = (Peer) o;
     return nodeId == peer.nodeId
         && Objects.equals(groupId, peer.groupId)
