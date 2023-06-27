@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;

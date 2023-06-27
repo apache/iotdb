@@ -30,7 +30,7 @@ public interface TsFileInsertionEvent extends Event {
   /**
    * The method is used to convert the TsFileInsertionEvent into several TabletInsertionEvents.
    *
-   * @return the list of TsFileInsertionEvent
+   * @return {@code Iterable<TabletInsertionEvent>} the list of TabletInsertionEvent
    */
   Iterable<TabletInsertionEvent> toTabletInsertionEvents();
 }

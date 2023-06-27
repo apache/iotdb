@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
 /** Utils of setting global TSFileConfig. */
 public class TSFileConfigUtil {
+  private TSFileConfigUtil() {}
 
   public static void setGlobalTSFileConfig(TSFileConfig config) {
     TSFileConfig globalConfig = TSFileDescriptor.getInstance().getConfig();
