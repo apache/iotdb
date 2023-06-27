@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.statement.component;
 
 import org.apache.iotdb.db.mpp.execution.operator.window.WindowType;
+import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 
@@ -40,7 +41,8 @@ public abstract class GroupByComponent extends StatementNode {
   }
 
   public void setControlColumnExpression(Expression controlColumnExpression) {
-    this.controlColumnExpression = controlColumnExpression;
+    this.controlColumnExpression =
+        ExpressionAnalyzer.semiNormalizeExpression(controlColumnExpression);
   }
 
   public Expression getControlColumnExpression() {

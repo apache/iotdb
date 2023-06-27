@@ -47,8 +47,9 @@ import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.BindTypeForTimeSeriesOperandVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.CollectAggregationExpressionsVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.CollectSourceExpressionsVisitor;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionNormalizeVisitor;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionSemiNormalizeVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.GetMeasurementExpressionVisitor;
-import org.apache.iotdb.db.mpp.plan.expression.visitor.RemoveAliasFromExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ReplaceRawPathWithGroupedPathVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.cartesian.BindSchemaForExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.cartesian.BindSchemaForPredicateVisitor;
@@ -666,8 +667,12 @@ public class ExpressionAnalyzer {
    *
    * @return expression after removing alias
    */
-  public static Expression removeAliasFromExpression(Expression expression) {
-    return new RemoveAliasFromExpressionVisitor().process(expression, null);
+  public static Expression normalizeExpression(Expression expression) {
+    return new ExpressionNormalizeVisitor().process(expression, null);
+  }
+
+  public static Expression semiNormalizeExpression(Expression expression) {
+    return new ExpressionSemiNormalizeVisitor().process(expression, null);
   }
 
   /** Check for arithmetic expression, logical expression, UDF. Returns true if it exists. */

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.component;
 
+import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 
@@ -84,7 +85,8 @@ public class OrderByComponent extends StatementNode {
 
   public void addExpressionSortItem(SortItem sortItem) {
     this.sortItemList.add(sortItem);
-    this.sortItemExpressionList.add(sortItem.getExpression());
+    this.sortItemExpressionList.add(
+        ExpressionAnalyzer.semiNormalizeExpression(sortItem.getExpression()));
   }
 
   public List<SortItem> getSortItemList() {

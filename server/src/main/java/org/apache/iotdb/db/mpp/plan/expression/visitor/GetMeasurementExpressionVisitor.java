@@ -60,13 +60,14 @@ public class GetMeasurementExpressionVisitor extends ReconstructVisitor<Analysis
   @Override
   public Expression visitTimeSeriesOperand(TimeSeriesOperand timeSeriesOperand, Analysis analysis) {
     MeasurementPath rawPath = (MeasurementPath) timeSeriesOperand.getPath();
-    PartialPath measurement = new PartialPath(rawPath.getMeasurement(), false);
-    MeasurementPath measurementWithSchema =
-        new MeasurementPath(measurement, rawPath.getMeasurementSchema());
-    if (rawPath.isMeasurementAliasExists()) {
-      measurementWithSchema.setMeasurementAlias(rawPath.getMeasurementAlias());
-    }
-    measurementWithSchema.setTagMap(rawPath.getTagMap());
-    return new TimeSeriesOperand(measurementWithSchema);
+    String measurementName =
+        rawPath.isMeasurementAliasExists()
+            ? rawPath.getMeasurementAlias()
+            : rawPath.getMeasurement();
+    MeasurementPath measurementPath =
+        new MeasurementPath(
+            new PartialPath(measurementName, false), rawPath.getMeasurementSchema());
+    measurementPath.setTagMap(rawPath.getTagMap());
+    return new TimeSeriesOperand(measurementPath);
   }
 }
