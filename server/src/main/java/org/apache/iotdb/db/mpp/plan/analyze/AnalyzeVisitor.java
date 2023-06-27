@@ -582,11 +582,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       ISchemaTree schemaTree,
       Set<PartialPath> deviceSet) {
     List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
-    outputExpressions.add(new Pair<>(deviceExpression, null));
-    if (queryStatement.isOutputEndTime()) {
-      outputExpressions.add(new Pair<>(endTimeExpression, null));
-    }
-
     Map<String, Set<Expression>> deviceToSelectExpressions = new HashMap<>();
 
     ColumnPaginationController paginationController =
@@ -1222,15 +1217,23 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis,
       QueryStatement queryStatement,
       List<Pair<Expression, String>> outputExpressions) {
-
-    Set<Expression> selectExpressions =
+    Set<Expression> selectExpressions = new LinkedHashSet<>();
+    selectExpressions.add(deviceExpression);
+    if (queryStatement.isOutputEndTime()) {
+      selectExpressions.add(endTimeExpression);
+    }
+    selectExpressions.addAll(
         outputExpressions.stream()
             .map(Pair::getLeft)
-            .collect(Collectors.toCollection(LinkedHashSet::new));
+            .collect(Collectors.toCollection(LinkedHashSet::new)));
     analysis.setSelectExpressions(selectExpressions);
 
     Set<Expression> deviceViewOutputExpressions = new LinkedHashSet<>();
     if (queryStatement.isAggregationQuery()) {
+      deviceViewOutputExpressions.add(deviceExpression);
+      if (queryStatement.isOutputEndTime()) {
+        deviceViewOutputExpressions.add(endTimeExpression);
+      }
       for (Expression selectExpression : selectExpressions) {
         deviceViewOutputExpressions.addAll(
             ExpressionAnalyzer.searchAggregationExpressions(selectExpression));
@@ -1331,6 +1334,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     boolean isIgnoreTimestamp = queryStatement.isAggregationQuery() && !queryStatement.isGroupBy();
     List<ColumnHeader> columnHeaders = new ArrayList<>();
+    if (queryStatement.isAlignByDevice()) {
+      columnHeaders.add(new ColumnHeader(DEVICE, TSDataType.TEXT, null));
+    }
+    if (queryStatement.isOutputEndTime()) {
+      columnHeaders.add(new ColumnHeader(ENDTIME, TSDataType.INT64, null));
+    }
     for (Pair<Expression, String> expressionAliasPair : outputExpressions) {
       columnHeaders.add(
           new ColumnHeader(
