@@ -1511,7 +1511,7 @@ public class IoTDBDescriptor {
                   "select_into_insert_tablet_plan_row_limit",
                   String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
 
-      // update enable read memory estimation for memory control
+      // update enable query memory estimation for memory control
       conf.setEnableQueryMemoryEstimation(
           Boolean.parseBoolean(
               properties.getProperty(
@@ -1525,7 +1525,7 @@ public class IoTDBDescriptor {
         WALManager.getInstance().rebootWALDeleteThread();
       }
 
-      // update schemaengine quota configuration
+      // update schema quota configuration
       conf.setClusterSchemaLimitLevel(
           properties
               .getProperty("cluster_schema_limit_level", conf.getClusterSchemaLimitLevel())

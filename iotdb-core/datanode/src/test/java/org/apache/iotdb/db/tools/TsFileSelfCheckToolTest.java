@@ -85,7 +85,7 @@ public class TsFileSelfCheckToolTest {
       int sensorNum = 10;
 
       List<MeasurementSchema> measurementSchemas = new ArrayList<>();
-      // add measurements into file schemaengine (all with INT64 data type)
+      // add measurements into file schema (all with INT64 data type)
       for (int i = 0; i < sensorNum; i++) {
         MeasurementSchema measurementSchema =
             new MeasurementSchema(sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF);

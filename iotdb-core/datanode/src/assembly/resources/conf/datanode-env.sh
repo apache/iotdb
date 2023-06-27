@@ -226,7 +226,7 @@ calculate_heap_sizes
 # Maximum direct memory size
 MAX_DIRECT_MEMORY_SIZE=${MAX_HEAP_SIZE}
 
-# threads number that may use direct memory, including read threads(8) + merge threads(4) + space left for system(4)
+# threads number that may use direct memory, including query threads(8) + merge threads(4) + space left for system(4)
 threads_number="16"
 # the size of buffer cache pool(IOV_MAX) depends on operating system
 temp_buffer_pool_size="1024"

@@ -60,7 +60,7 @@ public class DataNodeMetricsHelper {
     initCpuMetrics();
     MetricService.getInstance().addMetricSet(WritingMetrics.getInstance());
 
-    // bind read related metrics
+    // bind query related metrics
     MetricService.getInstance().addMetricSet(QueryPlanCostMetricSet.getInstance());
     MetricService.getInstance().addMetricSet(SeriesScanCostMetricSet.getInstance());
     MetricService.getInstance().addMetricSet(QueryExecutionMetricSet.getInstance());

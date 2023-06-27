@@ -38,7 +38,7 @@ public class QueryExecutionMetricSet implements IMetricSet {
     // empty constructor
   }
 
-  // region read dispatch
+  // region query dispatch
   public static final String WAIT_FOR_DISPATCH = "wait_for_dispatch";
   public static final String DISPATCH_READ = "dispatch_read";
   private Timer waitForDispatchTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
@@ -71,7 +71,7 @@ public class QueryExecutionMetricSet implements IMetricSet {
   }
   // endregion
 
-  // region read execution
+  // region query execution
   public static final String LOCAL_EXECUTION_PLANNER = "local_execution_planner";
   public static final String QUERY_RESOURCE_INIT = "query_resource_init";
   public static final String GET_QUERY_RESOURCE_FROM_MEM = "get_query_resource_from_mem";
@@ -137,7 +137,7 @@ public class QueryExecutionMetricSet implements IMetricSet {
   }
   // endregion
 
-  // region read aggregation
+  // region query aggregation
   public static final String AGGREGATION_FROM_RAW_DATA = "aggregation_from_raw_data";
   public static final String AGGREGATION_FROM_STATISTICS = "aggregation_from_statistics";
   private Timer aggregationFromRawDataTimer = DoNothingMetricManager.DO_NOTHING_TIMER;

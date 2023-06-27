@@ -32,11 +32,11 @@ import java.util.List;
 public interface IDriverScheduler {
 
   /**
-   * Submit one or more {@link IDriver} in one read for later scheduling.
+   * Submit one or more {@link IDriver} in one query for later scheduling.
    *
    * @param queryId the queryId these instances belong to.
    * @param instances the submitted instances.
-   * @param timeOut the read timeout
+   * @param timeOut the query timeout
    * @throws CpuNotEnoughException throw exception if CPU resources are not enough.
    * @throws MemoryNotEnoughException throw exception if Memory resources are not enough.
    */
@@ -45,9 +45,9 @@ public interface IDriverScheduler {
       throws CpuNotEnoughException, MemoryNotEnoughException;
 
   /**
-   * Abort all the instances in this read.
+   * Abort all the instances in this query.
    *
-   * @param queryId the id of the read to be aborted.
+   * @param queryId the id of the query to be aborted.
    */
   void abortQuery(QueryId queryId);
 

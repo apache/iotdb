@@ -187,7 +187,7 @@ public class TsFileAndModSettleToolTest {
     try {
       File f = FSFactoryProducer.getFSFactory().getFile(path);
       TsFileWriter tsFileWriter = new TsFileWriter(f);
-      // add measurements into file schemaengine
+      // add measurements into file schema
       try {
         for (Map.Entry<String, List<String>> entry : deviceSensorsMap.entrySet()) {
           String device = entry.getKey();

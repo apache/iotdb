@@ -145,19 +145,19 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
             new PartialPath("root.sg.wf02"), 2, templateId),
         template);
 
-    // construct schemaengine blacklist with template on root.sg.wf01.wt01 and root.sg.wf02
+    // construct schema blacklist with template on root.sg.wf01.wt01 and root.sg.wf02
     Map<PartialPath, List<Integer>> allDeviceTemplateMap = new HashMap<>();
     allDeviceTemplateMap.put(new PartialPath("root.**"), Collections.singletonList(templateId));
     schemaRegion.constructSchemaBlackListWithTemplate(
         SchemaRegionWritePlanFactory.getPreDeactivateTemplatePlan(allDeviceTemplateMap));
 
-    // rollback schemaengine blacklist with template on root.sg.wf02
+    // rollback schema blacklist with template on root.sg.wf02
     Map<PartialPath, List<Integer>> wf02TemplateMap = new HashMap<>();
     wf02TemplateMap.put(new PartialPath("root.sg.wf02"), Collections.singletonList(templateId));
     schemaRegion.rollbackSchemaBlackListWithTemplate(
         SchemaRegionWritePlanFactory.getRollbackPreDeactivateTemplatePlan(wf02TemplateMap));
 
-    // deactivate schemaengine blacklist with template on root.sg.wf01.wt01
+    // deactivate schema blacklist with template on root.sg.wf01.wt01
     schemaRegion.deactivateTemplateInBlackList(
         SchemaRegionWritePlanFactory.getDeactivateTemplatePlan(allDeviceTemplateMap));
 
@@ -205,7 +205,7 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
             "root.sg.wf02.s1",
             "root.sg.wf02.s2");
 
-    // check fetch schemaengine
+    // check fetch schema
     List<MeasurementPath> schemas =
         schemaRegion.fetchSchema(new PartialPath("root.**"), templateMap, true);
     Assert.assertEquals(expectedTimeseries.size(), schemas.size());

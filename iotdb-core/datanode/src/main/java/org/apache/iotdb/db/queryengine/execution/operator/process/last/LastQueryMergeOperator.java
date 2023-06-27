@@ -39,7 +39,7 @@ import static com.google.common.util.concurrent.Futures.successfulAsList;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryUtil.appendLastValue;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryUtil.getTimeSeries;
 
-// merge all last read result from different data regions, it will select max time for the same
+// merge all last query result from different data regions, it will select max time for the same
 // time-series
 public class LastQueryMergeOperator implements ProcessOperator {
 

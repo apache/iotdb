@@ -498,7 +498,7 @@ public class DataNode implements DataNodeMBean {
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
     setUncaughtExceptionHandler();
 
-    logger.info("Recover the schemaengine...");
+    logger.info("Recover the schema...");
     initSchemaEngine();
     registerManager.register(FlushManager.getInstance());
     registerManager.register(CacheHitRatioMonitor.getInstance());
@@ -510,7 +510,7 @@ public class DataNode implements DataNodeMBean {
     }
     registerManager.register(WALManager.getInstance());
 
-    // in queryengine mode we need to start some other services
+    // in mpp mode we need to start some other services
     registerManager.register(StorageEngine.getInstance());
     registerManager.register(MPPDataExchangeService.getInstance());
     registerManager.register(DriverScheduler.getInstance());
@@ -852,7 +852,7 @@ public class DataNode implements DataNodeMBean {
     long time = System.currentTimeMillis();
     SchemaEngine.getInstance().init();
     long end = System.currentTimeMillis() - time;
-    logger.info("Spent {}ms to recover schemaengine.", end);
+    logger.info("Spent {}ms to recover schema.", end);
   }
 
   public void stop() {

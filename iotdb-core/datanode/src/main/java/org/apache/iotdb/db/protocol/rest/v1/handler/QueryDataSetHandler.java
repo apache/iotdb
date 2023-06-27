@@ -68,7 +68,7 @@ public class QueryDataSetHandler {
                 .code(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode())
                 .message(
                     String.format(
-                        "unsupported read data type: %s", statement.getType().toString())))
+                        "unsupported query data type: %s", statement.getType().toString())))
         .build();
   }
 

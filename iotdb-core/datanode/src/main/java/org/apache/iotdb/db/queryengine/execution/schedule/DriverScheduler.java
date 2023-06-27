@@ -208,7 +208,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
             tasks.get(dependencyDriverIndex).getBlockedDependencyDriver();
         blockedDependencyFuture.addListener(
             () -> {
-              // Only if read is alive, we can submit this task
+              // Only if query is alive, we can submit this task
               queryMap.computeIfPresent(
                   queryId,
                   (k1, queryRelatedTasks) -> {
@@ -272,7 +272,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
   }
 
   public void registerTaskToQueryMap(QueryId queryId, DriverTask driverTask) {
-    // If read has not been registered by other fragment instances,
+    // If query has not been registered by other fragment instances,
     // add the first task as timeout checking task to timeoutQueue.
     queryMap
         .computeIfAbsent(queryId, k -> new ConcurrentHashMap<>())
@@ -567,7 +567,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
             return;
           }
           logger.warn(
-              "The task {} is aborted. All other tasks in the same read will be cancelled",
+              "The task {} is aborted. All other tasks in the same query will be cancelled",
               task.getDriverTaskId());
         } finally {
           task.unlock();

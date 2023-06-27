@@ -199,7 +199,7 @@ public class MemoryPool {
         for (Long memoryReserved : fragmentRelatedMemory.values()) {
           if (memoryReserved != 0) {
             throw new MemoryLeakException(
-                "PlanNode related memory is not zero when deregister FI from read memory pool.");
+                "PlanNode related memory is not zero when deregister FI from query memory pool.");
           }
         }
       }
@@ -216,7 +216,7 @@ public class MemoryPool {
    * Reserve memory with bytesToReserve.
    *
    * @return if reserve succeed, pair.right will be true, otherwise false
-   * @throws IllegalArgumentException throw exception if current read requests more memory than can
+   * @throws IllegalArgumentException throw exception if current query requests more memory than can
    *     be allocated.
    */
   public Pair<ListenableFuture<Void>, Boolean> reserve(

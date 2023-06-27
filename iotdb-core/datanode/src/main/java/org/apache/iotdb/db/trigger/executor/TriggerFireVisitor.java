@@ -251,7 +251,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
 
   private Map<String, Integer> constructMeasurementToSchemaIndexMap(
       String[] measurements, MeasurementSchema[] schemas) {
-    // The index of measurement and schemaengine is the same now.
+    // The index of measurement and schema is the same now.
     // However, in case one day the order changes, we need to construct an index map.
     Map<String, Integer> indexMap = new HashMap<>();
     for (int i = 0, n = measurements.length; i < n; i++) {

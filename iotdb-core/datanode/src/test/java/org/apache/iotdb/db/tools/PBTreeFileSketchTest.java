@@ -97,7 +97,7 @@ public class PBTreeFileSketchTest {
                 + File.separator
                 + "system"
                 + File.separator
-                + "schemaengine"
+                + "schema"
                 + File.separator
                 + "root.test.vRoot1"
                 + File.separator

@@ -448,7 +448,7 @@ public class DefaultDriverSchedulerTest {
           .forceDeregisterFragmentInstance(Mockito.any());
       Mockito.reset(mockMPPDataExchangeManager);
 
-      // An aborted fragment may cause others in the same read aborted.
+      // An aborted fragment may cause others in the same query aborted.
       Assert.assertEquals(DriverTaskStatus.ABORTED, testTask1.getStatus());
       Assert.assertEquals(DriverTaskStatus.ABORTED, testTask2.getStatus());
       Assert.assertFalse(manager.getBlockedTasks().contains(testTask1));

@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.execution.operator.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;

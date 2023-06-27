@@ -48,7 +48,7 @@ public class L1PriorityQueue<E extends IDIndexedAccessible> extends IndexedBlock
    * @see IndexedBlockingQueue
    * @param maxCapacity the max capacity of the queue.
    * @param comparator the comparator for comparing the elements.
-   * @param queryHolder the read holder instance.
+   * @param queryHolder the query holder instance.
    * @throws IllegalArgumentException if maxCapacity <= 0.
    */
   public L1PriorityQueue(int maxCapacity, Comparator<E> comparator, E queryHolder) {

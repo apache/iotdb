@@ -24,7 +24,7 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 /** Used for aggregation with only one time window. i.e. Aggregation without group by. */
 public class SingleTimeWindowIterator implements ITimeRangeIterator {
 
-  // total read [startTime, endTime)
+  // total query [startTime, endTime)
   private final long startTime;
   private final long endTime;
 

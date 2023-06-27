@@ -55,7 +55,7 @@ public class MLogParserTest {
   /*
    * For root.sg0, we prepare 50 CreateTimeseriesPlan.
    * For root.sg1, we prepare 50 CreateTimeseriesPlan, 1 DeleteTimeseriesPlan, 1 ChangeTagOffsetPlan and 1 ChangeAliasPlan.
-   * For root.sg, we prepare none schemaengine plan.
+   * For root.sg, we prepare none schema plan.
    *
    * For root.ln.cc, we create it and then delete it, thus there's no mlog of root.ln.cc.
    * There' still 1 CreateTemplatePlan in template_log.bin

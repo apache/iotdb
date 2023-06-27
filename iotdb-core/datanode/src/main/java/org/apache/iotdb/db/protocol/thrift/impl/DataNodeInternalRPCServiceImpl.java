@@ -1049,7 +1049,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         return result.status;
       }
     } catch (Exception e) {
-      // TODO call the coordinator to release read resource
+      // TODO call the coordinator to release query resource
       return onQueryException(e, "\"" + executedSQL + "\". " + OperationType.EXECUTE_STATEMENT);
     } finally {
       SESSION_MANAGER.closeSession(session, COORDINATOR::cleanupQueryExecution);
@@ -1162,7 +1162,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       spaceQuotaManager.setDataRegionIds(req.getDataRegionIds());
       resp.setRegionDisk(spaceQuotaManager.getRegionDisk());
     }
-    // Update schemaengine quota if necessary
+    // Update schema quota if necessary
     SchemaEngine.getInstance().updateAndFillSchemaCountMap(req.schemaQuotaCount, resp);
 
     // Update pipe meta if necessary
@@ -1349,7 +1349,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       if (queryExecution.isPresent()) {
         queryExecution.get().cancel();
       } else {
-        return new TSStatus(TSStatusCode.NO_SUCH_QUERY.getStatusCode()).setMessage("No such read");
+        return new TSStatus(TSStatusCode.NO_SUCH_QUERY.getStatusCode()).setMessage("No such query");
       }
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());

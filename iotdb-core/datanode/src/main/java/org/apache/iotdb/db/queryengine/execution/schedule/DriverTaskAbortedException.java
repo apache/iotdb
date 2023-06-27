@@ -26,7 +26,7 @@ public class DriverTaskAbortedException extends Exception {
 
   public static final String BY_TIMEOUT = "timeout";
   public static final String BY_FRAGMENT_ABORT_CALLED = " called";
-  public static final String BY_QUERY_CASCADING_ABORTED = "read cascading aborted";
+  public static final String BY_QUERY_CASCADING_ABORTED = "query cascading aborted";
   public static final String BY_ALREADY_BEING_CANCELLED = "already being cancelled";
   public static final String BY_INTERNAL_ERROR_SCHEDULED = "internal error scheduled";
 

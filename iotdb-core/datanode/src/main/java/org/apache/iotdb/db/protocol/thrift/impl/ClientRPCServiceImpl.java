@@ -277,7 +277,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       if (finished) {
-        // record total time cost for one read
+        // record total time cost for one query
         long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
         addQueryLatency(statementType, executionTime > 0 ? executionTime : currentOperationCost);
         COORDINATOR.cleanupQueryExecution(queryId, t);
@@ -364,7 +364,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           OperationType.EXECUTE_RAW_DATA_QUERY, StatementType.QUERY, currentOperationCost);
 
       if (finished) {
-        // record total time cost for one read
+        // record total time cost for one query
         long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
         addQueryLatency(
             StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
@@ -454,7 +454,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           OperationType.EXECUTE_LAST_DATA_QUERY, StatementType.QUERY, currentOperationCost);
 
       if (finished) {
-        // record total time cost for one read
+        // record total time cost for one query
         long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
         addQueryLatency(
             StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
@@ -541,7 +541,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           OperationType.EXECUTE_AGG_QUERY, StatementType.QUERY, currentOperationCost);
 
       if (finished) {
-        // record total time cost for one read
+        // record total time cost for one query
         long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
         addQueryLatency(
             StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
@@ -637,7 +637,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           OperationType.FETCH_RESULTS, statementType, currentOperationCost);
 
       if (finished) {
-        // record total time cost for one read
+        // record total time cost for one query
         long executionTime = COORDINATOR.getTotalExecutionTime(req.queryId);
         addQueryLatency(
             StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
@@ -1157,7 +1157,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           OperationType.FETCH_RESULTS, statementType, currentOperationCost);
 
       if (finished) {
-        // record total time cost for one read
+        // record total time cost for one query
         long executionTime = COORDINATOR.getTotalExecutionTime(req.queryId);
         addQueryLatency(
             StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
@@ -1732,7 +1732,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       CreateSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
 
       if (enableAuditLog) {
-        AuditLogger.log(String.format("create schemaengine template %s", req.getName()), statement);
+        AuditLogger.log(String.format("create schema template %s", req.getName()), statement);
       }
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(statement, clientSession);
@@ -1911,8 +1911,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       if (enableAuditLog) {
         AuditLogger.log(
-            String.format(
-                "set schemaengine template %s.%s", req.getTemplateName(), req.getPrefixPath()),
+            String.format("set schema template %s.%s", req.getTemplateName(), req.getPrefixPath()),
             statement);
       }
 
@@ -1960,8 +1959,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (enableAuditLog) {
         AuditLogger.log(
             String.format(
-                "unset schemaengine template %s from %s",
-                req.getTemplateName(), req.getPrefixPath()),
+                "unset schema template %s from %s", req.getTemplateName(), req.getPrefixPath()),
             statement);
       }
 
@@ -2007,8 +2005,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       DropSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
 
       if (enableAuditLog) {
-        AuditLogger.log(
-            String.format("drop schemaengine template %s", req.getTemplateName()), statement);
+        AuditLogger.log(String.format("drop schema template %s", req.getTemplateName()), statement);
       }
 
       // permission check
@@ -2052,8 +2049,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       if (enableAuditLog) {
         AuditLogger.log(
-            String.format("batch activate schemaengine template %s", req.getDevicePathList()),
-            statement);
+            String.format("batch activate schema template %s", req.getDevicePathList()), statement);
       }
 
       // permission check
@@ -2198,7 +2194,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         "Log in failed. Either you are not authorized or the session has timed out.");
   }
 
-  /** Add stat of whole stage read into metrics */
+  /** Add stat of whole stage query into metrics */
   private void addQueryLatency(StatementType statementType, long costTimeInNanos) {
     if (statementType == null) {
       return;

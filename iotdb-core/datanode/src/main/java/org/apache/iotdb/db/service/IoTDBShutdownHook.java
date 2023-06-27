@@ -71,7 +71,7 @@ public class IoTDBShutdownHook extends Thread {
     WALManager.getInstance().deleteOutdatedWALFiles();
 
     // We did this work because the RatisConsensus recovery mechanism is different from other
-    // consensus algorithms, which will replace the underlying storage storageengine based on its
+    // consensus algorithms, which will replace the underlying storage engine based on its
     // own
     // latest snapshot, while other consensus algorithms will not. This judgement ensures that
     // compaction work is not discarded even if there are frequent restarts

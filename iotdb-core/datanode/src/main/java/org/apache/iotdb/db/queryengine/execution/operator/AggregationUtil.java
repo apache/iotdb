@@ -58,8 +58,8 @@ public class AggregationUtil {
   }
 
   /**
-   * If groupByTimeParameter is null, which means it's an aggregation read without down sampling.
-   * Aggregation read has only one time window and the result set of it does not contain a
+   * If groupByTimeParameter is null, which means it's an aggregation query without down sampling.
+   * Aggregation query has only one time window and the result set of it does not contain a
    * timestamp, so it doesn't matter what the time range returns.
    */
   public static ITimeRangeIterator initTimeRangeIterator(

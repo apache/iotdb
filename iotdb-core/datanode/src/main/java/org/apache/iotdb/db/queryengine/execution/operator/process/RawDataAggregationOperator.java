@@ -39,7 +39,7 @@ import static org.apache.iotdb.db.queryengine.execution.operator.window.WindowMa
  * filter. It's possible that there is more than one tsBlock input in one time interval. And it's
  * also possible that one tsBlock can cover multiple time intervals too.
  *
- * <p>Since raw data read with value filter is processed by FilterOperator above TimeJoinOperator,
+ * <p>Since raw data query with value filter is processed by FilterOperator above TimeJoinOperator,
  * there we can see RawDataAggregateOperator as a one-to-one(one input, ont output) operator.
  *
  * <p>Return aggregation result in many time intervals once.

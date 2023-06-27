@@ -268,7 +268,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
         Assert.assertEquals(1, cachedRegionStatistics2.getPinnedMNodeNum());
         Assert.assertEquals(0, cachedRegionStatistics2.getUnpinnedMNodeNum());
       }
-      // check consistence between region and storageengine
+      // check consistence between region and engine
       Assert.assertEquals(
           cachedRegionStatistics1.getPinnedMNodeNum() + cachedRegionStatistics2.getPinnedMNodeNum(),
           engineStatistics.getPinnedMNodeNum());
@@ -346,7 +346,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
     Assert.assertEquals(14, schemaRegion2.getSchemaRegionStatistics().getTemplateSeriesNumber());
 
     // deactivate template
-    // construct schemaengine blacklist with template on root.sg.wf01.wt01 and root.sg.wf02
+    // construct schema blacklist with template on root.sg.wf01.wt01 and root.sg.wf02
     Map<PartialPath, List<Integer>> allDeviceTemplateMap = new HashMap<>();
     allDeviceTemplateMap.put(new PartialPath("root.**.d0"), Arrays.asList(1, 2));
     schemaRegion1.constructSchemaBlackListWithTemplate(
