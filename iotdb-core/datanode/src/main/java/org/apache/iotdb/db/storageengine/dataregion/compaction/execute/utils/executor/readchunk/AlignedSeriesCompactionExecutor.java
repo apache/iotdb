@@ -80,7 +80,7 @@ public class AlignedSeriesCompactionExecutor {
   }
 
   /**
-   * collect the measurement schemaengine from list of alignedChunkMetadata list, and sort them in
+   * collect the measurement metadata from list of alignedChunkMetadata list, and sort them in
    * dictionary order.
    *
    * @param readerAndChunkMetadataList

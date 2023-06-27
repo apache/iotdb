@@ -259,7 +259,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    * of each timeseries in each source file. It is used for new fast compaction to compact aligned
    * timeseries.
    *
-   * @return measurement -> schemaengine -> tsfile resource -> timeseries metadata <startOffset,
+   * @return measurement -> metadata -> tsfile resource -> timeseries metadata <startOffset,
    *     endOffset>
    */
   public Map<String, Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>>>

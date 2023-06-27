@@ -189,7 +189,7 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
             .readMemChunk((ChunkMetadata) chunkMetadataElement.chunkMetadata);
 
     if (!hasStartMeasurement) {
-      // for nonAligned sensors, only after getting chunkMetadatas can we create schemaengine to
+      // for nonAligned sensors, only after getting chunkMetadatas can we create metadata to
       // start
       // measurement; for aligned sensors, we get all schemas of value sensors and
       // startMeasurement() in the previous process, because we need to get all chunk metadatas of

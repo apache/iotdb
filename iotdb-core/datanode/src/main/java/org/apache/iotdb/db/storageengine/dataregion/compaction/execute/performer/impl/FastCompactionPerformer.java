@@ -193,7 +193,7 @@ public class FastCompactionPerformer
     // Get all measurements of the current device. Also get start offset and end offset of each
     // timeseries metadata, in order to facilitate the reading of chunkMetadata directly by this
     // offset later. Here we don't need to deserialize chunk metadata, we can deserialize them and
-    // get their schemaengine later.
+    // get their schema later.
     Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap =
         deviceIterator.getTimeseriesMetadataOffsetOfCurrentDevice();
 
