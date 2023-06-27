@@ -25,6 +25,8 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import com.google.common.base.Objects;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -72,5 +74,26 @@ public class UpdateTriggerLocationPlan extends ConfigPhysicalPlan {
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     this.triggerName = ReadWriteIOUtils.readString(buffer);
     this.dataNodeLocation = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    UpdateTriggerLocationPlan that = (UpdateTriggerLocationPlan) o;
+    return Objects.equal(triggerName, that.triggerName)
+        && Objects.equal(dataNodeLocation, that.dataNodeLocation);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(super.hashCode(), triggerName, dataNodeLocation);
   }
 }

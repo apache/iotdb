@@ -23,6 +23,8 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import com.google.common.base.Objects;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -64,5 +66,25 @@ public class GetTriggerJarPlan extends ConfigPhysicalPlan {
       jarNames.add(ReadWriteIOUtils.readString(buffer));
       size--;
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    GetTriggerJarPlan that = (GetTriggerJarPlan) o;
+    return Objects.equal(jarNames, that.jarNames);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(super.hashCode(), jarNames);
   }
 }

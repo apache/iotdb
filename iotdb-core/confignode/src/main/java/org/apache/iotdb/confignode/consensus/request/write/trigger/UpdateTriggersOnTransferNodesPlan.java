@@ -25,10 +25,11 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import com.google.common.base.Objects;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 
 public class UpdateTriggersOnTransferNodesPlan extends ConfigPhysicalPlan {
@@ -65,11 +66,29 @@ public class UpdateTriggersOnTransferNodesPlan extends ConfigPhysicalPlan {
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     int size = ReadWriteIOUtils.readInt(buffer);
-    List<TDataNodeLocation> dataNodeLocations = new ArrayList<>(size);
     while (size > 0) {
       dataNodeLocations.add(ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer));
       size--;
     }
-    this.dataNodeLocations = dataNodeLocations;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    UpdateTriggersOnTransferNodesPlan that = (UpdateTriggersOnTransferNodesPlan) o;
+    return Objects.equal(dataNodeLocations, that.dataNodeLocations);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(super.hashCode(), dataNodeLocations);
   }
 }
