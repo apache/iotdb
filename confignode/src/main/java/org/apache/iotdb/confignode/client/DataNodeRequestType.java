@@ -68,6 +68,7 @@ public enum DataNodeRequestType {
 
   /** Pipe Task */
   PUSH_PIPE_META,
+  PIPE_HEARTBEAT,
 
   /** CQ */
   EXECUTE_CQ,

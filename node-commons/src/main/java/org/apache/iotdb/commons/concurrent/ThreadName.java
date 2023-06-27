@@ -108,6 +108,7 @@ public enum ThreadName {
   PIPE_CONNECTOR_EXECUTOR_POOL("Pipe-Connector-Executor-Pool"),
   PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL("Pipe-SubTask-Callback-Executor-Pool"),
   PIPE_RUNTIME_META_SYNCER("Pipe-Runtime-Meta-Syncer"),
+  PIPE_RUNTIME_HEARTBEAT("Pipe-Runtime-Heartbeat"),
   PIPE_RUNTIME_PROCEDURE_SUBMITTER("Pipe-Runtime-Procedure-Submitter"),
   PIPE_WAL_RESOURCE_TTL_CHECKER("Pipe-WAL-Resource-TTL-Checker"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
@@ -137,6 +138,9 @@ public enum ThreadName {
   PROMETHEUS_REACTOR_HTTP_NIO("reactor-http-nio"),
   PROMETHEUS_REACTOR_HTTP_EPOLL("reactor-http-epoll"),
   PROMETHEUS_BOUNDED_ELASTIC("boundedElastic-evictor"),
+  // -------------------------- System --------------------------
+  FORK_JOIN_POOL("ForkJoinPool"),
+  TIMER("timer"),
   // -------------------------- Other --------------------------
   TTL_CHECK("TTL-CHECK"),
   SETTLE("Settle"),
@@ -149,8 +153,8 @@ public enum ThreadName {
   // the unknown thread name is used for metrics
   UNKOWN("UNKNOWN");
 
-  private final String name;
   private static final Logger log = LoggerFactory.getLogger(ThreadName.class);
+  private final String name;
   private static Set<ThreadName> queryThreadNames =
       new HashSet<>(
           Arrays.asList(
@@ -264,6 +268,9 @@ public enum ThreadName {
               PROMETHEUS_REACTOR_HTTP_NIO,
               PROMETHEUS_REACTOR_HTTP_EPOLL,
               PROMETHEUS_BOUNDED_ELASTIC));
+
+  private static Set<ThreadName> systemThreadNames =
+      new HashSet<>(Arrays.asList(FORK_JOIN_POOL, TIMER));
   private static Set<ThreadName> otherThreadNames =
       new HashSet<>(
           Arrays.asList(
@@ -297,6 +304,7 @@ public enum ThreadName {
           computeThreadNames,
           jvmThreadNames,
           metricsThreadNames,
+          systemThreadNames,
           otherThreadNames
         };
     DataNodeThreadModule[] modules =
@@ -313,6 +321,7 @@ public enum ThreadName {
           DataNodeThreadModule.COMPUTE,
           DataNodeThreadModule.JVM,
           DataNodeThreadModule.METRICS,
+          DataNodeThreadModule.SYSTEM,
           DataNodeThreadModule.OTHER
         };
 
@@ -339,6 +348,7 @@ public enum ThreadName {
         return module;
       }
     }
+    log.debug("The module for this thread is unknown: {}", givenThreadName);
     return null;
   }
 

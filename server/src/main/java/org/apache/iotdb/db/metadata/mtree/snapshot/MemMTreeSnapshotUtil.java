@@ -341,23 +341,21 @@ public class MemMTreeSnapshotUtil {
     public Boolean visitMeasurementMNode(
         AbstractMeasurementMNode<?, ? extends IMNode<?>> node, OutputStream outputStream) {
       try {
-        if (node.isMeasurement()) {
-          if (node.isLogicalView()) {
-            ReadWriteIOUtils.write(LOGICAL_VIEW_MNODE_TYPE, outputStream);
-            ReadWriteIOUtils.write(node.getName(), outputStream);
-            node.getSchema().serializeTo(outputStream);
-          } else {
-            ReadWriteIOUtils.write(MEASUREMENT_MNODE_TYPE, outputStream);
-            ReadWriteIOUtils.write(node.getName(), outputStream);
-            node.getSchema().serializeTo(outputStream);
-            ReadWriteIOUtils.write(node.getAlias(), outputStream);
-            ReadWriteIOUtils.write(node.getOffset(), outputStream);
-            ReadWriteIOUtils.write(node.isPreDeleted(), outputStream);
-          }
-          return true;
+        if (node.isLogicalView()) {
+          ReadWriteIOUtils.write(LOGICAL_VIEW_MNODE_TYPE, outputStream);
+          ReadWriteIOUtils.write(node.getName(), outputStream);
+          node.getSchema().serializeTo(outputStream);
+          ReadWriteIOUtils.write(node.getOffset(), outputStream);
+          ReadWriteIOUtils.write(node.isPreDeleted(), outputStream);
+        } else {
+          ReadWriteIOUtils.write(MEASUREMENT_MNODE_TYPE, outputStream);
+          ReadWriteIOUtils.write(node.getName(), outputStream);
+          node.getSchema().serializeTo(outputStream);
+          ReadWriteIOUtils.write(node.getAlias(), outputStream);
+          ReadWriteIOUtils.write(node.getOffset(), outputStream);
+          ReadWriteIOUtils.write(node.isPreDeleted(), outputStream);
         }
-        throw new IllegalArgumentException(
-            "visitMeasurementMNode got unknown node type" + node.getMNodeType(false).toString());
+        return true;
       } catch (Exception e) {
         logger.error(SERIALIZE_ERROR_INFO, e);
         return false;
@@ -394,7 +392,7 @@ public class MemMTreeSnapshotUtil {
       IMemMNode node = nodeFactory.createDatabaseDeviceMNode(null, name, 0);
       node.getAsDeviceMNode().setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
       node.getAsDeviceMNode().setUseTemplate(ReadWriteIOUtils.readBool(inputStream));
-      node.getAsDeviceMNode().setAligned(ReadWriteIOUtils.readBool(inputStream));
+      node.getAsDeviceMNode().setAligned(ReadWriteIOUtils.readBoolObject(inputStream));
       return node;
     }
 
@@ -403,7 +401,7 @@ public class MemMTreeSnapshotUtil {
       IDeviceMNode<IMemMNode> node = nodeFactory.createDeviceMNode(null, name);
       node.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
       node.setUseTemplate(ReadWriteIOUtils.readBool(inputStream));
-      node.setAligned(ReadWriteIOUtils.readBool(inputStream));
+      node.setAligned(ReadWriteIOUtils.readBoolObject(inputStream));
       return node.getAsMNode();
     }
 
@@ -422,8 +420,11 @@ public class MemMTreeSnapshotUtil {
     public IMemMNode deserializeLogicalViewMNode(InputStream inputStream) throws IOException {
       String name = ReadWriteIOUtils.readString(inputStream);
       LogicalViewSchema logicalViewSchema = LogicalViewSchema.deserializeFrom(inputStream);
+      long tagOffset = ReadWriteIOUtils.readLong(inputStream);
       IMeasurementMNode<IMemMNode> node =
           nodeFactory.createLogicalViewMNode(null, name, new LogicalViewInfo(logicalViewSchema));
+      node.setOffset(tagOffset);
+      node.setPreDeleted(ReadWriteIOUtils.readBool(inputStream));
       return node.getAsMNode();
     }
   }

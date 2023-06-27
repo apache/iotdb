@@ -631,7 +631,7 @@ public class TsFileIOWriter implements AutoCloseable {
    *
    * @throws IOException
    */
-  public void checkMetadataSizeAndMayFlush() throws IOException {
+  public int checkMetadataSizeAndMayFlush() throws IOException {
     // This function should be called after all data of an aligned device has been written
     if (enableMemoryControl && currentChunkMetadataSize > maxMetadataSize) {
       try {
@@ -642,11 +642,13 @@ public class TsFileIOWriter implements AutoCloseable {
               chunkMetadataCount,
               currentChunkMetadataSize / chunkMetadataCount);
         }
-        sortAndFlushChunkMetadata();
+        return sortAndFlushChunkMetadata();
       } catch (IOException e) {
         logger.error("Meets exception when flushing metadata to temp file for {}", file, e);
         throw e;
       }
+    } else {
+      return 0;
     }
   }
 
@@ -656,7 +658,8 @@ public class TsFileIOWriter implements AutoCloseable {
    *
    * @throws IOException
    */
-  protected void sortAndFlushChunkMetadata() throws IOException {
+  protected int sortAndFlushChunkMetadata() throws IOException {
+    int writtenSize = 0;
     // group by series
     List<Pair<Path, List<IChunkMetadata>>> sortedChunkMetadataList =
         TSMIterator.sortChunkMetadata(
@@ -673,7 +676,7 @@ public class TsFileIOWriter implements AutoCloseable {
         pathCount++;
       }
       List<IChunkMetadata> iChunkMetadataList = pair.right;
-      writeChunkMetadataToTempFile(iChunkMetadataList, seriesPath, isNewPath);
+      writtenSize += writeChunkMetadataToTempFile(iChunkMetadataList, seriesPath, isNewPath);
       lastSerializePath = seriesPath;
       logger.debug("Flushing {}", seriesPath);
     }
@@ -684,11 +687,13 @@ public class TsFileIOWriter implements AutoCloseable {
     }
     chunkMetadataCount = 0;
     currentChunkMetadataSize = 0;
+    return writtenSize;
   }
 
-  private void writeChunkMetadataToTempFile(
+  private int writeChunkMetadataToTempFile(
       List<IChunkMetadata> iChunkMetadataList, Path seriesPath, boolean isNewPath)
       throws IOException {
+    int writtenSize = 0;
     // [DeviceId] measurementId datatype size chunkMetadataBuffer
     if (lastSerializePath == null
         || !seriesPath.getDevice().equals(lastSerializePath.getDevice())) {
@@ -696,20 +701,25 @@ public class TsFileIOWriter implements AutoCloseable {
       endPosInCMTForDevice.add(tempOutput.getPosition());
       // serialize the device
       // for each device, we only serialize it once, in order to save io
-      ReadWriteIOUtils.write(seriesPath.getDevice(), tempOutput.wrapAsStream());
+      writtenSize += ReadWriteIOUtils.write(seriesPath.getDevice(), tempOutput.wrapAsStream());
     }
     if (isNewPath && iChunkMetadataList.size() > 0) {
       // serialize the public info of this measurement
-      ReadWriteIOUtils.writeVar(seriesPath.getMeasurement(), tempOutput.wrapAsStream());
-      ReadWriteIOUtils.write(iChunkMetadataList.get(0).getDataType(), tempOutput.wrapAsStream());
+      writtenSize +=
+          ReadWriteIOUtils.writeVar(seriesPath.getMeasurement(), tempOutput.wrapAsStream());
+      writtenSize +=
+          ReadWriteIOUtils.write(
+              iChunkMetadataList.get(0).getDataType(), tempOutput.wrapAsStream());
     }
     PublicBAOS buffer = new PublicBAOS();
     int totalSize = 0;
     for (IChunkMetadata chunkMetadata : iChunkMetadataList) {
       totalSize += chunkMetadata.serializeTo(buffer, true);
     }
-    ReadWriteIOUtils.write(totalSize, tempOutput.wrapAsStream());
+    writtenSize += ReadWriteIOUtils.write(totalSize, tempOutput.wrapAsStream());
     buffer.writeTo(tempOutput);
+    writtenSize += buffer.size();
+    return writtenSize;
   }
 
   public String getCurrentChunkGroupDeviceId() {

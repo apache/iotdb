@@ -17,24 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.concurrent;
+package org.apache.iotdb.db.engine.compaction.schedule.constant;
 
-public enum DataNodeThreadModule {
-  QUERY,
-  MPP,
-  COMPACTION,
-  WAL,
-  FLUSH,
-  SCHEMA_ENGINE,
-  CLIENT_SERVICE,
-  IOT_CONSENSUS,
-  RATIS_CONSENSUS,
-  COMPUTE,
-  SYNC,
-  JVM,
-  LOG_BACK,
-  METRICS,
-  SYSTEM,
-  OTHER,
-  UNKNOWN
+public enum CompactionIoDataType {
+  NOT_ALIGNED(0),
+  ALIGNED(1),
+  METADATA(2);
+
+  int value;
+
+  CompactionIoDataType(int value) {
+    this.value = value;
+  }
+
+  public int getValue() {
+    return value;
+  }
 }
