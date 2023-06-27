@@ -520,7 +520,8 @@ public class DataNode implements DataNodeMBean {
     logger.info(
         "IoTDB DataNode is setting up, some databases may not be ready now, please wait several seconds...");
 
-    while (!StorageEngine.getInstance().isAllSgReady()) {
+    while (!StorageEngine.getInstance().isAllSgReady()
+        || !PipeAgent.runtime().isHardlinkCleaned()) {
       try {
         TimeUnit.MILLISECONDS.sleep(1000);
       } catch (InterruptedException e) {

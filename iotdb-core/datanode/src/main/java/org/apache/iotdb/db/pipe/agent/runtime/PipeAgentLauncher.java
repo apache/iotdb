@@ -60,6 +60,8 @@ class PipeAgentLauncher {
 
   public static synchronized void launchPipePluginAgent(
       ResourcesInformationHolder resourcesInformationHolder) throws StartupException {
+    long time = System.currentTimeMillis();
+    LOGGER.info("Start to launch pipe plugin agent");
     initPipePluginRelatedInstances();
 
     if (resourcesInformationHolder.getPipePluginMetaList() == null
@@ -67,10 +69,16 @@ class PipeAgentLauncher {
       return;
     }
 
+    time = System.currentTimeMillis();
+
     final List<PipePluginMeta> uninstalledOrConflictedPipePluginMetaList =
         getUninstalledOrConflictedPipePluginMetaList(resourcesInformationHolder);
+    LOGGER.info(
+        "Finish to get uninstalled or conflicted pipe plugin meta list, cost {} ms",
+        System.currentTimeMillis() - time);
     int index = 0;
     while (index < uninstalledOrConflictedPipePluginMetaList.size()) {
+      time = System.currentTimeMillis();
       List<PipePluginMeta> curList = new ArrayList<>();
       int offset = 0;
       while (offset < ResourcesInformationHolder.getJarNumOfOneRpc()
@@ -80,16 +88,21 @@ class PipeAgentLauncher {
       }
       index += (offset + 1);
       fetchAndSavePipePluginJars(curList);
+      LOGGER.info(
+          "Finish to fetch and save pipe plugin jars, cost {} ms",
+          System.currentTimeMillis() - time);
     }
 
     // create instances of pipe plugins and do registration
     try {
+      time = System.currentTimeMillis();
       for (PipePluginMeta meta : resourcesInformationHolder.getPipePluginMetaList()) {
         if (meta.isBuiltin()) {
           continue;
         }
         PipeAgent.plugin().doRegister(meta);
       }
+      LOGGER.info("Finish to register pipe plugin, cost {} ms", System.currentTimeMillis() - time);
     } catch (Exception e) {
       throw new StartupException(e);
     }
