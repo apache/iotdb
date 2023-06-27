@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.wal;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
@@ -50,18 +51,18 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-/** This class is used to manage and allocate wal nodes */
+/** This class is used to manage and allocate wal nodes. */
 public class WALManager implements IService {
   private static final Logger logger = LoggerFactory.getLogger(WALManager.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  /** manage all wal nodes and decide how to allocate them */
+  // manage all wal nodes and decide how to allocate them
   private final NodeAllocationStrategy walNodesManager;
-  /** single thread to delete old .wal files */
+  // single thread to delete old .wal files
   private ScheduledExecutorService walDeleteThread;
-  /** total disk usage of wal files */
+  // total disk usage of wal files
   private final AtomicLong totalDiskUsage = new AtomicLong();
-  /** total number of wal files */
+  // total number of wal files
   private final AtomicLong totalFileNum = new AtomicLong();
 
   private WALManager() {
@@ -83,7 +84,7 @@ public class WALManager implements IService {
             + (sequence ? "sequence" : "unsequence");
   }
 
-  /** Apply for a wal node */
+  /** Apply for a wal node. */
   public IWALNode applyForWALNode(String applicantUniqueId) {
     if (config.getWalMode() == WALMode.DISABLE) {
       return WALFakeNode.getSuccessInstance();
@@ -92,7 +93,7 @@ public class WALManager implements IService {
     return walNodesManager.applyForWALNode(applicantUniqueId);
   }
 
-  /** WAL node will be registered only when using iot consensus protocol */
+  /** WAL node will be registered only when using iot consensus protocol. */
   public void registerWALNode(
       String applicantUniqueId, String logDirectory, long startFileVersion, long startSearchIndex) {
     if (config.getWalMode() == WALMode.DISABLE
@@ -106,7 +107,7 @@ public class WALManager implements IService {
     WritingMetrics.getInstance().createWALNodeInfoMetrics(applicantUniqueId);
   }
 
-  /** WAL node will be deleted only when using iot consensus protocol */
+  /** WAL node will be deleted only when using iot consensus protocol. */
   public void deleteWALNode(String applicantUniqueId) {
     if (config.getWalMode() == WALMode.DISABLE
         || !config.isClusterMode()
@@ -132,7 +133,7 @@ public class WALManager implements IService {
     }
   }
 
-  /** reboot wal delete thread to hot modify delete wal period */
+  /** Reboot wal delete thread to hot modify delete wal period. */
   public void rebootWALDeleteThread() {
     if (config.getWalMode() == WALMode.DISABLE) {
       return;
@@ -149,7 +150,7 @@ public class WALManager implements IService {
         config.getDeleteWalFilesPeriodInMs());
   }
 
-  /** submit delete outdated wal files task and wait for result */
+  /** Submit delete outdated wal files task and wait for result. */
   public void deleteOutdatedWALFiles() {
     if (config.getWalMode() == WALMode.DISABLE) {
       return;
@@ -184,7 +185,7 @@ public class WALManager implements IService {
     }
   }
 
-  /** Wait until all write-ahead logs are flushed */
+  /** Wait until all write-ahead logs are flushed. */
   public void waitAllWALFlushed() {
     if (config.getWalMode() == WALMode.DISABLE) {
       return;

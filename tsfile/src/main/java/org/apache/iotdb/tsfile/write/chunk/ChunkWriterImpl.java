@@ -70,7 +70,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   private static final int MINIMUM_RECORD_COUNT_FOR_CHECK = 1500;
 
   /** statistic of this chunk. */
-  private Statistics<? extends Serializable> statistics;
+  private Statistics statistics;
 
   /** SDT parameters */
   private boolean isSdtEncoding;

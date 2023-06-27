@@ -44,9 +44,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -62,7 +59,6 @@ public abstract class AbstractMemTable implements IMemTable {
   /** each memTable node has a unique int value identifier, init when recovering wal */
   public static final AtomicLong memTableIdCounter = new AtomicLong(-1);
 
-  private static final Logger logger = LoggerFactory.getLogger(AbstractMemTable.class);
   private static final int FIXED_SERIALIZED_SIZE = Byte.BYTES + 2 * Integer.BYTES + 6 * Long.BYTES;
 
   private static final DeviceIDFactory deviceIDFactory = DeviceIDFactory.getInstance();
@@ -103,11 +99,11 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private static final String METRIC_POINT_IN = "pointsIn";
 
-  public AbstractMemTable() {
+  protected AbstractMemTable() {
     this.memTableMap = new HashMap<>();
   }
 
-  public AbstractMemTable(Map<IDeviceID, IWritableMemChunkGroup> memTableMap) {
+  protected AbstractMemTable(Map<IDeviceID, IWritableMemChunkGroup> memTableMap) {
     this.memTableMap = memTableMap;
   }
 
@@ -172,19 +168,16 @@ public abstract class AbstractMemTable implements IMemTable {
     int nullPointsNumber = 0;
     for (int i = 0; i < insertRowNode.getMeasurements().length; i++) {
       // use measurements[i] to ignore failed partial insert
-      if (measurements[i] == null) {
+      if (measurements[i] == null || values[i] == null) {
+        if (values[i] == null) {
+          nullPointsNumber++;
+        }
         schemaList.add(null);
-        continue;
+      } else {
+        IMeasurementSchema schema = insertRowNode.getMeasurementSchemas()[i];
+        schemaList.add(schema);
+        dataTypes.add(schema.getType());
       }
-      // use values[i] to ignore null value
-      if (values[i] == null) {
-        schemaList.add(null);
-        nullPointsNumber++;
-        continue;
-      }
-      IMeasurementSchema schema = insertRowNode.getMeasurementSchemas()[i];
-      schemaList.add(schema);
-      dataTypes.add(schema.getType());
     }
     memSize += MemUtils.getRecordsSize(dataTypes, values, disableMemControl);
     write(insertRowNode.getDeviceID(), schemaList, insertRowNode.getTime(), values);

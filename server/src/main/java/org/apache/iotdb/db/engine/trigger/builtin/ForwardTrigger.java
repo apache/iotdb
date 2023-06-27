@@ -41,7 +41,9 @@ public class ForwardTrigger implements Trigger {
   private static final String PROTOCOL_HTTP = "http";
   private static final String PROTOCOL_MQTT = "mqtt";
 
+  @SuppressWarnings("squid:S3740")
   private Handler forwardHandler;
+
   private Configuration forwardConfig;
   private BatchHandlerQueue<Event> queue;
   private String protocol;
@@ -93,7 +95,7 @@ public class ForwardTrigger implements Trigger {
     boolean retain = attributes.getBooleanOrDefault("retain", false);
     boolean stopIfException = attributes.getBooleanOrDefault("stopIfException", false);
 
-    MQTTForwardConfiguration forwardConfig =
+    MQTTForwardConfiguration mqttForwardConfiguration =
         new MQTTForwardConfiguration(
             host,
             port,
@@ -106,8 +108,8 @@ public class ForwardTrigger implements Trigger {
             retain,
             poolSize,
             stopIfException);
-    forwardConfig.checkConfig();
-    return forwardConfig;
+    mqttForwardConfiguration.checkConfig();
+    return mqttForwardConfiguration;
   }
 
   @Override
@@ -125,7 +127,7 @@ public class ForwardTrigger implements Trigger {
     forwardHandler.close();
   }
 
-  private void offerEventToQueue(long timestamp, Object value, PartialPath path) throws Exception {
+  private void offerEventToQueue(long timestamp, Object value, PartialPath path) {
     Event event;
     switch (protocol) {
       case PROTOCOL_HTTP:

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.wal.recover.file;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -36,14 +37,14 @@ import java.io.IOException;
 
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.RESOURCE_SUFFIX;
 
-/** This class is used to help recover TsFile */
+/** This class is used to help recover TsFile. */
 public abstract class AbstractTsFileRecoverPerformer implements Closeable {
   private static final Logger logger =
       LoggerFactory.getLogger(AbstractTsFileRecoverPerformer.class);
 
-  /** TsFile which needs recovery */
+  // TsFile which needs recovery
   protected final TsFileResource tsFileResource;
-  /** this writer will be open when .resource file doesn't exist */
+  // this writer will be open when .resource file doesn't exist
   protected RestorableTsFileIOWriter writer;
 
   protected AbstractTsFileRecoverPerformer(TsFileResource tsFileResource) {
@@ -54,6 +55,9 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
    * Recover TsFile with RestorableTsFileIOWriter, including load .resource file (reconstruct when
    * necessary) and truncate the file to remaining corrected data. <br>
    * Notice: this method may open a {@link RestorableTsFileIOWriter}, remember to close it.
+   *
+   * @throws DataRegionException when failing to new RestorableTsFileIOWriter.
+   * @throws IOException when failing to read .resource file.
    */
   protected void recoverWithWriter() throws DataRegionException, IOException {
     File tsFile = tsFileResource.getTsFile();

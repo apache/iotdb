@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.wal.allocation;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -39,7 +40,7 @@ public abstract class AbstractNodeAllocationStrategy implements NodeAllocationSt
       LoggerFactory.getLogger(AbstractNodeAllocationStrategy.class);
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
-  /** manage wal folders */
+  // manage wal folders
   protected FolderManager folderManager;
 
   protected AbstractNodeAllocationStrategy() {

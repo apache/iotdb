@@ -33,8 +33,12 @@ public interface UDF {
    * @throws Exception if any parameter is not valid
    */
   @SuppressWarnings("squid:S112")
-  default void validate(UDFParameterValidator validator) throws Exception {}
+  default void validate(UDFParameterValidator validator) throws Exception {
+    // do nothing
+  }
 
   /** This method is mainly used to release the resources used in the UDF. */
-  default void beforeDestroy() {}
+  default void beforeDestroy() {
+    // do nothing
+  }
 }

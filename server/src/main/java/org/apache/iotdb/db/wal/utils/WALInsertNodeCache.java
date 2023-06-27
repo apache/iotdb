@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.wal.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -44,14 +45,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** This cache is used by {@link WALEntryPosition} */
+/** This cache is used by {@link WALEntryPosition}. */
 public class WALInsertNodeCache {
   private static final Logger logger = LoggerFactory.getLogger(WALInsertNodeCache.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  /** LRU cache, find InsertNode by WALEntryPosition */
-  private final LoadingCache<WALEntryPosition, InsertNode> lruCache;
 
-  /** ids of all pinned memTables */
+  // LRU cache, find InsertNode by WALEntryPosition
+  private final LoadingCache<WALEntryPosition, InsertNode> lruCache;
+  // ids of all pinned memTables
   private final Set<Long> memTablesNeedSearch = ConcurrentHashMap.newKeySet();
 
   private WALInsertNodeCache() {

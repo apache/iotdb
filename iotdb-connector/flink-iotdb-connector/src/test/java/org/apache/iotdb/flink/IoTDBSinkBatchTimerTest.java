@@ -28,6 +28,8 @@ import org.junit.Test;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
@@ -62,14 +64,13 @@ public class IoTDBSinkBatchTimerTest {
     tuple.put("types", "DOUBLE");
     tuple.put("values", "36.5");
     ioTDBSink.invoke(tuple, null);
-
-    Thread.sleep(2500);
+    new CountDownLatch(1).await(2500, TimeUnit.MILLISECONDS);
 
     verify(pool)
         .insertRecords(
             any(List.class), any(List.class), any(List.class), any(List.class), any(List.class));
 
-    Thread.sleep(1000);
+    new CountDownLatch(1).await(1000, TimeUnit.MILLISECONDS);
 
     verifyZeroInteractions(pool);
   }
