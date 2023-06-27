@@ -50,7 +50,7 @@ public class DeletionLoader implements ILoader {
   @Override
   public void load() throws PipeException {
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
-      throw new PipeException("storage storageengine readonly");
+      throw new PipeException("storage engine readonly");
     }
     try {
       Statement statement = generateStatement();

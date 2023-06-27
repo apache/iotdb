@@ -34,8 +34,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * PipeInsertionEventListener is a singleton in each data node.
  *
- * <p>It is used to listen to events from storage storageengine and publish them to pipe
- * storageengine.
+ * <p>It is used to listen to events from storage engine and publish them to pipe engine.
  *
  * <p>2 kinds of events are extracted: 1. level-0 tsfile sealed event 2. insertion operation event
  *

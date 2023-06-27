@@ -67,7 +67,7 @@ public class TsFileInsertionDataTabletIterator implements Iterator<Tablet> {
         measurements.stream()
             .filter(
                 measurement ->
-                    // time column in aligned time-series should not be a read column
+                    // time column in aligned time-series should not be a query column
                     measurement != null && !measurement.isEmpty())
             .sorted()
             .collect(Collectors.toList());

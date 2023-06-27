@@ -65,7 +65,7 @@ public class PipeWALResource implements Closeable {
                   walEntryHandler.getMemTableId(), e.getMessage()));
         }
         isPhysicallyPinned.set(true);
-        LOGGER.info("wal {} is pinned by pipe storageengine", walEntryHandler.getMemTableId());
+        LOGGER.info("wal {} is pinned by pipe engine", walEntryHandler.getMemTableId());
       } // else means the wal is already pinned, do nothing
 
       // no matter the wal is pinned or not, update the last pin time
@@ -122,7 +122,7 @@ public class PipeWALResource implements Closeable {
         }
         isPhysicallyPinned.set(false);
         LOGGER.info(
-            "wal {} is unpinned by pipe storageengine when checking time to live",
+            "wal {} is unpinned by pipe engine when checking time to live",
             walEntryHandler.getMemTableId());
         return true;
       } else {
@@ -149,7 +149,7 @@ public class PipeWALResource implements Closeable {
       }
       isPhysicallyPinned.set(false);
       LOGGER.info(
-          "wal {} is unpinned by pipe storageengine when closing pipe wal resource",
+          "wal {} is unpinned by pipe engine when closing pipe wal resource",
           walEntryHandler.getMemTableId());
     }
 

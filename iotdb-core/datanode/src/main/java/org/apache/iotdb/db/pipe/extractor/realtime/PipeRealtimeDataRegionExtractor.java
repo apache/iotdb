@@ -64,7 +64,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     PipeInsertionDataNodeListener.getInstance().stopListenAndAssign(dataRegionId, this);
   }
 
-  /** @param event the event from the storage storageengine */
+  /** @param event the event from the storage engine */
   public abstract void extract(PipeRealtimeEvent event);
 
   public abstract boolean isNeedListenToTsFile();
