@@ -3010,9 +3010,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.attributePair(0) != null) {
       for (IoTDBSqlParser.AttributePairContext attributePair : tagsList) {
         key = parseAttributeKey(attributePair.attributeKey());
-        alterMap.computeIfAbsent(
+        alterMap.computeIfPresent(
             key,
-            k -> {
+            (k, v) -> {
               throw new SemanticException(
                   String.format("There's duplicate [%s] in tag or attribute clause.", k));
             });
@@ -3029,9 +3029,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       String key;
       for (IoTDBSqlParser.AttributePairContext attributePair : attributePair2) {
         key = parseAttributeKey(attributePair.attributeKey());
-        tags.computeIfAbsent(
+        tags.computeIfPresent(
             key,
-            k -> {
+            (k, v) -> {
               throw new SemanticException(
                   String.format("There's duplicate [%s] in tag or attribute clause.", k));
             });
