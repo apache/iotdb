@@ -24,7 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 
 /**
- * This interface is used to load files, including tsFile, syncTask, schemaengine, modsFile and
+ * This interface is used to load files, including tsFile, syncTask, schema, modsFile and
  * deletePlan.
  */
 public interface ILoader {
