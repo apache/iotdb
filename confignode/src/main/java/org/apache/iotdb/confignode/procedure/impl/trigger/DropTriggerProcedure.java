@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 /** drop trigger procedure */
 public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState> {
@@ -172,5 +173,10 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
           && (thatProc.triggerName).equals(this.triggerName);
     }
     return false;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(this.triggerName);
   }
 }

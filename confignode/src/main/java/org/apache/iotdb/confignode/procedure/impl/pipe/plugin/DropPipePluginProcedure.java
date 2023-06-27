@@ -42,6 +42,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 /**
  * This class extends {@link AbstractNodeProcedure} to make sure that when a {@link
@@ -239,5 +240,10 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
           && (thatProcedure.pluginName).equals(pluginName);
     }
     return false;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(this.pluginName);
   }
 }

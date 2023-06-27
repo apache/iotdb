@@ -79,24 +79,28 @@ public class ClusterNodeStartUtils {
     }
 
     /* Check if there exist conflict TEndPoints */
-    List<TEndPoint> conflictEndPoints;
+    List<TEndPoint> conflictEndPoints = null;
     switch (nodeType) {
       case ConfigNode:
-        conflictEndPoints =
-            checkConflictTEndPointForNewConfigNode(
-                (TConfigNodeLocation) nodeLocation,
-                configManager.getNodeManager().getRegisteredConfigNodes());
+        if (nodeLocation instanceof TConfigNodeLocation) {
+          conflictEndPoints =
+              checkConflictTEndPointForNewConfigNode(
+                  (TConfigNodeLocation) nodeLocation,
+                  configManager.getNodeManager().getRegisteredConfigNodes());
+        }
         break;
       case DataNode:
       default:
-        conflictEndPoints =
-            checkConflictTEndPointForNewDataNode(
-                (TDataNodeLocation) nodeLocation,
-                configManager.getNodeManager().getRegisteredDataNodes());
+        if (nodeLocation instanceof TDataNodeLocation) {
+          conflictEndPoints =
+              checkConflictTEndPointForNewDataNode(
+                  (TDataNodeLocation) nodeLocation,
+                  configManager.getNodeManager().getRegisteredDataNodes());
+        }
         break;
     }
 
-    if (!conflictEndPoints.isEmpty()) {
+    if (conflictEndPoints != null && !conflictEndPoints.isEmpty()) {
       /* Reject Node registration because there exist conflict TEndPoints */
       status.setCode(TSStatusCode.REJECT_NODE_START.getStatusCode());
       status.setMessage(
@@ -162,20 +166,24 @@ public class ClusterNodeStartUtils {
       return status;
     }
 
-    Object matchedNodeLocation;
+    Object matchedNodeLocation = null;
     switch (nodeType) {
       case ConfigNode:
-        matchedNodeLocation =
-            matchRegisteredConfigNode(
-                (TConfigNodeLocation) nodeLocation,
-                configManager.getNodeManager().getRegisteredConfigNodes());
+        if (nodeLocation instanceof TConfigNodeLocation) {
+          matchedNodeLocation =
+              matchRegisteredConfigNode(
+                  (TConfigNodeLocation) nodeLocation,
+                  configManager.getNodeManager().getRegisteredConfigNodes());
+        }
         break;
       case DataNode:
       default:
-        matchedNodeLocation =
-            matchRegisteredDataNode(
-                (TDataNodeLocation) nodeLocation,
-                configManager.getNodeManager().getRegisteredDataNodes());
+        if (nodeLocation instanceof TDataNodeLocation) {
+          matchedNodeLocation =
+              matchRegisteredDataNode(
+                  (TDataNodeLocation) nodeLocation,
+                  configManager.getNodeManager().getRegisteredDataNodes());
+        }
         break;
     }
 
@@ -196,25 +204,29 @@ public class ClusterNodeStartUtils {
     }
 
     boolean acceptRestart = true;
-    Set<Integer> updatedTEndPoints;
+    Set<Integer> updatedTEndPoints = null;
     switch (nodeType) {
       case ConfigNode:
-        updatedTEndPoints =
-            checkUpdatedTEndPointOfConfigNode(
-                (TConfigNodeLocation) nodeLocation, (TConfigNodeLocation) matchedNodeLocation);
-        if (!updatedTEndPoints.isEmpty()) {
-          // TODO: Accept internal TEndPoints
-          acceptRestart = false;
+        if (nodeLocation instanceof TConfigNodeLocation) {
+          updatedTEndPoints =
+              checkUpdatedTEndPointOfConfigNode(
+                  (TConfigNodeLocation) nodeLocation, (TConfigNodeLocation) matchedNodeLocation);
+          if (!updatedTEndPoints.isEmpty()) {
+            // TODO: Accept internal TEndPoints
+            acceptRestart = false;
+          }
         }
         break;
       case DataNode:
       default:
-        updatedTEndPoints =
-            checkUpdatedTEndPointOfDataNode(
-                (TDataNodeLocation) nodeLocation, (TDataNodeLocation) matchedNodeLocation);
-        if (updatedTEndPoints.stream().max(Integer::compare).orElse(-1) > 0) {
-          // TODO: Accept internal TEndPoints
-          acceptRestart = false;
+        if (nodeLocation instanceof TDataNodeLocation) {
+          updatedTEndPoints =
+              checkUpdatedTEndPointOfDataNode(
+                  (TDataNodeLocation) nodeLocation, (TDataNodeLocation) matchedNodeLocation);
+          if (updatedTEndPoints.stream().max(Integer::compare).orElse(-1) > 0) {
+            // TODO: Accept internal TEndPoints
+            acceptRestart = false;
+          }
         }
         break;
     }

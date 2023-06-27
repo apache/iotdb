@@ -547,11 +547,18 @@ public class NodeManager {
 
   private TSStatus transferLeader(
       RemoveConfigNodePlan removeConfigNodePlan, ConsensusGroupId groupId) {
-    TConfigNodeLocation newLeader =
+    Optional<TConfigNodeLocation> optional =
         filterConfigNodeThroughStatus(NodeStatus.Running).stream()
             .filter(e -> !e.equals(removeConfigNodePlan.getConfigNodeLocation()))
-            .findAny()
-            .get();
+            .findAny();
+    TConfigNodeLocation newLeader = null;
+    if (optional.isPresent()) {
+      newLeader = optional.get();
+    } else {
+      return new TSStatus(TSStatusCode.TRANSFER_LEADER_ERROR.getStatusCode())
+          .setMessage(
+              "Transfer ConfigNode leader failed because can not find any running ConfigNode.");
+    }
     ConsensusGenericResponse resp =
         getConsensusManager()
             .getConsensusImpl()

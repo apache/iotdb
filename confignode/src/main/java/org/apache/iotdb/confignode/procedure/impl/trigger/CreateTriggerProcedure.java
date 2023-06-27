@@ -44,6 +44,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 /** create trigger procedure */
 public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerState> {
@@ -284,5 +285,10 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
           && thatProc.triggerInformation.equals(this.triggerInformation);
     }
     return false;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(this.triggerInformation);
   }
 }
