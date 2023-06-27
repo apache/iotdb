@@ -139,7 +139,7 @@ public class SchemaFileLogTest {
             "target",
             "tmp",
             "system",
-            "schemaengine",
+            "schema",
             "root.test.vRoot1",
             "0",
             SchemaConstant.PBTREE_LOG_FILE_NAME
