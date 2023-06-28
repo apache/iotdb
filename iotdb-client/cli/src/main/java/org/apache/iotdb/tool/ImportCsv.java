@@ -559,7 +559,7 @@ public class ImportCsv extends AbstractCsvTool {
    * @param records the records of CSV file
    * @param failedFilePath the directory to save the failed files
    */
-  @SuppressWarnings("squid:S3776")
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private static void writeDataAlignedByDevice(
       List<String> headerNames, Stream<CSVRecord> records, String failedFilePath)
       throws IllegalPathException {

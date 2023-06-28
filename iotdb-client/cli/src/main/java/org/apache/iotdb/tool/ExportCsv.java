@@ -92,7 +92,7 @@ public class ExportCsv extends AbstractCsvTool {
 
   private static long timeout = -1;
 
-  @SuppressWarnings("squid:S3776")
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   /** main function of export csv tool. */
   public static void main(String[] args) {
     Options options = createOptions();
@@ -368,7 +368,7 @@ public class ExportCsv extends AbstractCsvTool {
     }
   }
 
-  @SuppressWarnings("squid:S3776")
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void writeCsvFile(
       SessionDataSet sessionDataSet, String filePath, List<Object> headers, int linesPerFile)
       throws IOException, IoTDBConnectionException, StatementExecutionException {

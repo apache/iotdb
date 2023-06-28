@@ -34,7 +34,6 @@ import static org.junit.Assert.fail;
 
 public abstract class AbstractScript {
 
-  @SuppressWarnings({"squid:S2925"})
   protected void testOutput(ProcessBuilder builder, @Nullable String[] output, int statusCode)
       throws IOException {
     builder.redirectErrorStream(true);

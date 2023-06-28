@@ -129,10 +129,9 @@ public class Cli extends AbstractCli {
     return true;
   }
 
-  @SuppressWarnings({"S1141"})
   private static void serve() {
     try {
-      password = commandLine.getOptionValue(PASSWORD_ARGS);
+      password = commandLine.getOptionValue(PW_ARGS);
       if (hasExecuteSQL && password != null) {
         executeSql();
       }
@@ -163,7 +162,6 @@ public class Cli extends AbstractCli {
     }
   }
 
-  @SuppressWarnings({"S1141"})
   private static void receiveCommands(LineReader reader) throws TException {
     try (IoTDBConnection connection =
         (IoTDBConnection)

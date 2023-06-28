@@ -77,7 +77,7 @@ public class ExportTsFile extends AbstractTsFileTool {
 
   private static long timeout = -1;
 
-  @SuppressWarnings("squid:S3776")
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   /** main function of export tsFile tool. */
   public static void main(String[] args) {
     Options options = createOptions();
@@ -293,7 +293,7 @@ public class ExportTsFile extends AbstractTsFileTool {
     }
   }
 
-  @SuppressWarnings({"squid:S6541", "squid:S3776", "squid:S127"})
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void writeTsFileFile(SessionDataSet sessionDataSet, String filePath)
       throws IOException, IoTDBConnectionException, StatementExecutionException,
           WriteProcessException {

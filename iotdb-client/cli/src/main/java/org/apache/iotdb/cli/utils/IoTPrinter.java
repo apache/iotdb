@@ -25,7 +25,6 @@ import java.lang.Character.UnicodeScript;
 import java.util.List;
 
 public class IoTPrinter {
-  @SuppressWarnings("squid:S106")
   private static final PrintStream SCREEN_PRINTER = new PrintStream(System.out);
 
   private IoTPrinter() {}

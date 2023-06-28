@@ -63,8 +63,8 @@ public abstract class AbstractCli {
   static final String PORT_ARGS = "p";
   static final String PORT_NAME = "port";
 
-  static final String PASSWORD_ARGS = "pw";
-  private static final String PASSWORD_NAME = "password";
+  static final String PW_ARGS = "pw";
+  private static final String PW_NAME = "password";
 
   static final String USERNAME_ARGS = "u";
   static final String USERNAME_NAME = "username";
@@ -131,7 +131,7 @@ public abstract class AbstractCli {
     keywordSet.add("-" + HOST_ARGS);
     keywordSet.add("-" + HELP_ARGS);
     keywordSet.add("-" + PORT_ARGS);
-    keywordSet.add("-" + PASSWORD_ARGS);
+    keywordSet.add("-" + PW_ARGS);
     keywordSet.add("-" + USERNAME_ARGS);
     keywordSet.add("-" + EXECUTE_ARGS);
     keywordSet.add("-" + ISO8601_ARGS);
@@ -175,11 +175,7 @@ public abstract class AbstractCli {
     options.addOption(username);
 
     Option password =
-        Option.builder(PASSWORD_ARGS)
-            .argName(PASSWORD_NAME)
-            .hasArg()
-            .desc("password (optional)")
-            .build();
+        Option.builder(PW_ARGS).argName(PW_NAME).hasArg().desc("password (optional)").build();
     options.addOption(password);
 
     Option execute =
@@ -288,7 +284,7 @@ public abstract class AbstractCli {
   static String[] removePasswordArgs(String[] args) {
     int index = -1;
     for (int i = 0; i < args.length; i++) {
-      if (args[i].equals("-" + PASSWORD_ARGS)) {
+      if (args[i].equals("-" + PW_ARGS)) {
         index = i;
         break;
       }
@@ -536,7 +532,7 @@ public abstract class AbstractCli {
     }
   }
 
-  @SuppressWarnings({"squid:S3776", "squid:S1141", "squid:S135"})
+  @SuppressWarnings({"squid:S3776"}) // Suppress high Cognitive Complexity warning
   private static int executeQuery(IoTDBConnection connection, String cmd) {
     int executeStatus = CODE_OK;
     long startTime = System.currentTimeMillis();
@@ -612,6 +608,7 @@ public abstract class AbstractCli {
    * @throws SQLException throw exception
    */
   @SuppressWarnings({"squid:S6541", "squid:S3776"}) // Suppress high Cognitive Complexity warning
+  // Methods should not perform too many tasks (aka Brain method)
   private static List<List<String>> cacheResult(
       ResultSet resultSet,
       List<Integer> maxSizeList,
