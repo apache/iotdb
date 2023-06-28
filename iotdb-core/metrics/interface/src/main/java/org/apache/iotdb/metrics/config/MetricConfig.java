@@ -53,7 +53,7 @@ public class MetricConfig {
   private Integer prometheusReporterPort = 9091;
 
   /** The iotdb config for iotdb reporter to push metric data. */
-  private final IoTDBReporterConfig iotdbReporterConfig = new IoTDBReporterConfig();
+  private final IotdbReporterConfig iotdbReporterConfig = new IotdbReporterConfig();
 
   /** The type of internal reporter. */
   private InternalReporterType internalReporterType = InternalReporterType.MEMORY;
@@ -134,7 +134,7 @@ public class MetricConfig {
     this.prometheusReporterPort = prometheusReporterPort;
   }
 
-  public IoTDBReporterConfig getIotdbReporterConfig() {
+  public IotdbReporterConfig getIotdbReporterConfig() {
     return iotdbReporterConfig;
   }
 
@@ -205,7 +205,19 @@ public class MetricConfig {
         && internalReporterType.equals(anotherMetricConfig.getInternalReportType());
   }
 
-  public static class IoTDBReporterConfig {
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        metricFrameType,
+        metricReporterList,
+        metricLevel,
+        asyncCollectPeriodInSecond,
+        prometheusReporterPort,
+        iotdbReporterConfig,
+        internalReporterType);
+  }
+
+  public static class IotdbReporterConfig {
     /** The host of iotdb that store metric value. */
     private String host = "127.0.0.1";
     /** The port of iotdb that store metric value. */
@@ -277,7 +289,7 @@ public class MetricConfig {
       this.pushPeriodInSecond = pushPeriodInSecond;
     }
 
-    public void copy(IoTDBReporterConfig iotdbReporterConfig) {
+    public void copy(IotdbReporterConfig iotdbReporterConfig) {
       host = iotdbReporterConfig.getHost();
       port = iotdbReporterConfig.getPort();
       username = iotdbReporterConfig.getUsername();
@@ -295,7 +307,7 @@ public class MetricConfig {
       if (o == null || getClass() != o.getClass()) {
         return false;
       }
-      IoTDBReporterConfig that = (IoTDBReporterConfig) o;
+      IotdbReporterConfig that = (IotdbReporterConfig) o;
       return Objects.equals(host, that.host)
           && Objects.equals(port, that.port)
           && Objects.equals(username, that.username)

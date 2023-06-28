@@ -44,7 +44,6 @@ import java.lang.management.MemoryUsage;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -255,7 +254,8 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
   private boolean preCheck() {
     if (ManagementFactory.getMemoryPoolMXBeans().isEmpty()) {
       logger.warn(
-          "GC notifications will not be available because MemoryPoolMXBeans are not provided by the JVM");
+          "GC notifications will not be available because MemoryPoolMXBeans "
+              + "are not provided by the JVM");
       return false;
     }
 
@@ -264,7 +264,7 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
           "com.sun.management.GarbageCollectionNotificationInfo",
           false,
           MemoryPoolMXBean.class.getClassLoader());
-    } catch (Throwable e) {
+    } catch (Exception e) {
       // We are operating in a JVM without access to this level of detail
       logger.warn(
           "GC notifications will not be available because "
@@ -299,30 +299,22 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
     YOUNG,
     UNKNOWN;
 
-    private static Map<String, GcGenerationAge> knownCollectors =
-        new HashMap<String, GcGenerationAge>() {
-          {
-            put("ConcurrentMarkSweep", OLD);
-            put("Copy", YOUNG);
-            put("G1 Old Generation", OLD);
-            put("G1 Young Generation", YOUNG);
-            put("MarkSweepCompact", OLD);
-            put("PS MarkSweep", OLD);
-            put("PS Scavenge", YOUNG);
-            put("ParNew", YOUNG);
-          }
-        };
+    private static Map<String, GcGenerationAge> knownCollectors = new HashMap<>();
+
+    static {
+      knownCollectors.put("ConcurrentMarkSweep", OLD);
+      knownCollectors.put("Copy", YOUNG);
+      knownCollectors.put("G1 Old Generation", OLD);
+      knownCollectors.put("G1 Young Generation", YOUNG);
+      knownCollectors.put("MarkSweepCompact", OLD);
+      knownCollectors.put("PS MarkSweep", OLD);
+      knownCollectors.put("PS Scavenge", YOUNG);
+      knownCollectors.put("ParNew", YOUNG);
+    }
 
     static GcGenerationAge fromName(String name) {
       return knownCollectors.getOrDefault(name, UNKNOWN);
     }
-  }
-
-  private static Optional<MemoryPoolMXBean> getLongLivedHeapPool() {
-    return ManagementFactory.getPlatformMXBeans(MemoryPoolMXBean.class).stream()
-        .filter(JvmGcMetrics::isHeap)
-        .filter(mem -> isOldGenPool(mem.getName()) || isNonGenerationalHeapPool(mem.getName()))
-        .findAny();
   }
 
   private static boolean isConcurrentPhase(String cause, String name) {

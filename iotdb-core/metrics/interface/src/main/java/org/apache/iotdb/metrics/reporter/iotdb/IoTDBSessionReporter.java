@@ -48,7 +48,7 @@ public class IoTDBSessionReporter extends IoTDBReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSessionReporter.class);
   private static final MetricConfig metricConfig =
       MetricConfigDescriptor.getInstance().getMetricConfig();
-  private static final MetricConfig.IoTDBReporterConfig ioTDBReporterConfig =
+  private static final MetricConfig.IotdbReporterConfig ioTDBReporterConfig =
       MetricConfigDescriptor.getInstance().getMetricConfig().getIotdbReporterConfig();
   private Future<?> currentServiceFuture;
   private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();

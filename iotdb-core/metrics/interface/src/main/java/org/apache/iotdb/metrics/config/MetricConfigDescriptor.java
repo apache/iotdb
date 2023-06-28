@@ -30,10 +30,10 @@ import java.util.stream.Collectors;
 /** The utils class to load properties. */
 public class MetricConfigDescriptor {
   /** The metric config of metric service. */
-  private final MetricConfig metricConfig;
+  private static final MetricConfig metricConfig = new MetricConfig();
 
   private MetricConfigDescriptor() {
-    metricConfig = new MetricConfig();
+    // empty constructor
   }
 
   /** Load properties into metric config. */
@@ -110,7 +110,7 @@ public class MetricConfigDescriptor {
                 String.valueOf(loadConfig.getPrometheusReporterPort()),
                 properties)));
 
-    MetricConfig.IoTDBReporterConfig reporterConfig = loadConfig.getIotdbReporterConfig();
+    MetricConfig.IotdbReporterConfig reporterConfig = loadConfig.getIotdbReporterConfig();
     reporterConfig.setHost(
         getProperty("metric_iotdb_reporter_host", reporterConfig.getHost(), properties));
 
