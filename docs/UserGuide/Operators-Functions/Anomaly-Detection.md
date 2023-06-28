@@ -610,6 +610,11 @@ This function is used to train the VAR model based on master data. The model is 
 
 **Output Series:** Output a single series. The type is the same as the input.
 
+**Installation**
+- Install IoTDB from branch `research/master-detector`.
+- Run `mvn clean package -am -Dmaven.test.skip=true`.
+- Copy `./distribution/target/apache-iotdb-1.2.0-SNAPSHOT-library-udf-bin/apache-iotdb-1.2.0-SNAPSHOT-library-udf-bin/ext/udf/library-udf.jar` to `./ext/udf/`.
+- Start IoTDB server and run `create function MasterTrain as 'org.apache.iotdb.library.anomaly.UDTFMasterTrain'` in client.
 
 #### Examples
 
@@ -691,6 +696,11 @@ This function is used to detect time series and repair errors based on master da
 
 **Output Series:** Output a single series. The type is the same as the input.
 
+**Installation**
+- Install IoTDB from branch `research/master-detector`.
+- Run `mvn clean package -am -Dmaven.test.skip=true`.
+- Copy `./distribution/target/apache-iotdb-1.2.0-SNAPSHOT-library-udf-bin/apache-iotdb-1.2.0-SNAPSHOT-library-udf-bin/ext/udf/library-udf.jar` to `./ext/udf/`.
+- Start IoTDB server and run `create function MasterDetect as 'org.apache.iotdb.library.anomaly.UDTFMasterDetect'` in client.
 
 #### Examples
 
