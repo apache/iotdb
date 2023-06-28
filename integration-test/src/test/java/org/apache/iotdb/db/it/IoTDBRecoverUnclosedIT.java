@@ -21,7 +21,7 @@ package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.wal.utils.WALMode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -41,10 +41,10 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Locale;
 
-import static org.apache.iotdb.db.constant.TestConstant.count;
-import static org.apache.iotdb.db.constant.TestConstant.maxValue;
-import static org.apache.iotdb.db.constant.TestConstant.minTime;
-import static org.apache.iotdb.db.constant.TestConstant.minValue;
+import static org.apache.iotdb.db.utils.constant.TestConstant.count;
+import static org.apache.iotdb.db.utils.constant.TestConstant.maxValue;
+import static org.apache.iotdb.db.utils.constant.TestConstant.minTime;
+import static org.apache.iotdb.db.utils.constant.TestConstant.minValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;

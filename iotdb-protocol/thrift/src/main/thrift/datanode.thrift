@@ -763,7 +763,7 @@ service IDataNodeRPCService {
   TFetchSchemaBlackListResp fetchSchemaBlackList(TFetchSchemaBlackListReq req)
 
   /**
-   * Config node inform this dataNode to execute a distribution data deleion mpp task
+   * Config node inform this dataNode to execute a distribution data deleion queryengine task
    */
   common.TSStatus deleteDataForDeleteSchema(TDeleteDataForDeleteSchemaReq req)
 

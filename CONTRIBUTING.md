@@ -130,18 +130,18 @@ Recommended use Intellij idea.
 mvn clean package -DskipTests
 ``` 
 
-Mark `antlr/target/generated-sources/antlr4` and `thrift/target/generated-sources/thrift` as `Source Root`.
+Mark `iotdb-core/antlr/target/generated-sources/antlr4` and `iotdb-protocol/thrift/target/generated-sources/thrift` as `Source Root`.
 
-* Server main function：`server/src/main/java/org/apache/iotdb/db/service/IoTDB`, can be started in debug mode.
-* Cli：`cli/src/main/java/org/apache/iotdb/cli/`，Use Cli for linux and WinCli for windows, you can start directly with the parameter "`-h 127.0.0.1 -p 6667 -u root -pw root`"
-* Server rpc implementation (mainly used for cli and server communication, generally start interruption point here):`server/src/main/java/org/apache/iotdb/db/service/TSServiceImpl`
+* Server main function：`iotdb-core/datanode/src/main/java/org/apache/iotdb/db/service/DataNode`, can be started in debug mode.
+* Cli：`iotdb-client/cli/src/main/java/org/apache/iotdb/cli/`，Use Cli for linux and WinCli for windows, you can start directly with the parameter "`-h 127.0.0.1 -p 6667 -u root -pw root`"
+* Server rpc implementation (mainly used for cli and server communication, generally start interruption point here):`iotdb-core/datanode/src/main/java/org/apache/iotdb/db/service/TSServiceImpl`
 * all jdbc statements：`executeStatement(TSExecuteStatementReq req)`
 * jdbc query：`executeQueryStatement(TSExecuteStatementReq req)`	
 * native Write interface：`insertRecord(TSInsertRecordReq req)`
 `insertTablet(TSInsertTabletReq req)`
 
-* Storage engine`org.apache.iotdb.db.engine.StorageEngine`
-* Query engine `org.apache.iotdb.db.qp.QueryProcessor`
+* Storage engine`org.apache.iotdb.db.storageengine.StorageEngine`
+* Query engine `org.apache.iotdb.db.queryengine`
 
 
 # Frequent Questions When Compiling the Source Code
