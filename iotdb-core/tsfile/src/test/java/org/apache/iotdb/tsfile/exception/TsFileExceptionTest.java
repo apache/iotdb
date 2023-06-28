@@ -89,7 +89,7 @@ public class TsFileExceptionTest {
   @Test
   public void testCompressionTypeNotSupportedException() {
     CompressionTypeNotSupportedException e = new CompressionTypeNotSupportedException(MOCK);
-    assertEquals(MOCK, e.getMessage());
+    assertEquals("codec not supported: " + MOCK, e.getMessage());
   }
 
   @Test
@@ -152,13 +152,13 @@ public class TsFileExceptionTest {
   @Test
   public void testUnknownColumnTypeException() {
     UnknownColumnTypeException e = new UnknownColumnTypeException(MOCK);
-    assertEquals(MOCK, e.getMessage());
+    assertEquals("Column type not found: " + MOCK, e.getMessage());
   }
 
   @Test
   public void testUnSupportedDataTypeException() {
     UnSupportedDataTypeException e = new UnSupportedDataTypeException(MOCK);
-    assertEquals(MOCK, e.getMessage());
+    assertEquals("Unsupported dataType: " + MOCK, e.getMessage());
   }
 
   @Test
