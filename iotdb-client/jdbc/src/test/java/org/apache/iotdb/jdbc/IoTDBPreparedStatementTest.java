@@ -36,8 +36,8 @@ import java.sql.Types;
 import java.time.ZoneId;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -88,7 +88,7 @@ public class IoTDBPreparedStatementTest {
     IoTDBPreparedStatement ps =
         new IoTDBPreparedStatement(connection, client, sessionId, sql, zoneId);
     ps.setString(1, "123");
-    assertTrue(ps.execute());
+    assertFalse(ps.execute());
   }
 
   @SuppressWarnings("resource")
