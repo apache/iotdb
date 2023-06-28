@@ -33,7 +33,7 @@
 
 在根目录下执行下面的命令：
 ```shell
-mvn clean install -pl jdbc -am -Dmaven.test.skip=true
+mvn clean install -pl iotdb-client/jdbc -am -Dmaven.test.skip=true
 ```
 
 #### 在 MAVEN 中使用 IoTDB JDBC

@@ -28,7 +28,7 @@ IOTDB 为用户提供 cli/Shell 工具用于启动客户端和服务端程序。
 如果使用源码版，可以在 iotdb 的根目录下执行
 
 ```shell
-> mvn clean package -pl cli -am -DskipTests
+> mvn clean package -pl iotdb-client/cli -am -DskipTests
 ```
 
 在生成完毕之后，IoTDB 的 Cli 工具位于文件夹"cli/target/iotdb-cli-{project.version}"中。

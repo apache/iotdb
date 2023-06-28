@@ -50,7 +50,7 @@ Suppose Zeppelin is placed at `$Zeppelin_HOME`.
 
 ```
  cd $IoTDB_HOME
- mvn clean package -pl zeppelin-interpreter -am -DskipTests -P get-jar-with-dependencies
+ mvn clean package -pl iotdb-connector/zeppelin-interpreter -am -DskipTests -P get-jar-with-dependencies
 ```
 
 The interpreter will be in the folder:
