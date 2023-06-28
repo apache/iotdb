@@ -266,11 +266,6 @@ public class TagManager {
                         tagAndAttributePair.left,
                         tagAndAttributePair.right,
                         node.getParent().getAsDeviceMNode().isAligned());
-                if (schemaFilter.accept(timeseriesFilterVisitor, nextMatched)) {
-                  break;
-                } else {
-                  nextMatched = null;
-                }
               }
             }
           }
