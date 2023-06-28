@@ -38,6 +38,9 @@ import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * ModificationFile stores the Modifications of a TsFile or unseq file in another file in the same
@@ -47,6 +50,7 @@ public class ModificationFile implements AutoCloseable {
 
   private static final Logger logger = LoggerFactory.getLogger(ModificationFile.class);
   public static final String FILE_SUFFIX = ".mods";
+  public static final String COMPACT_SUFFIX = ".settle";
   public static final String COMPACTION_FILE_SUFFIX = ".compaction.mods";
 
   // lazy loaded, set null when closed
@@ -191,5 +195,68 @@ public class ModificationFile implements AutoCloseable {
     } else {
       return 0;
     }
+  }
+
+  public ModificationFile compact() {
+    Map<String, List<Modification>> pathModificationMap =
+        modifications.stream().collect(Collectors.groupingBy(Modification::getPathString));
+    String newModsFileName = filePath + COMPACT_SUFFIX;
+    try (ModificationFile compactedModificationFile = new ModificationFile(newModsFileName)) {
+      Set<Map.Entry<String, List<Modification>>> entries = pathModificationMap.entrySet();
+      for (Map.Entry<String, List<Modification>> entry : entries) {
+        List<Modification> settledModifications = sortAndMerge(entry.getValue());
+        for (Modification settledModification : settledModifications) {
+          compactedModificationFile.write(settledModification);
+          compactedModificationFile.modifications.add(settledModification);
+        }
+      }
+
+      // remove origin mods file
+      this.remove();
+
+      // rename new mods file to origin name
+      if (new File(newModsFileName).renameTo(new File(filePath))) {
+        logger.info("{} settle successful", filePath);
+      }
+      return compactedModificationFile;
+    } catch (IOException e) {
+      logger.error("compact mods file exception of {}", filePath, e);
+    }
+    return this;
+  }
+
+  public static List<Modification> sortAndMerge(List<Modification> modifications) {
+    modifications.sort(
+        (o1, o2) -> {
+          if (!o1.getType().equals(o2.getType())) {
+            return o1.getType().compareTo(o2.getType());
+          } else if (!o1.getPath().equals(o2.getPath())) {
+            return o1.getPath().compareTo(o2.getPath());
+          } else if (o1.getFileOffset() != o2.getFileOffset()) {
+            return (int) (o1.getFileOffset() - o2.getFileOffset());
+          } else {
+            if (o1.getType() == Modification.Type.DELETION) {
+              Deletion del1 = (Deletion) o1;
+              Deletion del2 = (Deletion) o2;
+              return del1.getTimeRange().compareTo(del2.getTimeRange());
+            }
+            throw new IllegalArgumentException();
+          }
+        });
+    List<Modification> result = new ArrayList<>();
+    if (!modifications.isEmpty()) {
+      Deletion current = ((Deletion) modifications.get(0)).clone();
+      for (int i = 1; i < modifications.size(); i++) {
+        Deletion del = (Deletion) modifications.get(i);
+        if (current.intersects(del)) {
+          current.merge(del);
+        } else {
+          result.add(current);
+          current = del.clone();
+        }
+      }
+      result.add(current);
+    }
+    return result;
   }
 }
