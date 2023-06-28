@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
+import org.apache.iotdb.commons.schema.tree.SchemaIterator;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
@@ -36,10 +37,10 @@ import org.apache.iotdb.db.metadata.plan.schemaregion.result.ShowTimeSeriesResul
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.query.reader.SchemaReaderLimitOffsetWrapper;
+import org.apache.iotdb.db.metadata.query.reader.TimeseriesReaderWithViewFetch;
 import org.apache.iotdb.db.metadata.visitor.TimeseriesFilterVisitor;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -214,36 +215,17 @@ public class TagManager {
     // schemaFilter must not null
     SchemaFilter schemaFilter = plan.getSchemaFilter();
     // currently, only one TagFilter is supported
+    // all IMeasurementMNode in allMatchedNodes satisfied TagFilter
     Iterator<IMeasurementMNode<?>> allMatchedNodes =
         getMatchedTimeseriesInIndex(
                 (TagFilter) SchemaFilter.extract(schemaFilter, SchemaFilterType.TAGS_FILTER).get(0))
             .iterator();
     PartialPath pathPattern = plan.getPath();
     TimeseriesFilterVisitor timeseriesFilterVisitor = new TimeseriesFilterVisitor();
-    ISchemaReader<ITimeSeriesSchemaInfo> reader =
-        new ISchemaReader<ITimeSeriesSchemaInfo>() {
+    SchemaIterator<ITimeSeriesSchemaInfo> schemaIterator =
+        new SchemaIterator<ITimeSeriesSchemaInfo>() {
           private ITimeSeriesSchemaInfo nextMatched;
           private Throwable throwable;
-
-          @Override
-          public boolean isSuccess() {
-            return throwable == null;
-          }
-
-          @Override
-          public Throwable getFailure() {
-            return throwable;
-          }
-
-          @Override
-          public void close() {
-            // do nothing
-          }
-
-          @Override
-          public ListenableFuture<?> isBlocked() {
-            return NOT_BLOCKED;
-          }
 
           @Override
           public boolean hasNext() {
@@ -292,7 +274,24 @@ public class TagManager {
               }
             }
           }
+
+          @Override
+          public Throwable getFailure() {
+            return throwable;
+          }
+
+          @Override
+          public boolean isSuccess() {
+            return throwable == null;
+          }
+
+          @Override
+          public void close() {
+            // do nothing
+          }
         };
+    ISchemaReader<ITimeSeriesSchemaInfo> reader =
+        new TimeseriesReaderWithViewFetch(schemaIterator, schemaFilter);
     if (plan.getLimit() > 0 || plan.getOffset() > 0) {
       return new SchemaReaderLimitOffsetWrapper<>(reader, plan.getLimit(), plan.getOffset());
     } else {
