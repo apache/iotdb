@@ -630,19 +630,19 @@ public class QueryStatement extends Statement {
 
     if (isSelectInto()) {
       if (getSeriesLimit() > 0) {
-        throw new SemanticException("select into: slimit clauses are not supported.");
+        throw new SemanticException("Select into: slimit clauses are not supported.");
       }
       if (getSeriesOffset() > 0) {
-        throw new SemanticException("select into: soffset clauses are not supported.");
+        throw new SemanticException("Select into: soffset clauses are not supported.");
       }
       if (disableAlign()) {
-        throw new SemanticException("select into: disable align clauses are not supported.");
+        throw new SemanticException("Select into: disable align clauses are not supported.");
       }
       if (isLastQuery()) {
-        throw new SemanticException("select into: last clauses are not supported.");
+        throw new SemanticException("Select into: last clauses are not supported.");
       }
       if (isGroupByTag()) {
-        throw new SemanticException("select into: GROUP BY TAGS clause are not supported.");
+        throw new SemanticException("Select into: GROUP BY TAGS clause are not supported.");
       }
     }
   }
