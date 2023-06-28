@@ -65,10 +65,6 @@ public abstract class AbstractFragInsStateTracker implements IFragInstanceStateT
     this.localhostInternalPort = IoTDBDescriptor.getInstance().getConfig().getInternalPort();
   }
 
-  public abstract void start();
-
-  public abstract void abort();
-
   protected FragmentInstanceInfo fetchInstanceInfo(FragmentInstance instance)
       throws ClientManagerException, TException {
     TEndPoint endPoint = instance.getHostDataNode().internalEndPoint;

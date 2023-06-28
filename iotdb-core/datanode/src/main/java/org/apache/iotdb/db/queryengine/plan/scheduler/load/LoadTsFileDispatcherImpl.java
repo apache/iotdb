@@ -69,6 +69,8 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
       internalServiceClientManager;
   private final ExecutorService executor;
 
+  private static final String NODE_CONNECTION_ERROR = "can't connect to node {}";
+
   public LoadTsFileDispatcherImpl(
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
     this.internalServiceClientManager = internalServiceClientManager;
@@ -140,10 +142,10 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
         throw new FragmentInstanceDispatchException(loadResp.status);
       }
     } catch (ClientManagerException | TException e) {
-      logger.warn("can't connect to node {}", endPoint, e);
+      logger.warn(NODE_CONNECTION_ERROR, endPoint, e);
       TSStatus status = new TSStatus();
       status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
-      status.setMessage("can't connect to node {}" + endPoint);
+      status.setMessage(NODE_CONNECTION_ERROR + endPoint);
       throw new FragmentInstanceDispatchException(status);
     }
   }
@@ -227,11 +229,12 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
         throw new FragmentInstanceDispatchException(loadResp.status);
       }
     } catch (ClientManagerException | TException e) {
-      logger.warn("can't connect to node {}", endPoint, e);
+      logger.warn(NODE_CONNECTION_ERROR, endPoint, e);
       TSStatus status = new TSStatus();
       status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
       status.setMessage(
-          "can't connect to node {}, please reset longer dn_connection_timeout_ms in iotdb-common.properties and restart iotdb."
+          NODE_CONNECTION_ERROR
+              + "please reset longer dn_connection_timeout_ms in iotdb-common.properties and restart iotdb."
               + endPoint);
       throw new FragmentInstanceDispatchException(status);
     }
