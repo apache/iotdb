@@ -408,7 +408,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
   public void setObject(int parameterIndex, Object parameterObj, int targetSqlType, int scale)
       throws SQLException {
     if (parameterObj == null) {
-      setNull(parameterIndex, Types.OTHER);
+      setNull(parameterIndex, java.sql.Types.OTHER);
     } else {
       try {
         switch (targetSqlType) {
@@ -470,8 +470,8 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
             break;
 
           case Types.CLOB:
-            if (parameterObj instanceof Clob) {
-              setClob(parameterIndex, (Clob) parameterObj);
+            if (parameterObj instanceof java.sql.Clob) {
+              setClob(parameterIndex, (java.sql.Clob) parameterObj);
             } else {
               setString(parameterIndex, parameterObj.toString());
             }
@@ -498,19 +498,19 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
             switch (targetSqlType) {
               case Types.DATE:
-                if (parameterAsDate instanceof Date) {
-                  setDate(parameterIndex, (Date) parameterAsDate);
+                if (parameterAsDate instanceof java.sql.Date) {
+                  setDate(parameterIndex, (java.sql.Date) parameterAsDate);
                 } else {
-                  setDate(parameterIndex, new Date(parameterAsDate.getTime()));
+                  setDate(parameterIndex, new java.sql.Date(parameterAsDate.getTime()));
                 }
 
                 break;
 
               case Types.TIMESTAMP:
-                if (parameterAsDate instanceof Timestamp) {
-                  setTimestamp(parameterIndex, (Timestamp) parameterAsDate);
+                if (parameterAsDate instanceof java.sql.Timestamp) {
+                  setTimestamp(parameterIndex, (java.sql.Timestamp) parameterAsDate);
                 } else {
-                  setTimestamp(parameterIndex, new Timestamp(parameterAsDate.getTime()));
+                  setTimestamp(parameterIndex, new java.sql.Timestamp(parameterAsDate.getTime()));
                 }
 
                 break;
@@ -793,7 +793,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
         case Types.DECIMAL:
         case Types.NUMERIC:
         default:
-          parameterAsNum = new BigDecimal((String) parameterObj);
+          parameterAsNum = new java.math.BigDecimal((String) parameterObj);
       }
     } else {
       parameterAsNum = (Number) parameterObj;
@@ -825,15 +825,15 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
       case Types.DECIMAL:
       case Types.NUMERIC:
-        if (parameterAsNum instanceof BigDecimal) {
+        if (parameterAsNum instanceof java.math.BigDecimal) {
           BigDecimal scaledBigDecimal = null;
 
           try {
-            scaledBigDecimal = ((BigDecimal) parameterAsNum).setScale(scale);
+            scaledBigDecimal = ((java.math.BigDecimal) parameterAsNum).setScale(scale);
           } catch (ArithmeticException ex) {
             try {
               scaledBigDecimal =
-                  ((BigDecimal) parameterAsNum).setScale(scale, BigDecimal.ROUND_HALF_UP);
+                  ((java.math.BigDecimal) parameterAsNum).setScale(scale, BigDecimal.ROUND_HALF_UP);
             } catch (ArithmeticException arEx) {
               throw new SQLException(
                   "Can't set scale of '"
@@ -848,7 +848,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
         } else if (parameterAsNum instanceof java.math.BigInteger) {
           setBigDecimal(
               parameterIndex,
-              new BigDecimal((java.math.BigInteger) parameterAsNum, scale));
+              new java.math.BigDecimal((java.math.BigInteger) parameterAsNum, scale));
         } else {
           setBigDecimal(parameterIndex, BigDecimal.valueOf(parameterAsNum.doubleValue()));
         }

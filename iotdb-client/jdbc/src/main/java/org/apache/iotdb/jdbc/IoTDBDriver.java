@@ -31,7 +31,7 @@ import java.util.Properties;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
-@Component(service = Driver.class, immediate = true)
+@Component(service = java.sql.Driver.class, immediate = true)
 public class IoTDBDriver implements Driver {
   private static final org.slf4j.Logger logger =
       org.slf4j.LoggerFactory.getLogger(IoTDBDriver.class);

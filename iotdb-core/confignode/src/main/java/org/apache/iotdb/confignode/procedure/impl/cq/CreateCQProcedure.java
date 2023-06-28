@@ -128,7 +128,7 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
       if (res.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.debug("Finish init CQ {} successfully", req.cqId);
         setNextState(INACTIVE);
-      } else if (res.code == TSStatusCode.CQ_AlREADY_EXIST.getStatusCode()) {
+      } else if (res.code == TSStatusCode.CQ_ALREADY_EXIST.getStatusCode()) {
         LOGGER.info("Failed to init CQ {} because such cq already exists", req.cqId);
         setFailure(new ProcedureException(new IoTDBException(res.message, res.code)));
       } else {

@@ -1088,7 +1088,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public String getDriverName() {
-    return IoTDBDriver.class.getName();
+    return org.apache.iotdb.jdbc.IoTDBDriver.class.getName();
   }
 
   @Override
@@ -1154,8 +1154,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   public ResultSet getFunctionColumns(
       String catalog,
       String schemaPattern,
-      String functionNamePattern,
-      String columnNamePattern)
+      java.lang.String functionNamePattern,
+      java.lang.String columnNamePattern)
       throws SQLException {
     Statement stmt = connection.createStatement();
     ResultSet rs = stmt.executeQuery(SHOW_FUNCTIONS);
