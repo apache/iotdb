@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class DeleteTriggerInTablePlan extends ConfigPhysicalPlan {
 
@@ -58,5 +59,25 @@ public class DeleteTriggerInTablePlan extends ConfigPhysicalPlan {
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     triggerName = ReadWriteIOUtils.readString(buffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    DeleteTriggerInTablePlan that = (DeleteTriggerInTablePlan) o;
+    return Objects.equals(triggerName, that.triggerName);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), triggerName);
   }
 }

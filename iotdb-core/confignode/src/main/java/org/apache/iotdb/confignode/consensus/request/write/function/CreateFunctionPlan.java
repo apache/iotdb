@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class CreateFunctionPlan extends ConfigPhysicalPlan {
 
@@ -72,5 +73,25 @@ public class CreateFunctionPlan extends ConfigPhysicalPlan {
       return;
     }
     jarFile = ReadWriteIOUtils.readBinary(buffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    CreateFunctionPlan that = (CreateFunctionPlan) o;
+    return Objects.equals(udfInformation, that.udfInformation);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), udfInformation);
   }
 }
