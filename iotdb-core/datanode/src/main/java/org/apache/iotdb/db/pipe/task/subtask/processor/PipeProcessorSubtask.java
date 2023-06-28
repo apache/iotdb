@@ -17,9 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.subtask;
+package org.apache.iotdb.db.pipe.task.subtask.processor;
 
+import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.db.pipe.task.connection.EventSupplier;
+import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -27,16 +29,24 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import com.google.common.util.concurrent.ListeningExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeProcessorSubtask extends PipeSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeProcessorSubtask.class);
 
+  private static volatile PipeProcessorSubtaskWorkerManager subtaskWorkerManager;
+
   private final EventSupplier inputEventSupplier;
   private final PipeProcessor pipeProcessor;
   private final EventCollector outputEventCollector;
+
+  private final AtomicBoolean isClosed;
 
   public PipeProcessorSubtask(
       String taskID,
@@ -47,6 +57,27 @@ public class PipeProcessorSubtask extends PipeSubtask {
     this.inputEventSupplier = inputEventSupplier;
     this.pipeProcessor = pipeProcessor;
     this.outputEventCollector = outputEventCollector;
+    isClosed = new AtomicBoolean(false);
+  }
+
+  @Override
+  public void bindExecutors(
+      ListeningExecutorService subtaskWorkerThreadPoolExecutor,
+      ExecutorService ignored,
+      PipeSubtaskScheduler subtaskScheduler) {
+    this.subtaskWorkerThreadPoolExecutor = subtaskWorkerThreadPoolExecutor;
+    this.subtaskScheduler = subtaskScheduler;
+
+    // double check locking for constructing PipeProcessorSubtaskWorkerManager
+    if (subtaskWorkerManager == null) {
+      synchronized (PipeProcessorSubtaskWorkerManager.class) {
+        if (subtaskWorkerManager == null) {
+          subtaskWorkerManager =
+              new PipeProcessorSubtaskWorkerManager(subtaskWorkerThreadPoolExecutor);
+        }
+      }
+    }
+    subtaskWorkerManager.schedule(this);
   }
 
   @Override
@@ -80,11 +111,20 @@ public class PipeProcessorSubtask extends PipeSubtask {
   }
 
   @Override
+  public void submitSelf() {
+    // this subtask won't be submitted to the executor directly
+    // instead, it will be executed by the PipeProcessorSubtaskWorker
+    // and the worker will be submitted to the executor
+  }
+
+  @Override
   // synchronized for pipeProcessor.close() and releaseLastEvent() in super.close().
   // make sure that the lastEvent will not be updated after pipeProcessor.close() to avoid
   // resource leak because of the lastEvent is not released.
   public synchronized void close() {
     try {
+      isClosed.set(true);
+
       pipeProcessor.close();
 
       // should be called after pipeProcessor.close()
@@ -96,5 +136,9 @@ public class PipeProcessorSubtask extends PipeSubtask {
               + "implementation of PipeProcessor is correct according to the pipe-api description.",
           e);
     }
+  }
+
+  boolean isClosed() {
+    return isClosed.get();
   }
 }

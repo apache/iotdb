@@ -17,12 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.subtask;
+package org.apache.iotdb.db.pipe.task.subtask.connector;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.db.pipe.task.subtask.DecoratingLock;
+import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -30,20 +33,31 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.ListeningExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.validation.constraints.NotNull;
 
+import java.util.concurrent.ExecutorService;
+
 public class PipeConnectorSubtask extends PipeSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtask.class);
 
+  // for input and output
   private final BoundedBlockingPendingQueue<Event> inputPendingQueue;
   private final PipeConnector outputPipeConnector;
 
+  // for heartbeat scheduling
   private static final int HEARTBEAT_CHECK_INTERVAL = 1000;
   private int executeOnceInvokedTimes;
+
+  // for thread pool to execute callbacks
+  protected final DecoratingLock callbackDecoratingLock = new DecoratingLock();
+  protected ExecutorService subtaskCallbackListeningExecutor;
 
   /** @param taskID connectorAttributeSortedString */
   public PipeConnectorSubtask(
@@ -54,6 +68,27 @@ public class PipeConnectorSubtask extends PipeSubtask {
     this.inputPendingQueue = inputPendingQueue;
     this.outputPipeConnector = outputPipeConnector;
     executeOnceInvokedTimes = 0;
+  }
+
+  @Override
+  public void bindExecutors(
+      ListeningExecutorService subtaskWorkerThreadPoolExecutor,
+      ExecutorService subtaskCallbackListeningExecutor,
+      PipeSubtaskScheduler subtaskScheduler) {
+    this.subtaskWorkerThreadPoolExecutor = subtaskWorkerThreadPoolExecutor;
+    this.subtaskCallbackListeningExecutor = subtaskCallbackListeningExecutor;
+    this.subtaskScheduler = subtaskScheduler;
+  }
+
+  @Override
+  public Void call() throws Exception {
+    super.call();
+
+    // wait for the callable to be decorated by Futures.addCallback in the executorService
+    // to make sure that the callback can be submitted again on success or failure.
+    callbackDecoratingLock.waitForDecorated();
+
+    return null;
   }
 
   @Override
@@ -177,6 +212,21 @@ public class PipeConnectorSubtask extends PipeSubtask {
 
     // handle other exceptions as usual
     super.onFailure(new PipeRuntimeConnectorCriticalException(throwable.getMessage()));
+  }
+
+  @Override
+  public void submitSelf() {
+    if (shouldStopSubmittingSelf.get()) {
+      return;
+    }
+
+    callbackDecoratingLock.markAsDecorating();
+    try {
+      final ListenableFuture<Void> nextFuture = subtaskWorkerThreadPoolExecutor.submit(this);
+      Futures.addCallback(nextFuture, this, subtaskCallbackListeningExecutor);
+    } finally {
+      callbackDecoratingLock.markAsDecorated();
+    }
   }
 
   @Override

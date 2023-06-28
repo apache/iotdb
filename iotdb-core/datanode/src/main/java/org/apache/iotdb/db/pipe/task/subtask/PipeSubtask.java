@@ -26,8 +26,6 @@ import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,10 +47,6 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
   // for thread pool to execute subtasks
   protected ListeningExecutorService subtaskWorkerThreadPoolExecutor;
 
-  // for thread pool to execute callbacks
-  protected final DecoratingLock callbackDecoratingLock = new DecoratingLock();
-  protected ExecutorService subtaskCallbackListeningExecutor;
-
   // for controlling the subtask execution
   protected final AtomicBoolean shouldStopSubmittingSelf = new AtomicBoolean(true);
   protected PipeSubtaskScheduler subtaskScheduler;
@@ -67,14 +61,10 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
     this.taskID = taskID;
   }
 
-  public void bindExecutors(
+  public abstract void bindExecutors(
       ListeningExecutorService subtaskWorkerThreadPoolExecutor,
       ExecutorService subtaskCallbackListeningExecutor,
-      PipeSubtaskScheduler subtaskScheduler) {
-    this.subtaskWorkerThreadPoolExecutor = subtaskWorkerThreadPoolExecutor;
-    this.subtaskCallbackListeningExecutor = subtaskCallbackListeningExecutor;
-    this.subtaskScheduler = subtaskScheduler;
-  }
+      PipeSubtaskScheduler subtaskScheduler);
 
   @Override
   public Void call() throws Exception {
@@ -88,10 +78,6 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
     }
     // reset the scheduler to make sure that the scheduler can schedule again
     subtaskScheduler.reset();
-
-    // wait for the callable to be decorated by Futures.addCallback in the executorService
-    // to make sure that the callback can be submitted again on success or failure.
-    callbackDecoratingLock.waitForDecorated();
 
     return null;
   }
@@ -174,19 +160,7 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
     }
   }
 
-  public void submitSelf() {
-    if (shouldStopSubmittingSelf.get()) {
-      return;
-    }
-
-    callbackDecoratingLock.markAsDecorating();
-    try {
-      final ListenableFuture<Void> nextFuture = subtaskWorkerThreadPoolExecutor.submit(this);
-      Futures.addCallback(nextFuture, this, subtaskCallbackListeningExecutor);
-    } finally {
-      callbackDecoratingLock.markAsDecorated();
-    }
-  }
+  public abstract void submitSelf();
 
   public void allowSubmittingSelf() {
     retryCount.set(0);
