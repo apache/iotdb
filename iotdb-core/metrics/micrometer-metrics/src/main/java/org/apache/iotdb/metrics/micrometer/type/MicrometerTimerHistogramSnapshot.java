@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.metrics.micrometer.type;
 
 import org.apache.iotdb.metrics.type.HistogramSnapshot;
