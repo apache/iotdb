@@ -101,6 +101,7 @@
         <module>iotdb-connector/spark-iotdb-connector/scala_2.12</module>
         <module>iotdb-connector/flink-tsfile-connector</module>
         <module>iotdb-connector/flink-iotdb-connector</module>
+        <module>iotdb-connector/flink-sql-iotdb-connector</module>
         <module>distribution</module>
         <module>iotdb-connector/hive-connector</module>
         <module>iotdb-core/node-commons</module>
