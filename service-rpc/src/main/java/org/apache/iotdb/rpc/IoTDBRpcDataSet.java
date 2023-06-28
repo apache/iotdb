@@ -322,8 +322,12 @@ public class IoTDBRpcDataSet {
     }
   }
 
+  public boolean isTsBlockEmpty() {
+    return curTsBlock == null || tsBlockSize == 0;
+  }
+
   public boolean hasCachedBlock() {
-    return (curTsBlock != null && tsBlockIndex < tsBlockSize - 1);
+    return (!isTsBlockEmpty() && tsBlockIndex < tsBlockSize - 1);
   }
 
   public boolean hasCachedByteBuffer() {
