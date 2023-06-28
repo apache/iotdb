@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cli;
 
+import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
@@ -530,11 +531,12 @@ public abstract class AbstractCli {
           cmd.split(" ")[1],
           connection.getTimeZone());
     } catch (IoTDBConnectionException e) {
-      e.printStackTrace();
+      IoTPrinter.printException(e);
       return CODE_ERROR;
     }
   }
 
+  @SuppressWarnings({"squid:S3776", "squid:S1141", "squid:S135"})
   private static int executeQuery(IoTDBConnection connection, String cmd) {
     int executeStatus = CODE_OK;
     long startTime = System.currentTimeMillis();
@@ -575,7 +577,7 @@ public abstract class AbstractCli {
                 break;
               }
             } catch (IOException e) {
-              e.printStackTrace();
+              IoTPrinter.printException(e);
               executeStatus = CODE_ERROR;
             }
           }
@@ -609,7 +611,7 @@ public abstract class AbstractCli {
    * @return {@literal List<List<String>> result}
    * @throws SQLException throw exception
    */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  @SuppressWarnings({"squid:S6541", "squid:S3776"}) // Suppress high Cognitive Complexity warning
   private static List<List<String>> cacheResult(
       ResultSet resultSet,
       List<Integer> maxSizeList,

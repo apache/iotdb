@@ -31,5 +31,5 @@ public interface WatermarkEncoder {
 
   boolean needEncode(long timestamp);
 
-  RowRecord encodeRecord(RowRecord record);
+  RowRecord encodeRecord(RowRecord rowRecord);
 }

@@ -399,11 +399,16 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
     }
   }
 
+  @SuppressWarnings({
+    "squid:S3776",
+    "squid:S6541"
+  }) // ignore Cognitive Complexity of methods should not be too high
+  // ignore Methods should not perform too many tasks (aka Brain method)
   @Override
   public void setObject(int parameterIndex, Object parameterObj, int targetSqlType, int scale)
       throws SQLException {
     if (parameterObj == null) {
-      setNull(parameterIndex, java.sql.Types.OTHER);
+      setNull(parameterIndex, Types.OTHER);
     } else {
       try {
         switch (targetSqlType) {
@@ -418,8 +423,10 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
               } else if ("false".equalsIgnoreCase((String) parameterObj)
                   || "N".equalsIgnoreCase((String) parameterObj)) {
                 setBoolean(parameterIndex, false);
-              } else if (((String) parameterObj).matches("-?\\d+\\.?\\d*")) {
-                setBoolean(parameterIndex, !((String) parameterObj).matches("-?[0]+[.]*[0]*"));
+              } else if (java.util.regex.Pattern.compile("-?\\d+\\.?\\d*")
+                  .matcher((String) parameterObj)
+                  .matches()) {
+                setBoolean(parameterIndex, !((String) parameterObj).matches("-?0+[.]*0*"));
               } else {
                 throw new SQLException(
                     "No conversion from " + parameterObj + " to Types.BOOLEAN possible.");
@@ -463,8 +470,8 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
             break;
 
           case Types.CLOB:
-            if (parameterObj instanceof java.sql.Clob) {
-              setClob(parameterIndex, (java.sql.Clob) parameterObj);
+            if (parameterObj instanceof Clob) {
+              setClob(parameterIndex, (Clob) parameterObj);
             } else {
               setString(parameterIndex, parameterObj.toString());
             }
@@ -491,21 +498,24 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
             switch (targetSqlType) {
               case Types.DATE:
-                if (parameterAsDate instanceof java.sql.Date) {
-                  setDate(parameterIndex, (java.sql.Date) parameterAsDate);
+                if (parameterAsDate instanceof Date) {
+                  setDate(parameterIndex, (Date) parameterAsDate);
                 } else {
-                  setDate(parameterIndex, new java.sql.Date(parameterAsDate.getTime()));
+                  setDate(parameterIndex, new Date(parameterAsDate.getTime()));
                 }
 
                 break;
 
               case Types.TIMESTAMP:
-                if (parameterAsDate instanceof java.sql.Timestamp) {
-                  setTimestamp(parameterIndex, (java.sql.Timestamp) parameterAsDate);
+                if (parameterAsDate instanceof Timestamp) {
+                  setTimestamp(parameterIndex, (Timestamp) parameterAsDate);
                 } else {
-                  setTimestamp(parameterIndex, new java.sql.Timestamp(parameterAsDate.getTime()));
+                  setTimestamp(parameterIndex, new Timestamp(parameterAsDate.getTime()));
                 }
 
+                break;
+              default:
+                logger.error("No type was matched");
                 break;
             }
 
@@ -530,16 +540,19 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
           default:
             throw new SQLException(Constant.PARAMETER_SUPPORTED); //
         }
+      } catch (SQLException ex) {
+        throw ex;
       } catch (Exception ex) {
-        if (ex instanceof SQLException) {
-          throw (SQLException) ex;
-        }
-
         throw new SQLException(Constant.PARAMETER_SUPPORTED); //
       }
     }
   }
 
+  @SuppressWarnings({
+    "squid:S3776",
+    "squid:S6541"
+  }) // ignore Cognitive Complexity of methods should not be too high
+  // ignore Methods should not perform too many tasks (aka Brain method)
   private final String getDateTimePattern(String dt, boolean toTime) throws Exception {
     //
     // Special case
@@ -591,8 +604,8 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
     char c;
     char separator;
     StringReader reader = new StringReader(dt + " ");
-    ArrayList<Object[]> vec = new ArrayList<Object[]>();
-    ArrayList<Object[]> vecRemovelist = new ArrayList<Object[]>();
+    ArrayList<Object[]> vec = new ArrayList<>();
+    ArrayList<Object[]> vecRemovelist = new ArrayList<>();
     Object[] nv = new Object[3];
     Object[] v;
     nv[0] = Character.valueOf('y');
@@ -697,6 +710,8 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
     return format.toString();
   }
 
+  @SuppressWarnings({"squid:S3776", "squid:S3358"}) // ignore Ternary operators should not be nested
+  // ignore Cognitive Complexity of methods should not be too high
   private final char getSuccessor(char c, int n) {
     return ((c == 'y') && (n == 2))
         ? 'X'
@@ -727,6 +742,11 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
                                                         : 'W'))))))))))));
   }
 
+  @SuppressWarnings({
+    "squid:S3776",
+    "squid:S6541"
+  }) // ignore Cognitive Complexity of methods should not be too high
+  // ignore Methods should not perform too many tasks (aka Brain method)
   private void setNumericObject(
       int parameterIndex, Object parameterObj, int targetSqlType, int scale) throws SQLException {
     Number parameterAsNum;
@@ -773,7 +793,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
         case Types.DECIMAL:
         case Types.NUMERIC:
         default:
-          parameterAsNum = new java.math.BigDecimal((String) parameterObj);
+          parameterAsNum = new BigDecimal((String) parameterObj);
       }
     } else {
       parameterAsNum = (Number) parameterObj;
@@ -805,15 +825,15 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
       case Types.DECIMAL:
       case Types.NUMERIC:
-        if (parameterAsNum instanceof java.math.BigDecimal) {
+        if (parameterAsNum instanceof BigDecimal) {
           BigDecimal scaledBigDecimal = null;
 
           try {
-            scaledBigDecimal = ((java.math.BigDecimal) parameterAsNum).setScale(scale);
+            scaledBigDecimal = ((BigDecimal) parameterAsNum).setScale(scale);
           } catch (ArithmeticException ex) {
             try {
               scaledBigDecimal =
-                  ((java.math.BigDecimal) parameterAsNum).setScale(scale, BigDecimal.ROUND_HALF_UP);
+                  ((BigDecimal) parameterAsNum).setScale(scale, BigDecimal.ROUND_HALF_UP);
             } catch (ArithmeticException arEx) {
               throw new SQLException(
                   "Can't set scale of '"
@@ -828,12 +848,13 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
         } else if (parameterAsNum instanceof java.math.BigInteger) {
           setBigDecimal(
               parameterIndex,
-              new java.math.BigDecimal((java.math.BigInteger) parameterAsNum, scale));
+              new BigDecimal((java.math.BigInteger) parameterAsNum, scale));
         } else {
           setBigDecimal(parameterIndex, BigDecimal.valueOf(parameterAsNum.doubleValue()));
         }
 
         break;
+      default:
     }
   }
 
@@ -881,7 +902,8 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       }
       setLong(parameterIndex, time);
     } catch (TException e) {
-      e.printStackTrace();
+      logger.error(
+          String.format("set time error when iotdb prepared statement :%s ", e.getMessage()));
     }
   }
 
@@ -913,7 +935,8 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       this.parameters.put(
           parameterIndex, zonedDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
     } catch (TException e) {
-      e.printStackTrace();
+      logger.error(
+          String.format("set time error when iotdb prepared statement :%s ", e.getMessage()));
     }
   }
 

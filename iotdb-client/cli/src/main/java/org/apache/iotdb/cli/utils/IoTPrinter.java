@@ -25,7 +25,10 @@ import java.lang.Character.UnicodeScript;
 import java.util.List;
 
 public class IoTPrinter {
+  @SuppressWarnings("squid:S106")
   private static final PrintStream SCREEN_PRINTER = new PrintStream(System.out);
+
+  private IoTPrinter() {}
 
   public static void printf(String format, Object... args) {
     SCREEN_PRINTER.printf(format, args);
@@ -33,6 +36,10 @@ public class IoTPrinter {
 
   public static void print(String msg) {
     SCREEN_PRINTER.print(msg);
+  }
+
+  public static void printException(Exception msg) {
+    SCREEN_PRINTER.println(msg);
   }
 
   public static void println() {

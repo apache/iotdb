@@ -31,7 +31,7 @@ import java.util.Properties;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
-@Component(service = java.sql.Driver.class, immediate = true)
+@Component(service = Driver.class, immediate = true)
 public class IoTDBDriver implements Driver {
   private static final org.slf4j.Logger logger =
       org.slf4j.LoggerFactory.getLogger(IoTDBDriver.class);
@@ -46,7 +46,7 @@ public class IoTDBDriver implements Driver {
     }
   }
 
-  private final String TSFILE_URL_PREFIX = Config.IOTDB_URL_PREFIX + ".*";
+  private static final String TSFILE_URL_PREFIX = Config.IOTDB_URL_PREFIX + ".*";
 
   public IoTDBDriver() {
     // This is a constructor.
@@ -71,13 +71,11 @@ public class IoTDBDriver implements Driver {
 
   @Override
   public int getMajorVersion() {
-    // TODO Auto-generated method stub
     return 0;
   }
 
   @Override
   public int getMinorVersion() {
-    // TODO Auto-generated method stub
     return 0;
   }
 
@@ -88,7 +86,6 @@ public class IoTDBDriver implements Driver {
 
   @Override
   public DriverPropertyInfo[] getPropertyInfo(String url, Properties info) {
-    // TODO Auto-generated method stub
     return new DriverPropertyInfo[0];
   }
 

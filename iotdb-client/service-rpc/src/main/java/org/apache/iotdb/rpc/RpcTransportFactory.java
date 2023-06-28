@@ -29,6 +29,7 @@ public class RpcTransportFactory extends TTransportFactory {
 
   // TODO: make it a config
   public static boolean USE_SNAPPY = false;
+
   public static RpcTransportFactory INSTANCE;
 
   private static int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;

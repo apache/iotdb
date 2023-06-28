@@ -31,15 +31,17 @@ public class ThreadUtils {
    */
   public static ThreadFactory createThreadFactory(String threadNamePrefix, boolean isDaemon) {
     return new ThreadFactory() {
-      private final AtomicInteger THREAD_COUNT = new AtomicInteger(0);
+      private final AtomicInteger threadCount = new AtomicInteger(0);
 
       @Override
       public Thread newThread(Runnable r) {
         Thread thread = new Thread(r);
-        thread.setName(String.format("%s-%d", threadNamePrefix, THREAD_COUNT.getAndIncrement()));
+        thread.setName(String.format("%s-%d", threadNamePrefix, threadCount.getAndIncrement()));
         thread.setDaemon(isDaemon);
         return thread;
       }
     };
   }
+
+  private ThreadUtils() {}
 }
