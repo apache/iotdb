@@ -276,13 +276,17 @@ public class IoTDBRpcDataSet {
       return true;
     }
     if (hasCachedByteBuffer()) {
-      constructOneTsBlock();
+      if (constructOneTsBlock()) {
+        return false;
+      }
       constructOneRow();
       return true;
     }
 
     if (moreData && fetchResults() && hasCachedByteBuffer()) {
-      constructOneTsBlock();
+      if (constructOneTsBlock()) {
+        return false;
+      }
       constructOneRow();
       return true;
     } else {
@@ -322,12 +326,8 @@ public class IoTDBRpcDataSet {
     }
   }
 
-  public boolean isTsBlockEmpty() {
-    return curTsBlock == null || tsBlockSize == 0;
-  }
-
   public boolean hasCachedBlock() {
-    return (!isTsBlockEmpty() && tsBlockIndex < tsBlockSize - 1);
+    return (curTsBlock != null && tsBlockIndex < tsBlockSize - 1);
   }
 
   public boolean hasCachedByteBuffer() {
@@ -337,16 +337,26 @@ public class IoTDBRpcDataSet {
   public void constructOneRow() {
     tsBlockIndex++;
     hasCachedRecord = true;
-    time = curTsBlock.getTimeColumn().getLong(tsBlockIndex);
+    if (tsBlockIndex < tsBlockSize - 1) {
+      time = curTsBlock.getTimeColumn().getLong(tsBlockIndex);
+    }
   }
 
-  public void constructOneTsBlock() {
+  public boolean constructOneTsBlock() {
     lastReadWasNull = false;
-    ByteBuffer byteBuffer = queryResult.get(queryResultIndex);
-    queryResultIndex++;
-    curTsBlock = serde.deserialize(byteBuffer);
-    tsBlockIndex = -1;
-    tsBlockSize = curTsBlock.getPositionCount();
+
+    while (queryResultIndex < queryResultSize) {
+      ByteBuffer byteBuffer = queryResult.get(queryResultIndex);
+      queryResultIndex++;
+      curTsBlock = serde.deserialize(byteBuffer);
+      tsBlockIndex = -1;
+      tsBlockSize = curTsBlock.getPositionCount();
+      if (tsBlockSize != 0) {
+        break;
+      }
+    }
+
+    return tsBlockSize == 0;
   }
 
   public boolean isNull(int columnIndex) throws StatementExecutionException {
