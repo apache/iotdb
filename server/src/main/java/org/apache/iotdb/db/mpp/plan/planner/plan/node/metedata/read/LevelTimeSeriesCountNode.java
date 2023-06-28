@@ -30,6 +30,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import javax.validation.constraints.NotNull;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -50,7 +52,7 @@ public class LevelTimeSeriesCountNode extends SchemaQueryScanNode {
       boolean isPrefixPath,
       int level,
       SchemaFilter schemaFilter,
-      Map<Integer, Template> templateMap) {
+      @NotNull Map<Integer, Template> templateMap) {
     super(id, partialPath, isPrefixPath);
     this.level = level;
     this.schemaFilter = schemaFilter;

@@ -81,7 +81,7 @@ public class SchemaCountNodeSerdeTest {
             true,
             10,
             null,
-            null);
+            Collections.emptyMap());
     IdentitySinkNode sinkNode =
         new IdentitySinkNode(
             new PlanNodeId("sink"),
