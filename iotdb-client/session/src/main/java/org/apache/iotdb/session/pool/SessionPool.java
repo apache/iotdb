@@ -529,6 +529,11 @@ public class SessionPool implements ISessionPool {
     synchronized (this) {
       // we do not need to notifyAll as any waited thread can continue to work after waked up.
       this.notify();
+      // comment the following codes as putBack is too frequently called.
+      //      if (logger.isTraceEnabled()) {
+      //        logger.trace("put a session back and notify others..., queue.size = {}",
+      // queue.size());
+      //      }
     }
   }
 

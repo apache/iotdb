@@ -85,6 +85,10 @@ public class JlineUtils {
             + username.hashCode();
     builder.variable(LineReader.HISTORY_FILE, new File(historyFilePath));
 
+    // TODO: since the lexer doesn't produce tokens for quotation marks, disable the highlighter to
+    // avoid incorrect inputs.
+    //    builder.highlighter(new IoTDBSyntaxHighlighter());
+
     builder.completer(new StringsCompleter(SQL_KEYWORDS));
 
     builder.option(Option.CASE_INSENSITIVE_SEARCH, true);

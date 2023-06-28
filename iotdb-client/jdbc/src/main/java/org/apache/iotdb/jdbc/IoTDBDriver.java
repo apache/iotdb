@@ -71,11 +71,13 @@ public class IoTDBDriver implements Driver {
 
   @Override
   public int getMajorVersion() {
+    // TODO Auto-generated method stub
     return 0;
   }
 
   @Override
   public int getMinorVersion() {
+    // TODO Auto-generated method stub
     return 0;
   }
 
@@ -86,6 +88,7 @@ public class IoTDBDriver implements Driver {
 
   @Override
   public DriverPropertyInfo[] getPropertyInfo(String url, Properties info) {
+    // TODO Auto-generated method stub
     return new DriverPropertyInfo[0];
   }
 

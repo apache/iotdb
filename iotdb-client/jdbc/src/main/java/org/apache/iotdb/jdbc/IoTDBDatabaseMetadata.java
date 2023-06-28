@@ -2762,6 +2762,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public String getURL() {
+    // TODO: Return the URL for this DBMS or null if it cannot be generated
     return this.connection.getUrl();
   }
 

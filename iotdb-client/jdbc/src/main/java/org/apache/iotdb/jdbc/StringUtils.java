@@ -54,7 +54,7 @@ public class StringUtils {
     try {
       toPlainStringMethod = BigDecimal.class.getMethod("toPlainString");
     } catch (NoSuchMethodException nsme) {
-      LOGGER.info(String.format("to plain String method Error: %s", nsme));
+      LOGGER.info(String.format("To plain String method Error: %s", nsme));
     }
   }
 

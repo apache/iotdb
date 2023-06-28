@@ -477,7 +477,7 @@ public class ImportCsv extends AbstractCsvTool {
 
     records.forEach(
         recordObj -> {
-          if (Boolean.FALSE.equals(hasStarted.get())) {
+          if (hasStarted.get()) {
             hasStarted.set(true);
           } else if (pointSize.get() >= batchPointSize) {
             writeAndEmptyDataSet(deviceIds, times, typesList, valuesList, measurementsList, 3);
@@ -798,16 +798,11 @@ public class ImportCsv extends AbstractCsvTool {
     String regex = "(?<=\\()\\S+(?=\\))";
     Pattern pattern = Pattern.compile(regex);
     for (String headerName : headerNames) {
-
-      boolean ignoreTimeCase = "Time".equalsIgnoreCase(headerName);
-      boolean ignoreDeviceCase = deviceColumn.equalsIgnoreCase(headerName);
-      if (Boolean.TRUE.equals(ignoreTimeCase) || Boolean.TRUE.equals(ignoreDeviceCase)) {
-        if (Boolean.TRUE.equals(ignoreTimeCase)) {
-          timeColumn = headerName;
-        }
-        if (Boolean.TRUE.equals(ignoreDeviceCase)) {
-          deviceColumn = headerName;
-        }
+      if ("Time".equalsIgnoreCase(headerName)) {
+        timeColumn = headerName;
+        continue;
+      } else if ("Device".equalsIgnoreCase(headerName)) {
+        deviceColumn = headerName;
         continue;
       }
       Matcher matcher = pattern.matcher(headerName);

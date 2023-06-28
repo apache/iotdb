@@ -177,7 +177,7 @@ public class Cli extends AbstractCli {
       println(String.format("Successfully login at %s:%s", host, port));
       while (true) {
         boolean readLine = readerReadLine(reader, connection);
-        if (Boolean.TRUE.equals(readLine)) {
+        if (readLine) {
           break;
         }
       }
