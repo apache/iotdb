@@ -32,29 +32,32 @@ import org.apache.iotdb.pipe.api.event.Event;
  * implementation when initializing the extractor.
  */
 public class IoTDBExtractor implements PipeExtractor {
+  private static final String PLACEHOLDER_ERROR_MSG =
+      "This class is a placeholder and should not be used.";
+
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
-    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
+    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
   }
 
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
-    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
+    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
   }
 
   @Override
   public void start() throws Exception {
-    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
+    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
   }
 
   @Override
   public Event supply() throws Exception {
-    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
+    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
   }
 
   @Override
   public void close() throws Exception {
-    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
+    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
   }
 }

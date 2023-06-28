@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 
 /**
  * Transform between {@link org.apache.iotdb.tsfile.file.metadata.enums.TSDataType} and {@link
- * org.apache.iotdb.pipe.api.type.Type}
+ * org.apache.iotdb.pipe.api.type.Type}.
  */
 public class PipeDataTypeTransformer {
 

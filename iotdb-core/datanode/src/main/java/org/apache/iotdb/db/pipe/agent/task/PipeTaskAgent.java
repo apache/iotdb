@@ -290,6 +290,7 @@ public class PipeTaskAgent {
    * @param pipeMetaFromConfigNode pipe meta from config node
    * @return true if the pipe is created successfully and should be started, false if the pipe
    *     already exists or is created but should not be started
+   * @throws IllegalStateException if the status is illegal
    */
   private boolean createPipe(PipeMeta pipeMetaFromConfigNode) {
     final String pipeName = pipeMetaFromConfigNode.getStaticMeta().getPipeName();
@@ -304,7 +305,8 @@ public class PipeTaskAgent {
           case RUNNING:
             if (LOGGER.isInfoEnabled()) {
               LOGGER.info(
-                  "Pipe {} (creation time = {}) has already been created. Current status = {}. Skip creating.",
+                  "Pipe {} (creation time = {}) has already been created. "
+                      + "Current status = {}. Skip creating.",
                   pipeName,
                   creationTime,
                   status.name());
@@ -313,7 +315,8 @@ public class PipeTaskAgent {
           case DROPPED:
             if (LOGGER.isInfoEnabled()) {
               LOGGER.info(
-                  "Pipe {} (creation time = {}) has already been dropped, but the pipe task meta has not been cleaned up. "
+                  "Pipe {} (creation time = {}) has already been dropped, "
+                      + "but the pipe task meta has not been cleaned up. "
                       + "Current status = {}. Try dropping the pipe and recreating it.",
                   pipeName,
                   creationTime,
@@ -362,14 +365,16 @@ public class PipeTaskAgent {
 
     if (existedPipeMeta == null) {
       LOGGER.info(
-          "Pipe {} (creation time = {}) has already been dropped or has not been created. Skip dropping.",
+          "Pipe {} (creation time = {}) has already been dropped or has not been created. "
+              + "Skip dropping.",
           pipeName,
           creationTime);
       return;
     }
     if (existedPipeMeta.getStaticMeta().getCreationTime() != creationTime) {
       LOGGER.info(
-          "Pipe {} (creation time = {}) has been created but does not match the creation time ({}) in dropPipe request. Skip dropping.",
+          "Pipe {} (creation time = {}) has been created but does not match "
+              + "the creation time ({}) in dropPipe request. Skip dropping.",
           pipeName,
           existedPipeMeta.getStaticMeta().getCreationTime(),
           creationTime);
@@ -386,7 +391,8 @@ public class PipeTaskAgent {
         pipeTaskManager.removePipeTasks(existedPipeMeta.getStaticMeta());
     if (pipeTasks == null) {
       LOGGER.info(
-          "Pipe {} (creation time = {}) has already been dropped or has not been created. Skip dropping.",
+          "Pipe {} (creation time = {}) has already been dropped or has not been created. "
+              + "Skip dropping.",
           pipeName,
           creationTime);
       return;
@@ -434,14 +440,16 @@ public class PipeTaskAgent {
 
     if (existedPipeMeta == null) {
       LOGGER.info(
-          "Pipe {} (creation time = {}) has already been dropped or has not been created. Skip starting.",
+          "Pipe {} (creation time = {}) has already been dropped or has not been created. "
+              + "Skip starting.",
           pipeName,
           creationTime);
       return;
     }
     if (existedPipeMeta.getStaticMeta().getCreationTime() != creationTime) {
       LOGGER.info(
-          "Pipe {} (creation time = {}) has been created but does not match the creation time ({}) in startPipe request. Skip starting.",
+          "Pipe {} (creation time = {}) has been created but does not match "
+              + "the creation time ({}) in startPipe request. Skip starting.",
           pipeName,
           existedPipeMeta.getStaticMeta().getCreationTime(),
           creationTime);
@@ -462,7 +470,8 @@ public class PipeTaskAgent {
       case RUNNING:
         if (LOGGER.isInfoEnabled()) {
           LOGGER.info(
-              "Pipe {} (creation time = {}) has already been started. Current status = {}. Skip starting.",
+              "Pipe {} (creation time = {}) has already been started. Current status = {}. "
+                  + "Skip starting.",
               pipeName,
               creationTime,
               status.name());
@@ -471,7 +480,8 @@ public class PipeTaskAgent {
       case DROPPED:
         if (LOGGER.isInfoEnabled()) {
           LOGGER.info(
-              "Pipe {} (creation time = {}) has already been dropped. Current status = {}. Skip starting.",
+              "Pipe {} (creation time = {}) has already been dropped. Current status = {}. "
+                  + "Skip starting.",
               pipeName,
               creationTime,
               status.name());
@@ -488,7 +498,8 @@ public class PipeTaskAgent {
         pipeTaskManager.getPipeTasks(existedPipeMeta.getStaticMeta());
     if (pipeTasks == null) {
       LOGGER.info(
-          "Pipe {} (creation time = {}) has already been dropped or has not been created. Skip starting.",
+          "Pipe {} (creation time = {}) has already been dropped or has not been created. "
+              + "Skip starting.",
           pipeName,
           creationTime);
       return;
@@ -512,14 +523,16 @@ public class PipeTaskAgent {
 
     if (existedPipeMeta == null) {
       LOGGER.info(
-          "Pipe {} (creation time = {}) has already been dropped or has not been created. Skip stopping.",
+          "Pipe {} (creation time = {}) has already been dropped or has not been created. "
+              + "Skip stopping.",
           pipeName,
           creationTime);
       return;
     }
     if (existedPipeMeta.getStaticMeta().getCreationTime() != creationTime) {
       LOGGER.info(
-          "Pipe {} (creation time = {}) has been created but does not match the creation time ({}) in stopPipe request. Skip stopping.",
+          "Pipe {} (creation time = {}) has been created but does not match "
+              + "the creation time ({}) in stopPipe request. Skip stopping.",
           pipeName,
           existedPipeMeta.getStaticMeta().getCreationTime(),
           creationTime);
@@ -531,7 +544,8 @@ public class PipeTaskAgent {
       case STOPPED:
         if (LOGGER.isInfoEnabled()) {
           LOGGER.info(
-              "Pipe {} (creation time = {}) has already been stopped. Current status = {}. Skip stopping.",
+              "Pipe {} (creation time = {}) has already been stopped. Current status = {}. "
+                  + "Skip stopping.",
               pipeName,
               creationTime,
               status.name());
@@ -549,7 +563,8 @@ public class PipeTaskAgent {
       case DROPPED:
         if (LOGGER.isInfoEnabled()) {
           LOGGER.info(
-              "Pipe {} (creation time = {}) has already been dropped. Current status = {}. Skip stopping.",
+              "Pipe {} (creation time = {}) has already been dropped. Current status = {}. "
+                  + "Skip stopping.",
               pipeName,
               creationTime,
               status.name());
@@ -564,7 +579,8 @@ public class PipeTaskAgent {
         pipeTaskManager.getPipeTasks(existedPipeMeta.getStaticMeta());
     if (pipeTasks == null) {
       LOGGER.info(
-          "Pipe {} (creation time = {}) has already been dropped or has not been created. Skip stopping.",
+          "Pipe {} (creation time = {}) has already been dropped or has not been created. "
+              + "Skip stopping.",
           pipeName,
           creationTime);
       return;

@@ -129,7 +129,8 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
         doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
       } else {
         throw new NotImplementedException(
-            "IoTDBThriftConnectorV1 only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent.");
+            "IoTDBThriftConnectorV1 only support "
+                + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent.");
       }
     } catch (TException e) {
       throw new PipeConnectionException(
@@ -138,6 +139,30 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
               tabletInsertionEvent, e.getMessage()),
           e);
     }
+  }
+
+  @Override
+  public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
+    // PipeProcessor can change the type of TabletInsertionEvent
+    if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
+      throw new NotImplementedException(
+          "IoTDBThriftConnectorV1 only support PipeTsFileInsertionEvent.");
+    }
+
+    try {
+      doTransfer((PipeTsFileInsertionEvent) tsFileInsertionEvent);
+    } catch (TException e) {
+      throw new PipeConnectionException(
+          String.format(
+              "Network error when transfer tsfile insertion event %s, because %s.",
+              tsFileInsertionEvent, e.getMessage()),
+          e);
+    }
+  }
+
+  @Override
+  public void transfer(Event event) {
+    LOGGER.warn("IoTDBThriftConnectorV1 does not support transfer generic event: {}.", event);
   }
 
   private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
@@ -168,25 +193,6 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
           String.format(
               "Transfer PipeRawTabletInsertionEvent %s error, result status %s",
               pipeRawTabletInsertionEvent, resp.status));
-    }
-  }
-
-  @Override
-  public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
-    // PipeProcessor can change the type of TabletInsertionEvent
-    if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
-      throw new NotImplementedException(
-          "IoTDBThriftConnectorV1 only support PipeTsFileInsertionEvent.");
-    }
-
-    try {
-      doTransfer((PipeTsFileInsertionEvent) tsFileInsertionEvent);
-    } catch (TException e) {
-      throw new PipeConnectionException(
-          String.format(
-              "Network error when transfer tsfile insertion event %s, because %s.",
-              tsFileInsertionEvent, e.getMessage()),
-          e);
     }
   }
 
@@ -243,11 +249,6 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
       throw new PipeException(
           String.format("Seal file %s error, result status %s.", tsFile, resp.getStatus()));
     }
-  }
-
-  @Override
-  public void transfer(Event event) {
-    LOGGER.warn("IoTDBThriftConnectorV1 does not support transfer generic event: {}.", event);
   }
 
   @Override

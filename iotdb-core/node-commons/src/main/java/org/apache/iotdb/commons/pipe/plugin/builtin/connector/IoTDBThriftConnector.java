@@ -34,45 +34,47 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
  * initializing the IoTDB Thrift connector.
  */
 public class IoTDBThriftConnector implements PipeConnector {
+  private static final String PLACEHOLDER_ERROR_MSG =
+      "This class is a placeholder and should not be used.";
 
   @Override
   public final void validate(PipeParameterValidator validator) {
-    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
+    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
   }
 
   @Override
   public final void customize(
       PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration) {
-    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
+    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
   }
 
   @Override
   public final void handshake() {
-    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
+    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
   }
 
   @Override
   public final void heartbeat() {
-    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
+    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
   }
 
   @Override
   public final void transfer(TabletInsertionEvent tabletInsertionEvent) {
-    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
+    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
   }
 
   @Override
   public final void transfer(TsFileInsertionEvent tsFileInsertionEvent) {
-    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
+    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
   }
 
   @Override
   public final void transfer(Event event) {
-    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
+    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
   }
 
   @Override
   public final void close() {
-    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
+    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
   }
 }
