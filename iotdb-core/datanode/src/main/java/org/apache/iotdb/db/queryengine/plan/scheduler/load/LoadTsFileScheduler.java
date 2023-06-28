@@ -407,8 +407,7 @@ public class LoadTsFileScheduler implements IScheduler {
 
         for (TRegionReplicaSet sortedReplicaSet : sortedReplicaSets) {
           LoadTsFilePieceNode pieceNode = replicaSet2Piece.get(sortedReplicaSet);
-          if (pieceNode.getDataSize() == 0
-              || dataSize <= MAX_MEMORY_SIZE) { // total data size has been reduced to 0
+          if (pieceNode.getDataSize() == 0) { // total data size has been reduced to 0
             break;
           }
           if (!scheduler.dispatchOnePieceNode(pieceNode, sortedReplicaSet)) {
@@ -423,6 +422,9 @@ public class LoadTsFileScheduler implements IScheduler {
                   singleTsFileNode
                       .getTsFileResource()
                       .getTsFile())); // can not just remove, because of deletion
+          if (dataSize <= MAX_MEMORY_SIZE) {
+            break;
+          }
         }
       }
 
