@@ -130,7 +130,6 @@ public class PipeProcessorSubtask extends PipeSubtask {
       // should be called after pipeProcessor.close()
       super.close();
     } catch (Exception e) {
-      e.printStackTrace();
       LOGGER.info(
           "Error occurred during closing PipeProcessor, perhaps need to check whether the "
               + "implementation of PipeProcessor is correct according to the pipe-api description.",
@@ -140,5 +139,16 @@ public class PipeProcessorSubtask extends PipeSubtask {
 
   boolean isClosed() {
     return isClosed.get();
+  }
+
+  @Override
+  public boolean equals(Object that) {
+    return that instanceof PipeProcessorSubtask
+        && this.taskID.equals(((PipeProcessorSubtask) that).taskID);
+  }
+
+  @Override
+  public int hashCode() {
+    return taskID.hashCode();
   }
 }

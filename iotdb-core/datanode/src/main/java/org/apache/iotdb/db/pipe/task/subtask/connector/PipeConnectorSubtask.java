@@ -81,14 +81,14 @@ public class PipeConnectorSubtask extends PipeSubtask {
   }
 
   @Override
-  public Void call() throws Exception {
-    super.call();
+  public Boolean call() throws Exception {
+    final boolean hasAtLeastOneEventProcessed = super.call();
 
     // wait for the callable to be decorated by Futures.addCallback in the executorService
     // to make sure that the callback can be submitted again on success or failure.
     callbackDecoratingLock.waitForDecorated();
 
-    return null;
+    return hasAtLeastOneEventProcessed;
   }
 
   @Override
@@ -102,7 +102,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
           "PipeConnector: failed to connect to the target system.", e);
     }
 
-    final Event event = lastEvent != null ? lastEvent : inputPendingQueue.poll();
+    final Event event = lastEvent != null ? lastEvent : inputPendingQueue.waitedPoll();
     // record this event for retrying on connection failure or other exceptions
     lastEvent = event;
     if (event == null) {
@@ -222,7 +222,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
 
     callbackDecoratingLock.markAsDecorating();
     try {
-      final ListenableFuture<Void> nextFuture = subtaskWorkerThreadPoolExecutor.submit(this);
+      final ListenableFuture<Boolean> nextFuture = subtaskWorkerThreadPoolExecutor.submit(this);
       Futures.addCallback(nextFuture, this, subtaskCallbackListeningExecutor);
     } finally {
       callbackDecoratingLock.markAsDecorated();

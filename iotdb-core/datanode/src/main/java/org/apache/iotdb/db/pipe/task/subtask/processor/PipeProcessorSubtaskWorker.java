@@ -19,10 +19,79 @@
 
 package org.apache.iotdb.db.pipe.task.subtask.processor;
 
-public class PipeProcessorSubtaskWorker implements Runnable {
+import org.apache.iotdb.commons.concurrent.WrappedRunnable;
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
+import static org.apache.iotdb.db.pipe.task.subtask.PipeSubtask.MAX_RETRY_TIMES;
+
+public class PipeProcessorSubtaskWorker extends WrappedRunnable {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeProcessorSubtaskWorker.class);
+
+  private final ConcurrentMap<PipeProcessorSubtask, PipeProcessorSubtask> subtasks =
+      new ConcurrentHashMap<>();
 
   @Override
-  public void run() {}
+  public void runMayThrow() {
+    while (true) {
+      // exit if the agent is shutdown
+      if (PipeAgent.runtime().isShutdown()) {
+        return;
+      }
 
-  public void schedule(PipeProcessorSubtask pipeProcessorSubtask) {}
+      // clean up closed subtasks before running
+      subtasks.keySet().stream().filter(PipeProcessorSubtask::isClosed).forEach(subtasks::remove);
+
+      // run subtasks
+      final boolean canSleepBeforeNextRound = runSubtasks();
+
+      // sleep if no subtask is running
+      if (canSleepBeforeNextRound) {
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException e) {
+          LOGGER.warn("subtask worker is interrupted", e);
+          Thread.currentThread().interrupt();
+        }
+      }
+    }
+  }
+
+  private boolean runSubtasks() {
+    boolean canSleepBeforeNextRound = true;
+
+    for (final PipeProcessorSubtask subtask : subtasks.keySet()) {
+      if (subtask.isClosed()
+          || !subtask.isSubmittingSelf()
+          || MAX_RETRY_TIMES <= subtask.getRetryCount()) {
+        continue;
+      }
+
+      try {
+        final boolean hasAtLeastOneEventProcessed = subtask.call();
+        if (hasAtLeastOneEventProcessed) {
+          canSleepBeforeNextRound = false;
+        }
+        subtask.onSuccess(hasAtLeastOneEventProcessed);
+      } catch (Exception e) {
+        if (subtask.isClosed()) {
+          LOGGER.warn("subtask {} is closed, ignore exception", subtask, e);
+        } else {
+          subtask.onFailure(e);
+        }
+      }
+    }
+
+    return canSleepBeforeNextRound;
+  }
+
+  public void schedule(PipeProcessorSubtask pipeProcessorSubtask) {
+    subtasks.put(pipeProcessorSubtask, pipeProcessorSubtask);
+  }
 }

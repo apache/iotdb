@@ -52,7 +52,11 @@ public abstract class BlockingPendingQueue<E extends Event> {
     return isAdded;
   }
 
-  public E poll() {
+  public E directPoll() {
+    return pendingQueue.poll();
+  }
+
+  public E waitedPoll() {
     E event = null;
     try {
       event = pendingQueue.poll(MAX_BLOCKING_TIME_MS, TimeUnit.MILLISECONDS);

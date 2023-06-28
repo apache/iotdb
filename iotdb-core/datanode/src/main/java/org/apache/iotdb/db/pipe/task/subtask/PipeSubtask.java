@@ -37,7 +37,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void>, AutoCloseable {
+public abstract class PipeSubtask
+    implements FutureCallback<Boolean>, Callable<Boolean>, AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSubtask.class);
 
@@ -52,7 +53,7 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
   protected PipeSubtaskScheduler subtaskScheduler;
 
   // for fail-over
-  protected static final int MAX_RETRY_TIMES = 5;
+  public static final int MAX_RETRY_TIMES = 5;
   protected final AtomicInteger retryCount = new AtomicInteger(0);
   protected Event lastEvent;
 
@@ -67,7 +68,9 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
       PipeSubtaskScheduler subtaskScheduler);
 
   @Override
-  public Void call() throws Exception {
+  public Boolean call() throws Exception {
+    boolean hasAtLeastOneEventProcessed = false;
+
     // if the scheduler allows to schedule, then try to consume an event
     while (subtaskScheduler.schedule()) {
       // if the event is consumed successfully, then continue to consume the next event
@@ -75,11 +78,12 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
       if (!executeOnce()) {
         break;
       }
+      hasAtLeastOneEventProcessed = true;
     }
     // reset the scheduler to make sure that the scheduler can schedule again
     subtaskScheduler.reset();
 
-    return null;
+    return hasAtLeastOneEventProcessed;
   }
 
   /**
@@ -92,7 +96,7 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
   protected abstract boolean executeOnce() throws Exception;
 
   @Override
-  public void onSuccess(Void result) {
+  public void onSuccess(Boolean hasAtLeastOneEventProcessed) {
     retryCount.set(0);
     submitSelf();
   }
@@ -195,5 +199,9 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
 
   public String getTaskID() {
     return taskID;
+  }
+
+  public int getRetryCount() {
+    return retryCount.get();
   }
 }
