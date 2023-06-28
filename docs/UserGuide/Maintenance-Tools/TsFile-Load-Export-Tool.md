@@ -119,10 +119,10 @@ TsFile can help you export the result set in the format of TsFile file to the sp
 
 ```shell
 # Unix/OS X
-> tools/export-tsfile.sh  -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-f <export filename> -q <query command> -s <sql file>]
+> tools/export-tsfile.sh  -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-f <export filename> -q <read command> -s <sql file>]
 
 # Windows
-> tools\export-tsfile.bat -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-f <export filename> -q <query command> -s <sql file>]
+> tools\export-tsfile.bat -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-f <export filename> -q <read command> -s <sql file>]
 ```
 
 * `-h <host>`:
