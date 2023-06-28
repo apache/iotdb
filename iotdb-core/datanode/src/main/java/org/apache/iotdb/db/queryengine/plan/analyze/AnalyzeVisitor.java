@@ -1225,7 +1225,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       PartialPath devicePath = deviceIterator.next();
       Expression whereExpression;
       try {
-        whereExpression = analyzeWhereSplitByDevice(queryStatement, devicePath, schemaTree);
+        whereExpression =
+            ExpressionAnalyzer.normalizeExpression(
+                analyzeWhereSplitByDevice(queryStatement, devicePath, schemaTree));
       } catch (MeasurementNotExistException e) {
         deviceIterator.remove();
         continue;
