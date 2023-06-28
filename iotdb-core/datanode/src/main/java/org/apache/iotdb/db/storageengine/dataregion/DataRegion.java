@@ -620,16 +620,17 @@ public class DataRegion implements IDataRegionForQuery {
         for (File partitionFolder : subFiles) {
           if (!partitionFolder.isDirectory()) {
             logger.warn("{} is not a directory.", partitionFolder.getAbsolutePath());
-          }
-          // some TsFileResource may be being persisted when the system crashed, try recovering
-          // such resources
-          continueFailedRenames(partitionFolder, TEMP_SUFFIX);
-          String partitionName = partitionFolder.getName();
-          File[] tsFilesInThisFolder =
-              fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), TSFILE_SUFFIX);
-          for (File f : tsFilesInThisFolder) {
-            String tsFilePartitionPath = partitionName + File.separator + f.getName();
-            tsFilePartitionPath2File.put(tsFilePartitionPath, f);
+          } else {
+            // some TsFileResource may be being persisted when the system crashed, try recovering
+            // such resources
+            continueFailedRenames(partitionFolder, TEMP_SUFFIX);
+            String partitionName = partitionFolder.getName();
+            File[] tsFilesInThisFolder =
+                fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), TSFILE_SUFFIX);
+            for (File f : tsFilesInThisFolder) {
+              String tsFilePartitionPath = partitionName + File.separator + f.getName();
+              tsFilePartitionPath2File.put(tsFilePartitionPath, f);
+            }
           }
         }
       }
