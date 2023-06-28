@@ -38,6 +38,7 @@ import org.apache.iotdb.metrics.utils.MetricType;
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
 
+import java.util.Objects;
 import java.util.function.ToDoubleFunction;
 
 /**
@@ -104,5 +105,25 @@ public class DropwizardMetricManager extends AbstractMetricManager {
   public boolean stopFramework() {
     metricRegistry.removeMatching(MetricFilter.ALL);
     return true;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o){
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()){
+      return false;
+    }
+    if (!super.equals(o)){
+      return false;
+    }
+    DropwizardMetricManager that = (DropwizardMetricManager) o;
+    return Objects.equals(metricRegistry, that.metricRegistry);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), metricRegistry);
   }
 }
