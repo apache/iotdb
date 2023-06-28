@@ -162,7 +162,7 @@ public class IoTConsensus implements IConsensus {
     TSStatus status;
     if (impl.isReadOnly()) {
       status = new TSStatus(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
-      status.setMessage("Fail to do non-read operations because system is read-only.");
+      status.setMessage("Fail to do non-query operations because system is read-only.");
     } else if (!impl.isActive()) {
       // TODO: (xingtanzjr) whether we need to define a new status to indicate the inactive status ?
       status = RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT);
