@@ -21,6 +21,8 @@ package org.apache.iotdb.db.queryengine.execution.executor;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
@@ -35,9 +37,33 @@ import org.slf4j.LoggerFactory;
 
 public class RegionReadExecutor {
 
+  public static final String RESPONSE_NULL_ERROR_MSG = "ReadResponse is null";
+
+  public static final String ERROR_MSG_FORMAT = "Execute FragmentInstance failed: %s";
+
   private static final Logger LOGGER = LoggerFactory.getLogger(RegionReadExecutor.class);
 
-  private static final String ERROR_MSG_FORMAT = "Execute FragmentInstance failed: %s";
+  private final IConsensus dataRegionConsensus;
+
+  private final IConsensus schemaRegionConsensus;
+
+  private final FragmentInstanceManager fragmentInstanceManager;
+
+  public RegionReadExecutor() {
+    dataRegionConsensus = DataRegionConsensusImpl.getInstance();
+    schemaRegionConsensus = SchemaRegionConsensusImpl.getInstance();
+    fragmentInstanceManager = FragmentInstanceManager.getInstance();
+  }
+
+  @TestOnly
+  public RegionReadExecutor(
+      IConsensus dataRegionConsensus,
+      IConsensus schemaRegionConsensus,
+      FragmentInstanceManager fragmentInstanceManager) {
+    this.dataRegionConsensus = dataRegionConsensus;
+    this.schemaRegionConsensus = schemaRegionConsensus;
+    this.fragmentInstanceManager = fragmentInstanceManager;
+  }
 
   @SuppressWarnings("squid:S1181")
   public RegionExecutionResult execute(
@@ -46,15 +72,15 @@ public class RegionReadExecutor {
     ConsensusReadResponse readResponse;
     try (SetThreadName threadName = new SetThreadName(fragmentInstance.getId().getFullId())) {
       if (groupId instanceof DataRegionId) {
-        readResponse = DataRegionConsensusImpl.getInstance().read(groupId, fragmentInstance);
+        readResponse = dataRegionConsensus.read(groupId, fragmentInstance);
       } else {
-        readResponse = SchemaRegionConsensusImpl.getInstance().read(groupId, fragmentInstance);
+        readResponse = schemaRegionConsensus.read(groupId, fragmentInstance);
       }
       RegionExecutionResult resp = new RegionExecutionResult();
       if (readResponse == null) {
-        LOGGER.error("ReadResponse is null");
+        LOGGER.error(RESPONSE_NULL_ERROR_MSG);
         resp.setAccepted(false);
-        resp.setMessage("ReadResponse is null");
+        resp.setMessage(RESPONSE_NULL_ERROR_MSG);
       } else if (!readResponse.isSuccess()) {
         LOGGER.error(
             "Execute FragmentInstance in ConsensusGroup {} failed.",
@@ -89,8 +115,8 @@ public class RegionReadExecutor {
       RegionExecutionResult resp = new RegionExecutionResult();
       // FI with queryExecutor will be executed directly
       FragmentInstanceInfo info =
-          FragmentInstanceManager.getInstance()
-              .execDataQueryFragmentInstance(fragmentInstance, VirtualDataRegion.getInstance());
+          fragmentInstanceManager.execDataQueryFragmentInstance(
+              fragmentInstance, VirtualDataRegion.getInstance());
       resp.setAccepted(!info.getState().isFailed());
       resp.setMessage(info.getMessage());
       return resp;
