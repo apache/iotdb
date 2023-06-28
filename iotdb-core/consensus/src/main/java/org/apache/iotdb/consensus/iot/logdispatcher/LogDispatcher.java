@@ -258,10 +258,10 @@ public class LogDispatcher {
       boolean success;
       try {
         success = pendingEntries.offer(indexedConsensusRequest);
-      } catch (Exception e) {
+      } catch (Throwable t) {
         // If exception occurs during request offer, the reserved memory should be released
         iotConsensusMemoryManager.free(indexedConsensusRequest.getSerializedSize(), true);
-        throw e;
+        throw t;
       }
       if (!success) {
         // If offer failed, the reserved memory should be released

@@ -164,7 +164,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
       } catch (InterruptedException i) {
         logger.warn("{} interrupted when retry sleep", this);
         Thread.currentThread().interrupt();
-      } catch (Exception rte) {
+      } catch (Throwable rte) {
         logger.error("application statemachine throws a runtime exception: ", rte);
         ret =
             new ResponseMessage(
