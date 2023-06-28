@@ -56,7 +56,7 @@ public class TsFileExceptionTest {
     NotImplementedException e = new NotImplementedException(MOCK);
     assertEquals(MOCK, e.getMessage());
 
-    e =new NotImplementedException();
+    e = new NotImplementedException();
     assertNull(e.getMessage());
   }
 

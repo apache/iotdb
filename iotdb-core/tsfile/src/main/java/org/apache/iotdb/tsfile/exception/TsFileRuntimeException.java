@@ -30,5 +30,4 @@ public class TsFileRuntimeException extends RuntimeException {
   public TsFileRuntimeException(String message) {
     super(message);
   }
-
 }
