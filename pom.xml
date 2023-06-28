@@ -79,20 +79,19 @@
         </mailingList>
     </mailingLists>
     <modules>
-        <module>tsfile</module>
-        <module>antlr</module>
+        <module>iotdb-core/tsfile</module>
+        <module>iotdb-core/antlr</module>
         <module>iotdb-protocol/thrift</module>
         <module>iotdb-protocol/thrift-commons</module>
         <module>iotdb-protocol/thrift-confignode</module>
         <module>iotdb-protocol/thrift-iot-consensus</module>
-        <module>iotdb-protocol/thrift-influxdb</module>
         <module>iotdb-protocol/thrift-mlnode</module>
         <module>iotdb-client/service-rpc</module>
         <module>iotdb-client/jdbc</module>
         <module>iotdb-client/session</module>
         <module>iotdb-client/cli</module>
         <module>iotdb-protocol/openapi</module>
-        <module>server</module>
+        <module>iotdb-core/datanode</module>
         <module>example</module>
         <module>iotdb-connector/grafana-plugin</module>
         <module>iotdb-connector/grafana-connector</module>
@@ -104,21 +103,21 @@
         <module>iotdb-connector/flink-iotdb-connector</module>
         <module>distribution</module>
         <module>iotdb-connector/hive-connector</module>
-        <module>node-commons</module>
-        <module>confignode</module>
+        <module>iotdb-core/node-commons</module>
+        <module>iotdb-core/confignode</module>
         <module>iotdb-connector/zeppelin-interpreter</module>
         <module>iotdb-client/client-py</module>
         <module>iotdb-client/compile-tools</module>
         <module>iotdb-client/client-cpp</module>
-        <module>metrics</module>
+        <module>iotdb-core/metrics</module>
         <module>integration-test</module>
-        <module>consensus</module>
+        <module>iotdb-core/consensus</module>
         <module>library-udf</module>
         <module>iotdb-api/udf-api</module>
         <module>iotdb-api/trigger-api</module>
         <module>iotdb-api/external-api</module>
         <module>iotdb-client/isession</module>
-        <module>mlnode</module>
+        <module>iotdb-core/mlnode</module>
         <module>iotdb-api/pipe-api</module>
         <module>iotdb-api/subscription-api</module>
     </modules>
@@ -224,7 +223,6 @@
         <caffeine>2.9.3</caffeine>
         <commons-csv.version>1.9.0</commons-csv.version>
         <commons-lang.version>2.6</commons-lang.version>
-        <influxdb-java.version>2.21</influxdb-java.version>
         <JTransforms.version>3.1</JTransforms.version>
         <xz.version>1.9</xz.version>
         <!-- codegen -->
@@ -631,11 +629,6 @@
                 <version>${commons-lang.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.influxdb</groupId>
-                <artifactId>influxdb-java</artifactId>
-                <version>${influxdb-java.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>com.github.wendykierp</groupId>
                 <artifactId>JTransforms</artifactId>
                 <version>${JTransforms.version}</version>
@@ -822,15 +815,14 @@
                     <sourceEncoding>UTF-8</sourceEncoding>
                     <sourceDirectories>
                         <!-- put all source folders not in src/main/java here-->
-                        <sourceDirectory>antlr/target/generated-sources/antlr4</sourceDirectory>
+                        <sourceDirectory>iotdb-core/antlr/target/generated-sources/antlr4</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/thrift/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/thrift-commons/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/thrift-confignode/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/thrift-iot-consensus/target/generated-sources/thrift</sourceDirectory>
-                        <sourceDirectory>iotdb-protocol/thrift-influxdb/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/openapi/target/generated-sources/java/src/gen/java</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/openapi/target/generated-sources/java/src/main/java</sourceDirectory>
-                        <sourceDirectory>server/target/generated-sources/freemarker/</sourceDirectory>
+                        <sourceDirectory>iotdb-core/datanode/target/generated-sources/freemarker/</sourceDirectory>
                         <sourceDirectory>iotdb-connector/spark-iotdb-connector/src/main/scala</sourceDirectory>
                         <sourceDirectory>iotdb-connector/spark-tsfile/src/main/scala</sourceDirectory>
                     </sourceDirectories>
@@ -1431,7 +1423,6 @@
                             <excludes>
                                 <exclude>org/apache/iotdb/service/sync/thrift/*</exclude>
                                 <exclude>org/apache/iotdb/service/rpc/thrift/*</exclude>
-                                <exclude>org/apache/iotdb/protocol/influxdb/rpc/thrift/*</exclude>
                                 <exclude>org/apache/iotdb/db/qp/sql/*</exclude>
                             </excludes>
                             <rules>

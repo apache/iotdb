@@ -18,12 +18,23 @@
 # under the License.
 #
 
-for file in ../*/target/*.exec
+for file in ../iotdb-core/*/target/*.exec
 do
    cp $file ./target/
 done
 
-for file in ../*/target/classes
+for file in ../iotdb-core/*/target/classes
+do
+   echo "copy from" ${file}
+   cp -r $file ./target/
+done
+
+for file in ../iotdb-client/*/target/*.exec
+do
+   cp $file ./target/
+done
+
+for file in ../iotdb-client/*/target/classes
 do
    echo "copy from" ${file}
    cp -r $file ./target/

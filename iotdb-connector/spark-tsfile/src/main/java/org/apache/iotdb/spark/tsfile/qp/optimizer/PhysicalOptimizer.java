@@ -37,7 +37,7 @@ import java.util.Set;
 
 public class PhysicalOptimizer {
 
-  // determine whether to query all delta_objects from TsFile. true means do query.
+  // determine whether to query all delta_objects from TsFile. true means do read.
   private boolean flag;
   private List<String> validDeltaObjects = new ArrayList<>();
   private List<String> columnNames;
@@ -67,7 +67,7 @@ public class PhysicalOptimizer {
       valueFilter = singleQuery.getValueFilterOperator();
       if (valueFilter != null) {
         List<String> filterPaths = valueFilter.getAllPaths();
-        // if filter paths doesn't in tsfile, don't query
+        // if filter paths doesn't in tsfile, don't read
         for (String filterPath : filterPaths) {
           if (!allMeasurementsInFile.containsKey(filterPath)) {
             return new ArrayList<>();
@@ -78,7 +78,7 @@ public class PhysicalOptimizer {
       flag = true;
       Map<String, Set<String>> selectColumns = mergeColumns(singleQuery.getColumnFilterOperator());
       if (!flag) {
-        // e.g. where column1 = 'd1' and column2 = 'd2', should not query
+        // e.g. where column1 = 'd1' and column2 = 'd2', should not read
         return new ArrayList<>();
       }
 

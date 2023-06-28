@@ -75,7 +75,7 @@ master 分支作为当前主开发分支，对应下一个未发布的大版本�
 iotdb-datanode.properties 和 IoTDBConfig 默认值需要保持一致。
 
 如果需要对配置参数进行改动。以下文件需要同时修改：
-  1. 配置文件：server/src/assembly/resources/conf/iotdb-datanode.properties
+  1. 配置文件：iotdb-core/datanode/src/assembly/resources/conf/iotdb-datanode.properties
   2. 代码：IoTDBDescriptor、IoTDBConfig
   3. 文档：docs/UserGuide/Reference/DataNode-Config-Manual.md、docs/zh/UserGuide/Reference/DataNode-Config-Manual.md
 
