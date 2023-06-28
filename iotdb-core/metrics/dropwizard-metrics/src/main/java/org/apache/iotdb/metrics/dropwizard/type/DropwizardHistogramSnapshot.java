@@ -48,7 +48,7 @@ public class DropwizardHistogramSnapshot implements HistogramSnapshot {
 
   @Override
   public double getMax() {
-    return (double) snapshot.getMax();
+    return snapshot.getMax();
   }
 
   @Override
