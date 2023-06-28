@@ -469,7 +469,7 @@ public class QueryStatement extends Statement {
     return useWildcard;
   }
 
-  private static final String RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG =
+  public static final String RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG =
       "Raw data and aggregation hybrid query is not supported.";
 
   public void semanticCheck() {
