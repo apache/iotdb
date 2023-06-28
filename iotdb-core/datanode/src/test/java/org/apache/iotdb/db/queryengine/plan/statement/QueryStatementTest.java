@@ -56,7 +56,7 @@ public class QueryStatementTest {
             // test for where clause
             new Pair<>(
                 "SELECT s1 FROM root.sg.d1 WHERE count(s1) > 0",
-                "Aggregate functions are not supported in WHERE clause"),
+                "aggregate functions are not supported in WHERE clause"),
 
             // test for having clause
             new Pair<>(
