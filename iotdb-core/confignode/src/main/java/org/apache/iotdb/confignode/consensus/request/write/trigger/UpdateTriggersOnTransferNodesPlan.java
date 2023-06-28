@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -37,6 +38,7 @@ public class UpdateTriggersOnTransferNodesPlan extends ConfigPhysicalPlan {
 
   public UpdateTriggersOnTransferNodesPlan() {
     super(ConfigPhysicalPlanType.UpdateTriggersOnTransferNodes);
+    this.dataNodeLocations = new ArrayList<>();
   }
 
   public UpdateTriggersOnTransferNodesPlan(List<TDataNodeLocation> dataNodeLocations) {
