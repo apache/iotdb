@@ -332,8 +332,4 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
   private static boolean isNonGenerationalHeapPool(String name) {
     return "Shenandoah".equals(name) || "ZHeap".equals(name);
   }
-
-  private static boolean isHeap(MemoryPoolMXBean memoryPoolBean) {
-    return MemoryType.HEAP.equals(memoryPoolBean.getType());
-  }
 }
