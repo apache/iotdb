@@ -49,7 +49,7 @@ public class JSONPayloadFormatter implements PayloadFormatter {
   @Override
   public List<Message> format(ByteBuf payload) {
     if (payload == null) {
-      return null;
+      return new ArrayList<>();
     }
     String txt = payload.toString(StandardCharsets.UTF_8);
     JsonElement jsonElement = GSON.fromJson(txt, JsonElement.class);

@@ -156,6 +156,9 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public static final String MSG_RECONNECTION_FAIL =
       "Fail to connect to any config node. Please check status of ConfigNodes";
 
+  private static final String MSG_RECONNECTION_DATANODE_FAIL =
+      "Failed to connect to ConfigNode {} from DataNode {} when executing {}";
+
   private static final int RETRY_INTERVAL_MS = 1000;
 
   private final ThriftClientProperty property;
@@ -322,7 +325,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -351,7 +354,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         configNodes = newConfigNodes;
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -372,7 +375,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -393,7 +396,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -430,7 +433,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -451,7 +454,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -472,7 +475,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -493,7 +496,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -514,7 +517,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -535,7 +538,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -556,7 +559,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -577,7 +580,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -599,7 +602,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -621,7 +624,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -642,7 +645,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -663,7 +666,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -684,7 +687,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -705,7 +708,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -727,7 +730,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -749,7 +752,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -771,7 +774,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -792,7 +795,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -814,7 +817,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -835,7 +838,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -856,7 +859,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -877,7 +880,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -898,7 +901,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -960,7 +963,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -981,7 +984,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1002,7 +1005,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1023,7 +1026,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1044,7 +1047,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1070,7 +1073,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1091,7 +1094,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1112,7 +1115,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1134,7 +1137,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1155,7 +1158,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1176,7 +1179,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1197,7 +1200,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1223,7 +1226,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1244,7 +1247,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1297,7 +1300,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1318,7 +1321,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1340,7 +1343,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1360,7 +1363,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1381,7 +1384,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1402,7 +1405,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1423,7 +1426,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1444,7 +1447,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1465,7 +1468,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1502,7 +1505,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1523,7 +1526,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1544,7 +1547,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1565,7 +1568,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1586,7 +1589,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1607,7 +1610,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1644,7 +1647,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1665,7 +1668,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1686,7 +1689,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1707,7 +1710,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1728,7 +1731,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1749,7 +1752,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1770,7 +1773,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1791,7 +1794,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1812,7 +1815,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1833,7 +1836,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1854,7 +1857,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1875,7 +1878,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1896,7 +1899,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1933,7 +1936,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1954,7 +1957,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1974,7 +1977,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -1995,7 +1998,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
@@ -2016,7 +2019,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
       } catch (TException e) {
         logger.warn(
-            "Failed to connect to ConfigNode {} from DataNode {} when executing {}",
+            MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());

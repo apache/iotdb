@@ -50,8 +50,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -61,22 +59,20 @@ public class MLNodeRPCServiceImpl implements IMLNodeRPCServiceWithHandler {
 
   public static final String ML_METRICS_PATH_PREFIX = "root.__system.ml.exp";
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(MLNodeRPCServiceImpl.class);
-
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
 
-  private final IPartitionFetcher PARTITION_FETCHER;
+  private final IPartitionFetcher partitionFetcher;
 
-  private final ISchemaFetcher SCHEMA_FETCHER;
+  private final ISchemaFetcher schemaFetcher;
 
   private final IClientSession session;
 
   public MLNodeRPCServiceImpl() {
     super();
-    PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
-    SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
+    partitionFetcher = ClusterPartitionFetcher.getInstance();
+    schemaFetcher = ClusterSchemaFetcher.getInstance();
     session = new InternalClientSession("MLNodeService");
     SESSION_MANAGER.registerSession(session);
     SESSION_MANAGER.supplySession(
@@ -100,8 +96,8 @@ public class MLNodeRPCServiceImpl implements IMLNodeRPCServiceWithHandler {
               queryId,
               SESSION_MANAGER.getSessionInfo(session),
               "",
-              PARTITION_FETCHER,
-              SCHEMA_FETCHER,
+              partitionFetcher,
+              schemaFetcher,
               req.getTimeout());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -193,8 +189,8 @@ public class MLNodeRPCServiceImpl implements IMLNodeRPCServiceWithHandler {
               queryId,
               SESSION_MANAGER.getSessionInfo(session),
               "",
-              PARTITION_FETCHER,
-              SCHEMA_FETCHER);
+              partitionFetcher,
+              schemaFetcher);
       return result.status;
     } catch (Exception e) {
       return ErrorHandlingUtils.onQueryException(e, OperationType.INSERT_RECORD);
