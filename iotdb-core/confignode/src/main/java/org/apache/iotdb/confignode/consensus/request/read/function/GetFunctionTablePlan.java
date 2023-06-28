@@ -38,5 +38,7 @@ public class GetFunctionTablePlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {}
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
+    // Empty method, since it is not needed now
+  }
 }

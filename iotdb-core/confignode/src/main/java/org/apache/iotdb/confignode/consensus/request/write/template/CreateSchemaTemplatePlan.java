@@ -28,7 +28,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.Objects;
 
 public class CreateSchemaTemplatePlan extends ConfigPhysicalPlan {
 
@@ -68,14 +67,18 @@ public class CreateSchemaTemplatePlan extends ConfigPhysicalPlan {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     CreateSchemaTemplatePlan that = (CreateSchemaTemplatePlan) o;
     return Arrays.equals(that.templateData, templateData);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(templateData);
+    return Arrays.hashCode(templateData);
   }
 }

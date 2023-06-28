@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.consensus.request.write.datanode;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
@@ -58,8 +59,12 @@ public class RegisterDataNodePlan extends ConfigPhysicalPlan {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     RegisterDataNodePlan that = (RegisterDataNodePlan) o;
     return dataNodeConfiguration.equals(that.dataNodeConfiguration);
   }

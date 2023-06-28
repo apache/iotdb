@@ -65,11 +65,11 @@ public class UpdateTriggersOnTransferNodesPlan extends ConfigPhysicalPlan {
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     int size = ReadWriteIOUtils.readInt(buffer);
-    List<TDataNodeLocation> dataNodeLocations = new ArrayList<>(size);
+    List<TDataNodeLocation> tmpDataNodeLocations = new ArrayList<>(size);
     while (size > 0) {
-      dataNodeLocations.add(ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer));
+      tmpDataNodeLocations.add(ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer));
       size--;
     }
-    this.dataNodeLocations = dataNodeLocations;
+    this.dataNodeLocations = tmpDataNodeLocations;
   }
 }
