@@ -50,7 +50,7 @@ Apache Zeppelin 是一个基于网页的交互式数据分析系统。用户可�
 
 ```shell
 cd $IoTDB_HOME
-mvn clean package -pl zeppelin-interpreter -am -DskipTests -P get-jar-with-dependencies
+ mvn clean package -pl iotdb-connector/zeppelin-interpreter -am -DskipTests -P get-jar-with-dependencies
 ```
 
 编译后的解释器位于如下目录：

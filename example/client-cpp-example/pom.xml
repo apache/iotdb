@@ -43,7 +43,7 @@
             </activation>
             <properties>
                 <cmake.generator>Unix Makefiles</cmake.generator>
-                <cmake.root.dir>${project.parent.basedir}/../compile-tools/thrift/target/cmake-${cmake-version}-Linux-x86_64/</cmake.root.dir>
+                <cmake.root.dir>${project.parent.basedir}/../iotdb-client/compile-tools/thrift/target/cmake-${cmake-version}-Linux-x86_64/</cmake.root.dir>
             </properties>
         </profile>
         <profile>
@@ -58,7 +58,7 @@
                 <os.suffix>linux</os.suffix>
                 <os.classifier>linux-arm_32</os.classifier>
                 <cmake.generator>Unix Makefiles</cmake.generator>
-                <cmake.root.dir>${project.parent.basedir}/../compile-tools/thrift/target/cmake-3.21.2-linux-aarch64/</cmake.root.dir>
+                <cmake.root.dir>${project.parent.basedir}/../iotdb-client/compile-tools/thrift/target/cmake-3.21.2-linux-aarch64/</cmake.root.dir>
             </properties>
         </profile>
         <profile>
@@ -70,7 +70,7 @@
             </activation>
             <properties>
                 <cmake.generator>Unix Makefiles</cmake.generator>
-                <cmake.root.dir>${project.parent.basedir}/../compile-tools/thrift/target/cmake-${cmake-version}-Darwin-x86_64/CMake.app/Contents</cmake.root.dir>
+                <cmake.root.dir>${project.parent.basedir}/../iotdb-client/compile-tools/thrift/target/cmake-${cmake-version}-Darwin-x86_64/CMake.app/Contents</cmake.root.dir>
                 <boost.include.dir>/usr/local/include</boost.include.dir>
             </properties>
         </profile>
@@ -83,7 +83,7 @@
             </activation>
             <properties>
                 <cmake.generator>Visual Studio 16 2019</cmake.generator>
-                <cmake.root.dir>${project.parent.basedir}/../compile-tools/thrift/target/cmake-${cmake-version}-win64-x64/</cmake.root.dir>
+                <cmake.root.dir>${project.parent.basedir}/../iotdb-client/compile-tools/thrift/target/cmake-${cmake-version}-win64-x64/</cmake.root.dir>
                 <boost.include.dir/>
             </properties>
         </profile>
