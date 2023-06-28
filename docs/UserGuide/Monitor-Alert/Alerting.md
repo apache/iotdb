@@ -257,6 +257,7 @@ at the address of `http://127.0.0.1:9093/`.
 When `value> 100.0`, send an alert of `critical` severity;
 when `50.0 <value <= 100.0`, send an alert of `warning` severity
 .
+
 ```java
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -279,9 +280,9 @@ when `50.0 <value <= 100.0`, send an alert of `warning` severity
 
 package org.apache.iotdb.trigger;
 
-import org.apache.iotdb.db.engine.trigger.sink.alertmanager.AlertManagerConfiguration;
-import org.apache.iotdb.db.engine.trigger.sink.alertmanager.AlertManagerEvent;
-import org.apache.iotdb.db.engine.trigger.sink.alertmanager.AlertManagerHandler;
+import org.apache.iotdb.db.storageengine.trigger.sink.alertmanager.AlertManagerConfiguration;
+import org.apache.iotdb.db.storageengine.trigger.sink.alertmanager.AlertManagerEvent;
+import org.apache.iotdb.db.storageengine.trigger.sink.alertmanager.AlertManagerHandler;
 import org.apache.iotdb.trigger.api.Trigger;
 import org.apache.iotdb.trigger.api.TriggerAttributes;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;

@@ -617,7 +617,7 @@ pip install -r requirements_dev.txt
 
 ### Compile the thrift library and Debug
 
-In the root of IoTDB's source code folder,  run `mvn clean generate-sources -pl client-py -am`.
+In the root of IoTDB's source code folder,  run `mvn clean generate-sources -pl iotdb-client/client-py -am`.
 
 This will automatically delete and repopulate the folder `iotdb/thrift` with the generated thrift files.
 This folder is ignored from git and should **never be pushed to git!**

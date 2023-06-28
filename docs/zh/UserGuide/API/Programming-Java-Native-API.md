@@ -35,7 +35,7 @@
 在根目录下运行：
 
 ```shell
-mvn clean install -pl session -am -Dmaven.test.skip=true
+mvn clean install -pl iotdb-client/session -am -Dmaven.test.skip=true
 ```
 
 #### 在 MAVEN 中使用原生接口

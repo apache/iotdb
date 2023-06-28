@@ -255,9 +255,9 @@ inhibit_rules:
 ```java
 package org.apache.iotdb.trigger;
 
-import org.apache.iotdb.db.engine.trigger.sink.alertmanager.AlertManagerConfiguration;
-import org.apache.iotdb.db.engine.trigger.sink.alertmanager.AlertManagerEvent;
-import org.apache.iotdb.db.engine.trigger.sink.alertmanager.AlertManagerHandler;
+import org.apache.iotdb.db.storageengine.trigger.sink.alertmanager.AlertManagerConfiguration;
+import org.apache.iotdb.db.storageengine.trigger.sink.alertmanager.AlertManagerEvent;
+import org.apache.iotdb.db.storageengine.trigger.sink.alertmanager.AlertManagerHandler;
 import org.apache.iotdb.trigger.api.Trigger;
 import org.apache.iotdb.trigger.api.TriggerAttributes;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;

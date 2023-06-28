@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -610,10 +610,10 @@ public class IoTDBSyntaxConventionStringLiteralIT {
   //      // create trigger, trigger class name should be STRING_LITERAL
   //      statement.execute(
   //          "create trigger trigger_1 before insert on root.vehicle.d1.s1 "
-  //              + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+  //              + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'");
   //      statement.execute(
   //          "create trigger trigger_2 after insert on root.vehicle.d1.s2 "
-  //              + "as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+  //              + "as 'org.apache.iotdb.db.storageengine.trigger.example.Counter'");
   //
   //      // show
   //      resultSet = statement.executeQuery("show triggers");
@@ -629,7 +629,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
   //
   //      statement.execute(
   //          "create trigger trigger_1 before insert on root.vehicle.d1.s3 "
-  //              + "as org.apache.iotdb.db.engine.trigger.example.Accumulator");
+  //              + "as org.apache.iotdb.db.storageengine.trigger.example.Accumulator");
   //      fail();
   //    } catch (SQLException e) {
   //      Assert.assertEquals(errorMsg, e.getMessage());
@@ -642,14 +642,14 @@ public class IoTDBSyntaxConventionStringLiteralIT {
   //        TSStatusCode.SQL_PARSE_ERROR.getStatusCode() + ": Error occurred while parsing SQL to
   // physical plan: "
   //            + "line 1:64 mismatched input
-  // '`org.apache.iotdb.db.engine.trigger.example.Accumulator`' "
+  // '`org.apache.iotdb.db.storageengine.trigger.example.Accumulator`' "
   //            + "expecting {AS, '.'}";
   //    try (Connection connection = EnvFactory.getEnv().getConnection();
   //        Statement statement = connection.createStatement()) {
   //      statement.execute("CREATE TIMESERIES root.vehicle.d1.s1 FLOAT");
   //      statement.execute(
   //          "create trigger trigger_1 before insert on root.vehicle.d1.s1 "
-  //              + "as `org.apache.iotdb.db.engine.trigger.example.Accumulator`");
+  //              + "as `org.apache.iotdb.db.storageengine.trigger.example.Accumulator`");
   //      fail();
   //    } catch (SQLException e) {
   //      Assert.assertEquals(errorMsg, e.getMessage());
@@ -670,27 +670,33 @@ public class IoTDBSyntaxConventionStringLiteralIT {
   //      // trigger attribute should be STRING_LITERAL
   //      statement.execute(
   //          "create trigger trigger_1 before insert on root.vehicle.d1.s1 "
-  //              + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator' with ('k1'='v1')");
+  //              + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator' with
+  // ('k1'='v1')");
   //
   //      statement.execute(
   //          "create trigger trigger_2 before insert on root.vehicle.d1.s2 "
-  //              + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator' with (k1='v1')");
+  //              + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator' with
+  // (k1='v1')");
   //
   //      statement.execute(
   //          "create trigger trigger_3 before insert on root.vehicle.d1.s3 "
-  //              + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator' with ('k1'=v1)");
+  //              + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator' with
+  // ('k1'=v1)");
   //
   //      statement.execute(
   //          "create trigger trigger_4 before insert on root.vehicle.d1.s4 "
-  //              + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator' with (k1=v1)");
+  //              + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator' with
+  // (k1=v1)");
   //
   //      statement.execute(
   //          "create trigger trigger_5 before insert on root.vehicle.d1.s5 "
-  //              + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator' with (`k1`=`v1`)");
+  //              + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator' with
+  // (`k1`=`v1`)");
   //
   //      statement.execute(
   //          "create trigger trigger_6 before insert on root.vehicle.d1.s6 "
-  //              + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator' with (`k1`=v1)");
+  //              + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator' with
+  // (`k1`=v1)");
   //
   //      boolean hasResult = statement.execute("show triggers");
   //      assertTrue(hasResult);
