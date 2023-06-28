@@ -27,7 +27,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
-import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
