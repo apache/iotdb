@@ -36,7 +36,10 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 
 import org.junit.Test;
 
+import java.io.IOException;
+
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 public class TsFileExceptionTest {
 
@@ -52,6 +55,9 @@ public class TsFileExceptionTest {
   public void testNotImplementedException() {
     NotImplementedException e = new NotImplementedException(MOCK);
     assertEquals(MOCK, e.getMessage());
+
+    e =new NotImplementedException();
+    assertNull(e.getMessage());
   }
 
   @Test
@@ -141,6 +147,12 @@ public class TsFileExceptionTest {
   public void testPageException() {
     PageException e = new PageException(MOCK);
     assertEquals(MOCK, e.getMessage());
+
+    e = new PageException(MOCK, new IOException());
+    assertEquals(MOCK, e.getMessage());
+
+    e = new PageException(new IOException());
+    assertEquals("java.io.IOException", e.getMessage());
   }
 
   @Test
@@ -165,5 +177,11 @@ public class TsFileExceptionTest {
   public void testWriteProcessException() {
     WriteProcessException e = new WriteProcessException(MOCK);
     assertEquals(MOCK, e.getMessage());
+
+    e = new WriteProcessException(MOCK, new IOException());
+    assertEquals(MOCK, e.getMessage());
+
+    e = new WriteProcessException(new IOException());
+    assertEquals("java.io.IOException", e.getMessage());
   }
 }
