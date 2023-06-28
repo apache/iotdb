@@ -548,16 +548,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return outputExpressionMap;
   }
 
-  private void checkAliasUniqueness(String alias, Set<String> aliasSet) {
-    if (alias != null) {
-      if (aliasSet.contains(alias)) {
-        throw new SemanticException(
-            String.format("alias '%s' can only be matched with one time series", alias));
-      }
-      aliasSet.add(alias);
-    }
-  }
-
   private Set<PartialPath> analyzeFrom(QueryStatement queryStatement, ISchemaTree schemaTree) {
     // device path patterns in FROM clause
     List<PartialPath> devicePatternList = queryStatement.getFromComponent().getPrefixPaths();
@@ -678,14 +668,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       measurementToDeviceSelectExpressions
           .computeIfAbsent(measurementExpression, key -> new LinkedHashMap<>())
           .put(device.getFullPath(), ExpressionAnalyzer.semiNormalizeExpression(expression));
-    }
-  }
-
-  private void checkAliasUniqueness(
-      String alias, Map<Expression, Map<String, Expression>> measurementToDeviceSelectExpressions) {
-    if (alias != null && measurementToDeviceSelectExpressions.keySet().size() > 1) {
-      throw new SemanticException(
-          String.format("alias '%s' can only be matched with one time series", alias));
     }
   }
 
@@ -1336,7 +1318,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         analysis.getDeviceToOutputExpressions();
     for (Map.Entry<String, Set<Expression>> deviceOutputExpressionEntry :
         deviceToOutputExpressions.entrySet()) {
-      String deviceName = deviceOutputExpressionEntry.getKey();
       Set<Expression> outputExpressionsUnderDevice = deviceOutputExpressionEntry.getValue();
       checkDeviceViewInputUniqueness(outputExpressionsUnderDevice);
 
@@ -1348,7 +1329,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         outputColumns.add(
             ExpressionAnalyzer.getMeasurementExpression(expression, analysis).getOutputSymbol());
       }
-      deviceToOutputColumnsMap.put(deviceName, outputColumns);
+      deviceToOutputColumnsMap.put(deviceOutputExpressionEntry.getKey(), outputColumns);
     }
 
     Map<String, List<Integer>> deviceViewInputIndexesMap = new HashMap<>();
@@ -1376,8 +1357,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             .collect(Collectors.toSet());
     if (normalizedOutputExpressionsUnderDevice.size() < outputExpressionsUnderDevice.size()) {
       throw new SemanticException(
-          "Views or measurement aliases representing the same data source cannot be queried concurrently "
-              + " in ALIGN BY DEVICE queries.");
+          "Views or measurement aliases representing the same data source "
+              + "cannot be queried concurrently  in ALIGN BY DEVICE queries.");
     }
   }
 
@@ -1994,6 +1975,24 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         throw new SemanticException(
             "ALIGN BY DEVICE: the data types of the same measurement column should be the same across devices.");
       }
+    }
+  }
+
+  private void checkAliasUniqueness(String alias, Set<String> aliasSet) {
+    if (alias != null) {
+      if (aliasSet.contains(alias)) {
+        throw new SemanticException(
+            String.format("alias '%s' can only be matched with one time series", alias));
+      }
+      aliasSet.add(alias);
+    }
+  }
+
+  private void checkAliasUniqueness(
+      String alias, Map<Expression, Map<String, Expression>> measurementToDeviceSelectExpressions) {
+    if (alias != null && measurementToDeviceSelectExpressions.keySet().size() > 1) {
+      throw new SemanticException(
+          String.format("alias '%s' can only be matched with one time series", alias));
     }
   }
 
