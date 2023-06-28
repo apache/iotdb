@@ -23,9 +23,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -36,7 +33,7 @@ import java.util.NoSuchElementException;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TsFileResourceList implements List<TsFileResource> {
-  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileResourceList.class);
+
   private TsFileResource header;
   private TsFileResource tail;
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
