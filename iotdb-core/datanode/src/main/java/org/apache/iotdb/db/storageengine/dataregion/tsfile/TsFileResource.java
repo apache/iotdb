@@ -37,7 +37,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeInd
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
-import org.apache.iotdb.db.storageengine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
@@ -584,10 +583,6 @@ public class TsFileResource {
 
   public boolean tryReadLock() {
     return tsFileLock.tryReadLock();
-  }
-
-  public void doUpgrade() {
-    UpgradeSevice.getINSTANCE().submitUpgradeTask(new UpgradeTask(this));
   }
 
   public void removeModFile() throws IOException {

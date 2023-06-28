@@ -114,13 +114,6 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           CHUNK_METADATA_FILTER_NONALIGNED_DISK, System.nanoTime() - t3);
 
-      // For chunkMetadata from old TsFile, do not set version
-      for (IChunkMetadata metadata : chunkMetadataList) {
-        if (!metadata.isFromOldTsFile()) {
-          metadata.setVersion(resource.getVersion());
-        }
-      }
-
       if (context.isDebug()) {
         DEBUG_LOGGER.info("After removed by filter Chunk meta data list is: ");
         chunkMetadataList.forEach(c -> DEBUG_LOGGER.info(c.toString()));
