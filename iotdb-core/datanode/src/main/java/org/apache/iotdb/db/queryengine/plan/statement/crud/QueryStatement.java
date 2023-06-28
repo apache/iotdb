@@ -472,6 +472,7 @@ public class QueryStatement extends Statement {
   private static final String RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG =
       "Raw data and aggregation hybrid query is not supported.";
 
+  @SuppressWarnings({"squid:S3776", "squid:S6541"}) // Suppress high Cognitive Complexity warning
   public void semanticCheck() {
     if (isAggregationQuery()) {
       if (disableAlign()) {
@@ -521,6 +522,15 @@ public class QueryStatement extends Statement {
             throw new SemanticException(
                 expression + " can't be used in group by tag. It will be supported in the future.");
           }
+        }
+      }
+      if (hasGroupByExpression()) {
+        // Aggregation expression shouldn't exist in group by clause.
+        List<Expression> aggregationExpression =
+            ExpressionAnalyzer.searchAggregationExpressions(
+                groupByComponent.getControlColumnExpression());
+        if (aggregationExpression != null && !aggregationExpression.isEmpty()) {
+          throw new SemanticException("Aggregation expression shouldn't exist in group by clause");
         }
       }
     } else {

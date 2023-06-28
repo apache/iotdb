@@ -271,17 +271,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         }
 
         analyzeDeviceToGroupBy(analysis, queryStatement, schemaTree, deviceSet);
-        Map<String, Set<Expression>> deviceToAggregationExpressions = new HashMap<>();
         analyzeDeviceToOrderBy(analysis, queryStatement, schemaTree, deviceSet);
-        analyzeHaving(
-            analysis, queryStatement, schemaTree, deviceSet, deviceToAggregationExpressions);
-        analyzeDeviceToAggregation(analysis, queryStatement, deviceToAggregationExpressions);
-        analysis.setDeviceToAggregationExpressions(deviceToAggregationExpressions);
+        analyzeHaving(analysis, queryStatement, schemaTree, deviceSet);
 
+        analyzeDeviceToAggregation(analysis, queryStatement);
         analyzeDeviceToSourceTransform(analysis, queryStatement);
         analyzeDeviceToSource(analysis, queryStatement);
 
-        analyzeDeviceViewOutput(analysis, queryStatement, outputExpressions);
+        analyzeDeviceViewOutput(analysis, queryStatement);
         analyzeDeviceViewInput(analysis, queryStatement);
 
         analyzeInto(analysis, queryStatement, deviceSet, outputExpressions);
@@ -518,16 +515,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
       List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
 
-      boolean hasAlias = resultColumn.hasAlias();
       List<Expression> resultExpressions =
           ExpressionAnalyzer.bindSchemaForExpression(resultColumn.getExpression(), schemaTree);
-
       for (Expression expression : resultExpressions) {
         if (paginationController.hasCurOffset()) {
           paginationController.consumeOffset();
-          continue;
-        }
-        if (paginationController.hasCurLimit()) {
+        } else if (paginationController.hasCurLimit()) {
           if (isGroupByLevel) {
             analyzeExpressionType(analysis, expression);
             outputExpressions.add(new Pair<>(expression, resultColumn.getAlias()));
@@ -538,14 +531,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             Expression normalizedExpression = ExpressionAnalyzer.normalizeExpression(expression);
             analyzeExpressionType(analysis, normalizedExpression);
 
-            if (hasAlias) {
-              String alias = resultColumn.getAlias();
-              if (aliasSet.contains(alias)) {
-                throw new SemanticException(
-                    String.format("alias '%s' can only be matched with one time series", alias));
-              }
-              aliasSet.add(alias);
-            }
+            checkAliasUniqueness(resultColumn.getAlias(), aliasSet);
+
             outputExpressions.add(
                 new Pair<>(
                     normalizedExpression,
@@ -559,6 +546,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       outputExpressionMap.put(columnIndex++, outputExpressions);
     }
     return outputExpressionMap;
+  }
+
+  private void checkAliasUniqueness(String alias, Set<String> aliasSet) {
+    if (alias != null) {
+      if (aliasSet.contains(alias)) {
+        throw new SemanticException(
+            String.format("alias '%s' can only be matched with one time series", alias));
+      }
+      aliasSet.add(alias);
+    }
   }
 
   private Set<PartialPath> analyzeFrom(QueryStatement queryStatement, ISchemaTree schemaTree) {
@@ -591,7 +588,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
       Expression selectExpression = resultColumn.getExpression();
-      boolean hasAlias = resultColumn.hasAlias();
 
       // select expression after removing wildcard
       // use LinkedHashMap for order-preserving
@@ -605,20 +601,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           continue;
         }
         noMeasurementDevices.remove(device);
-        for (Expression expression : selectExpressionsOfOneDevice) {
-          Expression measurementExpression =
-              ExpressionAnalyzer.getMeasurementExpression(expression, analysis);
-          measurementToDeviceSelectExpressions
-              .computeIfAbsent(measurementExpression, key -> new LinkedHashMap<>())
-              .put(device.getFullPath(), ExpressionAnalyzer.semiNormalizeExpression(expression));
-        }
+        updateMeasurementToDeviceSelectExpressions(
+            analysis, measurementToDeviceSelectExpressions, device, selectExpressionsOfOneDevice);
       }
 
-      if (hasAlias && measurementToDeviceSelectExpressions.keySet().size() > 1) {
-        throw new SemanticException(
-            String.format(
-                "alias '%s' can only be matched with one time series", resultColumn.getAlias()));
-      }
+      checkAliasUniqueness(resultColumn.getAlias(), measurementToDeviceSelectExpressions);
 
       for (Map.Entry<Expression, Map<String, Expression>> measurementDeviceSelectExpressionsEntry :
           measurementToDeviceSelectExpressions.entrySet()) {
@@ -628,9 +615,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
         if (paginationController.hasCurOffset()) {
           paginationController.consumeOffset();
-          continue;
-        }
-        if (paginationController.hasCurLimit()) {
+        } else if (paginationController.hasCurLimit()) {
           deviceToSelectExpressionsOfOneMeasurement
               .values()
               .forEach(expression -> analyzeExpressionType(analysis, expression));
@@ -652,18 +637,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                       normalizedMeasurementExpression)));
 
           // add deviceToSelectExpressions
-          for (Map.Entry<String, Expression> deviceNameSelectExpressionEntry :
-              deviceToSelectExpressionsOfOneMeasurement.entrySet()) {
-            String deviceName = deviceNameSelectExpressionEntry.getKey();
-            Expression expression = deviceNameSelectExpressionEntry.getValue();
+          updateDeviceToSelectExpressions(
+              analysis, deviceToSelectExpressions, deviceToSelectExpressionsOfOneMeasurement);
 
-            Expression normalizedExpression =
-                ExpressionAnalyzer.semiNormalizeExpression(expression);
-            analyzeExpressionType(analysis, normalizedExpression);
-            deviceToSelectExpressions
-                .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
-                .add(normalizedExpression);
-          }
           paginationController.consumeLimit();
         } else {
           break;
@@ -675,7 +651,59 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     deviceSet.removeAll(noMeasurementDevices);
 
     analysis.setDeviceToSelectExpressions(deviceToSelectExpressions);
+
+    // set selectExpressions
+    Set<Expression> selectExpressions = new LinkedHashSet<>();
+    selectExpressions.add(deviceExpression);
+    if (queryStatement.isOutputEndTime()) {
+      selectExpressions.add(endTimeExpression);
+    }
+    selectExpressions.addAll(
+        outputExpressions.stream()
+            .map(Pair::getLeft)
+            .collect(Collectors.toCollection(LinkedHashSet::new)));
+    analysis.setSelectExpressions(selectExpressions);
+
     return outputExpressions;
+  }
+
+  private void updateMeasurementToDeviceSelectExpressions(
+      Analysis analysis,
+      Map<Expression, Map<String, Expression>> measurementToDeviceSelectExpressions,
+      PartialPath device,
+      List<Expression> selectExpressionsOfOneDevice) {
+    for (Expression expression : selectExpressionsOfOneDevice) {
+      Expression measurementExpression =
+          ExpressionAnalyzer.getMeasurementExpression(expression, analysis);
+      measurementToDeviceSelectExpressions
+          .computeIfAbsent(measurementExpression, key -> new LinkedHashMap<>())
+          .put(device.getFullPath(), ExpressionAnalyzer.semiNormalizeExpression(expression));
+    }
+  }
+
+  private void checkAliasUniqueness(
+      String alias, Map<Expression, Map<String, Expression>> measurementToDeviceSelectExpressions) {
+    if (alias != null && measurementToDeviceSelectExpressions.keySet().size() > 1) {
+      throw new SemanticException(
+          String.format("alias '%s' can only be matched with one time series", alias));
+    }
+  }
+
+  private void updateDeviceToSelectExpressions(
+      Analysis analysis,
+      Map<String, Set<Expression>> deviceToSelectExpressions,
+      Map<String, Expression> deviceToSelectExpressionsOfOneMeasurement) {
+    for (Map.Entry<String, Expression> deviceNameSelectExpressionEntry :
+        deviceToSelectExpressionsOfOneMeasurement.entrySet()) {
+      String deviceName = deviceNameSelectExpressionEntry.getKey();
+      Expression expression = deviceNameSelectExpressionEntry.getValue();
+
+      Expression normalizedExpression = ExpressionAnalyzer.semiNormalizeExpression(expression);
+      analyzeExpressionType(analysis, normalizedExpression);
+      deviceToSelectExpressions
+          .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
+          .add(normalizedExpression);
+    }
   }
 
   private String analyzeAlias(
@@ -722,11 +750,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis,
       QueryStatement queryStatement,
       ISchemaTree schemaTree,
-      Set<PartialPath> deviceSet,
-      Map<String, Set<Expression>> deviceToAggregationExpressions) {
+      Set<PartialPath> deviceSet) {
     if (!queryStatement.hasHaving()) {
       return;
     }
+
+    // two maps to be updated
+    Map<String, Set<Expression>> deviceToAggregationExpressions =
+        analysis.getDeviceToAggregationExpressions();
+    Map<String, Set<Expression>> deviceToOutputExpressions =
+        analysis.getDeviceToOutputExpressions();
 
     Expression havingExpression = queryStatement.getHavingCondition().getPredicate();
     Set<Expression> conJunctions = new HashSet<>();
@@ -743,14 +776,24 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       for (Expression expression : expressionsInHaving) {
         Set<Expression> aggregationExpressions = new LinkedHashSet<>();
+        Set<Expression> normalizedAggregationExpressions = new LinkedHashSet<>();
         for (Expression aggregationExpression :
             ExpressionAnalyzer.searchAggregationExpressions(expression)) {
+          Expression normalizedAggregationExpression =
+              ExpressionAnalyzer.normalizeExpression(aggregationExpression);
+
           analyzeExpressionType(analysis, aggregationExpression);
+          analyzeExpressionType(analysis, normalizedAggregationExpression);
+
           aggregationExpressions.add(aggregationExpression);
+          normalizedAggregationExpressions.add(normalizedAggregationExpression);
         }
-        deviceToAggregationExpressions
+        deviceToOutputExpressions
             .computeIfAbsent(device.getFullPath(), key -> new LinkedHashSet<>())
             .addAll(aggregationExpressions);
+        deviceToAggregationExpressions
+            .computeIfAbsent(device.getFullPath(), key -> new LinkedHashSet<>())
+            .addAll(normalizedAggregationExpressions);
       }
     }
 
@@ -762,6 +805,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               "The output type of the expression in HAVING clause should be BOOLEAN, actual data type: %s.",
               outputType));
     }
+    analysis.setDeviceToAggregationExpressions(deviceToAggregationExpressions);
     analysis.setHavingExpression(havingExpression);
   }
 
@@ -812,9 +856,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     for (Expression groupedExpression : groupedSelectExpressions) {
       if (paginationController.hasCurOffset()) {
         paginationController.consumeOffset();
-        continue;
-      }
-      if (paginationController.hasCurLimit()) {
+      } else if (paginationController.hasCurLimit()) {
         Expression normalizedGroupedExpression =
             ExpressionAnalyzer.normalizeExpression(groupedExpression);
         analyzeExpressionType(analysis, normalizedGroupedExpression);
@@ -883,17 +925,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
   }
 
-  private Pair<Expression, String> removeAliasFromExpression(
-      Expression rawExpression, String rawAlias) {
-    Expression expressionWithoutAlias = ExpressionAnalyzer.normalizeExpression(rawExpression);
-    String alias =
-        !Objects.equals(expressionWithoutAlias, rawExpression)
-            ? rawExpression.getExpressionString()
-            : null;
-    alias = rawAlias == null ? alias : rawAlias;
-    return new Pair<>(expressionWithoutAlias, alias);
-  }
-
   /**
    * This method is used to analyze GROUP BY TAGS query.
    *
@@ -956,43 +987,51 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setCrossGroupByExpressions(outputExpressionToRawExpressionsMap);
   }
 
-  private void analyzeDeviceToAggregation(
-      Analysis analysis,
-      QueryStatement queryStatement,
-      Map<String, Set<Expression>> deviceToAggregationExpressions) {
+  private void analyzeDeviceToAggregation(Analysis analysis, QueryStatement queryStatement) {
     if (!queryStatement.isAggregationQuery()) {
       return;
     }
 
-    Map<String, Set<Expression>> deviceToSelectExpressions =
-        analysis.getDeviceToSelectExpressions();
-    for (Map.Entry<String, Set<Expression>> deviceSelectExpressionsEntry :
-        deviceToSelectExpressions.entrySet()) {
-      String deviceName = deviceSelectExpressionsEntry.getKey();
-      Set<Expression> selectExpressions = deviceSelectExpressionsEntry.getValue();
+    updateDeviceToAggregationAndOutputExpressions(
+        analysis, analysis.getDeviceToSelectExpressions());
+    if (queryStatement.hasOrderByExpression()) {
+      updateDeviceToAggregationAndOutputExpressions(
+          analysis, analysis.getDeviceToOrderByExpressions());
+    }
+  }
+
+  private void updateDeviceToAggregationAndOutputExpressions(
+      Analysis analysis, Map<String, Set<Expression>> deviceToExpressions) {
+    // two maps to be updated
+    Map<String, Set<Expression>> deviceToAggregationExpressions =
+        analysis.getDeviceToAggregationExpressions();
+    Map<String, Set<Expression>> deviceToOutputExpressions =
+        analysis.getDeviceToOutputExpressions();
+
+    for (Map.Entry<String, Set<Expression>> deviceExpressionsEntry :
+        deviceToExpressions.entrySet()) {
+      String deviceName = deviceExpressionsEntry.getKey();
+      Set<Expression> expressionSet = deviceExpressionsEntry.getValue();
 
       Set<Expression> aggregationExpressions = new LinkedHashSet<>();
-      for (Expression expression : selectExpressions) {
-        aggregationExpressions.addAll(ExpressionAnalyzer.searchAggregationExpressions(expression));
-      }
-      deviceToAggregationExpressions
-          .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
-          .addAll(aggregationExpressions);
-    }
+      Set<Expression> normalizedAggregationExpressions = new LinkedHashSet<>();
+      for (Expression expression : expressionSet) {
+        for (Expression aggregationExpression :
+            ExpressionAnalyzer.searchAggregationExpressions(expression)) {
+          Expression normalizedAggregationExpression =
+              ExpressionAnalyzer.normalizeExpression(aggregationExpression);
+          analyzeExpressionType(analysis, normalizedAggregationExpression);
 
-    if (queryStatement.hasOrderByExpression()) {
-      Map<String, Set<Expression>> deviceToOrderByExpressions =
-          analysis.getDeviceToOrderByExpressions();
-      for (Map.Entry<String, Set<Expression>> deviceOrderByExpressionsEntry :
-          deviceToOrderByExpressions.entrySet()) {
-        String deviceName = deviceOrderByExpressionsEntry.getKey();
-        Set<Expression> orderByExpressions = deviceOrderByExpressionsEntry.getValue();
-        for (Expression orderByExpression : orderByExpressions) {
-          deviceToAggregationExpressions
-              .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
-              .addAll(ExpressionAnalyzer.searchAggregationExpressions(orderByExpression));
+          aggregationExpressions.add(aggregationExpression);
+          normalizedAggregationExpressions.add(normalizedAggregationExpression);
         }
       }
+      deviceToOutputExpressions
+          .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
+          .addAll(aggregationExpressions);
+      deviceToAggregationExpressions
+          .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
+          .addAll(normalizedAggregationExpressions);
     }
   }
 
@@ -1027,8 +1066,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private void analyzeDeviceToSourceTransform(Analysis analysis, QueryStatement queryStatement) {
-    Map<String, Set<Expression>> deviceToSourceTransformExpressions = new HashMap<>();
     if (queryStatement.isAggregationQuery()) {
+      Map<String, Set<Expression>> deviceToSourceTransformExpressions = new HashMap<>();
+
       Map<String, Set<Expression>> deviceToAggregationExpressions =
           analysis.getDeviceToAggregationExpressions();
       for (Map.Entry<String, Set<Expression>> deviceAggregationExpressionsEntry :
@@ -1049,21 +1089,44 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         }
         deviceToSourceTransformExpressions.put(deviceName, sourceTransformExpressions);
       }
+      analysis.setDeviceToSourceTransformExpressions(deviceToSourceTransformExpressions);
     } else {
-      deviceToSourceTransformExpressions = analysis.getDeviceToSelectExpressions();
+      updateDeviceToSourceTransformAndOutputExpressions(
+          analysis, analysis.getDeviceToSelectExpressions());
       if (queryStatement.hasOrderByExpression()) {
-        Map<String, Set<Expression>> deviceToOrderByExpressions =
-            analysis.getDeviceToOrderByExpressions();
-        for (Map.Entry<String, Set<Expression>> deviceOrderByExpressionsEntry :
-            deviceToOrderByExpressions.entrySet()) {
-          String deviceName = deviceOrderByExpressionsEntry.getKey();
-          Set<Expression> orderByExpressions = deviceOrderByExpressionsEntry.getValue();
-
-          deviceToSourceTransformExpressions.get(deviceName).addAll(orderByExpressions);
-        }
+        updateDeviceToSourceTransformAndOutputExpressions(
+            analysis, analysis.getDeviceToOrderByExpressions());
       }
     }
-    analysis.setDeviceToSourceTransformExpressions(deviceToSourceTransformExpressions);
+  }
+
+  private void updateDeviceToSourceTransformAndOutputExpressions(
+      Analysis analysis, Map<String, Set<Expression>> deviceToExpressions) {
+    // two maps to be updated
+    Map<String, Set<Expression>> deviceToSourceTransformExpressions =
+        analysis.getDeviceToSourceTransformExpressions();
+    Map<String, Set<Expression>> deviceToOutputExpressions =
+        analysis.getDeviceToOutputExpressions();
+
+    for (Map.Entry<String, Set<Expression>> deviceExpressionsEntry :
+        deviceToExpressions.entrySet()) {
+      String deviceName = deviceExpressionsEntry.getKey();
+      Set<Expression> expressions = deviceExpressionsEntry.getValue();
+
+      Set<Expression> normalizedExpressions = new LinkedHashSet<>();
+      for (Expression expression : expressions) {
+        Expression normalizedExpression = ExpressionAnalyzer.normalizeExpression(expression);
+        analyzeExpressionType(analysis, normalizedExpression);
+
+        normalizedExpressions.add(normalizedExpression);
+      }
+      deviceToOutputExpressions
+          .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
+          .addAll(expressions);
+      deviceToSourceTransformExpressions
+          .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
+          .addAll(normalizedExpressions);
+    }
   }
 
   private void analyzeSourceTransform(Analysis analysis, QueryStatement queryStatement) {
@@ -1116,21 +1179,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     for (Map.Entry<String, Set<Expression>> deviceSourceExpressionsEntry :
         deviceToSourceExpressions.entrySet()) {
       Set<Expression> sourceExpressionsUnderDevice = deviceSourceExpressionsEntry.getValue();
-      Set<Expression> actualSourceExpressions = new HashSet<>();
-
       Set<String> queriedDevices = new HashSet<>();
       for (Expression expression : sourceExpressionsUnderDevice) {
         queriedDevices.add(ExpressionAnalyzer.getDeviceNameInSourceExpression(expression));
-        actualSourceExpressions.add(ExpressionAnalyzer.normalizeExpression(expression));
       }
       if (queriedDevices.size() > 1) {
         throw new SemanticException(
             "Cross-device queries are not supported in ALIGN BY DEVICE queries.");
-      }
-      if (actualSourceExpressions.size() < sourceExpressionsUnderDevice.size()) {
-        throw new SemanticException(
-            "Views or measurement aliases representing the same data source cannot be queried concurrently "
-                + " in ALIGN BY DEVICE queries.");
       }
       outputDeviceToQueriedDevicesMap.put(
           deviceSourceExpressionsEntry.getKey(), new ArrayList<>(queriedDevices));
@@ -1217,21 +1272,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         conJunctions.stream().distinct().collect(Collectors.toList()));
   }
 
-  private void analyzeDeviceViewOutput(
-      Analysis analysis,
-      QueryStatement queryStatement,
-      List<Pair<Expression, String>> outputExpressions) {
-    Set<Expression> selectExpressions = new LinkedHashSet<>();
-    selectExpressions.add(deviceExpression);
-    if (queryStatement.isOutputEndTime()) {
-      selectExpressions.add(endTimeExpression);
-    }
-    selectExpressions.addAll(
-        outputExpressions.stream()
-            .map(Pair::getLeft)
-            .collect(Collectors.toCollection(LinkedHashSet::new)));
-    analysis.setSelectExpressions(selectExpressions);
-
+  private void analyzeDeviceViewOutput(Analysis analysis, QueryStatement queryStatement) {
+    Set<Expression> selectExpressions = analysis.getSelectExpressions();
     Set<Expression> deviceViewOutputExpressions = new LinkedHashSet<>();
     if (queryStatement.isAggregationQuery()) {
       deviceViewOutputExpressions.add(deviceExpression);
@@ -1263,6 +1305,24 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         analyzeDeviceViewSpecialProcess(deviceViewOutputExpressions, queryStatement, analysis));
   }
 
+  private boolean analyzeDeviceViewSpecialProcess(
+      Set<Expression> deviceViewOutputExpressions,
+      QueryStatement queryStatement,
+      Analysis analysis) {
+    if (queryStatement.isAggregationQuery()
+        || queryStatement.hasWhere()
+            && ExpressionAnalyzer.isDeviceViewNeedSpecialProcess(
+                queryStatement.getWhereCondition().getPredicate(), analysis)) {
+      return true;
+    }
+    for (Expression expression : deviceViewOutputExpressions) {
+      if (ExpressionAnalyzer.isDeviceViewNeedSpecialProcess(expression, analysis)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private void analyzeDeviceViewInput(Analysis analysis, QueryStatement queryStatement) {
     List<String> deviceViewOutputColumns =
         analysis.getDeviceViewOutputExpressions().stream()
@@ -1271,13 +1331,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     Map<String, Set<String>> deviceToOutputColumnsMap = new LinkedHashMap<>();
     Map<String, Set<Expression>> deviceToOutputExpressions =
-        queryStatement.isAggregationQuery()
-            ? analysis.getDeviceToAggregationExpressions()
-            : analysis.getDeviceToSourceTransformExpressions();
+        analysis.getDeviceToOutputExpressions();
     for (Map.Entry<String, Set<Expression>> deviceOutputExpressionEntry :
         deviceToOutputExpressions.entrySet()) {
       String deviceName = deviceOutputExpressionEntry.getKey();
       Set<Expression> outputExpressionsUnderDevice = deviceOutputExpressionEntry.getValue();
+      checkDeviceViewInputUniqueness(outputExpressionsUnderDevice);
 
       Set<String> outputColumns = new LinkedHashSet<>();
       if (queryStatement.isOutputEndTime()) {
@@ -1308,22 +1367,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setDeviceViewInputIndexesMap(deviceViewInputIndexesMap);
   }
 
-  private boolean analyzeDeviceViewSpecialProcess(
-      Set<Expression> deviceViewOutputExpressions,
-      QueryStatement queryStatement,
-      Analysis analysis) {
-    if (queryStatement.isAggregationQuery()
-        || queryStatement.hasWhere()
-            && ExpressionAnalyzer.isDeviceViewNeedSpecialProcess(
-                queryStatement.getWhereCondition().getPredicate(), analysis)) {
-      return true;
+  private void checkDeviceViewInputUniqueness(Set<Expression> outputExpressionsUnderDevice) {
+    Set<Expression> normalizedOutputExpressionsUnderDevice =
+        outputExpressionsUnderDevice.stream()
+            .map(ExpressionAnalyzer::normalizeExpression)
+            .collect(Collectors.toSet());
+    if (normalizedOutputExpressionsUnderDevice.size() < outputExpressionsUnderDevice.size()) {
+      throw new SemanticException(
+          "Views or measurement aliases representing the same data source cannot be queried concurrently "
+              + " in ALIGN BY DEVICE queries.");
     }
-    for (Expression expression : deviceViewOutputExpressions) {
-      if (ExpressionAnalyzer.isDeviceViewNeedSpecialProcess(expression, analysis)) {
-        return true;
-      }
-    }
-    return false;
   }
 
   private void analyzeOutput(
@@ -1438,52 +1491,48 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                   "%s in group by clause shouldn't refer to more than one timeseries.",
                   expression));
         }
-        Expression groupByExpressionOfOneDevice = groupByExpressionsOfOneDevice.get(0);
+        deviceToGroupByExpression.put(
+            device.getFullPath(),
+            ExpressionAnalyzer.normalizeExpression(groupByExpressionsOfOneDevice.get(0)));
+      }
+    }
 
-        // Aggregation expression shouldn't exist in group by clause.
-        List<Expression> aggregationExpression =
-            ExpressionAnalyzer.searchAggregationExpressions(groupByExpressionOfOneDevice);
-        if (aggregationExpression != null && !aggregationExpression.isEmpty()) {
-          throw new SemanticException("Aggregation expression shouldn't exist in group by clause");
+    GroupByParameter groupByParameter;
+    switch (windowType) {
+      case VARIATION_WINDOW:
+        double delta = ((GroupByVariationComponent) groupByComponent).getDelta();
+        for (Expression expression : deviceToGroupByExpression.values()) {
+          checkGroupByVariationExpressionType(analysis, expression, delta);
         }
-        deviceToGroupByExpression.put(device.getFullPath(), groupByExpressionOfOneDevice);
-      }
+        groupByParameter = new GroupByVariationParameter(groupByComponent.isIgnoringNull(), delta);
+        analysis.setDeviceToGroupByExpression(deviceToGroupByExpression);
+        break;
+      case CONDITION_WINDOW:
+        Expression keepExpression =
+            ((GroupByConditionComponent) groupByComponent).getKeepExpression();
+        for (Expression expression : deviceToGroupByExpression.values()) {
+          checkGroupByConditionExpressionType(analysis, expression, keepExpression);
+        }
+        groupByParameter =
+            new GroupByConditionParameter(groupByComponent.isIgnoringNull(), keepExpression);
+        analysis.setDeviceToGroupByExpression(deviceToGroupByExpression);
+        break;
+      case SESSION_WINDOW:
+        groupByParameter =
+            new GroupBySessionParameter(
+                ((GroupBySessionComponent) groupByComponent).getTimeInterval());
+        break;
+      case COUNT_WINDOW:
+        groupByParameter =
+            new GroupByCountParameter(
+                ((GroupByCountComponent) groupByComponent).getCountNumber(),
+                groupByComponent.isIgnoringNull());
+        analysis.setDeviceToGroupByExpression(deviceToGroupByExpression);
+        break;
+      default:
+        throw new UnsupportedOperationException("Unsupported window type");
     }
-
-    if (windowType == WindowType.VARIATION_WINDOW) {
-      double delta = ((GroupByVariationComponent) groupByComponent).getDelta();
-      for (Expression expression : deviceToGroupByExpression.values()) {
-        checkGroupByVariationExpressionType(analysis, expression, delta);
-      }
-      GroupByParameter groupByParameter =
-          new GroupByVariationParameter(groupByComponent.isIgnoringNull(), delta);
-      analysis.setGroupByParameter(groupByParameter);
-      analysis.setDeviceToGroupByExpression(deviceToGroupByExpression);
-    } else if (windowType == WindowType.CONDITION_WINDOW) {
-      Expression keepExpression =
-          ((GroupByConditionComponent) groupByComponent).getKeepExpression();
-      for (Expression expression : deviceToGroupByExpression.values()) {
-        checkGroupByConditionExpressionType(analysis, expression, keepExpression);
-      }
-      GroupByParameter groupByParameter =
-          new GroupByConditionParameter(groupByComponent.isIgnoringNull(), keepExpression);
-      analysis.setGroupByParameter(groupByParameter);
-      analysis.setDeviceToGroupByExpression(deviceToGroupByExpression);
-    } else if (windowType == WindowType.SESSION_WINDOW) {
-      GroupByParameter groupByParameter =
-          new GroupBySessionParameter(
-              ((GroupBySessionComponent) groupByComponent).getTimeInterval());
-      analysis.setGroupByParameter(groupByParameter);
-    } else if (windowType == WindowType.COUNT_WINDOW) {
-      GroupByParameter groupByParameter =
-          new GroupByCountParameter(
-              ((GroupByCountComponent) groupByComponent).getCountNumber(),
-              groupByComponent.isIgnoringNull());
-      analysis.setGroupByParameter(groupByParameter);
-      analysis.setDeviceToGroupByExpression(deviceToGroupByExpression);
-    } else {
-      throw new SemanticException("Unsupported window type");
-    }
+    analysis.setGroupByParameter(groupByParameter);
   }
 
   private void analyzeDeviceToOrderBy(
@@ -1491,7 +1540,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       QueryStatement queryStatement,
       ISchemaTree schemaTree,
       Set<PartialPath> deviceSet) {
-
     if (!queryStatement.hasOrderByExpression()) {
       return;
     }
@@ -1524,11 +1572,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               String.format("The data type of %s is not comparable", dataType));
         }
 
-        Expression devicerViewExpression =
+        Expression deviceViewExpression =
             ExpressionAnalyzer.getMeasurementExpression(expressionForItem, analysis);
-        analyzeExpressionType(analysis, devicerViewExpression);
+        analyzeExpressionType(analysis, deviceViewExpression);
 
-        deviceViewOrderByExpression.add(devicerViewExpression);
+        deviceViewOrderByExpression.add(deviceViewExpression);
         orderByExpressionsForOneDevice.add(expressionForItem);
       }
       deviceToSortItems.put(
@@ -1731,6 +1779,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
    * @return List<TTimePartitionSlot>, if contains (-oo, XXX] time range, res.right.left = true; if
    *     contains [XX, +oo), res.right.right = true
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> getTimePartitionSlotList(
       Filter timeFilter) {
     if (timeFilter == null) {
@@ -2548,21 +2597,27 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           }
         }
       }
-
-      // construct TsFileResource
-      TsFileResource resource = new TsFileResource(tsFile);
-      if (!resource.resourceFileExists()) {
-        FileLoaderUtils.updateTsFileResource(
-            device2Metadata, resource); // serialize it in LoadSingleTsFileNode
-        resource.updatePlanIndexes(reader.getMinPlanIndex());
-        resource.updatePlanIndexes(reader.getMaxPlanIndex());
-      } else {
-        resource.deserialize();
-      }
-
-      resource.setStatus(TsFileResourceStatus.NORMAL);
-      return resource;
+      return constructTsFileResource(tsFile, device2Metadata, reader);
     }
+  }
+
+  private TsFileResource constructTsFileResource(
+      File tsFile,
+      Map<String, List<TimeseriesMetadata>> device2Metadata,
+      TsFileSequenceReader reader)
+      throws IOException {
+    TsFileResource resource = new TsFileResource(tsFile);
+    if (!resource.resourceFileExists()) {
+      FileLoaderUtils.updateTsFileResource(
+          device2Metadata, resource); // serialize it in LoadSingleTsFileNode
+      resource.updatePlanIndexes(reader.getMinPlanIndex());
+      resource.updatePlanIndexes(reader.getMaxPlanIndex());
+    } else {
+      resource.deserialize();
+    }
+
+    resource.setStatus(TsFileResourceStatus.NORMAL);
+    return resource;
   }
 
   private void autoCreateSg(int sgLevel, Map<String, Map<MeasurementSchema, File>> device2Schemas)
@@ -2984,9 +3039,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setStatement(deleteDataStatement);
 
     PathPatternTree patternTree = new PathPatternTree();
-    for (PartialPath pathPattern : deleteDataStatement.getPathList()) {
-      patternTree.appendPathPattern(pathPattern);
-    }
+    deleteDataStatement.getPathList().forEach(patternTree::appendPathPattern);
 
     ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, context);
     Set<String> deduplicatedDevicePaths = new HashSet<>();
@@ -3016,16 +3069,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
       deleteDataStatement.setPathList(new ArrayList<>(deletePatternSet));
     } else {
-      for (String devicePattern : patternTree.getAllDevicePatterns()) {
-        try {
-          schemaTree
-              .getMatchedDevices(new PartialPath(devicePattern))
-              .forEach(
-                  deviceSchemaInfo ->
-                      deduplicatedDevicePaths.add(deviceSchemaInfo.getDevicePath().getFullPath()));
-        } catch (IllegalPathException ignored) {
-          // won't happen
-        }
+      for (PartialPath devicePattern : patternTree.getAllDevicePaths()) {
+        schemaTree
+            .getMatchedDevices(devicePattern)
+            .forEach(
+                deviceSchemaInfo ->
+                    deduplicatedDevicePaths.add(deviceSchemaInfo.getDevicePath().getFullPath()));
       }
     }
     analysis.setSchemaTree(schemaTree);
@@ -3043,10 +3092,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
     analysis.setDataPartitionInfo(dataPartition);
-
-    if (dataPartition.isEmpty()) {
-      analysis.setFinishQueryAfterAnalyze(true);
-    }
+    analysis.setFinishQueryAfterAnalyze(dataPartition.isEmpty());
 
     return analysis;
   }

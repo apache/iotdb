@@ -255,6 +255,10 @@ public class PathPatternTreeTest {
             .collect(Collectors.toList()),
         patternTree.getAllDevicePatterns().stream().sorted().collect(Collectors.toList()));
 
+    Assert.assertEquals(
+        compressedDevicePaths.stream().sorted().collect(Collectors.toList()),
+        patternTree.getAllDevicePaths().stream().sorted().collect(Collectors.toList()));
+
     PublicBAOS outputStream = new PublicBAOS();
     resultPatternTree.serialize(outputStream);
     ByteBuffer buffer = ByteBuffer.allocate(outputStream.size());

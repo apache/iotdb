@@ -49,6 +49,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -133,13 +134,13 @@ public class Analysis {
   private Map<String, Set<Expression>> deviceToSourceExpressions;
 
   // input expressions of aggregations to be calculated
-  private Map<String, Set<Expression>> deviceToSourceTransformExpressions;
+  private Map<String, Set<Expression>> deviceToSourceTransformExpressions = new HashMap<>();
 
   // map from device name to query filter under this device
   private Map<String, Expression> deviceToWhereExpression;
 
   // all aggregations that need to be calculated
-  private Map<String, Set<Expression>> deviceToAggregationExpressions;
+  private Map<String, Set<Expression>> deviceToAggregationExpressions = new HashMap<>();
 
   // expression of output column to be calculated
   private Map<String, Set<Expression>> deviceToSelectExpressions;
@@ -158,6 +159,8 @@ public class Analysis {
   private Map<String, List<Integer>> deviceViewInputIndexesMap;
 
   private Set<Expression> deviceViewOutputExpressions;
+
+  private Map<String, Set<Expression>> deviceToOutputExpressions = new HashMap<>();
 
   // indicates whether DeviceView need special process when rewriteSource in DistributionPlan,
   // you can see SourceRewriter#visitDeviceView to get more information
@@ -724,5 +727,13 @@ public class Analysis {
   public void setOutputDeviceToQueriedDevicesMap(
       Map<String, List<String>> outputDeviceToQueriedDevicesMap) {
     this.outputDeviceToQueriedDevicesMap = outputDeviceToQueriedDevicesMap;
+  }
+
+  public Map<String, Set<Expression>> getDeviceToOutputExpressions() {
+    return deviceToOutputExpressions;
+  }
+
+  public void setDeviceToOutputExpressions(Map<String, Set<Expression>> deviceToOutputExpressions) {
+    this.deviceToOutputExpressions = deviceToOutputExpressions;
   }
 }
