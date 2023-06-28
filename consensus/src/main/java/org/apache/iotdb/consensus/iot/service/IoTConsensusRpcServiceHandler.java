@@ -26,6 +26,7 @@ import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TTransport;
 
+<<<<<<<< HEAD:iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/MPPDataExchangeServiceThriftHandler.java
 import java.util.concurrent.atomic.AtomicLong;
 
 public class MPPDataExchangeServiceThriftHandler implements TServerEventHandler {
@@ -34,11 +35,23 @@ public class MPPDataExchangeServiceThriftHandler implements TServerEventHandler 
   public MPPDataExchangeServiceThriftHandler() {
     MetricService.getInstance()
         .addMetricSet(new MppDataExchangeServiceThriftHandlerMetrics(thriftConnectionNumber));
+========
+public class IoTConsensusRpcServiceHandler implements TServerEventHandler {
+
+  private final IoTConsensusRpcServiceProcessor processor;
+
+  public IoTConsensusRpcServiceHandler(IoTConsensusRpcServiceProcessor processor) {
+    this.processor = processor;
+>>>>>>>> dc77bbc259c93fa20bfd64b02265457f29662454:consensus/src/main/java/org/apache/iotdb/consensus/iot/service/IoTConsensusRpcServiceHandler.java
   }
 
   @Override
   public void preServe() {
+<<<<<<<< HEAD:iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/MPPDataExchangeServiceThriftHandler.java
     // empty override
+========
+    // Empty method, since it is not needed now
+>>>>>>>> dc77bbc259c93fa20bfd64b02265457f29662454:consensus/src/main/java/org/apache/iotdb/consensus/iot/service/IoTConsensusRpcServiceHandler.java
   }
 
   @Override
@@ -54,7 +67,12 @@ public class MPPDataExchangeServiceThriftHandler implements TServerEventHandler 
 
   @Override
   public void processContext(
+<<<<<<<< HEAD:iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/MPPDataExchangeServiceThriftHandler.java
       ServerContext serverContext, TTransport inputTransport, TTransport outputTransport1) {
     // empty override
+========
+      ServerContext serverContext, TTransport inputTransport, TTransport outputTransport) {
+    // Empty method, since it is not needed now
+>>>>>>>> dc77bbc259c93fa20bfd64b02265457f29662454:consensus/src/main/java/org/apache/iotdb/consensus/iot/service/IoTConsensusRpcServiceHandler.java
   }
 }

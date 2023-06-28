@@ -19,4 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.multi.builtin;
 
+<<<<<<<< HEAD:iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/expression/multi/builtin/BuiltInFunctionHelper.java
 public interface BuiltInFunctionHelper {}
+========
+public interface IoTConsensusRpcServiceMBean {}
+>>>>>>>> dc77bbc259c93fa20bfd64b02265457f29662454:consensus/src/main/java/org/apache/iotdb/consensus/iot/service/IoTConsensusRpcServiceMBean.java
