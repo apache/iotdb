@@ -48,7 +48,8 @@ public class QueryStatementTest {
     List<Pair<String, String>> errorSqlWithMessages =
         Arrays.asList(
             new Pair<>(
-                "SELECT s1 FROM root.sg.d1 GROUP BY ([2017-11-01T00:00:00, 2017-11-07T23:00:00),1d)",
+                "SELECT s1 FROM root.sg.d1 "
+                    + "GROUP BY ([2017-11-01T00:00:00, 2017-11-07T23:00:00),1d)",
                 "Common queries and aggregated queries are not allowed to appear at the same time"),
             new Pair<>(
                 "SELECT count(s1),s2 FROM root.sg.d1", RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG),
@@ -67,10 +68,12 @@ public class QueryStatementTest {
                 "Expression of HAVING clause can not be used in NonAggregationQuery"),
             new Pair<>(
                 "SELECT count(d1.s1) FROM root.sg.d1 GROUP BY level=1 HAVING (count(s1) > 0)",
-                "When Having used with GroupByLevel: the suffix paths can only be measurement or one-level wildcard"),
+                "When Having used with GroupByLevel: "
+                    + "the suffix paths can only be measurement or one-level wildcard"),
             new Pair<>(
                 "SELECT count(s1) FROM root.sg.d1 GROUP BY level=1 HAVING (count(sg.d1.s1) > 0)",
-                "When Having used with GroupByLevel: the suffix paths can only be measurement or one-level wildcard"),
+                "When Having used with GroupByLevel: "
+                    + "the suffix paths can only be measurement or one-level wildcard"),
 
             // test for align by device clause
             new Pair<>(
