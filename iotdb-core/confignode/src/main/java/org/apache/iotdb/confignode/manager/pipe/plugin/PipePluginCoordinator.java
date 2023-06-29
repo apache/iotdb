@@ -93,19 +93,11 @@ public class PipePluginCoordinator {
   }
 
   public TGetJarInListResp getPipePluginJar(TGetJarInListReq req) {
-    try {
-      return ((JarResp)
-              configManager
-                  .getConsensusManager()
-                  .read(new GetPipePluginJarPlan(req.getJarNameList()))
-                  .getDataset())
-          .convertToThriftResponse();
-    } catch (IOException e) {
-      LOGGER.error("Fail to get PipePluginJar", e);
-      return new TGetJarInListResp(
-          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-              .setMessage(e.getMessage()),
-          Collections.emptyList());
-    }
+    return ((JarResp)
+            configManager
+                .getConsensusManager()
+                .read(new GetPipePluginJarPlan(req.getJarNameList()))
+                .getDataset())
+        .convertToThriftResponse();
   }
 }

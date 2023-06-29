@@ -37,7 +37,7 @@ To store TSFile and related data files in HDFS, here are the steps:
 
 First, download the source release from website or git clone the repository
 
-Build server and Hadoop module by: `mvn clean package -pl server,hadoop -am -Dmaven.test.skip=true -P get-jar-with-dependencies`
+Build server and Hadoop module by: `mvn clean package -pl iotdb-core/datanode,iotdb-connector/hadoop -am -Dmaven.test.skip=true -P get-jar-with-dependencies`
 
 Then, copy the target jar of Hadoop module `hadoop-tsfile-X.X.X-jar-with-dependencies.jar` into server target lib folder `.../server/target/iotdb-server-X.X.X/lib`.
 
@@ -167,5 +167,5 @@ ERROR org.apache.iotdb.tsfile.fileSystem.fsFactory.HDFSFactory:62 - Failed to ge
 ```
 
 A: It indicates that you forget to put Hadoop module dependency in IoTDB server. You can solve it by:
-* Build Hadoop module: `mvn clean package -pl hadoop -am -Dmaven.test.skip=true -P get-jar-with-dependencies`
+* Build Hadoop module: `mvn clean package -pl iotdb-connector/hadoop -am -Dmaven.test.skip=true -P get-jar-with-dependencies`
 * Copy the target jar of Hadoop module `hadoop-tsfile-X.X.X-jar-with-dependencies.jar` into server target lib folder `.../server/target/iotdb-server-X.X.X/lib`.
