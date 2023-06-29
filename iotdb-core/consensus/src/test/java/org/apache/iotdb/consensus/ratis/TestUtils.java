@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -132,7 +133,7 @@ public class TestUtils {
     }
 
     @Override
-    public DataSet read(IConsensusRequest IConsensusRequest) {
+    public DataSet read(IConsensusRequest request) {
       TestDataSet dataSet = new TestDataSet();
       dataSet.setNumber(integer.get());
       return dataSet;

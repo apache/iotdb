@@ -105,7 +105,8 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
           }
           if (thread.isStopped()) {
             logger.debug(
-                "LogDispatcherThread {} has been stopped, we will not retrying this Batch {} after {} times",
+                "LogDispatcherThread {} has been stopped, "
+                    + "we will not retrying this Batch {} after {} times",
                 thread.getPeer(),
                 batch,
                 retryCount);

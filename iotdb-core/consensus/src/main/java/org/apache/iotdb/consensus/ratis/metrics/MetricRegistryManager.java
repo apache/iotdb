@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.consensus.ratis.metrics;
 
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -33,9 +34,9 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 public class MetricRegistryManager extends MetricRegistries {
-  /** Using RefCountingMap here because of potential duplicate MetricRegistryInfos */
+  /** Using RefCountingMap here because of potential duplicate MetricRegistryInfos. */
   private final RefCountingMap<MetricRegistryInfo, RatisMetricRegistry> registries;
-  /** TODO: enable ratis metrics after verifying its correctness and efficiency */
+  /** TODO: enable ratis metrics after verifying its correctness and efficiency. */
   private final AbstractMetricService service = MetricService.getInstance();
 
   public MetricRegistryManager() {
@@ -45,7 +46,7 @@ public class MetricRegistryManager extends MetricRegistries {
   @Override
   public void clear() {
     registries.values().stream()
-        .map(registry -> (IoTDBMetricRegistry) registry)
+        .map(IoTDBMetricRegistry.class::cast)
         .forEach(IoTDBMetricRegistry::removeAll);
     this.registries.clear();
   }
