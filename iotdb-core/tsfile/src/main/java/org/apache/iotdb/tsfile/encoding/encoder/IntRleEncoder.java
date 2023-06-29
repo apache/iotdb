@@ -101,7 +101,7 @@ public class IntRleEncoder extends RleEncoder<Integer> {
 
     int[] tmpBuffer = new int[TSFileConfig.RLE_MIN_REPEATED_NUM];
     for (int i = 0; i < TSFileConfig.RLE_MIN_REPEATED_NUM; i++) {
-      tmpBuffer[i] = (int) bufferedValues[i];
+      tmpBuffer[i] = bufferedValues[i];
     }
     packer.pack8Values(tmpBuffer, 0, bytes);
     // we'll not write bit-packing group to OutputStream immediately

@@ -63,7 +63,7 @@ public class DictionaryEncoder extends Encoder {
   public void encode(Binary value, ByteArrayOutputStream out) {
     entryIndex.computeIfAbsent(
         value,
-        (v) -> {
+        v -> {
           indexEntry.add(v);
           mapSize += v.getLength();
           return entryIndex.size();

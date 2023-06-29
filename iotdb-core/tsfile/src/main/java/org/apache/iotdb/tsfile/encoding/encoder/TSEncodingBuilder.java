@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.encoding.encoder;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -43,7 +44,7 @@ public abstract class TSEncodingBuilder {
   private static final Logger logger = LoggerFactory.getLogger(TSEncodingBuilder.class);
   protected final TSFileConfig conf;
 
-  public TSEncodingBuilder() {
+  protected TSEncodingBuilder() {
     this.conf = TSFileDescriptor.getInstance().getConfig();
   }
 
@@ -260,7 +261,7 @@ public abstract class TSEncodingBuilder {
     }
   }
 
-  /** for INT32, INT64 */
+  /** for INT32, INT64. */
   public static class Regular extends TSEncodingBuilder {
 
     @Override
