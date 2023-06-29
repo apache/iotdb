@@ -109,7 +109,7 @@ public class ModificationFileTest {
   // test if file size greater than 1M.
   @Test
   public void testCompact01() {
-    String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact.settle");
+    String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact01.settle");
     long time = 1000;
     try (ModificationFile modificationFile = new ModificationFile(tempFileName)) {
       while (modificationFile.getSize() < 1024 * 1024) {
@@ -137,7 +137,7 @@ public class ModificationFileTest {
   // test if file size less than 1M.
   @Test
   public void testCompact02() {
-    String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact.settle");
+    String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact02.settle");
     long time = 1000;
     try (ModificationFile modificationFile = new ModificationFile(tempFileName)) {
       while (modificationFile.getSize() < 1024 * 100) {
@@ -161,7 +161,7 @@ public class ModificationFileTest {
   // test if file size greater than 1M.
   @Test
   public void testCompact03() {
-    String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact.settle");
+    String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact03.settle");
     try (ModificationFile modificationFile = new ModificationFile(tempFileName)) {
       while (modificationFile.getSize() < 1024 * 1024) {
         modificationFile.write(
@@ -187,7 +187,7 @@ public class ModificationFileTest {
 
   @Test
   public void testCompact04() {
-    String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact.settle");
+    String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact04.settle");
     try (ModificationFile modificationFile = new ModificationFile(tempFileName)) {
       long time = 0;
       while (modificationFile.getSize() < 1024 * 1024) {
@@ -219,8 +219,8 @@ public class ModificationFileTest {
   // test mods file and mods settle file both exists
   @Test
   public void testRecover01() {
-    String modsFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact.mods");
-    String modsSettleFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact.mods.settle");
+    String modsFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact01.mods");
+    String modsSettleFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact01.mods.settle");
 
     try (ModificationFile modsFile = new ModificationFile(modsFileName);
         ModificationFile modsSettleFile = new ModificationFile(modsSettleFileName)) {
@@ -258,8 +258,8 @@ public class ModificationFileTest {
   // test only mods settle file exists
   @Test
   public void testRecover02() {
-    String modsSettleFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact.mods.settle");
-    String originModsFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact.mods");
+    String modsSettleFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact02.mods.settle");
+    String originModsFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact02.mods");
     try (ModificationFile modsSettleFile = new ModificationFile(modsSettleFileName)) {
       modsSettleFile.write(
           new Deletion(
