@@ -172,6 +172,19 @@ public abstract class Decoder {
           default:
             throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
         }
+      case BUFF:
+        switch (dataType) {
+          case INT32:
+            return new IntBUFFDecoder();
+          case INT64:
+            return new LongBUFFDecoder();
+          case FLOAT:
+            return new FloatBUFFDecoder();
+          case DOUBLE:
+            return new DoubleBUFFDecoder();
+          default:
+            throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
+        }
       default:
         throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
     }

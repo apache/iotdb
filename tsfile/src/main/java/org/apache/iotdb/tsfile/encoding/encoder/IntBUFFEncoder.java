@@ -26,20 +26,19 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DoubleBUFFEncoder extends Encoder {
+public class IntBUFFEncoder extends Encoder {
 
   private static final int lenlen = 10;
   private static final int perlen = 5;
   private static final int[] len = {0, 5, 8, 11, 15, 18, 21, 25, 28, 31, 35};
-  private static final double eps = 1e-5;
 
   private int maxFloatLength;
   private boolean first;
-  private long minValue, maxValue;
+  private int minValue, maxValue;
   private int countA, countB;
-  private List<Double> li;
+  private List<Integer> li;
   private byte buffer = 0;
-  protected long bitsLeft = Byte.SIZE;
+  protected int bitsLeft = Byte.SIZE;
 
   private void reset() {
     maxFloatLength = 0;
@@ -49,29 +48,22 @@ public class DoubleBUFFEncoder extends Encoder {
     bitsLeft = Byte.SIZE;
   }
 
-  public DoubleBUFFEncoder() {
+  public IntBUFFEncoder() {
     super(TSEncoding.BUFF);
     reset();
   }
 
   @Override
-  public void encode(double value, ByteArrayOutputStream out) {
+  public void encode(int value, ByteArrayOutputStream out) {
     if (first) {
-      minValue = (long) Math.floor(value);
-      maxValue = (long) Math.ceil(value);
+      minValue = value;
+      maxValue = value;
       first = false;
     } else {
-      minValue = Math.min(minValue, (long) Math.floor(value));
-      maxValue = Math.max(maxValue, (long) Math.ceil(value));
+      minValue = Math.min(minValue, value);
+      maxValue = Math.max(maxValue, value);
     }
-    double tmp = value;
-    tmp -= Math.floor(tmp);
     int curFloatLength = 0;
-    while (tmp > eps) {
-      curFloatLength++;
-      tmp *= 10;
-      tmp -= Math.floor(tmp);
-    }
     maxFloatLength = Math.max(maxFloatLength, curFloatLength);
     li.add(value);
   }
@@ -84,30 +76,22 @@ public class DoubleBUFFEncoder extends Encoder {
       reset();
       return;
     }
-    countA = Long.SIZE - Long.numberOfLeadingZeros(maxValue - minValue);
+    countA = Integer.SIZE - Integer.numberOfLeadingZeros(maxValue - minValue);
     if (maxFloatLength > lenlen) countB = len[lenlen] + perlen * (maxFloatLength - lenlen);
     else countB = len[maxFloatLength];
     writeBits(li.size(), Integer.SIZE, out);
     writeBits(countA, Integer.SIZE, out);
     writeBits(countB, Integer.SIZE, out);
-    writeBits(minValue, Long.SIZE, out);
-    for (double value : li) {
-      long partA = (long) Math.floor(value) - minValue;
+    writeBits(minValue, Integer.SIZE, out);
+    for (int value : li) {
+      int partA = value - minValue;
       writeBits(partA, countA, out);
-      double partB = value - Math.floor(value);
-      for (int i = 0; i < countB; i++) {
-        partB *= 2;
-        if (partB >= 1) {
-          writeBit(out);
-          partB -= 1;
-        } else skipBit(out);
-      }
     }
     flushBits(out);
     reset();
   }
 
-  protected void writeBits(long value, int len, ByteArrayOutputStream out) {
+  protected void writeBits(int value, int len, ByteArrayOutputStream out) {
     if (len == 0) return;
     writeBits(value >>> 1, len - 1, out);
     if ((value & 1) == 0) skipBit(out);
@@ -142,7 +126,7 @@ public class DoubleBUFFEncoder extends Encoder {
   @Override
   public int getOneItemMaxSize() {
     if (first) return 0;
-    countA = Long.SIZE - Long.numberOfLeadingZeros(maxValue - minValue);
+    countA = Integer.SIZE - Integer.numberOfLeadingZeros(maxValue - minValue);
     if (maxFloatLength > lenlen) countB = len[lenlen] + perlen * (maxFloatLength - lenlen);
     else countB = len[maxFloatLength];
     return countA + countB;
@@ -151,9 +135,9 @@ public class DoubleBUFFEncoder extends Encoder {
   @Override
   public long getMaxByteSize() {
     if (first) return 0;
-    countA = Long.SIZE - Long.numberOfLeadingZeros(maxValue - minValue);
+    countA = Integer.SIZE - Integer.numberOfLeadingZeros(maxValue - minValue);
     if (maxFloatLength > lenlen) countB = len[lenlen] + perlen * (maxFloatLength - lenlen);
     else countB = len[maxFloatLength];
-    return (countA + countB) * li.size() + Integer.SIZE * 3 + Long.SIZE;
+    return (countA + countB) * li.size() + Integer.SIZE * 3 + Integer.SIZE;
   }
 }

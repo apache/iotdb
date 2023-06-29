@@ -68,6 +68,7 @@ class TSEncoding(Enum):
     SPRINTZ = 15
     RAKE = 16
     RLBE = 17
+    BUFF = 18
 
     # this method is implemented to avoid the issue reported by:
     # https://bugs.python.org/issue30545

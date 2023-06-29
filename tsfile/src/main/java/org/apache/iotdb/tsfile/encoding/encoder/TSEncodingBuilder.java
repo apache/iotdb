@@ -87,6 +87,8 @@ public abstract class TSEncodingBuilder {
         return new Rake();
       case RLBE:
         return new RLBE();
+      case BUFF:
+        return new Buff();
       default:
         throw new UnsupportedOperationException(type.toString());
     }
@@ -541,6 +543,29 @@ public abstract class TSEncodingBuilder {
           return new DoubleRLBE();
         default:
           throw new UnSupportedDataTypeException("RLBE doesn't support data type: " + type);
+      }
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
+    }
+  }
+
+  public static class Buff extends TSEncodingBuilder {
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      switch (type) {
+        case INT32:
+          return new IntBUFFEncoder();
+        case INT64:
+          return new LongBUFFEncoder();
+        case FLOAT:
+          return new FloatBUFFEncoder();
+        case DOUBLE:
+          return new DoubleBUFFEncoder();
+        default:
+          throw new UnSupportedDataTypeException("BUFF doesn't support data type: " + type);
       }
     }
 

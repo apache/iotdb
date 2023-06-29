@@ -26,18 +26,17 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DoubleBUFFEncoder extends Encoder {
+public class LongBUFFEncoder extends Encoder {
 
   private static final int lenlen = 10;
   private static final int perlen = 5;
   private static final int[] len = {0, 5, 8, 11, 15, 18, 21, 25, 28, 31, 35};
-  private static final double eps = 1e-5;
 
   private int maxFloatLength;
   private boolean first;
   private long minValue, maxValue;
   private int countA, countB;
-  private List<Double> li;
+  private List<Long> li;
   private byte buffer = 0;
   protected long bitsLeft = Byte.SIZE;
 
@@ -49,29 +48,22 @@ public class DoubleBUFFEncoder extends Encoder {
     bitsLeft = Byte.SIZE;
   }
 
-  public DoubleBUFFEncoder() {
+  public LongBUFFEncoder() {
     super(TSEncoding.BUFF);
     reset();
   }
 
   @Override
-  public void encode(double value, ByteArrayOutputStream out) {
+  public void encode(long value, ByteArrayOutputStream out) {
     if (first) {
-      minValue = (long) Math.floor(value);
-      maxValue = (long) Math.ceil(value);
+      minValue = value;
+      maxValue = value;
       first = false;
     } else {
-      minValue = Math.min(minValue, (long) Math.floor(value));
-      maxValue = Math.max(maxValue, (long) Math.ceil(value));
+      minValue = Math.min(minValue, value);
+      maxValue = Math.max(maxValue, value);
     }
-    double tmp = value;
-    tmp -= Math.floor(tmp);
     int curFloatLength = 0;
-    while (tmp > eps) {
-      curFloatLength++;
-      tmp *= 10;
-      tmp -= Math.floor(tmp);
-    }
     maxFloatLength = Math.max(maxFloatLength, curFloatLength);
     li.add(value);
   }
@@ -91,17 +83,9 @@ public class DoubleBUFFEncoder extends Encoder {
     writeBits(countA, Integer.SIZE, out);
     writeBits(countB, Integer.SIZE, out);
     writeBits(minValue, Long.SIZE, out);
-    for (double value : li) {
-      long partA = (long) Math.floor(value) - minValue;
+    for (long value : li) {
+      long partA = value - minValue;
       writeBits(partA, countA, out);
-      double partB = value - Math.floor(value);
-      for (int i = 0; i < countB; i++) {
-        partB *= 2;
-        if (partB >= 1) {
-          writeBit(out);
-          partB -= 1;
-        } else skipBit(out);
-      }
     }
     flushBits(out);
     reset();
