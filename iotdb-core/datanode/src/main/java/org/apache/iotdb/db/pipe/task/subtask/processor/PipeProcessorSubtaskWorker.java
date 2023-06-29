@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.task.subtask.processor;
 
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,13 +37,9 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
       new ConcurrentHashMap<>();
 
   @Override
+  @SuppressWarnings("squid:S2189")
   public void runMayThrow() {
     while (true) {
-      // exit if the agent is shutdown
-      if (PipeAgent.runtime().isShutdown()) {
-        return;
-      }
-
       // clean up closed subtasks before running
       subtasks.keySet().stream().filter(PipeProcessorSubtask::isClosed).forEach(subtasks::remove);
 
