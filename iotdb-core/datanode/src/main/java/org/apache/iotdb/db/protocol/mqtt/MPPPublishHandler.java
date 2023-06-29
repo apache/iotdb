@@ -56,7 +56,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
   private static final Logger LOG = LoggerFactory.getLogger(MPPPublishHandler.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private final SessionManager SESSION_MANAGER = SessionManager.getInstance();
+  private final SessionManager sessionManager = SessionManager.getInstance();
 
   private final ConcurrentHashMap<String, MqttClientSession> clientIdToSessionMap =
       new ConcurrentHashMap<>();
@@ -79,7 +79,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
   public void onConnect(InterceptConnectMessage msg) {
     if (!clientIdToSessionMap.containsKey(msg.getClientID())) {
       MqttClientSession session = new MqttClientSession(msg.getClientID());
-      SESSION_MANAGER.login(
+      sessionManager.login(
           session,
           msg.getUsername(),
           new String(msg.getPassword()),
@@ -94,7 +94,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
   public void onDisconnect(InterceptDisconnectMessage msg) {
     MqttClientSession session = clientIdToSessionMap.remove(msg.getClientID());
     if (null != session) {
-      SESSION_MANAGER.closeSession(session, Coordinator.getInstance()::cleanupQueryExecution);
+      sessionManager.closeSession(session, Coordinator.getInstance()::cleanupQueryExecution);
     }
   }
 
@@ -155,13 +155,13 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
         if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           LOG.warn(tsStatus.message);
         } else {
-          long queryId = SESSION_MANAGER.requestQueryId();
+          long queryId = sessionManager.requestQueryId();
           ExecutionResult result =
               Coordinator.getInstance()
                   .execute(
                       statement,
                       queryId,
-                      SESSION_MANAGER.getSessionInfo(session),
+                      sessionManager.getSessionInfo(session),
                       "",
                       partitionFetcher,
                       schemaFetcher,

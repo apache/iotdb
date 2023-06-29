@@ -26,8 +26,6 @@ import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.glassfish.jersey.internal.util.Base64;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.servlet.annotation.WebFilter;
 import javax.ws.rs.container.ContainerRequestContext;
@@ -43,13 +41,13 @@ import java.io.IOException;
 @Provider
 public class AuthorizationFilter implements ContainerRequestFilter {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(AuthorizationFilter.class);
-
   private final IAuthorizer authorizer = AuthorizerManager.getInstance();
   private final UserCache userCache = UserCache.getInstance();
   IoTDBRestServiceConfig config = IoTDBRestServiceDescriptor.getInstance().getConfig();
 
-  public AuthorizationFilter() throws AuthException {}
+  public AuthorizationFilter() throws AuthException {
+    // do nothing
+  }
 
   @Override
   public void filter(ContainerRequestContext containerRequestContext) throws IOException {
