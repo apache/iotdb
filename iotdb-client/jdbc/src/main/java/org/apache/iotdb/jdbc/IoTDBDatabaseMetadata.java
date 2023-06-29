@@ -722,6 +722,9 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     return "database";
   }
 
+  @SuppressWarnings(
+      "squid:S2095") // ignore Use try-with-resources or close this "Statement" in a "finally"
+  // clause
   @Override
   public ResultSet getCatalogs() throws SQLException {
     Statement stmt = this.connection.createStatement();
@@ -816,6 +819,9 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     }
   }
 
+  @SuppressWarnings(
+      "squid:S2095") // ignore Use try-with-resources or close this "Statement" in a "finally"
+  // clause
   @Override
   public ResultSet getClientInfoProperties() throws SQLException {
     Statement stmt = this.connection.createStatement();
@@ -1168,6 +1174,9 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     return "";
   }
 
+  @SuppressWarnings(
+      "squid:S2095") // ignore Use try-with-resources or close this "Statement" in a "finally"
+  // clause
   @Override
   public ResultSet getFunctionColumns(
       String catalog,
@@ -1270,6 +1279,9 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false);
   }
 
+  @SuppressWarnings(
+      "squid:S2095") // ignore Use try-with-resources or close this "Statement" in a "finally"
+  // clause
   @Override
   public ResultSet getFunctions(String catalog, String schemaPattern, String functionNamePattern)
       throws SQLException {
@@ -1855,6 +1867,9 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     return "stroge group";
   }
 
+  @SuppressWarnings(
+      "squid:S2095") // ignore Use try-with-resources or close this "Statement" in a "finally"
+  // clause
   @Override
   public ResultSet getSchemas() throws SQLException {
     Statement stmt = this.connection.createStatement();
@@ -2033,9 +2048,11 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @SuppressWarnings({
     "squid:S6541",
-    "squid:S3776"
+    "squid:S3776",
+    "squid:S2095"
   }) // ignore Cognitive Complexity of methods should not be too high
-  //  // ignore Methods should not perform too many tasks (aka Brain method)
+  // ignore Methods should not perform too many tasks (aka Brain method)
+  // ignore Use try-with-resources or close this "Statement" in a "finally" clause
   @Override
   public ResultSet getTablePrivileges(String catalog, String schemaPattern, String tableNamePattern)
       throws SQLException {
@@ -2183,9 +2200,11 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @SuppressWarnings({
     "squid:S6541",
-    "squid:S3776"
+    "squid:S3776",
+    "squid:S2095"
   }) // ignore Cognitive Complexity of methods should not be too high
   // ignore Methods should not perform too many tasks (aka Brain method)
+  // ignore Use try-with-resources or close this "Statement" in a "finally" clause
   @Override
   public ResultSet getColumns(
       String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern)
@@ -2453,9 +2472,11 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @SuppressWarnings({
     "squid:S6541",
-    "squid:S3776"
+    "squid:S3776",
+    "squid:S2095"
   }) // ignore Cognitive Complexity of methods should not be too high
   // ignore Methods should not perform too many tasks (aka Brain method)
+  // ignore Use try-with-resources or close this "Statement" in a "finally" clause
   @Override
   public ResultSet getTables(
       String catalog, String schemaPattern, String tableNamePattern, String[] types)

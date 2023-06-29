@@ -1783,6 +1783,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return status;
   }
 
+  @SuppressWarnings("squid:S2142") // ignore Either re-interrupt this method or rethrow
   @Override
   public TSStatus stopDataNode() {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
