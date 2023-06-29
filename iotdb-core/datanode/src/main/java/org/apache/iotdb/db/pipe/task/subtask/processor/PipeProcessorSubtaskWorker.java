@@ -26,12 +26,16 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.pipe.task.subtask.PipeSubtask.MAX_RETRY_TIMES;
 
 public class PipeProcessorSubtaskWorker extends WrappedRunnable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeProcessorSubtaskWorker.class);
+
+  private static final long CLOSED_SUBTASK_CLEANUP_ROUND_INTERVAL = 1000;
+  private long closedSubtaskCleanupRoundCounter = 0;
 
   private final ConcurrentMap<PipeProcessorSubtask, PipeProcessorSubtask> subtasks =
       new ConcurrentHashMap<>();
@@ -41,7 +45,12 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
   public void runMayThrow() {
     while (true) {
       // clean up closed subtasks before running
-      subtasks.keySet().stream().filter(PipeProcessorSubtask::isClosed).forEach(subtasks::remove);
+      if (++closedSubtaskCleanupRoundCounter % CLOSED_SUBTASK_CLEANUP_ROUND_INTERVAL == 0) {
+        subtasks.keySet().stream()
+            .filter(PipeProcessorSubtask::isClosed)
+            .collect(Collectors.toList())
+            .forEach(subtasks::remove);
+      }
 
       // run subtasks
       final boolean canSleepBeforeNextRound = runSubtasks();
