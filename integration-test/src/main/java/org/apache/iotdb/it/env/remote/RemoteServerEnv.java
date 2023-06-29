@@ -106,6 +106,12 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
+  public Connection getConnectionWithSpecifiedDataNode(
+      DataNodeWrapper dataNode, String username, String password) throws SQLException {
+    return getConnection(username, password);
+  }
+
+  @Override
   public Connection getConnection(Constant.Version version, String username, String password)
       throws SQLException {
     Connection connection = null;
