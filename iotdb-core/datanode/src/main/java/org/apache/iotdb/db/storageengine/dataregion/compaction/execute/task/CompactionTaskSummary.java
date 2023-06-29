@@ -36,9 +36,6 @@ public class CompactionTaskSummary {
   protected long temporalFileSize = 0;
   protected int temporalFileNum = 0;
 
-  @SuppressWarnings("squid:S1186")
-  public CompactionTaskSummary() {}
-
   public void start() {
     this.status = Status.STARTED;
     this.startTime = System.currentTimeMillis();
