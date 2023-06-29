@@ -53,11 +53,22 @@ public class AlterTimeSeriesStatement extends Statement {
   private Map<String, String> tagsMap;
   private Map<String, String> attributesMap;
 
-  private boolean isAlterView = false;
+  private final boolean isAlterView;
 
   public AlterTimeSeriesStatement() {
     super();
+    isAlterView = false;
     statementType = StatementType.ALTER_TIMESERIES;
+  }
+
+  public AlterTimeSeriesStatement(boolean isAlterView) {
+    super();
+    this.isAlterView = isAlterView;
+    if (isAlterView) {
+      statementType = StatementType.ALTER_LOGICAL_VIEW;
+    } else {
+      statementType = StatementType.ALTER_TIMESERIES;
+    }
   }
 
   @Override
@@ -115,10 +126,6 @@ public class AlterTimeSeriesStatement extends Statement {
 
   public boolean isAlterView() {
     return isAlterView;
-  }
-
-  public void setAlterView(boolean alterView) {
-    isAlterView = alterView;
   }
 
   @Override
