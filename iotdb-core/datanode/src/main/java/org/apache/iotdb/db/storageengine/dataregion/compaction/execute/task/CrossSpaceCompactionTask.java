@@ -62,6 +62,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   protected double selectedUnseqFileSize = 0;
   protected long memoryCost = 0L;
 
+  @SuppressWarnings("squid:S107")
   public CrossSpaceCompactionTask(
       long timePartition,
       TsFileManager tsFileManager,
@@ -93,7 +94,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   @Override
-  @SuppressWarnings("squid:S6541")
+  @SuppressWarnings({"squid:S6541", "squid:S3776", "squid:S2142"})
   public boolean doCompaction() {
     boolean isSuccess = true;
     try {
@@ -123,7 +124,12 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       }
 
       LOGGER.info(
-          "{}-{} [Compaction] CrossSpaceCompaction task starts with {} seq files and {} unsequence files. Sequence files : {}, unsequence files : {} . Sequence files size is {} MB, unsequence file size is {} MB, total size is {} MB",
+          "{}-{} [Compaction] CrossSpaceCompaction task starts with {} seq files "
+              + "and {} unsequence files. "
+              + "Sequence files : {}, unsequence files : {} . "
+              + "Sequence files size is {} MB, "
+              + "unsequence file size is {} MB, "
+              + "total size is {} MB",
           storageGroupName,
           dataRegionId,
           selectedSequenceFiles.size(),
@@ -178,11 +184,14 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         if (!validator.validateCompaction(
             tsFileManager, targetTsfileResourceList, storageGroupName, timePartition)) {
           LOGGER.error(
-              "Failed to pass compaction validation, source sequence files is: {}, unsequence files is {}, target files is {}",
+              "Failed to pass compaction validation, "
+                  + "source sequence files is: {}, "
+                  + "unsequence files is {}, "
+                  + "target files is {}",
               selectedSequenceFiles,
               selectedUnsequenceFiles,
               targetTsfileResourceList);
-          throw new RuntimeException("Failed to pass compaction validation");
+          throw new CompactionValidationFailedException("Failed to pass compaction validation");
         }
 
         releaseReadAndLockWrite(selectedSequenceFiles);
@@ -232,7 +241,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         long costTime = (System.currentTimeMillis() - startTime) / 1000;
 
         LOGGER.info(
-            "{}-{} [Compaction] CrossSpaceCompaction task finishes successfully, time cost is {} s, compaction speed is {} MB/s, {}",
+            "{}-{} [Compaction] CrossSpaceCompaction task finishes successfully, "
+                + "time cost is {} s, "
+                + "compaction speed is {} MB/s, {}",
             storageGroupName,
             dataRegionId,
             costTime,
@@ -242,15 +253,15 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       if (logFile.exists()) {
         FileUtils.delete(logFile);
       }
-    } catch (Throwable throwable) {
+    } catch (Exception e) {
       isSuccess = false;
       // catch throwable to handle OOM errors
-      if (!(throwable instanceof InterruptedException)) {
+      if (!(e instanceof InterruptedException)) {
         LOGGER.error(
             "{}-{} [Compaction] Meet errors in cross space compaction.",
             storageGroupName,
             dataRegionId,
-            throwable);
+            e);
       } else {
         LOGGER.warn("{}-{} [Compaction] Compaction interrupted", storageGroupName, dataRegionId);
         // clean the interrupted flag
@@ -274,8 +285,8 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           .decreaseCompactionFileNumCost(
               selectedSequenceFiles.size() + selectedUnsequenceFiles.size());
       releaseAllLocksAndResetStatus();
-      return isSuccess;
     }
+    return isSuccess;
   }
 
   @Override
@@ -376,13 +387,14 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       SystemInfo.getInstance().addCompactionMemoryCost(memoryCost, 60);
       SystemInfo.getInstance()
           .addCompactionFileNum(selectedSequenceFiles.size() + selectedUnsequenceFiles.size(), 60);
-    } catch (Throwable t) {
-      if (t instanceof InterruptedException) {
-        LOGGER.warn("Interrupted when allocating memory for compaction", t);
-      } else if (t instanceof CompactionMemoryNotEnoughException) {
-        LOGGER.info("No enough memory for current compaction task {}", this, t);
-      } else if (t instanceof CompactionFileCountExceededException) {
-        LOGGER.info("No enough file num for current compaction task {}", this, t);
+    } catch (Exception e) {
+      if (e instanceof InterruptedException) {
+        LOGGER.warn("Interrupted when allocating memory for compaction", e);
+        Thread.currentThread().interrupt();
+      } else if (e instanceof CompactionMemoryNotEnoughException) {
+        LOGGER.info("No enough memory for current compaction task {}", this, e);
+      } else if (e instanceof CompactionFileCountExceededException) {
+        LOGGER.info("No enough file num for current compaction task {}", this, e);
         SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
       }
       resetCompactionCandidateStatusForAllSourceFiles();
@@ -410,7 +422,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           return false;
         }
       }
-    } catch (Throwable e) {
+    } catch (Exception e) {
       releaseAllLocksAndResetStatus();
       throw e;
     }

@@ -41,8 +41,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  * finished. The future returns the {@link CompactionTaskSummary} of this task execution.
  */
 public abstract class AbstractCompactionTask {
+  @SuppressWarnings("squid:S1068")
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
+
   protected String dataRegionId;
   protected String storageGroupName;
   protected long timePartition;
@@ -55,7 +57,7 @@ public abstract class AbstractCompactionTask {
   protected boolean crossTask;
   protected boolean innerSeqTask;
 
-  public AbstractCompactionTask(
+  protected AbstractCompactionTask(
       String storageGroupName,
       String dataRegionId,
       long timePartition,
@@ -106,8 +108,8 @@ public abstract class AbstractCompactionTask {
       CompactionTaskManager.getInstance().removeRunningTaskFuture(this);
       CompactionMetrics.getInstance()
           .recordTaskFinishOrAbort(crossTask, innerSeqTask, summary.getTimeCost());
-      return isSuccess;
     }
+    return isSuccess;
   }
 
   public String getStorageGroupName() {
@@ -131,6 +133,11 @@ public abstract class AbstractCompactionTask {
    * @return true if the task is valid else false
    */
   public abstract boolean checkValidAndSetMerging();
+
+  @Override
+  public int hashCode() {
+    return super.hashCode();
+  }
 
   @Override
   public boolean equals(Object other) {
