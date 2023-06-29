@@ -42,6 +42,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 /** This class is used to compact one series during inner space compaction. */
+@SuppressWarnings("squid:S1319")
 public class SingleSeriesCompactionExecutor {
   private String device;
   private PartialPath series;
@@ -107,9 +108,12 @@ public class SingleSeriesCompactionExecutor {
   /**
    * This function execute the compaction of a single time series. Notice, the result of single
    * series compaction may contain more than one chunk.
+   *
+   * @throws IOException if io errors occurred
    */
+  @SuppressWarnings("squid:S3776")
   public void execute() throws IOException {
-    while (readerAndChunkMetadataList.size() > 0) {
+    while (!readerAndChunkMetadataList.isEmpty()) {
       Pair<TsFileSequenceReader, List<ChunkMetadata>> readerListPair =
           readerAndChunkMetadataList.removeFirst();
       TsFileSequenceReader reader = readerListPair.left;
@@ -248,7 +252,11 @@ public class SingleSeriesCompactionExecutor {
         && (header1.getCompressionType() == header2.getCompressionType());
   }
 
-  /** Deserialize a chunk into points and write it to the chunkWriter */
+  /**
+   * Deserialize a chunk into points and write it to the chunkWriter.
+   *
+   * @throws IOException if io errors occurred
+   */
   private void writeChunkIntoChunkWriter(Chunk chunk) throws IOException {
     IChunkReader chunkReader = new ChunkReader(chunk, null);
     while (chunkReader.hasNextSatisfiedPage()) {
