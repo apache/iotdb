@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.rpc.RpcUtils;
@@ -724,7 +725,13 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   @Override
   public ResultSet getCatalogs() throws SQLException {
     Statement stmt = this.connection.createStatement();
-    ResultSet rs = stmt.executeQuery(SHOW_DATABASES_SQL);
+    ResultSet rs;
+    try {
+      rs = stmt.executeQuery(SHOW_DATABASES_SQL);
+    } catch (SQLException e) {
+      stmt.close();
+      throw e;
+    }
 
     List<String> columnNameList = new ArrayList<>();
     List<String> columnTypeList = new ArrayList<>();
@@ -812,8 +819,13 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   @Override
   public ResultSet getClientInfoProperties() throws SQLException {
     Statement stmt = this.connection.createStatement();
-    ResultSet rs = stmt.executeQuery(SHOW_DATABASES_SQL);
-
+    ResultSet rs;
+    try {
+      rs = stmt.executeQuery(SHOW_DATABASES_SQL);
+    } catch (SQLException e) {
+      stmt.close();
+      throw e;
+    }
     Field[] fields = new Field[4];
     fields[0] = new Field("", "NAME", "TEXT");
     fields[1] = new Field("", "MAX_LEN", INT32);
@@ -902,7 +914,13 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         && columnNamePattern.length() > 0) {
       sql = sql + "." + columnNamePattern;
     }
-    ResultSet rs = stmt.executeQuery(sql);
+    ResultSet rs;
+    try {
+      rs = stmt.executeQuery(sql);
+    } catch (SQLException e) {
+      stmt.close();
+      throw e;
+    }
     Field[] fields = new Field[8];
     fields[0] = new Field("", TABLE_CAT, "TEXT");
     fields[1] = new Field("", TABLE_SCHEM, "TEXT");
@@ -1158,7 +1176,13 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       java.lang.String columnNamePattern)
       throws SQLException {
     Statement stmt = connection.createStatement();
-    ResultSet rs = stmt.executeQuery(SHOW_FUNCTIONS);
+    ResultSet rs;
+    try {
+      rs = stmt.executeQuery(SHOW_FUNCTIONS);
+    } catch (SQLException e) {
+      stmt.close();
+      throw e;
+    }
     Field[] fields = new Field[17];
     fields[0] = new Field("", "FUNCTION_CAT ", "TEXT");
     fields[1] = new Field("", "FUNCTION_SCHEM", "TEXT");
@@ -1250,7 +1274,13 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   public ResultSet getFunctions(String catalog, String schemaPattern, String functionNamePattern)
       throws SQLException {
     Statement stmt = connection.createStatement();
-    ResultSet rs = stmt.executeQuery(SHOW_FUNCTIONS);
+    ResultSet rs;
+    try {
+      rs = stmt.executeQuery(SHOW_FUNCTIONS);
+    } catch (SQLException e) {
+      stmt.close();
+      throw e;
+    }
     Field[] fields = new Field[6];
     fields[0] = new Field("", "FUNCTION_CAT ", "TEXT");
     fields[1] = new Field("", "FUNCTION_SCHEM", "TEXT");
@@ -1828,7 +1858,13 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   @Override
   public ResultSet getSchemas() throws SQLException {
     Statement stmt = this.connection.createStatement();
-    ResultSet rs = stmt.executeQuery(SHOW_DATABASES_SQL);
+    ResultSet rs;
+    try {
+      rs = stmt.executeQuery(SHOW_DATABASES_SQL);
+    } catch (SQLException e) {
+      stmt.close();
+      throw e;
+    }
     Field[] fields = new Field[2];
     fields[0] = new Field("", TABLE_SCHEM, "TEXT");
     fields[1] = new Field("", "TABLE_CATALOG", "TEXT");
@@ -2026,8 +2062,13 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       }
       sql = sql + "." + tableNamePattern;
     }
-
-    ResultSet rs = stmt.executeQuery(sql);
+    ResultSet rs;
+    try {
+      rs = stmt.executeQuery(sql);
+    } catch (SQLException e) {
+      stmt.close();
+      throw e;
+    }
     Field[] fields = new Field[8];
     fields[0] = new Field("", TABLE_CAT, "TEXT");
     fields[1] = new Field("", TABLE_SCHEM, "TEXT");
@@ -2184,7 +2225,13 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       }
       sql = sql + "." + columnNamePattern;
     }
-    ResultSet rs = stmt.executeQuery(sql);
+    ResultSet rs;
+    try {
+      rs = stmt.executeQuery(sql);
+    } catch (SQLException e) {
+      stmt.close();
+      throw e;
+    }
     Field[] fields = new Field[24];
     fields[0] = new Field("", TABLE_CAT, "TEXT");
     fields[1] = new Field("", TABLE_SCHEM, "TEXT");
@@ -2439,7 +2486,13 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       }
       sql = sql + "." + tableNamePattern;
     }
-    ResultSet rs = stmt.executeQuery(sql);
+    ResultSet rs;
+    try {
+      rs = stmt.executeQuery(sql);
+    } catch (SQLException e) {
+      stmt.close();
+      throw e;
+    }
     Field[] fields = new Field[10];
     fields[0] = new Field("", TABLE_CAT, "TEXT");
     fields[1] = new Field("", TABLE_SCHEM, "TEXT");
