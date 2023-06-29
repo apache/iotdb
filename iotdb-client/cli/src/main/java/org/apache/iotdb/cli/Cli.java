@@ -131,22 +131,9 @@ public class Cli extends AbstractCli {
 
   private static void serve() {
     try {
-      password = commandLine.getOptionValue(PASSWORD_ARGS);
+      password = commandLine.getOptionValue(PW_ARGS);
       if (hasExecuteSQL && password != null) {
-        try (IoTDBConnection connection =
-            (IoTDBConnection)
-                DriverManager.getConnection(
-                    Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
-          connection.setQueryTimeout(queryTimeout);
-          properties = connection.getServerProperties();
-          timestampPrecision = properties.getTimestampPrecision();
-          AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
-          processCommand(execute, connection);
-          System.exit(lastProcessStatus);
-        } catch (SQLException e) {
-          println(IOTDB_ERROR_PREFIX + "Can't execute sql because" + e.getMessage());
-          System.exit(CODE_ERROR);
-        }
+        executeSql();
       }
       if (password == null) {
         password = lineReader.readLine("please input your password:", '\0');
@@ -158,12 +145,28 @@ public class Cli extends AbstractCli {
     }
   }
 
+  private static void executeSql() throws TException {
+    try (IoTDBConnection connection =
+        (IoTDBConnection)
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
+      connection.setQueryTimeout(queryTimeout);
+      properties = connection.getServerProperties();
+      timestampPrecision = properties.getTimestampPrecision();
+      AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
+      processCommand(execute, connection);
+      System.exit(lastProcessStatus);
+    } catch (SQLException e) {
+      println(IOTDB_ERROR_PREFIX + "Can't execute sql because" + e.getMessage());
+      System.exit(CODE_ERROR);
+    }
+  }
+
   private static void receiveCommands(LineReader reader) throws TException {
     try (IoTDBConnection connection =
         (IoTDBConnection)
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
-      String s;
       connection.setQueryTimeout(queryTimeout);
       properties = connection.getServerProperties();
       AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
@@ -173,22 +176,9 @@ public class Cli extends AbstractCli {
       displayLogo(properties.getLogo(), properties.getVersion(), properties.getBuildInfo());
       println(String.format("Successfully login at %s:%s", host, port));
       while (true) {
-        try {
-          s = reader.readLine(IOTDB_CLI_PREFIX + "> ", null);
-          boolean continues = processCommand(s, connection);
-          if (!continues) {
-            break;
-          }
-        } catch (UserInterruptException e) {
-          // Exit on signal INT requires confirmation.
-          try {
-            reader.readLine("Press CTRL+C again to exit, or press ENTER to continue", '\0');
-          } catch (UserInterruptException | EndOfFileException e2) {
-            System.exit(CODE_OK);
-          }
-        } catch (EndOfFileException e) {
-          // Exit on EOF (usually by pressing CTRL+D).
-          System.exit(CODE_OK);
+        boolean readLine = readerReadLine(reader, connection);
+        if (readLine) {
+          break;
         }
       }
     } catch (SQLException e) {
@@ -196,6 +186,32 @@ public class Cli extends AbstractCli {
           String.format(
               "%s: %s Host is %s, port is %s.", IOTDB_ERROR_PREFIX, e.getMessage(), host, port));
       System.exit(CODE_ERROR);
+    }
+  }
+
+  private static boolean readerReadLine(LineReader reader, IoTDBConnection connection) {
+    String s;
+    try {
+      s = reader.readLine(IOTDB_CLI_PREFIX + "> ", null);
+      boolean continues = processCommand(s, connection);
+      if (!continues) {
+        return true;
+      }
+    } catch (UserInterruptException e) {
+      // Exit on signal INT requires confirmation.
+      readLine(reader);
+    } catch (EndOfFileException e) {
+      // Exit on EOF (usually by pressing CTRL+D).
+      System.exit(CODE_OK);
+    }
+    return false;
+  }
+
+  private static void readLine(LineReader reader) {
+    try {
+      reader.readLine("Press CTRL+C again to exit, or press ENTER to continue", '\0');
+    } catch (UserInterruptException | EndOfFileException e2) {
+      System.exit(CODE_OK);
     }
   }
 }

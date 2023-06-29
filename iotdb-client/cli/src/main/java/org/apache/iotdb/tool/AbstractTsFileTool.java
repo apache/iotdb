@@ -18,14 +18,13 @@
  */
 package org.apache.iotdb.tool;
 
+import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.session.Session;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
-
-import java.io.IOException;
 
 public abstract class AbstractTsFileTool {
 
@@ -37,8 +36,8 @@ public abstract class AbstractTsFileTool {
   protected static final String PORT_ARGS = "p";
   protected static final String PORT_NAME = "port";
 
-  protected static final String PASSWORD_ARGS = "pw";
-  protected static final String PASSWORD_NAME = "password";
+  protected static final String PW_ARGS = "pw";
+  protected static final String PW_NAME = "password";
 
   protected static final String USERNAME_ARGS = "u";
   protected static final String USERNAME_NAME = "username";
@@ -55,26 +54,25 @@ public abstract class AbstractTsFileTool {
   protected static String password;
   protected static Session session;
 
-  public AbstractTsFileTool() {}
+  protected AbstractTsFileTool() {}
 
   protected static String checkRequiredArg(String arg, String name, CommandLine commandLine)
       throws ArgsErrorException {
     String str = commandLine.getOptionValue(arg);
     if (str == null) {
       String msg = String.format("Required values for option '%s' not provided", name);
-      System.out.println(msg);
-      System.out.println("Use -help for more information");
+      IoTPrinter.println(msg);
+      IoTPrinter.println("Use -help for more information");
       throw new ArgsErrorException(msg);
     }
     return str;
   }
 
-  protected static void parseBasicParams(CommandLine commandLine)
-      throws ArgsErrorException, IOException {
+  protected static void parseBasicParams(CommandLine commandLine) throws ArgsErrorException {
     host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine);
     port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine);
     username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine);
-    password = commandLine.getOptionValue(PASSWORD_ARGS);
+    password = commandLine.getOptionValue(PW_ARGS);
   }
 
   protected static Options createNewOptions() {
@@ -111,10 +109,10 @@ public abstract class AbstractTsFileTool {
     options.addOption(opUsername);
 
     Option opPassword =
-        Option.builder(PASSWORD_ARGS)
-            .longOpt(PASSWORD_NAME)
+        Option.builder(PW_ARGS)
+            .longOpt(PW_NAME)
             .optionalArg(true)
-            .argName(PASSWORD_NAME)
+            .argName(PW_NAME)
             .hasArg()
             .desc("Password (required)")
             .build();

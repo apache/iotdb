@@ -46,7 +46,7 @@ public class IoTDBDriver implements Driver {
     }
   }
 
-  private final String TSFILE_URL_PREFIX = Config.IOTDB_URL_PREFIX + ".*";
+  private static final String TSFILE_URL_PREFIX = Config.IOTDB_URL_PREFIX + ".*";
 
   public IoTDBDriver() {
     // This is a constructor.
