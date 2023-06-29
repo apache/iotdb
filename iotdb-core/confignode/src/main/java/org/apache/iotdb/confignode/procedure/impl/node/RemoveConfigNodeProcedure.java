@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 /** remove config node procedure */
 public class RemoveConfigNodeProcedure extends AbstractNodeProcedure<RemoveConfigNodeState> {
@@ -140,5 +141,10 @@ public class RemoveConfigNodeProcedure extends AbstractNodeProcedure<RemoveConfi
           && thatProc.removedConfigNode.equals(this.removedConfigNode);
     }
     return false;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(this.removedConfigNode);
   }
 }

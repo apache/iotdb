@@ -142,7 +142,8 @@ public abstract class AbstractProcedureScheduler implements ProcedureScheduler {
         if (nanos < 0) {
           schedWaitCond.await();
         } else {
-          schedWaitCond.awaitNanos(nanos);
+          long leftTime = schedWaitCond.awaitNanos(nanos);
+          LOG.debug("the scheduler waiting time left {} nanos", leftTime);
         }
         if (!queueHasRunnables()) {
           return null;
