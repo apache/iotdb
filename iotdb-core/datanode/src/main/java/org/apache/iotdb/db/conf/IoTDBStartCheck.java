@@ -42,7 +42,6 @@ import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Objects;
 import java.util.Properties;
 import java.util.function.Supplier;
 
@@ -262,69 +261,13 @@ public class IoTDBStartCheck {
                 + " Please upgrade to v0.10 first");
         System.exit(-1);
       }
-      // check whether upgrading from [v0.10, v.13]
       String versionString = properties.getProperty(IOTDB_VERSION_STRING);
-      if (versionString.startsWith("0.10") || versionString.startsWith("0.11")) {
-        logger.error("IoTDB version is too old, please upgrade to 0.12 firstly.");
+      if (versionString.startsWith("0.")) {
+        logger.error("IoTDB version is too old");
         System.exit(-1);
-      } else if (versionString.startsWith("0.12") || versionString.startsWith("0.13")) {
-        checkWALNotExists();
-        upgradePropertiesFile();
       }
       checkImmutableSystemProperties();
     }
-  }
-
-  private void checkWALNotExists() {
-    for (String walDir : commonConfig.getWalDirs()) {
-      if (SystemFileFactory.INSTANCE.getFile(walDir).isDirectory()) {
-        File[] sgWALs = SystemFileFactory.INSTANCE.getFile(walDir).listFiles();
-        if (sgWALs != null) {
-          for (File sgWAL : sgWALs) {
-            // make sure wal directory of each sg is empty
-            if (sgWAL.isDirectory() && Objects.requireNonNull(sgWAL.list()).length != 0) {
-              logger.error(
-                  "WAL detected, please stop insertion and run 'SET SYSTEM TO READONLY', then run 'flush' on IoTDB {} before upgrading to {}.",
-                  properties.getProperty(IOTDB_VERSION_STRING),
-                  IoTDBConstant.VERSION);
-              System.exit(-1);
-            }
-          }
-        }
-      }
-    }
-  }
-
-  /** upgrade 0.12 or 0.13 properties to 0.14 properties */
-  private void upgradePropertiesFile() throws IOException {
-    // create an empty tmpPropertiesFile
-    if (tmpPropertiesFile.createNewFile()) {
-      logger.info("Create system.properties.tmp {}.", tmpPropertiesFile);
-    } else {
-      logger.error("Create system.properties.tmp {} failed.", tmpPropertiesFile);
-      System.exit(-1);
-    }
-
-    try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
-      systemProperties.forEach(
-          (k, v) -> {
-            if (!properties.containsKey(k)) {
-              properties.setProperty(k, v.get());
-            }
-          });
-      properties.setProperty(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
-      // rename virtual_storage_group_num to data_region_num
-      properties.setProperty(DATA_REGION_NUM, properties.getProperty(VIRTUAL_STORAGE_GROUP_NUM));
-      properties.remove(VIRTUAL_STORAGE_GROUP_NUM);
-      properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
-
-      // upgrade finished, delete old system.properties file
-      if (propertiesFile.exists()) {
-        Files.delete(propertiesFile.toPath());
-      }
-    }
-    // rename system.properties.tmp to system.properties
-    FileUtils.moveFile(tmpPropertiesFile, propertiesFile);
   }
 
   /** repair broken properties */

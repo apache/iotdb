@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class UDFClassLoaderManager implements IService {
 
@@ -45,18 +46,17 @@ public class UDFClassLoaderManager implements IService {
    * user executes CREATE FUNCTION or after the user executes DROP FUNCTION. Therefore, we need to
    * continuously maintain the activeClassLoader so that the classes it loads are always up-to-date.
    */
-  private volatile UDFClassLoader activeClassLoader;
+  private final AtomicReference<UDFClassLoader> activeClassLoader = new AtomicReference<>();
 
   private UDFClassLoaderManager(String libRoot) {
     this.libRoot = libRoot;
     LOGGER.info("UDF lib root: {}", libRoot);
     queryIdToUDFClassLoaderMap = new ConcurrentHashMap<>();
-    activeClassLoader = null;
   }
 
   public void initializeUDFQuery(String queryId) {
-    activeClassLoader.acquire();
-    queryIdToUDFClassLoaderMap.put(queryId, activeClassLoader);
+    activeClassLoader.get().acquire();
+    queryIdToUDFClassLoaderMap.put(queryId, activeClassLoader.get());
   }
 
   public void finalizeUDFQuery(String queryId) {
@@ -72,16 +72,16 @@ public class UDFClassLoaderManager implements IService {
   }
 
   public UDFClassLoader updateAndGetActiveClassLoader() throws IOException {
-    UDFClassLoader deprecatedClassLoader = activeClassLoader;
-    activeClassLoader = new UDFClassLoader(libRoot);
+    UDFClassLoader deprecatedClassLoader = activeClassLoader.get();
+    activeClassLoader.set(new UDFClassLoader(libRoot));
     if (deprecatedClassLoader != null) {
       deprecatedClassLoader.markAsDeprecated();
     }
-    return activeClassLoader;
+    return activeClassLoader.get();
   }
 
   public UDFClassLoader getActiveClassLoader() {
-    return activeClassLoader;
+    return activeClassLoader.get();
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -92,7 +92,7 @@ public class UDFClassLoaderManager implements IService {
   public void start() throws StartupException {
     try {
       SystemFileFactory.INSTANCE.makeDirIfNecessary(libRoot);
-      activeClassLoader = new UDFClassLoader(libRoot);
+      activeClassLoader.set(new UDFClassLoader(libRoot));
     } catch (IOException e) {
       throw new StartupException(this.getID().getName(), e.getMessage());
     }

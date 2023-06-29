@@ -24,6 +24,8 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 
 import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 import java.io.Reader;
@@ -52,6 +54,8 @@ import java.util.Map;
 
 public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractIoTDBJDBCResultSet.class);
+
   protected Statement statement;
   protected SQLWarning warningChain = null;
   protected List<String> columnTypeList;
@@ -61,6 +65,7 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
   private List<String> sgColumns;
   private BitSet aliasColumnMap;
 
+  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
   public AbstractIoTDBJDBCResultSet(
       Statement statement,
       List<String> columnNameList,
@@ -96,7 +101,8 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
     this.aliasColumnMap = aliasColumnMap;
   }
 
-  public AbstractIoTDBJDBCResultSet(
+  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
+  protected AbstractIoTDBJDBCResultSet(
       Statement statement,
       List<String> columnNameList,
       List<String> columnTypeList,
@@ -436,9 +442,6 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
   }
 
   @Override
-  public abstract long getLong(String columnName) throws SQLException;
-
-  @Override
   public ResultSetMetaData getMetaData() {
     String operationType = "";
     boolean nonAlign = false;
@@ -452,7 +455,7 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
         nonAlign = true;
       }
     } catch (SQLException throwables) {
-      throwables.printStackTrace();
+      LOGGER.error(String.format("get meta data error:%s", throwables.getMessage()));
     }
     return new IoTDBResultMetadata(
         nonAlign,

@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.consensus.common.DataSet;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
@@ -46,7 +45,7 @@ public class JarResp implements DataSet {
     this.status = status;
   }
 
-  public TGetJarInListResp convertToThriftResponse() throws IOException {
+  public TGetJarInListResp convertToThriftResponse() {
     return new TGetJarInListResp(status, jarList);
   }
 }

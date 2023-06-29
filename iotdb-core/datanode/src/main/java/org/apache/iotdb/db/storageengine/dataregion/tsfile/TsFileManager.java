@@ -19,11 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
-import org.apache.iotdb.db.exception.WriteLockFailedException;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -33,13 +29,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TsFileManager {
-  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileManager.class);
   private String storageGroupName;
   private String dataRegionId;
   private String storageGroupDir;
@@ -299,25 +293,6 @@ public class TsFileManager {
   public void writeLock(String holder) {
     resourceListLock.writeLock().lock();
     writeLockHolder = holder;
-  }
-
-  /**
-   * Acquire write lock with timeout, {@link WriteLockFailedException} will be thrown after timeout.
-   * The unit of timeout is ms.
-   */
-  public void writeLockWithTimeout(String holder, long timeout) throws WriteLockFailedException {
-    try {
-      if (resourceListLock.writeLock().tryLock(timeout, TimeUnit.MILLISECONDS)) {
-        writeLockHolder = holder;
-      } else {
-        throw new WriteLockFailedException(
-            String.format("cannot get write lock in %d ms", timeout));
-      }
-    } catch (InterruptedException e) {
-      LOGGER.warn(e.getMessage(), e);
-      Thread.interrupted();
-      throw new WriteLockFailedException("thread is interrupted");
-    }
   }
 
   public void writeUnlock() {

@@ -51,8 +51,6 @@ public interface IChunkMetadata {
 
   long getEndTime();
 
-  boolean isFromOldTsFile();
-
   IChunkLoader getChunkLoader();
 
   boolean needSetChunkLoader();

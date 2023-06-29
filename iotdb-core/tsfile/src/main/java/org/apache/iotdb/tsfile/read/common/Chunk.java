@@ -35,7 +35,6 @@ public class Chunk {
   private ChunkHeader chunkHeader;
   private Statistics chunkStatistic;
   private ByteBuffer chunkData;
-  private boolean isFromOldFile = false;
   /** A list of deleted intervals. */
   private List<TimeRange> deleteIntervalList;
 
@@ -148,13 +147,5 @@ public class Chunk {
 
   public Statistics getChunkStatistic() {
     return chunkStatistic;
-  }
-
-  public boolean isFromOldFile() {
-    return isFromOldFile;
-  }
-
-  public void setFromOldFile(boolean isFromOldFile) {
-    this.isFromOldFile = isFromOldFile;
   }
 }

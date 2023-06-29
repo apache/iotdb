@@ -36,7 +36,7 @@ import java.util.List;
  * https://gist.github.com/mfuerstenau/ba870a29e16536fdbaba
  */
 public class IntZigzagEncoder extends Encoder {
-  private static final Logger logger = LoggerFactory.getLogger(DictionaryEncoder.class);
+  private static final Logger logger = LoggerFactory.getLogger(IntZigzagEncoder.class);
   private List<Integer> values;
   byte[] buf = new byte[5];
 
@@ -46,7 +46,7 @@ public class IntZigzagEncoder extends Encoder {
     logger.debug("tsfile-encoding IntZigzagEncoder: int zigzag encoder");
   }
 
-  /** encoding and bit packing */
+  /** encoding and bit packing. */
   private byte[] encodeInt(int n) {
     n = (n << 1) ^ (n >> 31);
     int idx = 0;
@@ -70,7 +70,7 @@ public class IntZigzagEncoder extends Encoder {
   public void flush(ByteArrayOutputStream out) throws IOException {
     // byteCache stores all <encoded-data> and we know its size
     ByteArrayOutputStream byteCache = new ByteArrayOutputStream();
-    int len = values.size();
+    final int len = values.size();
     if (values.size() == 0) {
       return;
     }

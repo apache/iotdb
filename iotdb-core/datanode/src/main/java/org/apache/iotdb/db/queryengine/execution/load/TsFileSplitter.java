@@ -252,7 +252,6 @@ public class TsFileSplitter {
                   reader.readPageHeader(
                       header.getDataType(),
                       (header.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
-              long pageDataSize = pageHeader.getSerializedPageSize();
               List<AlignedChunkData> alignedChunkDataList = pageIndex2ChunkData.get(pageIndex);
               for (AlignedChunkData alignedChunkData : alignedChunkDataList) {
                 if (!allChunkData.contains(alignedChunkData)) {
@@ -272,7 +271,7 @@ public class TsFileSplitter {
                   alignedChunkData.writeDecodeValuePage(times, values, header.getDataType());
                 }
               }
-
+              long pageDataSize = pageHeader.getSerializedPageSize();
               pageIndex += 1;
               dataSize -= pageDataSize;
             }

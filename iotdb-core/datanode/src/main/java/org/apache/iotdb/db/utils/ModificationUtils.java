@@ -47,15 +47,6 @@ public class ModificationUtils {
       List<? extends IChunkMetadata> chunkMetaData, List<Modification> modifications) {
     for (IChunkMetadata metaData : chunkMetaData) {
       for (Modification modification : modifications) {
-        // When the chunkMetadata come from an old TsFile, the method modification.getFileOffset()
-        // is gerVersionNum actually. In this case, we compare the versions of modification and
-        // mataData to determine whether need to do modify.
-        if (metaData.isFromOldTsFile()) {
-          if (modification.getFileOffset() > metaData.getVersion()) {
-            doModifyChunkMetaData(modification, metaData);
-          }
-          continue;
-        }
         // The case modification.getFileOffset() == metaData.getOffsetOfChunkHeader()
         // is not supposed to exist as getFileOffset() is offset containing full chunk,
         // while getOffsetOfChunkHeader() returns the chunk header offset

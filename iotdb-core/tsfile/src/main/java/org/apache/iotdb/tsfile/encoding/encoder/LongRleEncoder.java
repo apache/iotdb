@@ -95,7 +95,7 @@ public class LongRleEncoder extends RleEncoder<Long> {
     byte[] bytes = new byte[bitWidth];
     long[] tmpBuffer = new long[TSFileConfig.RLE_MIN_REPEATED_NUM];
     for (int i = 0; i < TSFileConfig.RLE_MIN_REPEATED_NUM; i++) {
-      tmpBuffer[i] = (long) bufferedValues[i];
+      tmpBuffer[i] = bufferedValues[i];
     }
     packer.pack8Values(tmpBuffer, 0, bytes);
     // we'll not write bit-packing group to OutputStream immediately

@@ -17,6 +17,7 @@
  * under the License.
  *
  */
+
 package org.apache.iotdb.db.pipe.connector.legacy.pipedata;
 
 import org.apache.iotdb.db.pipe.connector.legacy.loader.ILoader;
@@ -59,10 +60,11 @@ public class TsFilePipeData extends PipeData {
       database = null;
       return;
     }
-    database = parts[1];
+    StringBuilder stringBuilder = new StringBuilder(parts[1]);
     for (int i = 2; i < (parts.length - 6); i++) {
-      database += "-" + parts[i];
+      stringBuilder.append("-").append(parts[i]);
     }
+    database = stringBuilder.toString();
   }
 
   public void setParentDirPath(String parentDirPath) {
@@ -126,8 +128,12 @@ public class TsFilePipeData extends PipeData {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     TsFilePipeData pipeData = (TsFilePipeData) o;
     return Objects.equals(parentDirPath, pipeData.parentDirPath)
         && Objects.equals(tsFileName, pipeData.tsFileName)

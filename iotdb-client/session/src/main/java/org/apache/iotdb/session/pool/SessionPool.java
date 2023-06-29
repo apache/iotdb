@@ -123,6 +123,36 @@ public class SessionPool implements ISessionPool {
   // formatted nodeUrls for logging e.g. "host:port" or "[host:port, host:port, host:port]"
   private final String formattedNodeUrls;
 
+  private static final String INSERT_RECORD_FAIL = "insertRecord failed";
+
+  private static final String INSERT_RECORD_ERROR_MSG = "unexpected error in insertRecord";
+
+  private static final String INSERT_RECORDS_ERROR_MSG = "unexpected error in insertRecords";
+
+  private static final String EXECUTE_LASTDATAQUERY_FAIL = "executeLastDataQuery failed";
+
+  private static final String EXECUTE_LASTDATAQUERY_ERROR =
+      "unexpected error in executeLastDataQuery";
+
+  private static final String EXECUTE_AGGREGATION_QUERY_FAIL = "executeAggregationQuery failed";
+
+  private static final String INSERT_RECORDS_OF_ONE_DEVICE_ERROR_MSG =
+      "unexpected error in insertRecordsOfOneDevice";
+
+  private static final String DELETE_DATA_ERROR_MSG = "unexpected error in deleteData";
+
+  private static final String CREATE_SCHEMA_TEMPLATE_ERROR_MSG =
+      "unexpected error in createSchemaTemplate";
+
+  private static final String EXECUTE_AGGREGATION_QUERY_ERROR_MSG =
+      "unexpected error in executeAggregationQuery";
+
+  private static final String DELETE_DATA_FAIL = "deleteData failed";
+
+  private static final String INSERT_RECORDS_OF_ONE_DEVICE_FAIL = "insertRecordsOfOneDevice failed";
+
+  private static final String CREATE_SCHEMA_TEMPLATE_FAIL = "createSchemaTemplate failed";
+
   public SessionPool(String host, int port, String user, String password, int maxSize) {
     this(
         host,
@@ -317,6 +347,7 @@ public class SessionPool implements ISessionPool {
     this.formattedNodeUrls = String.format("%s:%s", host, port);
   }
 
+  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
   public SessionPool(
       List<String> nodeUrls,
       String user,
@@ -436,6 +467,8 @@ public class SessionPool implements ISessionPool {
             }
           }
         } catch (InterruptedException e) {
+          logger.warn("Interrupted!", e);
+          Thread.currentThread().interrupt();
           // wake up from this.wait(1000) by this.notify()
         }
 
@@ -626,6 +659,7 @@ public class SessionPool implements ISessionPool {
    * @param tablet a tablet data of one device
    * @param sorted whether times in Tablet are in ascending order
    */
+  @SuppressWarnings({"squid:S112"}) // ignore Generic exceptions should never be throw
   @Override
   public void insertTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -680,6 +714,7 @@ public class SessionPool implements ISessionPool {
    * @param tablet a tablet data of one device
    * @param sorted whether times in Tablet are in ascending order
    */
+  @SuppressWarnings({"squid:S112"}) // ignore Generic exceptions should never be throw
   @Override
   public void insertAlignedTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -731,6 +766,7 @@ public class SessionPool implements ISessionPool {
    *
    * @param tablets multiple batch
    */
+  @SuppressWarnings({"squid:S112"}) // ignore Generic exceptions should never be throw
   @Override
   public void insertTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -760,6 +796,7 @@ public class SessionPool implements ISessionPool {
    *
    * @param tablets multiple batch
    */
+  @SuppressWarnings({"squid:S112"}) // ignore Generic exceptions should never be throw
   @Override
   public void insertAlignedTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -791,6 +828,7 @@ public class SessionPool implements ISessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
+  @SuppressWarnings({"squid:S112"}) // ignore Generic exceptions should never be throw
   @Override
   public void insertRecords(
       List<String> deviceIds,
@@ -813,7 +851,7 @@ public class SessionPool implements ISessionPool {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in insertRecords", e);
+        logger.error(INSERT_RECORDS_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -827,6 +865,7 @@ public class SessionPool implements ISessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
+  @SuppressWarnings({"squid:S112"}) // ignore Generic exceptions should never be throw
   @Override
   public void insertAlignedRecords(
       List<String> multiSeriesIds,
@@ -881,13 +920,13 @@ public class SessionPool implements ISessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("insertRecordsOfOneDevice failed", e);
+        logger.warn(INSERT_RECORDS_OF_ONE_DEVICE_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in insertRecordsOfOneDevice", e);
+        logger.error(INSERT_RECORDS_OF_ONE_DEVICE_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -900,6 +939,7 @@ public class SessionPool implements ISessionPool {
    * send them to server If you want improve your performance, please see insertTablet method
    *
    * @see Session#insertTablet(Tablet)
+   * @deprecated
    */
   @Deprecated
   @Override
@@ -919,13 +959,13 @@ public class SessionPool implements ISessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("insertRecordsOfOneDevice failed", e);
+        logger.warn(INSERT_RECORDS_OF_ONE_DEVICE_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in insertRecordsOfOneDevice", e);
+        logger.error(INSERT_RECORDS_OF_ONE_DEVICE_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -995,13 +1035,13 @@ public class SessionPool implements ISessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("insertRecordsOfOneDevice failed", e);
+        logger.warn(INSERT_RECORDS_OF_ONE_DEVICE_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in insertRecordsOfOneDevice", e);
+        logger.error(INSERT_RECORDS_OF_ONE_DEVICE_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -1015,6 +1055,7 @@ public class SessionPool implements ISessionPool {
    *
    * @param haveSorted whether the times list has been ordered.
    * @see Session#insertTablet(Tablet)
+   * @deprecated
    */
   @Override
   @Deprecated
@@ -1035,13 +1076,13 @@ public class SessionPool implements ISessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("insertRecordsOfOneDevice failed", e);
+        logger.warn(INSERT_RECORDS_OF_ONE_DEVICE_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in insertRecordsOfOneDevice", e);
+        logger.error(INSERT_RECORDS_OF_ONE_DEVICE_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -1269,7 +1310,7 @@ public class SessionPool implements ISessionPool {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in insertRecords", e);
+        logger.error(INSERT_RECORDS_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -1335,13 +1376,13 @@ public class SessionPool implements ISessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("insertRecord failed", e);
+        logger.error(INSERT_RECORD_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in insertRecord", e);
+        logger.error(INSERT_RECORD_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -1371,13 +1412,13 @@ public class SessionPool implements ISessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("insertRecord failed", e);
+        logger.warn(INSERT_RECORD_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in insertRecord", e);
+        logger.error(INSERT_RECORD_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -1465,13 +1506,13 @@ public class SessionPool implements ISessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("insertRecord failed", e);
+        logger.warn(INSERT_RECORD_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in insertRecord", e);
+        logger.error(INSERT_RECORD_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -1824,13 +1865,13 @@ public class SessionPool implements ISessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("deleteData failed", e);
+        logger.warn(DELETE_DATA_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in deleteData", e);
+        logger.error(DELETE_DATA_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -1854,13 +1895,13 @@ public class SessionPool implements ISessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("deleteData failed", e);
+        logger.warn(DELETE_DATA_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in deleteData", e);
+        logger.error(DELETE_DATA_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -1885,13 +1926,13 @@ public class SessionPool implements ISessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("deleteData failed", e);
+        logger.warn(DELETE_DATA_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in deleteData", e);
+        logger.error(DELETE_DATA_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -2259,13 +2300,13 @@ public class SessionPool implements ISessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("createSchemaTemplate failed", e);
+        logger.warn(CREATE_SCHEMA_TEMPLATE_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in createSchemaTemplate", e);
+        logger.error(CREATE_SCHEMA_TEMPLATE_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -2301,13 +2342,13 @@ public class SessionPool implements ISessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("createSchemaTemplate failed", e);
+        logger.warn(CREATE_SCHEMA_TEMPLATE_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in createSchemaTemplate", e);
+        logger.error(CREATE_SCHEMA_TEMPLATE_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -2331,6 +2372,7 @@ public class SessionPool implements ISessionPool {
    * @param compressors the compressor of each measurement
    * @throws IoTDBConnectionException
    * @throws StatementExecutionException
+   * @deprecated
    */
   @Deprecated
   @Override
@@ -2351,13 +2393,13 @@ public class SessionPool implements ISessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("createSchemaTemplate failed", e);
+        logger.warn(CREATE_SCHEMA_TEMPLATE_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in createSchemaTemplate", e);
+        logger.error(CREATE_SCHEMA_TEMPLATE_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -2947,24 +2989,24 @@ public class SessionPool implements ISessionPool {
   }
 
   @Override
-  public SessionDataSetWrapper executeLastDataQuery(List<String> paths, long LastTime)
+  public SessionDataSetWrapper executeLastDataQuery(List<String> paths, long lastTime)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
       ISession session = getSession();
       try {
-        SessionDataSet resp = session.executeLastDataQuery(paths, LastTime);
+        SessionDataSet resp = session.executeLastDataQuery(paths, lastTime);
         SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
         occupy(session);
         return wrapper;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("executeLastDataQuery failed", e);
+        logger.warn(EXECUTE_LASTDATAQUERY_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in executeLastDataQuery", e);
+        logger.error(EXECUTE_LASTDATAQUERY_ERROR, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -2974,24 +3016,24 @@ public class SessionPool implements ISessionPool {
   }
 
   @Override
-  public SessionDataSetWrapper executeLastDataQuery(List<String> paths, long LastTime, long timeOut)
+  public SessionDataSetWrapper executeLastDataQuery(List<String> paths, long lastTime, long timeOut)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
       ISession session = getSession();
       try {
-        SessionDataSet resp = session.executeLastDataQuery(paths, LastTime, timeOut);
+        SessionDataSet resp = session.executeLastDataQuery(paths, lastTime, timeOut);
         SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
         occupy(session);
         return wrapper;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("executeLastDataQuery failed", e);
+        logger.warn(EXECUTE_LASTDATAQUERY_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in executeLastDataQuery", e);
+        logger.error(EXECUTE_LASTDATAQUERY_ERROR, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -3012,13 +3054,13 @@ public class SessionPool implements ISessionPool {
         return wrapper;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("executeLastDataQuery failed", e);
+        logger.warn(EXECUTE_LASTDATAQUERY_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in executeLastDataQuery", e);
+        logger.error(EXECUTE_LASTDATAQUERY_ERROR, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -3040,13 +3082,13 @@ public class SessionPool implements ISessionPool {
         return wrapper;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("executeAggregationQuery failed", e);
+        logger.warn(EXECUTE_AGGREGATION_QUERY_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in executeAggregationQuery", e);
+        logger.error(EXECUTE_AGGREGATION_QUERY_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -3069,13 +3111,13 @@ public class SessionPool implements ISessionPool {
         return wrapper;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("executeAggregationQuery failed", e);
+        logger.warn(EXECUTE_AGGREGATION_QUERY_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in executeAggregationQuery", e);
+        logger.error(EXECUTE_AGGREGATION_QUERY_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -3102,13 +3144,13 @@ public class SessionPool implements ISessionPool {
         return wrapper;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("executeAggregationQuery failed", e);
+        logger.warn(EXECUTE_AGGREGATION_QUERY_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in executeAggregationQuery", e);
+        logger.error(EXECUTE_AGGREGATION_QUERY_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -3137,13 +3179,13 @@ public class SessionPool implements ISessionPool {
         return wrapper;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("executeAggregationQuery failed", e);
+        logger.warn(EXECUTE_AGGREGATION_QUERY_FAIL, e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       } catch (Throwable e) {
-        logger.error("unexpected error in executeAggregationQuery", e);
+        logger.error(EXECUTE_AGGREGATION_QUERY_ERROR_MSG, e);
         putBack(session);
         throw new RuntimeException(e);
       }
@@ -3354,7 +3396,7 @@ public class SessionPool implements ISessionPool {
     private List<String> nodeUrls = null;
     private int maxSize = SessionConfig.DEFAULT_SESSION_POOL_MAX_SIZE;
     private String user = SessionConfig.DEFAULT_USER;
-    private String password = SessionConfig.DEFAULT_PASSWORD;
+    private String pw = SessionConfig.DEFAULT_PASSWORD;
     private int fetchSize = SessionConfig.DEFAULT_FETCH_SIZE;
     private long waitToGetSessionTimeoutInMs = 60_000;
     private int thriftDefaultBufferSize = SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY;
@@ -3364,7 +3406,6 @@ public class SessionPool implements ISessionPool {
     private boolean enableRedirection = SessionConfig.DEFAULT_REDIRECTION_MODE;
     private int connectionTimeoutInMs = SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS;
     private Version version = SessionConfig.DEFAULT_VERSION;
-    private long timeOut = SessionConfig.DEFAULT_QUERY_TIME_OUT;
 
     public Builder host(String host) {
       this.host = host;
@@ -3392,7 +3433,7 @@ public class SessionPool implements ISessionPool {
     }
 
     public Builder password(String password) {
-      this.password = password;
+      this.pw = password;
       return this;
     }
 
@@ -3441,18 +3482,13 @@ public class SessionPool implements ISessionPool {
       return this;
     }
 
-    public Builder timeOut(long timeOut) {
-      this.timeOut = timeOut;
-      return this;
-    }
-
     public SessionPool build() {
       if (nodeUrls == null) {
         return new SessionPool(
             host,
             port,
             user,
-            password,
+            pw,
             maxSize,
             fetchSize,
             waitToGetSessionTimeoutInMs,
@@ -3467,7 +3503,7 @@ public class SessionPool implements ISessionPool {
         return new SessionPool(
             nodeUrls,
             user,
-            password,
+            pw,
             maxSize,
             fetchSize,
             waitToGetSessionTimeoutInMs,

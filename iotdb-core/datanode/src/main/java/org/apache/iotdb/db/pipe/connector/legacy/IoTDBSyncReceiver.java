@@ -17,6 +17,7 @@
  * under the License.
  *
  */
+
 package org.apache.iotdb.db.pipe.connector.legacy;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -88,17 +89,17 @@ public class IoTDBSyncReceiver {
   }
 
   /**
-   * Create connection from sender
+   * Create connection from sender.
    *
    * @return {@link TSStatusCode#PIPESERVER_ERROR} if fail to connect; {@link
    *     TSStatusCode#SUCCESS_STATUS} if success to connect.
    */
   public TSStatus handshake(
-      TSyncIdentityInfo tIdentityInfo,
+      TSyncIdentityInfo syncIdentityInfo,
       String remoteAddress,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
-    SyncIdentityInfo identityInfo = new SyncIdentityInfo(tIdentityInfo, remoteAddress);
+    SyncIdentityInfo identityInfo = new SyncIdentityInfo(syncIdentityInfo, remoteAddress);
     LOGGER.info("Invoke handshake method from client ip = {}", identityInfo.getRemoteAddress());
 
     if (!new File(getFileDataDir(identityInfo)).exists()) {
@@ -185,7 +186,7 @@ public class IoTDBSyncReceiver {
         tsFilePipeData.setDatabase(identityInfo.getDatabase());
         handleTsFilePipeData(tsFilePipeData, fileDir);
       }
-    } catch (IOException | IllegalPathException e) {
+    } catch (IOException e) {
       LOGGER.error("Pipe data transport error, {}", e.getMessage());
       return RpcUtils.getStatus(
           TSStatusCode.PIPESERVER_ERROR, "Pipe data transport error, " + e.getMessage());
@@ -211,7 +212,7 @@ public class IoTDBSyncReceiver {
   }
 
   /**
-   * Get current SyncIdentityInfo
+   * Get current SyncIdentityInfo.
    *
    * @return null if connection has been exited
    */
@@ -326,7 +327,7 @@ public class IoTDBSyncReceiver {
   }
 
   /**
-   * Get current FileStartIndex
+   * Get current FileStartIndex.
    *
    * @return startIndex of file: -1 if file doesn't exist
    */

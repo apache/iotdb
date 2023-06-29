@@ -42,6 +42,8 @@ import java.util.stream.IntStream;
 
 public class JlineUtils {
 
+  private JlineUtils() {}
+
   public static final Pattern SQL_KEYWORD_PATTERN = Pattern.compile("([A-Z_]+)");
   public static final Set<String> SQL_KEYWORDS =
       IntStream.range(0, SqlLexer.VOCABULARY.getMaxTokenType())

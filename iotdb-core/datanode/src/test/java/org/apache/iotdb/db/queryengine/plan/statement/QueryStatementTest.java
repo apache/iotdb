@@ -48,7 +48,8 @@ public class QueryStatementTest {
     List<Pair<String, String>> errorSqlWithMessages =
         Arrays.asList(
             new Pair<>(
-                "SELECT s1 FROM root.sg.d1 GROUP BY ([2017-11-01T00:00:00, 2017-11-07T23:00:00),1d)",
+                "SELECT s1 FROM root.sg.d1 "
+                    + "GROUP BY ([2017-11-01T00:00:00, 2017-11-07T23:00:00),1d)",
                 "Common queries and aggregated queries are not allowed to appear at the same time"),
             new Pair<>(
                 "SELECT count(s1),s2 FROM root.sg.d1", RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG),
@@ -56,7 +57,7 @@ public class QueryStatementTest {
             // test for where clause
             new Pair<>(
                 "SELECT s1 FROM root.sg.d1 WHERE count(s1) > 0",
-                "Aggregate functions are not supported in WHERE clause"),
+                "aggregate functions are not supported in WHERE clause"),
 
             // test for having clause
             new Pair<>(
@@ -67,10 +68,12 @@ public class QueryStatementTest {
                 "Expression of HAVING clause can not be used in NonAggregationQuery"),
             new Pair<>(
                 "SELECT count(d1.s1) FROM root.sg.d1 GROUP BY level=1 HAVING (count(s1) > 0)",
-                "When Having used with GroupByLevel: the suffix paths can only be measurement or one-level wildcard"),
+                "When Having used with GroupByLevel: "
+                    + "the suffix paths can only be measurement or one-level wildcard"),
             new Pair<>(
                 "SELECT count(s1) FROM root.sg.d1 GROUP BY level=1 HAVING (count(sg.d1.s1) > 0)",
-                "When Having used with GroupByLevel: the suffix paths can only be measurement or one-level wildcard"),
+                "When Having used with GroupByLevel: "
+                    + "the suffix paths can only be measurement or one-level wildcard"),
 
             // test for align by device clause
             new Pair<>(
@@ -108,16 +111,16 @@ public class QueryStatementTest {
             // test for select into clause
             new Pair<>(
                 "SELECT s1 INTO root.sg.d2(t1) FROM root.sg.d1 SLIMIT 5",
-                "Select into: slimit clauses are not supported."),
+                "select into: slimit clauses are not supported."),
             new Pair<>(
                 "SELECT s1 INTO root.sg.d2(t1) FROM root.sg.d1 SOFFSET 6",
-                "Select into: soffset clauses are not supported."),
+                "select into: soffset clauses are not supported."),
             new Pair<>(
                 "SELECT last s1 INTO root.sg.d2(t1) FROM root.sg.d1",
-                "Select into: last clauses are not supported."),
+                "select into: last clauses are not supported."),
             new Pair<>(
                 "SELECT count(s1) INTO root.sg.d2(t1) FROM root.sg.d1 GROUP BY TAGS(a)",
-                "Select into: GROUP BY TAGS clause are not supported."),
+                "select into: GROUP BY TAGS clause are not supported."),
             new Pair<>(
                 "SELECT s1 FROM root.sg.d1 order by timeseries",
                 "Sorting by timeseries is only supported in last queries."),
@@ -132,10 +135,11 @@ public class QueryStatementTest {
         checkErrorQuerySql(errorSql);
       } catch (SemanticException e) {
         assertEquals(errorMsg, e.getMessage());
+        continue;
       } catch (Exception ex) {
-        logger.error("Meets error in test sql: {}", errorSql, ex);
-        fail();
+        fail(String.format("Meets exception %s in test sql: `%s`", errorMsg, errorSql));
       }
+      fail(String.format("Sql: `%s` must throw exception: %s", errorSql, errorMsg));
     }
   }
 

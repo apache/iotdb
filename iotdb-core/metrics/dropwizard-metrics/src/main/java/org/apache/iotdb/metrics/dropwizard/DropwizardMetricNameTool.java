@@ -28,6 +28,10 @@ import java.util.stream.Collectors;
 public class DropwizardMetricNameTool {
   private static final String TAG_SEPARATOR = ".";
 
+  private DropwizardMetricNameTool() {
+    // util class
+  }
+
   /**
    * Transform flat string and metric type to metricInfo.
    *
@@ -62,7 +66,7 @@ public class DropwizardMetricNameTool {
   public static String toFlatString(MetricInfo metricInfo) {
     String name = metricInfo.getName();
     Map<String, String> tags = metricInfo.getTags();
-    return name.replaceAll("\\{|\\}", "")
+    return name.replace("{", "").replace("}", "")
         + "{"
         + tags.entrySet().stream()
             .map(
@@ -71,7 +75,8 @@ public class DropwizardMetricNameTool {
                         + TAG_SEPARATOR
                         + t.getValue().replace(TAG_SEPARATOR, ""))
             .collect(Collectors.joining(TAG_SEPARATOR))
-            .replaceAll("\\{|\\}", "")
+            .replace("{", "")
+            .replace("}", "")
         + "}";
   }
 }

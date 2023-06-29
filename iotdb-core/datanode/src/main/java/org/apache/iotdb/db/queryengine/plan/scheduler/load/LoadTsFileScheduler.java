@@ -136,9 +136,8 @@ public class LoadTsFileScheduler implements IScheduler {
       try {
         if (node.isTsFileEmpty()) {
           logger.info(
-              String.format(
-                  "Load skip TsFile %s, because it has no data.",
-                  node.getTsFileResource().getTsFilePath()));
+              "Load skip TsFile {}, because it has no data.",
+              node.getTsFileResource().getTsFilePath());
 
         } else if (!node.needDecodeTsFile(
             partitionFetcher::queryDataPartition)) { // do not decode, load locally
@@ -289,7 +288,7 @@ public class LoadTsFileScheduler implements IScheduler {
         // TODO: retry.
         logger.warn(
             "Dispatch load command {} of TsFile {} error to replicaSets {} error. "
-                + "Result status code {}, Result status message {}.",
+                + "Result status code {}. Result status message {}.",
             loadCommandReq,
             tsFile,
             allReplicaSets,
@@ -327,11 +326,12 @@ public class LoadTsFileScheduler implements IScheduler {
       dispatcher.dispatchLocally(instance);
     } catch (FragmentInstanceDispatchException e) {
       logger.warn(
-          "Dispatch tsFile {} error to local error. Result status code {}. "
-              + "Result status message {}.",
-          node.getTsFileResource().getTsFile(),
-          TSStatusCode.representOf(e.getFailureStatus().getCode()).name(),
-          e.getFailureStatus().getMessage());
+          String.format(
+              "Dispatch tsFile %s error to local error. Result status code %s. "
+                  + "Result status message %s.",
+              node.getTsFileResource().getTsFile(),
+              TSStatusCode.representOf(e.getFailureStatus().getCode()).name(),
+              e.getFailureStatus().getMessage()));
       stateMachine.transitionToFailed(e.getFailureStatus());
       return false;
     }
@@ -339,7 +339,9 @@ public class LoadTsFileScheduler implements IScheduler {
   }
 
   @Override
-  public void stop(Throwable t) {}
+  public void stop(Throwable t) {
+    // Do nothing
+  }
 
   @Override
   public Duration getTotalCpuTime() {

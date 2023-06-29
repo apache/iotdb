@@ -62,11 +62,11 @@ public class JvmThreadMetrics implements IMetricSet {
             "jvm_threads_states_threads",
             MetricLevel.CORE,
             threadBean,
-            (bean) -> getThreadStateCount(bean, state),
+            bean -> getThreadStateCount(bean, state),
             "state",
             getStateTagValue(state));
       }
-    } catch (Error error) {
+    } catch (Exception exception) {
       // An error will be thrown for unsupported operations
       // e.g. SubstrateVM does not support getAllThreadIds
     }
@@ -86,7 +86,7 @@ public class JvmThreadMetrics implements IMetricSet {
         metricService.remove(
             MetricType.AUTO_GAUGE, "jvm_threads_states_threads", "state", getStateTagValue(state));
       }
-    } catch (Error error) {
+    } catch (Exception exception) {
       // An error will be thrown for unsupported operations
       // e.g. SubstrateVM does not support getAllThreadIds
     }
