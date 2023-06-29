@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -158,6 +159,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     }
   }
 
+  @SuppressWarnings("squid:S2445")
   protected void sealChunk(
       CompactionTsFileWriter targetWriter, IChunkWriter chunkWriter, int subTaskId)
       throws IOException {
@@ -178,6 +180,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       int subTaskId)
       throws IOException;
 
+  @SuppressWarnings("squid:S2445")
   protected void flushNonAlignedChunkToFileWriter(
       CompactionTsFileWriter targetWriter, Chunk chunk, ChunkMetadata chunkMetadata, int subTaskId)
       throws IOException {
@@ -189,6 +192,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     }
   }
 
+  @SuppressWarnings("squid:S2445")
   protected void flushAlignedChunkToFileWriter(
       CompactionTsFileWriter targetWriter,
       Chunk timeChunk,

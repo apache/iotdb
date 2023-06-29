@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -71,7 +72,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     isDeviceExistedInTargetFiles = new boolean[targetResources.size()];
     long memorySizeForEachWriter =
         (long)
-            (SystemInfo.getInstance().getMemorySizeForCompaction()
+            ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
                 / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
                 * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion()
                 / targetResources.size());

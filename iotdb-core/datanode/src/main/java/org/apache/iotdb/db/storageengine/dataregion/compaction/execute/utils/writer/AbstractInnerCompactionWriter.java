@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -46,7 +47,7 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   protected AbstractInnerCompactionWriter(TsFileResource targetFileResource) throws IOException {
     long sizeForFileWriter =
         (long)
-            (SystemInfo.getInstance().getMemorySizeForCompaction()
+            ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
                 / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
                 * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
     boolean enableMemoryControl = IoTDBDescriptor.getInstance().getConfig().isEnableMemControl();
