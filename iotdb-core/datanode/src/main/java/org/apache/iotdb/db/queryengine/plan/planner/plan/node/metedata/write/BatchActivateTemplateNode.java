@@ -39,6 +39,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class BatchActivateTemplateNode extends WritePlanNode {
 
@@ -125,7 +126,7 @@ public class BatchActivateTemplateNode extends WritePlanNode {
     }
   }
 
-  public static InternalBatchActivateTemplateNode deserialize(ByteBuffer byteBuffer) {
+  public static BatchActivateTemplateNode deserialize(ByteBuffer byteBuffer) {
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     Map<PartialPath, Pair<Integer, Integer>> templateActivationMap = new HashMap<>(size);
     for (int i = 0; i < size; i++) {
@@ -135,7 +136,7 @@ public class BatchActivateTemplateNode extends WritePlanNode {
     }
 
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new InternalBatchActivateTemplateNode(planNodeId, templateActivationMap);
+    return new BatchActivateTemplateNode(planNodeId, templateActivationMap);
   }
 
   @Override
@@ -162,5 +163,20 @@ public class BatchActivateTemplateNode extends WritePlanNode {
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitBatchActivateTemplate(this, context);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    BatchActivateTemplateNode that = (BatchActivateTemplateNode) o;
+    return Objects.equals(templateActivationMap, that.templateActivationMap)
+        && Objects.equals(regionReplicaSet, that.regionReplicaSet);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), templateActivationMap, regionReplicaSet);
   }
 }

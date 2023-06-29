@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /** This class defines the scanned result merge task of schema fetcher. */
 public class SchemaFetchMergeNode extends AbstractSchemaMergeNode {
@@ -57,6 +58,10 @@ public class SchemaFetchMergeNode extends AbstractSchemaMergeNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.SCHEMA_FETCH_MERGE.serialize(byteBuffer);
+    ReadWriteIOUtils.write(storageGroupList.size(), byteBuffer);
+    for (String storageGroup : storageGroupList) {
+      ReadWriteIOUtils.write(storageGroup, byteBuffer);
+    }
   }
 
   @Override
@@ -86,5 +91,19 @@ public class SchemaFetchMergeNode extends AbstractSchemaMergeNode {
   @Override
   public String toString() {
     return String.format("SchemaFetchMergeNode-%s", getPlanNodeId());
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    SchemaFetchMergeNode that = (SchemaFetchMergeNode) o;
+    return Objects.equals(storageGroupList, that.storageGroupList);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), storageGroupList);
   }
 }
