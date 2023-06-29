@@ -134,7 +134,7 @@ public class MetricConfig {
     this.prometheusReporterPort = prometheusReporterPort;
   }
 
-  public IoTDBReporterConfig getIotdbReporterConfig() {
+  public IoTDBReporterConfig getIoTDBReporterConfig() {
     return iotdbReporterConfig;
   }
 
@@ -187,7 +187,7 @@ public class MetricConfig {
     prometheusReporterPort = newMetricConfig.getPrometheusReporterPort();
     internalReporterType = newMetricConfig.getInternalReportType();
 
-    iotdbReporterConfig.copy(newMetricConfig.getIotdbReporterConfig());
+    iotdbReporterConfig.copy(newMetricConfig.getIoTDBReporterConfig());
   }
 
   @Override
@@ -201,7 +201,7 @@ public class MetricConfig {
         && metricLevel.equals(anotherMetricConfig.getMetricLevel())
         && asyncCollectPeriodInSecond.equals(anotherMetricConfig.getAsyncCollectPeriodInSecond())
         && prometheusReporterPort.equals(anotherMetricConfig.getPrometheusReporterPort())
-        && iotdbReporterConfig.equals(anotherMetricConfig.getIotdbReporterConfig())
+        && iotdbReporterConfig.equals(anotherMetricConfig.getIoTDBReporterConfig())
         && internalReporterType.equals(anotherMetricConfig.getInternalReportType());
   }
 

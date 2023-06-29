@@ -111,7 +111,7 @@ public class MetricConfigDescriptor {
                 String.valueOf(loadConfig.getPrometheusReporterPort()),
                 properties)));
 
-    IoTDBReporterConfig reporterConfig = loadConfig.getIotdbReporterConfig();
+    IoTDBReporterConfig reporterConfig = loadConfig.getIoTDBReporterConfig();
     reporterConfig.setHost(
         getProperty("metric_iotdb_reporter_host", reporterConfig.getHost(), properties));
 
