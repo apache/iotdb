@@ -111,16 +111,16 @@ public class QueryStatementTest {
             // test for select into clause
             new Pair<>(
                 "SELECT s1 INTO root.sg.d2(t1) FROM root.sg.d1 SLIMIT 5",
-                "Select into: slimit clauses are not supported."),
+                "select into: slimit clauses are not supported."),
             new Pair<>(
                 "SELECT s1 INTO root.sg.d2(t1) FROM root.sg.d1 SOFFSET 6",
-                "Select into: soffset clauses are not supported."),
+                "select into: soffset clauses are not supported."),
             new Pair<>(
                 "SELECT last s1 INTO root.sg.d2(t1) FROM root.sg.d1",
-                "Select into: last clauses are not supported."),
+                "select into: last clauses are not supported."),
             new Pair<>(
                 "SELECT count(s1) INTO root.sg.d2(t1) FROM root.sg.d1 GROUP BY TAGS(a)",
-                "Select into: GROUP BY TAGS clause are not supported."),
+                "select into: GROUP BY TAGS clause are not supported."),
             new Pair<>(
                 "SELECT s1 FROM root.sg.d1 order by timeseries",
                 "Sorting by timeseries is only supported in last queries."),
