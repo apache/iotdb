@@ -20,17 +20,18 @@
 package org.apache.iotdb.db.exception.mpp;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-public class FragmentInstanceDispatchException extends Exception {
+import org.junit.Test;
 
-  private final TSStatus failureStatus;
+import static org.junit.Assert.assertEquals;
 
-  public FragmentInstanceDispatchException(TSStatus failureStatus) {
-    super(failureStatus.getMessage());
-    this.failureStatus = failureStatus;
-  }
+public class FragmentInstanceDispatchExceptionTest {
 
-  public TSStatus getFailureStatus() {
-    return failureStatus;
+  @Test
+  public void testFragmentInstanceDispatchException() {
+    TSStatus a = new TSStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode());
+    FragmentInstanceDispatchException e = new FragmentInstanceDispatchException(a);
+    assertEquals(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode(), e.getFailureStatus().code);
   }
 }
