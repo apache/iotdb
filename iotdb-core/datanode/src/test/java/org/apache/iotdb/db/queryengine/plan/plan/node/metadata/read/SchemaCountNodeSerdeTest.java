@@ -77,7 +77,12 @@ public class SchemaCountNodeSerdeTest {
     ExchangeNode exchangeNode = new ExchangeNode(new PlanNodeId("exchange"));
     LevelTimeSeriesCountNode levelTimeSeriesCountNode =
         new LevelTimeSeriesCountNode(
-            new PlanNodeId("timeseriesCount"), new PartialPath("root.sg.device0"), true, 10, null);
+            new PlanNodeId("timeseriesCount"),
+            new PartialPath("root.sg.device0"),
+            true,
+            10,
+            null,
+            Collections.emptyMap());
     IdentitySinkNode sinkNode =
         new IdentitySinkNode(
             new PlanNodeId("sink"),
