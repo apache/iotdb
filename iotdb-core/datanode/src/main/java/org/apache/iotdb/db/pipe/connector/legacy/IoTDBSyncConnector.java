@@ -172,8 +172,31 @@ public class IoTDBSyncConnector implements PipeConnector {
       doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
     } else {
       throw new NotImplementedException(
-          "IoTDBSyncConnector only support PipeInsertNodeInsertionEvent and PipeTabletInsertionEvent.");
+          "IoTDBSyncConnector only support "
+              + "PipeInsertNodeInsertionEvent and PipeTabletInsertionEvent.");
     }
+  }
+
+  @Override
+  public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
+    if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
+      throw new NotImplementedException(
+          "IoTDBSyncConnector only support PipeTsFileInsertionEvent.");
+    }
+
+    try {
+      doTransfer((PipeTsFileInsertionEvent) tsFileInsertionEvent);
+    } catch (TException e) {
+      throw new PipeConnectionException(
+          String.format(
+              "Network error when transfer tsFile insertion event: %s.", tsFileInsertionEvent),
+          e);
+    }
+  }
+
+  @Override
+  public void transfer(Event event) throws Exception {
+    LOGGER.warn("IoTDBSyncConnector does not support transfer generic event: {}.", event);
   }
 
   private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeInsertionEvent)
@@ -193,23 +216,6 @@ public class IoTDBSyncConnector implements PipeConnector {
       sessionPool.insertAlignedTablet(tablet);
     } else {
       sessionPool.insertTablet(tablet);
-    }
-  }
-
-  @Override
-  public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
-    if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
-      throw new NotImplementedException(
-          "IoTDBSyncConnector only support PipeTsFileInsertionEvent.");
-    }
-
-    try {
-      doTransfer((PipeTsFileInsertionEvent) tsFileInsertionEvent);
-    } catch (TException e) {
-      throw new PipeConnectionException(
-          String.format(
-              "Network error when transfer tsFile insertion event: %s.", tsFileInsertionEvent),
-          e);
     }
   }
 
@@ -262,11 +268,6 @@ public class IoTDBSyncConnector implements PipeConnector {
               ipAddress, port, e.getMessage()),
           e);
     }
-  }
-
-  @Override
-  public void transfer(Event event) throws Exception {
-    LOGGER.warn("IoTDBSyncConnector does not support transfer generic event: {}.", event);
   }
 
   @Override

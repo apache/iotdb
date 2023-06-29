@@ -33,7 +33,7 @@ There are two ways to use TsFile in your own project.
 
 ```shell
 git clone https://github.com/apache/iotdb.git
-cd tsfile/
+cd iotdb-core/tsfile
 mvn clean package -Dmaven.test.skip=true
 ```
 
@@ -52,7 +52,7 @@ Then, all the jars are in folder named `target/`. Import `target/tsfile-0.12.0-j
   * Compile the source codes and deploy 
   	
   	```shell
-  	cd tsfile/
+  	cd iotdb-core/tsfile
   	mvn clean install -Dmaven.test.skip=true
   	```
   	
@@ -292,7 +292,7 @@ Please note, we should redo the step of adding measurements before writing new d
 You should install TsFile to your local maven repository.
 
 ```shell
-mvn clean install -pl tsfile -am -DskipTests
+mvn clean install -pl iotdb-core/tsfile -am -DskipTests
 ```
 
 You could write a TsFile by constructing **TSRecord** if you have the **non-aligned** (e.g. not all sensors contain values) time series data.

@@ -89,7 +89,8 @@ public class PipeFileResourceManager {
     } catch (Exception e) {
       throw new IOException(
           String.format(
-              "failed to get hardlink or copied file in pipe dir for file %s, it is not a tsfile, mod file or resource file",
+              "failed to get hardlink or copied file in pipe dir "
+                  + "for file %s, it is not a tsfile, mod file or resource file",
               file.getPath()),
           e);
     }
@@ -177,7 +178,7 @@ public class PipeFileResourceManager {
   }
 
   /**
-   * get the reference count of the file
+   * get the reference count of the file.
    *
    * @param hardlinkOrCopiedFile the copied or hardlinked file
    * @return the reference count of the file

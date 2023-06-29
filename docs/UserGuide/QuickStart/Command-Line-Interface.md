@@ -31,7 +31,7 @@ IoTDB provides Cli/shell tools for users to interact with IoTDB server in comman
 If you use the source code version of IoTDB, then under the root path of IoTDB, execute:
 
 ```shell
-> mvn clean package -pl cli -am -DskipTests
+> mvn clean package -pl iotdb-client/cli -am -DskipTests -P get-jar-with-dependencies
 ```
 
 After build, the IoTDB Cli will be in the folder "cli/target/iotdb-cli-{project.version}".

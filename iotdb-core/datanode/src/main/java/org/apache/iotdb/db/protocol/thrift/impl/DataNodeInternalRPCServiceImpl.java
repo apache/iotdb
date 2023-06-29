@@ -240,9 +240,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
 
-  private final IPartitionFetcher PARTITION_FETCHER;
+  private final IPartitionFetcher partitionFetcher;
 
-  private final ISchemaFetcher SCHEMA_FETCHER;
+  private final ISchemaFetcher schemaFetcher;
 
   private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
   private final StorageEngine storageEngine = StorageEngine.getInstance();
@@ -257,8 +257,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   public DataNodeInternalRPCServiceImpl() {
     super();
-    PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
-    SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
+    partitionFetcher = ClusterPartitionFetcher.getInstance();
+    schemaFetcher = ClusterSchemaFetcher.getInstance();
   }
 
   @Override
@@ -645,15 +645,17 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   private Map<PartialPath, List<Integer>> filterTemplateSetInfo(
       Map<PartialPath, List<Integer>> templateSetInfo, TConsensusGroupId consensusGroupId) {
 
-    PartialPath storageGroupPath = getStorageGroupPath(consensusGroupId);
-    PartialPath storageGroupPattern = storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD);
     Map<PartialPath, List<Integer>> result = new HashMap<>();
-    templateSetInfo.forEach(
-        (k, v) -> {
-          if (storageGroupPattern.overlapWith(k) || storageGroupPath.overlapWith(k)) {
-            result.put(k, v);
-          }
-        });
+    PartialPath storageGroupPath = getStorageGroupPath(consensusGroupId);
+    if (null != storageGroupPath) {
+      PartialPath storageGroupPattern = storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD);
+      templateSetInfo.forEach(
+          (k, v) -> {
+            if (storageGroupPattern.overlapWith(k) || storageGroupPath.overlapWith(k)) {
+              result.put(k, v);
+            }
+          });
+    }
     return result;
   }
 
@@ -1025,8 +1027,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               queryId,
               SESSION_MANAGER.getSessionInfo(session),
               executedSQL,
-              PARTITION_FETCHER,
-              SCHEMA_FETCHER,
+              partitionFetcher,
+              schemaFetcher,
               req.getTimeout());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -1074,8 +1076,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               queryId,
               SESSION_MANAGER.getSessionInfo(session),
               "",
-              PARTITION_FETCHER,
-              SCHEMA_FETCHER);
+              partitionFetcher,
+              schemaFetcher);
       return result.status;
     } catch (Exception e) {
       return ErrorHandlingUtils.onQueryException(e, OperationType.DELETE_TIMESERIES);
@@ -1187,22 +1189,20 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       DataRegionConsensusImpl.getInstance()
           .getAllConsensusGroupIds()
           .forEach(
-              groupId -> {
-                result.put(
-                    groupId.convertToTConsensusGroupId(),
-                    DataRegionConsensusImpl.getInstance().isLeader(groupId));
-              });
+              groupId ->
+                  result.put(
+                      groupId.convertToTConsensusGroupId(),
+                      DataRegionConsensusImpl.getInstance().isLeader(groupId)));
     }
 
     if (SchemaRegionConsensusImpl.getInstance() != null) {
       SchemaRegionConsensusImpl.getInstance()
           .getAllConsensusGroupIds()
           .forEach(
-              groupId -> {
-                result.put(
-                    groupId.convertToTConsensusGroupId(),
-                    SchemaRegionConsensusImpl.getInstance().isLeader(groupId));
-              });
+              groupId ->
+                  result.put(
+                      groupId.convertToTConsensusGroupId(),
+                      SchemaRegionConsensusImpl.getInstance().isLeader(groupId)));
     }
     return result;
   }
@@ -1814,5 +1814,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return status;
   }
 
-  public void handleClientExit() {}
+  public void handleClientExit() {
+    // do nothing
+  }
 }

@@ -52,12 +52,16 @@ public class ConfigurableTByteBuffer extends TEndpointTransport {
     return true;
   }
 
-  public void open() {}
+  public void open() {
+    // do Nothing
+  }
 
-  public void close() {}
+  public void close() {
+    // do Nothing
+  }
 
   public int read(byte[] buf, int off, int len) throws TTransportException {
-    this.checkReadBytesAvailable((long) len);
+    this.checkReadBytesAvailable(len);
     int n = Math.min(this.byteBuffer.remaining(), len);
     if (n > 0) {
       try {

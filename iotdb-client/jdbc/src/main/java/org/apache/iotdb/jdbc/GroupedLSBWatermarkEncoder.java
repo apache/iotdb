@@ -46,6 +46,7 @@ public class GroupedLSBWatermarkEncoder implements WatermarkEncoder {
     this.maxBitPosition = minBitPosition;
   }
 
+  @SuppressWarnings("squid:S4790") // ignore Using weak hashing algorithms is security-sensitive
   public static int hashMod(String val, Integer base) {
     MessageDigest md;
     try {
@@ -103,12 +104,12 @@ public class GroupedLSBWatermarkEncoder implements WatermarkEncoder {
     return Double.longBitsToDouble(encodeLong(longBits, timestamp));
   }
 
-  public RowRecord encodeRecord(RowRecord record) {
-    long timestamp = record.getTimestamp();
+  public RowRecord encodeRecord(RowRecord rowRecord) {
+    long timestamp = rowRecord.getTimestamp();
     if (!needEncode(timestamp)) {
-      return record;
+      return rowRecord;
     }
-    List<Field> fields = record.getFields();
+    List<Field> fields = rowRecord.getFields();
     for (Field field : fields) {
       if (field == null || field.getDataType() == null) {
         continue;
@@ -134,6 +135,6 @@ public class GroupedLSBWatermarkEncoder implements WatermarkEncoder {
         default:
       }
     }
-    return record;
+    return rowRecord;
   }
 }

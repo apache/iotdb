@@ -265,7 +265,6 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public int getHoldability() {
-    // throw new SQLException("Method not supported");
     return 0;
   }
 

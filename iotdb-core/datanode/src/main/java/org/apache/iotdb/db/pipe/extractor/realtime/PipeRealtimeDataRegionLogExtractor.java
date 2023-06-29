@@ -53,7 +53,8 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
 
     if (!pendingQueue.offer(event)) {
       LOGGER.warn(
-          "extract: pending queue of PipeRealtimeDataRegionLogExtractor {} has reached capacity, discard tablet event {}, current state {}",
+          "extract: pending queue of PipeRealtimeDataRegionLogExtractor {} "
+              + "has reached capacity, discard tablet event {}, current state {}",
           this,
           event,
           event.getTsFileEpoch().getState(this));
@@ -88,7 +89,8 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
         // and report the exception to PipeRuntimeAgent.
         final String errorMessage =
             String.format(
-                "Tablet Event %s can not be supplied because the reference count can not be increased, "
+                "Tablet Event %s can not be supplied because "
+                    + "the reference count can not be increased, "
                     + "the data represented by this event is lost",
                 realtimeEvent.getEvent());
         LOGGER.warn(errorMessage);

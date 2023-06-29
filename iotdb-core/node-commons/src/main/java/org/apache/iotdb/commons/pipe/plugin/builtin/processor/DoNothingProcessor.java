@@ -32,37 +32,39 @@ import java.io.IOException;
 
 /** This class is a placeholder and should not be used. */
 public class DoNothingProcessor implements PipeProcessor {
+  private static final String PLACEHOLDER_ERROR_MSG =
+      "This class is a placeholder and should not be used.";
 
   @Override
   public void validate(PipeParameterValidator validator) {
-    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
+    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
   }
 
   @Override
   public void customize(
       PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration) {
-    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
+    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
   }
 
   @Override
   public void process(TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector)
       throws IOException {
-    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
+    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
   }
 
   @Override
   public void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)
       throws IOException {
-    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
+    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
   }
 
   @Override
   public void process(Event event, EventCollector eventCollector) throws IOException {
-    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
+    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
   }
 
   @Override
   public void close() {
-    throw new UnsupportedOperationException("This class is a placeholder and should not be used.");
+    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
   }
 }

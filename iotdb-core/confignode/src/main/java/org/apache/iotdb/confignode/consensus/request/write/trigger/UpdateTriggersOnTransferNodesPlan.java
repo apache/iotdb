@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class UpdateTriggersOnTransferNodesPlan extends ConfigPhysicalPlan {
 
@@ -37,6 +38,7 @@ public class UpdateTriggersOnTransferNodesPlan extends ConfigPhysicalPlan {
 
   public UpdateTriggersOnTransferNodesPlan() {
     super(ConfigPhysicalPlanType.UpdateTriggersOnTransferNodes);
+    this.dataNodeLocations = new ArrayList<>();
   }
 
   public UpdateTriggersOnTransferNodesPlan(List<TDataNodeLocation> dataNodeLocations) {
@@ -65,11 +67,29 @@ public class UpdateTriggersOnTransferNodesPlan extends ConfigPhysicalPlan {
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     int size = ReadWriteIOUtils.readInt(buffer);
-    List<TDataNodeLocation> tmpDataNodeLocations = new ArrayList<>(size);
     while (size > 0) {
-      tmpDataNodeLocations.add(ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer));
+      dataNodeLocations.add(ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer));
       size--;
     }
-    this.dataNodeLocations = tmpDataNodeLocations;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    UpdateTriggersOnTransferNodesPlan that = (UpdateTriggersOnTransferNodesPlan) o;
+    return Objects.equals(dataNodeLocations, that.dataNodeLocations);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), dataNodeLocations);
   }
 }

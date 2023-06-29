@@ -78,9 +78,9 @@ public class UDFManager {
     udfInfo.acquireUDFTableLock();
     try {
       final boolean isUsingURI = req.isIsUsingURI();
-      final String udfName = req.udfName.toUpperCase(),
-          jarMD5 = req.getJarMD5(),
-          jarName = req.getJarName();
+      final String udfName = req.udfName.toUpperCase();
+      final String jarMD5 = req.getJarMD5();
+      final String jarName = req.getJarName();
       final byte[] jarFile = req.getJarFile();
       udfInfo.validate(udfName, jarName, jarMD5);
 
@@ -183,19 +183,11 @@ public class UDFManager {
   }
 
   public TGetJarInListResp getUDFJar(TGetJarInListReq req) {
-    try {
-      return ((JarResp)
-              configManager
-                  .getConsensusManager()
-                  .read(new GetUDFJarPlan(req.getJarNameList()))
-                  .getDataset())
-          .convertToThriftResponse();
-    } catch (IOException e) {
-      LOGGER.error("Fail to get TriggerJar", e);
-      return new TGetJarInListResp(
-          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-              .setMessage(e.getMessage()),
-          Collections.emptyList());
-    }
+    return ((JarResp)
+            configManager
+                .getConsensusManager()
+                .read(new GetUDFJarPlan(req.getJarNameList()))
+                .getDataset())
+        .convertToThriftResponse();
   }
 }

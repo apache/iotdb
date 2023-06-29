@@ -65,4 +65,6 @@ public class TSocketWrapper {
       return null;
     }
   }
+
+  private TSocketWrapper() {}
 }

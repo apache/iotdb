@@ -36,6 +36,9 @@ import java.util.ServiceLoader;
 
 /** PayloadFormatManager loads payload formatter from SPI services. */
 public class PayloadFormatManager {
+
+  private PayloadFormatManager() {}
+
   private static final Logger logger = LoggerFactory.getLogger(PayloadFormatManager.class);
 
   // The dir saving MQTT payload plugin .jar files

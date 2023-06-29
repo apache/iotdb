@@ -67,9 +67,9 @@ public class FloatSprintzEncoder extends SprintzEncoder {
 
   protected int predict(Float value, Float preVlaue) throws TsFileEncodingException {
     int pred;
-    if (PredictMethod.equals("delta")) {
+    if (predictMethod.equals("delta")) {
       pred = delta(value, preVlaue);
-    } else if (PredictMethod.equals("fire")) {
+    } else if (predictMethod.equals("fire")) {
       pred = fire(value, preVlaue);
     } else {
       throw new TsFileEncodingException(
