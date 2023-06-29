@@ -36,7 +36,8 @@ public enum TSEncoding {
   AC((byte) 14),
   SPRINTZ((byte) 15),
   RAKE((byte) 16),
-  RLBE((byte) 17);
+  RLBE((byte) 17),
+  BUFF((byte) 18);
 
   private final byte type;
 
