@@ -156,6 +156,7 @@ public class RatisConsensusTest {
     servers.get(0).addPeer(group.getGroupId(), peers.get(1));
     servers.get(1).transferLeader(group.getGroupId(), peers.get(1));
     servers.get(0).removePeer(group.getGroupId(), peers.get(0));
+    Assert.assertEquals(servers.get(1).getLeader(gid).getNodeId(), peers.get(1).getNodeId());
     servers.get(0).deletePeer(group.getGroupId());
   }
 
