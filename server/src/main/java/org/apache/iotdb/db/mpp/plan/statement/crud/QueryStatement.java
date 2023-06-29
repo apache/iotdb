@@ -465,8 +465,13 @@ public class QueryStatement extends Statement {
           != ResultColumn.ColumnType.AGGREGATION) {
         throw new SemanticException("Expression of HAVING clause must to be an Aggregation");
       }
+      if (!isAggregationQuery()) {
+        throw new SemanticException(
+            "Expression of HAVING clause can not be used in NonAggregationQuery");
+      }
       try {
-        if (isGroupByLevel()) { // check path in SELECT and HAVING only have one node
+        if (isGroupByLevel()) {
+          // check path in SELECT and HAVING only have one node
           for (ResultColumn resultColumn : getSelectComponent().getResultColumns()) {
             ExpressionAnalyzer.checkIsAllMeasurement(resultColumn.getExpression());
           }
@@ -483,8 +488,15 @@ public class QueryStatement extends Statement {
         for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
           ExpressionAnalyzer.checkIsAllMeasurement(resultColumn.getExpression());
         }
+        if (hasGroupByExpression()) {
+          ExpressionAnalyzer.checkIsAllMeasurement(
+              getGroupByComponent().getControlColumnExpression());
+        }
         if (getWhereCondition() != null) {
           ExpressionAnalyzer.checkIsAllMeasurement(getWhereCondition().getPredicate());
+        }
+        if (hasHaving()) {
+          ExpressionAnalyzer.checkIsAllMeasurement(getHavingCondition().getPredicate());
         }
       } catch (SemanticException e) {
         throw new SemanticException("ALIGN BY DEVICE: " + e.getMessage());
