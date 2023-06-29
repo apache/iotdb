@@ -49,6 +49,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -180,7 +181,8 @@ public class StatisticsService implements IClusterStatusSubscriber {
     LOGGER.info("[NodeStatistics] NodeStatisticsMap: ");
     for (Map.Entry<Integer, Pair<NodeStatistics, NodeStatistics>> nodeCacheEntry :
         differentNodeStatisticsMap.entrySet()) {
-      if (!nodeCacheEntry.getValue().getRight().equals(nodeCacheEntry.getValue().getLeft())) {
+      if (!Objects.equals(
+          nodeCacheEntry.getValue().getRight(), nodeCacheEntry.getValue().getLeft())) {
         LOGGER.info(
             "[NodeStatistics]\t {}: {}->{}",
             "nodeId{" + nodeCacheEntry.getKey() + "}",
@@ -196,10 +198,9 @@ public class StatisticsService implements IClusterStatusSubscriber {
     LOGGER.info("[RegionGroupStatistics] RegionGroupStatisticsMap: ");
     for (Map.Entry<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
         regionGroupStatisticsEntry : differentRegionGroupStatisticsMap.entrySet()) {
-      if (!regionGroupStatisticsEntry
-          .getValue()
-          .getRight()
-          .equals(regionGroupStatisticsEntry.getValue().getLeft())) {
+      if (!Objects.equals(
+          regionGroupStatisticsEntry.getValue().getRight(),
+          regionGroupStatisticsEntry.getValue().getLeft())) {
         LOGGER.info(
             "[RegionGroupStatistics]\t RegionGroup {}: {} -> {}",
             regionGroupStatisticsEntry.getKey(),
@@ -208,7 +209,7 @@ public class StatisticsService implements IClusterStatusSubscriber {
 
         List<Integer> leftIds = regionGroupStatisticsEntry.getValue().getLeft().getRegionIds();
         List<Integer> rightIds = regionGroupStatisticsEntry.getValue().getRight().getRegionIds();
-        for (int leftId : leftIds) {
+        for (Integer leftId : leftIds) {
           if (!rightIds.contains(leftId)) {
             LOGGER.info(
                 "[RegionGroupStatistics]\t Region in DataNode {}: {} -> null",
@@ -222,7 +223,7 @@ public class StatisticsService implements IClusterStatusSubscriber {
                 regionGroupStatisticsEntry.getValue().getRight().getRegionStatus(leftId));
           }
         }
-        for (int rightId : rightIds) {
+        for (Integer rightId : rightIds) {
           if (!leftIds.contains(rightId)) {
             LOGGER.info(
                 "[RegionGroupStatistics]\t Region in DataNode {}: null -> {}",
@@ -244,7 +245,8 @@ public class StatisticsService implements IClusterStatusSubscriber {
     LOGGER.info("[RegionLeader] RegionLeaderMap: ");
     for (Map.Entry<TConsensusGroupId, Pair<Integer, Integer>> regionLeaderEntry :
         leaderMap.entrySet()) {
-      if (!regionLeaderEntry.getValue().getRight().equals(regionLeaderEntry.getValue().getLeft())) {
+      if (!Objects.equals(
+          regionLeaderEntry.getValue().getRight(), regionLeaderEntry.getValue().getLeft())) {
         LOGGER.info(
             "[RegionLeader]\t {}: {}->{}",
             regionLeaderEntry.getKey(),
@@ -259,10 +261,8 @@ public class StatisticsService implements IClusterStatusSubscriber {
     LOGGER.info("[RegionPriority] RegionPriorityMap: ");
     for (Map.Entry<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>>
         regionPriorityEntry : priorityMap.entrySet()) {
-      if (!regionPriorityEntry
-          .getValue()
-          .getRight()
-          .equals(regionPriorityEntry.getValue().getLeft())) {
+      if (!Objects.equals(
+          regionPriorityEntry.getValue().getRight(), regionPriorityEntry.getValue().getLeft())) {
         LOGGER.info(
             "[RegionPriority]\t {}: {}->{}",
             regionPriorityEntry.getKey(),
