@@ -278,7 +278,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    *     endOffset>
    * @throws IOException if io errors occurred
    */
-  @SuppressWarnings("checkstyle:AtclauseOrderCheck")
+  @SuppressWarnings({"checkstyle:AtclauseOrderCheck", "squid:S3824"})
   public Map<String, Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>>>
       getTimeseriesSchemaAndMetadataOffsetOfCurrentDevice() throws IOException {
     Map<String, Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>>>
@@ -300,8 +300,10 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
                   true)
               .entrySet()) {
         String measurementId = entrySet.getKey();
-        MeasurementSchema schema = reader.getMeasurementSchema(entrySet.getValue().left);
-        timeseriesMetadataOffsetMap.putIfAbsent(measurementId, new Pair<>(schema, new HashMap<>()));
+        if (!timeseriesMetadataOffsetMap.containsKey(measurementId)) {
+          MeasurementSchema schema = reader.getMeasurementSchema(entrySet.getValue().left);
+          timeseriesMetadataOffsetMap.put(measurementId, new Pair<>(schema, new HashMap<>()));
+        }
         timeseriesMetadataOffsetMap
             .get(measurementId)
             .right
