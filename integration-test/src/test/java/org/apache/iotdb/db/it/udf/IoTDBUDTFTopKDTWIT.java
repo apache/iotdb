@@ -163,8 +163,6 @@ public class IoTDBUDTFTopKDTWIT {
     }
   }
 
-  // TODO: QGRAM Test
-
   private void checkResultSet(ResultSet resultSet) throws SQLException {
     List<Long> startTimes = new ArrayList<>();
     List<Long> endTimes = new ArrayList<>();

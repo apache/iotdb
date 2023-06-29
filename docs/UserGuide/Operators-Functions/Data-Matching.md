@@ -333,3 +333,61 @@ Output series:
 |1970-01-01T08:00:00.009+08:00|                                    6.0|
 +-----------------------------+---------------------------------------+
 ```
+
+### Top-K DTW
+
+#### Usage
+
+This function calculates the first K substring with the closest DTW distance between 
+the target timeseries and the pattern timeseries by using the sliding window matching algorithm.
+
+**Name:** TOP_K_DTW_SLIDING_WINDOW
+
+**Input Parameters:**
++ First timeseries: target timeseries
++ Second timeseries: pattern timeseries
++ Parameter k: the number of substrings with the closest DTW distance to be calculated
++ (Optional) Parameter batchSize: The number of rows entered by the algorithm per batch. The default value is 65535
+
+**Output Series:** Output a single timeseries containing a total of K data points, each containing the following information:
++ startTime：The start timestamp of the substring in the target timeseries
++ endTime：The end timestamp of the substring in the target timeseries
++ distance：The DTW distance between the substring and the pattern timeseries
+
+#### Examples
+
+First ensure that the IoTDB has written the target timeseries 
+and the pattern timeseries, and then use the following SQL statement to query:
+
+```sql
+select top_k_dtw_sliding_window(s, p, 'k'='20') from root.database.device;
+```
+
+Output series:
+
+```
++-----------------------------+----------------------------------------------------------------------------------+
+|                         Time|top_k_dtw_sliding_window(root.database.device.s, root.database.device.p, "k"="20")|
++-----------------------------+----------------------------------------------------------------------------------+
+|2000-03-31T14:46:40.000+08:00|               DTWPath{startTime=954485200000, endTime=954485224000, distance=0.0}|
+|2000-03-31T17:33:45.000+08:00|               DTWPath{startTime=954495225000, endTime=954495250000, distance=0.0}|
+|2000-03-31T20:20:51.000+08:00|               DTWPath{startTime=954505251000, endTime=954505278000, distance=0.0}|
+|2000-03-31T23:07:59.000+08:00|               DTWPath{startTime=954515279000, endTime=954515301000, distance=0.0}|
+|2000-04-01T01:55:02.000+08:00|               DTWPath{startTime=954525302000, endTime=954525325000, distance=0.0}|
+|2000-04-01T04:42:06.000+08:00|               DTWPath{startTime=954535326000, endTime=954535350000, distance=0.0}|
+|2000-04-01T07:29:11.000+08:00|               DTWPath{startTime=954545351000, endTime=954545376000, distance=0.0}|
+|2000-04-01T10:16:17.000+08:00|               DTWPath{startTime=954555377000, endTime=954555403000, distance=0.0}|
+|2000-04-01T13:03:24.000+08:00|               DTWPath{startTime=954565404000, endTime=954565432000, distance=0.0}|
+|2000-04-01T15:50:33.000+08:00|               DTWPath{startTime=954575433000, endTime=954575461000, distance=0.0}|
+|2000-04-01T18:37:42.000+08:00|               DTWPath{startTime=954585462000, endTime=954585488000, distance=0.0}|
+|2000-04-01T21:24:49.000+08:00|               DTWPath{startTime=954595489000, endTime=954595516000, distance=0.0}|
+|2000-04-02T00:11:57.000+08:00|               DTWPath{startTime=954605517000, endTime=954605541000, distance=0.0}|
+|2000-04-02T02:59:02.000+08:00|               DTWPath{startTime=954615542000, endTime=954615570000, distance=0.0}|
+|2000-04-02T05:46:11.000+08:00|               DTWPath{startTime=954625571000, endTime=954625597000, distance=0.0}|
+|2000-04-02T08:33:18.000+08:00|               DTWPath{startTime=954635598000, endTime=954635623000, distance=0.0}|
+|2000-04-02T11:20:24.000+08:00|               DTWPath{startTime=954645624000, endTime=954645657000, distance=0.0}|
+|2000-04-02T14:07:38.000+08:00|               DTWPath{startTime=954655658000, endTime=954655682000, distance=0.0}|
+|2000-04-02T16:54:43.000+08:00|               DTWPath{startTime=954665683000, endTime=954665708000, distance=0.0}|
+|2000-04-02T19:41:49.000+08:00|               DTWPath{startTime=954675709000, endTime=954675736000, distance=0.0}|
++-----------------------------+----------------------------------------------------------------------------------+
+```
