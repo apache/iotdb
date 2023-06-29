@@ -130,11 +130,6 @@ public class AlignedChunkMetadata implements IChunkMetadata {
   }
 
   @Override
-  public boolean isFromOldTsFile() {
-    return false;
-  }
-
-  @Override
   public IChunkLoader getChunkLoader() {
     return chunkLoader;
   }
