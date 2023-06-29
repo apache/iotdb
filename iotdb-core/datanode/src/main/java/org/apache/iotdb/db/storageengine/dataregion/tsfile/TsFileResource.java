@@ -112,14 +112,6 @@ public class TsFileResource {
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
-  /** generated upgraded TsFile ResourceList used for upgrading v0.11.x/v2 -> 0.12/v3 */
-  private List<TsFileResource> upgradedResources;
-
-  /**
-   * load upgraded TsFile Resources to database processor used for upgrading v0.11.x/v2 -> 0.12/v3
-   */
-  private DataRegion.UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack;
-
   private DataRegion.SettleTsFileCallBack settleTsFileCallBack;
 
   /** Maximum index of plans executed within this TsFile. */
@@ -848,23 +840,6 @@ public class TsFileResource {
 
   public void setTimeSeriesMetadata(PartialPath path, ITimeSeriesMetadata timeSeriesMetadata) {
     this.pathToTimeSeriesMetadataMap.put(path, timeSeriesMetadata);
-  }
-
-  public void setUpgradedResources(List<TsFileResource> upgradedResources) {
-    this.upgradedResources = upgradedResources;
-  }
-
-  public List<TsFileResource> getUpgradedResources() {
-    return upgradedResources;
-  }
-
-  public void setUpgradeTsFileResourceCallBack(
-      DataRegion.UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack) {
-    this.upgradeTsFileResourceCallBack = upgradeTsFileResourceCallBack;
-  }
-
-  public DataRegion.UpgradeTsFileResourceCallBack getUpgradeTsFileResourceCallBack() {
-    return upgradeTsFileResourceCallBack;
   }
 
   public DataRegion.SettleTsFileCallBack getSettleTsFileCallBack() {

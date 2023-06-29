@@ -2042,13 +2042,6 @@ public class DataRegion implements IDataRegionForQuery {
             workUnsequenceTsFileProcessors.get(processor.getTimeRangeId()) != null);
   }
 
-  /** used for upgrading */
-  public void updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(
-      long partitionId, String deviceId, long time) {
-    lastFlushTimeMap.updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(
-        partitionId, deviceId, time);
-  }
-
   /** put the memtable back to the MemTablePool and make the metadata in writer visible */
   // TODO please consider concurrency with read and insert method.
   private void closeUnsealedTsFileProcessorCallBack(TsFileProcessor tsFileProcessor)
@@ -2950,12 +2943,6 @@ public class DataRegion implements IDataRegionForQuery {
   public interface UpdateEndTimeCallBack {
 
     void call(TsFileProcessor caller, Map<String, Long> updateMap, long systemFlushTime);
-  }
-
-  @FunctionalInterface
-  public interface UpgradeTsFileResourceCallBack {
-
-    void call(TsFileResource caller);
   }
 
   @FunctionalInterface
