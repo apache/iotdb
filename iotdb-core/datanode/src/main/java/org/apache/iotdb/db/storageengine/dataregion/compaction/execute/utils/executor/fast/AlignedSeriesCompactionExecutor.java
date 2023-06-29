@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -362,7 +363,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
         lastPageStatus = currentPageStatus;
         continue;
       }
-      if (!currentPageStatus.equals(lastPageStatus)) {
+      if (!lastPageStatus.equals(currentPageStatus)) {
         // there are at least two value pages, one is that all data is deleted, the other is that no
         // data is deleted
         lastPageStatus = ModifiedStatus.NONE_DELETED;
