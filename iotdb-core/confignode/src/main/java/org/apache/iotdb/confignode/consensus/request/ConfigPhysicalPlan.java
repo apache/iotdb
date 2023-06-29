@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.consensus.request;
 
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
@@ -146,7 +147,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
       serializeImpl(outputStream);
       return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     } catch (IOException e) {
-      LOGGER.error("Unexpected error occurs when serializing this ConfigRequest.", e);
       throw new SerializationRunTimeException(e);
     }
   }
@@ -492,8 +492,12 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     ConfigPhysicalPlan that = (ConfigPhysicalPlan) o;
     return type == that.type;
   }

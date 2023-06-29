@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.client.async.handlers;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -40,7 +41,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
 /**
- * Asynchronous Client handler
+ * Asynchronous Client handler.
  *
  * @param <Q> ClassName of RPC request
  * @param <R> ClassName of RPC response
@@ -51,14 +52,14 @@ public class AsyncClientHandler<Q, R> {
   protected final DataNodeRequestType requestType;
 
   /**
-   * Map key: The indices of asynchronous RPC requests
+   * Map key: The indices of asynchronous RPC requests.
    *
    * <p>Map value: The corresponding RPC request
    */
   private final Map<Integer, Q> requestMap;
 
   /**
-   * Map key: The indices of asynchronous RPC requests
+   * Map key: The indices of asynchronous RPC requests.
    *
    * <p>Map value: The target DataNodes of corresponding indices
    *
@@ -68,7 +69,7 @@ public class AsyncClientHandler<Q, R> {
   private final Map<Integer, TDataNodeLocation> dataNodeLocationMap;
 
   /**
-   * Map key: The indices(targetDataNode's ID) of asynchronous RPC requests
+   * Map key: The indices(targetDataNode's ID) of asynchronous RPC requests.
    *
    * <p>Map value: The response of corresponding indices
    *
@@ -79,7 +80,7 @@ public class AsyncClientHandler<Q, R> {
 
   private CountDownLatch countDownLatch;
 
-  /** Custom constructor */
+  /** Custom constructor. */
   public AsyncClientHandler(DataNodeRequestType requestType) {
     this.requestType = requestType;
     this.requestMap = new ConcurrentHashMap<>();
@@ -95,7 +96,7 @@ public class AsyncClientHandler<Q, R> {
     dataNodeLocationMap.put(requestId, dataNodeLocation);
   }
 
-  /** Constructor for null requests */
+  /** Constructor for null requests. */
   public AsyncClientHandler(
       DataNodeRequestType requestType, Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
     this.requestType = requestType;
@@ -105,7 +106,7 @@ public class AsyncClientHandler<Q, R> {
     this.responseMap = new ConcurrentHashMap<>();
   }
 
-  /** Constructor for unique request */
+  /** Constructor for unique request. */
   public AsyncClientHandler(
       DataNodeRequestType requestType,
       Q request,
@@ -145,7 +146,7 @@ public class AsyncClientHandler<Q, R> {
     return responseMap;
   }
 
-  /** Always reset CountDownLatch before retry */
+  /** Always reset CountDownLatch before retry. */
   public void resetCountDownLatch() {
     countDownLatch = new CountDownLatch(dataNodeLocationMap.size());
   }

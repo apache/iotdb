@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.client.async;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -38,7 +39,7 @@ public class AsyncDataNodeHeartbeatClientPool {
   }
 
   /**
-   * Only used in LoadManager
+   * Only used in LoadManager.
    *
    * @param endPoint The specific DataNode
    */

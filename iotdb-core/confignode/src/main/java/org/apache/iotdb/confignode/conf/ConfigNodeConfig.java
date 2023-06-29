@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -34,46 +35,46 @@ import java.util.Arrays;
 
 public class ConfigNodeConfig {
 
-  /** ClusterId, the default value "defaultCluster" will be changed after join cluster */
+  /** ClusterId, the default value "defaultCluster" will be changed after join cluster. */
   private volatile String clusterName = "defaultCluster";
 
-  /** ConfigNodeId, the default value -1 will be changed after join cluster */
+  /** ConfigNodeId, the default value -1 will be changed after join cluster. */
   private volatile int configNodeId = -1;
 
-  /** could set ip or hostname */
+  /** could set ip or hostname. */
   private String internalAddress = "127.0.0.1";
 
-  /** used for communication between data node and config node */
+  /** used for communication between data node and config node. */
   private int internalPort = 10710;
 
-  /** used for communication between config node and config node */
+  /** used for communication between config node and config node. */
   private int consensusPort = 10720;
 
-  /** Used for connecting to the ConfigNodeGroup */
+  /** Used for connecting to the ConfigNodeGroup. */
   private TEndPoint targetConfigNode = new TEndPoint("127.0.0.1", 10710);
 
-  // TODO: Read from iotdb-confignode.properties
+  // TODO: Read from iotdb-confignode.properties.
   private int configRegionId = 0;
 
-  /** ConfigNodeGroup consensus protocol */
+  /** ConfigNodeGroup consensus protocol. */
   private String configNodeConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
-  /** Schema region consensus protocol */
+  /** Schema region consensus protocol. */
   private String schemaRegionConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
 
-  /** Default number of SchemaRegion replicas */
+  /** Default number of SchemaRegion replicas. */
   private int schemaReplicationFactor = 1;
 
-  /** Data region consensus protocol */
+  /** Data region consensus protocol. */
   private String dataRegionConsensusProtocolClass = ConsensusFactory.IOT_CONSENSUS;
 
-  /** Default number of DataRegion replicas */
+  /** Default number of DataRegion replicas. */
   private int dataReplicationFactor = 1;
 
-  /** Number of SeriesPartitionSlots per Database */
+  /** Number of SeriesPartitionSlots per Database. */
   private int seriesSlotNum = 1000;
 
-  /** SeriesPartitionSlot executor class */
+  /** SeriesPartitionSlot executor class. */
   private String seriesPartitionExecutorClass =
       "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
 
@@ -111,20 +112,20 @@ public class ConfigNodeConfig {
 
   /**
    * DataPartition within the same SeriesPartitionSlot will inherit the allocation result of the
-   * predecessor or successor TimePartitionSlot if set true
+   * predecessor or successor TimePartitionSlot if set true.
    */
   private boolean enableDataPartitionInheritPolicy = true;
 
-  /** Max concurrent client number */
+  /** Max concurrent client number. */
   private int rpcMaxConcurrentClientNum = 65535;
 
-  /** whether to use Snappy compression before sending data through the network */
+  /** whether to use Snappy compression before sending data through the network. */
   private boolean rpcAdvancedCompressionEnable = false;
 
-  /** max frame size */
+  /** max frame size. */
   private int thriftMaxFrameSize = 536870912;
 
-  /** buffer size */
+  /** buffer size. */
   private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
 
   /** just for test wait for 60 second by default. */
@@ -132,7 +133,7 @@ public class ConfigNodeConfig {
 
   /**
    * The maximum number of clients that can be idle for a node in a clientManager. When the number
-   * of idle clients on a node exceeds this number, newly returned clients will be released
+   * of idle clients on a node exceeds this number, newly returned clients will be released.
    */
   private int coreClientNumForEachNode = DefaultProperty.CORE_CLIENT_NUM_FOR_EACH_NODE;
 
@@ -144,70 +145,70 @@ public class ConfigNodeConfig {
    */
   private int maxClientNumForEachNode = DefaultProperty.MAX_CLIENT_NUM_FOR_EACH_NODE;
 
-  /** System directory, including version file for each database and metadata */
+  /** System directory, including version file for each database and metadata. */
   private String systemDir =
       ConfigNodeConstant.DATA_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
 
-  /** Consensus directory, storage consensus protocol logs */
+  /** Consensus directory, storage consensus protocol logs. */
   private String consensusDir =
       ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.CONSENSUS_FOLDER;
 
-  /** External lib directory, stores user-uploaded JAR files */
+  /** External lib directory, stores user-uploaded JAR files. */
   private String extLibDir = IoTDBConstant.EXT_FOLDER_NAME;
 
-  /** External lib directory for UDF, stores user-uploaded JAR files */
+  /** External lib directory for UDF, stores user-uploaded JAR files. */
   private String udfDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.UDF_FOLDER_NAME;
 
-  /** External temporary lib directory for storing downloaded udf JAR files */
+  /** External temporary lib directory for storing downloaded udf JAR files. */
   private String udfTemporaryLibDir = udfDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
-  /** External lib directory for trigger, stores user-uploaded JAR files */
+  /** External lib directory for trigger, stores user-uploaded JAR files. */
   private String triggerDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_FOLDER_NAME;
 
-  /** External temporary lib directory for storing downloaded trigger JAR files */
+  /** External temporary lib directory for storing downloaded trigger JAR files. */
   private String triggerTemporaryLibDir =
       triggerDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
-  /** External lib directory for pipe, stores user-uploaded JAR files */
+  /** External lib directory for pipe, stores user-uploaded JAR files. */
   private String pipeDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.PIPE_FOLDER_NAME;
 
-  /** External temporary lib directory for storing downloaded pipe JAR files */
+  /** External temporary lib directory for storing downloaded pipe JAR files. */
   private String pipeTemporaryLibDir = pipeDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
-  /** Procedure Evict ttl */
+  /** Procedure Evict ttl. */
   private int procedureCompletedEvictTTL = 800;
 
-  /** Procedure completed clean interval */
+  /** Procedure completed clean interval. */
   private int procedureCompletedCleanInterval = 30;
 
-  /** Procedure core worker threads size */
+  /** Procedure core worker threads size. */
   private int procedureCoreWorkerThreadsCount =
       Math.max(Runtime.getRuntime().availableProcessors() / 4, 16);
 
-  /** The heartbeat interval in milliseconds */
+  /** The heartbeat interval in milliseconds. */
   private long heartbeatIntervalInMs = 1000;
 
-  /** The unknown DataNode detect interval in milliseconds */
+  /** The unknown DataNode detect interval in milliseconds. */
   private long unknownDataNodeDetectInterval = heartbeatIntervalInMs;
 
-  /** The policy of cluster RegionGroups' leader distribution */
+  /** The policy of cluster RegionGroups' leader distribution. */
   private String leaderDistributionPolicy = ILeaderBalancer.MIN_COST_FLOW_POLICY;
 
-  /** Whether to enable auto leader balance for Ratis consensus protocol */
+  /** Whether to enable auto leader balance for Ratis consensus protocol. */
   private boolean enableAutoLeaderBalanceForRatisConsensus = false;
 
-  /** Whether to enable auto leader balance for IoTConsensus protocol */
+  /** Whether to enable auto leader balance for IoTConsensus protocol. */
   private boolean enableAutoLeaderBalanceForIoTConsensus = true;
 
-  /** The route priority policy of cluster read/write requests */
+  /** The route priority policy of cluster read/write requests. */
   private String routePriorityPolicy = IPriorityBalancer.LEADER_POLICY;
 
   private String readConsistencyLevel = "strong";
 
-  /** RatisConsensus protocol, Max size for a single log append request from leader */
+  /** RatisConsensus protocol, Max size for a single log append request from leader. */
   private long dataRegionRatisConsensusLogAppenderBufferSize = 16 * 1024 * 1024L;
 
   private long configNodeRatisConsensusLogAppenderBufferSize = 16 * 1024 * 1024L;
@@ -215,14 +216,14 @@ public class ConfigNodeConfig {
 
   /**
    * RatisConsensus protocol, trigger a snapshot when ratis_snapshot_trigger_threshold logs are
-   * written
+   * written.
    */
   private long dataRegionRatisSnapshotTriggerThreshold = 400000L;
 
   private long configNodeRatisSnapshotTriggerThreshold = 400000L;
   private long schemaRegionRatisSnapshotTriggerThreshold = 400000L;
 
-  /** RatisConsensus protocol, allow flushing Raft Log asynchronously */
+  /** RatisConsensus protocol, allow flushing Raft Log asynchronously. */
   private boolean dataRegionRatisLogUnsafeFlushEnable = false;
 
   private int dataRegionRatisLogForceSyncNum = 128;
@@ -230,14 +231,14 @@ public class ConfigNodeConfig {
   private boolean configNodeRatisLogUnsafeFlushEnable = false;
   private boolean schemaRegionRatisLogUnsafeFlushEnable = false;
 
-  /** RatisConsensus protocol, max capacity of a single Raft Log segment */
+  /** RatisConsensus protocol, max capacity of a single Raft Log segment. */
   private long dataRegionRatisLogSegmentSizeMax = 24 * 1024 * 1024L;
 
   private long configNodeRatisLogSegmentSizeMax = 24 * 1024 * 1024L;
   private long schemaRegionRatisLogSegmentSizeMax = 24 * 1024 * 1024L;
   private long configNodeSimpleConsensusLogSegmentSizeMax = 24 * 1024 * 1024L;
 
-  /** RatisConsensus protocol, flow control window for ratis grpc log appender */
+  /** RatisConsensus protocol, flow control window for ratis grpc log appender. */
   private long dataRegionRatisGrpcFlowControlWindow = 4 * 1024 * 1024L;
 
   private int dataRegionRatisGrpcLeaderOutstandingAppendsMax = 128;
@@ -245,30 +246,30 @@ public class ConfigNodeConfig {
   private long configNodeRatisGrpcFlowControlWindow = 4 * 1024 * 1024L;
   private long schemaRegionRatisGrpcFlowControlWindow = 4 * 1024 * 1024L;
 
-  /** RatisConsensus protocol, min election timeout for leader election */
+  /** RatisConsensus protocol, min election timeout for leader election. */
   private long dataRegionRatisRpcLeaderElectionTimeoutMinMs = 2000L;
 
   private long configNodeRatisRpcLeaderElectionTimeoutMinMs = 2000L;
   private long schemaRegionRatisRpcLeaderElectionTimeoutMinMs = 2000L;
 
-  /** RatisConsensus protocol, max election timeout for leader election */
+  /** RatisConsensus protocol, max election timeout for leader election. */
   private long dataRegionRatisRpcLeaderElectionTimeoutMaxMs = 4000L;
 
   private long configNodeRatisRpcLeaderElectionTimeoutMaxMs = 4000L;
   private long schemaRegionRatisRpcLeaderElectionTimeoutMaxMs = 4000L;
 
-  /** CQ related */
+  /** CQ related. */
   private int cqSubmitThread = 2;
 
   private long cqMinEveryIntervalInMs = 1_000;
 
-  /** RatisConsensus protocol, request timeout for ratis client */
+  /** RatisConsensus protocol, request timeout for ratis client. */
   private long dataRegionRatisRequestTimeoutMs = 10000L;
 
   private long configNodeRatisRequestTimeoutMs = 10000L;
   private long schemaRegionRatisRequestTimeoutMs = 10000L;
 
-  /** RatisConsensus protocol, exponential back-off retry policy params */
+  /** RatisConsensus protocol, exponential back-off retry policy params. */
   private int configNodeRatisMaxRetryAttempts = 10;
 
   private long configNodeRatisInitialSleepTimeMs = 100;
@@ -286,7 +287,7 @@ public class ConfigNodeConfig {
   private long schemaRegionRatisPreserveLogsWhenPurge = 1000;
   private long dataRegionRatisPreserveLogsWhenPurge = 1000;
 
-  /* first election timeout shares between 3 regions */
+  /* first election timeout shares between 3 regions. */
   private long ratisFirstElectionTimeoutMinMs = 50;
   private long ratisFirstElectionTimeoutMaxMs = 150;
 
@@ -294,7 +295,7 @@ public class ConfigNodeConfig {
   private long schemaRegionRatisLogMax = 2L * 1024 * 1024 * 1024; // 2G
   private long dataRegionRatisLogMax = 20L * 1024 * 1024 * 1024; // 20G
 
-  /** The getOrCreatePartitionTable interface will log new created Partition if set true */
+  /** The getOrCreatePartitionTable interface will log new created Partition if set true. */
   private boolean isEnablePrintingNewlyCreatedPartition = false;
 
   private long forceWalPeriodForConfigNodeSimpleInMs = 100;

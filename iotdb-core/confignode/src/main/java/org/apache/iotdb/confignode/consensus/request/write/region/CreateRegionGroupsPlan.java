@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.consensus.request.write.region;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -38,7 +39,7 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-/** Create regions for specific StorageGroups */
+/** Create regions for specific StorageGroups. */
 public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
 
   // Map<StorageGroupName, List<TRegionReplicaSet>>
@@ -64,11 +65,11 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
         .add(regionReplicaSet);
   }
 
-  public void planLog(Logger LOGGER) {
+  public void planLog(Logger logger) {
     for (Map.Entry<String, List<TRegionReplicaSet>> regionGroupEntry : regionGroupMap.entrySet()) {
       String storageGroup = regionGroupEntry.getKey();
       for (TRegionReplicaSet regionReplicaSet : regionGroupEntry.getValue()) {
-        LOGGER.info(
+        logger.info(
             "[CreateRegionGroups] RegionGroup: {}, belonged StorageGroup: {}, on DataNodes: {}",
             regionReplicaSet.getRegionId(),
             storageGroup,
@@ -123,8 +124,12 @@ public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     CreateRegionGroupsPlan that = (CreateRegionGroupsPlan) o;
     return regionGroupMap.equals(that.regionGroupMap);
   }
