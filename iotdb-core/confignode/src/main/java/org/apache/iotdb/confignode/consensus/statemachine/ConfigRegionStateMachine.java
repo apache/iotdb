@@ -351,13 +351,13 @@ public class ConfigRegionStateMachine
             "ConfigNode-Simple-Consensus-WAL-Flush-Thread");
     ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
         simpleConsensusThread,
-        this::flushWalForSimpleConsensus,
+        this::flushWALForSimpleConsensus,
         0,
         CONF.getForceWalPeriodForConfigNodeSimpleInMs(),
         TimeUnit.MILLISECONDS);
   }
 
-  private void flushWalForSimpleConsensus() {
+  private void flushWALForSimpleConsensus() {
     if (simpleLogWriter != null) {
       try {
         simpleLogWriter.force();
