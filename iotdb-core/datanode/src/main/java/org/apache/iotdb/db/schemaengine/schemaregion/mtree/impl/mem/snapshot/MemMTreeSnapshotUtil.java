@@ -399,7 +399,7 @@ public class MemMTreeSnapshotUtil {
       IDeviceMNode<IMemMNode> node = nodeFactory.createDeviceMNode(null, name);
       node.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
       node.setUseTemplate(ReadWriteIOUtils.readBool(inputStream));
-      node.setAligned(ReadWriteIOUtils.readBool(inputStream));
+      node.setAligned(ReadWriteIOUtils.readBoolObject(inputStream));
       return node.getAsMNode();
     }
 
