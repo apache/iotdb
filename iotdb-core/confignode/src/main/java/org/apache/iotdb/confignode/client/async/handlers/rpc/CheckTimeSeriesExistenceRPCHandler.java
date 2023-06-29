@@ -36,7 +36,7 @@ public class CheckTimeSeriesExistenceRPCHandler
     extends AbstractAsyncRPCHandler<TCheckTimeSeriesExistenceResp> {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(CountPathsUsingTemplateRPCHandler.class);
+      LoggerFactory.getLogger(CheckTimeSeriesExistenceRPCHandler.class);
 
   public CheckTimeSeriesExistenceRPCHandler(
       DataNodeRequestType requestType,

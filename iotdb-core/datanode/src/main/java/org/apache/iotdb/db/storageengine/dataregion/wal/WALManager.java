@@ -197,6 +197,7 @@ public class WALManager implements IService {
           Thread.sleep(50);
         } catch (InterruptedException e) {
           logger.error("Interrupted when waiting for all write-ahead logs flushed.");
+          Thread.currentThread().interrupt();
         }
       }
     }

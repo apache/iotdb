@@ -72,10 +72,10 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.security.SecureRandom;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import java.util.StringJoiner;
 
 public class SessionConnection {
@@ -173,11 +173,12 @@ public class SessionConnection {
     }
   }
 
+  @SuppressWarnings({"squid:S1751"}) // Loops with at most one iteration should be refactored
   private void initClusterConn() throws IoTDBConnectionException {
-    for (TEndPoint endPoint : endPointList) {
+    for (TEndPoint tEndPoint : endPointList) {
       try {
-        session.defaultEndPoint = endPoint;
-        init(endPoint);
+        session.defaultEndPoint = tEndPoint;
+        init(tEndPoint);
       } catch (IoTDBConnectionException e) {
         if (!reconnect()) {
           logger.error("Cluster has no nodes to connect");
@@ -886,9 +887,12 @@ public class SessionConnection {
     }
   }
 
+  @SuppressWarnings({
+    "squid:S3776"
+  }) // ignore Cognitive Complexity of methods should not be too high
   private boolean reconnect() {
     boolean connectedSuccess = false;
-    Random random = new Random();
+    SecureRandom random = new SecureRandom();
     for (int i = 1; i <= SessionConfig.RETRY_NUM; i++) {
       if (transport != null) {
         transport.close();
@@ -1137,10 +1141,10 @@ public class SessionConnection {
       return MSG_RECONNECTION_FAIL;
     }
     StringJoiner urls = new StringJoiner(",");
-    for (TEndPoint endPoint : endPointList) {
+    for (TEndPoint end : endPointList) {
       StringJoiner url = new StringJoiner(":");
-      url.add(endPoint.getIp());
-      url.add(String.valueOf(endPoint.getPort()));
+      url.add(end.getIp());
+      url.add(String.valueOf(end.getPort()));
       urls.add(url.toString());
     }
     return MSG_RECONNECTION_FAIL.concat(urls.toString());

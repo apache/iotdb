@@ -143,8 +143,9 @@ public class SimpleConsensusTest {
                       return new TestStateMachine(true);
                     case DataRegion:
                       return new TestStateMachine(false);
+                    default:
+                      return new EmptyStateMachine();
                   }
-                  return new EmptyStateMachine();
                 })
             .orElseThrow(
                 () ->

@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class GetUDFJarPlan extends ConfigPhysicalPlan {
 
@@ -64,5 +65,25 @@ public class GetUDFJarPlan extends ConfigPhysicalPlan {
       jarNames.add(ReadWriteIOUtils.readString(buffer));
       size--;
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    GetUDFJarPlan that = (GetUDFJarPlan) o;
+    return Objects.equals(jarNames, that.jarNames);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), jarNames);
   }
 }

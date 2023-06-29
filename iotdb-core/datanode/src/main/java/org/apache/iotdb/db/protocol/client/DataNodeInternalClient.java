@@ -50,15 +50,15 @@ public class DataNodeInternalClient {
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
-  private final IPartitionFetcher PARTITION_FETCHER;
+  private final IPartitionFetcher partitionFetcher;
 
-  private final ISchemaFetcher SCHEMA_FETCHER;
+  private final ISchemaFetcher schemaFetcher;
 
   private final IClientSession session;
 
   public DataNodeInternalClient(SessionInfo sessionInfo) {
-    PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
-    SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
+    partitionFetcher = ClusterPartitionFetcher.getInstance();
+    schemaFetcher = ClusterSchemaFetcher.getInstance();
 
     try {
       session = new InternalClientSession("SELECT_INTO");
@@ -89,8 +89,8 @@ public class DataNodeInternalClient {
               queryId,
               SESSION_MANAGER.getSessionInfo(session),
               "",
-              PARTITION_FETCHER,
-              SCHEMA_FETCHER);
+              partitionFetcher,
+              schemaFetcher);
       return result.status;
     } catch (Exception e) {
       return onNpeOrUnexpectedException(

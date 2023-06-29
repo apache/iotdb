@@ -22,12 +22,13 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.HashMap;
 import java.util.Map;
 
 public abstract class TemplateNode {
   private String name;
 
-  public TemplateNode(String name) {
+  protected TemplateNode(String name) {
     this.name = name;
   }
 
@@ -36,7 +37,7 @@ public abstract class TemplateNode {
   }
 
   public Map<String, TemplateNode> getChildren() {
-    return null;
+    return new HashMap<>();
   }
 
   public void addChild(TemplateNode node) throws StatementExecutionException {}

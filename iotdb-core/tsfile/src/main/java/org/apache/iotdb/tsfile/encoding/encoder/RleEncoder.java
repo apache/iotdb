@@ -55,8 +55,6 @@ import java.util.List;
  * repeated-value := value that is repeated, using a fixed-width of round-up-to-next-byte(bit-width)
  * }</pre>
  *
- * .
- *
  * @param <T> data type T for RLE
  */
 public abstract class RleEncoder<T extends Comparable<T>> extends Encoder {

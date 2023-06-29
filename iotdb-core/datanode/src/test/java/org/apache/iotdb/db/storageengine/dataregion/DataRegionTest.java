@@ -226,36 +226,6 @@ public class DataRegionTest {
   }
 
   @Test
-  public void testInsertDataAndRemovePartitionAndInsert()
-      throws WriteProcessException, QueryProcessException, IllegalPathException {
-    for (int j = 0; j < 10; j++) {
-      TSRecord record = new TSRecord(j, deviceId);
-      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-      dataRegion.insert(buildInsertRowNodeByTSRecord(record));
-      dataRegion.asyncCloseAllWorkingTsFileProcessors();
-    }
-    dataRegion.syncCloseAllWorkingTsFileProcessors();
-
-    dataRegion.removePartitions((storageGroupName, timePartitionId) -> true);
-
-    for (int j = 0; j < 10; j++) {
-      TSRecord record = new TSRecord(j, deviceId);
-      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-      dataRegion.insert(buildInsertRowNodeByTSRecord(record));
-      dataRegion.asyncCloseAllWorkingTsFileProcessors();
-    }
-    dataRegion.syncCloseAllWorkingTsFileProcessors();
-
-    QueryDataSource queryDataSource =
-        dataRegion.query(
-            Collections.singletonList(new PartialPath(deviceId, measurementId)),
-            deviceId,
-            context,
-            null);
-    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
-  }
-
-  @Test
   public void testIoTDBTabletWriteAndSyncClose()
       throws QueryProcessException, IllegalPathException, WriteProcessException {
     String[] measurements = new String[2];

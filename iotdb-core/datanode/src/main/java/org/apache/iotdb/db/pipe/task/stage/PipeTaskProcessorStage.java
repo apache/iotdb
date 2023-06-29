@@ -53,6 +53,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
    * @param dataRegionId data region id
    * @param pipeExtractorInputEventSupplier used to input events from pipe extractor
    * @param pipeConnectorOutputPendingQueue used to output events to pipe connector
+   * @throws PipeException if failed to validate or customize
    */
   public PipeTaskProcessorStage(
       String pipeName,

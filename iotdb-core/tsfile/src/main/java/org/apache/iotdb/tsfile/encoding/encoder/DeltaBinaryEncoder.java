@@ -60,7 +60,7 @@ public abstract class DeltaBinaryEncoder extends Encoder {
    *
    * @param size - the number how many numbers to be packed into a block.
    */
-  public DeltaBinaryEncoder(int size) {
+  protected DeltaBinaryEncoder(int size) {
     super(TSEncoding.TS_2DIFF);
     blockSize = size;
   }
@@ -80,7 +80,7 @@ public abstract class DeltaBinaryEncoder extends Encoder {
     for (int i = 0; i < writeIndex; i++) {
       writeValueToBytes(i);
     }
-    int encodingLength = (int) Math.ceil((double) (writeIndex * writeWidth) / 8.0);
+    int encodingLength = (int) Math.ceil((writeIndex * writeWidth) / 8.0);
     out.write(encodingBlockBuffer, 0, encodingLength);
   }
 

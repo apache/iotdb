@@ -469,7 +469,7 @@ public class QueryStatement extends Statement {
     return useWildcard;
   }
 
-  private static final String RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG =
+  public static final String RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG =
       "Raw data and aggregation hybrid query is not supported.";
 
   public void semanticCheck() {
@@ -549,8 +549,13 @@ public class QueryStatement extends Statement {
           != ResultColumn.ColumnType.AGGREGATION) {
         throw new SemanticException("Expression of HAVING clause must to be an Aggregation");
       }
+      if (!isAggregationQuery()) {
+        throw new SemanticException(
+            "Expression of HAVING clause can not be used in NonAggregationQuery");
+      }
       try {
-        if (isGroupByLevel()) { // check path in SELECT and HAVING only have one node
+        if (isGroupByLevel()) {
+          // check path in SELECT and HAVING only have one node
           for (ResultColumn resultColumn : getSelectComponent().getResultColumns()) {
             ExpressionAnalyzer.checkIsAllMeasurement(resultColumn.getExpression());
           }
@@ -578,6 +583,9 @@ public class QueryStatement extends Statement {
         }
         if (getWhereCondition() != null) {
           ExpressionAnalyzer.checkIsAllMeasurement(getWhereCondition().getPredicate());
+        }
+        if (hasHaving()) {
+          ExpressionAnalyzer.checkIsAllMeasurement(getHavingCondition().getPredicate());
         }
       } catch (SemanticException e) {
         throw new SemanticException("ALIGN BY DEVICE: " + e.getMessage());

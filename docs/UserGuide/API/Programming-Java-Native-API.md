@@ -31,7 +31,7 @@
 ### How to install
 
 In root directory:
-> mvn clean install -pl session -am -DskipTests
+> mvn clean install -pl iotdb-client/session -am -DskipTests
 
 ### Using IoTDB Java Native API with Maven
 

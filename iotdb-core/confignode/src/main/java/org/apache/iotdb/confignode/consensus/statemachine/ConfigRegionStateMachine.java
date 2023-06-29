@@ -225,7 +225,8 @@ public class ConfigRegionStateMachine
           () -> configManager.getPipeManager().getPipeRuntimeCoordinator().startPipeHeartbeat());
     } else {
       LOGGER.info(
-          "Current node [nodeId:{}, ip:port: {}] is not longer the leader, the new leader is [nodeId:{}]",
+          "Current node [nodeId:{}, ip:port: {}] is not longer the leader, "
+              + "the new leader is [nodeId:{}]",
           currentNodeId,
           currentNodeTEndPoint,
           newLeaderId);
@@ -275,7 +276,8 @@ public class ConfigRegionStateMachine
           simpleLogWriter.close();
         } catch (IOException e) {
           LOGGER.warn(
-              "Can't close StandAloneLog for ConfigNode SimpleConsensus mode, filePath: {}, retry: {}",
+              "Can't close StandAloneLog for ConfigNode SimpleConsensus mode, "
+                  + "filePath: {}, retry: {}",
               simpleLogFile.getAbsolutePath(),
               retry);
           try {

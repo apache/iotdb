@@ -35,6 +35,8 @@ import java.util.Map;
 /** This file is modified from io.micrometer.core.instrument.binder.logging.LogbackMetrics */
 public class LogbackMetrics implements IMetricSet {
   private static final org.slf4j.Logger logger = LoggerFactory.getLogger(LogbackMetrics.class);
+  private static final String LEVEL = "level";
+  private static final String METRIC_NAME = "logback_events";
   static ThreadLocal<Boolean> ignoreMetrics = new ThreadLocal<>();
   private final LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
   private final Map<AbstractMetricService, MetricsTurboFilter> metricsTurboFilters =
@@ -91,11 +93,11 @@ public class LogbackMetrics implements IMetricSet {
         for (MetricsTurboFilter addMetricsTurboFilter : metricsTurboFilters.values()) {
           loggerContext.getTurboFilterList().remove(addMetricsTurboFilter);
         }
-        metricService.remove(MetricType.COUNTER, "logback_events", "level", "error");
-        metricService.remove(MetricType.COUNTER, "logback_events", "level", "warn");
-        metricService.remove(MetricType.COUNTER, "logback_events", "level", "info");
-        metricService.remove(MetricType.COUNTER, "logback_events", "level", "debug");
-        metricService.remove(MetricType.COUNTER, "logback_events", "level", "trace");
+        metricService.remove(MetricType.COUNTER, METRIC_NAME, LEVEL, "error");
+        metricService.remove(MetricType.COUNTER, METRIC_NAME, LEVEL, "warn");
+        metricService.remove(MetricType.COUNTER, METRIC_NAME, LEVEL, "info");
+        metricService.remove(MetricType.COUNTER, METRIC_NAME, LEVEL, "debug");
+        metricService.remove(MetricType.COUNTER, METRIC_NAME, LEVEL, "trace");
       }
     } catch (Exception e) {
       logger.warn("Failed to remove logBackMetrics, because ", e);

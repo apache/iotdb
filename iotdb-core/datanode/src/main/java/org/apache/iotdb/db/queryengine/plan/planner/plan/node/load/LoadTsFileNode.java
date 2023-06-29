@@ -28,17 +28,15 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 public class LoadTsFileNode extends WritePlanNode {
-  private static final Logger logger = LoggerFactory.getLogger(LoadTsFileNode.class);
 
   private final List<TsFileResource> resources;
 
@@ -58,11 +56,13 @@ public class LoadTsFileNode extends WritePlanNode {
 
   @Override
   public List<PlanNode> getChildren() {
-    return null;
+    return Collections.emptyList();
   }
 
   @Override
-  public void addChild(PlanNode child) {}
+  public void addChild(PlanNode child) {
+    // Do nothing
+  }
 
   @Override
   public PlanNode clone() {
@@ -76,14 +76,18 @@ public class LoadTsFileNode extends WritePlanNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return null;
+    return Collections.emptyList();
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    // Do nothing
+  }
 
   @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {}
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    // Do nothing
+  }
 
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
@@ -93,5 +97,22 @@ public class LoadTsFileNode extends WritePlanNode {
       res.add(new LoadSingleTsFileNode(getPlanNodeId(), resource, statement.isDeleteAfterLoad()));
     }
     return res;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    LoadTsFileNode loadTsFileNode = (LoadTsFileNode) o;
+    return Objects.equals(resources, loadTsFileNode.resources);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(resources);
   }
 }

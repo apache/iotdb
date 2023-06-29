@@ -113,9 +113,12 @@ public class SyncConfigNodeClientPool {
   }
 
   /**
-   * ConfigNode Leader stop any ConfigNode in the cluster
+   * ConfigNode Leader stop any ConfigNode in the cluster.
    *
    * @param configNodeLocation To be removed ConfigNode
+   * @throws ClientManagerException removeConfigNode
+   * @throws TException removeConfigNode
+   * @throws InterruptedException removeConfigNode
    * @return SUCCESS_STATUS: remove ConfigNode success, other status remove failed
    */
   public TSStatus removeConfigNode(

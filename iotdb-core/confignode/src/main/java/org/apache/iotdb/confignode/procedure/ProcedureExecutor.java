@@ -46,6 +46,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class ProcedureExecutor<Env> {
   private static final Logger LOG = LoggerFactory.getLogger(ProcedureExecutor.class);
@@ -482,7 +483,7 @@ public class ProcedureExecutor<Env> {
     if (parent == null && rootProcStack.isRollingback()) {
       return;
     }
-    if (parent.tryRunnable()) {
+    if (parent != null && parent.tryRunnable()) {
       // if success, means all its children have completed, move parent to front of the queue.
       store.update(parent);
       scheduler.addFront(parent);
@@ -709,7 +710,7 @@ public class ProcedureExecutor<Env> {
 
   private class WorkerThread extends StoppableThread {
     private final AtomicLong startTime = new AtomicLong(Long.MAX_VALUE);
-    private volatile Procedure<Env> activeProcedure;
+    private AtomicReference<Procedure<Env>> activeProcedure;
     protected long keepAliveTime = -1;
 
     public WorkerThread(ThreadGroup threadGroup) {
@@ -735,7 +736,7 @@ public class ProcedureExecutor<Env> {
           if (procedure == null) {
             continue;
           }
-          this.activeProcedure = procedure;
+          this.activeProcedure = new AtomicReference<>(procedure);
           int activeCount = activeExecutorCount.incrementAndGet();
           startTime.set(System.currentTimeMillis());
           executeProcedure(procedure);
@@ -747,7 +748,9 @@ public class ProcedureExecutor<Env> {
         }
 
       } catch (Throwable throwable) {
-        LOG.warn("Worker terminated {}", this.activeProcedure, throwable);
+        if (this.activeProcedure != null) {
+          LOG.warn("Worker terminated {}", this.activeProcedure.get(), throwable);
+        }
       } finally {
         LOG.debug("Worker teminated.");
       }
@@ -760,7 +763,7 @@ public class ProcedureExecutor<Env> {
 
     @Override
     public String toString() {
-      Procedure<?> p = this.activeProcedure;
+      Procedure<?> p = this.activeProcedure.get();
       return getName() + "(pid=" + (p == null ? Procedure.NO_PROC_ID : p.getProcId() + ")");
     }
 

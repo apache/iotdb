@@ -34,7 +34,7 @@ public class EmptyStateMachine implements IStateMachine, IStateMachine.EventApi 
   public void stop() {}
 
   @Override
-  public TSStatus write(IConsensusRequest IConsensusRequest) {
+  public TSStatus write(IConsensusRequest request) {
     return new TSStatus(0);
   }
 
@@ -44,7 +44,7 @@ public class EmptyStateMachine implements IStateMachine, IStateMachine.EventApi 
   }
 
   @Override
-  public DataSet read(IConsensusRequest IConsensusRequest) {
+  public DataSet read(IConsensusRequest request) {
     return null;
   }
 

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.consensus.request.write.partition;
 
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
@@ -35,10 +36,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-/** Create SchemaPartition by assignedSchemaPartition */
+/** Create SchemaPartition by assignedSchemaPartition. */
 public class CreateSchemaPartitionPlan extends ConfigPhysicalPlan {
 
-  // TODO: Replace this field whit new SchemaPartition
+  // TODO: Replace this field whit new SchemaPartition.
   private Map<String, SchemaPartitionTable> assignedSchemaPartition;
 
   public CreateSchemaPartitionPlan() {
@@ -88,8 +89,12 @@ public class CreateSchemaPartitionPlan extends ConfigPhysicalPlan {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     CreateSchemaPartitionPlan that = (CreateSchemaPartitionPlan) o;
     return assignedSchemaPartition.equals(that.assignedSchemaPartition);
   }

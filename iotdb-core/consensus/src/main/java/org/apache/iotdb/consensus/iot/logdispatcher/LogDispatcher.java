@@ -52,7 +52,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
-/** Manage all asynchronous replication threads and corresponding async clients */
+/** Manage all asynchronous replication threads and corresponding async clients. */
 public class LogDispatcher {
 
   private static final Logger logger = LoggerFactory.getLogger(LogDispatcher.class);
@@ -67,7 +67,6 @@ public class LogDispatcher {
 
   private final AtomicLong logEntriesFromWAL = new AtomicLong(0);
   private final AtomicLong logEntriesFromQueue = new AtomicLong(0);
-  private final IoTConsensusServerMetrics ioTConsensusServerMetrics;
 
   public LogDispatcher(
       IoTConsensusServerImpl impl,
@@ -84,7 +83,6 @@ public class LogDispatcher {
     if (!threads.isEmpty()) {
       initLogSyncThreadPool();
     }
-    this.ioTConsensusServerMetrics = ioTConsensusServerMetrics;
   }
 
   private void initLogSyncThreadPool() {
@@ -469,9 +467,11 @@ public class LogDispatcher {
 
     private void constructBatchFromWAL(long currentIndex, long maxIndex, Batch logBatches) {
       logger.debug(
-          String.format(
-              "DataRegion[%s]->%s: currentIndex: %d, maxIndex: %d",
-              peer.getGroupId().getId(), peer.getEndpoint().getIp(), currentIndex, maxIndex));
+          "DataRegion[{}]->{}: currentIndex: {}, maxIndex: {}",
+          peer.getGroupId().getId(),
+          peer.getEndpoint().getIp(),
+          currentIndex,
+          maxIndex);
       // targetIndex is the index of request that we need to find
       long targetIndex = currentIndex;
       // Even if there is no WAL files, these code won't produce error.

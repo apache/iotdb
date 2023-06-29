@@ -70,7 +70,7 @@ Then the binary version (including both server and client) can be found at **dis
 If you would like to build the IoTDB server, you can run the following command under the root path of iotdb:
 
 ```
-> mvn clean package -pl server -am -DskipTests
+> mvn clean package -pl iotdb-core/datanode -am -DskipTests
 ```
 
 After build, the IoTDB server will be at the folder "server/target/iotdb-server-{project.version}". 
@@ -79,7 +79,7 @@ If you would like to build a module, you can execute command `mvn clean package 
 If you need the jar with dependencies, you can add parameter `-P get-jar-with-dependencies` after the command. E.g., If you need the jar of jdbc with dependencies, you can execute this command:
 
 ```shell
-> mvn clean package -pl jdbc -am -DskipTests -P get-jar-with-dependencies
+> mvn clean package -pl iotdb-client/jdbc -am -DskipTests -P get-jar-with-dependencies
 ```
 
 Then you can find it under the path `{module.name}/target`.

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.client.async.handlers.heartbeat;
 
 import org.apache.iotdb.commons.cluster.RegionStatus;
@@ -85,7 +86,7 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
                       // Region will inherit DataNode's status
                       RegionStatus.parse(heartbeatResp.getStatus())));
 
-              if (isLeader) {
+              if (Boolean.TRUE.equals(isLeader)) {
                 // Update leaderCache
                 loadCache.cacheLeaderSample(
                     regionGroupId, new Pair<>(heartbeatResp.getHeartbeatTimestamp(), nodeId));
@@ -108,6 +109,8 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
           break;
         case TIMESERIES:
           schemaQuotaRespProcess.accept(heartbeatResp.getRegionTimeSeriesNumMap());
+          break;
+        default:
           break;
       }
     }

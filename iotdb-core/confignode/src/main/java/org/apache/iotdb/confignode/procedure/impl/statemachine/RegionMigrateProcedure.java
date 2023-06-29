@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REGION_MIGRATE_PROCESS;
 import static org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler.getIdWithRpcEndpoint;
@@ -250,6 +251,11 @@ public class RegionMigrateProcedure
     return false;
   }
 
+  @Override
+  public int hashCode() {
+    return Objects.hash(this.originalDataNode, this.destDataNode, this.consensusGroupId);
+  }
+
   public TSStatus waitForOneMigrationStepFinished(
       TConsensusGroupId consensusGroupId, RegionTransitionState state) throws Exception {
 
@@ -299,7 +305,7 @@ public class RegionMigrateProcedure
         migrateSuccess = false;
         migrateResult = migrateStatus.toString();
       }
-      regionMigrateLock.notify();
+      regionMigrateLock.notifyAll();
     }
   }
 

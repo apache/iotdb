@@ -72,23 +72,28 @@ public class SetSpaceQuotaPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    List<String> prefixPathList = BasicStructureSerDeUtil.readStringList(buffer);
+    this.prefixPathList = BasicStructureSerDeUtil.readStringList(buffer);
     long deviceNum = BasicStructureSerDeUtil.readLong(buffer);
-    long timeserieNum = BasicStructureSerDeUtil.readLong(buffer);
+    long timeSeriesNum = BasicStructureSerDeUtil.readLong(buffer);
     long disk = BasicStructureSerDeUtil.readLong(buffer);
-    this.prefixPathList = prefixPathList;
-    TSpaceQuota spaceLimit = new TSpaceQuota();
-    spaceLimit.setDeviceNum(deviceNum);
-    spaceLimit.setTimeserieNum(timeserieNum);
-    spaceLimit.setDiskSize(disk);
-    this.spaceLimit = spaceLimit;
+    TSpaceQuota tSpaceQuota = new TSpaceQuota();
+    tSpaceQuota.setDiskSize(disk);
+    tSpaceQuota.setDeviceNum(deviceNum);
+    tSpaceQuota.setTimeserieNum(timeSeriesNum);
+    this.spaceLimit = tSpaceQuota;
   }
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
     SetSpaceQuotaPlan that = (SetSpaceQuotaPlan) o;
     return Objects.equals(prefixPathList, that.prefixPathList)
         && Objects.equals(spaceLimit, that.spaceLimit);

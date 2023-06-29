@@ -29,10 +29,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import javax.ws.rs.core.Response;
 
@@ -115,20 +113,6 @@ public class QueryDataSetHandler {
       for (int i = 0; i < datasetHeader.getRespColumns().size(); i++) {
         targetDataSet.addColumnNamesItem(datasetHeader.getRespColumns().get(i));
         targetDataSet.addValuesItem(new ArrayList<>());
-      }
-    }
-  }
-
-  private static void initTargetDatasetExpByOrderWithSourceDataSet(
-      QueryDataSet sourceDataSet,
-      int[] targetDataSetIndexToSourceDataSetIndex,
-      org.apache.iotdb.db.protocol.rest.v1.model.QueryDataSet targetDataSet) {
-    if (sourceDataSet.getPaths() != null) {
-      for (int i = 0; i < sourceDataSet.getPaths().size(); i++) {
-        Path path = sourceDataSet.getPaths().get(i);
-        targetDataSet.addExpressionsItem(path.getFullPath());
-        targetDataSet.addValuesItem(new ArrayList<>());
-        targetDataSetIndexToSourceDataSetIndex[i] = i;
       }
     }
   }

@@ -70,7 +70,9 @@ public class PipeProcessorSubtask extends PipeSubtask {
       releaseLastEvent();
     } catch (Exception e) {
       throw new PipeException(
-          "Error occurred during executing PipeProcessor#process, perhaps need to check whether the implementation of PipeProcessor is correct according to the pipe-api description.",
+          "Error occurred during executing PipeProcessor#process, perhaps need to check "
+              + "whether the implementation of PipeProcessor is correct "
+              + "according to the pipe-api description.",
           e);
     }
 
@@ -90,7 +92,8 @@ public class PipeProcessorSubtask extends PipeSubtask {
     } catch (Exception e) {
       e.printStackTrace();
       LOGGER.info(
-          "Error occurred during closing PipeProcessor, perhaps need to check whether the implementation of PipeProcessor is correct according to the pipe-api description.",
+          "Error occurred during closing PipeProcessor, perhaps need to check whether the "
+              + "implementation of PipeProcessor is correct according to the pipe-api description.",
           e);
     }
   }

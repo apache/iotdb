@@ -100,6 +100,12 @@ public class PlainEncoder extends Encoder {
   }
 
   @Override
+  public void encode(BigDecimal value, ByteArrayOutputStream out) {
+    throw new TsFileEncodingException(
+        "tsfile-encoding PlainEncoder: current version does not support BigDecimal value encoding");
+  }
+
+  @Override
   public void flush(ByteArrayOutputStream out) {
     // This is an empty function.
   }
@@ -128,11 +134,5 @@ public class PlainEncoder extends Encoder {
   @Override
   public long getMaxByteSize() {
     return 0;
-  }
-
-  @Override
-  public void encode(BigDecimal value, ByteArrayOutputStream out) {
-    throw new TsFileEncodingException(
-        "tsfile-encoding PlainEncoder: current version does not support BigDecimal value encoding");
   }
 }

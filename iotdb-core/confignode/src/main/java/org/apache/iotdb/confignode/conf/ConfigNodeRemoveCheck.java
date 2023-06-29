@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
@@ -43,7 +44,7 @@ import static org.apache.commons.lang3.StringUtils.isNumeric;
 
 public class ConfigNodeRemoveCheck {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeStartupCheck.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeRemoveCheck.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
@@ -81,7 +82,8 @@ public class ConfigNodeRemoveCheck {
                   .orElse(null);
         } catch (BadNodeUrlException e2) {
           LOGGER.info(
-              "Usage: remove-confignode.sh <confignode-id> or remove-confignode.sh <internal_address>:<internal_port>");
+              "Usage: remove-confignode.sh <confignode-id> "
+                  + "or remove-confignode.sh <internal_address>:<internal_port>");
           return nodeLocation;
         }
       }
@@ -124,7 +126,12 @@ public class ConfigNodeRemoveCheck {
     }
   }
 
-  /** config_node_list of confignode-system.properties */
+  /**
+   * config_node_list of confignode-system.properties
+   *
+   * @throws BadNodeUrlException loadConfigNodeList()
+   * @throws IOException loadConfigNodeList()
+   */
   public List<TConfigNodeLocation> getConfigNodeList() throws BadNodeUrlException, IOException {
     return SystemPropertiesUtils.loadConfigNodeList();
   }

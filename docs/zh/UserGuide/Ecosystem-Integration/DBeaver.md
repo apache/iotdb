@@ -54,7 +54,7 @@ DBeaver 是一个 SQL 客户端和数据库管理工具。DBeaver 可以使用 I
 5. 下载[源代码](https://iotdb.apache.org/zh/Download/)，解压并运行下面的命令编译 jdbc 驱动
 
    ```shell
-   mvn clean package -pl jdbc -am -DskipTests -P get-jar-with-dependencies
+   mvn clean package -pl iotdb-client/jdbc -am -DskipTests -P get-jar-with-dependencies
    ```
 7. 在`jdbc/target/`下找到并添加名为`apache-iotdb-jdbc-{version}-jar-with-dependencies.jar`的库，点击 `Find Class`。
 

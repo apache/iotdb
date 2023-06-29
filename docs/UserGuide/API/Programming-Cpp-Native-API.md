@@ -131,7 +131,7 @@ Under the root path of iotdb:
 
 - Windows
     ```shell
-    mvn package -P compile-cpp -pl client-cpp,server,example/client-cpp-example -am -Dcmake.generator="your cmake generator" -Dboost.include.dir=${your boost header folder} -Dboost.library.dir=${your boost lib (stage) folder} -DskipTests
+    mvn package -P compile-cpp -pl iotdb-client/client-cpp,iotdb-core/datanode,example/client-cpp-example -am -Dcmake.generator="your cmake generator" -Dboost.include.dir=${your boost header folder} -Dboost.library.dir=${your boost lib (stage) folder} -DskipTests
     ```
     - When building client-cpp project, use `-Dcmake.generator=""` option to specify a Cmake generator. E.g. `-Dcmake.generator="Visual Studio 16 2019"` (`cmake --help` shows a long list of supported Cmake generators.)
     - To help CMake find your Boost libraries on windows, you should set `-DboostIncludeDir="C:\Program Files (x86)\boost_1_78_0" -DboostLibraryDir="C:\Program Files (x86)\boost_1_78_0\stage\lib"` to your mvn build command.

@@ -79,10 +79,9 @@ public class DataNodeRegionManager {
     schemaEngine
         .getAllSchemaRegions()
         .forEach(
-            schemaRegion -> {
-              schemaRegionLockMap.put(
-                  schemaRegion.getSchemaRegionId(), new ReentrantReadWriteLock(false));
-            });
+            schemaRegion ->
+                schemaRegionLockMap.put(
+                    schemaRegion.getSchemaRegionId(), new ReentrantReadWriteLock(false)));
 
     storageEngine
         .getAllDataRegionIds()

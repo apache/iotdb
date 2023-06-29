@@ -19,18 +19,18 @@
 
 package org.apache.iotdb.commons.security.encrypt;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.lang.reflect.InvocationTargetException;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class AsymmetricEncryptFactory {
-  private static final Logger LOGGER = LoggerFactory.getLogger(AsymmetricEncryptFactory.class);
 
-  private static volatile AsymmetricEncrypt asymmetricEncrypt;
+  private static final AtomicReference<AsymmetricEncrypt> asymmetricEncrypt =
+      new AtomicReference<>();
+
+  private AsymmetricEncryptFactory() {}
 
   /**
-   * load encrypt provider class for encrypt or decrypt password
+   * load encrypt provider class for encrypt or decrypt password.
    *
    * @param providerClassName encrypt class name
    * @param providerParameter provider parameter
@@ -38,28 +38,27 @@ public class AsymmetricEncryptFactory {
    */
   public static AsymmetricEncrypt getEncryptProvider(
       String providerClassName, String providerParameter) {
-    if (asymmetricEncrypt == null) {
+    if (asymmetricEncrypt.get() == null) {
       synchronized (AsymmetricEncrypt.class) {
-        if (asymmetricEncrypt == null) {
+        if (asymmetricEncrypt.get() == null) {
 
           try {
-            Class providerClass =
+            Class<?> providerClass =
                 getClassLoaderForClass(AsymmetricEncrypt.class).loadClass(providerClassName);
-            asymmetricEncrypt =
-                (AsymmetricEncrypt) providerClass.getDeclaredConstructor().newInstance();
-            asymmetricEncrypt.init(providerParameter);
+            asymmetricEncrypt.set(
+                (AsymmetricEncrypt) providerClass.getDeclaredConstructor().newInstance());
+            asymmetricEncrypt.get().init(providerParameter);
           } catch (ClassNotFoundException
               | NoSuchMethodException
               | InstantiationException
               | IllegalAccessException
               | InvocationTargetException e) {
-            LOGGER.error("Failed to load encryption class", e);
             throw new EncryptDecryptException(e);
           }
         }
       }
     }
-    return asymmetricEncrypt;
+    return asymmetricEncrypt.get();
   }
 
   private static ClassLoader getClassLoaderForClass(Class<?> c) {

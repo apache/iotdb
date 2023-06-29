@@ -24,7 +24,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.UnClosedTsFileReader;
-import org.apache.iotdb.tsfile.v2.read.TsFileSequenceReaderForV2;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -131,12 +130,7 @@ public class FileReaderManager {
         tsFileReader = new TsFileSequenceReader(filePath);
         if (tsFileReader.readVersionNumber() != TSFileConfig.VERSION_NUMBER) {
           tsFileReader.close();
-          tsFileReader = new TsFileSequenceReaderForV2(filePath);
-          if (!((TsFileSequenceReaderForV2) tsFileReader)
-              .readVersionNumberV2()
-              .equals(TSFileConfig.VERSION_NUMBER_V2)) {
-            throw new IOException("The version of this TsFile is not corrent. ");
-          }
+          throw new IOException("The version of this TsFile is not correct.");
         }
       }
       readerMap.put(filePath, tsFileReader);

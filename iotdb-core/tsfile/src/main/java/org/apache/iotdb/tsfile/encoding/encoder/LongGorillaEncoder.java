@@ -108,7 +108,7 @@ public class LongGorillaEncoder extends GorillaEncoderV2 {
 
   /**
    * If there at least as many leading zeros and as many trailing zeros as previous value, control
-   * bit = 0 (type a)
+   * bit = 0 (type a).
    *
    * <p>store the meaningful XORed value
    *
@@ -122,7 +122,7 @@ public class LongGorillaEncoder extends GorillaEncoderV2 {
   }
 
   /**
-   * Stores the length of the number of leading zeros in the next 6 bits
+   * Stores the length of the number of leading zeros in the next 6 bits.
    *
    * <p>Stores the length of the meaningful XORed value in the next 6 bits
    *

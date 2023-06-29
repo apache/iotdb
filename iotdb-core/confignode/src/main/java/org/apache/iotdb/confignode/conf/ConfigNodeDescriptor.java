@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -58,7 +59,7 @@ public class ConfigNodeDescriptor {
   }
 
   /**
-   * get props url location
+   * get props url location.
    *
    * @return url object if location exit, otherwise null.
    */
@@ -351,7 +352,8 @@ public class ConfigNodeDescriptor {
     } else {
       throw new IOException(
           String.format(
-              "Unknown leader_distribution_policy: %s, please set to \"GREEDY\" or \"MIN_COST_FLOW\"",
+              "Unknown leader_distribution_policy: %s, "
+                  + "please set to \"GREEDY\" or \"MIN_COST_FLOW\"",
               leaderDistributionPolicy));
     }
 
@@ -798,7 +800,8 @@ public class ConfigNodeDescriptor {
                 .trim());
     if (cqSubmitThread <= 0) {
       LOGGER.warn(
-          "continuous_query_submit_thread should be greater than 0, but current value is {}, ignore that and use the default value {}",
+          "continuous_query_submit_thread should be greater than 0, "
+              + "but current value is {}, ignore that and use the default value {}",
           cqSubmitThread,
           conf.getCqSubmitThread());
       cqSubmitThread = conf.getCqSubmitThread();
@@ -814,7 +817,8 @@ public class ConfigNodeDescriptor {
                 .trim());
     if (cqMinEveryIntervalInMs <= 0) {
       LOGGER.warn(
-          "continuous_query_min_every_interval_in_ms should be greater than 0, but current value is {}, ignore that and use the default value {}",
+          "continuous_query_min_every_interval_in_ms should be greater than 0, "
+              + "but current value is {}, ignore that and use the default value {}",
           cqMinEveryIntervalInMs,
           conf.getCqMinEveryIntervalInMs());
       cqMinEveryIntervalInMs = conf.getCqMinEveryIntervalInMs();

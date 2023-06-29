@@ -206,7 +206,8 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
       transfer(requestCommitId, pipeTransferTabletReqHandler);
     } else {
       throw new NotImplementedException(
-          "IoTDBThriftConnectorV2 only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent.");
+          "IoTDBThriftConnectorV2 only support "
+              + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent.");
     }
   }
 

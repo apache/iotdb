@@ -37,7 +37,7 @@
 
 首先下载对应版本的源码发布版或者下载 github 仓库
 
-使用 maven 打包 server 和 Hadoop 模块：`mvn clean package -pl server,hadoop -am -Dmaven.test.skip=true -P get-jar-with-dependencies`
+使用 maven 打包 server 和 Hadoop 模块：`mvn clean package -pl iotdb-core/datanode,iotdb-connector/hadoop -am -Dmaven.test.skip=true -P get-jar-with-dependencies`
 
 然后，将 Hadoop 模块的 target jar 包`hadoop-tsfile-X.X.X-jar-with-dependencies.jar`复制到 server 模块的 target lib 文件夹 `.../server/target/iotdb-server-X.X.X/lib`下。
 
@@ -167,5 +167,5 @@ ERROR org.apache.iotdb.tsfile.fileSystem.fsFactory.HDFSFactory:62 - Failed to ge
 ```
 
 A: 这表明你没有将 Hadoop 模块的依赖放到 IoTDB server 中。你可以这样解决：
-* 使用 Maven 打包 Hadoop 模块：`mvn clean package -pl hadoop -am -Dmaven.test.skip=true -P get-jar-with-dependencies`
+* 使用 Maven 打包 Hadoop 模块：`mvn clean package -pl iotdb-connector/hadoop -am -Dmaven.test.skip=true -P get-jar-with-dependencies`
 * 将 Hadoop 模块的 target jar 包`hadoop-tsfile-X.X.X-jar-with-dependencies.jar`复制到 server 模块的 target lib 文件夹 `.../server/target/iotdb-server-X.X.X/lib`下。

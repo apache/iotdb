@@ -61,7 +61,6 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.ThreadUtils;
-import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
@@ -308,9 +307,6 @@ public class StorageEngine implements IService {
     } catch (IOException e) {
       throw new StorageEngineFailureException(e);
     }
-
-    // recover upgrade process
-    UpgradeUtils.recoverUpgrade();
 
     recover();
 
