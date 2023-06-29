@@ -123,7 +123,7 @@ class SimpleConsensus implements IConsensus {
     TSStatus status;
     if (impl.isReadOnly()) {
       status = new TSStatus(TSStatusCode.SYSTEM_READ_ONLY.getStatusCode());
-      status.setMessage("Fail to do non-read operations because system is read-only.");
+      status.setMessage("Fail to do non-query operations because system is read-only.");
     } else {
       if (groupId instanceof DataRegionId) {
         long startWriteTime = System.nanoTime();

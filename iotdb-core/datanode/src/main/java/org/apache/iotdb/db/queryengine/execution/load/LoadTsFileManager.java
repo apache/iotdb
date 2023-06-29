@@ -307,8 +307,12 @@ public class LoadTsFileManager {
 
     @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
       DataPartitionInfo that = (DataPartitionInfo) o;
       return Objects.equals(dataRegion, that.dataRegion)
           && timePartitionSlot.getStartTime() == that.timePartitionSlot.getStartTime();

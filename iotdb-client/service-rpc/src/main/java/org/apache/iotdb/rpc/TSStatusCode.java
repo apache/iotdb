@@ -183,7 +183,7 @@ public enum TSStatusCode {
   // Continuous Query
   NO_SUCH_CQ(1400),
   CQ_ALREADY_ACTIVE(1401),
-  CQ_AlREADY_EXIST(1402),
+  CQ_ALREADY_EXIST(1402),
   CQ_UPDATE_LAST_EXEC_TIME_ERROR(1403),
 
   // ML Model

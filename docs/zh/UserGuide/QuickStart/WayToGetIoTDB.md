@@ -60,7 +60,7 @@ Shell > unzip iotdb-<version>.zip
 切换分支之后就可以使用以下命令进行编译：
 
 ```
-> mvn clean package -pl server -am -Dmaven.test.skip=true
+> mvn clean package -pl iotdb-core/datanode -am -Dmaven.test.skip=true
 ```
 
 编译后，IoTDB 服务器会在 "server/target/iotdb-server-{project.version}" 文件夹下，包含以下内容：
@@ -78,7 +78,7 @@ Shell > unzip iotdb-<version>.zip
 如果您想要编译项目中的某个模块，您可以在源码文件夹中使用`mvn clean package -pl {module.name} -am -DskipTests`命令进行编译。如果您需要的是带依赖的 jar 包，您可以在编译命令后面加上`-P get-jar-with-dependencies`参数。比如您想编译带依赖的 jdbc jar 包，您就可以使用以下命令进行编译：  
 
 ```shell
-> mvn clean package -pl jdbc -am -DskipTests -P get-jar-with-dependencies
+> mvn clean package -pl iotdb-client/jdbc -am -DskipTests -P get-jar-with-dependencies
 ```
 
 编译完成后就可以在`{module.name}/target`目录中找到需要的包了。

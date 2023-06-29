@@ -30,13 +30,13 @@ import java.util.Vector;
 
 public class IntSprintzEncoder extends SprintzEncoder {
 
-  /** bit packer */
+  // bit packer
   IntPacker packer;
 
-  /** Fire predictor * */
+  // Fire predictor
   IntFire firePred;
 
-  /** we save all value in a list and calculate its bitwidth. */
+  // we save all value in a list and calculate its bitwidth.
   protected Vector<Integer> values;
 
   public IntSprintzEncoder() {
@@ -63,28 +63,33 @@ public class IntSprintzEncoder extends SprintzEncoder {
 
   protected Integer predict(Integer value, Integer preVlaue) throws TsFileEncodingException {
     Integer pred;
-    if (PredictMethod.equals("delta")) {
+    if (predictMethod.equals("delta")) {
       pred = delta(value, preVlaue);
-    } else if (PredictMethod.equals("fire")) {
+    } else if (predictMethod.equals("fire")) {
       pred = fire(value, preVlaue);
     } else {
       throw new TsFileEncodingException(
           "Config: Predict Method {} of SprintzEncoder is not supported.");
     }
-    if (pred <= 0) pred = -2 * pred;
-    else pred = 2 * pred - 1; // TODO:overflow
+    if (pred <= 0) {
+      pred = -2 * pred;
+    } else {
+      pred = 2 * pred - 1; // TODO:overflow
+    }
     return pred;
   }
 
   @Override
   protected void bitPack() throws IOException {
-    int preValue = values.get(0);
+    final int preValue = values.get(0);
     values.remove(0);
     this.bitWidth = ReadWriteForEncodingUtils.getIntMaxBitWidth(values);
     packer = new IntPacker(this.bitWidth);
     byte[] bytes = new byte[bitWidth];
     int[] tmpBuffer = new int[Block_size];
-    for (int i = 0; i < Block_size; i++) tmpBuffer[i] = values.get(i);
+    for (int i = 0; i < Block_size; i++) {
+      tmpBuffer[i] = values.get(i);
+    }
     packer.pack8Values(tmpBuffer, 0, bytes);
     ReadWriteForEncodingUtils.writeIntLittleEndianPaddedOnBitWidth(bitWidth, byteCache, 1);
     ReadWriteForEncodingUtils.writeUnsignedVarInt(preValue, byteCache);

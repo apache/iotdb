@@ -41,7 +41,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-/** drop trigger procedure */
 public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState> {
   private static final Logger LOG = LoggerFactory.getLogger(DropTriggerProcedure.class);
   private static final int RETRY_THRESHOLD = 5;
@@ -103,6 +102,9 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
         case CONFIG_NODE_DROPPED:
           env.getConfigManager().getTriggerManager().getTriggerInfo().releaseTriggerTableLock();
           return Flow.NO_MORE_STATE;
+
+        default:
+          throw new IllegalArgumentException("Unknown DropTriggerState: " + state);
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
@@ -177,6 +179,6 @@ public class DropTriggerProcedure extends AbstractNodeProcedure<DropTriggerState
 
   @Override
   public int hashCode() {
-    return Objects.hash(this.triggerName);
+    return Objects.hash(getProcId(), getState(), triggerName);
   }
 }

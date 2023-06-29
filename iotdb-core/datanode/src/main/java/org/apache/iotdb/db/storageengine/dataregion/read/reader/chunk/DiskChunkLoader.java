@@ -62,7 +62,6 @@ public class DiskChunkLoader implements IChunkLoader {
     long t1 = System.nanoTime();
     try {
       Chunk chunk = ChunkCache.getInstance().get((ChunkMetadata) chunkMetaData, debug);
-      chunk.setFromOldFile(chunkMetaData.isFromOldTsFile());
 
       long t2 = System.nanoTime();
       IChunkReader chunkReader = new ChunkReader(chunk, timeFilter);

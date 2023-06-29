@@ -111,7 +111,8 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
 
           if (connector.isClosed()) {
             LOGGER.info(
-                "IoTDBThriftConnectorV2 has been stopped, we will not retry this request {} after {} times",
+                "IoTDBThriftConnectorV2 has been stopped, "
+                    + "we will not retry this request {} after {} times",
                 req,
                 retryCount,
                 exception);

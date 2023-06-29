@@ -31,7 +31,7 @@ TsFile 是在 IoTDB 中使用的时间序列的文件格式。在这个章节中
 	
 ```shell
 git clone https://github.com/apache/iotdb.git
-cd tsfile/
+cd iotdb-core/tsfile/
 mvn clean package -Dmaven.test.skip=true
 ```
 
@@ -49,7 +49,7 @@ git clone https://github.com/apache/iotdb.git
  2. 编译源码和部署到本地仓库
 
  ```shell
-cd tsfile/
+cd iotdb-core/tsfile/
 mvn clean install -Dmaven.test.skip=true
  ```
  3. 在您自己的工程中增加依赖：
@@ -271,7 +271,7 @@ TsFile 可以通过以下三个步骤生成，完整的代码参见"写入 TsFil
 您需要安装 TsFile 到本地的 Maven 仓库中。
 
 ```shell
-mvn clean install -pl tsfile -am -DskipTests
+mvn clean install -pl iotdb-core/tsfile -am -DskipTests
 ```
 
 如果存在**非对齐**的时序数据（比如：不是所有的传感器都有值），您可以通过构造** TSRecord **来写入。

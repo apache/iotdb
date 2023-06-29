@@ -49,6 +49,7 @@ public class InternalNode extends TemplateNode {
     }
   }
 
+  @Override
   public Map<String, TemplateNode> getChildren() {
     return children;
   }

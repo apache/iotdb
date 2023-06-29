@@ -98,27 +98,27 @@ public class PipeTaskMeta {
   public static PipeTaskMeta deserialize(ByteBuffer byteBuffer) {
     final ProgressIndex progressIndex = ProgressIndexType.deserializeFrom(byteBuffer);
     final int leaderDataNodeId = ReadWriteIOUtils.readInt(byteBuffer);
-    final PipeTaskMeta PipeTaskMeta = new PipeTaskMeta(progressIndex, leaderDataNodeId);
+    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(progressIndex, leaderDataNodeId);
     final int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       final PipeRuntimeException pipeRuntimeException =
           PipeRuntimeExceptionType.deserializeFrom(byteBuffer);
-      PipeTaskMeta.exceptionMessages.add(pipeRuntimeException);
+      pipeTaskMeta.exceptionMessages.add(pipeRuntimeException);
     }
-    return PipeTaskMeta;
+    return pipeTaskMeta;
   }
 
   public static PipeTaskMeta deserialize(InputStream inputStream) throws IOException {
     final ProgressIndex progressIndex = ProgressIndexType.deserializeFrom(inputStream);
     final int leaderDataNodeId = ReadWriteIOUtils.readInt(inputStream);
-    final PipeTaskMeta PipeTaskMeta = new PipeTaskMeta(progressIndex, leaderDataNodeId);
+    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(progressIndex, leaderDataNodeId);
     final int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
       final PipeRuntimeException pipeRuntimeException =
           PipeRuntimeExceptionType.deserializeFrom(inputStream);
-      PipeTaskMeta.exceptionMessages.add(pipeRuntimeException);
+      pipeTaskMeta.exceptionMessages.add(pipeRuntimeException);
     }
-    return PipeTaskMeta;
+    return pipeTaskMeta;
   }
 
   @Override

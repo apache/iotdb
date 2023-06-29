@@ -107,8 +107,8 @@ public class TriggerManager {
       }
     }
     final String triggerName = req.getTriggerName();
-    final boolean isUsingURI = req.isIsUsingURI(),
-        needToSaveJar = isUsingURI && triggerInfo.needToSaveJar(triggerName);
+    final boolean isUsingURI = req.isIsUsingURI();
+    final boolean needToSaveJar = isUsingURI && triggerInfo.needToSaveJar(triggerName);
     TriggerInformation triggerInformation =
         new TriggerInformation(
             (PartialPath) PathDeserializeUtil.deserialize(req.pathPattern),
@@ -159,20 +159,12 @@ public class TriggerManager {
   }
 
   public TGetJarInListResp getTriggerJar(TGetJarInListReq req) {
-    try {
-      return ((JarResp)
-              configManager
-                  .getConsensusManager()
-                  .read(new GetTriggerJarPlan(req.getJarNameList()))
-                  .getDataset())
-          .convertToThriftResponse();
-    } catch (IOException e) {
-      LOGGER.error("Fail to get TriggerJar", e);
-      return new TGetJarInListResp(
-          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-              .setMessage(e.getMessage()),
-          Collections.emptyList());
-    }
+    return ((JarResp)
+            configManager
+                .getConsensusManager()
+                .read(new GetTriggerJarPlan(req.getJarNameList()))
+                .getDataset())
+        .convertToThriftResponse();
   }
 
   /**

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.manager.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -76,7 +77,7 @@ public class PipeTaskCoordinator {
     final boolean isPipeExistedBeforeDrop = pipeTaskInfo.isPipeExisted(pipeName);
     final TSStatus status = configManager.getProcedureManager().dropPipe(pipeName);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn(String.format("Failed to drop pipe %s. Result status: %s.", pipeName, status));
+      LOGGER.warn("Failed to drop pipe {}. Result status: {}.", pipeName, status);
     }
     return isPipeExistedBeforeDrop
         ? status

@@ -58,7 +58,7 @@ public abstract class RegularDataEncoder extends Encoder {
    *
    * @param size - the number how many numbers to be packed into a block.
    */
-  public RegularDataEncoder(int size) {
+  protected RegularDataEncoder(int size) {
     super(TSEncoding.REGULAR);
     blockSize = size;
   }
@@ -226,7 +226,7 @@ public abstract class RegularDataEncoder extends Encoder {
       for (int i = 1; i < dataTotal; i++) {
         int delta = missingPointData[i] - missingPointData[i - 1];
         if (delta != minDeltaBase) {
-          int missingPointNum = (int) (delta / minDeltaBase) - 1;
+          int missingPointNum = (delta / minDeltaBase) - 1;
           for (int j = 0; j < missingPointNum; j++) {
             bitmap.set(i + (offset++), false);
           }

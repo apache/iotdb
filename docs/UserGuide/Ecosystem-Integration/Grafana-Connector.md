@@ -96,8 +96,8 @@ In `/grafana/target/`directory
 
 ```shell
 cd iotdb
-mvn clean package -pl grafana-connector -am -Dmaven.test.skip=true
-cd grafana/target
+mvn clean package -pl iotdb-connector/grafana-connector -am -Dmaven.test.skip=true
+cd iotdb-connector/grafana-connector/target
 java -jar iotdb-grafana-connector-{version}.war
 ```
 

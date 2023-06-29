@@ -27,30 +27,30 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 
 public class RLBE extends Encoder {
-  /** Every BLOCK_DEFAULT_SIZE values are followed by a header */
+  // Every BLOCK_DEFAULT_SIZE values are followed by a header
   protected static final int BLOCK_DEFAULT_SIZE = 10000;
 
   protected static final Logger logger = LoggerFactory.getLogger(RLBE.class);
 
-  /** output stream to buffer {@code <length> <fibonacci code> <delta value>} */
+  // output stream to buffer {@code <length> <fibonacci code> <delta value>}
   protected ByteArrayOutputStream out;
 
   protected int blockSize = BLOCK_DEFAULT_SIZE;
 
-  /** Storage bits into byteBuffer and flush when full */
+  // Storage bits into byteBuffer and flush when full
   protected byte byteBuffer;
-  /** Valid bits left in byteBuffer */
+  // Valid bits left in byteBuffer
   protected int numberLeftInBuffer;
 
-  /** Differential Value of InputData is stored in DiffValue */
+  // Differential Value of InputData is stored in DiffValue
 
-  /** Length of binary code of delta values are stored in LengthCode */
+  // Length of binary code of delta values are stored in LengthCode
   protected int[] LengthCode;
 
-  /** When writeIndex == -1, the first value is not stored */
+  // When writeIndex == -1, the first value is not stored
   protected int writeIndex = -1;
 
-  /** Constructor of RLBE */
+  // Constructor of RLBE
   public RLBE() {
     super(TSEncoding.RLBE);
     // blockSize = size;

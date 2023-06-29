@@ -46,7 +46,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-/** create trigger procedure */
 public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerState> {
   private static final Logger LOG = LoggerFactory.getLogger(CreateTriggerProcedure.class);
   private static final int RETRY_THRESHOLD = 5;
@@ -151,6 +150,9 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
         case CONFIG_NODE_ACTIVE:
           env.getConfigManager().getTriggerManager().getTriggerInfo().releaseTriggerTableLock();
           return Flow.NO_MORE_STATE;
+
+        default:
+          throw new IllegalArgumentException("Unknown CreateTriggerState: " + state);
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
@@ -289,6 +291,6 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
 
   @Override
   public int hashCode() {
-    return Objects.hash(this.triggerInformation);
+    return Objects.hash(getProcId(), getState(), triggerInformation);
   }
 }
