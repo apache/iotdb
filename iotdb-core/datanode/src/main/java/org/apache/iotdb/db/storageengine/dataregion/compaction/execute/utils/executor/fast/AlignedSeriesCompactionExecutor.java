@@ -60,6 +60,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
 
   private final List<IMeasurementSchema> measurementSchemas;
 
+  @SuppressWarnings("squid:S107")
   public AlignedSeriesCompactionExecutor(
       AbstractCompactionWriter compactionWriter,
       Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
@@ -120,7 +121,13 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
     }
   }
 
-  /** Deserialize files into chunk metadatas and put them into the chunk metadata queue. */
+  /**
+   * Deserialize files into chunk metadatas and put them into the chunk metadata queue.
+   *
+   * @throws IOException if io errors occurred
+   * @throws IllegalPathException if the file path is illegal
+   */
+  @SuppressWarnings("squid:S3776")
   void deserializeFileIntoChunkMetadataQueue(List<FileElement> fileElements)
       throws IOException, IllegalPathException {
     for (FileElement fileElement : fileElements) {
@@ -221,7 +228,12 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
     }
   }
 
-  /** Deserialize chunk into pages without uncompressing and put them into the page queue. */
+  /**
+   * Deserialize chunk into pages without uncompressing and put them into the page queue.
+   *
+   * @throws IOException if io errors occurred
+   */
+  @SuppressWarnings("squid:S3776")
   void deserializeChunkIntoPageQueue(ChunkMetadataElement chunkMetadataElement) throws IOException {
     updateSummary(chunkMetadataElement, ChunkStatus.DESERIALIZE_CHUNK);
     List<PageHeader> timePageHeaders = new ArrayList<>();
