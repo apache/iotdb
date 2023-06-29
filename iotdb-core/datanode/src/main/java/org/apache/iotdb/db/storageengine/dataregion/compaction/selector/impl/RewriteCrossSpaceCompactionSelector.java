@@ -292,10 +292,10 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       if (!taskResources.isValid()) {
         if (!hasPrintedLog) {
           LOGGER.info(
-              "{} [Compaction] Total source files: {} seqFiles, {} unseqFiles. " +
-                  "Candidate source files: {} seqFiles, {} unseqFiles. " +
-                  "Cannot select any files because they do not meet the conditions " +
-                  "or may be occupied by other compaction threads.",
+              "{} [Compaction] Total source files: {} seqFiles, {} unseqFiles. "
+                  + "Candidate source files: {} seqFiles, {} unseqFiles. "
+                  + "Cannot select any files because they do not meet the conditions "
+                  + "or may be occupied by other compaction threads.",
               sgDataRegionId,
               sequenceFileList.size(),
               unsequenceFileList.size(),
@@ -306,14 +306,14 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         return Collections.emptyList();
       }
       LOGGER.info(
-          "{} [Compaction] Total source files: {} seqFiles, {} unseqFiles. " +
-              "Candidate source files: {} seqFiles, {} unseqFiles. " +
-              "Selected source files: {} seqFiles, " +
-              "{} unseqFiles, total memory cost {} MB, " +
-              "total selected file size is {} MB, " +
-              "total selected seq file size is {} MB, " +
-              "total selected unseq file size is {} MB, " +
-              "time consumption {}ms.",
+          "{} [Compaction] Total source files: {} seqFiles, {} unseqFiles. "
+              + "Candidate source files: {} seqFiles, {} unseqFiles. "
+              + "Selected source files: {} seqFiles, "
+              + "{} unseqFiles, total memory cost {} MB, "
+              + "total selected file size is {} MB, "
+              + "total selected seq file size is {} MB, "
+              + "total selected unseq file size is {} MB, "
+              + "time consumption {}ms.",
           sgDataRegionId,
           sequenceFileList.size(),
           unsequenceFileList.size(),
