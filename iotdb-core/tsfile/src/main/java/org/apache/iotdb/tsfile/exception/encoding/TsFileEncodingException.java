@@ -29,19 +29,7 @@ public class TsFileEncodingException extends TsFileRuntimeException {
 
   private static final long serialVersionUID = -7225811149696714845L;
 
-  public TsFileEncodingException() {
-    // do nothing
-  }
-
-  public TsFileEncodingException(String message, Throwable cause) {
-    super(message, cause);
-  }
-
   public TsFileEncodingException(String message) {
     super(message);
-  }
-
-  public TsFileEncodingException(Throwable cause) {
-    super(cause);
   }
 }

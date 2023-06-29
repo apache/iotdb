@@ -135,10 +135,11 @@ public class QueryStatementTest {
         checkErrorQuerySql(errorSql);
       } catch (SemanticException e) {
         assertEquals(errorMsg, e.getMessage());
+        continue;
       } catch (Exception ex) {
-        logger.error("Meets error in test sql: {}", errorSql, ex);
-        fail();
+        fail(String.format("Meets exception %s in test sql: `%s`", errorMsg, errorSql));
       }
+      fail(String.format("Sql: `%s` must throw exception: %s", errorSql, errorMsg));
     }
   }
 
