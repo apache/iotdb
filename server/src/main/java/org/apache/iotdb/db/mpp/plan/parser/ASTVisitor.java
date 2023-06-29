@@ -1085,6 +1085,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       alterTimeSeriesStatement.setPath(parseFullPath(ctx.fullPath()));
       parseAlterClause(ctx.alterClause(), alterTimeSeriesStatement);
       alterTimeSeriesStatement.setAlterView(true);
+      if (alterTimeSeriesStatement.getAlias() != null) {
+        throw new SemanticException("View doesn't support alias.");
+      }
       return alterTimeSeriesStatement;
     }
   }
@@ -3003,11 +3006,17 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   /** Utils */
   private void setMap(IoTDBSqlParser.AlterClauseContext ctx, Map<String, String> alterMap) {
     List<IoTDBSqlParser.AttributePairContext> tagsList = ctx.attributePair();
+    String key;
     if (ctx.attributePair(0) != null) {
       for (IoTDBSqlParser.AttributePairContext attributePair : tagsList) {
-        String value;
-        value = parseAttributeValue(attributePair.attributeValue());
-        alterMap.put(parseAttributeKey(attributePair.attributeKey()), value);
+        key = parseAttributeKey(attributePair.attributeKey());
+        alterMap.computeIfPresent(
+            key,
+            (k, v) -> {
+              throw new SemanticException(
+                  String.format("There's duplicate [%s] in tag or attribute clause.", k));
+            });
+        alterMap.put(key, parseAttributeValue(attributePair.attributeValue()));
       }
     }
   }
@@ -3017,10 +3026,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       IoTDBSqlParser.AttributePairContext attributePair3) {
     Map<String, String> tags = new HashMap<>(attributePair2.size());
     if (attributePair3 != null) {
+      String key;
       for (IoTDBSqlParser.AttributePairContext attributePair : attributePair2) {
-        tags.put(
-            parseAttributeKey(attributePair.attributeKey()),
-            parseAttributeValue(attributePair.attributeValue()));
+        key = parseAttributeKey(attributePair.attributeKey());
+        tags.computeIfPresent(
+            key,
+            (k, v) -> {
+              throw new SemanticException(
+                  String.format("There's duplicate [%s] in tag or attribute clause.", k));
+            });
+        tags.put(key, parseAttributeValue(attributePair.attributeValue()));
       }
     }
     return tags;

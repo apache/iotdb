@@ -669,7 +669,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         operatorContext,
         node.getLevel(),
         SchemaSourceFactory.getTimeSeriesSchemaCountSource(
-            node.getPath(), node.isPrefixPath(), node.getSchemaFilter(), null));
+            node.getPath(), node.isPrefixPath(), node.getSchemaFilter(), node.getTemplateMap()));
   }
 
   @Override

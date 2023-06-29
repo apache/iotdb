@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -29,26 +30,33 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import javax.validation.constraints.NotNull;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class LevelTimeSeriesCountNode extends SchemaQueryScanNode {
   private final int level;
   private final SchemaFilter schemaFilter;
+  private final Map<Integer, Template> templateMap;
 
   public LevelTimeSeriesCountNode(
       PlanNodeId id,
       PartialPath partialPath,
       boolean isPrefixPath,
       int level,
-      SchemaFilter schemaFilter) {
+      SchemaFilter schemaFilter,
+      @NotNull Map<Integer, Template> templateMap) {
     super(id, partialPath, isPrefixPath);
     this.level = level;
     this.schemaFilter = schemaFilter;
+    this.templateMap = templateMap;
   }
 
   public SchemaFilter getSchemaFilter() {
@@ -59,9 +67,14 @@ public class LevelTimeSeriesCountNode extends SchemaQueryScanNode {
     return level;
   }
 
+  public Map<Integer, Template> getTemplateMap() {
+    return templateMap;
+  }
+
   @Override
   public PlanNode clone() {
-    return new LevelTimeSeriesCountNode(getPlanNodeId(), path, isPrefixPath, level, schemaFilter);
+    return new LevelTimeSeriesCountNode(
+        getPlanNodeId(), path, isPrefixPath, level, schemaFilter, templateMap);
   }
 
   @Override
@@ -78,6 +91,10 @@ public class LevelTimeSeriesCountNode extends SchemaQueryScanNode {
     ReadWriteIOUtils.write(isPrefixPath, byteBuffer);
     ReadWriteIOUtils.write(level, byteBuffer);
     SchemaFilter.serialize(schemaFilter, byteBuffer);
+    ReadWriteIOUtils.write(templateMap.size(), byteBuffer);
+    for (Template template : templateMap.values()) {
+      template.serialize(byteBuffer);
+    }
   }
 
   @Override
@@ -87,6 +104,10 @@ public class LevelTimeSeriesCountNode extends SchemaQueryScanNode {
     ReadWriteIOUtils.write(isPrefixPath, stream);
     ReadWriteIOUtils.write(level, stream);
     SchemaFilter.serialize(schemaFilter, stream);
+    ReadWriteIOUtils.write(templateMap.size(), stream);
+    for (Template template : templateMap.values()) {
+      template.serialize(stream);
+    }
   }
 
   public static PlanNode deserialize(ByteBuffer buffer) {
@@ -100,8 +121,17 @@ public class LevelTimeSeriesCountNode extends SchemaQueryScanNode {
     boolean isPrefixPath = ReadWriteIOUtils.readBool(buffer);
     int level = ReadWriteIOUtils.readInt(buffer);
     SchemaFilter schemaFilter = SchemaFilter.deserialize(buffer);
+    int templateNum = ReadWriteIOUtils.readInt(buffer);
+    Map<Integer, Template> templateMap = new HashMap<>();
+    Template template;
+    for (int i = 0; i < templateNum; i++) {
+      template = new Template();
+      template.deserialize(buffer);
+      templateMap.put(template.getId(), template);
+    }
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new LevelTimeSeriesCountNode(planNodeId, path, isPrefixPath, level, schemaFilter);
+    return new LevelTimeSeriesCountNode(
+        planNodeId, path, isPrefixPath, level, schemaFilter, templateMap);
   }
 
   @Override
