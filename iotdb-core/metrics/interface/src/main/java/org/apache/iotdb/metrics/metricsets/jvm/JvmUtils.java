@@ -24,6 +24,11 @@ import java.lang.management.MemoryUsage;
 import java.util.function.ToLongFunction;
 
 public class JvmUtils {
+
+  private JvmUtils() {
+    // util class
+  }
+
   static double getUsageValue(
       MemoryPoolMXBean memoryPoolMxBean, ToLongFunction<MemoryUsage> getter) {
     MemoryUsage usage = getUsage(memoryPoolMxBean);
