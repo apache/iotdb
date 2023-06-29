@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.metrics.config;
 
+import org.apache.iotdb.metrics.config.MetricConfig.IoTDBReporterConfig;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.MetricFrameType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -58,7 +59,7 @@ public class MetricConfigTest {
     assertEquals(10, (int) metricConfig.getAsyncCollectPeriodInSecond());
     assertEquals(9090, (int) metricConfig.getPrometheusReporterPort());
 
-    MetricConfig.IotdbReporterConfig reporterConfig = metricConfig.getIotdbReporterConfig();
+    IoTDBReporterConfig reporterConfig = metricConfig.getIotdbReporterConfig();
     assertEquals("0.0.0.0", reporterConfig.getHost());
     assertEquals(6669, (int) reporterConfig.getPort());
     assertEquals("user", reporterConfig.getUsername());
@@ -97,7 +98,7 @@ public class MetricConfigTest {
     assertEquals(10, (int) metricConfig.getAsyncCollectPeriodInSecond());
     assertEquals(9090, (int) metricConfig.getPrometheusReporterPort());
 
-    MetricConfig.IotdbReporterConfig reporterConfig = metricConfig.getIotdbReporterConfig();
+    IoTDBReporterConfig reporterConfig = metricConfig.getIotdbReporterConfig();
     assertEquals("0.0.0.0", reporterConfig.getHost());
     assertEquals(6669, (int) reporterConfig.getPort());
     assertEquals("user", reporterConfig.getUsername());

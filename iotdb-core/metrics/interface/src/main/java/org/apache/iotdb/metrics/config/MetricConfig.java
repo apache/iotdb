@@ -53,7 +53,7 @@ public class MetricConfig {
   private Integer prometheusReporterPort = 9091;
 
   /** The iotdb config for iotdb reporter to push metric data. */
-  private final IotdbReporterConfig iotdbReporterConfig = new IotdbReporterConfig();
+  private final IoTDBReporterConfig iotdbReporterConfig = new IoTDBReporterConfig();
 
   /** The type of internal reporter. */
   private InternalReporterType internalReporterType = InternalReporterType.MEMORY;
@@ -134,7 +134,7 @@ public class MetricConfig {
     this.prometheusReporterPort = prometheusReporterPort;
   }
 
-  public IotdbReporterConfig getIotdbReporterConfig() {
+  public IoTDBReporterConfig getIotdbReporterConfig() {
     return iotdbReporterConfig;
   }
 
@@ -217,7 +217,7 @@ public class MetricConfig {
         internalReporterType);
   }
 
-  public static class IotdbReporterConfig {
+  public static class IoTDBReporterConfig {
     /** The host of iotdb that store metric value. */
     private String host = "127.0.0.1";
     /** The port of iotdb that store metric value. */
@@ -289,7 +289,7 @@ public class MetricConfig {
       this.pushPeriodInSecond = pushPeriodInSecond;
     }
 
-    public void copy(IotdbReporterConfig iotdbReporterConfig) {
+    public void copy(IoTDBReporterConfig iotdbReporterConfig) {
       host = iotdbReporterConfig.getHost();
       port = iotdbReporterConfig.getPort();
       username = iotdbReporterConfig.getUsername();
@@ -307,7 +307,7 @@ public class MetricConfig {
       if (o == null || getClass() != o.getClass()) {
         return false;
       }
-      IotdbReporterConfig that = (IotdbReporterConfig) o;
+      IoTDBReporterConfig that = (IoTDBReporterConfig) o;
       return Objects.equals(host, that.host)
           && Objects.equals(port, that.port)
           && Objects.equals(username, that.username)

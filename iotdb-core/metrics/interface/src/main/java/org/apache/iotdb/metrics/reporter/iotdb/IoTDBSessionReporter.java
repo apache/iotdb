@@ -22,6 +22,7 @@ package org.apache.iotdb.metrics.reporter.iotdb;
 import org.apache.iotdb.isession.pool.SessionDataSetWrapper;
 import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.config.MetricConfig;
+import org.apache.iotdb.metrics.config.MetricConfig.IoTDBReporterConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.type.IMetric;
 import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
@@ -48,7 +49,7 @@ public class IoTDBSessionReporter extends IoTDBReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSessionReporter.class);
   private static final MetricConfig metricConfig =
       MetricConfigDescriptor.getInstance().getMetricConfig();
-  private static final MetricConfig.IotdbReporterConfig ioTDBReporterConfig =
+  private static final IoTDBReporterConfig ioTDBReporterConfig =
       MetricConfigDescriptor.getInstance().getMetricConfig().getIotdbReporterConfig();
   private Future<?> currentServiceFuture;
   private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();

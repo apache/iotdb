@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.metrics.config;
 
+import org.apache.iotdb.metrics.config.MetricConfig.IoTDBReporterConfig;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.metrics.utils.MetricFrameType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -110,7 +111,7 @@ public class MetricConfigDescriptor {
                 String.valueOf(loadConfig.getPrometheusReporterPort()),
                 properties)));
 
-    MetricConfig.IotdbReporterConfig reporterConfig = loadConfig.getIotdbReporterConfig();
+    IoTDBReporterConfig reporterConfig = loadConfig.getIotdbReporterConfig();
     reporterConfig.setHost(
         getProperty("metric_iotdb_reporter_host", reporterConfig.getHost(), properties));
 
