@@ -30,12 +30,15 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import javax.validation.constraints.NotNull;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class TimeSeriesCountNode extends SchemaQueryScanNode {
@@ -49,7 +52,7 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
       PartialPath partialPath,
       boolean isPrefixPath,
       SchemaFilter schemaFilter,
-      Map<Integer, Template> templateMap) {
+      @NotNull Map<Integer, Template> templateMap) {
     super(id, partialPath, isPrefixPath);
     this.schemaFilter = schemaFilter;
     this.templateMap = templateMap;
@@ -128,5 +131,20 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
     return String.format(
         "TimeSeriesCountNode-%s:[DataRegion: %s]",
         this.getPlanNodeId(), this.getRegionReplicaSet());
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    TimeSeriesCountNode that = (TimeSeriesCountNode) o;
+    return Objects.equals(schemaFilter, that.schemaFilter)
+        && Objects.equals(templateMap, that.templateMap);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), schemaFilter, templateMap);
   }
 }

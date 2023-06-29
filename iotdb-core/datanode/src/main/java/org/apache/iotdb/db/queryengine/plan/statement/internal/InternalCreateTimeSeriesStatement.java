@@ -27,21 +27,20 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 // This is only used for auto creation while inserting data
 public class InternalCreateTimeSeriesStatement extends Statement {
 
-  private PartialPath devicePath;
-  private List<String> measurements;
+  private final PartialPath devicePath;
+  private final List<String> measurements;
 
-  private List<TSDataType> tsDataTypes;
-  private List<TSEncoding> encodings = new ArrayList<>();
-  private List<CompressionType> compressors = new ArrayList<>();
+  private final List<TSDataType> tsDataTypes;
+  private final List<TSEncoding> encodings;
+  private final List<CompressionType> compressors;
 
-  private boolean isAligned;
+  private final boolean isAligned;
 
   public InternalCreateTimeSeriesStatement(
       PartialPath devicePath,
@@ -86,7 +85,7 @@ public class InternalCreateTimeSeriesStatement extends Statement {
 
   @Override
   public List<PartialPath> getPaths() {
-    return measurements.stream().map(o -> devicePath.concatNode(o)).collect(Collectors.toList());
+    return measurements.stream().map(devicePath::concatNode).collect(Collectors.toList());
   }
 
   @Override

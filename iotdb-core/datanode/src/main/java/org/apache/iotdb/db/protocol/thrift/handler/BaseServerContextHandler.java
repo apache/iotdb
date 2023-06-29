@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.protocol.thrift.handler;
 
 import org.apache.iotdb.db.protocol.session.ClientSession;

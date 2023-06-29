@@ -18,8 +18,12 @@
  */
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -51,5 +55,24 @@ public class SchemaUtilsTest {
     Assert.assertEquals(
         measurementTypes,
         SchemaUtils.getAggregatedDataTypes(measurementTypes, SqlConstant.MAX_VALUE));
+  }
+
+  @Test
+  public void getSeriesTypeByPath() throws IllegalPathException {
+    MeasurementPath measurementPath = new MeasurementPath("s1", TSDataType.INT64);
+    Assert.assertEquals(
+        TSDataType.DOUBLE, SchemaUtils.getSeriesTypeByPath(measurementPath, SqlConstant.SUM));
+    Assert.assertEquals(
+        TSDataType.INT64, SchemaUtils.getSeriesTypeByPath(measurementPath, SqlConstant.LAST_VALUE));
+  }
+
+  @Test
+  public void checkDataTypeWithEncoding() {
+    try {
+      SchemaUtils.checkDataTypeWithEncoding(TSDataType.TEXT, TSEncoding.RLE);
+      Assert.fail("expect exception");
+    } catch (MetadataException e) {
+      // do nothing
+    }
   }
 }

@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 public class NodeManagementMemoryMergeNode extends ProcessNode {
@@ -114,5 +115,19 @@ public class NodeManagementMemoryMergeNode extends ProcessNode {
   @Override
   public String toString() {
     return String.format("NodeManagementMemoryMergeNode-%s", this.getPlanNodeId());
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    NodeManagementMemoryMergeNode that = (NodeManagementMemoryMergeNode) o;
+    return Objects.equals(data, that.data) && Objects.equals(child, that.child);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), data, child);
   }
 }

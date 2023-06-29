@@ -37,6 +37,7 @@ public class WALEntryHandler {
 
   private long memTableId = -1;
   // cached value, null after this value is flushed to wal successfully
+  @SuppressWarnings("squid:S3077")
   private volatile WALEntryValue value;
   // wal entry's position in the wal, valid after the value is flushed to wal successfully
   // it's safe to use volatile here to make this reference thread-safe.

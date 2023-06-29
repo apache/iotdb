@@ -111,10 +111,10 @@ public class ReplicateTest {
   }
 
   /**
-   * The three nodes use the requests in the queue to replicate the requests to the other two nodes
+   * The three nodes use the requests in the queue to replicate the requests to the other two nodes.
    */
   @Test
-  public void ReplicateUsingQueueTest() throws IOException, InterruptedException {
+  public void replicateUsingQueueTest() throws IOException, InterruptedException {
     logger.info("Start ReplicateUsingQueueTest");
     servers.get(0).createPeer(group.getGroupId(), group.getPeers());
     servers.get(1).createPeer(group.getGroupId(), group.getPeers());
@@ -189,10 +189,10 @@ public class ReplicateTest {
   /**
    * First, suspend one node to test that the request replication between the two alive nodes is ok,
    * then restart all nodes to lose state in the queue, and test using WAL replication to make all
-   * nodes finally consistent
+   * nodes finally consistent.
    */
   @Test
-  public void ReplicateUsingWALTest() throws IOException, InterruptedException {
+  public void replicateUsingWALTest() throws IOException, InterruptedException {
     logger.info("Start ReplicateUsingWALTest");
     servers.get(0).createPeer(group.getGroupId(), group.getPeers());
     servers.get(1).createPeer(group.getGroupId(), group.getPeers());

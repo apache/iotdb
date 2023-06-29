@@ -63,7 +63,6 @@ public class CreateLogicalViewPlanImpl implements ICreateLogicalViewPlan {
     for (Map.Entry<PartialPath, ViewExpression> entry : viewPathToSourceExpressionMap.entrySet()) {
       this.targetPath = entry.getKey();
       this.sourceExpression = entry.getValue();
-      break;
     }
   }
 

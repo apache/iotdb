@@ -47,7 +47,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.Del
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalBatchActivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InvalidateSchemaCacheNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.PreDeactivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.RollbackPreDeactivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.RollbackSchemaBlackListNode;
@@ -144,7 +143,6 @@ public enum PlanNodeType {
   NODE_PATHS_SCAN((short) 40),
   NODE_PATHS_CONVERT((short) 41),
   NODE_MANAGEMENT_MEMORY_MERGE((short) 42),
-  INVALIDATE_SCHEMA_CACHE((short) 43),
   DELETE_DATA((short) 44),
   DELETE_TIMESERIES((short) 45),
   LAST_QUERY_SCAN((short) 46),
@@ -312,8 +310,6 @@ public enum PlanNodeType {
         return NodePathsConvertNode.deserialize(buffer);
       case 42:
         return NodeManagementMemoryMergeNode.deserialize(buffer);
-      case 43:
-        return InvalidateSchemaCacheNode.deserialize(buffer);
       case 44:
         return DeleteDataNode.deserialize(buffer);
       case 45:

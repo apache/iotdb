@@ -29,7 +29,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -81,7 +81,7 @@ public class SetThrottleQuotaPlan extends ConfigPhysicalPlan {
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     this.userName = BasicStructureSerDeUtil.readString(buffer);
-    Map<ThrottleType, TTimedQuota> throttleLimit = new HashMap<>();
+    Map<ThrottleType, TTimedQuota> throttleLimit = new EnumMap<>(ThrottleType.class);
     int size = BasicStructureSerDeUtil.readInt(buffer);
     for (int i = 0; i < size; i++) {
       ThrottleType throttleType = ThrottleType.valueOf(BasicStructureSerDeUtil.readString(buffer));
@@ -89,18 +89,24 @@ public class SetThrottleQuotaPlan extends ConfigPhysicalPlan {
       long softLimit = BasicStructureSerDeUtil.readLong(buffer);
       throttleLimit.put(throttleType, new TTimedQuota(timeUnit, softLimit));
     }
-    TThrottleQuota throttleQuota = new TThrottleQuota();
-    throttleQuota.setThrottleLimit(throttleLimit);
-    throttleQuota.setMemLimit(BasicStructureSerDeUtil.readLong(buffer));
-    throttleQuota.setCpuLimit(BasicStructureSerDeUtil.readInt(buffer));
-    this.throttleQuota = throttleQuota;
+    TThrottleQuota tmpThrottleQuota = new TThrottleQuota();
+    tmpThrottleQuota.setThrottleLimit(throttleLimit);
+    tmpThrottleQuota.setMemLimit(BasicStructureSerDeUtil.readLong(buffer));
+    tmpThrottleQuota.setCpuLimit(BasicStructureSerDeUtil.readInt(buffer));
+    this.throttleQuota = tmpThrottleQuota;
   }
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
     SetThrottleQuotaPlan that = (SetThrottleQuotaPlan) o;
     return Objects.equals(userName, that.userName)
         && Objects.equals(throttleQuota, that.throttleQuota);

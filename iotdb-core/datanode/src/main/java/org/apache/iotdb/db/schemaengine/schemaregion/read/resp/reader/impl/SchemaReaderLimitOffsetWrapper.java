@@ -96,6 +96,7 @@ public class SchemaReaderLimitOffsetWrapper<T extends ISchemaInfo> implements IS
     }
   }
 
+  @SuppressWarnings("java:S2142")
   @Override
   public boolean hasNext() {
     try {
