@@ -881,9 +881,11 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @SuppressWarnings({
     "squid:S6541",
-    "squid:S3776"
+    "squid:S3776",
+    "squid:S2095"
   }) // ignore Cognitive Complexity of methods should not be too high
   // ignore Methods should not perform too many tasks (aka Brain method)
+  // ignore Use try-with-resources or close this "Statement" in a "finally"
   @Override
   public ResultSet getColumnPrivileges(
       String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern)
