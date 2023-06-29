@@ -54,8 +54,6 @@ public class PBTreeFileSketchTool {
   private static String inputFile;
   private static String outputFile;
 
-  private static PrintWriter pw;
-
   /**
    * create the commandline options.
    *
@@ -146,9 +144,10 @@ public class PBTreeFileSketchTool {
     return str;
   }
 
+  @SuppressWarnings("squid:S106")
   public static void sketchFile(String inputFile, String outputFile)
       throws IOException, MetadataException {
-    pw = new PrintWriter(new FileWriter(outputFile, false));
+    PrintWriter pw = new PrintWriter(new FileWriter(outputFile, false));
     ISchemaFile sf = SchemaFile.loadSchemaFile(SystemFileFactory.INSTANCE.getFile(inputFile));
     try {
       String res = ((SchemaFile) sf).inspect(pw);
