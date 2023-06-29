@@ -88,6 +88,7 @@ public abstract class SeriesCompactionExecutor {
   // added into this list.
   @SuppressWarnings("squid:S1068")
   private final List<PageElement> candidateOverlappedPages = new ArrayList<>();
+
   private long nextChunkStartTime = Long.MAX_VALUE;
 
   private long nextPageStartTime = Long.MAX_VALUE;
@@ -132,9 +133,7 @@ public abstract class SeriesCompactionExecutor {
   protected abstract void compactFiles()
       throws PageException, IOException, WriteProcessException, IllegalPathException;
 
-  /**
-   * Compact chunks in chunk metadata queue.
-   */
+  /** Compact chunks in chunk metadata queue. */
   protected void compactChunks()
       throws IOException, PageException, WriteProcessException, IllegalPathException {
     while (!chunkMetadataQueue.isEmpty()) {
@@ -221,9 +220,7 @@ public abstract class SeriesCompactionExecutor {
   abstract void deserializeFileIntoChunkMetadataQueue(List<FileElement> fileElements)
       throws IOException, IllegalPathException;
 
-  /**
-   * Compact pages in page queue.
-   */
+  /** Compact pages in page queue. */
   private void compactPages()
       throws IOException, PageException, WriteProcessException, IllegalPathException {
     while (!pageQueue.isEmpty()) {

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -61,7 +62,11 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   private final Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
   private Pair<String, Boolean> currentDevice = null;
 
-  /** Used for compaction with read chunk performer. */
+  /**
+   * Used for compaction with read chunk performer.
+   *
+   * @throws IOException if io error occurred
+   */
   public MultiTsFileDeviceIterator(List<TsFileResource> tsFileResources) throws IOException {
     this.tsFileResourcesSortedByDesc = new ArrayList<>(tsFileResources);
     this.tsFileResourcesSortedByAsc = new ArrayList<>(tsFileResources);
@@ -78,17 +83,21 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         readerMap.put(tsFileResource, reader);
         deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
       }
-    } catch (Throwable throwable) {
+    } catch (Exception e) {
       // if there is any exception occurs
       // existing readers should be closed
       for (TsFileSequenceReader reader : readerMap.values()) {
         reader.close();
       }
-      throw throwable;
+      throw e;
     }
   }
 
-  /** Used for compaction with read point performer. */
+  /**
+   * Used for compaction with read point performer.
+   *
+   * @throws IOException if io errors occurred
+   */
   public MultiTsFileDeviceIterator(
       List<TsFileResource> seqResources, List<TsFileResource> unseqResources) throws IOException {
     this.tsFileResourcesSortedByDesc = new ArrayList<>(seqResources);
@@ -104,7 +113,11 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     }
   }
 
-  /** Used for compaction with fast performer. */
+  /**
+   * Used for compaction with fast performer.
+   *
+   * @throws IOException if io errors occurred
+   */
   public MultiTsFileDeviceIterator(
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources,
@@ -147,10 +160,11 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   }
 
   /**
-   * Return next device that is minimal in lexicographical order
+   * Return next device that is minimal in lexicographical order.
    *
    * @return Pair of device full path and whether this device is aligned
    */
+  @SuppressWarnings("squid:S135")
   public Pair<String, Boolean> nextDevice() {
     List<TsFileResource> toBeRemovedResources = new LinkedList<>();
     Pair<String, Boolean> minDevice = null;
@@ -189,6 +203,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    * Get all measurements and schemas of the current device from source files. Traverse all the
    * files from the newest to the oldest in turn and start traversing the index tree from the
    * firstMeasurementNode node to get all the measurements under the current device.
+   *
+   * @throws IOException if io errors occurred
    */
   public Map<String, MeasurementSchema> getAllSchemasOfCurrentDevice() throws IOException {
     Map<String, MeasurementSchema> schemaMap = new ConcurrentHashMap<>();
@@ -224,6 +240,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    * new fast compaction to compact nonAligned timeseries.
    *
    * @return measurement -> tsfile resource -> timeseries metadata <startOffset, endOffset>
+   * @throws IOException if io errors occurred
    */
   public Map<String, Map<TsFileResource, Pair<Long, Long>>>
       getTimeseriesMetadataOffsetOfCurrentDevice() throws IOException {
@@ -245,9 +262,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
                   false)
               .entrySet()) {
         String measurementId = entrySet.getKey();
-        if (!timeseriesMetadataOffsetMap.containsKey(measurementId)) {
-          timeseriesMetadataOffsetMap.put(measurementId, new HashMap<>());
-        }
+        timeseriesMetadataOffsetMap.putIfAbsent(measurementId, new HashMap<>());
         timeseriesMetadataOffsetMap.get(measurementId).put(resource, entrySet.getValue().right);
       }
     }
@@ -261,7 +276,9 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    *
    * @return measurement -> metadata -> tsfile resource -> timeseries metadata <startOffset,
    *     endOffset>
+   * @throws IOException if io errors occurred
    */
+  @SuppressWarnings("checkstyle:AtclauseOrderCheck")
   public Map<String, Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>>>
       getTimeseriesSchemaAndMetadataOffsetOfCurrentDevice() throws IOException {
     Map<String, Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>>>
@@ -283,10 +300,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
                   true)
               .entrySet()) {
         String measurementId = entrySet.getKey();
-        if (!timeseriesMetadataOffsetMap.containsKey(measurementId)) {
-          MeasurementSchema schema = reader.getMeasurementSchema(entrySet.getValue().left);
-          timeseriesMetadataOffsetMap.put(measurementId, new Pair<>(schema, new HashMap<>()));
-        }
+        MeasurementSchema schema = reader.getMeasurementSchema(entrySet.getValue().left);
+        timeseriesMetadataOffsetMap.putIfAbsent(measurementId, new Pair<>(schema, new HashMap<>()));
         timeseriesMetadataOffsetMap
             .get(measurementId)
             .right
@@ -300,8 +315,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    * return MeasurementIterator, who iterates the measurements of not aligned device
    *
    * @param device the full path of the device to be iterated
-   * @return
-   * @throws IOException
+   * @return measurement iterator of not aligned device
+   * @throws IOException if io errors occurred
    */
   public MeasurementIterator iterateNotAlignedSeries(
       String device, boolean derserializeTimeseriesMetadata) throws IOException {
@@ -318,12 +333,13 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    *
    * @return a list of pair(TsFileSequenceReader, the list of AlignedChunkMetadata for current
    *     device)
-   * @throws IOException
+   * @throws IOException if io errors occurred
    */
+  @SuppressWarnings({"squid:S1319", "squid:S135"})
   public LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
       getReaderAndChunkMetadataForCurrentAlignedSeries() throws IOException {
     if (currentDevice == null || !currentDevice.right) {
-      return null;
+      return new LinkedList<>();
     }
 
     LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList =
@@ -350,10 +366,10 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   }
 
   /**
-   * collect the modification for current device and apply it to the alignedChunkMetadataList
+   * collect the modification for current device and apply it to the alignedChunkMetadataList.
    *
-   * @param tsFileResource
-   * @param alignedChunkMetadataList
+   * @param tsFileResource tsfile resource
+   * @param alignedChunkMetadataList list of aligned chunk metadata
    */
   private void applyModificationForAlignedChunkMetadataList(
       TsFileResource tsFileResource, List<AlignedChunkMetadata> alignedChunkMetadataList) {
@@ -442,6 +458,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
      *
      * @return true if there is any series is collected, else false.
      */
+    @SuppressWarnings("squid:S3776")
     private boolean collectSeries() {
       String lastSeries = null;
       List<String> tempCollectedSeries = new ArrayList<>();
@@ -497,11 +514,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     }
 
     public boolean hasNextSeries() {
-      if (seriesInThisIteration.isEmpty() && !collectSeries()) {
-        return false;
-      } else {
-        return true;
-      }
+      return !seriesInThisIteration.isEmpty() || collectSeries();
     }
 
     public String nextSeries() {
@@ -519,13 +532,14 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
      * <p>If there are any modifications for these chunk, we will apply them to the metadata. Use
      * `ChunkMetadata.getDeleteIntervalList() == null` to judge if the chunk is modified.
      *
-     * @return
-     * @throws IllegalPathException
+     * @return all the chunk metadata of current series
+     * @throws IllegalPathException if path is illegal
      */
+    @SuppressWarnings("squid:S1319")
     public LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>>
         getMetadataListForCurrentSeries() throws IllegalPathException {
       if (currentCompactingSeries == null) {
-        return null;
+        return new LinkedList<>();
       }
 
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>>
@@ -555,7 +569,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
           }
 
           // if there are modifications of current series, apply them to the chunk metadata
-          if (modificationForCurrentSeries.size() != 0) {
+          if (!modificationForCurrentSeries.isEmpty()) {
             ModificationUtils.modifyChunkMetaData(
                 chunkMetadataListInThisResource, modificationForCurrentSeries);
           }
