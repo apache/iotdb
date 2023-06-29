@@ -21,7 +21,6 @@ package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PathPatternNode.VoidSerializer;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
@@ -35,6 +34,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 public class PathPatternTree {
@@ -280,14 +280,16 @@ public class PathPatternTree {
     return deserializedPatternTree;
   }
 
-  @TestOnly
-  public boolean equalWith(PathPatternTree that) {
-    if (this == that) {
-      return true;
-    }
-    if (that == null || getClass() != that.getClass()) {
-      return false;
-    }
-    return this.getRoot().equalWith(that.getRoot());
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    PathPatternTree that = (PathPatternTree) o;
+    return Objects.equals(root, that.root);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(root);
   }
 }
