@@ -50,7 +50,7 @@ public class SnapshotTest {
   private static final File testDir = new File("target" + File.separator + "sm");
 
   // Mock Storage which only provides the state machine dir
-  private static class EmptyStorageWithOnlySmDir implements RaftStorage {
+  private static class EmptyStorageWithOnlySMDir implements RaftStorage {
 
     @Override
     public void initialize() throws IOException {}
@@ -106,7 +106,7 @@ public class SnapshotTest {
     final ApplicationStateMachineProxy proxy =
         new ApplicationStateMachineProxy(new TestUtils.IntegerCounter(), raftGroupId);
 
-    proxy.initialize(null, null, new EmptyStorageWithOnlySmDir());
+    proxy.initialize(null, null, new EmptyStorageWithOnlySMDir());
 
     final Predicate<String> snapshotExists = s -> new File(s).exists();
 
@@ -199,7 +199,7 @@ public class SnapshotTest {
     ApplicationStateMachineProxy proxy =
         new ApplicationStateMachineProxy(new CrossDiskLinkStatemachine(), raftGroupId);
 
-    proxy.initialize(null, null, new EmptyStorageWithOnlySmDir());
+    proxy.initialize(null, null, new EmptyStorageWithOnlySMDir());
     proxy.notifyTermIndexUpdated(20, 1005);
     proxy.takeSnapshot();
     String actualSnapshotName =

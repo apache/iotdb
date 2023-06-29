@@ -175,12 +175,13 @@ public class IndexController {
     }
   }
 
-  private MaxVersionInfo getMaxVersion(long[] fileVersions) {
+  private MaxVersionInfo getMaxVersion(File[] versionFiles) {
     long maxVersion = 0;
     int maxVersionIndex = 0;
-    for (int i = 0; i < fileVersions.length; i++) {
-      if (fileVersions[i] > maxVersion) {
-        maxVersion = fileVersions[i];
+    for (int i = 0; i < versionFiles.length; i++) {
+      long fileVersion = Long.parseLong(versionFiles[i].getName().split(SEPARATOR)[1]);
+      if (fileVersion > maxVersion) {
+        maxVersion = fileVersion;
         maxVersionIndex = i;
       }
     }
@@ -205,11 +206,7 @@ public class IndexController {
     File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(prefix));
     File versionFile;
     if (versionFiles != null && versionFiles.length > 0) {
-      long[] fileVersions = new long[versionFiles.length];
-      for (int i = 0; i < versionFiles.length; i++) {
-        fileVersions[i] = Long.parseLong(versionFiles[i].getName().split(SEPARATOR)[1]);
-      }
-      MaxVersionInfo maxVersionInfo = getMaxVersion(fileVersions);
+      MaxVersionInfo maxVersionInfo = getMaxVersion(versionFiles);
       lastFlushedIndex = maxVersionInfo.maxVersion;
       deleteVersionFiles(versionFiles, maxVersionInfo.maxVersionIndex);
       currentIndex = lastFlushedIndex;
