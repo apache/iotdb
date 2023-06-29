@@ -142,6 +142,7 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
     return res;
   }
 
+  @SuppressWarnings("java:S2142")
   @Override
   public boolean hasNext() {
     try {

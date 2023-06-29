@@ -51,6 +51,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.function.Consumer;
@@ -83,7 +84,7 @@ public class MemMTreeSnapshotUtil {
           new BufferedOutputStream(new FileOutputStream(snapshotTmp))) {
         serializeTo(store, outputStream);
       }
-      if (snapshot.exists() && !snapshot.delete()) {
+      if (snapshot.exists() && !deleteFile(snapshot)) {
         logger.error(
             "Failed to delete old snapshot {} while creating mtree snapshot.", snapshot.getName());
         return false;
@@ -93,17 +94,27 @@ public class MemMTreeSnapshotUtil {
             "Failed to rename {} to {} while creating mtree snapshot.",
             snapshotTmp.getName(),
             snapshot.getName());
-        snapshot.delete();
+        deleteFile(snapshot);
         return false;
       }
 
       return true;
     } catch (IOException e) {
       logger.error("Failed to create mtree snapshot due to {}", e.getMessage(), e);
-      snapshot.delete();
+      deleteFile(snapshot);
       return false;
     } finally {
-      snapshotTmp.delete();
+      deleteFile(snapshotTmp);
+    }
+  }
+
+  private static boolean deleteFile(File snapshot) {
+    try {
+      Files.delete(snapshot.toPath());
+      return true;
+    } catch (IOException e) {
+      logger.error(e.getMessage(), e);
+      return false;
     }
   }
 

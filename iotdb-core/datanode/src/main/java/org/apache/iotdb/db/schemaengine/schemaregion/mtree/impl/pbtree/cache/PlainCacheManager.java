@@ -29,6 +29,7 @@ public class PlainCacheManager extends CacheManager {
   // The nodes in nodeCache are all evictable if not pinned and may be selected to be evicted during
   // cache
   // eviction.
+  @SuppressWarnings("java:S3077")
   private volatile Map<CacheEntry, ICachedMNode> nodeCache = new ConcurrentHashMap<>();
 
   public PlainCacheManager(MemManager memManager) {
