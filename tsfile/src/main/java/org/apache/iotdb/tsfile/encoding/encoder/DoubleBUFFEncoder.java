@@ -115,7 +115,7 @@ public class DoubleBUFFEncoder extends Encoder {
   }
 
   protected void flushBits(ByteArrayOutputStream out) {
-    while (bitsLeft != 0) skipBit(out);
+    while (bitsLeft != Byte.SIZE) skipBit(out);
   }
 
   /** Stores a 0 and increases the count of bits by 1 */
