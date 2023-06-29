@@ -28,6 +28,7 @@ import java.util.List;
 
 /** This class used to execute Queries on TSFile */
 public class Executor {
+  private Executor() {}
 
   public static List<QueryDataSet> query(
       TsFileReader reader, List<QueryExpression> queryExpressions, long start, long end) {

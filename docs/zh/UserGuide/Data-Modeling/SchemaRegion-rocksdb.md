@@ -40,7 +40,7 @@ server 的 lib 的文件夹中。
 ####################
 ### Schema Engine Configuration
 ####################
-# Choose the mode of schema engine. The value could be Memory,Schema_File and Rocksdb_based. If the provided value doesn't match any pre-defined value, Memory mode will be used as default.
+# Choose the mode of schema engine. The value could be Memory,PBTree and Rocksdb_based. If the provided value doesn't match any pre-defined value, Memory mode will be used as default.
 # Datatype: string
 schema_engine_mode=Rocksdb_based
 ```

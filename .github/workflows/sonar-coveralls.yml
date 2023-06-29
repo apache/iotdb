@@ -32,7 +32,7 @@ env:
   PR_NUMBER: ${{ github.event.number }}
 
 jobs:
-  ubuntu:
+  coveralls:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'apache/iotdb' || github.event_name == 'push'
 
@@ -44,21 +44,30 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
-#      - name: IT/UT Test
-#        # we do not compile client-cpp for saving time, it is tested in client.yml
-#        run: mvn -B clean compile post-integration-test -Dcluster.test.skip=true -Dtest.port.closed=true -Pcode-coverage -P '!testcontainer,!influxdb-protocol'
-#      - name: Code Coverage (Coveralls)
-#        if: ${{ success() }}
-#        run: |
-#          mvn -B post-integration-test -Pcode-coverage -pl code-coverage
-#          mvn -B coveralls:report \
-#          -DserviceName=travis_ci \
-#          -Dbranch=$BRANCH_NAME \
-#          -DpullRequest=$PR_NUMBER \
-#          -DrepoToken=${{ secrets.COVERALL_TOKEN }} \
-#          -Pcode-coverage -P '!testcontainer'
+      - name: Test
+        run: mvn -B clean compile test -pl distribution,iotdb-client/cli,iotdb-client/session,iotdb-client/jdbc -am -Dtest.port.closed=true -Pcode-coverage
+      - name: Coveralls
+        run: |
+          mvn -B post-integration-test -Pcode-coverage -pl code-coverage
+          mvn -B coveralls:report \
+          -DserviceName=travis_ci \
+          -Dbranch=$BRANCH_NAME \
+          -DpullRequest=$PR_NUMBER \
+          -DrepoToken=${{ secrets.COVERALL_TOKEN }} \
+          -Pcode-coverage
+
+  sonar:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'apache/iotdb' || github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v3
+      - name: Cache Maven packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
       - name: SonarCloud Report
-        if: ${{ success() }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONARCLOUD_TOKEN }}
@@ -68,4 +77,4 @@ jobs:
           -Dsonar.projectKey=apache_incubator-iotdb \
           -Dsonar.host.url=https://sonarcloud.io \
           -Dsonar.login=${{ secrets.SONARCLOUD_TOKEN }} \
-          -DskipTests -pl '!distribution,!integration-test'  -P '!testcontainer' -am
+          -DskipTests -pl '!distribution,!integration-test' -am

@@ -265,6 +265,14 @@ struct THeartbeatResp {
   10: optional list<binary> pipeMetaList
 }
 
+struct TPipeHeartbeatReq {
+  1: required i64 heartbeatId
+}
+
+struct TPipeHeartbeatResp {
+  1: required list<binary> pipeMetaList
+}
+
 enum TSchemaLimitLevel{
     DEVICE,
     TIMESERIES
@@ -400,6 +408,11 @@ struct TRollbackViewSchemaBlackListReq{
 struct TDeleteViewSchemaReq{
    1: required list<common.TConsensusGroupId> schemaRegionIdList
    2: required binary pathPatternTree
+}
+
+struct TAlterViewReq{
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required list<binary> viewBinaryList
 }
 
 // ====================================================
@@ -750,7 +763,7 @@ service IDataNodeRPCService {
   TFetchSchemaBlackListResp fetchSchemaBlackList(TFetchSchemaBlackListReq req)
 
   /**
-   * Config node inform this dataNode to execute a distribution data deleion mpp task
+   * Config node inform this dataNode to execute a distribution data deleion queryengine task
    */
   common.TSStatus deleteDataForDeleteSchema(TDeleteDataForDeleteSchemaReq req)
 
@@ -785,10 +798,17 @@ service IDataNodeRPCService {
 
   common.TSStatus deleteViewSchema(TDeleteViewSchemaReq req)
 
+  common.TSStatus alterView(TAlterViewReq req)
+
  /**
   * Send pipeMetas to DataNodes, for synchronization
   */
   common.TSStatus pushPipeMeta(TPushPipeMetaReq req)
+
+  /**
+  * ConfigNode will ask DataNode for pipe meta in every few seconds
+  **/
+  TPipeHeartbeatResp pipeHeartbeat(TPipeHeartbeatReq req)
 
  /**
   * Execute CQ on DataNode

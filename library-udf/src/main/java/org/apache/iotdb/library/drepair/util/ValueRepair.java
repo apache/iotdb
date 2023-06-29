@@ -16,11 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.library.drepair.util;
 
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowIterator;
+import org.apache.iotdb.udf.api.exception.UDFException;
 
 import java.util.ArrayList;
 
@@ -31,7 +33,7 @@ public abstract class ValueRepair {
   protected double[] original;
   protected double[] repaired;
 
-  public ValueRepair(RowIterator dataIterator) throws Exception {
+  protected ValueRepair(RowIterator dataIterator) throws Exception {
     ArrayList<Long> timeList = new ArrayList<>();
     ArrayList<Double> originList = new ArrayList<>();
     while (dataIterator.hasNextRow()) {
@@ -53,8 +55,9 @@ public abstract class ValueRepair {
 
   public abstract void repair();
 
-  private void processNaN() throws Exception {
-    int index1 = 0, index2;
+  private void processNaN() throws UDFException {
+    int index1 = 0;
+    int index2;
     while (index1 < n && Double.isNaN(original[index1])) {
       index1++;
     }
@@ -63,7 +66,7 @@ public abstract class ValueRepair {
       index2++;
     }
     if (index2 >= n) {
-      throw new Exception("At least two non-NaN values are needed");
+      throw new UDFException("At least two non-NaN values are needed");
     }
     for (int i = 0; i < index2; i++) {
       original[i] =

@@ -24,7 +24,6 @@ import org.apache.iotdb.pipe.api.type.Binary;
 import org.apache.iotdb.pipe.api.type.Type;
 import org.apache.iotdb.tsfile.read.common.Path;
 
-import java.io.IOException;
 import java.util.List;
 
 public interface Row {
@@ -34,7 +33,7 @@ public interface Row {
    *
    * @return timestamp
    */
-  long getTime() throws IOException;
+  long getTime();
 
   /**
    * Returns the int value at the specified column in this row.
@@ -44,7 +43,7 @@ public interface Row {
    * @param columnIndex index of the specified column
    * @return the int value at the specified column in this row
    */
-  int getInt(int columnIndex) throws IOException;
+  int getInt(int columnIndex);
 
   /**
    * Returns the long value at the specified column in this row.
@@ -54,7 +53,7 @@ public interface Row {
    * @param columnIndex index of the specified column
    * @return the long value at the specified column in this row
    */
-  long getLong(int columnIndex) throws IOException;
+  long getLong(int columnIndex);
 
   /**
    * Returns the float value at the specified column in this row.
@@ -64,7 +63,7 @@ public interface Row {
    * @param columnIndex index of the specified column
    * @return the float value at the specified column in this row
    */
-  float getFloat(int columnIndex) throws IOException;
+  float getFloat(int columnIndex);
 
   /**
    * Returns the double value at the specified column in this row.
@@ -74,7 +73,7 @@ public interface Row {
    * @param columnIndex index of the specified column
    * @return the double value at the specified column in this row
    */
-  double getDouble(int columnIndex) throws IOException;
+  double getDouble(int columnIndex);
 
   /**
    * Returns the boolean value at the specified column in this row.
@@ -84,7 +83,7 @@ public interface Row {
    * @param columnIndex index of the specified column
    * @return the boolean value at the specified column in this row
    */
-  boolean getBoolean(int columnIndex) throws IOException;
+  boolean getBoolean(int columnIndex);
 
   /**
    * Returns the Binary value at the specified column in this row.
@@ -94,7 +93,7 @@ public interface Row {
    * @param columnIndex index of the specified column
    * @return the Binary value at the specified column in this row
    */
-  Binary getBinary(int columnIndex) throws IOException;
+  Binary getBinary(int columnIndex);
 
   /**
    * Returns the String value at the specified column in this row.
@@ -104,7 +103,15 @@ public interface Row {
    * @param columnIndex index of the specified column
    * @return the String value at the specified column in this row
    */
-  String getString(int columnIndex) throws IOException;
+  String getString(int columnIndex);
+
+  /**
+   * Returns the Object value at the specified column in this row.
+   *
+   * @param columnIndex index of the specified column
+   * @return the Object value at the specified column in this row
+   */
+  Object getObject(int columnIndex);
 
   /**
    * Returns the actual data type of the value at the specified column in this row.
@@ -123,9 +130,9 @@ public interface Row {
   boolean isNull(int columnIndex);
 
   /**
-   * Returns the number of columns
+   * Returns the number of columns (excluding the timestamp column).
    *
-   * @return the number of columns
+   * @return the number of columns (excluding the timestamp column)
    */
   int size();
 
@@ -133,22 +140,22 @@ public interface Row {
    * Returns the actual column index of the given column name.
    *
    * @param columnName the column name in Path form
-   * @throws PipeParameterNotValidException if the given column name is not existed in the Row
    * @return the actual column index of the given column name
+   * @throws PipeParameterNotValidException if the given column name is not existed in the Row
    */
   int getColumnIndex(Path columnName) throws PipeParameterNotValidException;
 
   /**
-   * Returns the column names in the Row
-   *
-   * @return the column names in the Row
-   */
-  List<Path> getColumnNames();
-
-  /**
-   * Returns the column data types in the Row
+   * Returns the column data types in the Row.
    *
    * @return the column data types in the Row
    */
   List<Type> getColumnTypes();
+
+  /**
+   * Returns the device id of the Row.
+   *
+   * @return the device id of the Row
+   */
+  String getDeviceId();
 }

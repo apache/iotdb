@@ -32,13 +32,14 @@ import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
 import java.util.HashMap;
+import java.util.Map;
 
-/** calculate the approximate percentile */
+/** calculate the approximate percentile. */
 public class UDAFPercentile implements UDTF {
-  public static HashMap<Integer, Long> intDic;
-  public static HashMap<Long, Long> longDic;
-  public static HashMap<Float, Long> floatDic;
-  public static HashMap<Double, Long> doubleDic;
+  protected static Map<Integer, Long> intDic;
+  protected static Map<Long, Long> longDic;
+  protected static Map<Float, Long> floatDic;
+  protected static Map<Double, Long> doubleDic;
   private ExactOrderStatistics statistics;
   private GKArray sketch;
   private boolean exact;
@@ -161,6 +162,9 @@ public class UDAFPercentile implements UDTF {
           break;
         case DOUBLE:
           collector.putDouble(0, res);
+          break;
+        default:
+          break;
       }
     }
   }

@@ -112,7 +112,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |:---:|:-----------------------------------------------|
 |Description| The client rpc service listens on the address. |
 |Type| String                                         |
-|Default| 127.0.0.1                                      |
+|Default| 0.0.0.0                                        |
 |Effective| After restarting system                        |
 
 * dn\_rpc\_port
@@ -131,7 +131,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| DataNode internal service host/IP |
 |Type| string |
 |Default| 127.0.0.1 |
-|Effective|After restarting system|
+|Effective|Only allowed to be modified in first start up|
 
 * dn\_internal\_port
 
@@ -140,7 +140,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| DataNode internal service port |
 |Type| int                            |
 |Default| 10730                           |
-|Effective| After restarting system        |
+|Effective| Only allowed to be modified in first start up        |
 
 * dn\_mpp\_data\_exchange\_port
 
@@ -149,7 +149,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| MPP data exchange port |
 |Type| int |
 |Default| 10740 |
-|Effective|After restarting system|
+|Effective|Only allowed to be modified in first start up|
 
 * dn\_schema\_region\_consensus\_port
 
@@ -158,7 +158,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| DataNode Schema replica communication port for consensus |
 |Type| int |
 |Default| 10750 |
-|Effective|After restarting system|
+|Effective|Only allowed to be modified in first start up|
 
 * dn\_data\_region\_consensus\_port
 
@@ -167,7 +167,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| DataNode Data replica communication port for consensus |
 |Type| int |
 |Default| 10760 |
-|Effective|After restarting system|
+|Effective|Only allowed to be modified in first start up|
 
 * dn\_join\_cluster\_retry\_interval\_ms
 
@@ -187,7 +187,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| ConfigNode Address for DataNode to join cluster |
 |Type| String                                          |
 |Default| 127.0.0.1:10710                                 |
-|Effective| After restarting system                         |
+|Effective| Only allowed to be modified in first start up                         |
 
 ### Connection Configuration
 
@@ -297,7 +297,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |    Name     | dn\_multi\_dir\_strategy                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 |:-----------:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Description | IoTDB's strategy for selecting directories for TsFile in tsfile_dir. You can use a simple class name or a full name of the class. The system provides the following three strategies: <br>1. SequenceStrategy: IoTDB selects the directory from tsfile\_dir in order, traverses all the directories in tsfile\_dir in turn, and keeps counting;<br>2. MaxDiskUsableSpaceFirstStrategy: IoTDB first selects the directory with the largest free disk space in tsfile\_dir;<br>3. MinFolderOccupiedSpaceFirstStrategy: IoTDB prefers the directory with the least space used in tsfile\_dir;<br>4. UserDfineStrategyPackage (user-defined policy)<br>You can complete a user-defined policy in the following ways:<br>1. Inherit the cn.edu.tsinghua.iotdb.conf.directories.strategy.DirectoryStrategy class and implement its own Strategy method;<br>2. Fill in the configuration class with the full class name of the implemented class (package name plus class name, UserDfineStrategyPackage);<br>3. Add the jar file to the project. |
+| Description | IoTDB's strategy for selecting directories for TsFile in tsfile_dir. You can use a simple class name or a full name of the class. The system provides the following three strategies: <br>1. SequenceStrategy: IoTDB selects the directory from tsfile\_dir in order, traverses all the directories in tsfile\_dir in turn, and keeps counting;<br>2. MaxDiskUsableSpaceFirstStrategy: IoTDB first selects the directory with the largest free disk space in tsfile\_dir;<br>You can complete a user-defined policy in the following ways:<br>1. Inherit the org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategy class and implement its own Strategy method;<br>2. Fill in the configuration class with the full class name of the implemented class (package name plus class name, UserDfineStrategyPackage);<br>3. Add the jar file to the project. |
 |    Type     | String                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 |   Default   | SequenceStrategy                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 |  Effective  | hot-load                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |

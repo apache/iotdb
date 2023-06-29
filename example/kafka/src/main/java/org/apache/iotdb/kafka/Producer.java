@@ -30,7 +30,7 @@ import java.util.Properties;
 /** The class is to show how to send data to kafka through multi-threads. */
 public class Producer {
 
-  private final KafkaProducer<String, String> producer;
+  private final KafkaProducer<String, String> kafkaProducer;
   private static final Logger logger = LoggerFactory.getLogger(Producer.class);
 
   public Producer() {
@@ -39,7 +39,7 @@ public class Producer {
     props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, Constant.KAFKA_SERVICE_URL);
     props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
     props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-    producer = new KafkaProducer<>(props);
+    kafkaProducer = new KafkaProducer<>(props);
   }
 
   public static void main(String[] args) {
@@ -51,12 +51,12 @@ public class Producer {
   private void produce() {
     for (int i = 0; i < Constant.ALL_DATA.length; i++) {
       String key = Integer.toString(i);
-      producer.send(new ProducerRecord<>(Constant.TOPIC, key, Constant.ALL_DATA[i]));
+      kafkaProducer.send(new ProducerRecord<>(Constant.TOPIC, key, Constant.ALL_DATA[i]));
       logger.info(Constant.ALL_DATA[i]);
     }
   }
 
   public void close() {
-    producer.close();
+    kafkaProducer.close();
   }
 }

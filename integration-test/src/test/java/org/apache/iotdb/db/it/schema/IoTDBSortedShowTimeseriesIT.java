@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.it.schema;
 
-import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
@@ -101,7 +101,7 @@ public class IoTDBSortedShowTimeseriesIT extends AbstractSchemaIT {
   @Parameterized.BeforeParam
   public static void before() throws Exception {
     SchemaTestMode schemaTestMode = setUpEnvironment();
-    if (schemaTestMode.equals(SchemaTestMode.SchemaFile)) {
+    if (schemaTestMode.equals(SchemaTestMode.PBTree)) {
       allocateMemoryForSchemaRegion(10000);
     }
     EnvFactory.getEnv().initClusterEnvironment();

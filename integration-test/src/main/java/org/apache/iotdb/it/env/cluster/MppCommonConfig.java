@@ -240,30 +240,6 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEnableWatermark(boolean enableWatermark) {
-    setProperty("watermark_module_opened", String.valueOf(enableWatermark));
-    return this;
-  }
-
-  @Override
-  public CommonConfig setWatermarkSecretKey(String watermarkSecretKey) {
-    setProperty("watermark_secret_key", watermarkSecretKey);
-    return this;
-  }
-
-  @Override
-  public CommonConfig setWatermarkBitString(String watermarkBitString) {
-    setProperty("watermark_bit_string", watermarkBitString);
-    return this;
-  }
-
-  @Override
-  public CommonConfig setWatermarkMethod(String watermarkMethod) {
-    setProperty("watermark_method", watermarkMethod);
-    return this;
-  }
-
-  @Override
   public CommonConfig setEnableMQTTService(boolean enableMQTTService) {
     setProperty("enable_mqtt_service", String.valueOf(enableMQTTService));
     return this;
@@ -331,7 +307,7 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
 
   @Override
   public CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate) {
-    setProperty("schema_memory_allocate_proportion", String.valueOf(schemaMemoryAllocate));
+    setProperty("schema_memory_proportion", String.valueOf(schemaMemoryAllocate));
     return this;
   }
 

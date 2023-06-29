@@ -16,14 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.library.frequency.util;
 
 import org.apache.iotdb.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.exception.UDFException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Util for UDFFFT */
+/** Util for UDFFFT. */
 public class FFTUtil {
   private final String result;
   private final double compressRate;
@@ -34,7 +36,7 @@ public class FFTUtil {
     this.compressRate = cmprate;
   }
 
-  public void outputCompressed(PointCollector collector, double a[]) throws Exception {
+  public void outputCompressed(PointCollector collector, double[] a) throws Exception {
     int n = a.length / 2;
     // calculate total energy
     double sum = 0;
@@ -58,7 +60,7 @@ public class FFTUtil {
     add(collector, a, n - 1);
   }
 
-  public void add(PointCollector collector, double a[], int i) throws Exception {
+  public void add(PointCollector collector, double[] a, int i) throws Exception {
     double ans = 0;
     switch (result) {
       case "real":
@@ -74,12 +76,12 @@ public class FFTUtil {
         ans = Math.atan2(a[2 * i + 1], a[2 * i]);
         break;
       default:
-        throw new Exception("It's impossible");
+        throw new UDFException("It's impossible");
     }
     collector.putDouble(i, ans);
   }
 
-  public void outputUncompressed(PointCollector collector, double a[]) throws Exception {
+  public void outputUncompressed(PointCollector collector, double[] a) throws Exception {
     int n = a.length / 2;
     for (int i = 0; i < n; i++) {
       add(collector, a, i);

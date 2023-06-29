@@ -37,6 +37,9 @@ struct TGlobalConfig {
   5: required i64 timePartitionInterval
   6: required string readConsistencyLevel
   7: required double diskSpaceWarningThreshold
+  8: optional string timestampPrecision
+  9: optional string schemaEngineMode
+  10: optional i32 tagAttributeTotalSize
 }
 
 struct TRatisConfig {
@@ -353,6 +356,8 @@ struct TClusterParameters {
   13: required string seriesPartitionExecutorClass
   14: required double diskSpaceWarningThreshold
   15: required string timestampPrecision
+  16: optional string schemaEngineMode
+  17: optional i32 tagAttributeTotalSize
 }
 
 struct TConfigNodeRegisterReq {
@@ -607,7 +612,7 @@ struct TShowPipeInfo {
   1: required string id
   2: required i64 creationTime
   3: required string state
-  4: required string pipeCollector
+  4: required string pipeExtractor
   5: required string pipeProcessor
   6: required string pipeConnector
   7: required string exceptionMessage
@@ -620,7 +625,7 @@ struct TGetAllPipeInfoResp{
 
 struct TCreatePipeReq {
     1: required string pipeName
-    2: optional map<string, string> collectorAttributes
+    2: optional map<string, string> extractorAttributes
     3: optional map<string, string> processorAttributes
     4: required map<string, string> connectorAttributes
 }
@@ -662,6 +667,11 @@ struct TDeleteTimeSeriesReq{
 struct TDeleteLogicalViewReq{
   1: required string queryId
   2: required binary pathPatternTree
+}
+
+struct TAlterLogicalViewReq{
+  1: required string queryId
+  2: required binary viewBinary
 }
 
 // ====================================================
@@ -1266,6 +1276,8 @@ service IConfigNodeRPCService {
   common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
 
   common.TSStatus deleteLogicalView(TDeleteLogicalViewReq req)
+
+  common.TSStatus alterLogicalView(TAlterLogicalViewReq req)
 
   // ======================================================
   // Sync

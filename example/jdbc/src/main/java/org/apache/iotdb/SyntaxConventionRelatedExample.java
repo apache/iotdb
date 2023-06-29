@@ -59,6 +59,9 @@ public class SyntaxConventionRelatedExample {
    */
   private static final String ROOT_SG1_NORMAL_NODE_EXAMPLE = "root.sg1.a";
 
+  public static final String CREATE =
+      "CREATE TIMESERIES %s WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY";
+
   private static final String DEVICE = "root.sg1";
 
   public static void main(String[] args) throws ClassNotFoundException, SQLException {
@@ -72,27 +75,12 @@ public class SyntaxConventionRelatedExample {
       statement.setFetchSize(10000);
 
       // create time series
-      try {
-        statement.execute(String.format("CREATE DATABASE %s", DEVICE));
-        statement.execute(
-            String.format(
-                "CREATE TIMESERIES %s WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY",
-                ROOT_SG1_DIGITS_EXAMPLE));
-        statement.execute(
-            String.format(
-                "CREATE TIMESERIES %s WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY",
-                ROOT_SG1_KEYWORD_EXAMPLE));
-        statement.execute(
-            String.format(
-                "CREATE TIMESERIES %s WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY",
-                ROOT_SG1_NORMAL_NODE_EXAMPLE));
-        statement.execute(
-            String.format(
-                "CREATE TIMESERIES %s WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY",
-                ROOT_SG1_SPECIAL_CHARACTER_EXAMPLE));
-      } catch (IoTDBSQLException e) {
-        System.out.println(e.getMessage());
-      }
+
+      statement.execute(String.format("CREATE DATABASE %s", DEVICE));
+      statement.execute(String.format(CREATE, ROOT_SG1_DIGITS_EXAMPLE));
+      statement.execute(String.format(CREATE, ROOT_SG1_KEYWORD_EXAMPLE));
+      statement.execute(String.format(CREATE, ROOT_SG1_NORMAL_NODE_EXAMPLE));
+      statement.execute(String.format(CREATE, ROOT_SG1_SPECIAL_CHARACTER_EXAMPLE));
 
       // show timeseries
       ResultSet resultSet = statement.executeQuery("show timeseries root.sg1.*");
@@ -120,10 +108,11 @@ public class SyntaxConventionRelatedExample {
         outputResult(resultSet);
       }
     } catch (IoTDBSQLException e) {
-      System.out.println(e.getMessage());
+      e.printStackTrace();
     }
   }
 
+  @SuppressWarnings({"squid:S106"})
   private static void outputResult(ResultSet resultSet) throws SQLException {
     if (resultSet != null) {
       System.out.println("--------------------------");
@@ -151,8 +140,7 @@ public class SyntaxConventionRelatedExample {
   private static String prepareInsertStatement(int time, String path) {
     // remove device root.sg1
     path = removeDevice(path);
-    return String.format(
-        "insert into root.sg1(timestamp, %s) values(" + time + "," + 1 + ")", path);
+    return String.format("insert into root.sg1(timestamp, %s) values( %d ,1)", path, time);
   }
 
   private static String removeDevice(String path) {

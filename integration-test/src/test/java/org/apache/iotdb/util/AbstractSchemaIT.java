@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.util;
 
-import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunnerWithParametersFactory;
 
@@ -36,8 +36,8 @@ import java.util.List;
 
 /**
  * This class define multiple modes for schema engine. All IT class extends AbstractSchemaIT will be
- * run in both Memory and Schema_File modes. In Schema_File mode, there are three kinds of test
- * environment: full memory, partial memory and non memory.
+ * run in both Memory and PBTree modes. In PBTree mode, there are three kinds of test environment:
+ * full memory, partial memory and non memory.
  *
  * <p>Notice that, all IT class extends AbstractSchemaIT need to call {@link
  * AbstractSchemaIT#setUpEnvironment} before test env initialization and call {@link
@@ -51,13 +51,13 @@ public abstract class AbstractSchemaIT {
   protected SchemaTestMode schemaTestMode;
 
   protected static final List<SchemaTestMode> schemaTestModes =
-      Arrays.asList(SchemaTestMode.Memory, SchemaTestMode.SchemaFile);
+      Arrays.asList(SchemaTestMode.Memory, SchemaTestMode.PBTree);
 
   private static int mode = 0;
 
   @Parameterized.Parameters(name = "SchemaEngineMode={0}")
   public static Iterable<SchemaTestMode> data() {
-    return Arrays.asList(SchemaTestMode.Memory, SchemaTestMode.SchemaFile);
+    return Arrays.asList(SchemaTestMode.Memory, SchemaTestMode.PBTree);
   }
 
   public AbstractSchemaIT(SchemaTestMode schemaTestMode) {
@@ -75,8 +75,8 @@ public abstract class AbstractSchemaIT {
       case Memory:
         EnvFactory.getEnv().getConfig().getCommonConfig().setSchemaEngineMode("Memory");
         break;
-      case SchemaFile:
-        EnvFactory.getEnv().getConfig().getCommonConfig().setSchemaEngineMode("Schema_File");
+      case PBTree:
+        EnvFactory.getEnv().getConfig().getCommonConfig().setSchemaEngineMode("PBTree");
         allocateMemoryForSchemaRegion(4000);
         break;
     }
@@ -113,8 +113,7 @@ public abstract class AbstractSchemaIT {
   protected static void allocateMemoryForSchemaRegion(int allocateMemoryForSchemaRegion) {
     int schemaAllMemory = 25742540;
     int sumProportion = schemaAllMemory / allocateMemoryForSchemaRegion;
-    int[] proportion =
-        new int[] {1, (sumProportion - 1) / 2, (sumProportion - 1) / 4, (sumProportion - 1) / 4};
+    int[] proportion = new int[] {1, (sumProportion - 1) * 3 / 4, (sumProportion - 1) / 4};
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -123,6 +122,6 @@ public abstract class AbstractSchemaIT {
 
   protected enum SchemaTestMode {
     Memory,
-    SchemaFile
+    PBTree
   }
 }

@@ -80,8 +80,16 @@ public class TsFileForceAppendWrite {
     }
 
     // open the closed file with ForceAppendTsFileWriter
-    ForceAppendTsFileWriter fwriter = new ForceAppendTsFileWriter(f);
-    fwriter.doTruncate();
+
+    try (ForceAppendTsFileWriter fwriter = new ForceAppendTsFileWriter(f)) {
+      fwriter.doTruncate();
+      write(fwriter);
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  private static void write(ForceAppendTsFileWriter fwriter) {
     try (TsFileWriter tsFileWriter1 = new TsFileWriter(fwriter)) {
       // add measurements into file schema
       for (int i = 0; i < 4; i++) {
@@ -111,6 +119,5 @@ public class TsFileForceAppendWrite {
     } catch (Exception e) {
       logger.error("meet error in TsFileWrite ", e);
     }
-    fwriter.close();
   }
 }

@@ -52,26 +52,50 @@ class IoTDBSQLCompiler(SQLCompiler):
         1. IoTDB does not support querying Time as a measurement name (e.g. select Time from root.storagegroup.device)
         2. IoTDB does not support path.measurement format to determine a column (e.g. select root.storagegroup.device.temperature from root.storagegroup.device)
         """
-        needs_nested_translation = (
-            select.use_labels
-            and not nested_join_translation
-            and not self.stack
-            and not self.dialect.supports_right_nested_joins
+        assert select_wraps_for is None, (
+            "SQLAlchemy 1.4 requires use of "
+            "the translate_select_structure hook for structural "
+            "translations of SELECT objects"
         )
 
-        if needs_nested_translation:
-            transformed_select = self._transform_select_for_nested_joins(select)
-            text = self.visit_select(
-                transformed_select,
-                asfrom=asfrom,
-                parens=parens,
-                fromhints=fromhints,
-                compound_index=compound_index,
-                nested_join_translation=True,
-                **kwargs,
-            )
+        # initial setup of SELECT.  the compile_state_factory may now
+        # be creating a totally different SELECT from the one that was
+        # passed in.  for ORM use this will convert from an ORM-state
+        # SELECT to a regular "Core" SELECT.  other composed operations
+        # such as computation of joins will be performed.
+
+        kwargs["within_columns_clause"] = False
+
+        compile_state = select_stmt._compile_state_factory(select_stmt, self, **kwargs)
+        select_stmt = compile_state.statement
 
         toplevel = not self.stack
+
+        if toplevel and not self.compile_state:
+            self.compile_state = compile_state
+
+        is_embedded_select = compound_index is not None or insert_into
+
+        # translate step for Oracle, SQL Server which often need to
+        # restructure the SELECT to allow for LIMIT/OFFSET and possibly
+        # other conditions
+        if self.translate_select_structure:
+            new_select_stmt = self.translate_select_structure(
+                select_stmt, asfrom=asfrom, **kwargs
+            )
+
+            # if SELECT was restructured, maintain a link to the originals
+            # and assemble a new compile state
+            if new_select_stmt is not select_stmt:
+                compile_state_wraps_for = compile_state
+                select_wraps_for = select_stmt
+                select_stmt = new_select_stmt
+
+                compile_state = select_stmt._compile_state_factory(
+                    select_stmt, self, **kwargs
+                )
+                select_stmt = compile_state.statement
+
         entry = self._default_stack_entry if toplevel else self.stack[-1]
 
         populate_result_map = need_column_expressions = (
@@ -80,7 +104,9 @@ class IoTDBSQLCompiler(SQLCompiler):
             or entry.get("need_result_map_for_nested", False)
         )
 
-        if compound_index > 0:
+        # indicates there is a CompoundSelect in play and we are not the
+        # first select
+        if compound_index:
             populate_result_map = False
 
         # this was first proposed as part of #3372; however, it is not
@@ -89,12 +115,9 @@ class IoTDBSQLCompiler(SQLCompiler):
         if not populate_result_map and "add_to_result_map" in kwargs:
             del kwargs["add_to_result_map"]
 
-        if needs_nested_translation:
-            if populate_result_map:
-                self._transform_result_map_for_nested_joins(select, transformed_select)
-            return text
-
-        froms = self._setup_select_stack(select, entry, asfrom, lateral)
+        froms = self._setup_select_stack(
+            select_stmt, compile_state, entry, asfrom, lateral, compound_index
+        )
 
         column_clause_args = kwargs.copy()
         column_clause_args.update(
@@ -103,43 +126,76 @@ class IoTDBSQLCompiler(SQLCompiler):
 
         text = "SELECT "  # we're off to a good start !
 
-        if select._hints:
-            hint_text, byfrom = self._setup_select_hints(select)
+        if select_stmt._hints:
+            hint_text, byfrom = self._setup_select_hints(select_stmt)
             if hint_text:
                 text += hint_text + " "
         else:
             byfrom = None
 
-        if select._prefixes:
-            text += self._generate_prefixes(select, select._prefixes, **kwargs)
+        if select_stmt._independent_ctes:
+            for cte in select_stmt._independent_ctes:
+                cte._compiler_dispatch(self, **kwargs)
 
-        text += self.get_select_precolumns(select, **kwargs)
+        if select_stmt._prefixes:
+            text += self._generate_prefixes(
+                select_stmt, select_stmt._prefixes, **kwargs
+            )
+
+        text += self.get_select_precolumns(select_stmt, **kwargs)
         # the actual list of columns to print in the SELECT column list.
-        # IoTDB does not support querying Time as a measurement name (e.g. select Time from root.storagegroup.device)
-        columns = []
-        for name, column in select._columns_plus_names:
-            column.table = None
-            columns.append(
+        inner_columns = [
+            c
+            for c in [
                 self._label_select_column(
-                    select,
+                    select_stmt,
                     column,
                     populate_result_map,
                     asfrom,
                     column_clause_args,
                     name=name,
+                    proxy_name=proxy_name,
+                    fallback_label_name=fallback_label_name,
+                    column_is_repeated=repeated,
                     need_column_expressions=need_column_expressions,
                 )
-            )
-        inner_columns = [c for c in columns if c is not None]
+                for (
+                    name,
+                    proxy_name,
+                    fallback_label_name,
+                    column,
+                    repeated,
+                ) in compile_state.columns_plus_names
+            ]
+            if c is not None
+        ]
 
         if populate_result_map and select_wraps_for is not None:
-            # if this select is a compiler-generated wrapper,
+            # if this select was generated from translate_select,
             # rewrite the targeted columns in the result map
 
             translate = dict(
                 zip(
-                    [name for (key, name) in select._columns_plus_names],
-                    [name for (key, name) in select_wraps_for._columns_plus_names],
+                    [
+                        name
+                        for (
+                            key,
+                            proxy_name,
+                            fallback_label_name,
+                            name,
+                            repeated,
+                        ) in compile_state.columns_plus_names
+                    ],
+                    [
+                        name
+                        for (
+                            key,
+                            proxy_name,
+                            fallback_label_name,
+                            name,
+                            repeated,
+                        ) in compile_state_wraps_for.columns_plus_names
+                    ],
                 )
             )
 
@@ -147,6 +203,17 @@ class IoTDBSQLCompiler(SQLCompiler):
                 (key, name, tuple(translate.get(o, o) for o in obj), type_)
                 for key, name, obj, type_ in self._result_columns
             ]
+
+        # change the superset aggregate function name into iotdb aggregate function name
+        # by matching the head of aggregate function name and replace it.
+        for i in range(len(inner_columns)):
+            if inner_columns[i].startswith("max("):
+                inner_columns[i] = inner_columns[i].replace("max(", "max_value(")
+            if inner_columns[i].startswith("min("):
+                inner_columns[i] = inner_columns[i].replace("min(", "min_value(")
+            if inner_columns[i].startswith("count(DISTINCT"):
+                inner_columns[i] = inner_columns[i].replace("count(DISTINCT", "count(")
+
         # IoTDB does not allow to query Time as column,
         # need to filter out Time and pass Time and Time's alias to DBAPI separately
         # to achieve the query of Time by encoding.
@@ -171,40 +238,54 @@ class IoTDBSQLCompiler(SQLCompiler):
                 inner_columns,
             )
         )
+
         if inner_columns and time_column_index:
             inner_columns[-1] = (
                 inner_columns[-1]
                 + " \n FROM Time Index "
                 + " ".join(time_column_index)
-                + "\n FROM Time Name "
+                + " \n FROM Time Name "
                 + " ".join(time_column_names)
             )
 
         text = self._compose_select_body(
-            text, select, inner_columns, froms, byfrom, kwargs
+            text,
+            select_stmt,
+            compile_state,
+            inner_columns,
+            froms,
+            byfrom,
+            toplevel,
+            kwargs,
         )
 
-        if select._statement_hints:
+        if select_stmt._statement_hints:
             per_dialect = [
                 ht
-                for (dialect_name, ht) in select._statement_hints
+                for (dialect_name, ht) in select_stmt._statement_hints
                 if dialect_name in ("*", self.dialect.name)
             ]
             if per_dialect:
                 text += " " + self.get_statement_hint_text(per_dialect)
 
-        if self.ctes and toplevel:
-            text = self._render_cte_clause() + text
+        # In compound query, CTEs are shared at the compound level
+        if self.ctes and (not is_embedded_select or toplevel):
+            nesting_level = len(self.stack) if not toplevel else None
+            text = (
+                self._render_cte_clause(
+                    nesting_level=nesting_level,
+                    visiting_cte=kwargs.get("visiting_cte"),
+                )
+                + text
+            )
 
-        if select._suffixes:
-            text += " " + self._generate_prefixes(select, select._suffixes, **kwargs)
+        if select_stmt._suffixes:
+            text += " " + self._generate_prefixes(
+                select_stmt, select_stmt._suffixes, **kwargs
+            )
 
         self.stack.pop(-1)
-
-        if (asfrom or lateral) and parens:
-            return "(" + text + ")"
-        else:
-            return text
+        return text
 
     def visit_table(
         self,

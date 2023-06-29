@@ -418,7 +418,7 @@ public class IoTDBStatement implements Statement {
     // not consumed timely, the byte buffer will be overwritten by the incoming result set
     deepCopyResp(execResp);
     BitSet aliasColumn = null;
-    if (execResp.getAliasColumns() != null && execResp.getAliasColumns().size() > 0) {
+    if (execResp.getAliasColumns() != null && !execResp.getAliasColumns().isEmpty()) {
       aliasColumn = listToBitSet(execResp.getAliasColumns());
     }
     if (execResp.queryResult == null) {

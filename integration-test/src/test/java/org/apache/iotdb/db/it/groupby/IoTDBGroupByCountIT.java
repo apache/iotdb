@@ -19,10 +19,15 @@
 package org.apache.iotdb.db.it.groupby;
 
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -34,6 +39,8 @@ import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBGroupByCountIT {
   // the data can be viewed in
   // https://docs.google.com/spreadsheets/d/1vsSmb41pdmK-BdBR1STwr8olg1Qc8baKVEWnfJB4mAg/edit#gid=0
@@ -403,5 +410,49 @@ public class IoTDBGroupByCountIT {
         "select __endTime,sum(charging_status),count(vehicle_status),last_value(soc) from root.** group by count(charging_status, 2) align by device";
     normalTestWithAlignByDevice(res, sql, false);
     normalTestWithAlignByDevice(res, sql2, true);
+  }
+
+  private void errorTest(String sql, String error) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.executeQuery(sql);
+    } catch (Exception e) {
+      assertEquals(error, e.getMessage());
+    }
+  }
+
+  @Test
+  public void errorTest1() {
+    errorTest(
+        "select count(temperature) from root.** group by count(soc, 2)",
+        "701: root.**.soc in group by clause shouldn't refer to more than one timeseries.");
+  }
+
+  @Test
+  public void errorTest2() {
+    errorTest(
+        "select count(soc) from root.sg.beijing.car01 group by count(count(soc),2)",
+        "701: Aggregation expression shouldn't exist in group by clause");
+  }
+
+  @Test
+  public void errorTest3() {
+    errorTest(
+        "select count(soc) from root.sg.beijing.car01 group by count(s1,2)",
+        "701: root.sg.beijing.car01.s1 in group by clause doesn't exist.");
+  }
+
+  @Test
+  public void errorTest4() {
+    errorTest(
+        "select count(soc) from root.sg.beijing.car01 group by count(s1,2) align by device",
+        "701: s1 in group by clause doesn't exist.");
+  }
+
+  @Test
+  public void errorTest5() {
+    errorTest(
+        "select count(soc) from root.sg.beijing.car01 group by count(root.sg.beijing.car01.soc,2) align by device",
+        "701: ALIGN BY DEVICE: the suffix paths can only be measurement or one-level wildcard");
   }
 }
