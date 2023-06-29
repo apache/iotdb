@@ -20,15 +20,20 @@
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover.CompactionRecoverManager;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class ModificationFileTest {
@@ -98,6 +103,183 @@ public class ModificationFileTest {
       fail(e.getMessage());
     } finally {
       new File(tempFileName).delete();
+    }
+  }
+
+  // test if file size greater than 1M.
+  @Test
+  public void testCompact01() {
+    String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact.settle");
+    long time = 1000;
+    try (ModificationFile modificationFile = new ModificationFile(tempFileName)) {
+      while (modificationFile.getSize() < 1024 * 1024) {
+        modificationFile.write(
+            new Deletion(
+                new PartialPath(new String[] {"root", "sg", "d1"}),
+                1000,
+                Long.MIN_VALUE,
+                time += 5000));
+      }
+      modificationFile.compact();
+      List<Modification> modificationList = new ArrayList<>(modificationFile.getModifications());
+      assertEquals(1, modificationList.size());
+
+      Deletion deletion = (Deletion) modificationList.get(0);
+      assertEquals(time, deletion.getEndTime());
+      assertEquals(Long.MIN_VALUE, deletion.getStartTime());
+    } catch (IOException e) {
+      fail(e.getMessage());
+    } finally {
+      new File(tempFileName).delete();
+    }
+  }
+
+  // test if file size less than 1M.
+  @Test
+  public void testCompact02() {
+    String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact.settle");
+    long time = 1000;
+    try (ModificationFile modificationFile = new ModificationFile(tempFileName)) {
+      while (modificationFile.getSize() < 1024 * 100) {
+        modificationFile.write(
+            new Deletion(
+                new PartialPath(new String[] {"root", "sg", "d1"}),
+                1000,
+                Long.MIN_VALUE,
+                time += 5000));
+      }
+      modificationFile.compact();
+      List<Modification> modificationList = new ArrayList<>(modificationFile.getModifications());
+      assertTrue(modificationList.size() > 1);
+    } catch (IOException e) {
+      fail(e.getMessage());
+    } finally {
+      new File(tempFileName).delete();
+    }
+  }
+
+  // test if file size greater than 1M.
+  @Test
+  public void testCompact03() {
+    String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact.settle");
+    try (ModificationFile modificationFile = new ModificationFile(tempFileName)) {
+      while (modificationFile.getSize() < 1024 * 1024) {
+        modificationFile.write(
+            new Deletion(
+                new PartialPath(new String[] {"root", "sg", "d1"}),
+                1000,
+                Long.MIN_VALUE,
+                Long.MAX_VALUE));
+      }
+      modificationFile.compact();
+      List<Modification> modificationList = new ArrayList<>(modificationFile.getModifications());
+      assertEquals(1, modificationList.size());
+
+      Deletion deletion = (Deletion) modificationList.get(0);
+      assertEquals(Long.MAX_VALUE, deletion.getEndTime());
+      assertEquals(Long.MIN_VALUE, deletion.getStartTime());
+    } catch (IOException e) {
+      fail(e.getMessage());
+    } finally {
+      new File(tempFileName).delete();
+    }
+  }
+
+  @Test
+  public void testCompact04() {
+    String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact.settle");
+    try (ModificationFile modificationFile = new ModificationFile(tempFileName)) {
+      long time = 0;
+      while (modificationFile.getSize() < 1024 * 1024) {
+        for (int i = 0; i < 5; i++) {
+          modificationFile.write(
+              new Deletion(
+                  new PartialPath(new String[] {"root", "sg", "d1"}),
+                  1000,
+                  Long.MIN_VALUE,
+                  time += 5000));
+          modificationFile.write(
+              new Deletion(
+                  new PartialPath(new String[] {"root", "sg", "*"}),
+                  1000,
+                  Long.MIN_VALUE,
+                  time += 5000));
+        }
+      }
+      modificationFile.compact();
+      List<Modification> modificationList = new ArrayList<>(modificationFile.getModifications());
+      assertEquals(2, modificationList.size());
+    } catch (IOException e) {
+      fail(e.getMessage());
+    } finally {
+      new File(tempFileName).delete();
+    }
+  }
+
+  // test mods file and mods settle file both exists
+  @Test
+  public void testRecover01() {
+    String modsFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact.mods");
+    String modsSettleFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact.mods.settle");
+
+    try (ModificationFile modsFile = new ModificationFile(modsFileName);
+        ModificationFile modsSettleFile = new ModificationFile(modsSettleFileName)) {
+
+      modsFile.write(
+          new Deletion(
+              new PartialPath(new String[] {"root", "sg", "d1"}),
+              1000,
+              Long.MIN_VALUE,
+              Long.MAX_VALUE));
+      modsSettleFile.write(
+          new Deletion(
+              new PartialPath(new String[] {"root", "sg", "d1"}),
+              1000,
+              Long.MIN_VALUE,
+              Long.MAX_VALUE));
+
+      modsFile.close();
+      modsSettleFile.close();
+      new CompactionRecoverManager(null, null, null)
+          .recoverModSettleFile(new File(TestConstant.BASE_OUTPUT_PATH).toPath());
+      Assert.assertTrue(modsFile.exists());
+      Assert.assertFalse(modsSettleFile.exists());
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    } finally {
+      try {
+        Files.delete(new File(modsFileName).toPath());
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+
+  // test only mods settle file exists
+  @Test
+  public void testRecover02() {
+    String modsSettleFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact.mods.settle");
+    String originModsFileName = TestConstant.BASE_OUTPUT_PATH.concat("compact.mods");
+    try (ModificationFile modsSettleFile = new ModificationFile(modsSettleFileName)) {
+      modsSettleFile.write(
+          new Deletion(
+              new PartialPath(new String[] {"root", "sg", "d1"}),
+              1000,
+              Long.MIN_VALUE,
+              Long.MAX_VALUE));
+      modsSettleFile.close();
+      new CompactionRecoverManager(null, null, null)
+          .recoverModSettleFile(new File(TestConstant.BASE_OUTPUT_PATH).toPath());
+      Assert.assertFalse(modsSettleFile.exists());
+      Assert.assertTrue(new File(originModsFileName).exists());
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    } finally {
+      try {
+        Files.delete(new File(originModsFileName).toPath());
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 }

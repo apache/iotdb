@@ -1974,6 +1974,7 @@ public class DataRegion implements IDataRegionForQuery {
         continue;
       }
 
+      ModificationFile modFile = tsFileResource.getModFile();
       if (tsFileResource.isClosed()) {
         // delete data in sealed file
         if (tsFileResource.isCompacting()) {
@@ -1983,38 +1984,44 @@ public class DataRegion implements IDataRegionForQuery {
           // write deletion into compaction modification file
           tsFileResource.getCompactionModFile().write(deletion);
           // write deletion into modification file to enable read during compaction
-          tsFileResource.getModFile().write(deletion);
+          modFile.write(deletion);
           // remember to close mod file
           tsFileResource.getCompactionModFile().close();
-          tsFileResource.getModFile().close();
+          modFile.close();
         } else {
           deletion.setFileOffset(tsFileResource.getTsFileSize());
           // write deletion into modification file
-          boolean modFileExists = tsFileResource.getModFile().exists();
-          long originSize = tsFileResource.getModFile().getSize();
-          tsFileResource.getModFile().write(deletion);
+          boolean modFileExists = modFile.exists();
+          long originSize = modFile.getSize();
+          modFile.write(deletion);
+
+          // if file length greater than 1M,execute compact.
+          modFile.compact();
+
           // remember to close mod file
-          tsFileResource.getModFile().close();
-          tsFileResource.setModFile(tsFileResource.getModFile().compact());
+          modFile.close();
+
           if (!modFileExists) {
             FileMetrics.getInstance().increaseModFileNum(1);
           }
-          FileMetrics.getInstance()
-              .increaseModFileSize(tsFileResource.getModFile().getSize() - originSize);
+
+          // The file size may be smaller than the original file, so the increment here may be
+          // negative
+          FileMetrics.getInstance().increaseModFileSize(modFile.getSize() - originSize);
         }
         logger.info(
             "[Deletion] Deletion with path:{}, time:{}-{} written into mods file:{}.",
             deletion.getPath(),
             deletion.getStartTime(),
             deletion.getEndTime(),
-            tsFileResource.getModFile().getFilePath());
+            modFile.getFilePath());
       } else {
         // delete data in memory of unsealed file
         tsFileResource.getProcessor().deleteDataInMemory(deletion, devicePaths);
       }
 
       // add a record in case of rollback
-      updatedModFiles.add(tsFileResource.getModFile());
+      updatedModFiles.add(modFile);
     }
   }
 

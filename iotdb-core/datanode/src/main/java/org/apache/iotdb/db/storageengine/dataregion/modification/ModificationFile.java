@@ -60,6 +60,7 @@ public class ModificationFile implements AutoCloseable {
   private String filePath;
   private final SecureRandom random = new SecureRandom();
 
+  private static final long COMPACT_THRESHOLD = 1024 * 1024;
   /**
    * Construct a ModificationFile using a file as its storage.
    *
@@ -197,32 +198,42 @@ public class ModificationFile implements AutoCloseable {
     }
   }
 
-  public ModificationFile compact() {
-    Map<String, List<Modification>> pathModificationMap =
-        modifications.stream().collect(Collectors.groupingBy(Modification::getPathString));
-    String newModsFileName = filePath + COMPACT_SUFFIX;
-    try (ModificationFile compactedModificationFile = new ModificationFile(newModsFileName)) {
-      Set<Map.Entry<String, List<Modification>>> entries = pathModificationMap.entrySet();
-      for (Map.Entry<String, List<Modification>> entry : entries) {
-        List<Modification> settledModifications = sortAndMerge(entry.getValue());
-        for (Modification settledModification : settledModifications) {
-          compactedModificationFile.write(settledModification);
-          compactedModificationFile.modifications.add(settledModification);
+  public void compact() {
+    long originFileSize = getSize();
+    if (originFileSize > COMPACT_THRESHOLD) {
+      Map<String, List<Modification>> pathModificationMap =
+          getModifications().stream().collect(Collectors.groupingBy(Modification::getPathString));
+      String newModsFileName = filePath + COMPACT_SUFFIX;
+      List<Modification> allSettledModifications = new ArrayList<>();
+      try (ModificationFile compactedModificationFile = new ModificationFile(newModsFileName)) {
+        Set<Map.Entry<String, List<Modification>>> modificationsEntrySet =
+            pathModificationMap.entrySet();
+        for (Map.Entry<String, List<Modification>> modificationEntry : modificationsEntrySet) {
+          List<Modification> settledModifications = sortAndMerge(modificationEntry.getValue());
+          for (Modification settledModification : settledModifications) {
+            compactedModificationFile.write(settledModification);
+          }
+          allSettledModifications.addAll(settledModifications);
         }
-      }
 
-      // remove origin mods file
-      this.remove();
+        // remove origin mods file
+        this.remove();
 
-      // rename new mods file to origin name
-      if (new File(newModsFileName).renameTo(new File(filePath))) {
+        // rename new mods file to origin name
+        Files.move(new File(newModsFileName).toPath(), new File(filePath).toPath());
         logger.info("{} settle successful", filePath);
+
+        updateModifications(allSettledModifications);
+        if (getSize() > COMPACT_THRESHOLD) {
+          logger.warn(
+              "After the mod file is settled, the file size is still greater than 1M,the size of the file before settle is {},after settled the file size is {}",
+              originFileSize,
+              getSize());
+        }
+      } catch (IOException e) {
+        logger.error("compact mods file exception of {}", filePath, e);
       }
-      return compactedModificationFile;
-    } catch (IOException e) {
-      logger.error("compact mods file exception of {}", filePath, e);
     }
-    return this;
   }
 
   public static List<Modification> sortAndMerge(List<Modification> modifications) {
@@ -258,5 +269,11 @@ public class ModificationFile implements AutoCloseable {
       result.add(current);
     }
     return result;
+  }
+
+  public void updateModifications(List<Modification> modifications) {
+    synchronized (this) {
+      this.modifications = modifications;
+    }
   }
 }
