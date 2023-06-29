@@ -56,6 +56,7 @@ public class TsFileAndModSettleTool {
   // TsFilePath -> SettleCheckStatus
   @SuppressWarnings("squid:S1104")
   public Map<String, Integer> recoverSettleFileMap = new HashMap<>();
+
   private static final TsFileAndModSettleTool tsFileAndModSettleTool = new TsFileAndModSettleTool();
 
   private TsFileAndModSettleTool() {}
@@ -75,15 +76,15 @@ public class TsFileAndModSettleTool {
     }
     List<File> tsFiles = checkArgs(args);
     for (File file : tsFiles) {
-      if (!oldTsFileResources.containsKey(file.getName()) &&
-          (new File(file + TsFileResource.RESOURCE_SUFFIX).exists())) {
-          TsFileResource resource = new TsFileResource(file);
-          resource.setStatus(TsFileResourceStatus.NORMAL);
-          oldTsFileResources.put(file.getName(), resource);
-
+      if (!oldTsFileResources.containsKey(file.getName())
+          && (new File(file + TsFileResource.RESOURCE_SUFFIX).exists())) {
+        TsFileResource resource = new TsFileResource(file);
+        resource.setStatus(TsFileResourceStatus.NORMAL);
+        oldTsFileResources.put(file.getName(), resource);
       }
     }
-    logger.info("Totally find {} tsFiles to be settled, including {} tsFiles to be recovered.",
+    logger.info(
+        "Totally find {} tsFiles to be settled, including {} tsFiles to be recovered.",
         oldTsFileResources.size(),
         getInstance().recoverSettleFileMap.size());
     settleTsFilesAndMods(oldTsFileResources);
@@ -190,8 +191,7 @@ public class TsFileAndModSettleTool {
       logger.info("Finish settling all tsfiles Successfully!");
     } else {
       logger.info(
-          "Finish Settling, {} tsfiles meet errors.", (resourcesToBeSettled.size() - successCount)
-      );
+          "Finish Settling, {} tsfiles meet errors.", (resourcesToBeSettled.size() - successCount));
     }
   }
 
@@ -240,7 +240,7 @@ public class TsFileAndModSettleTool {
       } finally {
         File f = FSFactoryProducer.getFSFactory().getFile(SettleLog.getSettleLogPath());
         try {
-          Files.delete(f.toPath());
+          Files.deleteIfExists(f.toPath());
         } catch (IOException e) {
           logger.error("failed to delete settle log, log path:{}", SettleLog.getSettleLogPath());
         }
@@ -248,9 +248,7 @@ public class TsFileAndModSettleTool {
     }
   }
 
-  /**
-   * this method is used to check whether the new file is settled when recovering old tsFile.
-   */
+  /** this method is used to check whether the new file is settled when recovering old tsFile. */
   public boolean isSettledFileGenerated(TsFileResource oldTsFileResource) {
     String oldFilePath = oldTsFileResource.getTsFilePath();
     return TsFileAndModSettleTool.getInstance().recoverSettleFileMap.containsKey(oldFilePath)
@@ -259,7 +257,7 @@ public class TsFileAndModSettleTool {
   }
 
   /**
-   *  when the new file is settled , we need to find and deserialize it.
+   * when the new file is settled , we need to find and deserialize it.
    *
    * @throws IOException if io errors occurred
    */
