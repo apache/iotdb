@@ -593,9 +593,9 @@ Output series:
 ```
 
 
-### MasterTrain
+## MasterTrain
 
-#### Usage
+### Usage
 
 This function is used to train the VAR model based on master data. The model is trained on learning samples consisting of p+1 consecutive non-error points.
 
@@ -616,7 +616,7 @@ This function is used to train the VAR model based on master data. The model is 
 - Copy `./distribution/target/apache-iotdb-1.2.0-SNAPSHOT-library-udf-bin/apache-iotdb-1.2.0-SNAPSHOT-library-udf-bin/ext/udf/library-udf.jar` to `./ext/udf/`.
 - Start IoTDB server and run `create function MasterTrain as 'org.apache.iotdb.library.anomaly.UDTFMasterTrain'` in client.
 
-#### Examples
+### Examples
 
 Input series:
 
@@ -675,9 +675,9 @@ Output series:
 +-----------------------------+---------------------------------------------------------------------------------------------+
 ```
 
-### MasterDetect
+## MasterDetect
 
-#### Usage
+### Usage
 
 This function is used to detect time series and repair errors based on master data. The VAR model is trained by MasterTrain.
 
@@ -702,7 +702,7 @@ This function is used to detect time series and repair errors based on master da
 - Copy `./distribution/target/apache-iotdb-1.2.0-SNAPSHOT-library-udf-bin/apache-iotdb-1.2.0-SNAPSHOT-library-udf-bin/ext/udf/library-udf.jar` to `./ext/udf/`.
 - Start IoTDB server and run `create function MasterDetect as 'org.apache.iotdb.library.anomaly.UDTFMasterDetect'` in client.
 
-#### Examples
+### Examples
 
 Input series:
 
@@ -738,7 +738,7 @@ Input series:
 +-----------------------------+------------+------------+--------------+--------------+--------------------+
 ```
 
-##### Repairing
+#### Repairing
 
 SQL for query:
 
@@ -780,7 +780,7 @@ Output series:
 +-----------------------------+--------------------------------------------------------------------------------------+
 ```
 
-##### Anomaly Detection
+#### Anomaly Detection
 
 SQL for query:
 
