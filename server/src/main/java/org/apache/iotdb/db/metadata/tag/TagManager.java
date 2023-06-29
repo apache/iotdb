@@ -39,7 +39,6 @@ import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.db.metadata.query.reader.SchemaReaderLimitOffsetWrapper;
 import org.apache.iotdb.db.metadata.query.reader.TimeseriesReaderWithViewFetch;
-import org.apache.iotdb.db.metadata.visitor.TimeseriesFilterVisitor;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.io.FileUtils;
@@ -222,7 +221,6 @@ public class TagManager {
                 (TagFilter) SchemaFilter.extract(schemaFilter, SchemaFilterType.TAGS_FILTER).get(0))
             .iterator();
     PartialPath pathPattern = plan.getPath();
-    TimeseriesFilterVisitor timeseriesFilterVisitor = new TimeseriesFilterVisitor();
     SchemaIterator<ITimeSeriesSchemaInfo> schemaIterator =
         new SchemaIterator<ITimeSeriesSchemaInfo>() {
           private ITimeSeriesSchemaInfo nextMatched;
@@ -267,6 +265,7 @@ public class TagManager {
                         tagAndAttributePair.left,
                         tagAndAttributePair.right,
                         node.getParent().getAsDeviceMNode().isAligned());
+                break;
               }
             }
           }
