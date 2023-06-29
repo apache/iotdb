@@ -35,12 +35,14 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeProcessorSubtask extends PipeSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeProcessorSubtask.class);
 
-  private static volatile PipeProcessorSubtaskWorkerManager subtaskWorkerManager;
+  private static final AtomicReference<PipeProcessorSubtaskWorkerManager> subtaskWorkerManager =
+      new AtomicReference<>();
 
   private final EventSupplier inputEventSupplier;
   private final PipeProcessor pipeProcessor;
@@ -69,15 +71,15 @@ public class PipeProcessorSubtask extends PipeSubtask {
     this.subtaskScheduler = subtaskScheduler;
 
     // double check locking for constructing PipeProcessorSubtaskWorkerManager
-    if (subtaskWorkerManager == null) {
+    if (subtaskWorkerManager.get() == null) {
       synchronized (PipeProcessorSubtaskWorkerManager.class) {
-        if (subtaskWorkerManager == null) {
-          subtaskWorkerManager =
-              new PipeProcessorSubtaskWorkerManager(subtaskWorkerThreadPoolExecutor);
+        if (subtaskWorkerManager.get() == null) {
+          subtaskWorkerManager.set(
+              new PipeProcessorSubtaskWorkerManager(subtaskWorkerThreadPoolExecutor));
         }
       }
     }
-    subtaskWorkerManager.schedule(this);
+    subtaskWorkerManager.get().schedule(this);
   }
 
   @Override
