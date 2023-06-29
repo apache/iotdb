@@ -21,12 +21,14 @@ package org.apache.iotdb.db.metadata.query.reader;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.tree.SchemaIterator;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.metadata.query.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.metadata.view.viewExpression.visitor.GetSourcePathsVisitor;
 import org.apache.iotdb.db.metadata.view.viewExpression.visitor.TransformToExpressionVisitor;
+import org.apache.iotdb.db.metadata.visitor.FilterContainsVisitor;
 import org.apache.iotdb.db.metadata.visitor.TimeseriesFilterVisitor;
 import org.apache.iotdb.db.mpp.common.NodeRef;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
@@ -57,6 +59,11 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
   private ITimeSeriesSchemaInfo next = null;
   private boolean consumeView = false;
   private final SchemaFilter schemaFilter;
+  /**
+   * There is no need to pull the original sequence information from the view if needFetch is false.
+   * The default is false if not filtered by DataType.
+   */
+  private final boolean needFetch;
 
   /**
    * If isBlocked is null, it means the next is not fetched yet. If isBlocked.isDone() is false, it
@@ -72,6 +79,18 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
       SchemaIterator<ITimeSeriesSchemaInfo> iterator, SchemaFilter schemaFilter) {
     this.iterator = iterator;
     this.schemaFilter = schemaFilter;
+    this.needFetch = new FilterContainsVisitor().process(schemaFilter, SchemaFilterType.DATA_TYPE);
+  }
+
+  public TimeseriesReaderWithViewFetch(
+      SchemaIterator<ITimeSeriesSchemaInfo> iterator,
+      SchemaFilter schemaFilter,
+      boolean needViewDetail) {
+    this.iterator = iterator;
+    this.schemaFilter = schemaFilter;
+    this.needFetch =
+        needViewDetail
+            || new FilterContainsVisitor().process(schemaFilter, SchemaFilterType.DATA_TYPE);
   }
 
   @Override
@@ -114,7 +133,7 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
       ITimeSeriesSchemaInfo temp;
       while (iterator.hasNext()) {
         temp = iterator.next();
-        if (temp.isLogicalView()) {
+        if (needFetch && temp.isLogicalView()) {
           // view timeseries
           cachedViewList.add(temp.snapshot());
           if (cachedViewList.size() >= BATCH_CACHED_SIZE) {

@@ -34,6 +34,7 @@ public class ShowTimeSeriesPlanImpl extends AbstractShowSchemaPlanImpl
   private final Map<Integer, Template> relatedTemplate;
 
   private final SchemaFilter schemaFilter;
+  private final boolean needViewDetail;
 
   ShowTimeSeriesPlanImpl(
       PartialPath path,
@@ -41,10 +42,17 @@ public class ShowTimeSeriesPlanImpl extends AbstractShowSchemaPlanImpl
       long limit,
       long offset,
       boolean isPrefixMatch,
-      SchemaFilter schemaFilter) {
+      SchemaFilter schemaFilter,
+      boolean needViewDetail) {
     super(path, limit, offset, isPrefixMatch);
     this.relatedTemplate = relatedTemplate;
     this.schemaFilter = schemaFilter;
+    this.needViewDetail = needViewDetail;
+  }
+
+  @Override
+  public boolean needViewDetail() {
+    return needViewDetail;
   }
 
   @Override

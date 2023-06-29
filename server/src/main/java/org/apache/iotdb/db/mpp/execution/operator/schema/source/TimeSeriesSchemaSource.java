@@ -44,13 +44,11 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
 
   private final PartialPath pathPattern;
   private final boolean isPrefixMatch;
-
   private final long limit;
   private final long offset;
-
   private final SchemaFilter schemaFilter;
-
   private final Map<Integer, Template> templateMap;
+  private final boolean needViewDetail;
 
   TimeSeriesSchemaSource(
       PartialPath pathPattern,
@@ -58,16 +56,15 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
       long limit,
       long offset,
       SchemaFilter schemaFilter,
-      Map<Integer, Template> templateMap) {
+      Map<Integer, Template> templateMap,
+      boolean needViewDetail) {
     this.pathPattern = pathPattern;
     this.isPrefixMatch = isPrefixMatch;
-
     this.limit = limit;
     this.offset = offset;
-
     this.schemaFilter = schemaFilter;
-
     this.templateMap = templateMap;
+    this.needViewDetail = needViewDetail;
   }
 
   @Override
@@ -75,7 +72,13 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
     try {
       return schemaRegion.getTimeSeriesReader(
           SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-              pathPattern, templateMap, limit, offset, isPrefixMatch, schemaFilter));
+              pathPattern,
+              templateMap,
+              limit,
+              offset,
+              isPrefixMatch,
+              schemaFilter,
+              needViewDetail));
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
     }
