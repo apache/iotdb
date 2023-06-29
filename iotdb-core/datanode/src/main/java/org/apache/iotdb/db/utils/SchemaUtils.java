@@ -26,9 +26,7 @@ import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashSet;
@@ -81,22 +79,15 @@ public class SchemaUtils {
     schemaChecker.put(TSDataType.TEXT, textSet);
   }
 
-  public static List<TSDataType> getSeriesTypesByPaths(Collection<? extends PartialPath> paths) {
-    List<TSDataType> dataTypes = new ArrayList<>();
-    for (PartialPath path : paths) {
-      dataTypes.add(path == null ? null : path.getSeriesType());
-    }
-    return dataTypes;
-  }
-
   /**
    * If the datatype of 'aggregation' depends on 'measurementDataType' (min_value, max_value),
    * return 'measurementDataType' directly, or return a list whose elements are all the datatype of
    * 'aggregation' and its length is the same as 'measurementDataType'.
    *
-   * @param measurementDataType
-   * @param aggregation
-   * @return
+   * @param measurementDataType raw measurement type
+   * @param aggregation aggregation type
+   * @return measurementDataType directly, or return a list whose elements are all the datatype of
+   *     aggregation and its length is the same as 'measurementDataType'
    */
   public static List<TSDataType> getAggregatedDataTypes(
       List<TSDataType> measurementDataType, String aggregation) {
