@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema;
 
-import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
