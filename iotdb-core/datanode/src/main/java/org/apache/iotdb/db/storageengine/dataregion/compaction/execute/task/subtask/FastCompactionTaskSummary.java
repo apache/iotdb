@@ -16,28 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask;
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 
+@SuppressWarnings("squid:S1104")
 public class FastCompactionTaskSummary extends CompactionTaskSummary {
-  public int CHUNK_NONE_OVERLAP;
-  public int CHUNK_NONE_OVERLAP_BUT_DESERIALIZE;
-  public int CHUNK_OVERLAP_OR_MODIFIED;
+  public int chunkNoneOverlap;
+  public int chunkNoneOverlapButDeserialize;
+  public int chunkOverlapOrModified;
 
-  public int PAGE_NONE_OVERLAP;
-  public int PAGE_OVERLAP_OR_MODIFIED;
-  public int PAGE_FAKE_OVERLAP;
-  public int PAGE_NONE_OVERLAP_BUT_DESERIALIZE;
+  public int pageNoneOverlap;
+  public int pageOverlapOrModified;
+  public int pageFakeOverlap;
+  public int pageNoneOverlapButDeserialize;
 
   public void increase(FastCompactionTaskSummary summary) {
-    this.CHUNK_NONE_OVERLAP += summary.CHUNK_NONE_OVERLAP;
-    this.CHUNK_NONE_OVERLAP_BUT_DESERIALIZE += summary.CHUNK_NONE_OVERLAP_BUT_DESERIALIZE;
-    this.CHUNK_OVERLAP_OR_MODIFIED += summary.CHUNK_OVERLAP_OR_MODIFIED;
-    this.PAGE_NONE_OVERLAP += summary.PAGE_NONE_OVERLAP;
-    this.PAGE_OVERLAP_OR_MODIFIED += summary.PAGE_OVERLAP_OR_MODIFIED;
-    this.PAGE_FAKE_OVERLAP += summary.PAGE_FAKE_OVERLAP;
-    this.PAGE_NONE_OVERLAP_BUT_DESERIALIZE += summary.PAGE_NONE_OVERLAP_BUT_DESERIALIZE;
+    this.chunkNoneOverlap += summary.chunkNoneOverlap;
+    this.chunkNoneOverlapButDeserialize += summary.chunkNoneOverlapButDeserialize;
+    this.chunkOverlapOrModified += summary.chunkOverlapOrModified;
+    this.pageNoneOverlap += summary.pageNoneOverlap;
+    this.pageOverlapOrModified += summary.pageOverlapOrModified;
+    this.pageFakeOverlap += summary.pageFakeOverlap;
+    this.pageNoneOverlapButDeserialize += summary.pageNoneOverlapButDeserialize;
     this.processChunkNum += summary.processChunkNum;
     this.processPointNum += summary.processPointNum;
     this.directlyFlushChunkNum += summary.directlyFlushChunkNum;
@@ -52,12 +54,12 @@ public class FastCompactionTaskSummary extends CompactionTaskSummary {
             + " CHUNK_OVERLAP_OR_MODIFIED num is %d, PAGE_NONE_OVERLAP num is %d,"
             + " PAGE_NONE_OVERLAP_BUT_DESERIALIZE num is %d, PAGE_OVERLAP_OR_MODIFIED num is %d,"
             + " PAGE_FAKE_OVERLAP num is %d.",
-        CHUNK_NONE_OVERLAP,
-        CHUNK_NONE_OVERLAP_BUT_DESERIALIZE,
-        CHUNK_OVERLAP_OR_MODIFIED,
-        PAGE_NONE_OVERLAP,
-        PAGE_NONE_OVERLAP_BUT_DESERIALIZE,
-        PAGE_OVERLAP_OR_MODIFIED,
-        PAGE_FAKE_OVERLAP);
+        chunkNoneOverlap,
+        chunkNoneOverlapButDeserialize,
+        chunkOverlapOrModified,
+        pageNoneOverlap,
+        pageNoneOverlapButDeserialize,
+        pageOverlapOrModified,
+        pageFakeOverlap);
   }
 }
