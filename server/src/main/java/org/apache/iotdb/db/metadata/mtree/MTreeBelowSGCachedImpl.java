@@ -1144,7 +1144,8 @@ public class MTreeBelowSGCachedImpl {
 
     collector.setTemplateMap(showTimeSeriesPlan.getRelatedTemplate(), nodeFactory);
     ISchemaReader<ITimeSeriesSchemaInfo> reader =
-        new TimeseriesReaderWithViewFetch(collector, showTimeSeriesPlan.getSchemaFilter());
+        new TimeseriesReaderWithViewFetch(
+            collector, showTimeSeriesPlan.getSchemaFilter(), showTimeSeriesPlan.needViewDetail());
     if (showTimeSeriesPlan.getLimit() > 0 || showTimeSeriesPlan.getOffset() > 0) {
       return new SchemaReaderLimitOffsetWrapper<>(
           reader, showTimeSeriesPlan.getLimit(), showTimeSeriesPlan.getOffset());
