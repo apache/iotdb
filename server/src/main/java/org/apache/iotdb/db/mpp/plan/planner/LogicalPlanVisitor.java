@@ -856,7 +856,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
 
   @Override
   public PlanNode visitShowLogicalView(
-      ShowLogicalViewStatement showTimeSeriesStatement, MPPQueryContext context) {
+      ShowLogicalViewStatement showLogicalViewStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
 
     // If there is only one region, we can push down the offset and limit operation to
@@ -865,17 +865,17 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         analysis.getSchemaPartitionInfo() != null
             && analysis.getSchemaPartitionInfo().getDistributionInfo().size() == 1;
 
-    long limit = showTimeSeriesStatement.getLimit();
-    long offset = showTimeSeriesStatement.getOffset();
+    long limit = showLogicalViewStatement.getLimit();
+    long offset = showLogicalViewStatement.getOffset();
     if (!canPushDownOffsetLimit) {
-      limit = showTimeSeriesStatement.getLimit() + showTimeSeriesStatement.getOffset();
+      limit = showLogicalViewStatement.getLimit() + showLogicalViewStatement.getOffset();
       offset = 0;
     }
     planBuilder =
         planBuilder
             .planLogicalViewSchemaSource(
-                showTimeSeriesStatement.getPathPattern(),
-                showTimeSeriesStatement.getSchemaFilter(),
+                showLogicalViewStatement.getPathPattern(),
+                showLogicalViewStatement.getSchemaFilter(),
                 limit,
                 offset)
             .planSchemaQueryMerge(false);
@@ -885,8 +885,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     }
 
     return planBuilder
-        .planOffset(showTimeSeriesStatement.getOffset())
-        .planLimit(showTimeSeriesStatement.getLimit())
+        .planOffset(showLogicalViewStatement.getOffset())
+        .planLimit(showLogicalViewStatement.getLimit())
         .getRoot();
   }
 }
