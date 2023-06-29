@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,25 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.storageengine.upgrade;
 
-public enum UpgradeCheckStatus {
-  BEGIN_UPGRADE_FILE(1),
-  AFTER_UPGRADE_FILE(2),
-  UPGRADE_SUCCESS(3);
+package org.apache.iotdb.metrics.micrometer.reporter;
 
-  private final int checkStatusCode;
-
-  UpgradeCheckStatus(int checkStatusCode) {
-    this.checkStatusCode = checkStatusCode;
-  }
-
-  public int getCheckStatusCode() {
-    return checkStatusCode;
-  }
+public interface MicrometerJmxConfig extends io.micrometer.jmx.JmxConfig {
+  MicrometerJmxConfig DEFAULT = k -> null;
 
   @Override
-  public String toString() {
-    return String.valueOf(checkStatusCode);
+  default String domain() {
+    return "org.apache.iotdb.metrics";
   }
 }

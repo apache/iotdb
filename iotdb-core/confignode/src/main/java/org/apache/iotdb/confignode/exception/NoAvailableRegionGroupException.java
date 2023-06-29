@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.exception;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
@@ -28,7 +29,8 @@ public class NoAvailableRegionGroupException extends ConfigNodeException {
   public NoAvailableRegionGroupException(TConsensusGroupType regionGroupType) {
     super(
         String.format(
-            "There are no available %s RegionGroups currently, please use \"show cluster\" or \"show regions\" to check the cluster status",
+            "There are no available %s RegionGroups currently, "
+                + "please use \"show cluster\" or \"show regions\" to check the cluster status",
             TConsensusGroupType.SchemaRegion.equals(regionGroupType)
                 ? SCHEMA_REGION_GROUP
                 : DATA_REGION_GROUP));

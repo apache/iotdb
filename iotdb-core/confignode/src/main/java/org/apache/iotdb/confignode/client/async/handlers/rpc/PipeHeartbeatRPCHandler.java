@@ -57,12 +57,10 @@ public class PipeHeartbeatRPCHandler extends AbstractAsyncRPCHandler<TPipeHeartb
   @Override
   public void onError(Exception e) {
     LOGGER.error(
-        "Failed to "
-            + requestType
-            + " on DataNode: "
-            + formattedTargetLocation
-            + ", exception: "
-            + e.getMessage());
+        "Failed to {} on DataNode: {}, exception: {}",
+        requestType,
+        formattedTargetLocation,
+        e.getMessage());
 
     // Always CountDown
     countDownLatch.countDown();

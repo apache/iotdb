@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.session.util;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -30,9 +31,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,7 +39,6 @@ import static org.apache.iotdb.session.Session.MSG_UNSUPPORTED_DATA_TYPE;
 
 public class SessionUtils {
 
-  private static final Logger logger = LoggerFactory.getLogger(SessionUtils.class);
   private static final byte TYPE_NULL = -2;
 
   public static ByteBuffer getTimeBuffer(Tablet tablet) {
@@ -169,6 +166,11 @@ public class SessionUtils {
     buffer.flip();
   }
 
+  @SuppressWarnings({
+    "squid:S6541",
+    "squid:S3776"
+  }) /// ignore Cognitive Complexity of methods should not be too high
+  // ignore Methods should not perform too many tasks (aka Brain method)
   private static void getValueBufferOfDataType(
       TSDataType dataType, Tablet tablet, int i, ByteBuffer valueBuffer) {
 
@@ -272,4 +274,6 @@ public class SessionUtils {
       throw new NumberFormatException("NodeUrl Incorrect format");
     }
   }
+
+  private SessionUtils() {}
 }

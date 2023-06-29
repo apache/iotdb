@@ -73,7 +73,9 @@ public class FirstCreateStrategy extends AbstractNodeAllocationStrategy {
       if (identifier2Nodes.containsKey(applicantUniqueId)) {
         return;
       }
-
+      // Although walNode is defined as a local variable, it is added into a global var
+      // identifier2Nodes later. So we cannot close it here.
+      @SuppressWarnings("squid:S2095")
       IWALNode walNode =
           createWALNode(applicantUniqueId, logDirectory, startFileVersion, startSearchIndex);
       if (walNode instanceof WALNode) {

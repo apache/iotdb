@@ -175,7 +175,7 @@ public class RatisConfig {
     }
   }
 
-  /** server rpc timeout related */
+  /** server rpc timeout related. */
   public static class Rpc {
 
     private final TimeDuration timeoutMin;

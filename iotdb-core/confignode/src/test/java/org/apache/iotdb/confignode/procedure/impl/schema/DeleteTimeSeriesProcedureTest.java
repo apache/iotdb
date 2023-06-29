@@ -17,16 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.impl;
+package org.apache.iotdb.confignode.procedure.impl.schema;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.db.schemaengine.template.Template;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -35,41 +31,37 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 
-public class UnsetTemplateProcedureTest {
+public class DeleteTimeSeriesProcedureTest {
 
   @Test
   public void serializeDeserializeTest() throws IllegalPathException, IOException {
     String queryId = "1";
-    Template template = new Template();
-    template.setId(0);
-    template.setName("t1");
-    template.addMeasurements(
-        new String[] {"s1", "s2"},
-        new TSDataType[] {TSDataType.INT32, TSDataType.FLOAT},
-        new TSEncoding[] {TSEncoding.PLAIN, TSEncoding.BITMAP},
-        new CompressionType[] {CompressionType.UNCOMPRESSED, CompressionType.GZIP});
-    PartialPath path = new PartialPath("root.sg");
-    UnsetTemplateProcedure unsetTemplateProcedure =
-        new UnsetTemplateProcedure(queryId, template, path);
+    PathPatternTree patternTree = new PathPatternTree();
+    patternTree.appendPathPattern(new PartialPath("root.sg1.**"));
+    patternTree.appendPathPattern(new PartialPath("root.sg2.*.s1"));
+    patternTree.constructTree();
+    DeleteTimeSeriesProcedure deleteTimeSeriesProcedure =
+        new DeleteTimeSeriesProcedure(queryId, patternTree);
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    unsetTemplateProcedure.serialize(dataOutputStream);
+    deleteTimeSeriesProcedure.serialize(dataOutputStream);
 
     ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
 
     Assert.assertEquals(
-        ProcedureType.UNSET_TEMPLATE_PROCEDURE.getTypeCode(), byteBuffer.getShort());
+        ProcedureType.DELETE_TIMESERIES_PROCEDURE.getTypeCode(), byteBuffer.getShort());
 
-    UnsetTemplateProcedure deserializedProcedure = new UnsetTemplateProcedure();
+    DeleteTimeSeriesProcedure deserializedProcedure = new DeleteTimeSeriesProcedure();
     deserializedProcedure.deserialize(byteBuffer);
 
     Assert.assertEquals(queryId, deserializedProcedure.getQueryId());
-    Assert.assertEquals(template.getId(), deserializedProcedure.getTemplateId());
-    Assert.assertEquals(template.getName(), deserializedProcedure.getTemplateName());
-    Assert.assertEquals(
-        template.getSchemaMap(), deserializedProcedure.getTemplate().getSchemaMap());
-    Assert.assertEquals(path, deserializedProcedure.getPath());
+
+    List<PartialPath> pathList = deserializedProcedure.getPatternTree().getAllPathPatterns();
+    pathList.sort(PartialPath::compareTo);
+    Assert.assertEquals("root.sg1.**", pathList.get(0).getFullPath());
+    Assert.assertEquals("root.sg2.*.s1", pathList.get(1).getFullPath());
   }
 }

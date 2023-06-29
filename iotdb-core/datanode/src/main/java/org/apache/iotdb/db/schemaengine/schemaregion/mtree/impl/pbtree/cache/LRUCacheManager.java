@@ -16,11 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache;
 
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.memcontrol.MemManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -116,6 +118,7 @@ public class LRUCacheManager extends CacheManager {
     return res;
   }
 
+  @SuppressWarnings("java:S3077")
   private static class LRUCacheEntry extends CacheEntry {
 
     // although the node instance may be replaced, the name and full path of the node won't be
@@ -155,11 +158,22 @@ public class LRUCacheManager extends CacheManager {
     }
 
     @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (!(o instanceof LRUCacheEntry)) return false;
+      LRUCacheEntry that = (LRUCacheEntry) o;
+      return Objects.equals(node, that.node)
+          && Objects.equals(pre, that.pre)
+          && Objects.equals(next, that.next);
+    }
+
+    @Override
     public int hashCode() {
       return node.getName().hashCode();
     }
   }
 
+  @SuppressWarnings("java:S3077")
   private static class LRUCacheList {
 
     private volatile LRUCacheEntry first;

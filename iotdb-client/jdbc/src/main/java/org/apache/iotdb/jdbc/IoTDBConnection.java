@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -265,7 +266,6 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public int getHoldability() {
-    // throw new SQLException("Method not supported");
     return 0;
   }
 

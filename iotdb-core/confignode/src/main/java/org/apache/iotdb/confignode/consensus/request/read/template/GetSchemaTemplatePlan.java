@@ -58,10 +58,14 @@ public class GetSchemaTemplatePlan extends ConfigPhysicalPlan {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     GetSchemaTemplatePlan that = (GetSchemaTemplatePlan) o;
-    return this.templateName.equalsIgnoreCase(this.templateName);
+    return this.templateName.equalsIgnoreCase(that.templateName);
   }
 
   @Override

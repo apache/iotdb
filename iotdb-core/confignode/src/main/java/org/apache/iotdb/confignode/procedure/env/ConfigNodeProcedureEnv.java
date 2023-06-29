@@ -160,6 +160,7 @@ public class ConfigNodeProcedureEnv {
           TimeUnit.MILLISECONDS.sleep(1000);
         } catch (InterruptedException e) {
           LOG.error("Sleep failed in ConfigNodeProcedureEnv: ", e);
+          Thread.currentThread().interrupt();
         }
         nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
       }

@@ -32,30 +32,30 @@ import java.io.IOException;
 public abstract class SprintzEncoder extends Encoder {
   protected static final Logger logger = LoggerFactory.getLogger(SprintzEncoder.class);
 
-  /** Segment block size to compress:8 */
+  // Segment block size to compress:8
   protected int Block_size = 8;
 
-  /** group size maximum * */
+  // group size maximum
   protected int groupMax = 16;
 
-  /** group number * */
+  // group number
   protected int groupNum;
 
-  /** the bit width used for bit-packing and rle. */
+  // the bit width used for bit-packing and rle.
   protected int bitWidth;
 
   /** output stream to buffer {@code <bitwidth> <encoded-data>}. */
   protected ByteArrayOutputStream byteCache;
 
-  /** selecet the predict method */
-  protected String PredictMethod =
-      TSFileDescriptor.getInstance().getConfig().getSprintzPredictScheme();;
+  // selecet the predict method
+  protected String predictMethod =
+      TSFileDescriptor.getInstance().getConfig().getSprintzPredictScheme();
 
   protected boolean isFirstCached = false;
 
   protected TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
 
-  public SprintzEncoder() {
+  protected SprintzEncoder() {
     super(TSEncoding.SPRINTZ);
     byteCache = new ByteArrayOutputStream();
   }

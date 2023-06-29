@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Iface;
@@ -399,6 +400,11 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
     }
   }
 
+  @SuppressWarnings({
+    "squid:S3776",
+    "squid:S6541"
+  }) // ignore Cognitive Complexity of methods should not be too high
+  // ignore Methods should not perform too many tasks (aka Brain method)
   @Override
   public void setObject(int parameterIndex, Object parameterObj, int targetSqlType, int scale)
       throws SQLException {
@@ -507,6 +513,9 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
                 }
 
                 break;
+              default:
+                logger.error("No type was matched");
+                break;
             }
 
             break;
@@ -530,16 +539,19 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
           default:
             throw new SQLException(Constant.PARAMETER_SUPPORTED); //
         }
+      } catch (SQLException ex) {
+        throw ex;
       } catch (Exception ex) {
-        if (ex instanceof SQLException) {
-          throw (SQLException) ex;
-        }
-
         throw new SQLException(Constant.PARAMETER_SUPPORTED); //
       }
     }
   }
 
+  @SuppressWarnings({
+    "squid:S3776",
+    "squid:S6541"
+  }) // ignore Cognitive Complexity of methods should not be too high
+  // ignore Methods should not perform too many tasks (aka Brain method)
   private final String getDateTimePattern(String dt, boolean toTime) throws Exception {
     //
     // Special case
@@ -591,8 +603,8 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
     char c;
     char separator;
     StringReader reader = new StringReader(dt + " ");
-    ArrayList<Object[]> vec = new ArrayList<Object[]>();
-    ArrayList<Object[]> vecRemovelist = new ArrayList<Object[]>();
+    ArrayList<Object[]> vec = new ArrayList<>();
+    ArrayList<Object[]> vecRemovelist = new ArrayList<>();
     Object[] nv = new Object[3];
     Object[] v;
     nv[0] = Character.valueOf('y');
@@ -697,6 +709,8 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
     return format.toString();
   }
 
+  @SuppressWarnings({"squid:S3776", "squid:S3358"}) // ignore Ternary operators should not be nested
+  // ignore Cognitive Complexity of methods should not be too high
   private final char getSuccessor(char c, int n) {
     return ((c == 'y') && (n == 2))
         ? 'X'
@@ -727,6 +741,11 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
                                                         : 'W'))))))))))));
   }
 
+  @SuppressWarnings({
+    "squid:S3776",
+    "squid:S6541"
+  }) // ignore Cognitive Complexity of methods should not be too high
+  // ignore Methods should not perform too many tasks (aka Brain method)
   private void setNumericObject(
       int parameterIndex, Object parameterObj, int targetSqlType, int scale) throws SQLException {
     Number parameterAsNum;
@@ -834,6 +853,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
         }
 
         break;
+      default:
     }
   }
 
@@ -881,7 +901,8 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       }
       setLong(parameterIndex, time);
     } catch (TException e) {
-      e.printStackTrace();
+      logger.error(
+          String.format("set time error when iotdb prepared statement :%s ", e.getMessage()));
     }
   }
 
@@ -913,7 +934,8 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
       this.parameters.put(
           parameterIndex, zonedDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
     } catch (TException e) {
-      e.printStackTrace();
+      logger.error(
+          String.format("set time error when iotdb prepared statement :%s ", e.getMessage()));
     }
   }
 

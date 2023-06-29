@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -204,7 +205,7 @@ public class SnapshotTest {
     String actualSnapshotName =
         CrossDiskLinkStatemachine.ensureSnapshotFileName(testDir, "20_1005");
     File actualSnapshotFile = new File(actualSnapshotName);
-    Assert.assertEquals(proxy.getLatestSnapshot().getFiles().size(), 1);
+    Assert.assertEquals(1, proxy.getLatestSnapshot().getFiles().size());
     Assert.assertEquals(
         proxy.getLatestSnapshot().getFiles().get(0).getPath().toFile().getAbsolutePath(),
         actualSnapshotFile.getAbsolutePath());

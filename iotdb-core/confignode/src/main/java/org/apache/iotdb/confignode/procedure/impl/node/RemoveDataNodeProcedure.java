@@ -39,6 +39,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_DATANODE_PROCESS;
@@ -231,5 +232,10 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
           && thatProc.migratedDataNodeRegions.equals(this.migratedDataNodeRegions);
     }
     return false;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(this.removedDataNode, this.migratedDataNodeRegions);
   }
 }
