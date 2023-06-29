@@ -59,13 +59,13 @@ import org.slf4j.LoggerFactory;
 import java.util.Collections;
 import java.util.stream.Collectors;
 
-public class IoTConsensusRpcServiceProcessor implements IoTConsensusIService.AsyncIface {
+public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.AsyncIface {
 
-  private final Logger logger = LoggerFactory.getLogger(IoTConsensusRpcServiceProcessor.class);
+  private final Logger logger = LoggerFactory.getLogger(IoTConsensusRPCServiceProcessor.class);
 
   private final IoTConsensus consensus;
 
-  public IoTConsensusRpcServiceProcessor(IoTConsensus consensus) {
+  public IoTConsensusRPCServiceProcessor(IoTConsensus consensus) {
     this.consensus = consensus;
   }
 

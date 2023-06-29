@@ -65,7 +65,7 @@ public class LogDispatcher {
 
   private boolean stopped = false;
 
-  private final AtomicLong logEntriesFromWal = new AtomicLong(0);
+  private final AtomicLong logEntriesFromWAL = new AtomicLong(0);
   private final AtomicLong logEntriesFromQueue = new AtomicLong(0);
 
   public LogDispatcher(
@@ -179,8 +179,8 @@ public class LogDispatcher {
     }
   }
 
-  public long getLogEntriesFromWal() {
-    return logEntriesFromWal.get();
+  public long getLogEntriesFromWAL() {
+    return logEntriesFromWAL.get();
   }
 
   public long getLogEntriesFromQueue() {
@@ -320,9 +320,9 @@ public class LogDispatcher {
               (System.nanoTime() - startTime) / batch.getLogEntries().size());
           // we may block here if the synchronization pipeline is full
           syncStatus.addNextBatch(batch);
-          logEntriesFromWal.addAndGet(batch.getLogEntriesNumFromWal());
+          logEntriesFromWAL.addAndGet(batch.getLogEntriesNumFromWAL());
           logEntriesFromQueue.addAndGet(
-              batch.getLogEntries().size() - batch.getLogEntriesNumFromWal());
+              batch.getLogEntries().size() - batch.getLogEntriesNumFromWAL());
           // sends batch asynchronously and migrates the retry logic into the callback handler
           sendBatchAsync(batch, new DispatchLogHandler(this, logDispatcherThreadMetrics, batch));
         }
@@ -382,7 +382,7 @@ public class LogDispatcher {
       // up. To prevent inconsistency here, we use the synchronized logic when calculate value of
       // `maxIndex`
       if (bufferedEntries.isEmpty()) {
-        constructBatchFromWal(startIndex, maxIndex, batches);
+        constructBatchFromWAL(startIndex, maxIndex, batches);
         batches.buildIndex();
         logger.debug(
             "{} : accumulated a {} from wal when empty", impl.getThisNode().getGroupId(), batches);
@@ -394,7 +394,7 @@ public class LogDispatcher {
         // Prevents gap between logs. For example, some requests are not written into the queue when
         // the queue is full. In this case, requests need to be loaded from the WAL
         if (startIndex != prev.getSearchIndex()) {
-          constructBatchFromWal(startIndex, prev.getSearchIndex(), batches);
+          constructBatchFromWAL(startIndex, prev.getSearchIndex(), batches);
           if (!batches.canAccumulate()) {
             batches.buildIndex();
             logger.debug(
@@ -418,7 +418,7 @@ public class LogDispatcher {
           // Prevents gap between logs. For example, some logs are not written into the queue when
           // the queue is full. In this case, requests need to be loaded from the WAL
           if (current.getSearchIndex() != prev.getSearchIndex() + 1) {
-            constructBatchFromWal(prev.getSearchIndex() + 1, current.getSearchIndex(), batches);
+            constructBatchFromWAL(prev.getSearchIndex() + 1, current.getSearchIndex(), batches);
             if (!batches.canAccumulate()) {
               batches.buildIndex();
               logger.debug(
@@ -465,7 +465,7 @@ public class LogDispatcher {
       return syncStatus;
     }
 
-    private void constructBatchFromWal(long currentIndex, long maxIndex, Batch logBatches) {
+    private void constructBatchFromWAL(long currentIndex, long maxIndex, Batch logBatches) {
       logger.debug(
           "DataRegion[{}]->{}: currentIndex: {}, maxIndex: {}",
           peer.getGroupId().getId(),

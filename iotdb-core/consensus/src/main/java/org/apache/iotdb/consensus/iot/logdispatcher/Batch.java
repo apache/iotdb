@@ -35,7 +35,7 @@ public class Batch {
 
   private final List<TLogEntry> logEntries = new ArrayList<>();
 
-  private long logEntriesNumFromWal = 0L;
+  private long logEntriesNumFromWAL = 0L;
 
   private long serializedSize;
   // indicates whether this batch has been successfully synchronized to another node
@@ -58,7 +58,7 @@ public class Batch {
   public void addTLogEntry(TLogEntry entry) {
     logEntries.add(entry);
     if (entry.fromWAL) {
-      logEntriesNumFromWal++;
+      logEntriesNumFromWAL++;
     }
     // TODO Maybe we need to add in additional fields for more accurate calculations
     serializedSize +=
@@ -98,8 +98,8 @@ public class Batch {
     return serializedSize;
   }
 
-  public long getLogEntriesNumFromWal() {
-    return logEntriesNumFromWal;
+  public long getLogEntriesNumFromWAL() {
+    return logEntriesNumFromWAL;
   }
 
   @Override

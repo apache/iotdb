@@ -19,4 +19,4 @@
 
 package org.apache.iotdb.consensus.iot.service;
 
-public interface IoTConsensusRpcServiceMBean {}
+public interface IoTConsensusRPCServiceMBean {}

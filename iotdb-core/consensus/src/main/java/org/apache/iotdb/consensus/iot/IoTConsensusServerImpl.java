@@ -703,8 +703,8 @@ public class IoTConsensusServerImpl {
     return config;
   }
 
-  public long getLogEntriesFromWal() {
-    return logDispatcher.getLogEntriesFromWal();
+  public long getLogEntriesFromWAL() {
+    return logDispatcher.getLogEntriesFromWAL();
   }
 
   public long getLogEntriesFromQueue() {

@@ -192,7 +192,7 @@ public class ReplicateTest {
    * nodes finally consistent.
    */
   @Test
-  public void replicateUsingWalTest() throws IOException, InterruptedException {
+  public void replicateUsingWALTest() throws IOException, InterruptedException {
     logger.info("Start ReplicateUsingWALTest");
     servers.get(0).createPeer(group.getGroupId(), group.getPeers());
     servers.get(1).createPeer(group.getGroupId(), group.getPeers());

@@ -26,7 +26,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
-import org.apache.iotdb.consensus.config.IoTConsensusConfig.Rpc;
+import org.apache.iotdb.consensus.config.IoTConsensusConfig.RPC;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.config.RatisConfig.Snapshot;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -74,7 +74,7 @@ public class DataRegionConsensusImpl {
                       .setIoTConsensusConfig(
                           IoTConsensusConfig.newBuilder()
                               .setRpc(
-                                  Rpc.newBuilder()
+                                  RPC.newBuilder()
                                       .setConnectionTimeoutInMs(conf.getConnectionTimeoutInMS())
                                       .setRpcSelectorThreadNum(conf.getRpcSelectorThreadCount())
                                       .setRpcMinConcurrentClientNum(

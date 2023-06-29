@@ -33,13 +33,13 @@ import org.apache.thrift.TBaseAsyncProcessor;
 
 import java.lang.reflect.InvocationTargetException;
 
-public class IoTConsensusRpcService extends ThriftService implements IoTConsensusRpcServiceMBean {
+public class IoTConsensusRPCService extends ThriftService implements IoTConsensusRPCServiceMBean {
 
   private final TEndPoint thisNode;
   private final IoTConsensusConfig config;
-  private IoTConsensusRpcServiceProcessor iotConsensusRpcServiceProcessor;
+  private IoTConsensusRPCServiceProcessor iotConsensusRPCServiceProcessor;
 
-  public IoTConsensusRpcService(TEndPoint thisNode, IoTConsensusConfig config) {
+  public IoTConsensusRPCService(TEndPoint thisNode, IoTConsensusConfig config) {
     this.thisNode = thisNode;
     this.config = config;
   }
@@ -50,20 +50,20 @@ public class IoTConsensusRpcService extends ThriftService implements IoTConsensu
   }
 
   @Override
-  public void initAsyncedServiceImpl(Object iotConsensusRpcServiceProcessor) {
-    this.iotConsensusRpcServiceProcessor =
-        (IoTConsensusRpcServiceProcessor) iotConsensusRpcServiceProcessor;
+  public void initAsyncedServiceImpl(Object iotConsensusRPCServiceProcessor) {
+    this.iotConsensusRPCServiceProcessor =
+        (IoTConsensusRPCServiceProcessor) iotConsensusRPCServiceProcessor;
     super.mbeanName =
         String.format(
             "%s:%s=%s", this.getClass().getPackage(), IoTDBConstant.JMX_TYPE, getID().getJmxName());
-    super.initAsyncedServiceImpl(this.iotConsensusRpcServiceProcessor);
+    super.initAsyncedServiceImpl(this.iotConsensusRPCServiceProcessor);
   }
 
   @Override
   public void initTProcessor()
       throws ClassNotFoundException, IllegalAccessException, InstantiationException,
           NoSuchMethodException, InvocationTargetException {
-    processor = new IoTConsensusIService.AsyncProcessor<>(iotConsensusRpcServiceProcessor);
+    processor = new IoTConsensusIService.AsyncProcessor<>(iotConsensusRPCServiceProcessor);
   }
 
   @Override
@@ -81,7 +81,7 @@ public class IoTConsensusRpcService extends ThriftService implements IoTConsensu
               config.getRpc().getRpcMinConcurrentClientNum(),
               config.getRpc().getRpcMaxConcurrentClientNum(),
               config.getRpc().getThriftServerAwaitTimeForStopService(),
-              new IoTConsensusRpcServiceHandler(iotConsensusRpcServiceProcessor),
+              new IoTConsensusRPCServiceHandler(iotConsensusRPCServiceProcessor),
               config.getRpc().isRpcThriftCompressionEnabled(),
               config.getRpc().getConnectionTimeoutInMs(),
               config.getRpc().getThriftMaxFrameSize(),

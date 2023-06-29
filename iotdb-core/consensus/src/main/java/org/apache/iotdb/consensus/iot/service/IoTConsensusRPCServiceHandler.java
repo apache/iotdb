@@ -24,11 +24,11 @@ import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TTransport;
 
-public class IoTConsensusRpcServiceHandler implements TServerEventHandler {
+public class IoTConsensusRPCServiceHandler implements TServerEventHandler {
 
-  private final IoTConsensusRpcServiceProcessor processor;
+  private final IoTConsensusRPCServiceProcessor processor;
 
-  public IoTConsensusRpcServiceHandler(IoTConsensusRpcServiceProcessor processor) {
+  public IoTConsensusRPCServiceHandler(IoTConsensusRPCServiceProcessor processor) {
     this.processor = processor;
   }
 
