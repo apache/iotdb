@@ -591,7 +591,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             countLevelTimeSeriesStatement.getLevel(),
             countLevelTimeSeriesStatement.getKey(),
             countLevelTimeSeriesStatement.getValue(),
-            countLevelTimeSeriesStatement.isContains())
+            countLevelTimeSeriesStatement.isContains(),
+            analysis.getRelatedTemplateInfo())
         .planCountMerge()
         .getRoot();
   }

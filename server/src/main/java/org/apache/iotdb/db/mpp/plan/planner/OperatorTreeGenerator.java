@@ -671,7 +671,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.getKey(),
             node.getValue(),
             node.isContains(),
-            null));
+            node.getTemplateMap()));
   }
 
   @Override
