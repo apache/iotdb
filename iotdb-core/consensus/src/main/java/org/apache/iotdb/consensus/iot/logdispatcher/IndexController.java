@@ -22,6 +22,7 @@ package org.apache.iotdb.consensus.iot.logdispatcher;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -165,7 +166,7 @@ public class IndexController {
                         }));
   }
 
-  private long[] getMaxVersion(long[] fileVersions) {
+  private Pair<Long, Integer> getMaxVersion(long[] fileVersions) {
     long maxVersion = 0;
     int maxVersionIndex = 0;
     for (int i = 0; i < fileVersions.length; i++) {
@@ -174,7 +175,7 @@ public class IndexController {
         maxVersionIndex = i;
       }
     }
-    return new long[] {maxVersion, maxVersionIndex};
+    return new Pair<>(maxVersion, maxVersionIndex);
   }
 
   private void deleteVersionFiles(File[] versionFiles, int maxVersionIndex) {
@@ -199,9 +200,9 @@ public class IndexController {
       for (int i = 0; i < versionFiles.length; i++) {
         fileVersions[i] = Long.parseLong(versionFiles[i].getName().split(SEPARATOR)[1]);
       }
-      long[] res = getMaxVersion(fileVersions);
-      long maxVersion = res[0];
-      int maxVersionIndex = (int) res[1];
+      Pair<Long, Integer> res = getMaxVersion(fileVersions);
+      long maxVersion = res.left;
+      int maxVersionIndex = res.right;
       lastFlushedIndex = maxVersion;
       deleteVersionFiles(versionFiles, maxVersionIndex);
       currentIndex = lastFlushedIndex;

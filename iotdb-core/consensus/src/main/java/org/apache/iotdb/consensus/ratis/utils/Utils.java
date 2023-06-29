@@ -152,7 +152,7 @@ public class Utils {
     return ConsensusGroupId.Factory.create((int) type, byteBuffer.getInt());
   }
 
-  public static ByteBuffer serializeStatus(TSStatus status) throws TException {
+  public static ByteBuffer serializeTSStatus(TSStatus status) throws TException {
     AutoScalingBufferWriteTransport byteBuffer =
         new AutoScalingBufferWriteTransport(TEMP_BUFFER_SIZE);
     TCompactProtocol protocol = new TCompactProtocol(byteBuffer);

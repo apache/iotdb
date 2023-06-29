@@ -58,7 +58,7 @@ class ResponseMessage implements Message {
           TSStatus status = (TSStatus) contentHolder;
           try {
             serializedData =
-                new AtomicReference<>(ByteString.copyFrom(Utils.serializeStatus(status)));
+                new AtomicReference<>(ByteString.copyFrom(Utils.serializeTSStatus(status)));
           } catch (TException e) {
             logger.warn("serialize TSStatus failed {}", status);
           }

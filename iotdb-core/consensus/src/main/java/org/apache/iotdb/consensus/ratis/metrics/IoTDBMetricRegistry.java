@@ -76,9 +76,11 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
   /** Time taken to process write requests from client. */
   public static final String RAFT_CLIENT_WRITE_REQUEST = "clientWriteRequest";
 
-  private static final String NOT_USED = "This method is not used in IoTDB project";
+  private static final String METHOD_NOT_USED_EXCEPTION_MESSAGE =
+      "This method is not used in IoTDB project";
 
-  private static final String METER_NOT_USED = "Meter is not used in Ratis Metrics";
+  private static final String METER_NOT_USED_EXCEPTION_MESSAGE =
+      "Meter is not used in Ratis Metrics";
 
   private static final List<String> RATIS_METRICS = new ArrayList<>();
 
@@ -173,17 +175,17 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
 
   @Override
   public Timer timer(String name, MetricRegistry.MetricSupplier<Timer> metricSupplier) {
-    throw new UnsupportedOperationException(NOT_USED);
+    throw new UnsupportedOperationException(METHOD_NOT_USED_EXCEPTION_MESSAGE);
   }
 
   @Override
   public SortedMap<String, Gauge> getGauges(MetricFilter metricFilter) {
-    throw new UnsupportedOperationException(NOT_USED);
+    throw new UnsupportedOperationException(METHOD_NOT_USED_EXCEPTION_MESSAGE);
   }
 
   @Override
   public Counter counter(String name, MetricRegistry.MetricSupplier<Counter> metricSupplier) {
-    throw new UnsupportedOperationException(NOT_USED);
+    throw new UnsupportedOperationException(METHOD_NOT_USED_EXCEPTION_MESSAGE);
   }
 
   @Override
@@ -193,17 +195,17 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
 
   @Override
   public Meter meter(String name) {
-    throw new UnsupportedOperationException(METER_NOT_USED);
+    throw new UnsupportedOperationException(METER_NOT_USED_EXCEPTION_MESSAGE);
   }
 
   @Override
   public Meter meter(String name, MetricRegistry.MetricSupplier<Meter> metricSupplier) {
-    throw new UnsupportedOperationException(METER_NOT_USED);
+    throw new UnsupportedOperationException(METER_NOT_USED_EXCEPTION_MESSAGE);
   }
 
   @Override
   public Metric get(String name) {
-    throw new UnsupportedOperationException(METER_NOT_USED);
+    throw new UnsupportedOperationException(METER_NOT_USED_EXCEPTION_MESSAGE);
   }
 
   @Override
@@ -213,7 +215,7 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
 
   @Override
   public MetricRegistry getDropWizardMetricRegistry() {
-    throw new UnsupportedOperationException(NOT_USED);
+    throw new UnsupportedOperationException(METHOD_NOT_USED_EXCEPTION_MESSAGE);
   }
 
   @Override
