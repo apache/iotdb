@@ -64,6 +64,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
 
   // When num of points writing into target files reaches check point, then check chunk size
+  @SuppressWarnings("squid:S1170")
   private final long checkPoint = (targetChunkPointNum >= 10 ? targetChunkPointNum : 10) / 10;
 
   private long lastCheckIndex = 0;
@@ -124,6 +125,8 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   /**
    * Update startTime and endTime of the current device in each target resources, and check whether
    * to flush chunk metadatas or not.
+   *
+   * @throws IOException if io errors occurred
    */
   public abstract void checkAndMayFlushChunkMetadata() throws IOException;
 
@@ -300,6 +303,6 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   }
 
   protected long getChunkSize(Chunk chunk) {
-    return chunk.getHeader().getSerializedSize() + chunk.getHeader().getDataSize();
+    return (long) chunk.getHeader().getSerializedSize() + chunk.getHeader().getDataSize();
   }
 }

@@ -182,6 +182,8 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
    * selecting the source files: (1) unseq files may have some devices or measurements which are not
    * exist in seq files. (2) timestamp of one timeseries in unseq files may later than any seq
    * files. Then write these data into the last target file.
+   *
+   * @throws IOException if io errors occurred
    */
   protected void checkTimeAndMayFlushChunkToCurrentFile(long timestamp, int subTaskId)
       throws IOException {
