@@ -135,7 +135,6 @@ public class IoTDBDynamicTableFactor implements DynamicTableSourceFactory, Dynam
 
     List<String> nodeUrls = Arrays.asList(options.get(Options.NODE_URLS).toString().split(","));
     for (String nodeUrl : nodeUrls) {
-      nodeUrl = nodeUrl.strip();
       String[] split = nodeUrl.split(":");
       if (split.length != 2) {
         throw new IllegalUrlPathException("Every node's URL must be in the format of `host:port`.");
