@@ -59,7 +59,6 @@ public class PipeConnectorSubtask extends PipeSubtask {
   protected final DecoratingLock callbackDecoratingLock = new DecoratingLock();
   protected ExecutorService subtaskCallbackListeningExecutor;
 
-  /** @param taskID connectorAttributeSortedString */
   public PipeConnectorSubtask(
       String taskID,
       BoundedBlockingPendingQueue<Event> inputPendingQueue,
@@ -240,7 +239,6 @@ public class PipeConnectorSubtask extends PipeSubtask {
       // should be called after outputPipeConnector.close()
       super.close();
     } catch (Exception e) {
-      e.printStackTrace();
       LOGGER.info(
           "Error occurred during closing PipeConnector, perhaps need to check whether the "
               + "implementation of PipeConnector is correct according to the pipe-api description.",
