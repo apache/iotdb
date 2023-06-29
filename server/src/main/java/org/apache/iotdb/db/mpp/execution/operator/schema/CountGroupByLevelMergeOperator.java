@@ -90,8 +90,7 @@ public class CountGroupByLevelMergeOperator implements ProcessOperator {
       throw new NoSuchElementException();
     }
     if (resultTsBlockList != null) {
-      currentIndex++;
-      return resultTsBlockList.get(currentIndex - 1);
+      return resultTsBlockList.get(currentIndex++);
     }
 
     boolean allChildrenConsumed = true;
