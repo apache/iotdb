@@ -37,8 +37,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperato
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanContext;
-import org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator;
+import org.apache.iotdb.db.queryengine.execution.plan.LocalExecutionPlanContext;
+import org.apache.iotdb.db.queryengine.execution.plan.OperatorTreeGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
