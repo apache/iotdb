@@ -59,7 +59,7 @@ public class UDFClassLoaderManager implements IService {
   private UDFClassLoaderManager() throws IOException {
     this.libRoot = null;
     queryIdToUDFClassLoaderMap = new ConcurrentHashMap<>();
-    activeClassLoader = new UDFClassLoader("");
+    activeClassLoader.set(new UDFClassLoader(""));
   }
 
   public void initializeUDFQuery(String queryId) {
@@ -85,10 +85,6 @@ public class UDFClassLoaderManager implements IService {
     if (deprecatedClassLoader != null) {
       deprecatedClassLoader.markAsDeprecated();
     }
-    return activeClassLoader.get();
-  }
-
-  public UDFClassLoader getActiveClassLoader() {
     return activeClassLoader.get();
   }
 
