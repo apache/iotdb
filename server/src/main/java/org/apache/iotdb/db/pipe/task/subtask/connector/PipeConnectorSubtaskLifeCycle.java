@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.task.subtask;
+package org.apache.iotdb.db.pipe.task.subtask.connector;
 
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
@@ -64,6 +64,8 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
   }
 
   /**
+   * Deregister the subtask. If the subtask is the last one, close the subtask.
+   *
    * @return true if the subtask is out of life cycle, indicating that the subtask should never be
    *     used again
    */
