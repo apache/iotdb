@@ -554,7 +554,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     return new SchemaQueryScanOperator<>(
         node.getPlanNodeId(),
         operatorContext,
-        SchemaSourceFactory.getTimeSeriesSchemaSource(
+        SchemaSourceFactory.getTimeSeriesSchemaScanSource(
             node.getPath(),
             node.isPrefixPath(),
             node.getLimit(),
@@ -649,7 +649,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     return new SchemaCountOperator<>(
         node.getPlanNodeId(),
         operatorContext,
-        SchemaSourceFactory.getTimeSeriesSchemaSource(
+        SchemaSourceFactory.getTimeSeriesSchemaCountSource(
             node.getPath(), node.isPrefixPath(), node.getSchemaFilter(), node.getTemplateMap()));
   }
 
@@ -668,7 +668,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         node.getPlanNodeId(),
         operatorContext,
         node.getLevel(),
-        SchemaSourceFactory.getTimeSeriesSchemaSource(
+        SchemaSourceFactory.getTimeSeriesSchemaCountSource(
             node.getPath(), node.isPrefixPath(), node.getSchemaFilter(), node.getTemplateMap()));
   }
 

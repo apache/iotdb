@@ -775,7 +775,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 }
                 for (PartialPath pattern : filteredPatternTree.getAllPathPatterns()) {
                   ISchemaSource<ITimeSeriesSchemaInfo> schemaSource =
-                      SchemaSourceFactory.getTimeSeriesSchemaSource(pattern);
+                      SchemaSourceFactory.getTimeSeriesSchemaCountSource(
+                          pattern, false, null, null);
                   try (ISchemaReader<ITimeSeriesSchemaInfo> schemaReader =
                       schemaSource.getSchemaReader(schemaRegion)) {
                     if (schemaReader.hasNext()) {
