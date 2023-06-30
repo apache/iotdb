@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.consensus.response.trigger;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.consensus.common.DataSet;
 
@@ -31,31 +32,23 @@ import java.util.List;
 
 public class TriggerTableResp implements DataSet {
 
-  private TSStatus status;
+  private final TSStatus status;
 
-  private List<TriggerInformation> allTriggerInformation;
-
-  public TriggerTableResp() {}
+  private final List<TriggerInformation> allTriggerInformation;
 
   public TriggerTableResp(TSStatus status, List<TriggerInformation> allTriggerInformation) {
     this.status = status;
     this.allTriggerInformation = allTriggerInformation;
   }
 
+  @TestOnly
   public TSStatus getStatus() {
     return status;
   }
 
-  public void setStatus(TSStatus status) {
-    this.status = status;
-  }
-
+  @TestOnly
   public List<TriggerInformation> getAllTriggerInformation() {
     return allTriggerInformation;
-  }
-
-  public void setAllTriggerInformation(List<TriggerInformation> allTriggerInformation) {
-    this.allTriggerInformation = allTriggerInformation;
   }
 
   public TGetTriggerTableResp convertToThriftResponse() throws IOException {
