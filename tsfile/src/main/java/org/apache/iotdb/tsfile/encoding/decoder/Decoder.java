@@ -185,6 +185,19 @@ public abstract class Decoder {
           default:
             throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
         }
+      case CHIMP:
+        switch (dataType) {
+          case FLOAT:
+            return new SinglePrecisionChimpDecoder();
+          case DOUBLE:
+            return new DoublePrecisionChimpDecoder();
+          case INT32:
+            return new IntChimpDecoder();
+          case INT64:
+            return new LongChimpDecoder();
+          default:
+            throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
+        }
       default:
         throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
     }

@@ -69,6 +69,7 @@ class TSEncoding(Enum):
     RAKE = 16
     RLBE = 17
     BUFF = 18
+    CHIMP = 19
 
     # this method is implemented to avoid the issue reported by:
     # https://bugs.python.org/issue30545
