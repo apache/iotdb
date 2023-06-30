@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.datastructure;
+package org.apache.iotdb.db.queryengine.transformation.datastructure;
 
-import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.SerializableBooleanTVList;
+import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.SerializableFloatTVList;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.SerializableTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -33,10 +33,10 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class SerializableBooleanTVListTest extends SerializableTVListTest {
+public class SerializableFloatTVListTest extends SerializableTVListTest {
 
-  private List<Boolean> originalList;
-  private SerializableBooleanTVList testList;
+  private List<Float> originalList;
+  private SerializableFloatTVList testList;
 
   @Override
   @Before
@@ -44,8 +44,8 @@ public class SerializableBooleanTVListTest extends SerializableTVListTest {
     super.setUp();
     originalList = new ArrayList<>();
     testList =
-        (SerializableBooleanTVList)
-            SerializableTVList.newSerializableTVList(TSDataType.BOOLEAN, QUERY_ID);
+        (SerializableFloatTVList)
+            SerializableTVList.newSerializableTVList(TSDataType.FLOAT, QUERY_ID);
   }
 
   @Override
@@ -56,9 +56,8 @@ public class SerializableBooleanTVListTest extends SerializableTVListTest {
 
   @Override
   protected void generateData(int index) {
-    boolean value = index % 2 == 0;
-    originalList.add(value);
-    testList.putBoolean(index, value);
+    originalList.add((float) index);
+    testList.putFloat(index, index);
   }
 
   @Override
@@ -76,7 +75,7 @@ public class SerializableBooleanTVListTest extends SerializableTVListTest {
     int count = 0;
     while (testList.hasCurrent()) {
       assertEquals(count, testList.currentTime());
-      assertEquals(originalList.get(count), testList.getBoolean());
+      assertEquals(originalList.get(count), testList.getFloat(), 0);
       testList.next();
       ++count;
     }

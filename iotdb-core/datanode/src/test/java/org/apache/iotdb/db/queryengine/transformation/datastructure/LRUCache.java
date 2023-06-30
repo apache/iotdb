@@ -17,9 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.datastructure;
-
-import org.apache.iotdb.db.queryengine.transformation.datastructure.Cache;
+package org.apache.iotdb.db.queryengine.transformation.datastructure;
 
 import java.util.Arrays;
 

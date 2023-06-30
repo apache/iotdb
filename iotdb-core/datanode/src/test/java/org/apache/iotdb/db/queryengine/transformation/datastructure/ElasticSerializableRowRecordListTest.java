@@ -17,10 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.datastructure;
+package org.apache.iotdb.db.queryengine.transformation.datastructure;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.transformation.datastructure.SerializableList;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticSerializableRowRecordList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;

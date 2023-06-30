@@ -17,11 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.datastructure;
+package org.apache.iotdb.db.queryengine.transformation.datastructure;
 
-import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.SerializableLongTVList;
+import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.SerializableBinaryTVList;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.SerializableTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.junit.After;
 import org.junit.Before;
@@ -33,10 +34,10 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class SerializableLongTVListTest extends SerializableTVListTest {
+public class SerializableBinaryTVListTest extends SerializableTVListTest {
 
-  private List<Long> originalList;
-  private SerializableLongTVList testList;
+  private List<Binary> originalList;
+  private SerializableBinaryTVList testList;
 
   @Override
   @Before
@@ -44,8 +45,8 @@ public class SerializableLongTVListTest extends SerializableTVListTest {
     super.setUp();
     originalList = new ArrayList<>();
     testList =
-        (SerializableLongTVList)
-            SerializableTVList.newSerializableTVList(TSDataType.INT64, QUERY_ID);
+        (SerializableBinaryTVList)
+            SerializableTVList.newSerializableTVList(TSDataType.TEXT, QUERY_ID);
   }
 
   @Override
@@ -56,8 +57,9 @@ public class SerializableLongTVListTest extends SerializableTVListTest {
 
   @Override
   protected void generateData(int index) {
-    originalList.add((long) index);
-    testList.putLong(index, index);
+    Binary value = Binary.valueOf(String.valueOf(index));
+    originalList.add(value);
+    testList.putBinary(index, value);
   }
 
   @Override
@@ -75,7 +77,7 @@ public class SerializableLongTVListTest extends SerializableTVListTest {
     int count = 0;
     while (testList.hasCurrent()) {
       assertEquals(count, testList.currentTime());
-      assertEquals(originalList.get(count), testList.getLong(), 0);
+      assertEquals(originalList.get(count), testList.getBinary());
       testList.next();
       ++count;
     }

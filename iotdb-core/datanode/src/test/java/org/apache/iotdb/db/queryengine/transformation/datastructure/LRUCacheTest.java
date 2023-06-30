@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.datastructure;
+package org.apache.iotdb.db.queryengine.transformation.datastructure;
 
 import org.junit.Assert;
 import org.junit.Before;

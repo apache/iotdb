@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.datastructure;
+package org.apache.iotdb.db.queryengine.transformation.datastructure;
 
-import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.SerializableFloatTVList;
+import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.SerializableDoubleTVList;
 import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.SerializableTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -33,10 +33,10 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class SerializableFloatTVListTest extends SerializableTVListTest {
+public class SerializableDoubleTVListTest extends SerializableTVListTest {
 
-  private List<Float> originalList;
-  private SerializableFloatTVList testList;
+  private List<Double> originalList;
+  private SerializableDoubleTVList testList;
 
   @Override
   @Before
@@ -44,8 +44,8 @@ public class SerializableFloatTVListTest extends SerializableTVListTest {
     super.setUp();
     originalList = new ArrayList<>();
     testList =
-        (SerializableFloatTVList)
-            SerializableTVList.newSerializableTVList(TSDataType.FLOAT, QUERY_ID);
+        (SerializableDoubleTVList)
+            SerializableTVList.newSerializableTVList(TSDataType.DOUBLE, QUERY_ID);
   }
 
   @Override
@@ -56,8 +56,8 @@ public class SerializableFloatTVListTest extends SerializableTVListTest {
 
   @Override
   protected void generateData(int index) {
-    originalList.add((float) index);
-    testList.putFloat(index, index);
+    originalList.add((double) index);
+    testList.putDouble(index, index);
   }
 
   @Override
@@ -75,7 +75,7 @@ public class SerializableFloatTVListTest extends SerializableTVListTest {
     int count = 0;
     while (testList.hasCurrent()) {
       assertEquals(count, testList.currentTime());
-      assertEquals(originalList.get(count), testList.getFloat(), 0);
+      assertEquals(originalList.get(count), testList.getDouble(), 0);
       testList.next();
       ++count;
     }

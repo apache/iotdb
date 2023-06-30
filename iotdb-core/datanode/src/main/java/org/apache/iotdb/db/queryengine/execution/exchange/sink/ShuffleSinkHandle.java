@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.exchange.sink;
 
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
@@ -333,9 +332,6 @@ public class ShuffleSinkHandle implements ISinkHandle {
   }
 
   // endregion
-
-  // region ============= Test Only =============
-  @TestOnly
   @Override
   public long getBufferRetainedSizeInBytes() {
     return downStreamChannelList.stream()
@@ -343,5 +339,4 @@ public class ShuffleSinkHandle implements ISinkHandle {
         .reduce(Long::sum)
         .orElse(0L);
   }
-  // endregion
 }

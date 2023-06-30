@@ -17,27 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.datastructure;
+package org.apache.iotdb.db.queryengine.transformation.datastructure;
 
-import org.apache.iotdb.db.service.TemporaryQueryDataFileService;
+import org.junit.Test;
 
-public abstract class SerializableListTest {
+public abstract class SerializableTVListTest extends SerializableListTest {
 
-  protected static final int ITERATION_TIMES =
-      10000; // make sure serialize() & deserialize() can be triggered
-
-  protected static final float MEMORY_USAGE_LIMIT_IN_MB = 100f;
-  protected static final int CACHE_SIZE = 3;
-
-  protected static final String QUERY_ID = String.valueOf(0);
-
-  protected static final int INTERNAL_ROW_RECORD_LIST_CAPACITY = 8;
-
-  public void setUp() throws Exception {
-    TemporaryQueryDataFileService.getInstance().start();
+  @Test
+  public void serializeAndDeserializeTest() {
+    for (int i = 0; i < ITERATION_TIMES; ++i) {
+      generateData(i);
+    }
+    serializeAndDeserializeOnce();
+    serializeAndDeserializeOnce();
   }
 
-  public void tearDown() {
-    TemporaryQueryDataFileService.getInstance().stop();
-  }
+  protected abstract void generateData(int index);
+
+  protected abstract void serializeAndDeserializeOnce();
 }
