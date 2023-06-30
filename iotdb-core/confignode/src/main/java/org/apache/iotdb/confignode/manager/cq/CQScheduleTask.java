@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager.cq;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.write.cq.UpdateCQLastExecTimePlan;
@@ -45,6 +46,22 @@ public class CQScheduleTask implements Runnable {
   private static final Logger LOGGER = LoggerFactory.getLogger(CQScheduleTask.class);
 
   private static final long DEFAULT_RETRY_WAIT_TIME_IN_MS = 20L * 1_000;
+
+  // ms is 1
+  // us is 1_000
+  // ns is 1_000_000
+  private static final long FACTOR;
+
+  static {
+    String timestampPrecision = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
+    if ("us".equals(timestampPrecision)) {
+      FACTOR = 1_000;
+    } else if ("ns".equals(timestampPrecision)) {
+      FACTOR = 1_000_000;
+    } else {
+      FACTOR = 1;
+    }
+  }
 
   private final String cqId;
   private final long everyInterval;
@@ -129,7 +146,7 @@ public class CQScheduleTask implements Runnable {
     this.username = username;
     this.executor = executor;
     this.configManager = configManager;
-    this.retryWaitTimeInMS = Math.min(DEFAULT_RETRY_WAIT_TIME_IN_MS, everyInterval);
+    this.retryWaitTimeInMS = Math.min(DEFAULT_RETRY_WAIT_TIME_IN_MS, everyInterval / FACTOR);
     this.executionTime = executionTime;
   }
 
@@ -183,7 +200,8 @@ public class CQScheduleTask implements Runnable {
   }
 
   public void submitSelf() {
-    submitSelf(Math.max(0, executionTime - System.currentTimeMillis()), TimeUnit.MILLISECONDS);
+    submitSelf(
+        Math.max(0, executionTime / FACTOR - System.currentTimeMillis()), TimeUnit.MILLISECONDS);
   }
 
   private void submitSelf(long delay, TimeUnit unit) {
