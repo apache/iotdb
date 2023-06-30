@@ -70,6 +70,9 @@ public class Template implements Serializable {
     this.schemaMap = new ConcurrentHashMap<>();
     this.name = name;
     for (int i = 0; i < measurements.size(); i++) {
+      if (schemaMap.containsKey(measurements.get(i))) {
+        throw new IllegalPathException("Path duplicated: " + measurements.get(i));
+      }
       IMeasurementSchema schema =
           new MeasurementSchema(
               measurements.get(i), dataTypes.get(i), encodings.get(i), compressors.get(i));
