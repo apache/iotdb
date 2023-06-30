@@ -92,7 +92,10 @@ public class ExportCsv extends AbstractCsvTool {
 
   private static long timeout = -1;
 
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  @SuppressWarnings({
+    "squid:S3776",
+    "java:S2093"
+  }) // Suppress high Cognitive Complexity warning, ignore try-with-resources
   /** main function of export csv tool. */
   public static void main(String[] args) {
     Options options = createOptions();
@@ -125,13 +128,7 @@ public class ExportCsv extends AbstractCsvTool {
       if (!checkTimeFormat()) {
         System.exit(CODE_ERROR);
       }
-    } catch (ArgsErrorException e) {
-      IoTPrinter.println("Invalid args: " + e.getMessage());
-      exitCode = CODE_ERROR;
-    }
-
-    try (Session sessionNew = new Session(host, Integer.parseInt(port), username, password)) {
-      session = sessionNew;
+      session = new Session(host, Integer.parseInt(port), username, password);
       session.open(false);
       timestampPrecision = session.getTimestampPrecision();
       setTimeZone();
@@ -157,6 +154,9 @@ public class ExportCsv extends AbstractCsvTool {
 
     } catch (IOException e) {
       IoTPrinter.println("Failed to operate on file, because " + e.getMessage());
+      exitCode = CODE_ERROR;
+    } catch (ArgsErrorException e) {
+      IoTPrinter.println("Invalid args: " + e.getMessage());
       exitCode = CODE_ERROR;
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       IoTPrinter.println("Connect failed because " + e.getMessage());
@@ -307,8 +307,8 @@ public class ExportCsv extends AbstractCsvTool {
   /**
    * This method will be called, if the query commands are written in a sql file.
    *
-   * @param filePath
-   * @throws IOException
+   * @param filePath sql file path
+   * @throws IOException exception
    */
   private static void dumpFromSqlFile(String filePath) throws IOException {
     try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {

@@ -363,11 +363,12 @@ public class ImportCsv extends AbstractCsvTool {
    * @return the status code
    * @throws IoTDBConnectionException
    */
+  @SuppressWarnings({"java:S2093"}) // ignore try-with-resources
   public static int importFromTargetPath(
       String host, int port, String username, String password, String targetPath, String timeZone)
       throws IoTDBConnectionException {
-    try (Session sessionNew = new Session(host, port, username, password, false); ) {
-      session = sessionNew;
+    try {
+      session = new Session(host, port, username, password, false);
       session.open(false);
       timeZoneID = timeZone;
       setTimeZone();
@@ -477,7 +478,7 @@ public class ImportCsv extends AbstractCsvTool {
 
     records.forEach(
         recordObj -> {
-          if (hasStarted.get()) {
+          if (Boolean.TRUE.equals(hasStarted.get())) {
             hasStarted.set(true);
           } else if (pointSize.get() >= batchPointSize) {
             writeAndEmptyDataSet(deviceIds, times, typesList, valuesList, measurementsList, 3);
@@ -789,6 +790,9 @@ public class ImportCsv extends AbstractCsvTool {
    * @param headerTypeMap
    * @param headerNameMap
    */
+  @SuppressWarnings(
+      "squid:S135") // ignore for loops should not contain more than a single "break" or "continue"
+  // statement
   private static void parseHeaders(
       List<String> headerNames,
       @Nullable HashMap<String, List<String>> deviceAndMeasurementNames,
