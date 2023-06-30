@@ -164,7 +164,6 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.UnsetSchemaTempl
 import org.apache.iotdb.db.mpp.plan.statement.metadata.view.AlterLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.view.CreateLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.view.DeleteLogicalViewStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.view.RenameLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.view.ShowLogicalViewStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
@@ -1051,10 +1050,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitRenameLogicalView(IoTDBSqlParser.RenameLogicalViewContext ctx) {
-    RenameLogicalViewStatement renameLogicalViewStatement = new RenameLogicalViewStatement();
-    renameLogicalViewStatement.setOldName(parseFullPath(ctx.fullPath(0)));
-    renameLogicalViewStatement.setNewName(parseFullPath(ctx.fullPath(1)));
-    return renameLogicalViewStatement;
+    throw new SemanticException("Renaming view is not supported.");
   }
 
   @Override
