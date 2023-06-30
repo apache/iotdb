@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicOrExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.ModuloExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.MultiplicationExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.NonEqualExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.binary.SubtractionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
@@ -115,7 +116,7 @@ public class AnalyzeTest {
       // with ModuloExpression(%), SubtractionExpression(-),
       // with MultiplicationExpression(*), DivisionExpression(/)
       sql =
-          "select s1, s1/2, s1*3, s1%4 from root.sg.d1 "
+          "select s1, s1/2, s1*3, s1%4, s1-5 from root.sg.d1 "
               + "where time >= 100 and s2 >= 10 and s2 != 6;";
       actualAnalysis = analyzeSQL(sql);
       expectedAnalysis = new Analysis();
@@ -131,7 +132,10 @@ public class AnalyzeTest {
                   new ConstantOperand(TSDataType.INT64, "3")),
               new ModuloExpression(
                   new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
-                  new ConstantOperand(TSDataType.INT64, "4"))));
+                  new ConstantOperand(TSDataType.INT64, "4")),
+              new SubtractionExpression(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+                  new ConstantOperand(TSDataType.INT64, "5"))));
       expectedAnalysis.setWhereExpression(
           new LogicAndExpression(
               new LogicAndExpression(
@@ -153,7 +157,10 @@ public class AnalyzeTest {
               new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
               new ModuloExpression(
                   new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
-                  new ConstantOperand(TSDataType.INT64, "4"))));
+                  new ConstantOperand(TSDataType.INT64, "4")),
+              new SubtractionExpression(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+                  new ConstantOperand(TSDataType.INT64, "5"))));
       expectedAnalysis.setSourceExpressions(
           Sets.newHashSet(
               new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
@@ -164,7 +171,8 @@ public class AnalyzeTest {
                   new ColumnHeader("root.sg.d1.s1", TSDataType.INT32, "root.sg.d1.s1"),
                   new ColumnHeader("root.sg.d1.s1 / 2", TSDataType.DOUBLE, "root.sg.d1.s1 / 2"),
                   new ColumnHeader("root.sg.d1.s1 * 3", TSDataType.DOUBLE, "root.sg.d1.s1 * 3"),
-                  new ColumnHeader("root.sg.d1.s1 % 4", TSDataType.DOUBLE, "root.sg.d1.s1 % 4")),
+                  new ColumnHeader("root.sg.d1.s1 % 4", TSDataType.DOUBLE, "root.sg.d1.s1 % 4"),
+                  new ColumnHeader("root.sg.d1.s1 - 5", TSDataType.DOUBLE, "root.sg.d1.s1 - 5")),
               false));
       alignByTimeAnalysisEqualTest(actualAnalysis, expectedAnalysis);
     } catch (Exception e) {
