@@ -72,21 +72,14 @@ public class CreatePipeProcedure extends Procedure<ConfigNodeProcedureEnv> {
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeShort(ProcedureType.CREATE_PIPE_PROCEDURE.getTypeCode());
     super.serialize(stream);
-    if (pipeInfo != null) {
-      ReadWriteIOUtils.write(true, stream);
-      pipeInfo.serialize(stream);
-    } else {
-      ReadWriteIOUtils.write(false, stream);
-    }
+    pipeInfo.serialize(stream);
     ReadWriteIOUtils.writeIntegerSet(executedDataNodeIds, stream);
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
-    if (ReadWriteIOUtils.readBool(byteBuffer)) {
-      pipeInfo = PipeInfo.deserializePipeInfo(byteBuffer);
-    }
+    pipeInfo = PipeInfo.deserializePipeInfo(byteBuffer);
     executedDataNodeIds = ReadWriteIOUtils.readIntegerSet(byteBuffer);
   }
 
