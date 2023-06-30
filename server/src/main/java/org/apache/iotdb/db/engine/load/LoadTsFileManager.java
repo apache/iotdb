@@ -82,7 +82,11 @@ public class LoadTsFileManager {
       return;
     }
 
-    for (File taskDir : loadDir.listFiles()) {
+    final File[] files = loadDir.listFiles();
+    if (files == null) {
+      return;
+    }
+    for (final File taskDir : files) {
       String uuid = taskDir.getName();
       TsFileWriterManager writerManager = new TsFileWriterManager(taskDir);
 
