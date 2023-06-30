@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.flink.sql.common;
 
+import org.apache.flink.table.data.StringData;
 import org.apache.iotdb.flink.sql.exception.UnsupportedDataTypeException;
 import org.apache.iotdb.tsfile.exception.NullFieldException;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -46,7 +47,7 @@ public class Utils {
       } else if ("BOOLEAN".equals(dataType)) {
         return value.getBoolV();
       } else if ("TEXT".equals(dataType)) {
-        return value.getStringValue();
+        return StringData.fromString(value.getStringValue());
       } else {
         throw new UnsupportedDataTypeException("IoTDB don't support the data type: " + dataType);
       }
@@ -67,7 +68,7 @@ public class Utils {
     } else if (dataType.equals(DataTypes.BOOLEAN())) {
       return value.getBoolV();
     } else if (dataType.equals(DataTypes.STRING())) {
-      return value.getStringValue();
+      return StringData.fromString(value.getStringValue());
     } else {
       throw new UnsupportedDataTypeException("IoTDB don't support the data type: " + dataType);
     }

@@ -18,5 +18,28 @@
  */
 package org.apache.iotdb.flink.it;
 
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+
+import org.apache.flink.table.api.EnvironmentSettings;
+import org.apache.flink.table.api.TableEnvironment;
+
 public class AbstractTest {
+  TableEnvironment tableEnv;
+
+  protected String ip;
+  protected int port;
+
+  public void before() {
+    EnvFactory.getEnv().initClusterEnvironment();
+    ip = EnvFactory.getEnv().getIP();
+    port = Integer.valueOf(EnvFactory.getEnv().getPort());
+
+    EnvironmentSettings settings = EnvironmentSettings.newInstance().inStreamingMode().build();
+    tableEnv = TableEnvironment.create(settings);
+  }
+
+  public void after() throws IoTDBConnectionException {
+    EnvFactory.getEnv().cleanClusterEnvironment();
+  }
 }
