@@ -62,6 +62,13 @@ public class UDFClassLoaderManager implements IService {
     activeClassLoader.set(new UDFClassLoader(""));
   }
 
+  @TestOnly
+  private UDFClassLoaderManager() throws IOException {
+    this.libRoot = null;
+    queryIdToUDFClassLoaderMap = new ConcurrentHashMap<>();
+    activeClassLoader = new UDFClassLoader("");
+  }
+
   public void initializeUDFQuery(String queryId) {
     activeClassLoader.get().acquire();
     queryIdToUDFClassLoaderMap.put(queryId, activeClassLoader.get());
