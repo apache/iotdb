@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element;
 
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
@@ -23,6 +24,7 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 
 import java.util.List;
 
+@SuppressWarnings("squid:S1104")
 public class ChunkMetadataElement {
   public IChunkMetadata chunkMetadata;
 

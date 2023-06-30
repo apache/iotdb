@@ -115,7 +115,10 @@ public class MTreeBelowSGMemoryImpl {
 
   // this implementation is based on memory, thus only MTree write operation must invoke MTreeStore
   private final MemMTreeStore store;
+
+  @SuppressWarnings("java:S3077")
   private volatile IMemMNode storageGroupMNode;
+
   private final IMemMNode rootNode;
   private final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter;
   private final IMNodeFactory<IMemMNode> nodeFactory = MemMNodeFactory.getInstance();
@@ -878,6 +881,7 @@ public class MTreeBelowSGMemoryImpl {
 
   // region Interfaces for schema reader
 
+  @SuppressWarnings("java:S2095")
   public ISchemaReader<IDeviceSchemaInfo> getDeviceReader(IShowDevicesPlan showDevicesPlan)
       throws MetadataException {
     EntityCollector<IDeviceSchemaInfo, IMemMNode> collector =
@@ -1013,6 +1017,7 @@ public class MTreeBelowSGMemoryImpl {
     }
   }
 
+  @SuppressWarnings("java:S2095")
   public ISchemaReader<INodeSchemaInfo> getNodeReader(IShowNodesPlan showNodesPlan)
       throws MetadataException {
     MNodeCollector<INodeSchemaInfo, IMemMNode> collector =

@@ -16,12 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-/** The summary of one {@link AbstractCompactionTask} execution */
+/** The summary of one {@link AbstractCompactionTask} execution. */
 public class CompactionTaskSummary {
   protected long timeCost = 0L;
   protected volatile Status status = Status.NOT_STARTED;
@@ -34,8 +35,6 @@ public class CompactionTaskSummary {
   protected long processPointNum = 0;
   protected long temporalFileSize = 0;
   protected int temporalFileNum = 0;
-
-  public CompactionTaskSummary() {}
 
   public void start() {
     this.status = Status.STARTED;

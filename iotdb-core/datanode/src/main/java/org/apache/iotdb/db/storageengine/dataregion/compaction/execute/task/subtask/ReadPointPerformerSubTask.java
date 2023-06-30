@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -42,8 +43,10 @@ import java.util.concurrent.Callable;
  * compaction and unseq inner space compaction.
  */
 public class ReadPointPerformerSubTask implements Callable<Void> {
+  @SuppressWarnings("squid:1068")
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
+
   private final String device;
   private final List<String> measurementList;
   private final FragmentInstanceContext fragmentInstanceContext;

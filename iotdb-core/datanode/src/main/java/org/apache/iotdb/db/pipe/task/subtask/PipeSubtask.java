@@ -26,8 +26,6 @@ import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,22 +37,24 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void>, AutoCloseable {
+public abstract class PipeSubtask
+    implements FutureCallback<Boolean>, Callable<Boolean>, AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSubtask.class);
 
+  // used for identifying the subtask
   protected final String taskID;
 
-  private ListeningExecutorService subtaskWorkerThreadPoolExecutor;
-  private ExecutorService subtaskCallbackListeningExecutor;
-  private final DecoratingLock callbackDecoratingLock = new DecoratingLock();
-  private final AtomicBoolean shouldStopSubmittingSelf = new AtomicBoolean(true);
+  // for thread pool to execute subtasks
+  protected ListeningExecutorService subtaskWorkerThreadPoolExecutor;
 
-  private PipeSubtaskScheduler subtaskScheduler;
+  // for controlling the subtask execution
+  protected final AtomicBoolean shouldStopSubmittingSelf = new AtomicBoolean(true);
+  protected PipeSubtaskScheduler subtaskScheduler;
 
-  protected static final int MAX_RETRY_TIMES = 5;
-  private final AtomicInteger retryCount = new AtomicInteger(0);
-
+  // for fail-over
+  public static final int MAX_RETRY_TIMES = 5;
+  protected final AtomicInteger retryCount = new AtomicInteger(0);
   protected Event lastEvent;
 
   protected PipeSubtask(String taskID) {
@@ -62,17 +62,15 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
     this.taskID = taskID;
   }
 
-  public void bindExecutors(
+  public abstract void bindExecutors(
       ListeningExecutorService subtaskWorkerThreadPoolExecutor,
       ExecutorService subtaskCallbackListeningExecutor,
-      PipeSubtaskScheduler subtaskScheduler) {
-    this.subtaskWorkerThreadPoolExecutor = subtaskWorkerThreadPoolExecutor;
-    this.subtaskCallbackListeningExecutor = subtaskCallbackListeningExecutor;
-    this.subtaskScheduler = subtaskScheduler;
-  }
+      PipeSubtaskScheduler subtaskScheduler);
 
   @Override
-  public Void call() throws Exception {
+  public Boolean call() throws Exception {
+    boolean hasAtLeastOneEventProcessed = false;
+
     // if the scheduler allows to schedule, then try to consume an event
     while (subtaskScheduler.schedule()) {
       // if the event is consumed successfully, then continue to consume the next event
@@ -80,15 +78,12 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
       if (!executeOnce()) {
         break;
       }
+      hasAtLeastOneEventProcessed = true;
     }
     // reset the scheduler to make sure that the scheduler can schedule again
     subtaskScheduler.reset();
 
-    // wait for the callable to be decorated by Futures.addCallback in the executorService
-    // to make sure that the callback can be submitted again on success or failure.
-    callbackDecoratingLock.waitForDecorated();
-
-    return null;
+    return hasAtLeastOneEventProcessed;
   }
 
   /**
@@ -101,7 +96,7 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
   protected abstract boolean executeOnce() throws Exception;
 
   @Override
-  public void onSuccess(Void result) {
+  public void onSuccess(Boolean hasAtLeastOneEventProcessed) {
     retryCount.set(0);
     submitSelf();
   }
@@ -169,19 +164,7 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
     }
   }
 
-  public void submitSelf() {
-    if (shouldStopSubmittingSelf.get()) {
-      return;
-    }
-
-    callbackDecoratingLock.markAsDecorating();
-    try {
-      final ListenableFuture<Void> nextFuture = subtaskWorkerThreadPoolExecutor.submit(this);
-      Futures.addCallback(nextFuture, this, subtaskCallbackListeningExecutor);
-    } finally {
-      callbackDecoratingLock.markAsDecorated();
-    }
-  }
+  public abstract void submitSelf();
 
   public void allowSubmittingSelf() {
     retryCount.set(0);
@@ -216,5 +199,9 @@ public abstract class PipeSubtask implements FutureCallback<Void>, Callable<Void
 
   public String getTaskID() {
     return taskID;
+  }
+
+  public int getRetryCount() {
+    return retryCount.get();
   }
 }

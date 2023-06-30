@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -44,6 +45,8 @@ public abstract class AbstractCompactionEstimator {
   /**
    * Estimate the memory cost of compacting the unseq file and its corresponding overlapped seq
    * files in cross space compaction task.
+   *
+   * @throws IOException if io errors occurred
    */
   public abstract long estimateCrossCompactionMemory(
       List<TsFileResource> seqResources, TsFileResource unseqResource) throws IOException;
@@ -51,7 +54,11 @@ public abstract class AbstractCompactionEstimator {
   /** Estimate the memory cost of compacting the source files in inner space compaction task. */
   public abstract long estimateInnerCompactionMemory(List<TsFileResource> resources);
 
-  /** Construct a new or get an existing TsFileSequenceReader of a TsFile. */
+  /**
+   * Construct a new or get an existing TsFileSequenceReader of a TsFile.
+   *
+   * @throws IOException if io errors occurred
+   */
   protected TsFileSequenceReader getFileReader(TsFileResource tsFileResource) throws IOException {
     TsFileSequenceReader reader = fileReaderCache.get(tsFileResource);
     if (reader == null) {

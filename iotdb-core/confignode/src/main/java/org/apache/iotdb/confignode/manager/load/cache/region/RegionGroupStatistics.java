@@ -27,6 +27,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -64,6 +66,10 @@ public class RegionGroupStatistics {
 
   public Map<Integer, RegionStatistics> getRegionStatisticsMap() {
     return regionStatisticsMap;
+  }
+
+  public List<Integer> getRegionIds() {
+    return new ArrayList<>(regionStatisticsMap.keySet());
   }
 
   public static RegionGroupStatistics generateDefaultRegionGroupStatistics() {

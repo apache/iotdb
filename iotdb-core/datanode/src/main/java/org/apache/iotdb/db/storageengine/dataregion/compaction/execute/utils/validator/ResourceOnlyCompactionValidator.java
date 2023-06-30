@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import java.io.IOException;
 import java.util.List;
 
+@SuppressWarnings("squid:S6548")
 public class ResourceOnlyCompactionValidator implements CompactionValidator {
 
   private ResourceOnlyCompactionValidator() {}

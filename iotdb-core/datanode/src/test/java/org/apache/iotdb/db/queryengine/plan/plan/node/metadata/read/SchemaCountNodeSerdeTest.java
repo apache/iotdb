@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 
@@ -71,7 +72,7 @@ public class SchemaCountNodeSerdeTest {
   }
 
   @Test
-  public void testTimeSeriesCountSerializeAndDeserialize() throws IllegalPathException {
+  public void testLevelTimeSeriesCountSerializeAndDeserialize() throws IllegalPathException {
     CountSchemaMergeNode countMergeNode = new CountSchemaMergeNode(new PlanNodeId("countMerge"));
     ExchangeNode exchangeNode = new ExchangeNode(new PlanNodeId("exchange"));
     LevelTimeSeriesCountNode levelTimeSeriesCountNode =
@@ -81,6 +82,40 @@ public class SchemaCountNodeSerdeTest {
         new IdentitySinkNode(
             new PlanNodeId("sink"),
             Collections.singletonList(levelTimeSeriesCountNode),
+            Collections.singletonList(
+                new DownStreamChannelLocation(
+                    new TEndPoint("127.0.0.1", 6667),
+                    new FragmentInstanceId(new PlanFragmentId("q", 1), "ds").toThrift(),
+                    new PlanNodeId("test").getId())));
+    countMergeNode.addChild(exchangeNode);
+    exchangeNode.addChild(sinkNode);
+    exchangeNode.setOutputColumnNames(exchangeNode.getChild().getOutputColumnNames());
+    exchangeNode.setUpstream(
+        new TEndPoint("127.0.0.1", 6667),
+        new FragmentInstanceId(new PlanFragmentId("q", 1), "ds"),
+        new PlanNodeId("test"));
+    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+    exchangeNode.serialize(byteBuffer);
+    byteBuffer.flip();
+    ExchangeNode exchangeNode1 = (ExchangeNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
+    Assert.assertEquals(exchangeNode, exchangeNode1);
+  }
+
+  @Test
+  public void testTimeSeriesCountSerializeAndDeserialize() throws IllegalPathException {
+    CountSchemaMergeNode countMergeNode = new CountSchemaMergeNode(new PlanNodeId("countMerge"));
+    ExchangeNode exchangeNode = new ExchangeNode(new PlanNodeId("exchange"));
+    TimeSeriesCountNode timeseriesCount =
+        new TimeSeriesCountNode(
+            new PlanNodeId("timeseriesCount"),
+            new PartialPath("root.sg.device0"),
+            true,
+            null,
+            Collections.emptyMap());
+    IdentitySinkNode sinkNode =
+        new IdentitySinkNode(
+            new PlanNodeId("sink"),
+            Collections.singletonList(timeseriesCount),
             Collections.singletonList(
                 new DownStreamChannelLocation(
                     new TEndPoint("127.0.0.1", 6667),

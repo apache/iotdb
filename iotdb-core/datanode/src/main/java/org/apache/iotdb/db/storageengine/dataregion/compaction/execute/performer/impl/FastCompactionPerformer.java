@@ -16,12 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.IllegalCompactionTaskSummaryException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ISeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.IUnseqCompactionPerformer;
@@ -58,23 +60,25 @@ import java.util.concurrent.Future;
 
 public class FastCompactionPerformer
     implements ICrossCompactionPerformer, ISeqCompactionPerformer, IUnseqCompactionPerformer {
-  private final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
+  @SuppressWarnings("squid:S1068")
+  private final Logger logger = LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
+
   private List<TsFileResource> seqFiles = Collections.emptyList();
 
   private List<TsFileResource> unseqFiles = Collections.emptyList();
 
   private List<TsFileResource> sortedSourceFiles = new ArrayList<>();
 
-  private static final int subTaskNum =
+  private static final int SUB_TASK_NUM =
       IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
 
-  public Map<TsFileResource, TsFileSequenceReader> readerCacheMap = new ConcurrentHashMap<>();
+  private Map<TsFileResource, TsFileSequenceReader> readerCacheMap = new ConcurrentHashMap<>();
 
   private FastCompactionTaskSummary subTaskSummary;
 
   private List<TsFileResource> targetFiles;
 
-  public Map<TsFileResource, List<Modification>> modificationCache = new ConcurrentHashMap<>();
+  private Map<TsFileResource, List<Modification>> modificationCache = new ConcurrentHashMap<>();
 
   private boolean isCrossCompaction;
 
@@ -110,7 +114,6 @@ public class FastCompactionPerformer
         checkThreadInterrupted();
         Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
         String device = deviceInfo.left;
-        boolean isAligned = deviceInfo.right;
         // sort the resources by the start time of current device from old to new, and remove
         // resource that does not contain the current device. Notice: when the level of time index
         // is file, there will be a false positive judgment problem, that is, the device does not
@@ -120,6 +123,7 @@ public class FastCompactionPerformer
         sortedSourceFiles.removeIf(x -> !x.mayContainsDevice(device));
         sortedSourceFiles.sort(Comparator.comparingLong(x -> x.getStartTime(device)));
 
+        boolean isAligned = deviceInfo.right;
         compactionWriter.startChunkGroup(device, isAligned);
 
         if (isAligned) {
@@ -200,7 +204,7 @@ public class FastCompactionPerformer
     List<String> allMeasurements = new ArrayList<>(timeseriesMetadataOffsetMap.keySet());
     allMeasurements.sort((String::compareTo));
 
-    int subTaskNums = Math.min(allMeasurements.size(), subTaskNum);
+    int subTaskNums = Math.min(allMeasurements.size(), SUB_TASK_NUM);
 
     // assign all measurements to different sub tasks
     List<String>[] measurementsForEachSubTask = new ArrayList[subTaskNums];
@@ -238,8 +242,7 @@ public class FastCompactionPerformer
         futures.get(i).get();
         subTaskSummary.increase(taskSummaryList.get(i));
       } catch (ExecutionException e) {
-        LOGGER.error("[Compaction] SubCompactionTask meet errors ", e);
-        throw new IOException(e);
+        throw new IOException("[Compaction] SubCompactionTask meet errors ", e);
       }
     }
   }
@@ -252,7 +255,7 @@ public class FastCompactionPerformer
   @Override
   public void setSummary(CompactionTaskSummary summary) {
     if (!(summary instanceof FastCompactionTaskSummary)) {
-      throw new RuntimeException(
+      throw new IllegalCompactionTaskSummaryException(
           "CompactionTaskSummary for FastCompactionPerformer "
               + "should be FastCompactionTaskSummary");
     }
@@ -283,6 +286,14 @@ public class FastCompactionPerformer
 
   public List<TsFileResource> getSeqFiles() {
     return seqFiles;
+  }
+
+  public Map<TsFileResource, TsFileSequenceReader> getReaderCacheMap() {
+    return readerCacheMap;
+  }
+
+  public Map<TsFileResource, List<Modification>> getModificationCache() {
+    return modificationCache;
   }
 
   @Override

@@ -23,9 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
-import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInfo;
 import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
@@ -177,16 +175,4 @@ public class ClusterScheduler implements IScheduler {
   public FragmentInfo getFragmentInfo() {
     return null;
   }
-
-  @Override
-  public void abortFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause) {}
-
-  @Override
-  public void cancelFragment(PlanFragmentId planFragmentId) {}
-
-  // Send the instances to other nodes
-  private void sendFragmentInstances() {}
-
-  // After sending, start to collect the states of these fragment instances
-  private void startMonitorInstances() {}
 }

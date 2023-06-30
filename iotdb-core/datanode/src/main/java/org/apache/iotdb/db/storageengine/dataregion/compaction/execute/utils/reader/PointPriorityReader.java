@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -80,6 +81,7 @@ public class PointPriorityReader {
    * Use those records that share the same timestamp to fill the null sub sensor value in current
    * TimeValuePair.
    */
+  @SuppressWarnings({"squid:S3776", "squid:S135"})
   private void fillAlignedNullValue() {
     List<PointElement> pointElementsWithSameTimestamp = new ArrayList<>();
     // remove the current point element
@@ -119,6 +121,7 @@ public class PointPriorityReader {
     pointQueue.addAll(pointElementsWithSameTimestamp);
   }
 
+  @SuppressWarnings("squid:S3776")
   public void next() throws IllegalPathException, IOException, WriteProcessException {
     if (currentPointElement != null) {
 
@@ -144,7 +147,7 @@ public class PointPriorityReader {
         if (pointElement.hasNext()) {
           pointElement.next();
           nextPointInOtherPage =
-              pointQueue.size() > 0 ? pointQueue.peek().timestamp : Long.MAX_VALUE;
+              !pointQueue.isEmpty() ? pointQueue.peek().timestamp : Long.MAX_VALUE;
           if (pointElement.timestamp < nextPointInOtherPage) {
             currentPointElement = pointElement;
             currentPoint = currentPointElement.timeValuePair;
@@ -163,7 +166,11 @@ public class PointPriorityReader {
     return currentPointElement != null || !pointQueue.isEmpty();
   }
 
-  /** Add a new overlapped page. */
+  /**
+   * Add a new overlapped page.
+   *
+   * @throws IOException if io errors occurred
+   */
   public void addNewPage(PageElement pageElement) throws IOException {
     if (currentPointElement != null) {
       nextPointInOtherPage = Math.min(nextPointInOtherPage, pageElement.startTime);

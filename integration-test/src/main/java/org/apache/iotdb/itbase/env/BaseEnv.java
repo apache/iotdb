@@ -56,7 +56,15 @@ public interface BaseEnv {
     return getConnection("root", "root");
   }
 
+  default Connection getConnectionWithSpecifiedDataNode(DataNodeWrapper dataNode)
+      throws SQLException {
+    return getConnectionWithSpecifiedDataNode(dataNode, "root", "root");
+  }
+
   Connection getConnection(String username, String password) throws SQLException;
+
+  Connection getConnectionWithSpecifiedDataNode(
+      DataNodeWrapper dataNode, String username, String password) throws SQLException;
 
   default Connection getConnection(Constant.Version version) throws SQLException {
     return getConnection(version, "root", "root");
