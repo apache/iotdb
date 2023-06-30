@@ -1995,11 +1995,11 @@ public class DataRegion implements IDataRegionForQuery {
           long originSize = modFile.getSize();
           modFile.write(deletion);
 
-          // if file length greater than 1M,execute compact.
-          modFile.compact();
-
           // remember to close mod file
           modFile.close();
+
+          // if file length greater than 1M,execute compact.
+          modFile.compact();
 
           if (!modFileExists) {
             FileMetrics.getInstance().increaseModFileNum(1);

@@ -215,10 +215,13 @@ public class ModificationFile implements AutoCloseable {
           }
           allSettledModifications.addAll(settledModifications);
         }
+      } catch (IOException e) {
+        logger.error("compact mods file exception of {}", filePath, e);
+      }
 
+      try {
         // remove origin mods file
         this.remove();
-
         // rename new mods file to origin name
         Files.move(new File(newModsFileName).toPath(), new File(filePath).toPath());
         logger.info("{} settle successful", filePath);
@@ -231,7 +234,7 @@ public class ModificationFile implements AutoCloseable {
               getSize());
         }
       } catch (IOException e) {
-        logger.error("compact mods file exception of {}", filePath, e);
+        logger.error("remove origin file or rename new mods file error.", e);
       }
     }
   }
