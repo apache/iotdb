@@ -180,7 +180,7 @@ public class WALManager implements IService {
       logger.warn(
           "WAL disk usage {} is larger than the iot_consensus_throttle_threshold_in_byte {}, please check your write load, iot consensus and the pipe module. It's better to allocate more disk for WAL.",
           getTotalDiskUsage(),
-          config.getThrottleThreshold());
+          getThrottleThreshold());
     }
   }
 
@@ -202,7 +202,11 @@ public class WALManager implements IService {
   }
 
   public boolean shouldThrottle() {
-    return getTotalDiskUsage() >= config.getThrottleThreshold() * 0.8;
+    return getTotalDiskUsage() >= getThrottleThreshold();
+  }
+
+  public long getThrottleThreshold() {
+    return (long) (config.getThrottleThreshold() * 0.8);
   }
 
   public long getTotalDiskUsage() {
