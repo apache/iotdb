@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -104,7 +105,9 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
    *
    * @return two lists of TsFileResource, the former is selected seqFiles and the latter is selected
    *     unseqFiles or an empty array if there are no proper candidates by the budget.
+   * @throws MergeException in task resources selection.
    */
+  @SuppressWarnings({"squid:S1163", "squid:S1143"})
   public CrossCompactionTaskResource selectOneTaskResources(CrossSpaceCompactionCandidate candidate)
       throws MergeException {
     try {
@@ -112,9 +115,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           "Selecting cross compaction task resources from {} seqFile, {} unseqFiles",
           candidate.getSeqFiles().size(),
           candidate.getUnseqFiles().size());
-      CrossCompactionTaskResource taskResource = executeTaskResourceSelection(candidate);
 
-      return taskResource;
+      return executeTaskResourceSelection(candidate);
     } catch (IOException e) {
       throw new MergeException(e);
     } finally {
@@ -144,7 +146,10 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
    * that may be added by compacting them (preferably using the loop estimate), and if it does not
    * exceed the memory overhead preset by the system for the compaction thread, put them into the
    * selectedSeqFiles and selectedUnseqFiles.
+   *
+   * @throws IOException in prepare next split
    */
+  @SuppressWarnings("squid:S135")
   private CrossCompactionTaskResource executeTaskResourceSelection(
       CrossSpaceCompactionCandidate candidate) throws IOException {
     CrossCompactionTaskResource taskResource = new CrossCompactionTaskResource();
@@ -208,6 +213,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   // TODO: (xingtanzjr) need to confirm whether we should strictly guarantee the conditions
   // If we guarantee the condition strictly, the smallest collection of cross task resource may not
   // satisfied
+  @SuppressWarnings("squid:S1135")
   private boolean canAddToTaskResource(
       CrossCompactionTaskResource taskResource,
       TsFileResource unseqFile,
@@ -246,12 +252,9 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       return true;
     }
 
-    if (taskResource.getTotalFileNums() + 1 + seqFiles.size() <= maxCrossCompactionFileNum
+    return taskResource.getTotalFileNums() + 1 + seqFiles.size() <= maxCrossCompactionFileNum
         && taskResource.getTotalFileSize() + totalFileSize <= maxCrossCompactionFileSize
-        && taskResource.getTotalMemoryCost() + memoryCost < memoryBudget) {
-      return true;
-    }
-    return false;
+        && taskResource.getTotalMemoryCost() + memoryCost < memoryBudget;
   }
 
   private boolean canSubmitCrossTask(
@@ -268,6 +271,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
    * @return Returns whether the file was found and submits the merge task
    */
   @Override
+  @SuppressWarnings({"squid:S1135", "squid:S2696"})
   public List<CrossCompactionTaskResource> selectCrossSpaceTask(
       List<TsFileResource> sequenceFileList, List<TsFileResource> unsequenceFileList) {
     if (!canSubmitCrossTask(sequenceFileList, unsequenceFileList)) {
@@ -284,11 +288,15 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         new CrossSpaceCompactionCandidate(sequenceFileList, unsequenceFileList, ttlLowerBound);
     try {
       CrossCompactionTaskResource taskResources = selectOneTaskResources(candidate);
+      String sgDataRegionId = logicalStorageGroupName + "-" + dataRegionId;
       if (!taskResources.isValid()) {
         if (!hasPrintedLog) {
           LOGGER.info(
-              "{} [Compaction] Total source files: {} seqFiles, {} unseqFiles. Candidate source files: {} seqFiles, {} unseqFiles. Cannot select any files because they do not meet the conditions or may be occupied by other compaction threads.",
-              logicalStorageGroupName + "-" + dataRegionId,
+              "{} [Compaction] Total source files: {} seqFiles, {} unseqFiles. "
+                  + "Candidate source files: {} seqFiles, {} unseqFiles. "
+                  + "Cannot select any files because they do not meet the conditions "
+                  + "or may be occupied by other compaction threads.",
+              sgDataRegionId,
               sequenceFileList.size(),
               unsequenceFileList.size(),
               candidate.getSeqFiles().size(),
@@ -298,8 +306,15 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         return Collections.emptyList();
       }
       LOGGER.info(
-          "{} [Compaction] Total source files: {} seqFiles, {} unseqFiles. Candidate source files: {} seqFiles, {} unseqFiles. Selected source files: {} seqFiles, {} unseqFiles, total memory cost {} MB, total selected file size is {} MB, total selected seq file size is {} MB, total selected unseq file size is {} MB, time consumption {}ms.",
-          logicalStorageGroupName + "-" + dataRegionId,
+          "{} [Compaction] Total source files: {} seqFiles, {} unseqFiles. "
+              + "Candidate source files: {} seqFiles, {} unseqFiles. "
+              + "Selected source files: {} seqFiles, "
+              + "{} unseqFiles, total memory cost {} MB, "
+              + "total selected file size is {} MB, "
+              + "total selected seq file size is {} MB, "
+              + "total selected unseq file size is {} MB, "
+              + "time consumption {}ms.",
+          sgDataRegionId,
           sequenceFileList.size(),
           unsequenceFileList.size(),
           candidate.getSeqFiles().size(),

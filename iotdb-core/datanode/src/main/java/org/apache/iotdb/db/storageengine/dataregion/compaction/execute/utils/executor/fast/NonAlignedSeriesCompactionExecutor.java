@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -106,7 +107,13 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
     }
   }
 
-  /** Deserialize files into chunk metadatas and put them into the chunk metadata queue. */
+  /**
+   * Deserialize files into chunk metadatas and put them into the chunk metadata queue.
+   *
+   * @throws IOException if io errors occurred
+   * @throws IllegalPathException if the file path is illegal
+   */
+  @SuppressWarnings("checkstyle:LocalVariableNameCheck")
   void deserializeFileIntoChunkMetadataQueue(List<FileElement> fileElements)
       throws IOException, IllegalPathException {
     for (FileElement fileElement : fileElements) {
@@ -123,14 +130,14 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
               .getChunkMetadataListByTimeseriesMetadataOffset(
                   timeseriesMetadataOffset.left, timeseriesMetadataOffset.right);
 
-      if (iChunkMetadataList.size() > 0) {
+      if (!iChunkMetadataList.isEmpty()) {
         // modify chunk metadatas
         ModificationUtils.modifyChunkMetaData(
             iChunkMetadataList,
             getModificationsFromCache(
                 resource,
                 new PartialPath(deviceId, iChunkMetadataList.get(0).getMeasurementUid())));
-        if (iChunkMetadataList.size() == 0) {
+        if (iChunkMetadataList.isEmpty()) {
           // all chunks has been deleted in this file, just remove it
           removeFile(fileElement);
         }

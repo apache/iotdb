@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -125,6 +126,9 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
    * successfully or not. Return false if the unsealed page is too small or the end time of page
    * exceeds the end time of file, else return true. Notice: if sub-value measurement is null, then
    * flush empty value page.
+   *
+   * @throws IOException if io errors occurred
+   * @throws PageException if errors occurred when write data page header
    */
   public boolean flushAlignedPage(
       ByteBuffer compressedTimePageData,
@@ -162,6 +166,9 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
    * Flush nonAligned page to tsfile directly. Return whether the page is flushed to tsfile
    * successfully or not. Return false if the unsealed page is too small or the end time of page
    * exceeds the end time of file, else return true.
+   *
+   * @throws IOException if io errors occurred
+   * @throws PageException if errors occurred when write data page header
    */
   public boolean flushNonAlignedPage(
       ByteBuffer compressedPageData, PageHeader pageHeader, int subTaskId)
@@ -191,25 +198,19 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
     boolean isUnsealedChunkLargeEnough =
         chunkWriters[subTaskId].checkIsChunkSizeOverThreshold(
             chunkSizeLowerBoundInCompaction, chunkPointNumLowerBoundInCompaction, true);
-    if (!isUnsealedChunkLargeEnough
-        || (chunkMetadata.getEndTime() > currentDeviceEndTime[fileIndex]
-            && fileIndex != targetFileWriters.size() - 1)) {
-      // if unsealed chunk is not large enough or chunk.endTime > file.endTime, then return false
-      return false;
-    }
-    return true;
+    // if unsealed chunk is not large enough or chunk.endTime > file.endTime, then return false
+    return isUnsealedChunkLargeEnough
+        && (chunkMetadata.getEndTime() <= currentDeviceEndTime[fileIndex]
+            || fileIndex == targetFileWriters.size() - 1);
   }
 
   private boolean checkIsPageSatisfied(PageHeader pageHeader, int fileIndex, int subTaskId) {
     boolean isUnsealedPageLargeEnough =
         chunkWriters[subTaskId].checkIsUnsealedPageOverThreshold(
             pageSizeLowerBoundInCompaction, pagePointNumLowerBoundInCompaction, true);
-    if (!isUnsealedPageLargeEnough
-        || (pageHeader.getEndTime() > currentDeviceEndTime[fileIndex]
-            && fileIndex != targetFileWriters.size() - 1)) {
-      // unsealed page is too small or page.endTime > file.endTime
-      return false;
-    }
-    return true;
+    // unsealed page is too small or page.endTime > file.endTime, then return false
+    return isUnsealedPageLargeEnough
+        && (pageHeader.getEndTime() <= currentDeviceEndTime[fileIndex]
+            || fileIndex == targetFileWriters.size() - 1);
   }
 }

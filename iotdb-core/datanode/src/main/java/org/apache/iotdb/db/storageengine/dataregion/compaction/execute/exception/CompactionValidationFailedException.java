@@ -17,13 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception;
 
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-
-import java.util.List;
-
-public interface ISeqCompactionPerformer extends ICompactionPerformer {
-  @Override
-  void setSourceFiles(List<TsFileResource> seqFiles);
+public class CompactionValidationFailedException extends RuntimeException {
+  public CompactionValidationFailedException(String msg) {
+    super(msg);
+  }
 }

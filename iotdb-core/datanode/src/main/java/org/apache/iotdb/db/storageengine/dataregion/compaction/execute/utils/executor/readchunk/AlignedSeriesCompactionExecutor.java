@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -63,6 +64,7 @@ public class AlignedSeriesCompactionExecutor {
   private final long chunkPointNumThreshold =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
 
+  @SuppressWarnings("squid:S1319")
   public AlignedSeriesCompactionExecutor(
       String device,
       TsFileResource targetResource,
@@ -83,8 +85,9 @@ public class AlignedSeriesCompactionExecutor {
    * collect the measurement metadata from list of alignedChunkMetadata list, and sort them in
    * dictionary order.
    *
-   * @param readerAndChunkMetadataList
-   * @return
+   * @param readerAndChunkMetadataList list of reader and alignedChunkMetadata list
+   * @return schema list sorted by dictionary order
+   * @throws IOException if io errors occurred
    */
   private List<IMeasurementSchema> collectSchemaFromAlignedChunkMetadataList(
       LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList)
@@ -103,9 +106,9 @@ public class AlignedSeriesCompactionExecutor {
         ((CompactionTsFileReader) reader).markEndOfAlignedSeries();
       }
     }
-    List<IMeasurementSchema> schemaList = new ArrayList<>(schemaSet);
-    schemaList.sort(Comparator.comparing(IMeasurementSchema::getMeasurementId));
-    return schemaList;
+    List<IMeasurementSchema> collectedSchemaList = new ArrayList<>(schemaSet);
+    collectedSchemaList.sort(Comparator.comparing(IMeasurementSchema::getMeasurementId));
+    return collectedSchemaList;
   }
 
   private void collectSchemaFromOneFile(
@@ -118,10 +121,7 @@ public class AlignedSeriesCompactionExecutor {
       List<IChunkMetadata> valueChunkMetadataList =
           alignedChunkMetadata.getValueChunkMetadataList();
       for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
-        if (chunkMetadata == null) {
-          continue;
-        }
-        if (measurementSet.contains(chunkMetadata.getMeasurementUid())) {
+        if (chunkMetadata == null || measurementSet.contains(chunkMetadata.getMeasurementUid())) {
           continue;
         }
         measurementSet.add(chunkMetadata.getMeasurementUid());
@@ -138,7 +138,7 @@ public class AlignedSeriesCompactionExecutor {
   }
 
   public void execute() throws IOException {
-    while (readerAndChunkMetadataList.size() > 0) {
+    while (!readerAndChunkMetadataList.isEmpty()) {
       Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> readerListPair =
           readerAndChunkMetadataList.removeFirst();
       TsFileSequenceReader reader = readerListPair.left;
@@ -169,6 +169,7 @@ public class AlignedSeriesCompactionExecutor {
     writer.checkMetadataSizeAndMayFlush();
   }
 
+  @SuppressWarnings("squid:S1172")
   private void compactOneAlignedChunk(AlignedChunkReader chunkReader, int notNullChunkNum)
       throws IOException {
     while (chunkReader.hasNextSatisfiedPage()) {
@@ -191,9 +192,9 @@ public class AlignedSeriesCompactionExecutor {
 
   /**
    * if the avg size of each chunk is larger than the threshold, or the chunk point num is larger
-   * than the threshold, flush it
+   * than the threshold, flush it.
    *
-   * @throws IOException
+   * @throws IOException if io errors occurred
    */
   private void flushChunkWriterIfLargeEnough() throws IOException {
     if (remainingPointInChunkWriter >= chunkPointNumThreshold

@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,13 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception;
 
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+public class CompactionTargetFileCountExceededException extends RuntimeException {
 
-import java.util.List;
-
-public interface ISeqCompactionPerformer extends ICompactionPerformer {
-  @Override
-  void setSourceFiles(List<TsFileResource> seqFiles);
+  public CompactionTargetFileCountExceededException(String msg) {
+    super(msg);
+  }
 }

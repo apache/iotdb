@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionExceptionHandler;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionValidationFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
@@ -103,7 +104,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   @Override
-  @SuppressWarnings("squid:S6541")
+  @SuppressWarnings({"squid:S6541", "squid:S3776", "squid:S2142"})
   protected boolean doCompaction() {
     if (!tsFileManager.isAllowCompaction()) {
       return true;
@@ -112,7 +113,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     // get resource of target file
     String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
     LOGGER.info(
-        "{}-{} [Compaction] {} InnerSpaceCompaction task starts with {} files, total file size is {} MB.",
+        "{}-{} [Compaction] {} InnerSpaceCompaction task starts with {} files, "
+            + "total file size is {} MB.",
         storageGroupName,
         dataRegionId,
         sequence ? "Sequence" : "Unsequence",
@@ -196,7 +198,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
               "Failed to pass compaction validation, source files is: {}, target files is {}",
               selectedTsFileResourceList,
               targetTsFileList);
-          throw new RuntimeException("Failed to pass compaction validation");
+          throw new CompactionValidationFailedException("Failed to pass compaction validation");
         }
 
         LOGGER.info(
@@ -260,8 +262,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
         double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
         LOGGER.info(
-            "{}-{} [Compaction] {} InnerSpaceCompaction task finishes successfully, target file is {},"
-                + "time cost is {} s, compaction speed is {} MB/s, {}",
+            "{}-{} [Compaction] {} InnerSpaceCompaction task finishes successfully, "
+                + "target file is {},"
+                + "time cost is {} s, "
+                + "compaction speed is {} MB/s, {}",
             storageGroupName,
             dataRegionId,
             sequence ? "Sequence" : "Unsequence",
@@ -273,15 +277,15 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       if (logFile.exists()) {
         FileUtils.delete(logFile);
       }
-    } catch (Throwable throwable) {
+    } catch (Exception e) {
       isSuccess = false;
       // catch throwable to handle OOM errors
-      if (!(throwable instanceof InterruptedException)) {
+      if (!(e instanceof InterruptedException)) {
         LOGGER.error(
             "{}-{} [Compaction] Meet errors in inner space compaction.",
             storageGroupName,
             dataRegionId,
-            throwable);
+            e);
       } else {
         // clean the interrupt flag
         LOGGER.warn("{}-{} [Compaction] Compaction interrupted", storageGroupName, dataRegionId);
@@ -314,8 +318,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       }
     } finally {
       releaseAllLocksAndResetStatus();
-      return isSuccess;
     }
+    return isSuccess;
   }
 
   @Override
@@ -409,7 +413,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
   /**
    * release the read lock and write lock of files if it is held, and set the merging status of
-   * selected files to false
+   * selected files to false.
    */
   private void releaseAllLocksAndResetStatus() {
     resetCompactionCandidateStatusForAllSourceFiles();
@@ -440,7 +444,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           return false;
         }
       }
-    } catch (Throwable e) {
+    } catch (Exception e) {
       releaseAllLocksAndResetStatus();
       throw e;
     }
