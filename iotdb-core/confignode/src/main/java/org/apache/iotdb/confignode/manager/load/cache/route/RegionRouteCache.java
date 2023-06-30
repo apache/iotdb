@@ -44,7 +44,7 @@ public class RegionRouteCache {
 
   // Pair<Timestamp, LeaderDataNodeId>, where
   // the left value stands for sampling timestamp
-  // and the right value stands for the index of DataNode that leader resides.
+  // and the right value stands for the index of DataNode that leader resides in.
   private final AtomicReference<Pair<Long, Integer>> leaderSample;
   private final AtomicInteger leaderId;
   private final AtomicReference<TRegionReplicaSet> regionPriority;

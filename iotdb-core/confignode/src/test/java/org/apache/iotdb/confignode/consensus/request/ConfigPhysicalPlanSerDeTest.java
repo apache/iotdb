@@ -63,6 +63,9 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateS
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginJarPlan;
+import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginTablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.pipe.task.ShowPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
@@ -1368,6 +1371,35 @@ public class ConfigPhysicalPlanSerDeTest {
         (GetSeriesSlotListPlan)
             ConfigPhysicalPlan.Factory.create(getSeriesSlotListPlan0.serializeToByteBuffer());
     Assert.assertEquals(getSeriesSlotListPlan0, getSeriesSlotListPlan1);
+  }
+
+  @Test
+  public void GetPipePluginJarPlanTest() throws IOException {
+    List<String> jarNames = new ArrayList<>();
+    jarNames.add("org.apache.testJar");
+    jarNames.add("org.apache.testJar2");
+    GetPipePluginJarPlan getPipePluginJarPlan0 = new GetPipePluginJarPlan(jarNames);
+    GetPipePluginJarPlan getPipePluginJarPlan1 =
+        (GetPipePluginJarPlan)
+            ConfigPhysicalPlan.Factory.create(getPipePluginJarPlan0.serializeToByteBuffer());
+    Assert.assertEquals(getPipePluginJarPlan0, getPipePluginJarPlan1);
+  }
+
+  @Test
+  public void GetPipePluginTablePlanTest() throws IOException {
+    GetPipePluginTablePlan getPipePluginTablePlan0 = new GetPipePluginTablePlan();
+    GetPipePluginTablePlan getPipePluginTablePlan1 =
+        (GetPipePluginTablePlan)
+            ConfigPhysicalPlan.Factory.create(getPipePluginTablePlan0.serializeToByteBuffer());
+    Assert.assertEquals(getPipePluginTablePlan0, getPipePluginTablePlan1);
+  }
+
+  @Test
+  public void ShowPipePlanV2Test() throws IOException {
+    ShowPipePlanV2 showPipePlanV2 = new ShowPipePlanV2();
+    ShowPipePlanV2 showPipePlanV21 =
+        (ShowPipePlanV2) ConfigPhysicalPlan.Factory.create(showPipePlanV2.serializeToByteBuffer());
+    Assert.assertEquals(showPipePlanV2, showPipePlanV21);
   }
 
   @Test

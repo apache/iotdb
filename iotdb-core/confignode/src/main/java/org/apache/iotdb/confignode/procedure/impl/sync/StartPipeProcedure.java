@@ -46,6 +46,13 @@ public class StartPipeProcedure extends Procedure<ConfigNodeProcedureEnv> {
     super();
   }
 
+  // For test
+  public StartPipeProcedure(PipeInfo pipeInfo) {
+    this();
+    this.pipeName = pipeInfo.getPipeName();
+    this.pipeInfo = pipeInfo;
+  }
+
   @Override
   protected Procedure<ConfigNodeProcedureEnv>[] execute(
       ConfigNodeProcedureEnv configNodeProcedureEnv)

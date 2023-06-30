@@ -46,6 +46,13 @@ public class StopPipeProcedure extends Procedure<ConfigNodeProcedureEnv> {
     super();
   }
 
+  // For test
+  public StopPipeProcedure(PipeInfo pipeInfo) {
+    this();
+    this.pipeName = pipeInfo.getPipeName();
+    this.pipeInfo = pipeInfo;
+  }
+
   @Override
   protected Procedure<ConfigNodeProcedureEnv>[] execute(
       ConfigNodeProcedureEnv configNodeProcedureEnv)

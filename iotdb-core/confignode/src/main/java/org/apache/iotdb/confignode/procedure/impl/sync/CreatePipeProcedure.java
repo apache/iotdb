@@ -45,6 +45,12 @@ public class CreatePipeProcedure extends Procedure<ConfigNodeProcedureEnv> {
     super();
   }
 
+  // For test
+  public CreatePipeProcedure(PipeInfo pipeInfo) {
+    this();
+    this.pipeInfo = pipeInfo;
+  }
+
   @Override
   protected Procedure<ConfigNodeProcedureEnv>[] execute(
       ConfigNodeProcedureEnv configNodeProcedureEnv)
@@ -65,14 +71,21 @@ public class CreatePipeProcedure extends Procedure<ConfigNodeProcedureEnv> {
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeShort(ProcedureType.CREATE_PIPE_PROCEDURE.getTypeCode());
     super.serialize(stream);
-    pipeInfo.serialize(stream);
+    if (pipeInfo != null) {
+      ReadWriteIOUtils.write(true, stream);
+      pipeInfo.serialize(stream);
+    } else {
+      ReadWriteIOUtils.write(false, stream);
+    }
     ReadWriteIOUtils.writeIntegerSet(executedDataNodeIds, stream);
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
-    pipeInfo = PipeInfo.deserializePipeInfo(byteBuffer);
+    if (ReadWriteIOUtils.readBool(byteBuffer)) {
+      pipeInfo = PipeInfo.deserializePipeInfo(byteBuffer);
+    }
     executedDataNodeIds = ReadWriteIOUtils.readIntegerSet(byteBuffer);
   }
 
