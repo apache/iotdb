@@ -1050,7 +1050,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitRenameLogicalView(IoTDBSqlParser.RenameLogicalViewContext ctx) {
-    throw new SemanticException("Rename view is not supported.");
+    throw new SemanticException("Renaming view is not supported.");
   }
 
   @Override
