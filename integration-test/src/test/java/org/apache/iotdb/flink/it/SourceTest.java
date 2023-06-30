@@ -18,19 +18,17 @@
  */
 package org.apache.iotdb.flink.it;
 
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
+
 import org.apache.flink.table.api.*;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.CloseableIterator;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.apache.flink.table.api.Expressions.$;
 
 public class SourceTest extends AbstractTest {
   @Before
@@ -70,11 +68,19 @@ public class SourceTest extends AbstractTest {
     int rowSize = 0;
     while (collect.hasNext()) {
       collect.next();
-      rowSize ++;
+      rowSize++;
     }
 
     final String[] exceptedFiledNames = {"Time_", "s0", "s1", "s2", "s3", "s4", "s5"};
-    final DataType[] exceptedFieldDataTypes = {DataTypes.BIGINT(), DataTypes.INT(), DataTypes.BIGINT(), DataTypes.FLOAT(), DataTypes.DOUBLE(), DataTypes.BOOLEAN(), DataTypes.STRING()};
+    final DataType[] exceptedFieldDataTypes = {
+      DataTypes.BIGINT(),
+      DataTypes.INT(),
+      DataTypes.BIGINT(),
+      DataTypes.FLOAT(),
+      DataTypes.DOUBLE(),
+      DataTypes.BOOLEAN(),
+      DataTypes.STRING()
+    };
     final int exceptedRowSize = 1000;
 
     Assert.assertEquals(exceptedFiledNames, fieldNames);
@@ -87,13 +93,13 @@ public class SourceTest extends AbstractTest {
     Utils.prepareData("root.test.flink.lookup", ip, port);
 
     Schema dataGenTableSchema =
-            Schema.newBuilder()
-                    .column("Time_", DataTypes.BIGINT())
-                    .column("s6", DataTypes.INT())
-                    .build();
+        Schema.newBuilder()
+            .column("Time_", DataTypes.BIGINT())
+            .column("s6", DataTypes.INT())
+            .build();
 
-    TableDescriptor datagenDescriptor =TableDescriptor
-            .forConnector("datagen")
+    TableDescriptor datagenDescriptor =
+        TableDescriptor.forConnector("datagen")
             .schema(dataGenTableSchema)
             .option("fields.Time_.kind", "sequence")
             .option("fields.Time_.start", "1")
@@ -104,28 +110,29 @@ public class SourceTest extends AbstractTest {
     tableEnv.createTemporaryTable("leftTable", datagenDescriptor);
 
     Schema iotdbTableSchema =
-            Schema.newBuilder()
-                    .column("Time_", DataTypes.BIGINT())
-                    .column("s0", DataTypes.INT())
-                    .column("s1", DataTypes.BIGINT())
-                    .column("s2", DataTypes.FLOAT())
-                    .column("s3", DataTypes.DOUBLE())
-                    .column("s4", DataTypes.BOOLEAN())
-                    .column("s5", DataTypes.STRING())
-                    .build();
+        Schema.newBuilder()
+            .column("Time_", DataTypes.BIGINT())
+            .column("s0", DataTypes.INT())
+            .column("s1", DataTypes.BIGINT())
+            .column("s2", DataTypes.FLOAT())
+            .column("s3", DataTypes.DOUBLE())
+            .column("s4", DataTypes.BOOLEAN())
+            .column("s5", DataTypes.STRING())
+            .build();
 
     TableDescriptor iotdbDescriptor =
-            TableDescriptor.forConnector("IoTDB")
-                    .schema(iotdbTableSchema)
-                    .option("nodeUrls", String.format("%s:%d", ip, port))
-                    .option("device", "root.test.flink.lookup")
-                    .build();
+        TableDescriptor.forConnector("IoTDB")
+            .schema(iotdbTableSchema)
+            .option("nodeUrls", String.format("%s:%d", ip, port))
+            .option("device", "root.test.flink.lookup")
+            .build();
     tableEnv.createTemporaryTable("rightTable", iotdbDescriptor);
 
-    String sql = "SELECT l.Time_, r.s0, r.s1, r.s2, r.s3, r.s4, r.s5, l.s6 " +
-            "FROM (select *,PROCTIME() as proc_time from leftTable) AS l " +
-            "JOIN rightTable FOR SYSTEM_TIME AS OF l.proc_time AS r " +
-            "ON l.Time_ = r.Time_";
+    String sql =
+        "SELECT l.Time_, r.s0, r.s1, r.s2, r.s3, r.s4, r.s5, l.s6 "
+            + "FROM (select *,PROCTIME() as proc_time from leftTable) AS l "
+            + "JOIN rightTable FOR SYSTEM_TIME AS OF l.proc_time AS r "
+            + "ON l.Time_ = r.Time_";
 
     TableResult result = tableEnv.sqlQuery(sql).execute();
     TableSchema schema = result.getTableSchema();
@@ -135,11 +142,20 @@ public class SourceTest extends AbstractTest {
     int rowSize = 0;
     while (collect.hasNext()) {
       collect.next();
-      rowSize ++;
+      rowSize++;
     }
 
     final String[] exceptedFiledNames = {"Time_", "s0", "s1", "s2", "s3", "s4", "s5", "s6"};
-    final DataType[] exceptedFieldDataTypes = {DataTypes.BIGINT(), DataTypes.INT(), DataTypes.BIGINT(), DataTypes.FLOAT(), DataTypes.DOUBLE(), DataTypes.BOOLEAN(), DataTypes.STRING(), DataTypes.INT()};
+    final DataType[] exceptedFieldDataTypes = {
+      DataTypes.BIGINT(),
+      DataTypes.INT(),
+      DataTypes.BIGINT(),
+      DataTypes.FLOAT(),
+      DataTypes.DOUBLE(),
+      DataTypes.BOOLEAN(),
+      DataTypes.STRING(),
+      DataTypes.INT()
+    };
     final int exceptedRowSize = 100;
 
     Assert.assertEquals(exceptedFiledNames, fieldNames);
