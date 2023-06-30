@@ -196,10 +196,6 @@ public class TriggerInformation {
     return isUsingURI;
   }
 
-  public void setUsingURI(boolean usingURI) {
-    isUsingURI = usingURI;
-  }
-
   public TriggerEvent getEvent() {
     return event;
   }
@@ -248,15 +244,7 @@ public class TriggerInformation {
     return failureStrategy;
   }
 
-  public void setFailureStrategy(FailureStrategy failureStrategy) {
-    this.failureStrategy = failureStrategy;
-  }
-
   public String getJarFileMD5() {
     return jarFileMD5;
-  }
-
-  public void setJarFileMD5(String jarFileMD5) {
-    this.jarFileMD5 = jarFileMD5;
   }
 }

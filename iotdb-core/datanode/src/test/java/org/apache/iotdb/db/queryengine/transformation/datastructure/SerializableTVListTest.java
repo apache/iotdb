@@ -17,24 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.query;
+package org.apache.iotdb.db.queryengine.transformation.datastructure;
 
-import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.rpc.TSStatusCode;
+import org.junit.Test;
 
-public class QueryProcessException extends IoTDBException {
+public abstract class SerializableTVListTest extends SerializableListTest {
 
-  private static final long serialVersionUID = -683191083844850054L;
-
-  public QueryProcessException(String message) {
-    super(message, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
+  @Test
+  public void serializeAndDeserializeTest() {
+    for (int i = 0; i < ITERATION_TIMES; ++i) {
+      generateData(i);
+    }
+    serializeAndDeserializeOnce();
+    serializeAndDeserializeOnce();
   }
 
-  public QueryProcessException(String message, int errorCode) {
-    super(message, errorCode);
-  }
+  protected abstract void generateData(int index);
 
-  public QueryProcessException(IoTDBException e) {
-    super(e, e.getErrorCode(), e.isUserException());
-  }
+  protected abstract void serializeAndDeserializeOnce();
 }
