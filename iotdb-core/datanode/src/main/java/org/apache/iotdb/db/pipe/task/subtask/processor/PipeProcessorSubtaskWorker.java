@@ -97,7 +97,6 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
 
   private void sleepIfNecessary(boolean canSleepBeforeNextRound) {
     if (canSleepBeforeNextRound) {
-      LOGGER.error("subtask worker is sleeping");
       try {
         Thread.sleep(sleepingTimeInMilliSecond);
       } catch (InterruptedException e) {
@@ -105,7 +104,6 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
         Thread.currentThread().interrupt();
       }
     } else {
-      LOGGER.error("subtask worker is running");
       ++workingRoundInAdjustmentInterval;
     }
   }
