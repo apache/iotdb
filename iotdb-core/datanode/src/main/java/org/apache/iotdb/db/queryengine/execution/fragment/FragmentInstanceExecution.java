@@ -25,7 +25,7 @@ import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.exception.CpuNotEnoughException;
 import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
-import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
+import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -56,6 +56,8 @@ public class FragmentInstanceExecution {
 
   private final long timeoutInMs;
 
+  private final MPPDataExchangeManager exchangeManager;
+
   @SuppressWarnings("squid:S107")
   public static FragmentInstanceExecution createFragmentInstanceExecution(
       IDriverScheduler scheduler,
@@ -65,11 +67,12 @@ public class FragmentInstanceExecution {
       ISink sinkHandle,
       FragmentInstanceStateMachine stateMachine,
       CounterStat failedInstances,
-      long timeOut)
+      long timeOut,
+      MPPDataExchangeManager exchangeManager)
       throws CpuNotEnoughException, MemoryNotEnoughException {
     FragmentInstanceExecution execution =
         new FragmentInstanceExecution(
-            instanceId, context, drivers, sinkHandle, stateMachine, timeOut);
+            instanceId, context, drivers, sinkHandle, stateMachine, timeOut, exchangeManager);
     execution.initialize(failedInstances, scheduler);
     scheduler.submitDrivers(instanceId.getQueryId(), drivers, timeOut, context.getSessionInfo());
     return execution;
@@ -81,13 +84,15 @@ public class FragmentInstanceExecution {
       List<IDriver> drivers,
       ISink sink,
       FragmentInstanceStateMachine stateMachine,
-      long timeoutInMs) {
+      long timeoutInMs,
+      MPPDataExchangeManager exchangeManager) {
     this.instanceId = instanceId;
     this.context = context;
     this.drivers = drivers;
     this.sink = sink;
     this.stateMachine = stateMachine;
     this.timeoutInMs = timeoutInMs;
+    this.exchangeManager = exchangeManager;
   }
 
   public FragmentInstanceState getInstanceState() {
@@ -151,10 +156,8 @@ public class FragmentInstanceExecution {
             context.releaseResourceWhenAllDriversAreClosed();
 
             // release memory
-            MPPDataExchangeService.getInstance()
-                .getMPPDataExchangeManager()
-                .deRegisterFragmentInstanceFromMemoryPool(
-                    instanceId.getQueryId().getId(), instanceId.getFragmentInstanceId());
+            exchangeManager.deRegisterFragmentInstanceFromMemoryPool(
+                instanceId.getQueryId().getId(), instanceId.getFragmentInstanceId());
 
             if (newState.isFailed()) {
               scheduler.abortFragmentInstance(instanceId);

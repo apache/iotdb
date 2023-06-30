@@ -83,7 +83,8 @@ public class Coordinator {
   private final ExecutorService writeOperationExecutor;
   private final ScheduledExecutorService scheduledExecutor;
 
-  private final QueryIdGenerator queryIdGenerator = new QueryIdGenerator();
+  private final QueryIdGenerator queryIdGenerator =
+      new QueryIdGenerator(IoTDBDescriptor.getInstance().getConfig().getDataNodeId());
 
   private static final Coordinator INSTANCE = new Coordinator();
 

@@ -17,14 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.exception;
+package org.apache.iotdb.db.exception.mpp;
 
-import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class MemoryNotEnoughException extends IoTDBException {
+import org.junit.Test;
 
-  public MemoryNotEnoughException(String message) {
-    super(message, TSStatusCode.QUOTA_MEM_QUERY_NOT_ENOUGH.getStatusCode(), true);
+import static org.junit.Assert.assertEquals;
+
+public class FragmentInstanceDispatchExceptionTest {
+
+  @Test
+  public void testFragmentInstanceDispatchException() {
+    TSStatus a = new TSStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode());
+    FragmentInstanceDispatchException e = new FragmentInstanceDispatchException(a);
+    assertEquals(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode(), e.getFailureStatus().code);
   }
 }

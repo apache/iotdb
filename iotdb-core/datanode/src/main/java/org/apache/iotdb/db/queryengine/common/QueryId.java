@@ -33,7 +33,7 @@ import static java.util.Objects.requireNonNull;
 
 public class QueryId {
 
-  public static final QueryId mockQueryId = QueryId.valueOf("mock_query_id");
+  public static final QueryId MOCK_QUERY_ID = QueryId.valueOf("mock_query_id");
 
   private final String id;
 
