@@ -20,10 +20,11 @@
 package org.apache.iotdb.db.queryengine.exception;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 public class CpuNotEnoughException extends IoTDBException {
 
-  public CpuNotEnoughException(String message, int errorCode) {
-    super(message, errorCode);
+  public CpuNotEnoughException(String message) {
+    super(message, TSStatusCode.QUERY_CPU_QUERY_NOT_ENOUGH.getStatusCode(), true);
   }
 }

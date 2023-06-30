@@ -75,7 +75,7 @@ public class MemChunkMetadataLoader implements IChunkMetadataLoader {
       List<ReadOnlyMemChunk> memChunks = resource.getReadOnlyMemChunk(seriesPath);
       if (memChunks != null) {
         for (ReadOnlyMemChunk readOnlyMemChunk : memChunks) {
-          if (!memChunks.isEmpty()) {
+          if (!readOnlyMemChunk.isEmpty()) {
             chunkMetadataList.add(readOnlyMemChunk.getChunkMetaData());
           }
         }

@@ -25,7 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 
-import static org.apache.iotdb.db.queryengine.common.QueryId.mockQueryId;
+import static org.apache.iotdb.db.queryengine.common.QueryId.MOCK_QUERY_ID;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.ANALYZER;
 
 /** Analyze the statement and generate Analysis. */
@@ -60,7 +60,7 @@ public class Analyzer {
 
   public static Analyzer getAnalyzer() {
     return new Analyzer(
-        new MPPQueryContext(mockQueryId),
+        new MPPQueryContext(MOCK_QUERY_ID),
         ClusterPartitionFetcher.getInstance(),
         ClusterSchemaFetcher.getInstance());
   }
