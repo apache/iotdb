@@ -37,6 +37,11 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
   private static final long CLOSED_SUBTASK_CLEANUP_ROUND_INTERVAL = 1000;
   private long closedSubtaskCleanupRoundCounter = 0;
 
+  private static final int SLEEP_INTERVAL_ADJUSTMENT_ROUND_INTERVAL = 100;
+  private int totalRoundInAdjustmentInterval = 0;
+  private int workingRoundInAdjustmentInterval = 0;
+  private long sleepingTimeInMilliSecond = 50;
+
   private final ConcurrentMap<PipeProcessorSubtask, PipeProcessorSubtask> subtasks =
       new ConcurrentHashMap<>();
 
@@ -44,30 +49,25 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
   @SuppressWarnings("squid:S2189")
   public void runMayThrow() {
     while (true) {
-      // clean up closed subtasks before running
-      if (++closedSubtaskCleanupRoundCounter % CLOSED_SUBTASK_CLEANUP_ROUND_INTERVAL == 0) {
-        subtasks.keySet().stream()
-            .filter(PipeProcessorSubtask::isClosed)
-            .collect(Collectors.toList())
-            .forEach(subtasks::remove);
-      }
-
-      // run subtasks
+      cleanupClosedSubtasks();
       final boolean canSleepBeforeNextRound = runSubtasks();
+      sleepIfNecessary(canSleepBeforeNextRound);
+      adjustSleepingTimeIfNecessary();
+    }
+  }
 
-      // sleep if no subtask is running
-      if (canSleepBeforeNextRound) {
-        try {
-          Thread.sleep(100);
-        } catch (InterruptedException e) {
-          LOGGER.warn("subtask worker is interrupted", e);
-          Thread.currentThread().interrupt();
-        }
-      }
+  private void cleanupClosedSubtasks() {
+    if (++closedSubtaskCleanupRoundCounter % CLOSED_SUBTASK_CLEANUP_ROUND_INTERVAL == 0) {
+      subtasks.keySet().stream()
+          .filter(PipeProcessorSubtask::isClosed)
+          .collect(Collectors.toList())
+          .forEach(subtasks::remove);
     }
   }
 
   private boolean runSubtasks() {
+    ++totalRoundInAdjustmentInterval;
+
     boolean canSleepBeforeNextRound = true;
 
     for (final PipeProcessorSubtask subtask : subtasks.keySet()) {
@@ -93,6 +93,39 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
     }
 
     return canSleepBeforeNextRound;
+  }
+
+  private void sleepIfNecessary(boolean canSleepBeforeNextRound) {
+    if (canSleepBeforeNextRound) {
+      LOGGER.error("subtask worker is sleeping");
+      try {
+        Thread.sleep(sleepingTimeInMilliSecond);
+      } catch (InterruptedException e) {
+        LOGGER.warn("subtask worker is interrupted", e);
+        Thread.currentThread().interrupt();
+      }
+    } else {
+      LOGGER.error("subtask worker is running");
+      ++workingRoundInAdjustmentInterval;
+    }
+  }
+
+  private void adjustSleepingTimeIfNecessary() {
+    if (totalRoundInAdjustmentInterval % SLEEP_INTERVAL_ADJUSTMENT_ROUND_INTERVAL == 0) {
+      final double workingRatioInAdjustmentInterval =
+          (double) workingRoundInAdjustmentInterval / totalRoundInAdjustmentInterval;
+
+      if (0.25 < workingRatioInAdjustmentInterval) {
+        sleepingTimeInMilliSecond = Math.max(1, sleepingTimeInMilliSecond / 2);
+      }
+
+      if (workingRatioInAdjustmentInterval < 0.05) {
+        sleepingTimeInMilliSecond = Math.min(1000, sleepingTimeInMilliSecond * 2);
+      }
+
+      totalRoundInAdjustmentInterval = 0;
+      workingRoundInAdjustmentInterval = 0;
+    }
   }
 
   public void schedule(PipeProcessorSubtask pipeProcessorSubtask) {
