@@ -246,8 +246,7 @@ public class StatementGeneratorTest {
   }
 
   @Test
-  public void testInsertStringRecordsOfOneDevice()
-      throws IllegalPathException, QueryProcessException {
+  public void testInsertStringRecordsOfOneDevice() throws IllegalPathException {
     TSInsertStringRecordsOfOneDeviceReq req =
         new TSInsertStringRecordsOfOneDeviceReq(
             101L,
@@ -368,14 +367,14 @@ public class StatementGeneratorTest {
   }
 
   @Test
-  public void testDropSchemaTemplate() throws IllegalPathException {
+  public void testDropSchemaTemplate() {
     TSDropSchemaTemplateReq req = new TSDropSchemaTemplateReq(1L, "test-template");
     DropSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
     assertEquals("test-template", statement.getTemplateName());
   }
 
   @Test
-  public void testCreateBatchActivateTemplate() throws IllegalPathException {
+  public void testBatchActivateTemplate() throws IllegalPathException {
     BatchActivateTemplateStatement statement =
         StatementGenerator.createBatchActivateTemplateStatement(
             Collections.singletonList("root.sg.d1"));
