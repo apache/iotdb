@@ -42,6 +42,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class LoadTsFilePieceNode extends WritePlanNode {
@@ -87,7 +88,7 @@ public class LoadTsFilePieceNode extends WritePlanNode {
 
   @Override
   public List<PlanNode> getChildren() {
-    return null;
+    return Collections.emptyList();
   }
 
   @Override
@@ -105,7 +106,7 @@ public class LoadTsFilePieceNode extends WritePlanNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return null;
+    return Collections.emptyList();
   }
 
   @Override

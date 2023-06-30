@@ -32,6 +32,7 @@ import org.junit.Test;
 import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 
 public class LoadTsFileNodeTest {
 
@@ -43,8 +44,8 @@ public class LoadTsFileNodeTest {
     Assert.assertEquals(resource, node.getTsFileResource());
     Assert.assertNull(node.getLocalRegionReplicaSet());
     Assert.assertNull(node.getRegionReplicaSet());
-    Assert.assertNull(node.getChildren());
-    Assert.assertNull(node.getOutputColumnNames());
+    Assert.assertEquals(Collections.emptyList(), node.getChildren());
+    Assert.assertEquals(Collections.emptyList(), node.getOutputColumnNames());
     try {
       node.clone();
       Assert.fail();
@@ -67,7 +68,7 @@ public class LoadTsFileNodeTest {
     Assert.assertEquals(new ArrayList<>(), node.getAllTsFileData());
     Assert.assertEquals(node.getTsFile(), new File("1"));
     Assert.assertNull(node.getRegionReplicaSet());
-    Assert.assertNull(node.getChildren());
+    Assert.assertEquals(Collections.emptyList(), node.getChildren());
     try {
       node.clone();
       Assert.fail();
