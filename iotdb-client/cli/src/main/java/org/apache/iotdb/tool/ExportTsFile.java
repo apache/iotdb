@@ -79,7 +79,7 @@ public class ExportTsFile extends AbstractTsFileTool {
 
   @SuppressWarnings({
     "squid:S3776",
-    "java:S2093"
+    "squid:S2093"
   }) // Suppress high Cognitive Complexity warning, ignore try-with-resources
   /** main function of export tsFile tool. */
   public static void main(String[] args) {

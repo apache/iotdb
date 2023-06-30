@@ -363,7 +363,7 @@ public class ImportCsv extends AbstractCsvTool {
    * @return the status code
    * @throws IoTDBConnectionException
    */
-  @SuppressWarnings({"java:S2093"}) // ignore try-with-resources
+  @SuppressWarnings({"squid:S2093"}) // ignore try-with-resources
   public static int importFromTargetPath(
       String host, int port, String username, String password, String targetPath, String timeZone)
       throws IoTDBConnectionException {
