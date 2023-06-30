@@ -56,7 +56,7 @@ public class NodeCacheTest {
 
   @Test
   public void periodicUpdateTest() {
-    // Test dataNode heartbeat cache
+    // Test DataNode heartbeat cache
     DataNodeHeartbeatCache dataNodeHeartbeatCache = new DataNodeHeartbeatCache(1);
     long currentTime = System.currentTimeMillis();
     dataNodeHeartbeatCache.cacheHeartbeatSample(
@@ -66,7 +66,7 @@ public class NodeCacheTest {
     Assert.assertEquals(NodeStatus.Running, dataNodeHeartbeatCache.getNodeStatus());
     Assert.assertEquals(0, dataNodeHeartbeatCache.getLoadScore());
 
-    // Test configNode heartbeat cache
+    // Test ConfigNode heartbeat cache
     ConfigNodeHeartbeatCache configNodeHeartbeatCache = new ConfigNodeHeartbeatCache(2);
     currentTime = System.currentTimeMillis();
     configNodeHeartbeatCache.cacheHeartbeatSample(
