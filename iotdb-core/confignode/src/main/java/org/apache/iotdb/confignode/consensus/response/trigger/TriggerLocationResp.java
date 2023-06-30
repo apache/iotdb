@@ -21,26 +21,29 @@ package org.apache.iotdb.confignode.consensus.response.trigger;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.consensus.common.DataSet;
 
 public class TriggerLocationResp implements DataSet {
 
-  private TSStatus status;
+  private final TSStatus status;
 
-  private TDataNodeLocation dataNodeLocation;
+  private final TDataNodeLocation dataNodeLocation;
 
   public TriggerLocationResp(TSStatus status, TDataNodeLocation dataNodeLocation) {
     this.status = status;
     this.dataNodeLocation = dataNodeLocation;
   }
 
-  public void setDataNodeLocation(TDataNodeLocation dataNodeLocation) {
-    this.dataNodeLocation = dataNodeLocation;
+  @TestOnly
+  public TSStatus getStatus() {
+    return status;
   }
 
-  public void setStatus(TSStatus status) {
-    this.status = status;
+  @TestOnly
+  public TDataNodeLocation getDataNodeLocation() {
+    return dataNodeLocation;
   }
 
   public TGetLocationForTriggerResp convertToThriftResponse() {

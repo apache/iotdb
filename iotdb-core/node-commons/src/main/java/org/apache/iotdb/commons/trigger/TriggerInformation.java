@@ -60,7 +60,7 @@ public class TriggerInformation {
   /** MD5 of the Jar File */
   private String jarFileMD5;
 
-  public TriggerInformation() {};
+  public TriggerInformation() {}
 
   public TriggerInformation(
       PartialPath pathPattern,
