@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.join.RowBasedT
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.AscTimeComparator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.SingleColumnMerger;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.window.CountWindowParameter;
 import org.apache.iotdb.db.queryengine.execution.operator.window.SessionWindowParameter;
 import org.apache.iotdb.db.queryengine.execution.operator.window.TimeWindowParameter;
 import org.apache.iotdb.db.queryengine.execution.operator.window.VariationWindowParameter;
@@ -835,8 +836,8 @@ public class RawDataAggregationOperatorTest {
       }
     }
 
-    assertEquals(resultMinTime1, 499);
-    assertEquals(resultMinTime2, 499);
+    assertEquals(499, resultMinTime1);
+    assertEquals(499, resultMinTime2);
   }
 
   @Test
@@ -996,5 +997,57 @@ public class RawDataAggregationOperatorTest {
         true,
         DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
         windowParameter);
+  }
+
+  @Test
+  public void groupByCountTest() throws Exception {
+    List<TAggregationType> aggregationTypes = new ArrayList<>();
+    List<List<InputLocation[]>> inputLocations = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      aggregationTypes.add(TAggregationType.FIRST_VALUE);
+      List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();
+      inputLocationForOneAggregator.add(new InputLocation[] {new InputLocation(0, i)});
+      inputLocations.add(inputLocationForOneAggregator);
+    }
+    for (int i = 0; i < 2; i++) {
+      aggregationTypes.add(TAggregationType.LAST_VALUE);
+      List<InputLocation[]> inputLocationForOneAggregator = new ArrayList<>();
+      inputLocationForOneAggregator.add(new InputLocation[] {new InputLocation(0, i)});
+      inputLocations.add(inputLocationForOneAggregator);
+    }
+
+    WindowParameter windowParameter = new CountWindowParameter(10, 0, false, false);
+    RawDataAggregationOperator rawDataAggregationOperator =
+        initRawDataAggregationOperator(aggregationTypes, null, inputLocations, windowParameter);
+    long count = 0;
+    long index = 0;
+    while (rawDataAggregationOperator.isBlocked().isDone()
+        && rawDataAggregationOperator.hasNext()) {
+      TsBlock resultTsBlock = rawDataAggregationOperator.next();
+      if (resultTsBlock == null) {
+        continue;
+      }
+      for (int row = 0; row < resultTsBlock.getPositionCount(); row++) {
+        long firstValue = count, lastValue = count + 9;
+        if (count < 200) {
+          firstValue += 20000;
+          lastValue += 20000;
+        } else if (count < 260 || (count >= 300 && count < 380) || (count >= 400 && count < 500)) {
+          firstValue += 10000;
+          lastValue += 10000;
+        }
+
+        for (int i = 0; i < 2; i++) {
+          assertEquals(firstValue, resultTsBlock.getColumn(i).getInt(row));
+        }
+        for (int i = 2; i < 4; i++) {
+          assertEquals(lastValue, resultTsBlock.getColumn(i).getInt(row));
+        }
+        count += 10;
+        index++;
+      }
+    }
+    assertEquals(50, index);
+    assertEquals(500, count);
   }
 }
