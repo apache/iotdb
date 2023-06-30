@@ -390,13 +390,12 @@ public class ExportCsv extends AbstractCsvTool {
               .forEach(
                   field -> {
                     String fieldStringValue = field.getStringValue();
-                    StringBuilder stringBuilder = new StringBuilder(fieldStringValue);
                     if (!"null".equals(field.getStringValue())) {
                       if (field.getDataType() == TSDataType.TEXT
                           && !fieldStringValue.startsWith("root.")) {
-                        stringBuilder = new StringBuilder("\"" + fieldStringValue + "\"");
+                        fieldStringValue = "\"" + fieldStringValue + "\"";
                       }
-                      csvPrinterWrapper.print(stringBuilder);
+                      csvPrinterWrapper.print(fieldStringValue);
                     } else {
                       csvPrinterWrapper.print("");
                     }
