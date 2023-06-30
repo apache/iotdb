@@ -240,7 +240,9 @@ public class TsFileAndModSettleTool {
       } finally {
         File f = FSFactoryProducer.getFSFactory().getFile(SettleLog.getSettleLogPath());
         try {
-          Files.deleteIfExists(f.toPath());
+          if (f.exists()) {
+            Files.delete(f.toPath());
+          }
         } catch (IOException e) {
           logger.error("failed to delete settle log, log path:{}", SettleLog.getSettleLogPath());
         }
@@ -301,8 +303,9 @@ public class TsFileAndModSettleTool {
    * @param oldTsFileResource
    * @param newTsFileResources if the old TsFile has not any deletions or all the data in which has
    *     been deleted or its modFile does not exist, then this size will be 0.
-   * @throws IOException
+   * @throws IOException if io errors occurred
    */
+  @SuppressWarnings("squid:S3776")
   public static void moveNewTsFile(
       TsFileResource oldTsFileResource, List<TsFileResource> newTsFileResources)
       throws IOException {
@@ -318,13 +321,15 @@ public class TsFileAndModSettleTool {
       if (oldTsFileResource.isDeleted()) {
         oldTsFileResource.remove();
       }
-      Files.deleteIfExists(newPartitionDir.toPath());
+      Files.delete(newPartitionDir.toPath());
       return;
     }
     FSFactory fsFactory = FSFactoryProducer.getFSFactory();
     File oldTsFile = oldTsFileResource.getTsFile();
     boolean isOldFileExisted = oldTsFile.exists();
-    Files.deleteIfExists(oldTsFile.toPath());
+    if (isOldFileExisted) {
+      Files.delete(oldTsFile.toPath());
+    }
     for (TsFileResource newTsFileResource : newTsFileResources) {
       newPartitionDir =
           new File(
@@ -351,10 +356,14 @@ public class TsFileAndModSettleTool {
         File tmpResourceFile =
             fsFactory.getFile(
                 newPartitionDir, newTsFile.getName() + TsFileResource.RESOURCE_SUFFIX);
-        Files.deleteIfExists(tmpResourceFile.toPath());
+        if (tmpResourceFile.exists()) {
+          Files.delete(tmpResourceFile.toPath());
+        }
       }
       // if the newPartition folder is empty, then it will be deleted
-      Files.deleteIfExists(newPartitionDir.toPath());
+      if (newPartitionDir.exists()) {
+        Files.delete(newPartitionDir.toPath());
+      }
     }
   }
 
