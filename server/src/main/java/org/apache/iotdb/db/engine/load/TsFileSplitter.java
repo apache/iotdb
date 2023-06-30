@@ -229,7 +229,8 @@ public class TsFileSplitter {
             chunkMetadata = offset2ChunkMetadata.get(chunkOffset - Byte.BYTES);
             header = reader.readChunkHeader(marker);
             if (header.getDataSize() == 0) {
-              handleEmptyValueChunk(header, pageIndex2ChunkData, chunkMetadata);
+              handleEmptyValueChunk(
+                  header, pageIndex2ChunkData, chunkMetadata, isTimeChunkNeedDecode);
               break;
             }
 
@@ -423,14 +424,17 @@ public class TsFileSplitter {
   private void handleEmptyValueChunk(
       ChunkHeader header,
       Map<Integer, List<AlignedChunkData>> pageIndex2ChunkData,
-      IChunkMetadata chunkMetadata)
+      IChunkMetadata chunkMetadata,
+      boolean isTimeChunkNeedDecode)
       throws IOException {
     Set<ChunkData> allChunkData = new HashSet<>();
     for (Map.Entry<Integer, List<AlignedChunkData>> entry : pageIndex2ChunkData.entrySet()) {
       for (AlignedChunkData alignedChunkData : entry.getValue()) {
         if (!allChunkData.contains(alignedChunkData)) {
           alignedChunkData.addValueChunk(header);
-          alignedChunkData.writeEntireChunk(ByteBuffer.allocate(0), chunkMetadata);
+          if (!isTimeChunkNeedDecode) {
+            alignedChunkData.writeEntireChunk(ByteBuffer.allocate(0), chunkMetadata);
+          }
           allChunkData.add(alignedChunkData);
         }
       }
