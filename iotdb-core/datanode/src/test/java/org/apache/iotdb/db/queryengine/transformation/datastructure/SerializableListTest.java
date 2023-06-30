@@ -17,24 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.query;
+package org.apache.iotdb.db.queryengine.transformation.datastructure;
 
-import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.db.service.TemporaryQueryDataFileService;
 
-public class QueryProcessException extends IoTDBException {
+public abstract class SerializableListTest {
 
-  private static final long serialVersionUID = -683191083844850054L;
+  protected static final int ITERATION_TIMES =
+      10000; // make sure serialize() & deserialize() can be triggered
 
-  public QueryProcessException(String message) {
-    super(message, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
+  protected static final float MEMORY_USAGE_LIMIT_IN_MB = 100f;
+  protected static final int CACHE_SIZE = 3;
+
+  protected static final String QUERY_ID = String.valueOf(0);
+
+  protected static final int INTERNAL_ROW_RECORD_LIST_CAPACITY = 8;
+
+  public void setUp() throws Exception {
+    TemporaryQueryDataFileService.getInstance().start();
   }
 
-  public QueryProcessException(String message, int errorCode) {
-    super(message, errorCode);
-  }
-
-  public QueryProcessException(IoTDBException e) {
-    super(e, e.getErrorCode(), e.isUserException());
+  public void tearDown() {
+    TemporaryQueryDataFileService.getInstance().stop();
   }
 }
