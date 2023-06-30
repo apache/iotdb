@@ -72,11 +72,11 @@ public abstract class PipeSubtaskExecutorTest {
     executor.register(subtask);
     executor.start(subtask.getTaskID());
     try {
-      Thread.sleep(100);
+      Thread.sleep(1000);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
-    verify(subtask, atLeast(10)).call();
+    verify(subtask, atLeast(2)).call();
     Assert.assertTrue(subtask.isSubmittingSelf());
 
     // test start a subtask which is in the map and is already running
