@@ -142,7 +142,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
         throw new FragmentInstanceDispatchException(loadResp.status);
       }
     } catch (ClientManagerException | TException e) {
-      String warning = "Can't connect to node {}";
+      String warning = NODE_CONNECTION_ERROR;
       logger.warn(warning, endPoint, e);
       TSStatus status = new TSStatus();
       status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
@@ -161,7 +161,7 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
         throw new FragmentInstanceDispatchException(loadResp.status);
       }
     } catch (ClientManagerException | TException e) {
-      logger.warn("can't connect to node {}", endPoint, e);
+      logger.warn(NODE_CONNECTION_ERROR, endPoint, e);
       TSStatus status = new TSStatus();
       status.setCode(TSStatusCode.DISPATCH_ERROR.getStatusCode());
       status.setMessage(
