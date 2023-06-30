@@ -45,7 +45,6 @@ import static org.apache.iotdb.commons.udf.builtin.UDTFM4.WINDOW_SIZE_KEY;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.itbase.constant.TestConstant.DEVICE;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
-import static org.apache.iotdb.itbase.constant.TestConstant.count;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -53,7 +52,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBUDTFBuiltinScalarFunctionIT {
+public class IoTDBUDTFBuiltinFunctionIT {
 
   private static final String[] INSERTION_SQLS = {
     "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7, s8) values (0, 0, 0, 0, 0, true, '0', 0, 0)",
