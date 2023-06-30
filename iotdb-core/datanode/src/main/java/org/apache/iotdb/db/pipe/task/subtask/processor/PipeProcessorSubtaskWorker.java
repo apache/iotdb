@@ -49,14 +49,14 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
   @SuppressWarnings("squid:S2189")
   public void runMayThrow() {
     while (true) {
-      cleanupClosedSubtasks();
+      cleanupClosedSubtasksIfNecessary();
       final boolean canSleepBeforeNextRound = runSubtasks();
       sleepIfNecessary(canSleepBeforeNextRound);
       adjustSleepingTimeIfNecessary();
     }
   }
 
-  private void cleanupClosedSubtasks() {
+  private void cleanupClosedSubtasksIfNecessary() {
     if (++closedSubtaskCleanupRoundCounter % CLOSED_SUBTASK_CLEANUP_ROUND_INTERVAL == 0) {
       subtasks.keySet().stream()
           .filter(PipeProcessorSubtask::isClosed)
@@ -115,11 +115,11 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
       final double workingRatioInAdjustmentInterval =
           (double) workingRoundInAdjustmentInterval / totalRoundInAdjustmentInterval;
 
-      if (0.25 < workingRatioInAdjustmentInterval) {
+      if (0.25 <= workingRatioInAdjustmentInterval) {
         sleepingTimeInMilliSecond = Math.max(1, sleepingTimeInMilliSecond / 2);
       }
 
-      if (workingRatioInAdjustmentInterval < 0.05) {
+      if (workingRatioInAdjustmentInterval <= 0.05) {
         sleepingTimeInMilliSecond = Math.min(1000, sleepingTimeInMilliSecond * 2);
       }
 
