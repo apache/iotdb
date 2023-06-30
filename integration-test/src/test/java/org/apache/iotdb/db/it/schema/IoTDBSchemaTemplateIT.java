@@ -800,4 +800,32 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       Assert.assertTrue(expectedResult.isEmpty());
     }
   }
+
+  @Test
+  public void testAlterTemplateTimeseries() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d1;");
+      statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.d1;");
+      try {
+        statement.execute(
+            "ALTER timeseries root.sg1.d1.s1 UPSERT tags(s0_tag1=s0_tag1, s0_tag2=s0_tag2) attributes(s0_attr1=s0_attr1, s0_attr2=s0_attr2);");
+        Assert.fail("expect exception because the template timeseries does not support tag");
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage()
+                .contains(
+                    "Cannot alter template timeseries [root.sg1.d1.s1] since schema template [t1] already set on path [root.sg1.d1]"));
+      }
+      try {
+        statement.execute("ALTER timeseries root.sg1.d1.s1 UPSERT ALIAS=s0Alias;");
+        Assert.fail("expect exception because the template timeseries does not support alias");
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage()
+                .contains(
+                    "Cannot alter template timeseries [root.sg1.d1.s1] since schema template [t1] already set on path [root.sg1.d1]"));
+      }
+    }
+  }
 }
