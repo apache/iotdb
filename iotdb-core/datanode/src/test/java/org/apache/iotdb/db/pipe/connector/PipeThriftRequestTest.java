@@ -25,15 +25,21 @@ import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferInsertNodeReq;
+import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferTabletReq;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class PipeThriftRequestTest {
 
@@ -71,6 +77,51 @@ public class PipeThriftRequestTest {
     Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
 
     Assert.assertEquals(req.getInsertNode(), deserializeReq.getInsertNode());
+
+    Statement statement = req.constructStatement();
+    List<PartialPath> paths = new ArrayList<>();
+    paths.add(new PartialPath(new String[] {"root", "sg", "d", "s"}));
+    Assert.assertEquals(statement.getPaths(), paths);
+  }
+
+  @Test
+  public void testPipeTransferTabletReq() {
+    try {
+      List<MeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("s1", TSDataType.INT32));
+      schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
+      schemaList.add(new MeasurementSchema("s3", TSDataType.FLOAT));
+      schemaList.add(new MeasurementSchema("s4", TSDataType.DOUBLE));
+      schemaList.add(new MeasurementSchema("s5", TSDataType.BOOLEAN));
+      schemaList.add(new MeasurementSchema("s6", TSDataType.TEXT));
+      Tablet t = new Tablet("root.sg.d", schemaList, 1024);
+      t.rowSize = 2;
+      t.addTimestamp(0, 2000);
+      t.addTimestamp(1, 1000);
+      t.addValue("s1", 0, 2);
+      t.addValue("s6", 0, "2");
+      t.addValue("s1", 1, 1);
+      t.addValue("s6", 1, "1");
+      PipeTransferTabletReq req = PipeTransferTabletReq.toTPipeTransferReq(t, false);
+      PipeTransferTabletReq deserializeReq = PipeTransferTabletReq.fromTPipeTransferReq(req);
+
+      Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
+      Assert.assertEquals(req.getType(), deserializeReq.getType());
+      Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
+
+      Statement statement =
+          req.constructStatement(); // will call PipeTransferTabletReq.sortTablet() here
+      List<PartialPath> paths = new ArrayList<>();
+      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s1"}));
+      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s2"}));
+      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s3"}));
+      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s4"}));
+      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s5"}));
+      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s6"}));
+      Assert.assertEquals(statement.getPaths(), paths);
+    } catch (IOException e) {
+      Assert.fail();
+    }
   }
 
   @Test

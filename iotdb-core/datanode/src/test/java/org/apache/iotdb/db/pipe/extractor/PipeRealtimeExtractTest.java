@@ -27,6 +27,8 @@ import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfig
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionHybridExtractor;
+import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionLogExtractor;
+import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionTsFileExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -102,12 +104,11 @@ public class PipeRealtimeExtractTest {
   public void testRealtimeExtractProcess() {
     // set up realtime extractor
 
-    try (PipeRealtimeDataRegionHybridExtractor extractor1 =
-            new PipeRealtimeDataRegionHybridExtractor();
+    try (PipeRealtimeDataRegionLogExtractor extractor1 = new PipeRealtimeDataRegionLogExtractor();
         PipeRealtimeDataRegionHybridExtractor extractor2 =
             new PipeRealtimeDataRegionHybridExtractor();
-        PipeRealtimeDataRegionHybridExtractor extractor3 =
-            new PipeRealtimeDataRegionHybridExtractor();
+        PipeRealtimeDataRegionTsFileExtractor extractor3 =
+            new PipeRealtimeDataRegionTsFileExtractor();
         PipeRealtimeDataRegionHybridExtractor extractor4 =
             new PipeRealtimeDataRegionHybridExtractor()) {
 
