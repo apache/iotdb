@@ -127,7 +127,7 @@
         <maven.compiler.target>1.8</maven.compiler.target>
         <maven.assembly.version>3.1.0</maven.assembly.version>
         <scala.library.version>2.12</scala.library.version>
-        <scala.version>2.12.10</scala.version>
+        <scala.version>2.12.18</scala.version>
         <hadoop2.version>2.10.1</hadoop2.version>
         <hive2.version>2.3.6</hive2.version>
         <junit.version>4.13.2</junit.version>
