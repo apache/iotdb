@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.impl.pipe.runtime;
+package org.apache.iotdb.confignode.procedure.impl.sync;
 
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -31,21 +31,19 @@ import java.nio.ByteBuffer;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class PipeHandleMetaChangeProcedureTest {
-
+public class DropPipeProcedureTest {
   @Test
   public void serializeDeserializeTest() throws IOException {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
-    PipeHandleMetaChangeProcedure proc = new PipeHandleMetaChangeProcedure(true, false);
+    DropPipeProcedure proc = new DropPipeProcedure();
 
     try {
       proc.serialize(outputStream);
       ByteBuffer buffer =
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-      PipeHandleMetaChangeProcedure proc2 =
-          (PipeHandleMetaChangeProcedure) ProcedureFactory.getInstance().create(buffer);
+      DropPipeProcedure proc2 = (DropPipeProcedure) ProcedureFactory.getInstance().create(buffer);
 
       assertEquals(proc, proc2);
     } catch (Exception e) {

@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.node;
+package org.apache.iotdb.confignode.manager.load.cache;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.confignode.manager.load.cache.node.ConfigNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.DataNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
@@ -55,6 +56,7 @@ public class NodeCacheTest {
 
   @Test
   public void periodicUpdateTest() {
+    // Test DataNode heartbeat cache
     DataNodeHeartbeatCache dataNodeHeartbeatCache = new DataNodeHeartbeatCache(1);
     long currentTime = System.currentTimeMillis();
     dataNodeHeartbeatCache.cacheHeartbeatSample(
@@ -63,5 +65,14 @@ public class NodeCacheTest {
     Assert.assertTrue(dataNodeHeartbeatCache.periodicUpdate());
     Assert.assertEquals(NodeStatus.Running, dataNodeHeartbeatCache.getNodeStatus());
     Assert.assertEquals(0, dataNodeHeartbeatCache.getLoadScore());
+
+    // Test ConfigNode heartbeat cache
+    ConfigNodeHeartbeatCache configNodeHeartbeatCache = new ConfigNodeHeartbeatCache(2);
+    currentTime = System.currentTimeMillis();
+    configNodeHeartbeatCache.cacheHeartbeatSample(
+        new NodeHeartbeatSample(currentTime, currentTime));
+    Assert.assertTrue(configNodeHeartbeatCache.periodicUpdate());
+    Assert.assertEquals(NodeStatus.Running, configNodeHeartbeatCache.getNodeStatus());
+    Assert.assertEquals(0, configNodeHeartbeatCache.getLoadScore());
   }
 }
