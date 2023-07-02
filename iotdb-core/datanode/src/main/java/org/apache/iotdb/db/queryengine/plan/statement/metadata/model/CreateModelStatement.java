@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata.model;
 
-import org.apache.iotdb.common.rpc.thrift.ModelTask;
+import org.apache.iotdb.common.rpc.thrift.TaskType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
@@ -32,15 +32,18 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.commons.model.ModelInformation.MODEL_TYPE;
+import static org.apache.iotdb.commons.model.ModelInformation.TASK_TYPE;
+
 public class CreateModelStatement extends Statement implements IConfigStatement {
 
   private String modelId;
 
-  private Map<String, String> modelOptions;
+  private Map<String, String> options;
 
-  private Map<String, String> hyperParameters;
+  private Map<String, String> hyperparameters;
 
-  private QueryStatement queryBody;
+  private QueryStatement datasetStatement;
 
   public CreateModelStatement() {
     // do nothing
@@ -54,44 +57,53 @@ public class CreateModelStatement extends Statement implements IConfigStatement 
     this.modelId = modelId;
   }
 
-  public Map<String, String> getModelOptions() {
-    return modelOptions;
+  public Map<String, String> getOptions() {
+    return options;
   }
 
-  public void setModelOptions(Map<String, String> modelOptions) {
-    this.modelOptions = modelOptions;
+  public void setOptions(Map<String, String> options) {
+    this.options = options;
   }
 
-  public Map<String, String> getHyperParameters() {
-    return hyperParameters;
+  public Map<String, String> getHyperparameters() {
+    return hyperparameters;
   }
 
-  public void setHyperParameters(Map<String, String> hyperParameters) {
-    this.hyperParameters = hyperParameters;
+  public void setHyperparameters(Map<String, String> hyperparameters) {
+    this.hyperparameters = hyperparameters;
   }
 
-  public QueryStatement getQueryBody() {
-    return queryBody;
+  public QueryStatement getDatasetStatement() {
+    return datasetStatement;
   }
 
-  public void setQueryBody(QueryStatement queryBody) {
-    this.queryBody = queryBody;
+  public void setDatasetStatement(QueryStatement queryBody) {
+    this.datasetStatement = queryBody;
   }
 
-  public ModelTask getModelTask() {
-    return ModelTask.valueOf(modelOptions.get("model_task").toUpperCase());
+  public TaskType getTaskType() {
+    return TaskType.valueOf(options.get("task_type").toUpperCase());
   }
 
   public String getModelType() {
-    return modelOptions.get("model_type");
+    return options.get("model_type");
   }
 
   public void semanticCheck() {
-    if (!modelOptions.containsKey("model_task")) {
-      throw new SemanticException("The attribute `model_task` must be specified.");
+    if (!options.containsKey(TASK_TYPE)) {
+      throw new SemanticException("The attribute `" + TASK_TYPE + "` must be specified.");
     }
-    if (!modelOptions.containsKey("model_type")) {
-      throw new SemanticException("The attribute `model_type` must be specified.");
+    if (!options.containsKey(MODEL_TYPE)) {
+      throw new SemanticException("The attribute `" + MODEL_TYPE + "` must be specified.");
+    }
+    if (datasetStatement.isAlignByDevice()) {
+      throw new SemanticException("");
+    }
+    if (datasetStatement.isLastQuery()) {
+      throw new SemanticException("");
+    }
+    if (datasetStatement.isAggregationQuery() && !datasetStatement.isGroupByTime()) {
+      throw new SemanticException("");
     }
   }
 

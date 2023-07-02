@@ -19,11 +19,9 @@
 
 package org.apache.iotdb.commons.model;
 
-import org.apache.iotdb.common.rpc.thrift.ModelTask;
+import org.apache.iotdb.common.rpc.thrift.TaskType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import javax.annotation.Nullable;
 
 import java.io.DataOutputStream;
 import java.io.FileOutputStream;
@@ -32,6 +30,7 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class ForecastModeInformation extends ModelInformation {
 
@@ -42,17 +41,23 @@ public class ForecastModeInformation extends ModelInformation {
   private final int inputLength;
   private final int predictLength;
 
+  public static final String INPUT_TYPE_LIST = "input_type_list";
+  public static final String PREDICT_INDEX_LIST = "predict_index_list";
+  public static final String INPUT_LENGTH = "input_length";
+  public static final String PREDICT_LENGTH = "predict_length";
+
+  public static final String DEFAULT_INPUT_LENGTH = "96";
+  public static final String DEFAULT_PREDICT_LENGTH = "96";
+
   public ForecastModeInformation(
       String modelId,
-      String modelType,
-      boolean isAuto,
-      List<String> queryExpressions,
-      @Nullable String queryFilter,
+      Map<String, String> options,
+      String datasetFetchSQL,
       List<TSDataType> inputTypeList,
       List<Integer> predictIndexList,
       int inputLength,
       int predictLength) {
-    super(ModelTask.FORECAST, modelId, modelType, isAuto, queryExpressions, queryFilter);
+    super(modelId, options, datasetFetchSQL);
     this.inputTypeList = inputTypeList;
     this.predictIndexList = predictIndexList;
     this.inputLength = inputLength;
@@ -60,7 +65,7 @@ public class ForecastModeInformation extends ModelInformation {
   }
 
   public ForecastModeInformation(ByteBuffer buffer) {
-    super(ModelTask.FORECAST, buffer);
+    super(buffer);
     int listSize = ReadWriteIOUtils.readInt(buffer);
     this.inputTypeList = new ArrayList<>(listSize);
     for (int i = 0; i < listSize; i++) {
@@ -76,7 +81,7 @@ public class ForecastModeInformation extends ModelInformation {
   }
 
   public ForecastModeInformation(InputStream stream) throws IOException {
-    super(ModelTask.FORECAST, stream);
+    super(stream);
     int listSize = ReadWriteIOUtils.readInt(stream);
     this.inputTypeList = new ArrayList<>(listSize);
     for (int i = 0; i < listSize; i++) {
@@ -89,6 +94,10 @@ public class ForecastModeInformation extends ModelInformation {
     }
     this.inputLength = ReadWriteIOUtils.readInt(stream);
     this.predictLength = ReadWriteIOUtils.readInt(stream);
+  }
+
+  public TaskType getTaskType() {
+    return TaskType.FORECAST;
   }
 
   public List<TSDataType> getInputTypeList() {
@@ -109,7 +118,10 @@ public class ForecastModeInformation extends ModelInformation {
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(TaskType.FORECAST.ordinal(), stream);
+
     super.serialize(stream);
+
     ReadWriteIOUtils.write(inputTypeList.size(), stream);
     for (TSDataType inputType : inputTypeList) {
       inputType.serializeTo(stream);
@@ -124,6 +136,8 @@ public class ForecastModeInformation extends ModelInformation {
 
   @Override
   public void serialize(FileOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(TaskType.FORECAST.ordinal(), stream);
+
     super.serialize(stream);
     ReadWriteIOUtils.write(inputTypeList.size(), stream);
     for (TSDataType inputType : inputTypeList) {

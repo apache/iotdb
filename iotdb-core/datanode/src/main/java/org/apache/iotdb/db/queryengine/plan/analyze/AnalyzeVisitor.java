@@ -412,31 +412,29 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     ModelInferenceFunction functionType =
         ModelInferenceFunction.valueOf(modelInferenceExpression.getFunctionName().toUpperCase());
-    switch (functionType) {
-      case FORECAST:
-        ForecastModelInferenceDescriptor modelInferenceDescriptor =
-            new ForecastModelInferenceDescriptor(
-                functionType, (ForecastModeInformation) modelInformation);
-        Map<String, String> modelInferenceAttributes =
-            modelInferenceExpression.getFunctionAttributes();
-        if (modelInferenceAttributes.containsKey("predict_length")) {
-          modelInferenceDescriptor.setExpectedPredictLength(
-              Integer.parseInt(modelInferenceAttributes.get("predict_length")));
-        }
-        analysis.setModelInferenceDescriptor(modelInferenceDescriptor);
+    if (functionType == FORECAST) {
+      ForecastModelInferenceDescriptor modelInferenceDescriptor =
+          new ForecastModelInferenceDescriptor(
+              functionType, (ForecastModeInformation) modelInformation);
+      Map<String, String> modelInferenceAttributes =
+          modelInferenceExpression.getFunctionAttributes();
+      if (modelInferenceAttributes.containsKey("predict_length")) {
+        modelInferenceDescriptor.setExpectedPredictLength(
+            Integer.parseInt(modelInferenceAttributes.get("predict_length")));
+      }
+      analysis.setModelInferenceDescriptor(modelInferenceDescriptor);
 
-        List<ResultColumn> newResultColumns = new ArrayList<>();
-        for (Expression inputExpression : modelInferenceExpression.getExpressions()) {
-          newResultColumns.add(new ResultColumn(inputExpression, ResultColumn.ColumnType.RAW));
-        }
-        queryStatement.getSelectComponent().setResultColumns(newResultColumns);
+      List<ResultColumn> newResultColumns = new ArrayList<>();
+      for (Expression inputExpression : modelInferenceExpression.getExpressions()) {
+        newResultColumns.add(new ResultColumn(inputExpression));
+      }
+      queryStatement.getSelectComponent().setResultColumns(newResultColumns);
 
-        OrderByComponent descTimeOrder = new OrderByComponent();
-        descTimeOrder.addSortItem(new SortItem("TIME", Ordering.DESC));
-        queryStatement.setOrderByComponent(descTimeOrder);
-        break;
-      default:
-        throw new IllegalArgumentException("");
+      OrderByComponent descTimeOrder = new OrderByComponent();
+      descTimeOrder.addSortItem(new SortItem("TIME", Ordering.DESC));
+      queryStatement.setOrderByComponent(descTimeOrder);
+    } else {
+      throw new IllegalArgumentException("");
     }
   }
 

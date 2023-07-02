@@ -25,7 +25,7 @@ struct TCreateTrainingTaskReq {
   1: required string modelId
   2: required map<string, string> options
   3: required map<string, string> hyperparameters
-  4: required string queryBody
+  4: required string datasetFetchSQL
 }
 
 struct TDeleteModelReq {

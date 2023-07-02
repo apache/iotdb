@@ -86,17 +86,14 @@ public class MLNodeClient implements AutoCloseable {
   }
 
   public TSStatus createTrainingTask(
-      ModelInformation modelInformation, Map<String, String> modelConfigs) throws TException {
+      ModelInformation modelInformation, Map<String, String> hyperparameters) throws TException {
     try {
       TCreateTrainingTaskReq req =
           new TCreateTrainingTaskReq(
               modelInformation.getModelId(),
-              modelInformation.isAuto(),
-              modelConfigs,
-              modelInformation.getQueryExpressions());
-      if (modelInformation.getQueryFilter() != null) {
-        req.setQueryFilter(modelInformation.getQueryFilter());
-      }
+              modelInformation.getOptions(),
+              hyperparameters,
+              modelInformation.getDatasetFetchSQL());
       return client.createTrainingTask(req);
     } catch (TException e) {
       logger.warn(

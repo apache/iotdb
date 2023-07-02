@@ -151,8 +151,7 @@ public class StatementGenerator {
       fromComponent.addPrefixPath(path);
     }
     selectComponent.addResultColumn(
-        new ResultColumn(
-            new TimeSeriesOperand(new PartialPath("", false)), ResultColumn.ColumnType.RAW));
+        new ResultColumn(new TimeSeriesOperand(new PartialPath("", false))));
 
     // set query filter
     GreaterEqualExpression leftPredicate =
@@ -194,8 +193,7 @@ public class StatementGenerator {
       fromComponent.addPrefixPath(path);
     }
     selectComponent.addResultColumn(
-        new ResultColumn(
-            new TimeSeriesOperand(new PartialPath("", false)), ResultColumn.ColumnType.RAW));
+        new ResultColumn(new TimeSeriesOperand(new PartialPath("", false))));
 
     // set query filter
     WhereCondition whereCondition = new WhereCondition();
@@ -239,8 +237,7 @@ public class StatementGenerator {
               new FunctionExpression(
                   aggregations.get(i).toString(),
                   new LinkedHashMap<>(),
-                  Collections.singletonList(new TimeSeriesOperand(selectPaths.get(i)))),
-              ResultColumn.ColumnType.AGGREGATION));
+                  Collections.singletonList(new TimeSeriesOperand(selectPaths.get(i))))));
     }
     queryStatement.setSelectComponent(selectComponent);
 
@@ -875,8 +872,7 @@ public class StatementGenerator {
 
     SelectComponent selectComponent = new SelectComponent(zoneId);
     selectComponent.addResultColumn(
-        new ResultColumn(
-            new TimeSeriesOperand(new PartialPath("", false)), ResultColumn.ColumnType.RAW));
+        new ResultColumn(new TimeSeriesOperand(new PartialPath("", false))));
     queryStatement.setSelectComponent(selectComponent);
 
     if (fetchTimeseriesReq.isSetQueryFilter()) {

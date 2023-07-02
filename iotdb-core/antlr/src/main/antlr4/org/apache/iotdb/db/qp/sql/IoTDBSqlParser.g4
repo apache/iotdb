@@ -587,7 +587,7 @@ showPipePlugins
 createModel
     : CREATE MODEL modelId=identifier
         OPTIONS LR_BRACKET attributePair (COMMA attributePair)* RR_BRACKET
-        WITH HYPERPARAMETERS LR_BRACKET hparamPair (COMMA hparamPair)* RR_BRACKET
+        (WITH HYPERPARAMETERS LR_BRACKET hparamPair (COMMA hparamPair)* RR_BRACKET)?
         ON DATASET LR_BRACKET selectStatement RR_BRACKET
     ;
 

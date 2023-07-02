@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.confignode.manager;
 
-import org.apache.iotdb.common.rpc.thrift.ModelTask;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TaskType;
 import org.apache.iotdb.commons.model.ForecastModeInformation;
 import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.confignode.consensus.request.read.model.GetModelInfoPlan;
@@ -57,6 +57,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.model.ForecastModeInformation.DEFAULT_INPUT_LENGTH;
+import static org.apache.iotdb.commons.model.ForecastModeInformation.DEFAULT_PREDICT_LENGTH;
+import static org.apache.iotdb.commons.model.ForecastModeInformation.INPUT_LENGTH;
+import static org.apache.iotdb.commons.model.ForecastModeInformation.INPUT_TYPE_LIST;
+import static org.apache.iotdb.commons.model.ForecastModeInformation.PREDICT_INDEX_LIST;
+import static org.apache.iotdb.commons.model.ForecastModeInformation.PREDICT_LENGTH;
+
 public class ModelManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ModelManager.class);
@@ -74,41 +81,40 @@ public class ModelManager {
   }
 
   public TSStatus createModel(TCreateModelReq req) {
-    ModelTask modelTask = req.getModelTask();
-    Map<String, String> modelConfigs = req.getModelConfigs();
+    TaskType taskType = req.getTaskType();
+
+    Map<String, String> options = req.getOptions();
     ModelInformation modelInformation;
-    switch (modelTask) {
-      case FORECAST:
-        String inputTypeListStr = modelConfigs.get("input_type_list");
-        List<TSDataType> inputTypeList =
-            Arrays.stream(inputTypeListStr.split(","))
-                .sequential()
-                .map(s -> TSDataType.valueOf(s.toUpperCase()))
-                .collect(Collectors.toList());
+    if (taskType == TaskType.FORECAST) {
+      String inputTypeListStr = options.get(INPUT_TYPE_LIST);
+      List<TSDataType> inputTypeList =
+          Arrays.stream(inputTypeListStr.split(","))
+              .sequential()
+              .map(s -> TSDataType.valueOf(s.toUpperCase()))
+              .collect(Collectors.toList());
 
-        String predictIndexListStr = modelConfigs.get("predict_index_list");
-        List<Integer> predictIndexList =
-            Arrays.stream(predictIndexListStr.split(","))
-                .sequential()
-                .map(Integer::valueOf)
-                .collect(Collectors.toList());
+      String predictIndexListStr = options.get(PREDICT_INDEX_LIST);
+      List<Integer> predictIndexList =
+          Arrays.stream(predictIndexListStr.split(","))
+              .sequential()
+              .map(Integer::valueOf)
+              .collect(Collectors.toList());
 
-        modelInformation =
-            new ForecastModeInformation(
-                req.getModelId(),
-                req.getModelType(),
-                req.isIsAuto(),
-                req.getQueryExpressions(),
-                req.getQueryFilter(),
-                inputTypeList,
-                predictIndexList,
-                Integer.parseInt(modelConfigs.getOrDefault("input_length", "96")),
-                Integer.parseInt(modelConfigs.getOrDefault("predict_length", "96")));
-        break;
-      default:
-        throw new IllegalArgumentException("Invalid task type: " + modelTask);
+      modelInformation =
+          new ForecastModeInformation(
+              req.getModelId(),
+              req.getOptions(),
+              req.getDatasetFetchSQL(),
+              inputTypeList,
+              predictIndexList,
+              Integer.parseInt(options.getOrDefault(INPUT_LENGTH, DEFAULT_INPUT_LENGTH)),
+              Integer.parseInt(options.getOrDefault(PREDICT_LENGTH, DEFAULT_PREDICT_LENGTH)));
+    } else {
+      throw new IllegalArgumentException("Invalid task type: " + taskType);
     }
-    return configManager.getProcedureManager().createModel(modelInformation, modelConfigs);
+    return configManager
+        .getProcedureManager()
+        .createModel(modelInformation, req.getHyperparameters());
   }
 
   public TSStatus dropModel(TDropModelReq req) {

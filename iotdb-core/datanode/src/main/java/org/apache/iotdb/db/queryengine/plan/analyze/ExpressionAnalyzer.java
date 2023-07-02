@@ -48,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.CollectAggregatio
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.CollectSourceExpressionsVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.GetMeasurementExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.RemoveAliasFromExpressionVisitor;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.RemoveRootPrefixVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ReplaceRawPathWithGroupedPathVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForPredicateVisitor;
@@ -835,5 +836,9 @@ public class ExpressionAnalyzer {
     } else {
       throw new UnknownExpressionTypeException(expression.getExpressionType());
     }
+  }
+
+  public static Expression removeRootPrefix(Expression expression) {
+    return new RemoveRootPrefixVisitor().process(expression, null);
   }
 }

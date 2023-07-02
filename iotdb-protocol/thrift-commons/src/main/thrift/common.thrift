@@ -190,6 +190,7 @@ enum TrainingState {
   DROPPING
 }
 
-enum ModelTask {
-  FORECAST
+enum TaskType {
+  FORECAST,
+  ANOMALY_DETECTION,
 }

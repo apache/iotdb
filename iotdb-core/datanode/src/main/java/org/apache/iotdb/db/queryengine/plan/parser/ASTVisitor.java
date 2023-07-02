@@ -48,7 +48,6 @@ import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ShowFunctionsContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParserBaseVisitor;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowType;
-import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.AdditionExpression;
@@ -1222,16 +1221,17 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       modelOptions.put(
           parseAttributeKey(attribute.key).toLowerCase(), parseAttributeValue(attribute.value));
     }
-    createModelStatement.setModelOptions(modelOptions);
+    createModelStatement.setOptions(modelOptions);
 
     Map<String, String> hyperParameters = new HashMap<>();
     for (IoTDBSqlParser.HparamPairContext attribute : ctx.hparamPair()) {
       hyperParameters.put(
-              parseAttributeKey(attribute.hparamKey).toLowerCase(), parseHparamValue(attribute.hparamValue()));
+          parseAttributeKey(attribute.hparamKey).toLowerCase(),
+          parseHparamValue(attribute.hparamValue()));
     }
-    createModelStatement.setHyperParameters(hyperParameters);
+    createModelStatement.setHyperparameters(hyperParameters);
 
-    createModelStatement.setQueryBody(
+    createModelStatement.setDatasetStatement(
         (QueryStatement) visitSelectStatement(ctx.selectStatement()));
     return createModelStatement;
   }
@@ -1239,13 +1239,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private String parseHparamValue(IoTDBSqlParser.HparamValueContext ctx) {
     if (ctx.attributeValue() != null) {
       return parseAttributeValue(ctx.attributeValue());
-    } else if(ctx.hparamRange() != null) {
+    } else if (ctx.hparamRange() != null) {
       return parseAttributeValue(ctx.hparamRange().hparamRangeStart)
-              + ","
-              + parseAttributeValue(ctx.hparamRange().hparamRangeEnd);
-    } else if(ctx.hparamCandidates() != null) {
+          + ","
+          + parseAttributeValue(ctx.hparamRange().hparamRangeEnd);
+    } else if (ctx.hparamCandidates() != null) {
       List<String> candidates = new ArrayList<>();
-      for(IoTDBSqlParser.AttributeValueContext candidate : ctx.hparamCandidates().attributeValue()) {
+      for (IoTDBSqlParser.AttributeValueContext candidate :
+          ctx.hparamCandidates().attributeValue()) {
         candidates.add(parseAttributeValue(candidate));
       }
       return Arrays.toString(candidates.toArray());
@@ -1454,9 +1455,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (resultColumnContext.AS() != null) {
       alias = parseAlias(resultColumnContext.alias());
     }
-    ResultColumn.ColumnType columnType =
-        ExpressionAnalyzer.identifyOutputColumnType(expression, true);
-    return new ResultColumn(expression, alias, columnType);
+    return new ResultColumn(expression, alias);
   }
 
   // ---- From Clause

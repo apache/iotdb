@@ -110,6 +110,7 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -140,6 +141,10 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowSpace
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.quota.ShowThrottleQuotaTask;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.TransformToViewExpressionVisitor;
+import org.apache.iotdb.db.queryengine.plan.statement.component.FromComponent;
+import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
+import org.apache.iotdb.db.queryengine.plan.statement.component.SelectComponent;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
@@ -196,6 +201,8 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.trigger.api.Trigger;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.udf.api.UDTF;
 
@@ -226,7 +233,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.model.ForecastModeInformation.INPUT_TYPE_LIST;
+import static org.apache.iotdb.commons.model.ForecastModeInformation.PREDICT_INDEX_LIST;
 import static org.apache.iotdb.db.protocol.client.ConfigNodeClient.MSG_RECONNECTION_FAIL;
+import static org.apache.iotdb.db.schemaengine.SchemaConstant.ROOT;
 
 public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
@@ -2078,41 +2088,48 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> createModel(CreateModelStatement createModelStatement) {
     createModelStatement.semanticCheck();
 
+    QueryStatement datasetStatement = createModelStatement.getDatasetStatement();
     Analyzer analyzer = Analyzer.getAnalyzer();
-    Analysis analysis = analyzer.analyze(createModelStatement.getQueryStatement());
+    Analysis analysis = analyzer.analyze(datasetStatement);
 
-    List<String> queryExpressions = new ArrayList<>();
-    for (Expression expression : analysis.getSelectExpressions()) {
-      queryExpressions.add(expression.getExpressionString());
+    SelectComponent formattedSelect =
+        new SelectComponent(datasetStatement.getSelectComponent().getZoneId());
+    List<TSDataType> inputTypeList = new ArrayList<>();
+    for (Expression outputExpression :
+        analysis.getOutputExpressions().stream().map(Pair::getLeft).collect(Collectors.toList())) {
+      formattedSelect.addResultColumn(
+          new ResultColumn(ExpressionAnalyzer.removeRootPrefix(outputExpression)));
+      inputTypeList.add(analysis.getType(outputExpression));
     }
-    Expression whereExpression = analysis.getWhereExpression();
-    String queryFilter = whereExpression == null ? null : whereExpression.getExpressionString();
 
-    Map<String, String> modelConfigs = createModelStatement.getAttributes();
-    if (!modelConfigs.containsKey("input_type_list")) {
-      String inputTypeListStr = analysis.getRespDatasetHeader().getRespDataTypeList().toString();
-      modelConfigs.put(
-          "input_type_list", inputTypeListStr.substring(1, inputTypeListStr.length() - 1));
-    }
-    if (!modelConfigs.containsKey("predict_index_list")) {
-      StringBuilder predictIndexListStr = new StringBuilder("0");
-      for (int i = 1; i < analysis.getRespDatasetHeader().getOutputValueColumnCount(); i++) {
-        predictIndexListStr.append(",").append(i);
+    FromComponent fromRoot = new FromComponent();
+    fromRoot.addPrefixPath(new PartialPath(ROOT, false));
+    datasetStatement.setFromComponent(fromRoot);
+
+    String datesetFetchSQL = datasetStatement.constructFormattedSQL();
+
+    Map<String, String> options = createModelStatement.getOptions();
+    options.put(INPUT_TYPE_LIST, Arrays.toString(inputTypeList.toArray()));
+    if (!options.containsKey(PREDICT_INDEX_LIST)) {
+      List<Integer> predictIndexList = new ArrayList<>();
+      for (int i = 0; i < inputTypeList.size(); i++) {
+        predictIndexList.add(i);
       }
-      modelConfigs.put("predict_index_list", predictIndexListStr.toString());
+      options.put(PREDICT_INDEX_LIST, Arrays.toString(predictIndexList.toArray()));
     }
 
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TCreateModelReq createModelReq = new TCreateModelReq();
-      createModelReq.setModelId(createModelStatement.getModelId());
-      createModelReq.setModelTask(createModelStatement.getModelTask());
-      createModelReq.setModelType(createModelStatement.getModelType());
-      createModelReq.setIsAuto(createModelStatement.isAuto());
-      createModelReq.setQueryExpressions(queryExpressions);
-      createModelReq.setQueryFilter(queryFilter);
-      createModelReq.setModelConfigs(modelConfigs);
+      TCreateModelReq createModelReq =
+          new TCreateModelReq(
+              createModelStatement.getModelId(),
+              createModelStatement.getTaskType(),
+              createModelStatement.getModelType(),
+              createModelStatement.getOptions(),
+              createModelStatement.getHyperparameters(),
+              datesetFetchSQL);
+
       final TSStatus executionStatus = client.createModel(createModelReq);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
         LOGGER.warn(

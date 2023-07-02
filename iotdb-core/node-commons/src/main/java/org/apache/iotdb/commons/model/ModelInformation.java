@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.model;
 
-import org.apache.iotdb.common.rpc.thrift.ModelTask;
+import org.apache.iotdb.common.rpc.thrift.TaskType;
 import org.apache.iotdb.common.rpc.thrift.TrainingState;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -32,7 +32,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,56 +41,35 @@ import static org.apache.iotdb.commons.model.TrailInformation.MODEL_PATH;
 public abstract class ModelInformation {
 
   private final String modelId;
-  private final ModelTask modelTask;
-  private final String modelType;
 
-  private final List<String> queryExpressions;
-  @Nullable private String queryFilter;
+  private final Map<String, String> options;
+  private final String datasetFetchSQL;
 
-  private final boolean isAuto;
   private TrainingState trainingState;
 
   @Nullable private String bestTrailId;
   private final Map<String, TrailInformation> trailMap;
 
-  public ModelInformation(
-      ModelTask modelTask,
-      String modelId,
-      String modelType,
-      boolean isAuto,
-      List<String> queryExpressions,
-      @Nullable String queryFilter) {
+  public static final String TASK_TYPE = "task_type";
+  public static final String MODEL_TYPE = "model_type";
+
+  protected ModelInformation(String modelId, Map<String, String> options, String datasetFetchSQL) {
     this.modelId = modelId;
-    this.modelTask = modelTask;
-    this.modelType = modelType;
-    this.isAuto = isAuto;
+    this.options = options;
+    this.datasetFetchSQL = datasetFetchSQL;
     this.trainingState = TrainingState.PENDING;
-    this.queryExpressions = queryExpressions;
-    this.queryFilter = queryFilter;
     this.trailMap = new HashMap<>();
   }
 
-  public ModelInformation(ModelTask modelTask, ByteBuffer buffer) {
-    this.modelTask = modelTask;
-
+  protected ModelInformation(ByteBuffer buffer) {
     this.modelId = ReadWriteIOUtils.readString(buffer);
-    this.modelType = ReadWriteIOUtils.readString(buffer);
 
-    int listSize = ReadWriteIOUtils.readInt(buffer);
-    this.queryExpressions = new ArrayList<>(listSize);
-    for (int i = 0; i < listSize; i++) {
-      this.queryExpressions.add(ReadWriteIOUtils.readString(buffer));
-    }
+    this.options = ReadWriteIOUtils.readMap(buffer);
+    this.datasetFetchSQL = ReadWriteIOUtils.readString(buffer);
 
-    byte isNull = ReadWriteIOUtils.readByte(buffer);
-    if (isNull == 1) {
-      this.queryFilter = ReadWriteIOUtils.readString(buffer);
-    }
-
-    this.isAuto = ReadWriteIOUtils.readBool(buffer);
     this.trainingState = TrainingState.findByValue(ReadWriteIOUtils.readInt(buffer));
 
-    isNull = ReadWriteIOUtils.readByte(buffer);
+    byte isNull = ReadWriteIOUtils.readByte(buffer);
     if (isNull == 1) {
       this.bestTrailId = ReadWriteIOUtils.readString(buffer);
     }
@@ -104,27 +82,15 @@ public abstract class ModelInformation {
     }
   }
 
-  public ModelInformation(ModelTask modelTask, InputStream stream) throws IOException {
-    this.modelTask = modelTask;
-
+  protected ModelInformation(InputStream stream) throws IOException {
     this.modelId = ReadWriteIOUtils.readString(stream);
-    this.modelType = ReadWriteIOUtils.readString(stream);
 
-    int listSize = ReadWriteIOUtils.readInt(stream);
-    this.queryExpressions = new ArrayList<>(listSize);
-    for (int i = 0; i < listSize; i++) {
-      this.queryExpressions.add(ReadWriteIOUtils.readString(stream));
-    }
+    this.options = ReadWriteIOUtils.readMap(stream);
+    this.datasetFetchSQL = ReadWriteIOUtils.readString(stream);
 
-    byte isNull = ReadWriteIOUtils.readByte(stream);
-    if (isNull == 1) {
-      this.queryFilter = ReadWriteIOUtils.readString(stream);
-    }
-
-    this.isAuto = ReadWriteIOUtils.readBool(stream);
     this.trainingState = TrainingState.findByValue(ReadWriteIOUtils.readInt(stream));
 
-    isNull = ReadWriteIOUtils.readByte(stream);
+    byte isNull = ReadWriteIOUtils.readByte(stream);
     if (isNull == 1) {
       this.bestTrailId = ReadWriteIOUtils.readString(stream);
     }
@@ -137,21 +103,22 @@ public abstract class ModelInformation {
     }
   }
 
+  public abstract TaskType getTaskType();
+
   public String getModelId() {
     return modelId;
   }
 
-  public boolean isAuto() {
-    return isAuto;
+  private String getModelType() {
+    return options.get(MODEL_TYPE);
   }
 
-  public List<String> getQueryExpressions() {
-    return queryExpressions;
+  public Map<String, String> getOptions() {
+    return options;
   }
 
-  @Nullable
-  public String getQueryFilter() {
-    return queryFilter;
+  public String getDatasetFetchSQL() {
+    return datasetFetchSQL;
   }
 
   public boolean available() {
@@ -202,23 +169,11 @@ public abstract class ModelInformation {
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(modelTask.ordinal(), stream);
-
     ReadWriteIOUtils.write(modelId, stream);
-    ReadWriteIOUtils.write(modelType, stream);
-    ReadWriteIOUtils.write(queryExpressions.size(), stream);
-    for (String queryExpression : queryExpressions) {
-      ReadWriteIOUtils.write(queryExpression, stream);
-    }
 
-    if (queryFilter == null) {
-      ReadWriteIOUtils.write((byte) 0, stream);
-    } else {
-      ReadWriteIOUtils.write((byte) 1, stream);
-      ReadWriteIOUtils.write(queryFilter, stream);
-    }
+    ReadWriteIOUtils.write(options, stream);
+    ReadWriteIOUtils.write(datasetFetchSQL, stream);
 
-    ReadWriteIOUtils.write(isAuto, stream);
     ReadWriteIOUtils.write(trainingState.ordinal(), stream);
 
     if (bestTrailId == null) {
@@ -235,24 +190,11 @@ public abstract class ModelInformation {
   }
 
   public void serialize(FileOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(modelTask.ordinal(), stream);
-
     ReadWriteIOUtils.write(modelId, stream);
-    ReadWriteIOUtils.write(modelType, stream);
 
-    ReadWriteIOUtils.write(queryExpressions.size(), stream);
-    for (String queryExpression : queryExpressions) {
-      ReadWriteIOUtils.write(queryExpression, stream);
-    }
+    ReadWriteIOUtils.write(options, stream);
+    ReadWriteIOUtils.write(datasetFetchSQL, stream);
 
-    if (queryFilter == null) {
-      ReadWriteIOUtils.write((byte) 0, stream);
-    } else {
-      ReadWriteIOUtils.write((byte) 1, stream);
-      ReadWriteIOUtils.write(queryFilter, stream);
-    }
-
-    ReadWriteIOUtils.write(isAuto, stream);
     ReadWriteIOUtils.write(trainingState.ordinal(), stream);
 
     if (bestTrailId == null) {
@@ -269,40 +211,36 @@ public abstract class ModelInformation {
   }
 
   public static ModelInformation deserialize(ByteBuffer buffer) {
-    ModelTask modelTask = ModelTask.findByValue(ReadWriteIOUtils.readInt(buffer));
+    TaskType modelTask = TaskType.findByValue(ReadWriteIOUtils.readInt(buffer));
     if (modelTask == null) {
       throw new IllegalArgumentException();
     }
 
-    switch (modelTask) {
-      case FORECAST:
-        return new ForecastModeInformation(buffer);
-      default:
-        throw new IllegalArgumentException("Invalid task type: " + modelTask);
+    if (modelTask == TaskType.FORECAST) {
+      return new ForecastModeInformation(buffer);
     }
+    throw new IllegalArgumentException("Invalid task type: " + modelTask);
   }
 
   public static ModelInformation deserialize(InputStream stream) throws IOException {
-    ModelTask modelTask = ModelTask.findByValue(ReadWriteIOUtils.readInt(stream));
+    TaskType modelTask = TaskType.findByValue(ReadWriteIOUtils.readInt(stream));
     if (modelTask == null) {
       throw new IllegalArgumentException();
     }
 
-    switch (modelTask) {
-      case FORECAST:
-        return new ForecastModeInformation(stream);
-      default:
-        throw new IllegalArgumentException("Invalid task type: " + modelTask);
+    if (modelTask == TaskType.FORECAST) {
+      return new ForecastModeInformation(stream);
     }
+    throw new IllegalArgumentException("Invalid task type: " + modelTask);
   }
 
   public ByteBuffer serializeShowModelResult() throws IOException {
     PublicBAOS buffer = new PublicBAOS();
     DataOutputStream stream = new DataOutputStream(buffer);
     ReadWriteIOUtils.write(modelId, stream);
-    ReadWriteIOUtils.write(modelTask.toString(), stream);
-    ReadWriteIOUtils.write(modelType, stream);
-    ReadWriteIOUtils.write(Arrays.toString(queryExpressions.toArray(new String[0])), stream);
+    ReadWriteIOUtils.write(getTaskType().toString(), stream);
+    ReadWriteIOUtils.write(getModelType(), stream);
+    ReadWriteIOUtils.write(datasetFetchSQL, stream);
     ReadWriteIOUtils.write(trainingState.toString(), stream);
 
     if (bestTrailId != null) {

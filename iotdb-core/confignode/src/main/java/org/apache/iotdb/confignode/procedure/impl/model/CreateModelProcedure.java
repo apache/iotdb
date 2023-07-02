@@ -52,16 +52,17 @@ public class CreateModelProcedure extends AbstractNodeProcedure<CreateModelState
   private static final int RETRY_THRESHOLD = 1;
 
   private ModelInformation modelInformation;
-  private Map<String, String> modelConfigs;
+  private Map<String, String> hyperparameters;
 
   public CreateModelProcedure() {
     super();
   }
 
-  public CreateModelProcedure(ModelInformation modelInformation, Map<String, String> modelConfigs) {
+  public CreateModelProcedure(
+      ModelInformation modelInformation, Map<String, String> hyperparameters) {
     super();
     this.modelInformation = modelInformation;
-    this.modelConfigs = modelConfigs;
+    this.hyperparameters = hyperparameters;
   }
 
   @Override
@@ -107,7 +108,7 @@ public class CreateModelProcedure extends AbstractNodeProcedure<CreateModelState
           LOGGER.info("Start to train model [{}] on ML Node", modelInformation.getModelId());
 
           try (MLNodeClient client = new MLNodeClient()) {
-            TSStatus status = client.createTrainingTask(modelInformation, modelConfigs);
+            TSStatus status = client.createTrainingTask(modelInformation, hyperparameters);
             if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               throw new TException(status.getMessage());
             }
@@ -195,14 +196,14 @@ public class CreateModelProcedure extends AbstractNodeProcedure<CreateModelState
     stream.writeShort(ProcedureType.CREATE_MODEL_PROCEDURE.getTypeCode());
     super.serialize(stream);
     modelInformation.serialize(stream);
-    ReadWriteIOUtils.write(modelConfigs, stream);
+    ReadWriteIOUtils.write(hyperparameters, stream);
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     modelInformation = ModelInformation.deserialize(byteBuffer);
-    modelConfigs = ReadWriteIOUtils.readMap(byteBuffer);
+    hyperparameters = ReadWriteIOUtils.readMap(byteBuffer);
   }
 
   @Override
@@ -212,13 +213,13 @@ public class CreateModelProcedure extends AbstractNodeProcedure<CreateModelState
       return thatProc.getProcId() == this.getProcId()
           && thatProc.getState() == this.getState()
           && thatProc.modelInformation.equals(this.modelInformation)
-          && thatProc.modelConfigs.equals(this.modelConfigs);
+          && thatProc.hyperparameters.equals(this.hyperparameters);
     }
     return false;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(getProcId(), getState(), modelInformation, modelConfigs);
+    return Objects.hash(getProcId(), getState(), modelInformation, hyperparameters);
   }
 }
