@@ -35,9 +35,12 @@ import java.util.Map;
 public class CreateModelStatement extends Statement implements IConfigStatement {
 
   private String modelId;
-  private boolean isAuto;
-  private Map<String, String> attributes;
-  private QueryStatement queryStatement;
+
+  private Map<String, String> modelOptions;
+
+  private Map<String, String> hyperParameters;
+
+  private QueryStatement queryBody;
 
   public CreateModelStatement() {
     // do nothing
@@ -51,43 +54,43 @@ public class CreateModelStatement extends Statement implements IConfigStatement 
     this.modelId = modelId;
   }
 
-  public boolean isAuto() {
-    return isAuto;
+  public Map<String, String> getModelOptions() {
+    return modelOptions;
   }
 
-  public void setAuto(boolean auto) {
-    isAuto = auto;
+  public void setModelOptions(Map<String, String> modelOptions) {
+    this.modelOptions = modelOptions;
   }
 
-  public Map<String, String> getAttributes() {
-    return attributes;
+  public Map<String, String> getHyperParameters() {
+    return hyperParameters;
   }
 
-  public void setAttributes(Map<String, String> attributes) {
-    this.attributes = attributes;
+  public void setHyperParameters(Map<String, String> hyperParameters) {
+    this.hyperParameters = hyperParameters;
   }
 
-  public QueryStatement getQueryStatement() {
-    return queryStatement;
+  public QueryStatement getQueryBody() {
+    return queryBody;
   }
 
-  public void setQueryStatement(QueryStatement queryStatement) {
-    this.queryStatement = queryStatement;
+  public void setQueryBody(QueryStatement queryBody) {
+    this.queryBody = queryBody;
   }
 
   public ModelTask getModelTask() {
-    return ModelTask.valueOf(attributes.get("model_task").toUpperCase());
+    return ModelTask.valueOf(modelOptions.get("model_task").toUpperCase());
   }
 
   public String getModelType() {
-    return attributes.get("model_type");
+    return modelOptions.get("model_type");
   }
 
   public void semanticCheck() {
-    if (!attributes.containsKey("model_task")) {
+    if (!modelOptions.containsKey("model_task")) {
       throw new SemanticException("The attribute `model_task` must be specified.");
     }
-    if (!attributes.containsKey("model_type")) {
+    if (!modelOptions.containsKey("model_type")) {
       throw new SemanticException("The attribute `model_type` must be specified.");
     }
   }

@@ -85,10 +85,6 @@ ATTRIBUTES
     : A T T R I B U T E S
     ;
 
-AUTO
-    : A U T O
-    ;
-
 BEFORE
     : B E F O R E
     ;
@@ -192,6 +188,10 @@ DATANODEID
 DATANODES
 
     : D A T A N O D E S
+    ;
+
+DATASET
+    : D A T A S E T
     ;
 
 DEACTIVATE
@@ -312,6 +312,10 @@ GROUP
 
 HAVING
     : H A V I N G
+    ;
+
+HYPERPARAMETERS
+    : H Y P E R P A R A M E T E R S
     ;
 
 INDEX
@@ -436,6 +440,10 @@ OFFSET
 
 ON
     : O N
+    ;
+
+OPTIONS
+    : O P T I O N S
     ;
 
 ORDER

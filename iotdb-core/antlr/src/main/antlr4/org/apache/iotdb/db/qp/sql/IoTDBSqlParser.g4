@@ -585,11 +585,28 @@ showPipePlugins
 // ML Model =========================================================================================
 // ---- Create Model
 createModel
-    : CREATE AUTO? MODEL modelId=identifier
-        WITH attributePair (COMMA attributePair)*
-        BEGIN
-            selectStatement
-        END
+    : CREATE MODEL modelId=identifier
+        OPTIONS LR_BRACKET attributePair (COMMA attributePair)* RR_BRACKET
+        WITH HYPERPARAMETERS LR_BRACKET hparamPair (COMMA hparamPair)* RR_BRACKET
+        ON DATASET LR_BRACKET selectStatement RR_BRACKET
+    ;
+
+hparamPair
+    : hparamKey=attributeKey operator_eq hparamValue
+    ;
+
+hparamValue
+    : attributeValue
+    | hparamRange
+    | hparamCandidates
+    ;
+
+hparamRange
+    : LR_BRACKET hparamRangeStart=attributeValue COMMA hparamRangeEnd=attributeValue RR_BRACKET
+    ;
+
+hparamCandidates
+    : LS_BRACKET attributeValue (COMMA attributeValue)* RS_BRACKET
     ;
 
 // ---- Drop Model

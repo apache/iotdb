@@ -44,7 +44,6 @@ keyWords
     | AS
     | ASC
     | ATTRIBUTES
-    | AUTO
     | BEFORE
     | BEGIN
     | BLOCKED
@@ -70,13 +69,13 @@ keyWords
     | DATABASES
     | DATANODEID
     | DATANODES
+    | DATASET
     | DEACTIVATE
     | DEBUG
     | DELETE
     | DESC
     | DESCRIBE
     | DEVICE
-    | DEVICEID
     | DEVICES
     | DETAILS
     | DISABLE
@@ -100,6 +99,7 @@ keyWords
     | GRANT
     | GROUP
     | HAVING
+    | HYPERPARAMETERS
     | INDEX
     | INFO
     | INSERT
@@ -128,6 +128,7 @@ keyWords
     | OFF
     | OFFSET
     | ON
+    | OPTIONS
     | ORDER
     | ONSUCCESS
     | PARTITION
