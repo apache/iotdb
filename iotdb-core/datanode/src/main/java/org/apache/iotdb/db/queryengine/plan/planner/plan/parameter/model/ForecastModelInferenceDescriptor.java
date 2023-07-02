@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.planner.plan.parameter.model;
+package org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model;
 
 import org.apache.iotdb.commons.model.ForecastModeInformation;
 import org.apache.iotdb.commons.udf.builtin.ModelInferenceFunction;
@@ -32,8 +32,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
 
-import static org.apache.iotdb.db.constant.SqlConstant.MODEL_ID;
-import static org.apache.iotdb.db.constant.SqlConstant.PREDICT_LENGTH;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.MODEL_ID;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.PREDICT_LENGTH;
 
 public class ForecastModelInferenceDescriptor extends ModelInferenceDescriptor {
 

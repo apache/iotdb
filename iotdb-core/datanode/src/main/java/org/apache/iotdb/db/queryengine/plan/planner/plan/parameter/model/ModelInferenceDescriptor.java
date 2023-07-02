@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.planner.plan.parameter.model;
+package org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model;
 
 import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.udf.builtin.ModelInferenceFunction;
-import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;

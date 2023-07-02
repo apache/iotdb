@@ -74,6 +74,7 @@ public class FragmentInstanceManager {
   private final CounterStat failedInstances = new CounterStat();
 
   private final ExecutorService intoOperationExecutor;
+  private final ExecutorService modelInferenceExecutor;
 
   private static final QueryExecutionMetricSet QUERY_EXECUTION_METRIC_SET =
       QueryExecutionMetricSet.getInstance();

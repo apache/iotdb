@@ -17,14 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.operator.process.ml;
+package org.apache.iotdb.db.queryengine.execution.operator.process.ml;
 
-import org.apache.iotdb.db.client.MLNodeClient;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.exception.ModelInferenceProcessException;
-import org.apache.iotdb.db.mpp.execution.operator.Operator;
-import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.db.protocol.client.MLNodeClient;
+import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.mlnode.rpc.thrift.TForecastResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -49,7 +49,7 @@ import static com.google.common.util.concurrent.Futures.successfulAsList;
 
 public class ForecastOperator implements ProcessOperator {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ProcessOperator.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ForecastOperator.class);
 
   private final OperatorContext operatorContext;
   private final Operator child;
@@ -170,7 +170,7 @@ public class ForecastOperator implements ProcessOperator {
 
   private TsBlock modifyTimeColumn(TsBlock resultTsBlock) {
     long delta =
-        IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision().equals("ms")
+        CommonDescriptor.getInstance().getConfig().getTimestampPrecision().equals("ms")
             ? 1_000_000L
             : 1_000L;
 

@@ -102,6 +102,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQuery
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryUtil;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.UpdateLastCacheOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.UpdateViewPathLastCacheOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.ml.ForecastOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.CountGroupByLevelMergeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.CountGroupByLevelScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.CountMergeOperator;
@@ -178,6 +179,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TransformN
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ml.ForecastNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
@@ -201,6 +203,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OutputColumn;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ForecastModelInferenceDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -242,6 +245,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.calculateMaxAggregationResultSize;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.calculateMaxAggregationResultSizeForLastQuery;
+import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.getOutputColumnSizePerLine;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.initTimeRangeIterator;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
 
@@ -1622,7 +1626,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     int modelInputLength = forecastModelInferenceDescriptor.getModelInputLength();
     long timeValueColumnsSizePerLine = TimeColumn.SIZE_IN_BYTES_PER_POSITION;
     for (TSDataType dataType : inputTypeList) {
-      timeValueColumnsSizePerLine += getOutputColumnSizePerLine(dataType, new PartialPath());
+      timeValueColumnsSizePerLine += getOutputColumnSizePerLine(dataType);
     }
     long maxRetainedSize = timeValueColumnsSizePerLine * modelInputLength;
 

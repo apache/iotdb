@@ -38,7 +38,6 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
-import org.apache.iotdb.commons.service.metric.enums.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.udf.builtin.ModelInferenceFunction;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -83,6 +82,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimePa
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByVariationParameter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ForecastModelInferenceDescriptor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -94,6 +95,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.GroupBySessionCo
 import org.apache.iotdb.db.queryengine.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.component.GroupByVariationComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.component.IntoComponent;
+import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
@@ -194,6 +196,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ALLOWED_SCHEMA_PROPS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.DEADBAND;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.LOSS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.udf.builtin.ModelInferenceFunction.FORECAST;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DEVICE;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
@@ -202,6 +205,7 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils.const
 import static org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils.constructTargetMeasurement;
 import static org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils.constructTargetPath;
 import static org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.GetSourcePathsVisitor.getSourcePaths;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.MODEL_ID;
 
 /** This visitor is used to analyze each type of Statement and returns the {@link Analysis}. */
 public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> {

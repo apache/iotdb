@@ -51,7 +51,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static org.apache.iotdb.db.constant.SqlConstant.MODEL_ID;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.MODEL_ID;
 
 /**
  * Base class of SELECT statement.

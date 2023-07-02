@@ -29,6 +29,8 @@ import org.apache.iotdb.confignode.consensus.request.read.model.ShowTrailPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelStatePlan;
 import org.apache.iotdb.confignode.consensus.response.model.GetModelInfoResp;
+import org.apache.iotdb.confignode.consensus.response.model.ModelTableResp;
+import org.apache.iotdb.confignode.consensus.response.model.TrailTableResp;
 import org.apache.iotdb.confignode.persistence.ModelInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;

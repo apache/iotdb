@@ -32,6 +32,8 @@ import org.apache.iotdb.confignode.consensus.request.write.model.DropModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelStatePlan;
 import org.apache.iotdb.confignode.consensus.response.model.GetModelInfoResp;
+import org.apache.iotdb.confignode.consensus.response.model.ModelTableResp;
+import org.apache.iotdb.confignode.consensus.response.model.TrailTableResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
