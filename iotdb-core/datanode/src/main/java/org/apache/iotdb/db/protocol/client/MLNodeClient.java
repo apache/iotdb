@@ -30,7 +30,7 @@ import org.apache.iotdb.mlnode.rpc.thrift.TDeleteModelReq;
 import org.apache.iotdb.mlnode.rpc.thrift.TForecastReq;
 import org.apache.iotdb.mlnode.rpc.thrift.TForecastResp;
 import org.apache.iotdb.rpc.TConfigurationConst;
-import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
@@ -45,6 +45,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -115,14 +117,26 @@ public class MLNodeClient implements AutoCloseable {
     }
   }
 
-  public TsBlock forecast(String modelPath, TsBlock inputTsBlock) throws TException {
+  public TForecastResp forecast(
+      String modelPath,
+      TsBlock inputTsBlock,
+      List<TSDataType> inputTypeList,
+      List<String> inputColumnNameList,
+      int predictLength)
+      throws TException {
     try {
-      TForecastReq forecastReq = new TForecastReq(modelPath, tsBlockSerde.serialize(inputTsBlock));
-      TForecastResp resp = client.forecast(forecastReq);
-      if (resp.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new TException("Failed to execute forecast task, because: " + resp.status.message);
+      List<String> reqInputTypeList = new ArrayList<>();
+      for (TSDataType dataType : inputTypeList) {
+        reqInputTypeList.add(dataType.toString());
       }
-      return tsBlockSerde.deserialize(resp.forecastResult);
+      TForecastReq forecastReq =
+          new TForecastReq(
+              modelPath,
+              tsBlockSerde.serialize(inputTsBlock),
+              reqInputTypeList,
+              inputColumnNameList,
+              predictLength);
+      return client.forecast(forecastReq);
     } catch (IOException e) {
       throw new TException("An exception occurred while serializing input tsblock", e);
     } catch (TException e) {

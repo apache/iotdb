@@ -78,6 +78,9 @@ public class SqlConstant {
   public static final String SUBSTRING_IS_STANDARD = "isStandard";
   public static final String SUBSTRING_FOR = "FOR";
 
+  public static final String MODEL_ID = "model_id";
+  public static final String PREDICT_LENGTH = "predict_length";
+
   public static String[] getSingleRootArray() {
     return SINGLE_ROOT_ARRAY;
   }

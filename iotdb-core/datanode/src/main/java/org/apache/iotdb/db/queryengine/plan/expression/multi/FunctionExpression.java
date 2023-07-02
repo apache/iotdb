@@ -105,6 +105,8 @@ public class FunctionExpression extends Expression {
       functionType = FunctionType.AGGREGATION_FUNCTION;
     } else if (BuiltinScalarFunction.getNativeFunctionNames().contains(lowerCaseFunctionName)) {
       functionType = FunctionType.BUILT_IN_SCALAR_FUNCTION;
+    } else if (ModelInferenceFunction.getNativeFunctionNames().contains(functionName)) {
+      functionType = FunctionType.MODEL_INFERENCE_FUNCTION;
     } else {
       functionType = FunctionType.UDF;
     }
@@ -123,6 +125,13 @@ public class FunctionExpression extends Expression {
       initializeFunctionType();
     }
     return functionType == FunctionType.BUILT_IN_SCALAR_FUNCTION;
+  }
+
+  public boolean isModelInferenceFunction() {
+    if (functionType == null) {
+      initializeFunctionType();
+    }
+    return functionType == FunctionType.MODEL_INFERENCE_FUNCTION;
   }
 
   @Override

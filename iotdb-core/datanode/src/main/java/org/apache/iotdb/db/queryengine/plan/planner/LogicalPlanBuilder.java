@@ -1328,4 +1328,12 @@ public class LogicalPlanBuilder {
     }
     return this;
   }
+
+  public LogicalPlanBuilder planForecast(
+      ForecastModelInferenceDescriptor forecastModelInferenceDescriptor) {
+    this.root =
+        new ForecastNode(
+            context.getQueryId().genPlanNodeId(), root, forecastModelInferenceDescriptor);
+    return this;
+  }
 }

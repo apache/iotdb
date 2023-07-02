@@ -148,6 +148,19 @@ public class TsBlock {
     return wrapBlocksWithoutCopy(positionCount, timeColumn, newBlocks);
   }
 
+  public TsBlock appendValueColumns(Column[] columns) {
+    Column[] newBlocks = Arrays.copyOf(valueColumns, valueColumns.length + columns.length);
+    int newColumnIndex = valueColumns.length;
+    for (Column column : columns) {
+      requireNonNull(column, "Column is null");
+      if (positionCount != column.getPositionCount()) {
+        throw new IllegalArgumentException("Block does not have same position count");
+      }
+      newBlocks[newColumnIndex++] = column;
+    }
+    return wrapBlocksWithoutCopy(positionCount, timeColumn, newBlocks);
+  }
+
   /**
    * Attention. This method uses System.arraycopy() to extend the valueColumn array, so its
    * performance is not ensured if you have many insert operations.

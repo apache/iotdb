@@ -22,7 +22,9 @@ package org.apache.iotdb.tsfile.file.metadata.enums;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 
 import java.io.DataOutputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 
 public enum TSDataType {
@@ -97,6 +99,10 @@ public enum TSDataType {
     return deserialize(buffer.get());
   }
 
+  public static TSDataType deserializeFrom(InputStream stream) throws IOException {
+    return deserialize((byte) stream.read());
+  }
+
   public static int getSerializedSize() {
     return Byte.BYTES;
   }
@@ -106,6 +112,10 @@ public enum TSDataType {
   }
 
   public void serializeTo(DataOutputStream outputStream) throws IOException {
+    outputStream.write(serialize());
+  }
+
+  public void serializeTo(FileOutputStream outputStream) throws IOException {
     outputStream.write(serialize());
   }
 

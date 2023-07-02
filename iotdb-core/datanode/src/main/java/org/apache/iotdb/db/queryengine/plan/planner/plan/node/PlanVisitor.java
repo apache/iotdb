@@ -191,6 +191,10 @@ public abstract class PlanVisitor<R, C> {
     return visitSingleChildProcess(node, context);
   }
 
+  public R visitForecast(ForecastNode node, C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
   // multi child --------------------------------------------------------------------------------
 
   public R visitMultiChildProcess(MultiChildProcessNode node, C context) {

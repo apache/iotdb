@@ -223,7 +223,7 @@ public class AggregationUtil {
     return timeValueColumnsSizePerLine;
   }
 
-  private static long getOutputColumnSizePerLine(TSDataType tsDataType) {
+  public static long getOutputColumnSizePerLine(TSDataType tsDataType) {
     switch (tsDataType) {
       case INT32:
         return IntColumn.SIZE_IN_BYTES_PER_POSITION;

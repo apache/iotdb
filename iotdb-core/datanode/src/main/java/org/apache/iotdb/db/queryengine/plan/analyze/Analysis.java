@@ -205,6 +205,8 @@ public class Analysis {
   // indicate whether the Nodes produce source data are VirtualSourceNodes
   private boolean isVirtualSource = false;
 
+  private ModelInferenceDescriptor modelInferenceDescriptor;
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // SELECT INTO Analysis
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -708,5 +710,13 @@ public class Analysis {
 
   public void setTimeseriesOrderingForLastQuery(Ordering timeseriesOrderingForLastQuery) {
     this.timeseriesOrderingForLastQuery = timeseriesOrderingForLastQuery;
+  }
+
+  public ModelInferenceDescriptor getModelInferenceDescriptor() {
+    return modelInferenceDescriptor;
+  }
+
+  public void setModelInferenceDescriptor(ModelInferenceDescriptor modelInferenceDescriptor) {
+    this.modelInferenceDescriptor = modelInferenceDescriptor;
   }
 }

@@ -443,6 +443,17 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     return render(node, boxValue, context);
   }
 
+  @Override
+  public List<String> visitForecast(ForecastNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Forecast-%s", node.getPlanNodeId().getId()));
+    boxValue.add("Output: ");
+    for (String outputColumnName : node.getOutputColumnNames()) {
+      boxValue.add(String.format("  %s", outputColumnName));
+    }
+    return render(node, boxValue, context);
+  }
+
   private String printRegion(TRegionReplicaSet regionReplicaSet) {
     return String.format(
         "Partition: %s",

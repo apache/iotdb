@@ -51,6 +51,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.apache.iotdb.db.constant.SqlConstant.MODEL_ID;
+
 /**
  * Base class of SELECT statement.
  *
@@ -272,7 +274,7 @@ public class QueryStatement extends Statement {
   }
 
   public boolean isAggregationQuery() {
-    return selectComponent.isHasBuiltInAggregationFunction();
+    return selectComponent.hasBuiltInAggregationFunction();
   }
 
   public boolean isGroupByLevel() {
@@ -472,7 +474,52 @@ public class QueryStatement extends Statement {
   private static final String RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG =
       "Raw data and aggregation hybrid query is not supported.";
 
+  public boolean isModelInferenceQuery() {
+    return selectComponent.hasModelInferenceFunction();
+  }
+
   public void semanticCheck() {
+    if (isModelInferenceQuery()) {
+      if (selectComponent.getResultColumns().size() > 1) {
+        throw new SemanticException("");
+      }
+
+      Expression modelInferenceExpression =
+          selectComponent.getResultColumns().get(0).getExpression();
+      if (!(modelInferenceExpression instanceof FunctionExpression
+          && ((FunctionExpression) modelInferenceExpression).isModelInferenceFunction())) {
+        throw new SemanticException("");
+      }
+      if (!((FunctionExpression) modelInferenceExpression)
+          .getFunctionAttributes()
+          .containsKey(MODEL_ID)) {
+        throw new SemanticException("");
+      }
+      if (ExpressionAnalyzer.searchAggregationExpressions(modelInferenceExpression).size() > 0) {
+        throw new SemanticException("");
+      }
+
+      if (hasHaving()
+          || isGroupBy()
+          || isGroupByLevel()
+          || isGroupByTag()
+          || isAlignByDevice()
+          || isLastQuery()
+          || seriesLimit > 0
+          || seriesOffset > 0
+          || isSelectInto()
+          || isOrderByDevice()
+          || isOrderByTimeseries()) {
+        throw new SemanticException("");
+      }
+
+      if (orderByComponent != null
+          && (!orderByComponent.isOrderByTime()
+              || orderByComponent.getTimeOrder() != Ordering.ASC)) {
+        throw new SemanticException("");
+      }
+    }
+
     if (isAggregationQuery()) {
       if (disableAlign()) {
         throw new SemanticException("AGGREGATION doesn't support disable align clause.");

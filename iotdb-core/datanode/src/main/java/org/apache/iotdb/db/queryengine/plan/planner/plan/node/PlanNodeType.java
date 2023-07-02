@@ -179,7 +179,8 @@ public enum PlanNodeType {
   ROLLBACK_LOGICAL_VIEW_BLACK_LIST((short) 75),
   DELETE_LOGICAL_VIEW((short) 76),
   LOGICAL_VIEW_SCHEMA_SCAN((short) 77),
-  ALTER_LOGICAL_VIEW((short) 78);
+  ALTER_LOGICAL_VIEW((short) 78),
+  FORECAST((short) 79);
 
   public static final int BYTES = Short.BYTES;
 
@@ -384,6 +385,8 @@ public enum PlanNodeType {
         return LogicalViewSchemaScanNode.deserialize(buffer);
       case 78:
         return AlterLogicalViewNode.deserialize(buffer);
+      case 79:
+        return ForecastNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

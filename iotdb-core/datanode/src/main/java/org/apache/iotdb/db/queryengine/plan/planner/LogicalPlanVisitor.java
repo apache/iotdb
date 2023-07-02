@@ -206,6 +206,21 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             .planOffset(queryStatement.getRowOffset())
             .planLimit(queryStatement.getRowLimit());
 
+    if (queryStatement.isModelInferenceQuery()) {
+      ModelInferenceDescriptor modelInferenceDescriptor = analysis.getModelInferenceDescriptor();
+      switch (modelInferenceDescriptor.getFunctionType()) {
+        case FORECAST:
+          ForecastModelInferenceDescriptor forecastModelInferenceDescriptor =
+              (ForecastModelInferenceDescriptor) modelInferenceDescriptor;
+          planBuilder
+              .planLimit(forecastModelInferenceDescriptor.getModelInputLength())
+              .planForecast(forecastModelInferenceDescriptor);
+          break;
+        default:
+          throw new IllegalArgumentException();
+      }
+    }
+
     // plan select into
     if (queryStatement.isAlignByDevice()) {
       planBuilder = planBuilder.planDeviceViewInto(analysis.getDeviceViewIntoPathDescriptor());

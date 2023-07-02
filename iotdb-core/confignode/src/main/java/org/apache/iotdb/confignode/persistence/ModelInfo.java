@@ -24,15 +24,16 @@ import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.model.ModelTable;
 import org.apache.iotdb.commons.model.TrailInformation;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.confignode.consensus.request.read.model.GetModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.model.ShowModelPlan;
 import org.apache.iotdb.confignode.consensus.request.read.model.ShowTrailPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.CreateModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.DropModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelStatePlan;
-import org.apache.iotdb.confignode.consensus.response.ModelTableResp;
-import org.apache.iotdb.confignode.consensus.response.TrailTableResp;
+import org.apache.iotdb.confignode.consensus.response.model.GetModelInfoResp;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -40,10 +41,12 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.concurrent.locks.ReentrantLock;
 
 @ThreadSafe
@@ -148,6 +151,29 @@ public class ModelInfo implements SnapshotProcessor {
     } catch (IOException e) {
       LOGGER.warn("Fail to get TrailTable", e);
       return new TrailTableResp(
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+              .setMessage(e.getMessage()));
+    } finally {
+      releaseModelTableLock();
+    }
+  }
+
+  public GetModelInfoResp getModelInfo(GetModelInfoPlan plan) {
+    acquireModelTableLock();
+    try {
+      GetModelInfoResp getModelInfoResp =
+          new GetModelInfoResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      ModelInformation modelInformation = modelTable.getModelInformationById(plan.getModelId());
+      if (modelInformation != null) {
+        PublicBAOS buffer = new PublicBAOS();
+        DataOutputStream stream = new DataOutputStream(buffer);
+        modelInformation.serialize(stream);
+        getModelInfoResp.setModelInfo(ByteBuffer.wrap(buffer.getBuf(), 0, buffer.size()));
+      }
+      return getModelInfoResp;
+    } catch (IOException e) {
+      LOGGER.warn("Fail to get model info", e);
+      return new GetModelInfoResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
               .setMessage(e.getMessage()));
     } finally {

@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.model.GetModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.model.ShowModelPlan;
 import org.apache.iotdb.confignode.consensus.request.read.model.ShowTrailPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
@@ -279,6 +280,8 @@ public class ConfigPlanExecutor {
         return modelInfo.showModel((ShowModelPlan) req);
       case ShowTrail:
         return modelInfo.showTrail((ShowTrailPlan) req);
+      case GetModelInfo:
+        return modelInfo.getModelInfo((GetModelInfoPlan) req);
       case GetPipePluginTable:
         return pipeInfo.getPipePluginInfo().showPipePlugins();
       case GetPipePluginJar:

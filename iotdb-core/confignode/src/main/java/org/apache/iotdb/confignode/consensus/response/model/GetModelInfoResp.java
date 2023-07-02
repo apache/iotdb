@@ -17,12 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.expression.multi;
+package org.apache.iotdb.confignode.consensus.response.model;
 
-/** */
-public enum FunctionType {
-  AGGREGATION_FUNCTION,
-  BUILT_IN_SCALAR_FUNCTION,
-  UDF,
-  MODEL_INFERENCE_FUNCTION
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoResp;
+import org.apache.iotdb.consensus.common.DataSet;
+
+import java.nio.ByteBuffer;
+
+public class GetModelInfoResp implements DataSet {
+
+  private final TSStatus status;
+  private ByteBuffer serializedModelInformation;
+
+  public GetModelInfoResp(TSStatus status) {
+    this.status = status;
+  }
+
+  public void setModelInfo(ByteBuffer serializedModelInformation) {
+    this.serializedModelInformation = serializedModelInformation;
+  }
+
+  public TGetModelInfoResp convertToThriftResponse() {
+    return new TGetModelInfoResp(status, serializedModelInformation);
+  }
 }

@@ -213,6 +213,8 @@ import org.apache.iotdb.db.queryengine.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.Gt;
 import org.apache.iotdb.tsfile.read.filter.operator.GtEq;
@@ -1600,6 +1602,49 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         dataTypes,
         filePrefix,
         MergeSortComparator.getComparator(sortItemList, sortItemIndexList, sortItemDataTypeList));
+  }
+
+  @Override
+  public Operator visitForecast(ForecastNode node, LocalExecutionPlanContext context) {
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                ForecastOperator.class.getSimpleName());
+
+    ForecastModelInferenceDescriptor forecastModelInferenceDescriptor =
+        node.getModelInferenceDescriptor();
+
+    List<TSDataType> inputTypeList = forecastModelInferenceDescriptor.getInputTypeList();
+    int modelInputLength = forecastModelInferenceDescriptor.getModelInputLength();
+    long timeValueColumnsSizePerLine = TimeColumn.SIZE_IN_BYTES_PER_POSITION;
+    for (TSDataType dataType : inputTypeList) {
+      timeValueColumnsSizePerLine += getOutputColumnSizePerLine(dataType, new PartialPath());
+    }
+    long maxRetainedSize = timeValueColumnsSizePerLine * modelInputLength;
+
+    int expectedPredictLength = forecastModelInferenceDescriptor.getExpectedPredictLength();
+    int outputColumnNum = forecastModelInferenceDescriptor.getPredictIndexList().size();
+    long maxReturnSize =
+        (TimeColumn.SIZE_IN_BYTES_PER_POSITION
+                + (long) outputColumnNum * DoubleColumn.SIZE_IN_BYTES_PER_POSITION)
+            * expectedPredictLength;
+
+    context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+
+    return new ForecastOperator(
+        operatorContext,
+        child,
+        forecastModelInferenceDescriptor.getModelPath(),
+        inputTypeList,
+        node.getChild().getOutputColumnNames(),
+        expectedPredictLength,
+        FragmentInstanceManager.getInstance().getModelInferenceExecutor(),
+        maxRetainedSize,
+        maxReturnSize);
   }
 
   @Override

@@ -17,12 +17,33 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.expression.multi;
+package org.apache.iotdb.commons.udf.builtin;
 
-/** */
-public enum FunctionType {
-  AGGREGATION_FUNCTION,
-  BUILT_IN_SCALAR_FUNCTION,
-  UDF,
-  MODEL_INFERENCE_FUNCTION
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+public enum ModelInferenceFunction {
+  FORECAST("forecast");
+
+  private final String functionName;
+
+  ModelInferenceFunction(String functionName) {
+    this.functionName = functionName;
+  }
+
+  public String getFunctionName() {
+    return functionName;
+  }
+
+  private static final Set<String> NATIVE_FUNCTION_NAMES =
+      new HashSet<>(
+          Arrays.stream(ModelInferenceFunction.values())
+              .map(ModelInferenceFunction::getFunctionName)
+              .collect(Collectors.toList()));
+
+  public static Set<String> getNativeFunctionNames() {
+    return NATIVE_FUNCTION_NAMES;
+  }
 }
