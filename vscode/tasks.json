@@ -1,0 +1,49 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "start server",
+            "type": "shell",
+            "command": "./distribution/target/apache-iotdb-1.0.0-all-bin/apache-iotdb-1.0.0-all-bin/sbin/start-standalone.sh && sleep 3",
+            "problemMatcher":[]
+        },
+        {
+            "label": "stop server",
+            "type": "shell",
+            "command": "./distribution/target/apache-iotdb-1.0.0-all-bin/apache-iotdb-1.0.0-all-bin/sbin/stop-standalone.sh",
+            "problemMatcher":[]
+        },
+        {
+            "label": "start client",
+            "type": "shell",
+            "command": "./distribution/target/apache-iotdb-1.0.0-all-bin/apache-iotdb-1.0.0-all-bin/sbin/start-cli.sh",
+            "problemMatcher":[]
+        },
+        {
+            "label": "apply spotless",
+            "type": "shell",
+            "command": "mvn spotless:apply",
+            "problemMatcher":[]
+        },
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "mvn clean install -DskipTests -Drat.skip=true",
+            "problemMatcher":[]
+        },
+        {
+            "label": "delete",
+            "type": "shell",
+            "command": "mvn clean -DskipTests -Drat.skip=true",
+            "problemMatcher":[]
+        },
+        {
+            "label": "pack python",
+            "type": "shell",
+            "command": "zip -r target/py.zip client-py/iotdb/",
+            "problemMatcher":[]
+        }
+    ]
+}
