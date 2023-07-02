@@ -73,7 +73,6 @@ public class ResultColumn extends StatementNode {
     this.expression = expression;
     this.alias = alias;
     this.columnType = ExpressionAnalyzer.identifyOutputColumnType(expression, true);
-    ;
   }
 
   public ResultColumn(Expression expression) {

@@ -88,14 +88,15 @@ public class ModelManager {
     if (taskType == TaskType.FORECAST) {
       String inputTypeListStr = options.get(INPUT_TYPE_LIST);
       List<TSDataType> inputTypeList =
-          Arrays.stream(inputTypeListStr.split(","))
+          Arrays.stream(inputTypeListStr.substring(1, inputTypeListStr.length() - 1).split(","))
               .sequential()
               .map(s -> TSDataType.valueOf(s.toUpperCase()))
               .collect(Collectors.toList());
 
       String predictIndexListStr = options.get(PREDICT_INDEX_LIST);
       List<Integer> predictIndexList =
-          Arrays.stream(predictIndexListStr.split(","))
+          Arrays.stream(
+                  predictIndexListStr.substring(1, predictIndexListStr.length() - 1).split(","))
               .sequential()
               .map(Integer::valueOf)
               .collect(Collectors.toList());

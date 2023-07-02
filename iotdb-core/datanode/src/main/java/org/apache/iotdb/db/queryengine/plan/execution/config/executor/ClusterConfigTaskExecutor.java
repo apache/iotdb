@@ -144,6 +144,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.TransformToViewEx
 import org.apache.iotdb.db.queryengine.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SelectComponent;
+import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
@@ -236,6 +237,10 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.commons.model.ForecastModeInformation.INPUT_TYPE_LIST;
 import static org.apache.iotdb.commons.model.ForecastModeInformation.PREDICT_INDEX_LIST;
 import static org.apache.iotdb.db.protocol.client.ConfigNodeClient.MSG_RECONNECTION_FAIL;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.and;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.longValue;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.lte;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.time;
 import static org.apache.iotdb.db.schemaengine.SchemaConstant.ROOT;
 
 public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
@@ -2101,10 +2106,24 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           new ResultColumn(ExpressionAnalyzer.removeRootPrefix(outputExpression)));
       inputTypeList.add(analysis.getType(outputExpression));
     }
+    datasetStatement.setSelectComponent(formattedSelect);
 
     FromComponent fromRoot = new FromComponent();
     fromRoot.addPrefixPath(new PartialPath(ROOT, false));
     datasetStatement.setFromComponent(fromRoot);
+
+    WhereCondition endNowWhereCondition = new WhereCondition();
+    Expression endNowExpression = lte(time(), longValue(System.currentTimeMillis()));
+    if (!datasetStatement.hasWhere()) {
+      endNowWhereCondition.setPredicate(endNowExpression);
+    } else {
+      endNowWhereCondition.setPredicate(
+          and(
+              ExpressionAnalyzer.removeRootPrefix(
+                  datasetStatement.getWhereCondition().getPredicate()),
+              endNowExpression));
+    }
+    datasetStatement.setWhereCondition(endNowWhereCondition);
 
     String datesetFetchSQL = datasetStatement.constructFormattedSQL();
 
@@ -2125,7 +2144,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           new TCreateModelReq(
               createModelStatement.getModelId(),
               createModelStatement.getTaskType(),
-              createModelStatement.getModelType(),
               createModelStatement.getOptions(),
               createModelStatement.getHyperparameters(),
               datesetFetchSQL);

@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +45,8 @@ public class CreateModelStatement extends Statement implements IConfigStatement 
   private Map<String, String> hyperparameters;
 
   private QueryStatement datasetStatement;
+
+  private final List<String> requiredOptions = Arrays.asList(TASK_TYPE, MODEL_TYPE);
 
   public CreateModelStatement() {
     // do nothing
@@ -82,19 +85,18 @@ public class CreateModelStatement extends Statement implements IConfigStatement 
   }
 
   public TaskType getTaskType() {
-    return TaskType.valueOf(options.get("task_type").toUpperCase());
-  }
-
-  public String getModelType() {
-    return options.get("model_type");
+    try {
+      return TaskType.valueOf(options.get("task_type").toUpperCase());
+    } catch (IllegalArgumentException e) {
+      throw new SemanticException("Unknown task type: " + options.get("task_type"));
+    }
   }
 
   public void semanticCheck() {
-    if (!options.containsKey(TASK_TYPE)) {
-      throw new SemanticException("The attribute `" + TASK_TYPE + "` must be specified.");
-    }
-    if (!options.containsKey(MODEL_TYPE)) {
-      throw new SemanticException("The attribute `" + MODEL_TYPE + "` must be specified.");
+    for (String requiredOption : requiredOptions) {
+      if (!options.containsKey(requiredOption)) {
+        throw new SemanticException("The option `" + requiredOption + "` must be specified.");
+      }
     }
     if (datasetStatement.isAlignByDevice()) {
       throw new SemanticException("");

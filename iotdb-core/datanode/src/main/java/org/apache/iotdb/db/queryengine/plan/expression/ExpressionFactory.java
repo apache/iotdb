@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.EqualToExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.GreaterThanExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.binary.LessEqualExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LessThanExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicAndExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicOrExpression;
@@ -64,6 +65,10 @@ public class ExpressionFactory {
 
   public static ConstantOperand intValue(String valueString) {
     return new ConstantOperand(TSDataType.INT32, valueString);
+  }
+
+  public static ConstantOperand longValue(long value) {
+    return new ConstantOperand(TSDataType.INT64, String.valueOf(value));
   }
 
   public static TimestampOperand time() {
@@ -114,6 +119,10 @@ public class ExpressionFactory {
 
   public static LessThanExpression lt(Expression leftExpression, Expression rightExpression) {
     return new LessThanExpression(leftExpression, rightExpression);
+  }
+
+  public static LessEqualExpression lte(Expression leftExpression, Expression rightExpression) {
+    return new LessEqualExpression(leftExpression, rightExpression);
   }
 
   public static EqualToExpression eq(Expression leftExpression, Expression rightExpression) {

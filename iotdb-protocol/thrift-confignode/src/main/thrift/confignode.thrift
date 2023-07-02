@@ -721,10 +721,9 @@ struct TUnsetSchemaTemplateReq{
 struct TCreateModelReq {
   1: required string modelId
   2: required common.TaskType taskType
-  3: required string modelType
-  4: required map<string, string> options
-  5: required map<string, string> hyperparameters
-  6: required string datasetFetchSQL
+  3: required map<string, string> options
+  4: required map<string, string> hyperparameters
+  5: required string datasetFetchSQL
 }
 
 struct TDropModelReq {
