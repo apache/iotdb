@@ -2075,33 +2075,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> setSpaceQuota(
-      SetSpaceQuotaStatement setSpaceQuotaStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    TSStatus tsStatus = new TSStatus();
-    TSetSpaceQuotaReq req = new TSetSpaceQuotaReq();
-    req.setDatabase(setSpaceQuotaStatement.getPrefixPathList());
-    TSpaceQuota spaceQuota = new TSpaceQuota();
-    spaceQuota.setDeviceNum(setSpaceQuotaStatement.getDeviceNum());
-    spaceQuota.setTimeserieNum(setSpaceQuotaStatement.getTimeSeriesNum());
-    spaceQuota.setDiskSize(setSpaceQuotaStatement.getDiskSize());
-    req.setSpaceLimit(spaceQuota);
-    try (ConfigNodeClient client =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      // Send request to some API server
-      tsStatus = client.setSpaceQuota(req);
-    } catch (Exception e) {
-      future.setException(e);
-    }
-    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-    } else {
-      future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
-    }
-    return future;
-  }
-
-  @Override
   public SettableFuture<ConfigTaskResult> createModel(CreateModelStatement createModelStatement) {
     createModelStatement.semanticCheck();
 
@@ -2153,6 +2126,89 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
     } catch (ClientManagerException | TException e) {
       future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> dropModel(String modelId) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TSStatus executionStatus = client.dropModel(new TDropModelReq(modelId));
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
+        LOGGER.warn("[{}] Failed to drop model {}.", executionStatus, modelId);
+        future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showModels() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TShowModelResp showModelResp = client.showModel(new TShowModelReq());
+      if (showModelResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(
+            new IoTDBException(showModelResp.getStatus().message, showModelResp.getStatus().code));
+        return future;
+      }
+      // convert model info list and buildTsBlock
+      ShowModelsTask.buildTsBlock(showModelResp.getModelInfoList(), future);
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showTrails(String modelId) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TShowTrailResp showTrailResp = client.showTrail(new TShowTrailReq(modelId));
+      if (showTrailResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(
+            new IoTDBException(showTrailResp.getStatus().message, showTrailResp.getStatus().code));
+        return future;
+      }
+      // convert trail info list and buildTsBlock
+      ShowTrailsTask.buildTsBlock(showTrailResp.getTrailInfoList(), future);
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> setSpaceQuota(
+      SetSpaceQuotaStatement setSpaceQuotaStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TSStatus tsStatus = new TSStatus();
+    TSetSpaceQuotaReq req = new TSetSpaceQuotaReq();
+    req.setDatabase(setSpaceQuotaStatement.getPrefixPathList());
+    TSpaceQuota spaceQuota = new TSpaceQuota();
+    spaceQuota.setDeviceNum(setSpaceQuotaStatement.getDeviceNum());
+    spaceQuota.setTimeserieNum(setSpaceQuotaStatement.getTimeSeriesNum());
+    spaceQuota.setDiskSize(setSpaceQuotaStatement.getDiskSize());
+    req.setSpaceLimit(spaceQuota);
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Send request to some API server
+      tsStatus = client.setSpaceQuota(req);
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } else {
+      future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
     }
     return future;
   }
@@ -2240,43 +2296,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> dropModel(String modelId) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient client =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TSStatus executionStatus = client.dropModel(new TDropModelReq(modelId));
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
-        LOGGER.warn("[{}] Failed to drop model {}.", executionStatus, modelId);
-        future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
-      } else {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-      }
-    } catch (ClientManagerException | TException e) {
-      future.setException(e);
-    }
-    return future;
-  }
-
-  @Override
-  public SettableFuture<ConfigTaskResult> showModels() {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient client =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TShowModelResp showModelResp = client.showModel(new TShowModelReq());
-      if (showModelResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        future.setException(
-            new IoTDBException(showModelResp.getStatus().message, showModelResp.getStatus().code));
-        return future;
-      }
-      // convert model info list and buildTsBlock
-      ShowModelsTask.buildTsBlock(showModelResp.getModelInfoList(), future);
-    } catch (ClientManagerException | TException e) {
-      future.setException(e);
-    }
-    return future;
-  }
-
-  @Override
   public TSpaceQuotaResp getSpaceQuota() {
     TSpaceQuotaResp spaceQuotaResp = new TSpaceQuotaResp();
     try (ConfigNodeClient configNodeClient =
@@ -2287,24 +2306,5 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       LOGGER.error(e.getMessage());
     }
     return spaceQuotaResp;
-  }
-
-  @Override
-  public SettableFuture<ConfigTaskResult> showTrails(String modelId) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient client =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TShowTrailResp showTrailResp = client.showTrail(new TShowTrailReq(modelId));
-      if (showTrailResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        future.setException(
-            new IoTDBException(showTrailResp.getStatus().message, showTrailResp.getStatus().code));
-        return future;
-      }
-      // convert trail info list and buildTsBlock
-      ShowTrailsTask.buildTsBlock(showTrailResp.getTrailInfoList(), future);
-    } catch (ClientManagerException | TException e) {
-      future.setException(e);
-    }
-    return future;
   }
 }

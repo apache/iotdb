@@ -19,6 +19,7 @@
 import json
 import os
 import shutil
+import threading
 from typing import Dict, Tuple
 
 import torch
@@ -39,7 +40,7 @@ class ModelStorage(object):
             except PermissionError as e:
                 logger.error(e)
                 raise e
-
+        self.lock = threading.RLock()
         self.__model_cache = lrucache(descriptor.get_config().get_mn_model_storage_cache_size())
 
     def save_model(self,
@@ -56,19 +57,21 @@ class ModelStorage(object):
         model_file_path = os.path.join(model_dir_path, f'{trial_id}.pt')
 
         sample_input = [torch.randn(1, model_config['input_len'], model_config['input_vars'])]
+        self.lock.acquire()
         torch.jit.save(torch.jit.trace(model, sample_input),
                        model_file_path,
                        _extra_files={'model_config': json.dumps(model_config)})
+        self.lock.release()
         return os.path.abspath(model_file_path)
 
-    def load_model(self, model_id: str, trial_id: str) -> Tuple[torch.jit.ScriptModule, Dict]:
+    def load_model(self, file_path: str) -> Tuple[torch.jit.ScriptModule, Dict]:
         """
         Returns:
             jit_model: a ScriptModule contains model architecture and parameters, which can be deployed cross-platform
             model_config: a dict contains model attributes
         """
-        file_path = os.path.join(self.__model_dir, f'{model_id}', f'{trial_id}.pt')
-        if model_id in self.__model_cache:
+        file_path = os.path.join(self.__model_dir, file_path)
+        if file_path in self.__model_cache:
             return self.__model_cache[file_path]
         else:
             if not os.path.exists(file_path):

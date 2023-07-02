@@ -15,15 +15,87 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+from enum import Enum
+
 import numpy as np
 import pandas as pd
 
-from iotdb.utils.IoTDBConstants import TSDataType
+
+class TSDataType(Enum):
+    BOOLEAN = 0
+    INT32 = 1
+    INT64 = 2
+    FLOAT = 3
+    DOUBLE = 4
+    TEXT = 5
+
+    # this method is implemented to avoid the issue reported by:
+    # https://bugs.python.org/issue30545
+    def __eq__(self, other) -> bool:
+        return self.value == other.value
+
+    def __hash__(self):
+        return self.value
+
+    def np_dtype(self):
+        return {
+            TSDataType.BOOLEAN: np.dtype(">?"),
+            TSDataType.FLOAT: np.dtype(">f4"),
+            TSDataType.DOUBLE: np.dtype(">f8"),
+            TSDataType.INT32: np.dtype(">i4"),
+            TSDataType.INT64: np.dtype(">i8"),
+            TSDataType.TEXT: np.dtype("str"),
+        }[self]
+
 
 TIMESTAMP_STR = "Time"
 START_INDEX = 2
 
 
+# convert dataFrame to tsBlock in binary
+def convert_to_binary(data_frame: pd.DataFrame):
+    data_shape = data_frame.shape
+    value_column_size = data_shape[1] - 1
+    position_count = data_shape[0]
+    keys = data_frame.keys()
+
+    # binary_res = [value_column_size.to_bytes(4, byteorder="big")]
+    binary = value_column_size.to_bytes(4, byteorder="big")
+
+    # all the tsDataType are double
+    for i in range(value_column_size):
+        binary += b'\x04'
+
+    # position count
+    binary += position_count.to_bytes(4, byteorder="big")
+
+    # column encoding
+    binary += b'\x02'
+    for i in range(value_column_size):
+        binary += b'\x02'
+
+    # write columns, the column in index 0 must be timeColumn
+    binary += bool.to_bytes(False, 1, byteorder="big")
+    for i in range(position_count):
+        value = data_frame[keys[0]][i]
+        if value.dtype.byteorder != '>':
+            value = value.byteswap()
+        binary += value.tobytes()
+
+    for i in range(value_column_size):
+        # the value can't be null
+        binary += bool.to_bytes(False, 1, byteorder="big")
+        col = data_frame[keys[i + 1]]
+        for j in range(position_count):
+            value = col[j]
+            if value.dtype.byteorder != '>':
+                value = value.byteswap()
+            binary += value.tobytes()
+
+    return binary
+
+
+# convert tsBlock in binary to dataFrame
 def convert_to_df(name_list, type_list, name_index, binary_list):
     column_name_list = [TIMESTAMP_STR]
     column_type_list = [TSDataType.INT64]
@@ -135,7 +207,7 @@ def convert_to_df(name_list, type_list, name_index, binary_list):
                 elif data_type == TSDataType.BOOLEAN:
                     tmp_array = np.full(total_length, np.nan, np.float32)
                 elif data_type == TSDataType.TEXT:
-                    tmp_array = np.full(total_length, None, dtype=data_array.dtype)
+                    tmp_array = np.full(total_length, np.nan, dtype=data_array.dtype)
                 else:
                     raise Exception("Unsupported dataType in deserialization")
 
@@ -181,7 +253,7 @@ def convert_to_df(name_list, type_list, name_index, binary_list):
     return df
 
 
-# Serialized tsblock:
+# Serialized tsBlock:
 #    +-------------+---------------+---------+------------+-----------+----------+
 #    | val col cnt | val col types | pos cnt | encodings  | time col  | val col  |
 #    +-------------+---------------+---------+------------+-----------+----------+
@@ -199,10 +271,10 @@ def deserialize(buffer):
     column_values = [None] * value_column_count
     null_indicators = [None] * value_column_count
     for i in range(value_column_count):
-        column_value, nullIndicator, buffer = read_column(column_encodings[i + 1], buffer, data_types[i],
-                                                          position_count)
+        column_value, null_indicator, buffer = read_column(column_encodings[i + 1], buffer, data_types[i],
+                                                           position_count)
         column_values[i] = column_value
-        null_indicators[i] = nullIndicator
+        null_indicators[i] = null_indicator
 
     return time_column_values, column_values, null_indicators, position_count
 
@@ -230,11 +302,11 @@ def read_column_types(buffer, value_column_count):
     data_types = []
     for i in range(value_column_count):
         res, buffer = read_byte_from_buffer(buffer)
-        data_types.append(get_dataType(res))
+        data_types.append(get_data_type(res))
     return data_types, buffer
 
 
-def get_dataType(value):
+def get_data_type(value):
     if value == b'\x00':
         return TSDataType.BOOLEAN
     elif value == b'\x01':
@@ -247,8 +319,6 @@ def get_dataType(value):
         return TSDataType.DOUBLE
     elif value == b'\x05':
         return TSDataType.TEXT
-    elif value == b'\x06':
-        return TSDataType.VECTOR
 
 
 # Read ColumnEncodings
@@ -264,8 +334,8 @@ def read_column_encoding(buffer, size):
 # Read Column
 
 def deserialize_null_indicators(buffer, size):
-    mayHaveNull, buffer = read_byte_from_buffer(buffer)
-    if mayHaveNull != b'\x00':
+    may_have_null, buffer = read_byte_from_buffer(buffer)
+    if may_have_null != b'\x00':
         return deserialize_from_boolean_array(buffer, size)
     return None, buffer
 
@@ -278,8 +348,8 @@ def deserialize_null_indicators(buffer, size):
 #    +---------------+-----------------+-------------+
 
 def read_time_column(buffer, size):
-    nullIndicators, buffer = deserialize_null_indicators(buffer, size)
-    if nullIndicators is None:
+    null_indicators, buffer = deserialize_null_indicators(buffer, size)
+    if null_indicators is None:
         values, buffer = read_from_buffer(
             buffer, size * 8
         )
@@ -288,16 +358,16 @@ def read_time_column(buffer, size):
     return values, buffer
 
 
-def read_INT64_column(buffer, data_type, position_count):
-    nullIndicators, buffer = deserialize_null_indicators(buffer, position_count)
-    if nullIndicators is None:
+def read_int64_column(buffer, data_type, position_count):
+    null_indicators, buffer = deserialize_null_indicators(buffer, position_count)
+    if null_indicators is None:
         size = position_count
     else:
-        size = nullIndicators.count(False)
+        size = null_indicators.count(False)
 
     if TSDataType.INT64 == data_type or TSDataType.DOUBLE == data_type:
         values, buffer = read_from_buffer(buffer, size * 8)
-        return values, nullIndicators, buffer
+        return values, null_indicators, buffer
     else:
         raise Exception("Invalid data type: " + data_type)
 
@@ -309,16 +379,16 @@ def read_INT64_column(buffer, data_type, position_count):
 #    | byte          | list[byte]      | list[int32] |
 #    +---------------+-----------------+-------------+
 
-def read_Int32_column(buffer, data_type, position_count):
-    nullIndicators, buffer = deserialize_null_indicators(buffer, position_count)
-    if nullIndicators is None:
+def read_int32_column(buffer, data_type, position_count):
+    null_indicators, buffer = deserialize_null_indicators(buffer, position_count)
+    if null_indicators is None:
         size = position_count
     else:
-        size = nullIndicators.count(False)
+        size = null_indicators.count(False)
 
     if TSDataType.INT32 == data_type or TSDataType.FLOAT == data_type:
         values, buffer = read_from_buffer(buffer, size * 4)
-        return values, nullIndicators, buffer
+        return values, null_indicators, buffer
     else:
         raise Exception("Invalid data type: " + data_type)
 
@@ -333,9 +403,9 @@ def read_Int32_column(buffer, data_type, position_count):
 def read_byte_column(buffer, data_type, position_count):
     if data_type != TSDataType.BOOLEAN:
         raise Exception("Invalid data type: " + data_type)
-    nullIndicators, buffer = deserialize_null_indicators(buffer, position_count)
+    null_indicators, buffer = deserialize_null_indicators(buffer, position_count)
     res, buffer = deserialize_from_boolean_array(buffer, position_count)
-    return res, nullIndicators, buffer
+    return res, null_indicators, buffer
 
 
 def deserialize_from_boolean_array(buffer, size):
@@ -386,31 +456,31 @@ def deserialize_from_boolean_array(buffer, size):
 def read_binary_column(buffer, data_type, position_count):
     if data_type != TSDataType.TEXT:
         raise Exception("Invalid data type: " + data_type)
-    nullIndicators, buffer = deserialize_null_indicators(buffer, position_count)
+    null_indicators, buffer = deserialize_null_indicators(buffer, position_count)
 
-    if nullIndicators is None:
+    if null_indicators is None:
         size = position_count
     else:
-        size = nullIndicators.count(False)
+        size = null_indicators.count(False)
     values = [None] * size
     for i in range(size):
         length, buffer = read_int_from_buffer(buffer)
         res, buffer = read_from_buffer(buffer, length)
         values[i] = res
-    return values, nullIndicators, buffer
+    return values, null_indicators, buffer
 
 
 def read_column(encoding, buffer, data_type, position_count):
     if encoding == b'\x00':
         return read_byte_column(buffer, data_type, position_count)
     elif encoding == b'\x01':
-        return read_Int32_column(buffer, data_type, position_count)
+        return read_int32_column(buffer, data_type, position_count)
     elif encoding == b'\x02':
-        return read_INT64_column(buffer, data_type, position_count)
+        return read_int64_column(buffer, data_type, position_count)
     elif encoding == b'\x03':
         return read_binary_column(buffer, data_type, position_count)
     elif encoding == b'\x04':
-        return read_runLength_column(buffer, data_type, position_count)
+        return read_run_length_column(buffer, data_type, position_count)
     else:
         raise Exception("Unsupported encoding: " + encoding)
 
@@ -422,11 +492,11 @@ def read_column(encoding, buffer, data_type, position_count):
 #    | byte      | list[byte]              |
 #    +-----------+-------------------------+
 
-def read_runLength_column(buffer, data_type, position_count):
+def read_run_length_column(buffer, data_type, position_count):
     encoding, buffer = read_byte_from_buffer(buffer)
-    column, nullIndicators, buffer = read_column(encoding, buffer, data_type, 1)
+    column, null_indicators, buffer = read_column(encoding, buffer, data_type, 1)
 
-    return repeat(column, data_type, position_count), nullIndicators * position_count, buffer
+    return repeat(column, data_type, position_count), null_indicators * position_count, buffer
 
 
 def repeat(buffer, data_type, position_count):

@@ -16,7 +16,7 @@
 # under the License.
 #
 import time
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import pandas as pd
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
@@ -33,10 +33,12 @@ from iotdb.thrift.confignode import IConfigNodeRPCService
 from iotdb.thrift.confignode.ttypes import (TUpdateModelInfoReq,
                                             TUpdateModelStateReq)
 from iotdb.thrift.datanode import IMLNodeInternalRPCService
-from iotdb.thrift.datanode.ttypes import (TFetchTimeseriesReq,
+from iotdb.thrift.datanode.ttypes import (TFetchMoreDataReq,
+                                          TFetchTimeseriesReq,
                                           TRecordModelMetricsReq)
 from iotdb.thrift.mlnode import IMLNodeRPCService
-from iotdb.thrift.mlnode.ttypes import TCreateTrainingTaskReq, TDeleteModelReq
+from iotdb.thrift.mlnode.ttypes import (TCreateTrainingTaskReq,
+                                        TDeleteModelReq, TForecastReq)
 
 
 class ClientManager(object):
@@ -51,13 +53,17 @@ class ClientManager(object):
     def borrow_config_node_client(self):
         return ConfigNodeClient(config_leader=self.__config_node_endpoint)
 
+    def borrow_mlnode_client(self):
+        return MLNodeClient(descriptor.get_config().get_mn_rpc_address(),
+                            descriptor.get_config().get_mn_rpc_port())
+
 
 class MLNodeClient(object):
     def __init__(self, host, port):
         self.__host = host
         self.__port = port
 
-        transport = TTransport.TBufferedTransport(
+        transport = TTransport.TFramedTransport(
             TSocket.TSocket(self.__host, self.__port)
         )
         if not transport.isOpen():
@@ -88,9 +94,29 @@ class MLNodeClient(object):
         except TTransport.TException as e:
             raise e
 
-    def create_forecast_task(self) -> None:
-        # TODO
-        pass
+    def create_forecast_task(self,
+                             model_path: str,
+                             ts_dataset: List,
+                             column_name_list: List[str],
+                             column_type_list: List[str],
+                             column_name_index_map: Dict[str, int],
+                             pred_length: int,
+                             model_id: str
+                             ) -> None:
+        req = TForecastReq(
+            modelPath=model_path,
+            tsDataset=ts_dataset,
+            columnNameList=column_name_list,
+            columnTypeList=column_type_list,
+            columnNameIndexMap=column_name_index_map,
+            predLength=pred_length,
+            modelId=model_id
+        )
+        try:
+            result = self.__client.forecast(req)
+            print(result)
+        except Exception as e:
+            raise e
 
     def delete_model(self,
                      model_id: str,
@@ -128,7 +154,7 @@ class DataNodeClient(object):
                          query_expressions: List[str],
                          query_filter: str = None,
                          fetch_size: int = DEFAULT_FETCH_SIZE,
-                         timeout: int = DEFAULT_TIMEOUT) -> [int, bool, pd.DataFrame]:
+                         timeout: int = DEFAULT_TIMEOUT) -> pd.DataFrame:
         req = TFetchTimeseriesReq(
             queryExpressions=query_expressions,
             queryFilter=query_filter,
@@ -141,7 +167,6 @@ class DataNodeClient(object):
 
             if len(resp.tsDataset) == 0:
                 raise RuntimeError(f'No data fetched with query filter: {query_filter}')
-
             data = serde.convert_to_df(resp.columnNameList,
                                        resp.columnTypeList,
                                        resp.columnNameIndexMap,
@@ -149,17 +174,36 @@ class DataNodeClient(object):
             if data.empty:
                 raise RuntimeError(
                     f'Fetched empty data with query expressions: {query_expressions} and query filter: {query_filter}')
-            return resp.queryId, resp.hasMoreData, data
         except Exception as e:
             logger.warn(
                 f'Fail to fetch data with query expressions: {query_expressions} and query filter: {query_filter}')
             raise e
+        query_id = resp.queryId
+        column_name_list = resp.columnNameList
+        column_type_list = resp.columnTypeList
+        column_name_index_map = resp.columnNameIndexMap
+        has_more_data = resp.hasMoreData
+        while has_more_data:
+            req = TFetchMoreDataReq(queryId=query_id, fetchSize=fetch_size)
+            try:
+                resp = self.__client.fetchMoreData(req)
+                verify_success(resp.status, "An error occurs when calling fetch_more_data()")
+                data = data.append(serde.convert_to_df(column_name_list,
+                                                       column_type_list,
+                                                       column_name_index_map,
+                                                       resp.tsDataset))
+                has_more_data = resp.hasMoreData
+            except Exception as e:
+                logger.warn(
+                    f'Fail to fetch more data with query id: {query_id}')
+                raise e
+        return data
 
     def fetch_window_batch(self,
                            query_expressions: list,
                            query_filter: str = None,
                            fetch_size: int = DEFAULT_FETCH_SIZE,
-                           timeout: int = DEFAULT_TIMEOUT) -> [int, bool, List[pd.DataFrame]]:
+                           timeout: int = DEFAULT_TIMEOUT) -> Tuple[int, bool, List[pd.DataFrame]]:
         pass
 
     def record_model_metrics(self,
@@ -315,3 +359,18 @@ class ConfigNodeClient(object):
 
 
 client_manager = ClientManager()
+
+if __name__ == '__main__':
+    client = client_manager.borrow_mlnode_client()
+    import pickle
+    f = open('D:\\undergraduate\\DL\\iotdb\\mlnode\\iotdb\\mlnode\\test_tsdataset.pkl', 'rb')
+    ts_dataset = pickle.load(f)
+    client.create_forecast_task(
+        'D:\\undergraduate\\DL\\iotdb\\mlnode\\iotdb\\mlnode\\models\\Model_1\\tid_0.pt',
+        ts_dataset,
+        ['root.eg.etth1.s0'],
+        ['FLOAT'],
+        {'root.eg.etth1.s0': 0},
+        192,
+        'Model_2'
+    )
