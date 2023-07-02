@@ -28,9 +28,11 @@ import torch
 from torch.utils.data import Dataset
 
 from iotdb.mlnode.algorithm.factory import create_forecast_model
+from iotdb.mlnode.algorithm.hyperparameter import parse_fixed_hyperparameters, generate_hyperparameters
 from iotdb.mlnode.client import client_manager
 from iotdb.mlnode.config import descriptor
 from iotdb.mlnode.log import logger
+from iotdb.mlnode.parser import TaskOptions
 from iotdb.mlnode.process.trial import ForecastingTrainingTrial
 from iotdb.mlnode.storage import model_storage
 from iotdb.thrift.common.ttypes import TrainingState
@@ -45,26 +47,21 @@ class ForestingTrainingObjective:
 
     def __init__(
             self,
-            trial_configs: Dict,
-            model_configs: Dict,
+            task_options: TaskOptions,
+            hyperparameters: Dict[str, str],
             dataset: Dataset,
-            # pid_info: Dict
+            pid_info: Dict
     ):
-        self.trial_configs = trial_configs
-        self.model_configs = model_configs
+        self.task_options = task_options
+        self.hyperparameters = hyperparameters
         self.dataset = dataset
-        # self.pid_info = pid_info
+        self.pid_info = pid_info
 
-    def __call__(self, trial: optuna.Trial):
-        # TODO: decide which parameters to tune
-        trial_configs = self.trial_configs
-        trial_configs['learning_rate'] = trial.suggest_float("lr", 1e-7, 1e-1, log=True)
-        trial_configs['trial_id'] = 'tid_' + str(trial._trial_id)
-        # TODO: check args
-        model, model_configs = create_forecast_model(**self.model_configs)
-        # self.pid_info[self.trial_configs['model_id']][trial._trial_id] = os.getpid()
-        _trial = ForecastingTrainingTrial(trial_configs, model, model_configs, self.dataset)
-        loss = _trial.start()
+    def __call__(self, optuna_suggest: optuna.Trial):
+        model_configs, task_configs = generate_hyperparameters(optuna_suggest, self.task_options, self.hyperparameters)
+        model = create_forecast_model(self.task_options, model_configs)
+        trial = ForecastingTrainingTrial(model, task_configs, self.dataset)
+        loss = trial.start()
         return loss
 
 
@@ -76,19 +73,13 @@ class _BasicTask(object):
 
     def __init__(
             self,
-            task_configs: Dict,
-            model_configs: Dict,
             pid_info: Dict
     ):
         """
         Args:
-            task_configs:
-            model_configs:
             pid_info:
         """
         self.pid_info = pid_info
-        self.task_configs = task_configs
-        self.model_configs = model_configs
 
     @abstractmethod
     def __call__(self):
@@ -98,23 +89,18 @@ class _BasicTask(object):
 class _BasicTrainingTask(_BasicTask):
     def __init__(
             self,
-            task_configs: Dict,
-            model_configs: Dict,
-            pid_info: Dict,
-            data_configs: Dict,
+            model_id: str,
+            task_options: TaskOptions,
+            hyperparameters: Dict[str, str],
             dataset: Dataset,
+            pid_info: Dict
     ):
-        """
-        Args:
-            task_configs:
-            model_configs:
-            pid_info:
-            data_configs:
-            dataset:
-        """
-        super().__init__(task_configs, model_configs, pid_info)
-        self.data_configs = data_configs
+        super().__init__(pid_info)
+        self.model_id = model_id
+        self.task_options = task_options
+        self.hyperparameters = hyperparameters
         self.dataset = dataset
+
         self.confignode_client = client_manager.borrow_config_node_client()
 
     @abstractmethod
@@ -153,15 +139,14 @@ class _BasicInferenceTask(_BasicTask):
         raise NotImplementedError
 
 
-class ForecastingSingleTrainingTask(_BasicTrainingTask):
+class ForecastFixedParamTrainingTask(_BasicTrainingTask):
     def __init__(
             self,
-            task_configs: Dict,
-            model_configs: Dict,
-            pid_info: Dict,
-            data_configs: Dict,
-            dataset: Dataset,
             model_id: str,
+            task_options: TaskOptions,
+            hyperparameters: Dict[str, str],
+            dataset: Dataset,
+            pid_info: Dict
     ):
         """
         Args:
@@ -171,33 +156,31 @@ class ForecastingSingleTrainingTask(_BasicTrainingTask):
             data_configs: dict of data configurations
             dataset: training dataset
         """
-        super().__init__(task_configs, model_configs, pid_info, data_configs, dataset)
-        self.model_id = model_id
-        self.default_trial_id = 'tid_0'
-        self.task_configs['trial_id'] = self.default_trial_id
-        model, model_configs = create_forecast_model(**model_configs)
-        self.trial = ForecastingTrainingTrial(task_configs, model, model_configs, dataset)
+        super().__init__(model_id, task_options, hyperparameters, dataset, pid_info)
+        model_configs, task_configs = parse_fixed_hyperparameters(task_options, hyperparameters)
+        self.trial = ForecastingTrainingTrial(create_forecast_model(task_options, model_configs),
+                                              task_configs,
+                                              dataset)
 
     def __call__(self):
         try:
             self.pid_info[self.model_id] = os.getpid()
             self.trial.start()
-            self.confignode_client.update_model_state(self.model_id, TrainingState.FINISHED, self.default_trial_id)
+            self.confignode_client.update_model_state(self.model_id, TrainingState.FINISHED, self.trial.trial_id)
         except Exception as e:
             logger.warn(e)
-            self.confignode_client.update_model_state(self.model_id, TrainingState.FAILED, self.default_trial_id)
+            self.confignode_client.update_model_state(self.model_id, TrainingState.FAILED, self.trial.trial_id)
             raise e
 
 
-class ForecastingTuningTrainingTask(_BasicTrainingTask):
+class ForecastAutoTuningTrainingTask(_BasicTrainingTask):
     def __init__(
             self,
-            task_configs: Dict,
-            model_configs: Dict,
-            pid_info: Dict,
-            data_configs: Dict,
-            dataset: Dataset,
             model_id: str,
+            task_options: TaskOptions,
+            hyperparameters: Dict[str, str],
+            dataset: Dataset,
+            pid_info: Dict
     ):
         """
         Args:
@@ -207,8 +190,7 @@ class ForecastingTuningTrainingTask(_BasicTrainingTask):
             data_configs: dict of data configurations
             dataset: training dataset
         """
-        super().__init__(task_configs, model_configs, pid_info, data_configs, dataset)
-        self.model_id = model_id
+        super().__init__(model_id, task_options, hyperparameters, dataset, pid_info)
         self.study = optuna.create_study(direction='minimize')
 
     def __call__(self):

@@ -19,12 +19,14 @@ from typing import Dict, Tuple
 
 from torch.utils.data import Dataset
 
+from iotdb.mlnode.constant import TaskType
 from iotdb.mlnode.data_access.enums import DatasetType, DataSourceType
 from iotdb.mlnode.data_access.offline.dataset import (TimeSeriesDataset,
                                                       WindowDataset)
 from iotdb.mlnode.data_access.offline.source import (FileDataSource,
                                                      ThriftDataSource)
 from iotdb.mlnode.exception import BadConfigValueError, MissingConfigError
+from iotdb.mlnode.parser import TaskOptions
 
 
 def _dataset_common_config(**kwargs):
@@ -43,11 +45,15 @@ _dataset_default_config_dict = {
 }
 
 
-def create_forecast_dataset(
-        source_type,
-        dataset_type,
-        **kwargs,
-) -> Tuple[Dataset, Dict]:
+def create_dataset(query_body: str, task_options: TaskOptions) -> Dataset:
+    task_type = task_options.get_task_type()
+    if task_type == TaskType.FORECAST:
+        return create_forecast_dataset(query_body, task_options)
+    else:
+        raise Exception(f"task type {task_type} not supported.")
+
+
+def create_forecast_dataset(query_body: str, task_options: TaskOptions) -> Dataset:
     """
     Factory method for all support dataset
     currently implement two types of PyTorch dataset: WindowDataset, TimeSeriesDataset

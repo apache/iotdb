@@ -19,13 +19,65 @@
 
 import argparse
 import re
+from abc import abstractmethod
 from typing import Dict, List, Tuple
 
-from iotdb.mlnode.algorithm.enums import ForecastTaskType
+from iotdb.mlnode.algorithm.enums import ForecastTaskType, ForecastModelType
+from iotdb.mlnode.constant import TaskType, OptionsKey
 from iotdb.mlnode.data_access.enums import DatasetType, DataSourceType
-from iotdb.mlnode.exception import MissingConfigError, WrongTypeConfigError
+from iotdb.mlnode.exception import MissingConfigError, WrongTypeConfigError, MissingOptionError
 from iotdb.mlnode.serde import convert_to_df
 from iotdb.thrift.mlnode.ttypes import TCreateTrainingTaskReq, TForecastReq
+
+
+class TaskOptions(object):
+    def __init__(self, options: Dict):
+        self.__raw_options = options
+
+        if OptionsKey.MODEL_TYPE not in self.__raw_options:
+            raise MissingOptionError(OptionsKey.MODEL_TYPE.name())
+        self.model_type = getattr(ForecastModelType, self.__raw_options.pop(OptionsKey.MODEL_TYPE), None)
+        if not self.model_type:
+            raise Exception(f"model_type {self.model_type} not supported.")
+
+        # training with auto-tuning as default
+        self.auto_tuning = self.__raw_options.pop(OptionsKey.AUTO_TUNING, default=True)
+
+    @abstractmethod
+    def get_task_type(self) -> TaskType:
+        raise NotImplementedError("Subclasses must implement the validate() method.")
+
+    def _check_redundant_options(self) -> None:
+        if len(self.__raw_options):
+            raise Exception(f"redundant options: {self.__raw_options}.")
+
+
+class ForecastTaskOptions(TaskOptions):
+    def __init__(self, options: Dict):
+        super().__init__(options)
+        self.input_length = self.__raw_options.pop(OptionsKey.INPUT_LENGTH, default=96)
+        self.predict_length = self.__raw_options.pop(OptionsKey.PREDICT_LENGTH, default=96)
+        super()._check_redundant_options()
+
+    def get_task_type(self) -> TaskType:
+        return TaskType.FORECAST
+
+
+def parse_task_type(options: Dict) -> TaskType:
+    if OptionsKey.TASK_TYPE not in options:
+        raise MissingOptionError(OptionsKey.TASK_TYPE.name())
+    task_type = getattr(TaskType, options.pop(OptionsKey.TASK_TYPE), None)
+    if not task_type:
+        raise Exception(f"task type {task_type} not supported.")
+    return task_type
+
+
+def parse_task_options(options) -> TaskOptions:
+    task_type = parse_task_type(options)
+    if task_type == TaskType.FORECAST:
+        return ForecastTaskOptions(options)
+    else:
+        raise Exception(f"task type {task_type} not supported.")
 
 
 class _ConfigParser(argparse.ArgumentParser):

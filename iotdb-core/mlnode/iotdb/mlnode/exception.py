@@ -18,6 +18,7 @@
 
 class _BaseError(Exception):
     """Base class for exceptions in this module."""
+
     def __init__(self):
         self.message = None
 
@@ -43,6 +44,11 @@ class BadConfigValueError(_BaseError):
 class MissingConfigError(_BaseError):
     def __init__(self, config_name: str):
         self.message = "Missing config: {}".format(config_name)
+
+
+class MissingOptionError(_BaseError):
+    def __init__(self, config_name: str):
+        self.message = "Missing task option: {}".format(config_name)
 
 
 class WrongTypeConfigError(_BaseError):

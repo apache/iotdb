@@ -15,39 +15,30 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from enum import Enum
-
-MLNODE_CONF_DIRECTORY_NAME = "conf"
-MLNODE_CONF_FILE_NAME = "iotdb-mlnode.toml"
-MLNODE_LOG_CONF_FILE_NAME = "logging_config.ini"
-
-MLNODE_MODEL_STORAGE_DIRECTORY_NAME = "models"
-
-DEFAULT_TRIAL_ID = "__trial_0"
+from abc import abstractmethod
 
 
-class TSStatusCode(Enum):
-    SUCCESS_STATUS = 200
-    REDIRECTION_RECOMMEND = 400
-    MLNODE_INTERNAL_ERROR = 1510
+class Validator(object):
+    @abstractmethod
+    def validate(self, value):
+        """
+        Checks whether the given value is valid.
 
-    def get_status_code(self) -> int:
-        return self.value
+        Parameters:
+        - value: The value to validate
+
+        Returns:
+        - True if the value is valid, False otherwise.
+        """
+        raise NotImplementedError("Subclasses must implement the validate() method.")
 
 
-class TaskType(Enum):
-    FORECAST = "forecast"
+class FloatRangeValidator(Validator):
+    def __init__(self, min_value, max_value):
+        self.min_value = min_value
+        self.max_value = max_value
 
-
-class OptionsKey(Enum):
-    # common
-    TASK_TYPE = "task_type"
-    MODEL_TYPE = "model_type"
-    AUTO_TUNING = "auto_tuning"
-
-    # forecast
-    INPUT_LENGTH = "input_length"
-    PREDICT_LENGTH = "predict_length"
-
-    def name(self) -> str:
-        return self.value
+    def validate(self, value):
+        if isinstance(value, float) and self.min_value <= value <= self.max_value:
+            return True
+        return False

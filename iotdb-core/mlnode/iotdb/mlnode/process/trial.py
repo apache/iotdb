@@ -26,7 +26,9 @@ from torch.utils.data import DataLoader, Dataset
 
 from iotdb.mlnode.algorithm.metric import all_metrics, build_metrics
 from iotdb.mlnode.client import client_manager
+from iotdb.mlnode.constant import DEFAULT_TRIAL_ID
 from iotdb.mlnode.log import logger
+from iotdb.mlnode.parser import TaskOptions
 from iotdb.mlnode.storage import model_storage
 from iotdb.thrift.common.ttypes import TrainingState
 
@@ -81,9 +83,8 @@ def _parse_trial_config(**kwargs):
 class BasicTrial(object):
     def __init__(
             self,
-            task_configs: Dict,
             model: nn.Module,
-            model_configs: Dict,
+            task_configs: Dict,
             dataset: Dataset
     ):
         self.trial_configs = task_configs
@@ -131,10 +132,9 @@ class BasicTrial(object):
 class ForecastingTrainingTrial(BasicTrial):
     def __init__(
             self,
-            task_configs: Dict,
             model: nn.Module,
-            model_configs: Dict,
-            dataset: Dataset,
+            task_configs: Dict,
+            dataset: Dataset
     ):
         """
         A training trial, accept all parameters needed and train a single model.
@@ -146,8 +146,8 @@ class ForecastingTrainingTrial(BasicTrial):
             dataset: training dataset
             **kwargs:
         """
-        super(ForecastingTrainingTrial, self).__init__(task_configs, model, model_configs, dataset)
-
+        super(ForecastingTrainingTrial, self).__init__(model, task_configs, dataset)
+        self.trial_id = DEFAULT_TRIAL_ID
         self.dataloader = self._build_dataloader()
         self.datanode_client = client_manager.borrow_data_node_client()
         self.confignode_client = client_manager.borrow_config_node_client()

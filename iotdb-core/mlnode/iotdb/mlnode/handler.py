@@ -18,9 +18,9 @@
 
 from iotdb.mlnode.config import descriptor
 from iotdb.mlnode.constant import TSStatusCode
-from iotdb.mlnode.data_access.factory import create_forecast_dataset
+from iotdb.mlnode.data_access.factory import create_dataset
 from iotdb.mlnode.log import logger
-from iotdb.mlnode.parser import parse_forecast_request, parse_training_request
+from iotdb.mlnode.parser import parse_forecast_request, parse_task_options
 from iotdb.mlnode.process.manager import TaskManager
 from iotdb.mlnode.serde import convert_to_binary
 from iotdb.mlnode.storage import model_storage
@@ -46,24 +46,25 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
     def createTrainingTask(self, req: TCreateTrainingTaskReq):
         task = None
         try:
-            # parse request, check required config and config type
-            data_config, model_config, task_config = parse_training_request(req)
-            # create dataset & check data config legitimacy
-            dataset, data_config = create_forecast_dataset(**data_config)
+            # parse options
+            task_options = parse_task_options(req.options)
 
-            model_config['input_vars'] = data_config['input_vars']
-            model_config['output_vars'] = data_config['output_vars']
-
-            # create task & check task config legitimacy
-            task = self.__task_manager.create_training_task(dataset, data_config, model_config, task_config)
+            # create task
+            task = self.__task_manager.create_forecast_training_task(
+                model_id=req.modelId,
+                task_options=task_options,
+                hyperparameters=req.hyperparameters,
+                dataset=create_dataset(req.queryBody, task_options)
+            )
 
             return get_status(TSStatusCode.SUCCESS_STATUS)
         except Exception as e:
             logger.warn(e)
             return get_status(TSStatusCode.MLNODE_INTERNAL_ERROR, str(e))
         finally:
-            # submit task stage & check resource and decide pending/start
-            self.__task_manager.submit_training_task(task)
+            if task is not None:
+                # submit task to process pool
+                self.__task_manager.submit_training_task(task)
 
     def forecast(self, req: TForecastReq):
         model_path, data, pred_length = parse_forecast_request(req)

@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from typing import Dict, Tuple
+from typing import Dict
 
 import torch.nn as nn
 
@@ -24,9 +24,10 @@ from iotdb.mlnode.algorithm.models.forecast.dlinear import (dlinear,
                                                             dlinear_individual)
 from iotdb.mlnode.algorithm.models.forecast.nbeats import nbeats
 from iotdb.mlnode.exception import BadConfigValueError
-
-
 # Common configs for all forecasting model with default values
+from iotdb.mlnode.parser import TaskOptions
+
+
 def _common_config(**kwargs):
     return {
         'input_len': 96,
@@ -51,14 +52,9 @@ _forecasting_model_default_config_dict = {
 
 
 def create_forecast_model(
-        model_name,
-        input_len=96,
-        pred_len=96,
-        input_vars=1,
-        output_vars=1,
-        forecast_task_type=ForecastTaskType.ENDOGENOUS,
-        **kwargs,
-) -> Tuple[nn.Module, Dict]:
+        task_options: TaskOptions,
+        model_configs: Dict,
+) -> nn.Module:
     """
     Factory method for all support forecasting models
     the given arguments is common configs shared by all forecasting models
@@ -83,13 +79,6 @@ def create_forecast_model(
         raise BadConfigValueError('forecast_task_type', forecast_task_type,
                                   f'It should be one of {list(_forecasting_model_default_config_dict.keys())}')
 
-    common_config = _forecasting_model_default_config_dict[forecast_task_type]
-    common_config['input_len'] = input_len
-    common_config['pred_len'] = pred_len
-    common_config['input_vars'] = input_vars
-    common_config['output_vars'] = output_vars
-    common_config['forecast_task_type'] = str(forecast_task_type)
-
     if not input_len > 0:
         raise BadConfigValueError('input_len', input_len,
                                   'Length of input series should be positive')
@@ -108,23 +97,24 @@ def create_forecast_model(
                                       'Number of input/output variables should be '
                                       'the same in endogenous forecast')
 
-    if model_name == ForecastModelType.DLINEAR.value:
+    model_type =
+    if task_options.model_type == ForecastModelType.DLINEAR.value:
         model, model_config = dlinear(
             common_config=common_config,
             **kwargs
         )
-    elif model_name == ForecastModelType.DLINEAR_INDIVIDUAL.value:
+    elif task_options.model_type == ForecastModelType.DLINEAR_INDIVIDUAL.value:
         model, model_config = dlinear_individual(
             common_config=common_config,
             **kwargs
         )
-    elif model_name == ForecastModelType.NBEATS.value:
+    elif task_options.model_type == ForecastModelType.NBEATS.value:
         model, model_config = nbeats(
             common_config=common_config,
             **kwargs
         )
     else:
-        raise BadConfigValueError('model_name', model_name, f'It should be one of {ForecastModelType.values()}')
+        raise BadConfigValueError('model_name', task_options.model_type,
+                                  f'It should be one of {ForecastModelType.values()}')
 
-    model_config['model_name'] = model_name
-    return model, model_config
+    return model

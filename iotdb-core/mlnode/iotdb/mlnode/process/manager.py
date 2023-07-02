@@ -28,9 +28,10 @@ from torch.utils.data import Dataset
 from subprocess import call
 
 from iotdb.mlnode.log import logger
+from iotdb.mlnode.parser import TaskOptions, ForecastTaskOptions
 from iotdb.mlnode.process.task import (ForecastingInferenceTask,
-                                       ForecastingSingleTrainingTask,
-                                       ForecastingTuningTrainingTask)
+                                       ForecastFixedParamTrainingTask,
+                                       ForecastAutoTuningTrainingTask)
 
 
 class TaskManager(object):
@@ -48,47 +49,42 @@ class TaskManager(object):
         self.__training_process_pool = mp.Pool(pool_size)
         self.__inference_process_pool = mp.Pool(pool_size)
 
-    def create_training_task(self,
-                             dataset: Dataset,
-                             data_configs: Dict,
-                             model_configs: Dict,
-                             task_configs: Dict):
+    def create_forecast_training_task(self,
+                                      model_id: str,
+                                      task_options: TaskOptions,
+                                      hyperparameters: Dict[str, str],
+                                      dataset: Dataset):
         """
 
         Args:
+            model_id:
+            task_options:
             dataset: a torch dataset to be used for training
-            data_configs: dict of data configurations
-            model_configs: dict of model configurations
-            task_configs: dict of task configurations
+            hyperparameters:
 
         Returns:
             task: a training task for forecasting, which can be submitted to self.__training_process_pool
         """
-        model_id = task_configs['model_id']
-        if task_configs['tuning']:
-            task = ForecastingTuningTrainingTask(
-                task_configs,
-                model_configs,
-                self.__pid_info,
-                data_configs,
-                dataset,
+        if task_options.auto_tuning:
+            return ForecastAutoTuningTrainingTask(
                 model_id,
+                task_options,
+                hyperparameters,
+                dataset,
+                pid_info=self.__pid_info,
             )
         else:
-            task = ForecastingSingleTrainingTask(
-                task_configs,
-                model_configs,
-                self.__pid_info,
-                data_configs,
-                dataset,
-                model_id,
+            return ForecastFixedParamTrainingTask(
+                model_id=model_id,
+                task_options=task_options,
+                hyperparameters=hyperparameters,
+                dataset=dataset,
+                pid_info=self.__pid_info,
             )
-        return task
 
-    def submit_training_task(self, task: Union[ForecastingTuningTrainingTask, ForecastingSingleTrainingTask]) -> None:
-        if task is not None:
-            self.__training_process_pool.apply_async(task, args=())
-            logger.info(f'Task: ({task.model_id}) - Training process submitted successfully')
+    def submit_training_task(self, task: Union[ForecastAutoTuningTrainingTask, ForecastFixedParamTrainingTask]) -> None:
+        self.__training_process_pool.apply_async(task, args=())
+        logger.info(f'Task: ({task.model_id}) - Training process submitted successfully')
 
     def create_forecast_task(self,
                              task_configs,
