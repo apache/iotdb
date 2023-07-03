@@ -20,22 +20,21 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.utils.filter;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
-import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
-import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
+import org.apache.iotdb.commons.schema.filter.impl.AndFilter;
 
-public class DeviceFilterVisitor extends SchemaFilterVisitor<IDeviceSchemaInfo> {
+/** This Visitor is used to determine if the SchemaFilter tree contains a certain type of Filter. */
+public class FilterContainsVisitor extends SchemaFilterVisitor<SchemaFilterType> {
+
   @Override
-  public boolean visitNode(SchemaFilter filter, IDeviceSchemaInfo info) {
-    return true;
+  protected boolean visitNode(SchemaFilter filter, SchemaFilterType schemaFilterType) {
+    return filter != null && filter.getSchemaFilterType().equals(schemaFilterType);
   }
 
   @Override
-  public boolean visitPathContainsFilter(
-      PathContainsFilter pathContainsFilter, IDeviceSchemaInfo info) {
-    if (pathContainsFilter.getContainString() == null) {
-      return true;
-    }
-    return info.getFullPath().toLowerCase().contains(pathContainsFilter.getContainString());
+  public boolean visitAndFilter(AndFilter andFilter, SchemaFilterType schemaFilterType) {
+    return andFilter.getLeft().accept(this, schemaFilterType)
+        || andFilter.getRight().accept(this, schemaFilterType);
   }
 }

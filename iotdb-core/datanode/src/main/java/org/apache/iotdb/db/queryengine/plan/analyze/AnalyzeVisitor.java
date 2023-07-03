@@ -3199,7 +3199,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     analysis.setSpecifiedTemplateRelatedPathPatternList(specifiedPatternList);
 
-    SchemaPartition partition = partitionFetcher.getOrCreateSchemaPartition(patternTree);
+    SchemaPartition partition = partitionFetcher.getSchemaPartition(patternTree);
     analysis.setSchemaPartitionInfo(partition);
     if (partition.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze(true);
