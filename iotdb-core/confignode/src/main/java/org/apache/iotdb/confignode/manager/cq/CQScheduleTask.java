@@ -151,7 +151,7 @@ public class CQScheduleTask implements Runnable {
   }
 
   public static long getFirstExecutionTime(long boundaryTime, long everyInterval) {
-    long now = System.currentTimeMillis();
+    long now = System.currentTimeMillis() * FACTOR;
     return getFirstExecutionTime(boundaryTime, everyInterval, now);
   }
 
@@ -183,7 +183,7 @@ public class CQScheduleTask implements Runnable {
           targetDataNode.get().dataNodeId,
           startTime,
           endTime,
-          System.currentTimeMillis());
+          System.currentTimeMillis() * FACTOR);
       TExecuteCQ executeCQReq =
           new TExecuteCQ(queryBody, startTime, endTime, everyInterval, zoneId, cqId, username);
       try {
@@ -227,7 +227,7 @@ public class CQScheduleTask implements Runnable {
       if (timeoutPolicy == TimeoutPolicy.BLOCKED) {
         executionTime = executionTime + everyInterval;
       } else if (timeoutPolicy == TimeoutPolicy.DISCARD) {
-        long now = System.currentTimeMillis();
+        long now = System.currentTimeMillis() * FACTOR;
         executionTime =
             executionTime + ((now - executionTime - 1) / everyInterval + 1) * everyInterval;
       } else {
@@ -244,7 +244,7 @@ public class CQScheduleTask implements Runnable {
             cqId,
             startTime,
             endTime,
-            System.currentTimeMillis());
+            System.currentTimeMillis() * FACTOR);
 
         ConsensusWriteResponse result =
             configManager
