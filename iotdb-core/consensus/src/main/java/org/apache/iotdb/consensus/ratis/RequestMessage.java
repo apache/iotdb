@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.AtomicReference;
 class RequestMessage implements Message {
 
   private final IConsensusRequest actualRequest;
-  private AtomicReference<ByteString> serializedContent = new AtomicReference<>();
+  private final AtomicReference<ByteString> serializedContent = new AtomicReference<>();
 
   RequestMessage(IConsensusRequest request) {
     this.actualRequest = request;
@@ -45,9 +45,8 @@ class RequestMessage implements Message {
     if (serializedContent.get() == null) {
       synchronized (this) {
         if (serializedContent.get() == null) {
-          serializedContent =
-              new AtomicReference<>(
-                  UnsafeByteOperations.unsafeWrap(actualRequest.serializeToByteBuffer()));
+          serializedContent.set(
+              UnsafeByteOperations.unsafeWrap(actualRequest.serializeToByteBuffer()));
         }
       }
     }
