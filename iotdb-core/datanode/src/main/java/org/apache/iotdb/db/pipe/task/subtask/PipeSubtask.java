@@ -71,28 +71,28 @@ public abstract class PipeSubtask
   public Boolean call() throws Exception {
     boolean hasAtLeastOneEventProcessed = false;
 
-    // if the scheduler allows to schedule, then try to consume an event
+    // If the scheduler allows to schedule, then try to consume an event
     while (subtaskScheduler.schedule()) {
-      // if the event is consumed successfully, then continue to consume the next event
+      // If the event is consumed successfully, then continue to consume the next event
       // otherwise, stop consuming
       if (!executeOnce()) {
         break;
       }
       hasAtLeastOneEventProcessed = true;
     }
-    // reset the scheduler to make sure that the scheduler can schedule again
+    // Reset the scheduler to make sure that the scheduler can schedule again
     subtaskScheduler.reset();
 
     return hasAtLeastOneEventProcessed;
   }
 
   /**
-   * try to consume an event by the pipe plugin.
+   * Try to consume an event by the pipe plugin.
    *
    * @return true if the event is consumed successfully, false if no more event can be consumed
    * @throws Exception if any error occurs when consuming the event
    */
-  @SuppressWarnings("squid:S112") // allow to throw Exception
+  @SuppressWarnings("squid:S112") // Allow to throw Exception
   protected abstract boolean executeOnce() throws Exception;
 
   @Override
@@ -157,9 +157,9 @@ public abstract class PipeSubtask
             throwable);
       }
 
-      // although the pipe task will be stopped, we still don't release the last event here
-      // because we need to keep it for the next retry. if user wants to restart the task,
-      // the last event will be processed again. the last event will be released when the task
+      // Although the pipe task will be stopped, we still don't release the last event here
+      // Because we need to keep it for the next retry. If user wants to restart the task,
+      // the last event will be processed again. The last event will be released when the task
       // is dropped or the process is running normally.
     }
   }
@@ -171,7 +171,7 @@ public abstract class PipeSubtask
     shouldStopSubmittingSelf.set(false);
   }
 
-  /**
+  /**.
    * @return true if the shouldStopSubmittingSelf state is changed from false to true, false
    *     otherwise
    */

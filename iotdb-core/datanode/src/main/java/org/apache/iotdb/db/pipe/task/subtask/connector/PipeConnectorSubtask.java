@@ -102,7 +102,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
     }
 
     final Event event = lastEvent != null ? lastEvent : inputPendingQueue.waitedPoll();
-    // record this event for retrying on connection failure or other exceptions
+    // Record this event for retrying on connection failure or other exceptions
     lastEvent = event;
     if (event == null) {
       return false;

@@ -25,6 +25,4 @@ package org.apache.iotdb.commons.pipe.plugin.builtin.connector;
  * The pipe agent in the server module will replace this class with the real implementation when
  * initializing the IoTDB Thrift connector V1.
  */
-public class IoTDBThriftConnectorV1 extends IoTDBThriftConnector {
-
-}
+public class IoTDBThriftConnectorV1 extends IoTDBThriftConnector {}
