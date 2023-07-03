@@ -40,9 +40,9 @@ public class PipeTaskBuilder {
   }
 
   public PipeTask build() {
-    // event flow: extractor -> processor -> connector
+    // Event flow: extractor -> processor -> connector
 
-    // we first build the extractor and connector, then build the processor.
+    // We first build the extractor and connector, then build the processor.
     final PipeTaskExtractorStage extractorStage =
         new PipeTaskExtractorStage(
             pipeStaticMeta.getPipeName(),
@@ -57,7 +57,7 @@ public class PipeTaskBuilder {
             pipeStaticMeta.getCreationTime(),
             pipeStaticMeta.getConnectorParameters());
 
-    // the processor connects the extractor and connector.
+    // The processor connects the extractor and connector.
     final PipeTaskProcessorStage processorStage =
         new PipeTaskProcessorStage(
             pipeStaticMeta.getPipeName(),
