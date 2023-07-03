@@ -111,7 +111,7 @@ public class CompactionSchedulerTest extends AbstractCompactionTest {
         .setInnerUnseqCompactionPerformer(InnerUnseqCompactionPerformer.READ_POINT);
     IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
     IoTDBDescriptor.getInstance().getConfig().setCompactionScheduleIntervalInMs(3000);
-    CompactionTaskManager.COMPACTION_TASK_SUBMIT_DELAY = 2000;
+    CompactionTaskManager.compactionTaskSubmitDelay = 2000;
     CompactionTaskManager.getInstance().start();
     while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
       try {

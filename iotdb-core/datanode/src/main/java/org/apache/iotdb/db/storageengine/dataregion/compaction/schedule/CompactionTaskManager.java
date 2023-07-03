@@ -69,7 +69,8 @@ public class CompactionTaskManager implements IService {
 
   private final int compactionScheduledThreadNum = config.getCompactionScheduledThreadCount();
 
-  public static final long COMPACTION_TASK_SUBMIT_DELAY = 20L * 1000L;
+  @SuppressWarnings("squid:S1444")
+  public static long compactionTaskSubmitDelay = 20L * 1000L;
 
   private AtomicInteger dataRegionNum = new AtomicInteger(0);
 
@@ -128,7 +129,7 @@ public class CompactionTaskManager implements IService {
       ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
           compactionScheduledPool,
           new CompactionScheduledWorker(i, dataRegionMap),
-          COMPACTION_TASK_SUBMIT_DELAY,
+              compactionTaskSubmitDelay,
           IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs(),
           TimeUnit.MILLISECONDS);
     }
