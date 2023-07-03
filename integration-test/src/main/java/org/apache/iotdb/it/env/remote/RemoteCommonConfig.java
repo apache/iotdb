@@ -164,6 +164,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setTimestampPrecision(String timestampPrecision) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setConfigNodeRatisSnapshotTriggerThreshold(
       int ratisSnapshotTriggerThreshold) {
     return this;
