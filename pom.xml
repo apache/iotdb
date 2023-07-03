@@ -119,7 +119,6 @@
         <module>iotdb-client/isession</module>
         <module>iotdb-core/mlnode</module>
         <module>iotdb-api/pipe-api</module>
-        <module>iotdb-api/subscription-api</module>
     </modules>
     <!-- Properties Management -->
     <properties>
