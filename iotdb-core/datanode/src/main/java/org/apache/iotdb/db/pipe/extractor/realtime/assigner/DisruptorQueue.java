@@ -28,16 +28,12 @@ import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
 import com.lmax.disruptor.util.DaemonThreadFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadFactory;
 
 public class DisruptorQueue<E> {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(DisruptorQueue.class);
 
   private Disruptor<Container<E>> disruptor;
   private RingBuffer<Container<E>> ringBuffer;
@@ -60,23 +56,8 @@ public class DisruptorQueue<E> {
     private WaitStrategy waitStrategy = new BlockingWaitStrategy();
     private final List<EventHandler<E>> handlers = new ArrayList<>();
 
-    public Builder<E> setRingBufferSize(int ringBufferSize) {
-      this.ringBufferSize = ringBufferSize;
-      return this;
-    }
-
-    public Builder<E> setThreadFactory(ThreadFactory threadFactory) {
-      this.threadFactory = threadFactory;
-      return this;
-    }
-
     public Builder<E> setProducerType(ProducerType producerType) {
       this.producerType = producerType;
-      return this;
-    }
-
-    public Builder<E> setWaitStrategy(WaitStrategy waitStrategy) {
-      this.waitStrategy = waitStrategy;
       return this;
     }
 
