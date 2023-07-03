@@ -171,7 +171,9 @@ public abstract class PipeSubtask
     shouldStopSubmittingSelf.set(false);
   }
 
-  /**.
+  /**
+   * .
+   *
    * @return true if the shouldStopSubmittingSelf state is changed from false to true, false
    *     otherwise
    */
