@@ -62,6 +62,7 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
   private ISchemaReader<T> schemaReader;
   private ListenableFuture<?> isBlocked;
   private TsBlock next;
+  private boolean isFinished;
 
   public CountGroupByLevelScanOperator(
       PlanNodeId sourceId,
@@ -136,6 +137,7 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
         } else {
           if (countMap.isEmpty()) {
             next = null;
+            isFinished = true;
           } else {
             next = constructTsBlockAndClearMap(countMap);
           }

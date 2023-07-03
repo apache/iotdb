@@ -69,25 +69,6 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
   private TsBlock next;
   private boolean isFinished;
 
-  protected SchemaQueryScanOperator(
-      PlanNodeId sourceId,
-      OperatorContext operatorContext,
-      int limit,
-      int offset,
-      PartialPath partialPath,
-      boolean isPrefixPath,
-      List<TSDataType> outputDataTypes) {
-    this.operatorContext = operatorContext;
-    this.limit = limit;
-    this.offset = offset;
-    this.partialPath = partialPath;
-    this.isPrefixPath = isPrefixPath;
-    this.sourceId = sourceId;
-    this.outputDataTypes = outputDataTypes;
-    this.schemaSource = null;
-    this.tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
-  }
-
   public SchemaQueryScanOperator(
       PlanNodeId sourceId, OperatorContext operatorContext, ISchemaSource<T> schemaSource) {
     this.sourceId = sourceId;
