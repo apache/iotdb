@@ -283,6 +283,11 @@ public class TabletInsertionDataContainer {
       for (int i = 0; i < originColumnSize; i++) {
         final String measurement = originMeasurementList[i];
 
+        // ignore null measurement for partial insert
+        if (measurement == null) {
+          continue;
+        }
+
         // low cost check comes first
         if (pattern.length() == deviceId.length() + measurement.length() + 1
             // high cost check comes later
