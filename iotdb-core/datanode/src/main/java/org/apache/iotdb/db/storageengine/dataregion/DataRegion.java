@@ -129,7 +129,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -260,10 +259,6 @@ public class DataRegion implements IDataRegionForQuery {
    * one holds the insertWriteLock.
    */
   private String insertWriteLockHolder = "";
-
-  private ScheduledExecutorService timedCompactionScheduleTask;
-
-  public static final long COMPACTION_TASK_SUBMIT_DELAY = 20L * 1000L;
 
   private static final QueryResourceMetricSet QUERY_RESOURCE_METRIC_SET =
       QueryResourceMetricSet.getInstance();
@@ -2616,7 +2611,7 @@ public class DataRegion implements IDataRegionForQuery {
       try {
         TimeUnit.MILLISECONDS.sleep(10);
       } catch (InterruptedException e) {
-        logger.error("Thread get interrupted when waiting compaction to finish", e);
+        logger.warn("Thread get interrupted when waiting compaction to finish", e);
         Thread.currentThread().interrupt();
         break;
       }
@@ -2923,14 +2918,6 @@ public class DataRegion implements IDataRegionForQuery {
 
   public Long getLatestTimePartition() {
     return getTimePartitions().stream().max(Long::compareTo).orElse(0L);
-  }
-
-  public String getInsertWriteLockHolder() {
-    return insertWriteLockHolder;
-  }
-
-  public ScheduledExecutorService getTimedCompactionScheduleTask() {
-    return timedCompactionScheduleTask;
   }
 
   /** This method could only be used in iot consensus */
