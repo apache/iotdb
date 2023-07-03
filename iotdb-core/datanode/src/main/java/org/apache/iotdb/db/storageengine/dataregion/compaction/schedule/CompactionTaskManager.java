@@ -127,7 +127,7 @@ public class CompactionTaskManager implements IService {
     for (int i = 0; i < compactionScheduledThreadNum; i++) {
       ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
           compactionScheduledPool,
-          new compactionScheduledWorker(i, dataRegionMap),
+          new CompactionScheduledWorker(i, dataRegionMap),
           COMPACTION_TASK_SUBMIT_DELAY,
           IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs(),
           TimeUnit.MILLISECONDS);

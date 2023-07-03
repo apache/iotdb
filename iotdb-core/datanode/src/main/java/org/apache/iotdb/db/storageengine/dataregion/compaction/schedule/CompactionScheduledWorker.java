@@ -19,9 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
-
-
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,14 +29,14 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
-public class compactionScheduledWorker implements Runnable {
+public class CompactionScheduledWorker implements Runnable {
   private static final Logger logger = LoggerFactory.getLogger("COMPACTION");
 
   private final int threadId;
 
   private Map<Integer, List<TsFileManager>> dataRegionMap;
 
-  public compactionScheduledWorker(int threadId, Map<Integer, List<TsFileManager>> dataRegionMap) {
+  public CompactionScheduledWorker(int threadId, Map<Integer, List<TsFileManager>> dataRegionMap) {
     this.threadId = threadId;
     this.dataRegionMap = dataRegionMap;
   }

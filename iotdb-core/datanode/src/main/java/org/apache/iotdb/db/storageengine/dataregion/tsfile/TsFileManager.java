@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
-import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
+import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 
 import java.io.IOException;
 import java.util.ArrayList;

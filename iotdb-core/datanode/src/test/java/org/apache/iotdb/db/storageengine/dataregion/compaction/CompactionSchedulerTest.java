@@ -44,7 +44,6 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManage
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
-
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 
 import org.junit.After;
