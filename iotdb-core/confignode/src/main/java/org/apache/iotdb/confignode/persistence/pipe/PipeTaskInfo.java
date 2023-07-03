@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.persistence.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -192,7 +193,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   /////////////////////////////// Pipe Runtime Management ///////////////////////////////
 
-  /** handle the data region leader change event and update the pipe task meta accordingly */
+  /** .Handle the data region leader change event and update the pipe task meta accordingly */
   public TSStatus handleLeaderChange(PipeHandleLeaderChangePlan plan) {
     plan.getConsensusGroupId2NewDataRegionLeaderIdMap()
         .forEach(
@@ -205,7 +206,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
                               pipeMeta.getRuntimeMeta().getConsensusGroupIdToTaskMetaMap();
 
                           if (consensusGroupIdToTaskMetaMap.containsKey(dataRegionGroupId)) {
-                            // if the data region leader is -1, it means the data region is
+                            // If the data region leader is -1, it means the data region is
                             // removed
                             if (newDataRegionLeader != -1) {
                               consensusGroupIdToTaskMetaMap
@@ -215,7 +216,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
                               consensusGroupIdToTaskMetaMap.remove(dataRegionGroupId);
                             }
                           } else {
-                            // if CN does not contain the data region group, it means the data
+                            // If CN does not contain the data region group, it means the data
                             // region group is newly added.
                             if (newDataRegionLeader != -1) {
                               consensusGroupIdToTaskMetaMap.put(

@@ -19,4 +19,12 @@
 
 package org.apache.iotdb.commons.pipe.plugin.builtin.connector;
 
-public class IoTDBThriftConnectorV2 extends IoTDBThriftConnector {}
+/**
+ * This class is a placeholder and should not be initialized. It represents the IoTDB Thrift
+ * connector V2. There is a real implementation in the server module but cannot be imported here.
+ * The pipe agent in the server module will replace this class with the real implementation when
+ * initializing the IoTDB Thrift connector V2.
+ */
+public class IoTDBThriftConnectorV2 extends IoTDBThriftConnector {
+
+}
