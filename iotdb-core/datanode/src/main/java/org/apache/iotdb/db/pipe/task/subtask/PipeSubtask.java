@@ -42,17 +42,17 @@ public abstract class PipeSubtask
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSubtask.class);
 
-  // used for identifying the subtask
+  // Used for identifying the subtask
   protected final String taskID;
 
-  // for thread pool to execute subtasks
+  // For thread pool to execute subtasks
   protected ListeningExecutorService subtaskWorkerThreadPoolExecutor;
 
-  // for controlling the subtask execution
+  // For controlling the subtask execution
   protected final AtomicBoolean shouldStopSubmittingSelf = new AtomicBoolean(true);
   protected PipeSubtaskScheduler subtaskScheduler;
 
-  // for fail-over
+  // For fail-over
   public static final int MAX_RETRY_TIMES = 5;
   protected final AtomicInteger retryCount = new AtomicInteger(0);
   protected Event lastEvent;
