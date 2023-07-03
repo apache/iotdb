@@ -247,6 +247,22 @@ public class IOMonitor2 {
     M4_LSM_TP_SEARCH_ARRAY_c_genBPTP_cnt = 0;
   }
 
+  public static class ValuePoint implements Comparable<ValuePoint> {
+    public final int index;
+    public final long value;
+
+    public ValuePoint(int index, long value) {
+      this.index = index;
+      this.value = value;
+    }
+
+    @Override
+    public int compareTo(ValuePoint other) {
+      // multiplied to -1 as the author need descending sort order
+      return -1 * Long.valueOf(this.value).compareTo(other.value);
+    }
+  }
+
   public static void addMeasure(Operation operation, long elapsedTimeInNanosecond) {
     switch (operation) {
       case DCP_Server_Query_Execute:
