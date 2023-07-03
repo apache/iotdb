@@ -22,7 +22,6 @@ package org.apache.iotdb.db.query.context;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
-import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.metadata.path.PatternTreeMapFactory;
@@ -113,43 +112,8 @@ public class QueryContext {
             }
             fileModCache.put(modFile.getFilePath(), allModifications);
           }
-          return sortAndMerge(allModifications.getOverlapped(path));
+          return ModificationFile.sortAndMerge(allModifications.getOverlapped(path));
         });
-  }
-
-  private List<Modification> sortAndMerge(List<Modification> modifications) {
-    modifications.sort(
-        (o1, o2) -> {
-          if (!o1.getType().equals(o2.getType())) {
-            return o1.getType().compareTo(o2.getType());
-          } else if (!o1.getPath().equals(o2.getPath())) {
-            return o1.getPath().compareTo(o2.getPath());
-          } else if (o1.getFileOffset() != o2.getFileOffset()) {
-            return (int) (o1.getFileOffset() - o2.getFileOffset());
-          } else {
-            if (o1.getType() == Modification.Type.DELETION) {
-              Deletion del1 = (Deletion) o1;
-              Deletion del2 = (Deletion) o2;
-              return del1.getTimeRange().compareTo(del2.getTimeRange());
-            }
-            throw new IllegalArgumentException();
-          }
-        });
-    List<Modification> result = new ArrayList<>();
-    if (!modifications.isEmpty()) {
-      Deletion current = ((Deletion) modifications.get(0)).clone();
-      for (int i = 1; i < modifications.size(); i++) {
-        Deletion del = (Deletion) modifications.get(i);
-        if (current.intersects(del)) {
-          current.merge(del);
-        } else {
-          result.add(current);
-          current = del.clone();
-        }
-      }
-      result.add(current);
-    }
-    return result;
   }
 
   /**

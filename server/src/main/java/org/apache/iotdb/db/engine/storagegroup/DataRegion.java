@@ -2055,6 +2055,8 @@ public class DataRegion implements IDataRegionForQuery {
               tsFileResource.getModFile().write(deletion);
               // remember to close mod file
               tsFileResource.getModFile().close();
+              // if file length greater than 1M,execute compact.
+              modFile.compact();
               if (!modFileExists) {
                 TsFileMetricManager.getInstance().increaseModFileNum(1);
               }
