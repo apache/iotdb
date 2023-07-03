@@ -69,7 +69,7 @@ public class CompactionTaskManager implements IService {
 
   private final int compactionScheduledThreadNum = config.getCompactionScheduledThreadCount();
 
-  public static long COMPACTION_TASK_SUBMIT_DELAY = 20L * 1000L;
+  public static final long COMPACTION_TASK_SUBMIT_DELAY = 20L * 1000L;
 
   private AtomicInteger dataRegionNum = new AtomicInteger(0);
 
@@ -451,6 +451,7 @@ public class CompactionTaskManager implements IService {
   }
 
   @TestOnly
+  @SuppressWarnings({"squid:S3776", "squid:S1192"})
   public void restart() throws InterruptedException {
     if (IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount() > 0) {
       if (subCompactionTaskExecutionPool != null) {
