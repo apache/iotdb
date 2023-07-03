@@ -20,10 +20,12 @@
 package org.apache.iotdb.confignode.consensus.response.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
@@ -114,7 +116,9 @@ public class PipeTableResp implements DataSet {
       showPipeInfoList.add(
           new TShowPipeInfo(
               staticMeta.getPipeName(),
-              staticMeta.getCreationTime(),
+              CommonDateTimeUtils.convertMilliTimeWithPrecision(
+                  staticMeta.getCreationTime(),
+                  CommonDescriptor.getInstance().getConfig().getTimestampPrecision()),
               runtimeMeta.getStatus().get().name(),
               staticMeta.getExtractorParameters().toString(),
               staticMeta.getProcessorParameters().toString(),
