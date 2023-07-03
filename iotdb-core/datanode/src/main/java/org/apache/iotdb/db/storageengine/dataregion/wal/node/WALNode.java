@@ -522,7 +522,7 @@ public class WALNode implements IWALNode {
       try {
         // make sure snapshot is made before memTable flush operation
         synchronized (memTableInfo) {
-          if (memTable != null && memTable.getFlushStatus() != FlushStatus.WORKING) {
+          if (memTable == null || memTable.getFlushStatus() != FlushStatus.WORKING) {
             return;
           }
 
