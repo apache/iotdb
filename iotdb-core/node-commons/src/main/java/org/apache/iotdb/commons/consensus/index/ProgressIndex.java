@@ -28,10 +28,10 @@ import java.nio.ByteBuffer;
 
 public interface ProgressIndex {
 
-  /** .Serialize this progress index to the given byte buffer */
+  /** Serialize this progress index to the given byte buffer. */
   void serialize(ByteBuffer byteBuffer);
 
-  /** .Serialize this progress index to the given output stream */
+  /** Serialize this progress index to the given output stream. */
   void serialize(OutputStream stream) throws IOException;
 
   /**

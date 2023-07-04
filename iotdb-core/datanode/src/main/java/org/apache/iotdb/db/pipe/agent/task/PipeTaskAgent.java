@@ -319,7 +319,7 @@ public class PipeTaskAgent {
                   creationTime,
                   status.name());
             }
-            // break to drop the pipe and recreate it
+            // Break to drop the pipe and recreate it
             break;
           default:
             throw new IllegalStateException(
