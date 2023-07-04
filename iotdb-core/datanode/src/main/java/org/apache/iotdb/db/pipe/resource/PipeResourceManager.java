@@ -37,7 +37,7 @@ public class PipeResourceManager {
     return PipeResourceManagerHolder.INSTANCE.pipeWALResourceManager;
   }
 
-  public static PipeWALFileResourceManager walFile() {
+  public static PipeWALFileResourceManager walHardlink() {
     return PipeResourceManagerHolder.INSTANCE.pipeWALFileResourceManager;
   }
 
