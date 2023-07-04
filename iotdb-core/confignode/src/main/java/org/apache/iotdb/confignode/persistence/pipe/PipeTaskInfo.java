@@ -202,7 +202,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
                     .forEach(
                         pipeMeta -> {
                           final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMap =
-                              pipeMeta.getRuntimeMeta().getConsensusGroupIdToTaskMetaMap();
+                              pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
 
                           if (consensusGroupIdToTaskMetaMap.containsKey(dataRegionGroupId)) {
                             // if the data region leader is -1, it means the data region is

@@ -174,9 +174,9 @@ public class PipeTaskAgent {
       @NotNull PipeRuntimeMeta runtimeMetaOnDataNode) {
     // 1. handle data region group leader changed first
     final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMapFromConfigNode =
-        runtimeMetaFromConfigNode.getConsensusGroupIdToTaskMetaMap();
+        runtimeMetaFromConfigNode.getConsensusGroupId2TaskMetaMap();
     final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMapOnDataNode =
-        runtimeMetaOnDataNode.getConsensusGroupIdToTaskMetaMap();
+        runtimeMetaOnDataNode.getConsensusGroupId2TaskMetaMap();
 
     // 1.1 iterate over all consensus group ids in config node's pipe runtime meta, decide if we
     // need to drop and create a new task for each consensus group id
@@ -513,7 +513,7 @@ public class PipeTaskAgent {
     // clear exception messages if started successfully
     existedPipeMeta
         .getRuntimeMeta()
-        .getConsensusGroupIdToTaskMetaMap()
+        .getConsensusGroupId2TaskMetaMap()
         .values()
         .forEach(PipeTaskMeta::clearExceptionMessages);
   }
@@ -608,7 +608,7 @@ public class PipeTaskAgent {
     pipeMetaKeeper
         .getPipeMeta(pipeStaticMeta.getPipeName())
         .getRuntimeMeta()
-        .getConsensusGroupIdToTaskMetaMap()
+        .getConsensusGroupId2TaskMetaMap()
         .put(consensusGroupId, pipeTaskMeta);
   }
 
@@ -616,7 +616,7 @@ public class PipeTaskAgent {
     pipeMetaKeeper
         .getPipeMeta(pipeStaticMeta.getPipeName())
         .getRuntimeMeta()
-        .getConsensusGroupIdToTaskMetaMap()
+        .getConsensusGroupId2TaskMetaMap()
         .remove(dataRegionGroupId);
     final PipeTask pipeTask = pipeTaskManager.removePipeTask(pipeStaticMeta, dataRegionGroupId);
     if (pipeTask != null) {

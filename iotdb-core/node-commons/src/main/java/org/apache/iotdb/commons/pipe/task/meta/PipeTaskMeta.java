@@ -145,12 +145,10 @@ public class PipeTaskMeta {
     return "PipeTask{"
         + "progressIndex='"
         + progressIndex
-        + '\''
-        + ", leaderDataNodeId='"
+        + "', leaderDataNodeId="
         + leaderDataNodeId
-        + '\''
-        + ", exceptionMessages="
+        + ", exceptionMessages='"
         + exceptionMessages
-        + '}';
+        + "'}";
   }
 }

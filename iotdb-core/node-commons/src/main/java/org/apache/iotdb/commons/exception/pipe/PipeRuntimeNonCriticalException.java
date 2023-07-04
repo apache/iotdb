@@ -33,42 +33,56 @@ public class PipeRuntimeNonCriticalException extends PipeRuntimeException {
     super(message);
   }
 
+  public PipeRuntimeNonCriticalException(String message, long timeStamp) {
+    super(message, timeStamp);
+  }
+
   @Override
   public boolean equals(Object obj) {
     return obj instanceof PipeRuntimeNonCriticalException
-        && Objects.equals(getMessage(), ((PipeRuntimeNonCriticalException) obj).getMessage());
+        && Objects.equals(getMessage(), ((PipeRuntimeNonCriticalException) obj).getMessage())
+        && Objects.equals(getTimeStamp(), ((PipeRuntimeException) obj).getTimeStamp());
   }
 
   @Override
   public int hashCode() {
-    return getMessage().hashCode();
+    return Objects.hash(getMessage(), getTimeStamp());
   }
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {
     PipeRuntimeExceptionType.NON_CRITICAL_EXCEPTION.serialize(byteBuffer);
     ReadWriteIOUtils.write(getMessage(), byteBuffer);
+    ReadWriteIOUtils.write(getTimeStamp(), byteBuffer);
   }
 
   @Override
   public void serialize(OutputStream stream) throws IOException {
     PipeRuntimeExceptionType.NON_CRITICAL_EXCEPTION.serialize(stream);
     ReadWriteIOUtils.write(getMessage(), stream);
+    ReadWriteIOUtils.write(getTimeStamp(), stream);
   }
 
   public static PipeRuntimeNonCriticalException deserializeFrom(ByteBuffer byteBuffer) {
     final String message = ReadWriteIOUtils.readString(byteBuffer);
-    return new PipeRuntimeNonCriticalException(message);
+    final long timeStamp = ReadWriteIOUtils.readLong(byteBuffer);
+    return new PipeRuntimeNonCriticalException(message, timeStamp);
   }
 
   public static PipeRuntimeNonCriticalException deserializeFrom(InputStream stream)
       throws IOException {
     final String message = ReadWriteIOUtils.readString(stream);
-    return new PipeRuntimeNonCriticalException(message);
+    final long timeStamp = ReadWriteIOUtils.readLong(stream);
+    return new PipeRuntimeNonCriticalException(message, timeStamp);
   }
 
   @Override
   public String toString() {
-    return "PipeRuntimeNonCriticalException{ message: " + getMessage() + " }";
+    return "PipeRuntimeNonCriticalException{"
+        + "message='"
+        + getMessage()
+        + "', timeStamp="
+        + getTimeStamp()
+        + "}";
   }
 }

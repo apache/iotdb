@@ -28,10 +28,10 @@ import java.nio.ByteBuffer;
 
 public interface ProgressIndex {
 
-  /** serialize this progress index to the given byte buffer */
+  /** .Serialize this progress index to the given byte buffer */
   void serialize(ByteBuffer byteBuffer);
 
-  /** serialize this progress index to the given output stream */
+  /** .Serialize this progress index to the given output stream */
   void serialize(OutputStream stream) throws IOException;
 
   /**
@@ -84,7 +84,7 @@ public interface ProgressIndex {
   ProgressIndexType getType();
 
   /**
-   * blend two progress index together, the result progress index should satisfy:
+   * Blend two progress index together, the result progress index should satisfy:
    *
    * <p>(result.equals(progressIndex1) || result.isAfter(progressIndex1)) is true
    *

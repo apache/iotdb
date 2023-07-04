@@ -32,15 +32,20 @@ public abstract class PipeRuntimeException extends PipeException {
     super(message);
   }
 
+  protected PipeRuntimeException(String message, long timeStamp) {
+    super(message, timeStamp);
+  }
+
   @Override
   public boolean equals(Object obj) {
     return obj instanceof PipeRuntimeException
-        && Objects.equals(getMessage(), ((PipeRuntimeException) obj).getMessage());
+        && Objects.equals(getMessage(), ((PipeRuntimeException) obj).getMessage())
+        && Objects.equals(getTimeStamp(), ((PipeRuntimeException) obj).getTimeStamp());
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(getMessage());
+    return Objects.hash(getMessage(), getTimeStamp());
   }
 
   public abstract void serialize(ByteBuffer byteBuffer);

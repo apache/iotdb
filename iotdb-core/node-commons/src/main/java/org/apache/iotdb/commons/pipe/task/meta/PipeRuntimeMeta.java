@@ -21,6 +21,8 @@ package org.apache.iotdb.commons.pipe.task.meta;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeExceptionType;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -37,24 +39,31 @@ import java.util.concurrent.atomic.AtomicReference;
 public class PipeRuntimeMeta {
 
   private final AtomicReference<PipeStatus> status;
-  private final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMap;
+  private final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupId2TaskMetaMap;
+  private final Map<Integer, PipeRuntimeException> dataNodeId2PipeRuntimeExceptionMap;
 
   public PipeRuntimeMeta() {
     status = new AtomicReference<>(PipeStatus.STOPPED);
-    consensusGroupIdToTaskMetaMap = new ConcurrentHashMap<>();
+    consensusGroupId2TaskMetaMap = new ConcurrentHashMap<>();
+    dataNodeId2PipeRuntimeExceptionMap = new ConcurrentHashMap<>();
   }
 
-  public PipeRuntimeMeta(Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMap) {
+  public PipeRuntimeMeta(Map<TConsensusGroupId, PipeTaskMeta> consensusGroupId2TaskMetaMap) {
     status = new AtomicReference<>(PipeStatus.STOPPED);
-    this.consensusGroupIdToTaskMetaMap = consensusGroupIdToTaskMetaMap;
+    this.consensusGroupId2TaskMetaMap = consensusGroupId2TaskMetaMap;
+    dataNodeId2PipeRuntimeExceptionMap = new ConcurrentHashMap<>();
   }
 
   public AtomicReference<PipeStatus> getStatus() {
     return status;
   }
 
-  public Map<TConsensusGroupId, PipeTaskMeta> getConsensusGroupIdToTaskMetaMap() {
-    return consensusGroupIdToTaskMetaMap;
+  public Map<TConsensusGroupId, PipeTaskMeta> getConsensusGroupId2TaskMetaMap() {
+    return consensusGroupId2TaskMetaMap;
+  }
+
+  public Map<Integer, PipeRuntimeException> getDataNodeId2PipeRuntimeExceptionMap() {
+    return dataNodeId2PipeRuntimeExceptionMap;
   }
 
   public ByteBuffer serialize() throws IOException {
@@ -67,10 +76,17 @@ public class PipeRuntimeMeta {
   public void serialize(DataOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(status.get().getType(), outputStream);
 
-    ReadWriteIOUtils.write(consensusGroupIdToTaskMetaMap.size(), outputStream);
+    ReadWriteIOUtils.write(consensusGroupId2TaskMetaMap.size(), outputStream);
     for (Map.Entry<TConsensusGroupId, PipeTaskMeta> entry :
-        consensusGroupIdToTaskMetaMap.entrySet()) {
+        consensusGroupId2TaskMetaMap.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey().getId(), outputStream);
+      entry.getValue().serialize(outputStream);
+    }
+
+    ReadWriteIOUtils.write(dataNodeId2PipeRuntimeExceptionMap.size(), outputStream);
+    for (Map.Entry<Integer, PipeRuntimeException> entry :
+        dataNodeId2PipeRuntimeExceptionMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), outputStream);
       entry.getValue().serialize(outputStream);
     }
   }
@@ -78,10 +94,17 @@ public class PipeRuntimeMeta {
   public void serialize(FileOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(status.get().getType(), outputStream);
 
-    ReadWriteIOUtils.write(consensusGroupIdToTaskMetaMap.size(), outputStream);
+    ReadWriteIOUtils.write(consensusGroupId2TaskMetaMap.size(), outputStream);
     for (Map.Entry<TConsensusGroupId, PipeTaskMeta> entry :
-        consensusGroupIdToTaskMetaMap.entrySet()) {
+        consensusGroupId2TaskMetaMap.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey().getId(), outputStream);
+      entry.getValue().serialize(outputStream);
+    }
+
+    ReadWriteIOUtils.write(dataNodeId2PipeRuntimeExceptionMap.size(), outputStream);
+    for (Map.Entry<Integer, PipeRuntimeException> entry :
+        dataNodeId2PipeRuntimeExceptionMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), outputStream);
       entry.getValue().serialize(outputStream);
     }
   }
@@ -91,12 +114,19 @@ public class PipeRuntimeMeta {
 
     pipeRuntimeMeta.status.set(PipeStatus.getPipeStatus(ReadWriteIOUtils.readByte(inputStream)));
 
-    final int size = ReadWriteIOUtils.readInt(inputStream);
+    int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
-      pipeRuntimeMeta.consensusGroupIdToTaskMetaMap.put(
+      pipeRuntimeMeta.consensusGroupId2TaskMetaMap.put(
           new TConsensusGroupId(
               TConsensusGroupType.DataRegion, ReadWriteIOUtils.readInt(inputStream)),
           PipeTaskMeta.deserialize(inputStream));
+    }
+
+    size = ReadWriteIOUtils.readInt(inputStream);
+    for (int i = 0; i < size; ++i) {
+      pipeRuntimeMeta.dataNodeId2PipeRuntimeExceptionMap.put(
+          ReadWriteIOUtils.readInt(inputStream),
+          PipeRuntimeExceptionType.deserializeFrom(inputStream));
     }
 
     return pipeRuntimeMeta;
@@ -107,12 +137,19 @@ public class PipeRuntimeMeta {
 
     pipeRuntimeMeta.status.set(PipeStatus.getPipeStatus(ReadWriteIOUtils.readByte(byteBuffer)));
 
-    final int size = ReadWriteIOUtils.readInt(byteBuffer);
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
-      pipeRuntimeMeta.consensusGroupIdToTaskMetaMap.put(
+      pipeRuntimeMeta.consensusGroupId2TaskMetaMap.put(
           new TConsensusGroupId(
               TConsensusGroupType.DataRegion, ReadWriteIOUtils.readInt(byteBuffer)),
           PipeTaskMeta.deserialize(byteBuffer));
+    }
+
+    size = ReadWriteIOUtils.readInt(byteBuffer);
+    for (int i = 0; i < size; ++i) {
+      pipeRuntimeMeta.dataNodeId2PipeRuntimeExceptionMap.put(
+          ReadWriteIOUtils.readInt(byteBuffer),
+          PipeRuntimeExceptionType.deserializeFrom(byteBuffer));
     }
 
     return pipeRuntimeMeta;
@@ -128,12 +165,13 @@ public class PipeRuntimeMeta {
     }
     PipeRuntimeMeta that = (PipeRuntimeMeta) o;
     return Objects.equals(status.get().getType(), that.status.get().getType())
-        && consensusGroupIdToTaskMetaMap.equals(that.consensusGroupIdToTaskMetaMap);
+        && consensusGroupId2TaskMetaMap.equals(that.consensusGroupId2TaskMetaMap)
+        && dataNodeId2PipeRuntimeExceptionMap.equals(that.dataNodeId2PipeRuntimeExceptionMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(status, consensusGroupIdToTaskMetaMap);
+    return Objects.hash(status, consensusGroupId2TaskMetaMap, dataNodeId2PipeRuntimeExceptionMap);
   }
 
   @Override
@@ -141,8 +179,10 @@ public class PipeRuntimeMeta {
     return "PipeRuntimeMeta{"
         + "status="
         + status
-        + ", consensusGroupIdToTaskMetaMap="
-        + consensusGroupIdToTaskMetaMap
+        + ", consensusGroupId2TaskMetaMap="
+        + consensusGroupId2TaskMetaMap
+        + ", dataNodeId2PipeMetaExceptionMap="
+        + dataNodeId2PipeRuntimeExceptionMap
         + '}';
   }
 }
