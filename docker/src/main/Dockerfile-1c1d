@@ -47,7 +47,5 @@ RUN dos2unix /iotdb/sbin/../conf/confignode-env.sh
 RUN dos2unix /iotdb/sbin/start-datanode.sh
 RUN dos2unix /iotdb/sbin/../conf/datanode-env.sh
 EXPOSE 6667
-VOLUME /iotdb/data
-VOLUME /iotdb/logs
 ENV PATH="/iotdb/sbin/:/iotdb/tools/:${PATH}"
 ENTRYPOINT ["/iotdb/sbin/start-1c1d.sh"]
