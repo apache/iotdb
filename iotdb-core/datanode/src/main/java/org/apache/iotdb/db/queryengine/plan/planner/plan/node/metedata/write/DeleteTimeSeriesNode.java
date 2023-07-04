@@ -29,6 +29,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Objects;
 
 public class DeleteTimeSeriesNode extends PlanNode {
 
@@ -92,5 +93,19 @@ public class DeleteTimeSeriesNode extends PlanNode {
   public String toString() {
     return String.format(
         "DeleteTimeseriesNode-%s: %s. Region: %s", getPlanNodeId(), patternTree, "Not Assigned");
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    DeleteTimeSeriesNode that = (DeleteTimeSeriesNode) o;
+    return Objects.equals(patternTree, that.patternTree);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), patternTree);
   }
 }

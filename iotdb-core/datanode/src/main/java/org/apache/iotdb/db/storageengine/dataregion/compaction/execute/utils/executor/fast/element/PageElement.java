@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element;
 
 import org.apache.iotdb.tsfile.file.header.PageHeader;
@@ -28,6 +29,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+@SuppressWarnings("squid:S1104")
 public class PageElement {
 
   public PageHeader pageHeader;
@@ -41,6 +43,7 @@ public class PageElement {
 
   public List<ByteBuffer> valuePageDatas;
 
+  @SuppressWarnings("checkstyle:MemberNameCheck")
   public IChunkReader iChunkReader;
 
   public long priority;
@@ -69,6 +72,7 @@ public class PageElement {
     this.isLastPage = isLastPage;
   }
 
+  @SuppressWarnings("squid:S107")
   public PageElement(
       PageHeader timePageHeader,
       List<PageHeader> valuePageHeaders,

@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.procedure.impl.sync;
 
 import org.apache.iotdb.commons.sync.PipeInfo;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -43,6 +44,12 @@ public class CreatePipeProcedure extends Procedure<ConfigNodeProcedureEnv> {
 
   public CreatePipeProcedure() {
     super();
+  }
+
+  @TestOnly
+  public CreatePipeProcedure(PipeInfo pipeInfo) {
+    this();
+    this.pipeInfo = pipeInfo;
   }
 
   @Override

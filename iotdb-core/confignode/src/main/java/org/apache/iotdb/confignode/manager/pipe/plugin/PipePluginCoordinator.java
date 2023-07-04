@@ -23,8 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginTablePlan;
+import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.confignode.consensus.response.pipe.plugin.PipePluginTableResp;
-import org.apache.iotdb.confignode.consensus.response.udf.JarResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.pipe.PipePluginInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
@@ -93,19 +93,11 @@ public class PipePluginCoordinator {
   }
 
   public TGetJarInListResp getPipePluginJar(TGetJarInListReq req) {
-    try {
-      return ((JarResp)
-              configManager
-                  .getConsensusManager()
-                  .read(new GetPipePluginJarPlan(req.getJarNameList()))
-                  .getDataset())
-          .convertToThriftResponse();
-    } catch (IOException e) {
-      LOGGER.error("Fail to get PipePluginJar", e);
-      return new TGetJarInListResp(
-          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-              .setMessage(e.getMessage()),
-          Collections.emptyList());
-    }
+    return ((JarResp)
+            configManager
+                .getConsensusManager()
+                .read(new GetPipePluginJarPlan(req.getJarNameList()))
+                .getDataset())
+        .convertToThriftResponse();
   }
 }

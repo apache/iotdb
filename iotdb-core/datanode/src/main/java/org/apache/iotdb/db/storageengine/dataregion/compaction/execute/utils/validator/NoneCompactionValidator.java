@@ -24,6 +24,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.util.List;
 
+@SuppressWarnings("squid:S6548")
 public class NoneCompactionValidator implements CompactionValidator {
 
   private NoneCompactionValidator() {}

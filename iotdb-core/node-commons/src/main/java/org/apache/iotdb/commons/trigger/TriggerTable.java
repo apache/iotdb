@@ -61,10 +61,6 @@ public class TriggerTable {
     return triggerTable.remove(triggerName);
   }
 
-  public void setTriggerInformation(String triggerName, TriggerInformation triggerInformation) {
-    triggerTable.put(triggerName, triggerInformation);
-  }
-
   // for dropTrigger
   public void deleteTriggerInformation(String triggerName) {
     triggerTable.remove(triggerName);

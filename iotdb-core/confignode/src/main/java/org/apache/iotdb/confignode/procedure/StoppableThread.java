@@ -44,6 +44,7 @@ public abstract class StoppableThread extends Thread {
       }
     } catch (InterruptedException e) {
       LOG.warn("{} join wait got interrupted", getName(), e);
+      Thread.currentThread().interrupt();
     }
   }
 }

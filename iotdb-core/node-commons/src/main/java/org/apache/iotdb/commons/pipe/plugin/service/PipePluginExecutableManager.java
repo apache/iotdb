@@ -65,8 +65,8 @@ public class PipePluginExecutableManager extends ExecutableManager {
     } catch (IOException e) {
       String errorMessage =
           String.format(
-              "Failed to registered function %s, "
-                  + "because error occurred when trying to compute md5 of jar file for function %s ",
+              "Failed to registered function %s, because "
+                  + "error occurred when trying to compute md5 of jar file for function %s ",
               pluginName, pluginName);
       LOGGER.warn(errorMessage, e);
       throw new PipeException(errorMessage);
@@ -75,20 +75,20 @@ public class PipePluginExecutableManager extends ExecutableManager {
 
   /////////////////////////////// Singleton Instance ///////////////////////////////
 
-  private static PipePluginExecutableManager INSTANCE = null;
+  private static PipePluginExecutableManager instance = null;
 
   public static synchronized PipePluginExecutableManager setupAndGetInstance(
       String temporaryLibRoot, String libRoot) throws IOException {
-    if (INSTANCE == null) {
+    if (instance == null) {
       SystemFileFactory.INSTANCE.makeDirIfNecessary(temporaryLibRoot);
       SystemFileFactory.INSTANCE.makeDirIfNecessary(libRoot);
       SystemFileFactory.INSTANCE.makeDirIfNecessary(libRoot + File.separator + INSTALL_DIR);
-      INSTANCE = new PipePluginExecutableManager(temporaryLibRoot, libRoot);
+      instance = new PipePluginExecutableManager(temporaryLibRoot, libRoot);
     }
-    return INSTANCE;
+    return instance;
   }
 
   public static PipePluginExecutableManager getInstance() {
-    return INSTANCE;
+    return instance;
   }
 }

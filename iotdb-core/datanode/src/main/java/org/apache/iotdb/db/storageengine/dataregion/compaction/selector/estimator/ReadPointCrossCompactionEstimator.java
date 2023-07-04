@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -98,6 +99,8 @@ public class ReadPointCrossCompactionEstimator extends AbstractCrossSpaceEstimat
   /**
    * Calculate memory cost of reading source unseq files in the cross space compaction. Double the
    * total size of the timeseries to be compacted at the same time in all unseq files.
+   *
+   * @throws IOException if io errors occurred
    */
   private long calculateReadingUnseqFile(TsFileResource unseqResource) throws IOException {
     TsFileSequenceReader reader = getFileReader(unseqResource);
@@ -125,6 +128,8 @@ public class ReadPointCrossCompactionEstimator extends AbstractCrossSpaceEstimat
    * Calculate memory cost of reading source seq files in the cross space compaction. Select the
    * maximun size of the timeseries to be compacted at the same time in one seq file, because only
    * one seq file will be queried at the same time.
+   *
+   * @throws IOException if io errors occurred
    */
   private long calculateReadingSeqFiles(List<TsFileResource> seqResources) throws IOException {
     long cost = 0;
@@ -169,6 +174,8 @@ public class ReadPointCrossCompactionEstimator extends AbstractCrossSpaceEstimat
   /**
    * Calculate memory cost of writing target files in the cross space compaction. Including metadata
    * size of all source files and size of concurrent target chunks.
+   *
+   * @throws IOException if io errors occurred
    */
   private long calculatingWritingTargetFiles(
       List<TsFileResource> seqResources, TsFileResource unseqResource) throws IOException {
@@ -203,6 +210,8 @@ public class ReadPointCrossCompactionEstimator extends AbstractCrossSpaceEstimat
    * turns to be -1.
    *
    * <p>max chunk num of one device in this tsfile
+   *
+   * @throws IOException if io errors occurred
    */
   private FileInfo getSeriesAndDeviceChunkNum(TsFileSequenceReader reader) throws IOException {
     int totalChunkNum = 0;
@@ -230,14 +239,15 @@ public class ReadPointCrossCompactionEstimator extends AbstractCrossSpaceEstimat
 
   private class FileInfo {
     // total chunk num in this tsfile
-    public int totalChunkNum = 0;
+    private int totalChunkNum = 0;
     // max chunk num of one timeseries in this tsfile
-    public int maxSeriesChunkNum = 0;
+    private int maxSeriesChunkNum = 0;
     // max aligned series num in one device. If there is no aligned series in this file, then it
     // turns to be -1.
-    public int maxAlignedSeriesNumInDevice = -1;
+    private int maxAlignedSeriesNumInDevice = -1;
     // max chunk num of one device in this tsfile
-    public int maxDeviceChunkNum = 0;
+    @SuppressWarnings("squid:S1068")
+    private int maxDeviceChunkNum = 0;
 
     public FileInfo(
         int totalChunkNum,

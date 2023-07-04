@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 
 import javax.annotation.concurrent.GuardedBy;
@@ -56,14 +55,9 @@ public class QueryIdGenerator {
   @GuardedBy("this")
   private int counter;
 
-  public QueryIdGenerator() {
-    int dataNode = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+  public QueryIdGenerator(int dataNode) {
     checkArgument(dataNode != -1, "DataNodeId should be init first!");
     this.dataNodeId = String.valueOf(dataNode);
-  }
-
-  public String getCoordinatorId() {
-    return dataNodeId;
   }
 
   /**
@@ -116,7 +110,7 @@ public class QueryIdGenerator {
     return TIMESTAMP_FORMAT.format(Instant.ofEpochMilli(milli));
   }
 
-  protected long nowInMillis() {
+  private long nowInMillis() {
     // avoid problems with the clock moving backwards
     return BASE_SYSTEM_TIME_MILLIS + NANOSECONDS.toMillis(System.nanoTime() - BASE_NANO_TIME);
   }

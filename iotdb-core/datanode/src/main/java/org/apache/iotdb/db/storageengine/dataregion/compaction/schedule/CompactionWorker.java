@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
@@ -43,28 +44,26 @@ public class CompactionWorker implements Runnable {
     this.compactionTaskQueue = compactionTaskQueue;
   }
 
+  @SuppressWarnings("squid:S2142")
   @Override
   public void run() {
     while (!Thread.currentThread().isInterrupted()) {
+      AbstractCompactionTask task;
       try {
-        AbstractCompactionTask task = null;
-        try {
-          task = compactionTaskQueue.take();
-        } catch (InterruptedException e) {
-          log.warn("CompactionThread-{} terminates because interruption", threadId);
-          return;
+        task = compactionTaskQueue.take();
+      } catch (InterruptedException e) {
+        log.warn("CompactionThread-{} terminates because interruption", threadId);
+        return;
+      }
+      try {
+        if (task != null && task.checkValidAndSetMerging()) {
+          CompactionTaskSummary summary = task.getSummary();
+          CompactionTaskFuture future = new CompactionTaskFuture(summary);
+          CompactionTaskManager.getInstance().recordTask(task, future);
+          task.start();
         }
-        if (task != null) {
-          // add metrics
-          if (task.checkValidAndSetMerging()) {
-            CompactionTaskSummary summary = task.getSummary();
-            CompactionTaskFuture future = new CompactionTaskFuture(summary);
-            CompactionTaskManager.getInstance().recordTask(task, future);
-            task.start();
-          }
-        }
-      } catch (Throwable t) {
-        log.error("CompactionWorker.run(), Exception.", t);
+      } catch (Exception e) {
+        log.error("CompactionWorker.run(), Exception.", e);
       }
     }
   }

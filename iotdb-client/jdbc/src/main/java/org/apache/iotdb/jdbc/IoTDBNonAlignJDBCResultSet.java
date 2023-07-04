@@ -55,6 +55,7 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
   private byte[][] times; // used for disable align
   private List<String> sgColumns = null;
   // for disable align clause
+  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
   IoTDBNonAlignJDBCResultSet(
       Statement statement,
       List<String> columnNameList,
@@ -100,7 +101,7 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
     List<String> newSgColumns = new ArrayList<>();
     for (int i = 0; i < columnNameList.size(); i++) {
       String name = "";
-      if (sgColumns != null && sgColumns.size() > 0) {
+      if (sgColumns != null && !sgColumns.isEmpty()) {
         name = sgColumns.get(i) + "." + columnNameList.get(i);
         newSgColumns.add(sgColumns.get(i));
         newSgColumns.add(sgColumns.get(i));
@@ -165,11 +166,7 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
     try {
       TSFetchResultsResp resp = ioTDBRpcDataSet.client.fetchResults(req);
 
-      try {
-        RpcUtils.verifySuccess(resp.getStatus());
-      } catch (StatementExecutionException e) {
-        throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
-      }
+      rpcUtilsVerifySuccess(resp);
       if (!resp.hasResultSet) {
         ioTDBRpcDataSet.emptyResultSet = true;
         close();
@@ -185,6 +182,14 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
     } catch (TException e) {
       throw new SQLException(
           "Cannot fetch result from server, because of network connection: {} ", e);
+    }
+  }
+
+  private static void rpcUtilsVerifySuccess(TSFetchResultsResp resp) throws IoTDBSQLException {
+    try {
+      RpcUtils.verifySuccess(resp.getStatus());
+    } catch (StatementExecutionException e) {
+      throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
     }
   }
 

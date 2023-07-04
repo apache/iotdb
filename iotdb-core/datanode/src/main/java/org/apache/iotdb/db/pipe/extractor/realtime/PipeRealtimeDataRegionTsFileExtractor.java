@@ -53,7 +53,8 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
 
     if (!pendingQueue.offer(event)) {
       LOGGER.warn(
-          "extract: pending queue of PipeRealtimeDataRegionTsFileExtractor {} has reached capacity, discard TsFile event {}, current state {}",
+          "extract: pending queue of PipeRealtimeDataRegionTsFileExtractor {} "
+              + "has reached capacity, discard TsFile event {}, current state {}",
           this,
           event,
           event.getTsFileEpoch().getState(this));
@@ -74,7 +75,7 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
 
   @Override
   public Event supply() {
-    PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.poll();
+    PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
 
     while (realtimeEvent != null) {
       Event suppliedEvent = null;
@@ -88,7 +89,8 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
         // and report the exception to PipeRuntimeAgent.
         final String errorMessage =
             String.format(
-                "TsFile Event %s can not be supplied because the reference count can not be increased, "
+                "TsFile Event %s can not be supplied because "
+                    + "the reference count can not be increased, "
                     + "the data represented by this event is lost",
                 realtimeEvent.getEvent());
         LOGGER.warn(errorMessage);
@@ -100,7 +102,7 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
         return suppliedEvent;
       }
 
-      realtimeEvent = (PipeRealtimeEvent) pendingQueue.poll();
+      realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
     }
 
     // means the pending queue is empty.

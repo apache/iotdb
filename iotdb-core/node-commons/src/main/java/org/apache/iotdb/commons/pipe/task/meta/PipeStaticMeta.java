@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.pipe.task.meta;
 
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -40,7 +41,9 @@ public class PipeStaticMeta {
   private PipeParameters processorParameters;
   private PipeParameters connectorParameters;
 
-  private PipeStaticMeta() {}
+  private PipeStaticMeta() {
+    // Do nothing
+  }
 
   public PipeStaticMeta(
       String pipeName,

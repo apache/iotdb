@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.consensus.request.read.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
@@ -60,7 +61,7 @@ public class GetDataPartitionPlan extends ConfigPhysicalPlan {
   }
 
   /**
-   * Convert TDataPartitionReq to GetDataPartitionPlan
+   * Convert TDataPartitionReq to GetDataPartitionPlan.
    *
    * @param req TDataPartitionReq
    * @return GetDataPartitionPlan
@@ -110,8 +111,12 @@ public class GetDataPartitionPlan extends ConfigPhysicalPlan {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     GetDataPartitionPlan that = (GetDataPartitionPlan) o;
     return partitionSlotsMap.equals(that.partitionSlotsMap);
   }

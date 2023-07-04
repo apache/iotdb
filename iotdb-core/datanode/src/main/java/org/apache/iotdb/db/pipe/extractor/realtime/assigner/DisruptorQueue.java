@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.concurrent.ThreadFactory;
 
 public class DisruptorQueue<E> {
+
   private Disruptor<Container<E>> disruptor;
   private RingBuffer<Container<E>> ringBuffer;
 
@@ -55,23 +56,8 @@ public class DisruptorQueue<E> {
     private WaitStrategy waitStrategy = new BlockingWaitStrategy();
     private final List<EventHandler<E>> handlers = new ArrayList<>();
 
-    public Builder<E> setRingBufferSize(int ringBufferSize) {
-      this.ringBufferSize = ringBufferSize;
-      return this;
-    }
-
-    public Builder<E> setThreadFactory(ThreadFactory threadFactory) {
-      this.threadFactory = threadFactory;
-      return this;
-    }
-
     public Builder<E> setProducerType(ProducerType producerType) {
       this.producerType = producerType;
-      return this;
-    }
-
-    public Builder<E> setWaitStrategy(WaitStrategy waitStrategy) {
-      this.waitStrategy = waitStrategy;
       return this;
     }
 
@@ -90,6 +76,7 @@ public class DisruptorQueue<E> {
             (container, sequence, endOfBatch) ->
                 handler.onEvent(container.getObj(), sequence, endOfBatch));
       }
+      disruptorQueue.disruptor.setDefaultExceptionHandler(new DisruptorQueueExceptionHandler());
       disruptorQueue.disruptor.start();
       disruptorQueue.ringBuffer = disruptorQueue.disruptor.getRingBuffer();
       return disruptorQueue;

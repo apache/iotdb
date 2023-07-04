@@ -333,10 +333,6 @@ public class QueryStatement extends Statement {
     return resultSetFormat == ResultSetFormat.ALIGN_BY_DEVICE;
   }
 
-  public boolean disableAlign() {
-    return resultSetFormat == ResultSetFormat.DISABLE_ALIGN;
-  }
-
   public boolean isOrderByTime() {
     return orderByComponent != null && orderByComponent.isOrderByTime();
   }
@@ -469,15 +465,12 @@ public class QueryStatement extends Statement {
     return useWildcard;
   }
 
-  private static final String RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG =
+  public static final String RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG =
       "Raw data and aggregation hybrid query is not supported.";
 
   @SuppressWarnings({"squid:S3776", "squid:S6541"}) // Suppress high Cognitive Complexity warning
   public void semanticCheck() {
     if (isAggregationQuery()) {
-      if (disableAlign()) {
-        throw new SemanticException("AGGREGATION doesn't support disable align clause.");
-      }
       if (groupByComponent != null && isGroupByLevel()) {
         throw new SemanticException("GROUP BY CLAUSES doesn't support GROUP BY LEVEL now.");
       }
@@ -559,8 +552,13 @@ public class QueryStatement extends Statement {
           != ResultColumn.ColumnType.AGGREGATION) {
         throw new SemanticException("Expression of HAVING clause must to be an Aggregation");
       }
+      if (!isAggregationQuery()) {
+        throw new SemanticException(
+            "Expression of HAVING clause can not be used in NonAggregationQuery");
+      }
       try {
-        if (isGroupByLevel()) { // check path in SELECT and HAVING only have one node
+        if (isGroupByLevel()) {
+          // check path in SELECT and HAVING only have one node
           for (ResultColumn resultColumn : getSelectComponent().getResultColumns()) {
             ExpressionAnalyzer.checkIsAllMeasurement(resultColumn.getExpression());
           }
@@ -589,6 +587,9 @@ public class QueryStatement extends Statement {
         if (getWhereCondition() != null) {
           ExpressionAnalyzer.checkIsAllMeasurement(getWhereCondition().getPredicate());
         }
+        if (hasHaving()) {
+          ExpressionAnalyzer.checkIsAllMeasurement(getHavingCondition().getPredicate());
+        }
       } catch (SemanticException e) {
         throw new SemanticException("ALIGN BY DEVICE: " + e.getMessage());
       }
@@ -601,9 +602,6 @@ public class QueryStatement extends Statement {
     if (isLastQuery()) {
       if (isAlignByDevice()) {
         throw new SemanticException("Last query doesn't support align by device.");
-      }
-      if (disableAlign()) {
-        throw new SemanticException("Disable align cannot be applied to LAST query.");
       }
       for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
         Expression expression = resultColumn.getExpression();
@@ -636,9 +634,6 @@ public class QueryStatement extends Statement {
       }
       if (getSeriesOffset() > 0) {
         throw new SemanticException("select into: soffset clauses are not supported.");
-      }
-      if (disableAlign()) {
-        throw new SemanticException("select into: disable align clauses are not supported.");
       }
       if (isLastQuery()) {
         throw new SemanticException("select into: last clauses are not supported.");

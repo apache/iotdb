@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.consensus.response.function;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.udf.UDFInformation;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.consensus.common.DataSet;
 
@@ -31,37 +32,29 @@ import java.util.List;
 
 public class FunctionTableResp implements DataSet {
 
-  private TSStatus status;
+  private final TSStatus status;
 
-  private List<UDFInformation> allUDFInformation;
+  private final List<UDFInformation> allUdfInformation;
 
-  public FunctionTableResp() {}
-
-  public FunctionTableResp(TSStatus status, List<UDFInformation> allUDFInformation) {
+  public FunctionTableResp(TSStatus status, List<UDFInformation> allUdfInformation) {
     this.status = status;
-    this.allUDFInformation = allUDFInformation;
+    this.allUdfInformation = allUdfInformation;
   }
 
+  @TestOnly
   public TSStatus getStatus() {
     return status;
   }
 
-  public void setStatus(TSStatus status) {
-    this.status = status;
-  }
-
-  public List<UDFInformation> getAllUDFInformation() {
-    return allUDFInformation;
-  }
-
-  public void setAllUDFInformation(List<UDFInformation> allUDFInformation) {
-    this.allUDFInformation = allUDFInformation;
+  @TestOnly
+  public List<UDFInformation> getAllUdfInformation() {
+    return allUdfInformation;
   }
 
   public TGetUDFTableResp convertToThriftResponse() throws IOException {
     List<ByteBuffer> udfInformationByteBuffers = new ArrayList<>();
 
-    for (UDFInformation udfInformation : allUDFInformation) {
+    for (UDFInformation udfInformation : allUdfInformation) {
       udfInformationByteBuffers.add(udfInformation.serialize());
     }
 

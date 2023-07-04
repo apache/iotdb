@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.queryengine.plan.scheduler;
 
-import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
-import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInfo;
 
 import io.airlift.units.Duration;
@@ -33,8 +31,4 @@ public interface IScheduler {
   Duration getTotalCpuTime();
 
   FragmentInfo getFragmentInfo();
-
-  void abortFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause);
-
-  void cancelFragment(PlanFragmentId planFragmentId);
 }

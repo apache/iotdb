@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.client.async.handlers.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -36,7 +37,7 @@ public abstract class AbstractAsyncRPCHandler<T> implements AsyncMethodCallback<
   protected final TDataNodeLocation targetDataNode;
 
   /**
-   * Map key: The indices of asynchronous RPC requests
+   * Map key: The indices of asynchronous RPC requests.
    *
    * <p>Map value: The target DataNodes of corresponding indices
    *
@@ -46,7 +47,7 @@ public abstract class AbstractAsyncRPCHandler<T> implements AsyncMethodCallback<
   protected final Map<Integer, TDataNodeLocation> dataNodeLocationMap;
 
   /**
-   * Map key: The indices(targetDataNode's ID) of asynchronous RPC requests
+   * Map key: The indices(targetDataNode's ID) of asynchronous RPC requests.
    *
    * <p>Map value: The response of corresponding indices
    *

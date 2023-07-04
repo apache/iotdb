@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.consensus.IStateMachine;
@@ -70,6 +71,48 @@ public class SnapshotStorage implements StateMachineStorage {
       FileUtils.createDirectories(stateMachineDir);
     }
     updateSnapshotCache();
+  }
+
+  @Override
+  public SnapshotInfo getLatestSnapshot() {
+    snapshotCacheGuard.readLock().lock();
+    try {
+      return currentSnapshot;
+    } finally {
+      snapshotCacheGuard.readLock().unlock();
+    }
+  }
+
+  @Override
+  public void format() throws IOException {
+    // Empty method, since it is not needed now
+  }
+
+  @Override
+  public void cleanupOldSnapshots(SnapshotRetentionPolicy snapshotRetentionPolicy)
+      throws IOException {
+    final Path[] sortedSnapshotDirs = getSortedSnapshotDirPaths();
+    if (ArrayUtils.isEmpty(sortedSnapshotDirs)) {
+      return;
+    }
+
+    final int cleanIndex =
+        Math.max(0, sortedSnapshotDirs.length - snapshotRetentionPolicy.getNumSnapshotsRetained());
+    for (int i = 0; i < cleanIndex; i++) {
+      FileUtils.deleteFully(sortedSnapshotDirs[i]);
+    }
+  }
+
+  @Override
+  public File getSnapshotDir() {
+    return applicationStateMachine.getSnapshotRoot();
+  }
+
+  @Override
+  public File getTmpDir() {
+    return getSnapshotDir() == null
+        ? null
+        : new File(getSnapshotDir().getParentFile(), TMP_PREFIX + groupId.toString());
   }
 
   private Path[] getSortedSnapshotDirPaths() {
@@ -132,7 +175,7 @@ public class SnapshotStorage implements StateMachineStorage {
           fileInfo = new FileInfo(file.toRealPath(), null);
         }
       } catch (IOException e) {
-        logger.warn("{} cannot resolve real path of {} due to {}", this, file, e);
+        logger.warn("{} cannot resolve real path of {} due to ", this, file, e);
         return null;
       }
       fileInfos.add(fileInfo);
@@ -158,34 +201,6 @@ public class SnapshotStorage implements StateMachineStorage {
     }
   }
 
-  @Override
-  public SnapshotInfo getLatestSnapshot() {
-    snapshotCacheGuard.readLock().lock();
-    try {
-      return currentSnapshot;
-    } finally {
-      snapshotCacheGuard.readLock().unlock();
-    }
-  }
-
-  @Override
-  public void format() throws IOException {}
-
-  @Override
-  public void cleanupOldSnapshots(SnapshotRetentionPolicy snapshotRetentionPolicy)
-      throws IOException {
-    final Path[] sortedSnapshotDirs = getSortedSnapshotDirPaths();
-    if (ArrayUtils.isEmpty(sortedSnapshotDirs)) {
-      return;
-    }
-
-    final int cleanIndex =
-        Math.max(0, sortedSnapshotDirs.length - snapshotRetentionPolicy.getNumSnapshotsRetained());
-    for (int i = 0; i < cleanIndex; i++) {
-      FileUtils.deleteFully(sortedSnapshotDirs[i]);
-    }
-  }
-
   File getStateMachineDir() {
     return stateMachineDir;
   }
@@ -201,17 +216,5 @@ public class SnapshotStorage implements StateMachineStorage {
 
   String getSnapshotTmpId(String snapshotMetadata) {
     return TMP_PREFIX + snapshotMetadata;
-  }
-
-  @Override
-  public File getSnapshotDir() {
-    return applicationStateMachine.getSnapshotRoot();
-  }
-
-  @Override
-  public File getTmpDir() {
-    return getSnapshotDir() == null
-        ? null
-        : new File(getSnapshotDir().getParentFile(), TMP_PREFIX + groupId.toString());
   }
 }

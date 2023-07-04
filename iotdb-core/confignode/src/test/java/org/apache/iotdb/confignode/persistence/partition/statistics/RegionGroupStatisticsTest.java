@@ -27,6 +27,8 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -44,6 +46,8 @@ public class RegionGroupStatisticsTest {
 
     RegionGroupStatistics statistics0 =
         new RegionGroupStatistics(RegionGroupStatus.Disabled, regionStatisticsMap);
+
+    // Deserialization from byteBuffer
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       statistics0.serialize(outputStream);
@@ -52,6 +56,20 @@ public class RegionGroupStatisticsTest {
 
       RegionGroupStatistics statistics1 = new RegionGroupStatistics();
       statistics1.deserialize(buffer);
+      Assert.assertEquals(statistics0, statistics1);
+    }
+
+    // Deserialization from inputStream
+    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      statistics0.serialize(outputStream);
+
+      ByteArrayInputStream byteArrayInputStream =
+          new ByteArrayInputStream(byteArrayOutputStream.toByteArray());
+      DataInputStream inputStream = new DataInputStream(byteArrayInputStream);
+
+      RegionGroupStatistics statistics1 = new RegionGroupStatistics();
+      statistics1.deserialize(inputStream);
       Assert.assertEquals(statistics0, statistics1);
     }
   }

@@ -16,8 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.sync;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -33,6 +35,18 @@ public class TsFilePipeInfo extends PipeInfo {
 
   // only used for serialization
   public TsFilePipeInfo() {}
+
+  @TestOnly
+  public TsFilePipeInfo(
+      String pipeName,
+      String pipeSinkName,
+      long createTime,
+      long dataStartTimestamp,
+      boolean syncDelOp) {
+    super(pipeName, pipeSinkName, createTime);
+    this.dataStartTimestamp = dataStartTimestamp;
+    this.syncDelOp = syncDelOp;
+  }
 
   public TsFilePipeInfo(
       String pipeName,

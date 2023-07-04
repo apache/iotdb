@@ -16,12 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.consensus.ratis.metrics;
 
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
 
-/** AutoGauge supplier holder class */
+/** AutoGauge supplier holder class. */
 public class GaugeProxy implements Gauge {
 
   private final Gauge gauge;

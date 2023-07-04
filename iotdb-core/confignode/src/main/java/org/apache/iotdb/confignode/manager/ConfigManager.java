@@ -194,6 +194,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
@@ -207,7 +208,7 @@ public class ConfigManager implements IManager {
   private static final CommonConfig COMMON_CONF = CommonDescriptor.getInstance().getConfig();
 
   /** Manage PartitionTable read/write requests through the ConsensusLayer. */
-  private volatile ConsensusManager consensusManager;
+  private final AtomicReference<ConsensusManager> consensusManager = new AtomicReference<>();
 
   /** Manage cluster node. */
   private final NodeManager nodeManager;
@@ -304,12 +305,12 @@ public class ConfigManager implements IManager {
   }
 
   public void initConsensusManager() throws IOException {
-    this.consensusManager = new ConsensusManager(this, this.stateMachine);
+    this.consensusManager.set(new ConsensusManager(this, this.stateMachine));
   }
 
   public void close() throws IOException {
-    if (consensusManager != null) {
-      consensusManager.close();
+    if (consensusManager.get() != null) {
+      consensusManager.get().close();
     }
     if (partitionManager != null) {
       partitionManager.getRegionMaintainer().shutdown();
@@ -915,7 +916,7 @@ public class ConfigManager implements IManager {
 
   @Override
   public ConsensusManager getConsensusManager() {
-    return consensusManager;
+    return consensusManager.get();
   }
 
   @Override
@@ -1120,11 +1121,11 @@ public class ConfigManager implements IManager {
   public TSStatus createPeerForConsensusGroup(List<TConfigNodeLocation> configNodeLocations) {
     for (int i = 0; i < 30; i++) {
       try {
-        if (consensusManager == null) {
+        if (consensusManager.get() == null) {
           Thread.sleep(1000);
         } else {
           // When add non Seed-ConfigNode to the ConfigNodeGroup, the parameter should be emptyList
-          consensusManager.createPeerForConsensusGroup(Collections.emptyList());
+          consensusManager.get().createPeerForConsensusGroup(Collections.emptyList());
           return StatusUtils.OK;
         }
       } catch (InterruptedException e) {

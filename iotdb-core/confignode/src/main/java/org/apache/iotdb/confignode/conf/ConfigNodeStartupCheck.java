@@ -82,7 +82,11 @@ public class ConfigNodeStartupCheck extends StartupChecks {
     }
   }
 
-  /** Check whether the global configuration of the cluster is correct */
+  /**
+   * Check whether the global configuration of the cluster is correct.
+   *
+   * @throws ConfigurationException checkGlobalConfig()
+   */
   private void checkGlobalConfig() throws ConfigurationException {
     // When the ConfigNode consensus protocol is set to SIMPLE_CONSENSUS,
     // the target_config_node_list needs to point to itself

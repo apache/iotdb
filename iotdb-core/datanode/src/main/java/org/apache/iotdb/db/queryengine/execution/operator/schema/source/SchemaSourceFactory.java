@@ -33,20 +33,16 @@ public class SchemaSourceFactory {
 
   private SchemaSourceFactory() {}
 
-  public static ISchemaSource<ITimeSeriesSchemaInfo> getTimeSeriesSchemaSource(
-      PartialPath pathPattern) {
-    return new TimeSeriesSchemaSource(pathPattern, false, 0, 0, null, null);
-  }
-
-  public static ISchemaSource<ITimeSeriesSchemaInfo> getTimeSeriesSchemaSource(
+  public static ISchemaSource<ITimeSeriesSchemaInfo> getTimeSeriesSchemaCountSource(
       PartialPath pathPattern,
       boolean isPrefixMatch,
       SchemaFilter schemaFilter,
       Map<Integer, Template> templateMap) {
-    return new TimeSeriesSchemaSource(pathPattern, isPrefixMatch, 0, 0, schemaFilter, templateMap);
+    return new TimeSeriesSchemaSource(
+        pathPattern, isPrefixMatch, 0, 0, schemaFilter, templateMap, false);
   }
 
-  public static ISchemaSource<ITimeSeriesSchemaInfo> getTimeSeriesSchemaSource(
+  public static ISchemaSource<ITimeSeriesSchemaInfo> getTimeSeriesSchemaScanSource(
       PartialPath pathPattern,
       boolean isPrefixMatch,
       long limit,
@@ -54,7 +50,7 @@ public class SchemaSourceFactory {
       SchemaFilter schemaFilter,
       Map<Integer, Template> templateMap) {
     return new TimeSeriesSchemaSource(
-        pathPattern, isPrefixMatch, limit, offset, schemaFilter, templateMap);
+        pathPattern, isPrefixMatch, limit, offset, schemaFilter, templateMap, true);
   }
 
   public static ISchemaSource<IDeviceSchemaInfo> getDeviceSchemaSource(

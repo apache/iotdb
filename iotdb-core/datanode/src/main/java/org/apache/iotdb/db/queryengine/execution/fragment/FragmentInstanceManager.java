@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
+import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
+import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler;
@@ -74,6 +76,9 @@ public class FragmentInstanceManager {
   private final CounterStat failedInstances = new CounterStat();
 
   private final ExecutorService intoOperationExecutor;
+
+  private final MPPDataExchangeManager exchangeManager =
+      MPPDataExchangeService.getInstance().getMPPDataExchangeManager();
 
   private static final QueryExecutionMetricSet QUERY_EXECUTION_METRIC_SET =
       QueryExecutionMetricSet.getInstance();
@@ -162,7 +167,8 @@ public class FragmentInstanceManager {
                       sink,
                       stateMachine,
                       failedInstances,
-                      instance.getTimeOut());
+                      instance.getTimeOut(),
+                      exchangeManager);
                 } catch (Throwable t) {
                   logger.warn("error when create FragmentInstanceExecution.", t);
                   stateMachine.failed(t);
@@ -225,7 +231,8 @@ public class FragmentInstanceManager {
                     sink,
                     stateMachine,
                     failedInstances,
-                    instance.getTimeOut());
+                    instance.getTimeOut(),
+                    exchangeManager);
               } catch (Throwable t) {
                 logger.warn("Execute error caused by ", t);
                 stateMachine.failed(t);

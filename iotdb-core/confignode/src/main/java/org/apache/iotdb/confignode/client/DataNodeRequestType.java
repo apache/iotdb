@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.client;
 
 public enum DataNodeRequestType {
 
-  /** Node Maintenance */
+  // Node Maintenance
   DISABLE_DATA_NODE,
   STOP_DATA_NODE,
 
@@ -32,7 +32,7 @@ public enum DataNodeRequestType {
   SET_SYSTEM_STATUS,
   BROADCAST_LATEST_CONFIG_NODE_GROUP,
 
-  /** Region Maintenance */
+  // Region Maintenance
   CREATE_DATA_REGION,
   CREATE_SCHEMA_REGION,
   DELETE_REGION,
@@ -45,38 +45,38 @@ public enum DataNodeRequestType {
   UPDATE_REGION_ROUTE_MAP,
   CHANGE_REGION_LEADER,
 
-  /** PartitionCache */
+  // PartitionCache
   INVALIDATE_PARTITION_CACHE,
   INVALIDATE_PERMISSION_CACHE,
   INVALIDATE_SCHEMA_CACHE,
   CLEAR_CACHE,
 
-  /** Function */
+  // Function
   CREATE_FUNCTION,
   DROP_FUNCTION,
 
-  /** Trigger */
+  // Trigger
   CREATE_TRIGGER_INSTANCE,
   DROP_TRIGGER_INSTANCE,
   ACTIVE_TRIGGER_INSTANCE,
   INACTIVE_TRIGGER_INSTANCE,
   UPDATE_TRIGGER_LOCATION,
 
-  /** Pipe Plugin */
+  // Pipe Plugin
   CREATE_PIPE_PLUGIN,
   DROP_PIPE_PLUGIN,
 
-  /** Pipe Task */
+  // Pipe Task
   PUSH_PIPE_META,
   PIPE_HEARTBEAT,
 
-  /** CQ */
+  // CQ
   EXECUTE_CQ,
 
-  /** TEMPLATE */
+  // TEMPLATE
   UPDATE_TEMPLATE,
 
-  /** Schema */
+  // Schema
   SET_TTL,
 
   CONSTRUCT_SCHEMA_BLACK_LIST,
@@ -98,13 +98,13 @@ public enum DataNodeRequestType {
 
   ALTER_VIEW,
 
-  /** @TODO Need to migrate to 'Node Maintenance' */
+  // TODO Need to migrate to Node Maintenance
   KILL_QUERY_INSTANCE,
 
-  /** ML Model */
+  // ML Model
   DELETE_MODEL_METRICS,
 
-  /** Quota */
+  // Quota
   SET_SPACE_QUOTA,
   SET_THROTTLE_QUOTA,
 }

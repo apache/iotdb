@@ -116,7 +116,7 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
 
   @Override
   public void heartbeat() throws Exception {
-    // do nothing
+    // Do nothing
   }
 
   @Override
@@ -129,7 +129,8 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
         doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
       } else {
         throw new NotImplementedException(
-            "IoTDBThriftConnectorV1 only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent.");
+            "IoTDBThriftConnectorV1 only support "
+                + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent.");
       }
     } catch (TException e) {
       throw new PipeConnectionException(
@@ -138,6 +139,30 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
               tabletInsertionEvent, e.getMessage()),
           e);
     }
+  }
+
+  @Override
+  public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
+    // PipeProcessor can change the type of TabletInsertionEvent
+    if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
+      throw new NotImplementedException(
+          "IoTDBThriftConnectorV1 only support PipeTsFileInsertionEvent.");
+    }
+
+    try {
+      doTransfer((PipeTsFileInsertionEvent) tsFileInsertionEvent);
+    } catch (TException e) {
+      throw new PipeConnectionException(
+          String.format(
+              "Network error when transfer tsfile insertion event %s, because %s.",
+              tsFileInsertionEvent, e.getMessage()),
+          e);
+    }
+  }
+
+  @Override
+  public void transfer(Event event) {
+    LOGGER.warn("IoTDBThriftConnectorV1 does not support transfer generic event: {}.", event);
   }
 
   private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
@@ -171,32 +196,13 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
     }
   }
 
-  @Override
-  public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
-    // PipeProcessor can change the type of TabletInsertionEvent
-    if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
-      throw new NotImplementedException(
-          "IoTDBThriftConnectorV1 only support PipeTsFileInsertionEvent.");
-    }
-
-    try {
-      doTransfer((PipeTsFileInsertionEvent) tsFileInsertionEvent);
-    } catch (TException e) {
-      throw new PipeConnectionException(
-          String.format(
-              "Network error when transfer tsfile insertion event %s, because %s.",
-              tsFileInsertionEvent, e.getMessage()),
-          e);
-    }
-  }
-
   private void doTransfer(PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
       throws PipeException, TException, InterruptedException, IOException {
     pipeTsFileInsertionEvent.waitForTsFileClose();
 
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
 
-    // 1. transfer file piece by piece
+    // 1. Transfer file piece by piece
     final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
     final byte[] readBuffer = new byte[readFileBufferSize];
     long position = 0;
@@ -218,7 +224,7 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
                             : Arrays.copyOfRange(readBuffer, 0, readLength))));
         position += readLength;
 
-        // this case only happens when the connection is broken, and the connector is reconnected
+        // This case only happens when the connection is broken, and the connector is reconnected
         // to the receiver, then the receiver will redirect the file position to the last position
         if (resp.getStatus().getCode()
             == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
@@ -235,7 +241,7 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
       }
     }
 
-    // 2. transfer file seal signal, which means the file is transferred completely
+    // 2. Transfer file seal signal, which means the file is transferred completely
     final TPipeTransferResp resp =
         client.pipeTransfer(
             PipeTransferFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()));
@@ -243,11 +249,6 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
       throw new PipeException(
           String.format("Seal file %s error, result status %s.", tsFile, resp.getStatus()));
     }
-  }
-
-  @Override
-  public void transfer(Event event) {
-    LOGGER.warn("IoTDBThriftConnectorV1 does not support transfer generic event: {}.", event);
   }
 
   @Override

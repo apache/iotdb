@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.consensus.ratis.metrics;
 
 import org.apache.iotdb.consensus.ratis.utils.Utils;
@@ -54,12 +55,12 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
   private final Map<String, GaugeProxy> gaugeCache = new ConcurrentHashMap<>();
   /** Time taken to flush log. */
   public static final String RAFT_LOG_FLUSH_TIME = "flushTime";
-  /** Size of SegmentedRaftLogCache::closedSegments in bytes */
+  /** Size of SegmentedRaftLogCache::closedSegments in bytes. */
   public static final String RAFT_LOG_CACHE_CLOSED_SEGMENTS_SIZE_IN_BYTES =
       "closedSegmentsSizeInBytes";
-  /** Size of SegmentedRaftLogCache::openSegment in bytes */
+  /** Size of SegmentedRaftLogCache::openSegment in bytes. */
   public static final String RAFT_LOG_CACHE_OPEN_SEGMENT_SIZE_IN_BYTES = "openSegmentSizeInBytes";
-  /** Total time taken to append a raft log entry */
+  /** Total time taken to append a raft log entry. */
   public static final String RAFT_LOG_APPEND_ENTRY_LATENCY = "appendEntryLatency";
   /**
    * Time taken for a Raft log operation to get into the queue after being requested. This is the
@@ -74,6 +75,12 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
   public static final String FOLLOWER_APPEND_ENTRIES_LATENCY = "follower_append_entry_latency";
   /** Time taken to process write requests from client. */
   public static final String RAFT_CLIENT_WRITE_REQUEST = "clientWriteRequest";
+
+  private static final String METHOD_NOT_USED_EXCEPTION_MESSAGE =
+      "This method is not used in IoTDB project";
+
+  private static final String METER_NOT_USED_EXCEPTION_MESSAGE =
+      "Meter is not used in Ratis Metrics";
 
   private static final List<String> RATIS_METRICS = new ArrayList<>();
 
@@ -153,16 +160,6 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
     return true;
   }
 
-  void removeAll() {
-    counterCache.forEach((name, counter) -> metricService.remove(MetricType.COUNTER, name));
-    gaugeCache.forEach((name, gauge) -> metricService.remove(MetricType.AUTO_GAUGE, name));
-    timerCache.forEach((name, timer) -> metricService.remove(MetricType.TIMER, name));
-    metricNameCache.clear();
-    counterCache.clear();
-    gaugeCache.clear();
-    timerCache.clear();
-  }
-
   @Override
   public Gauge gauge(String name, MetricRegistry.MetricSupplier<Gauge> metricSupplier) {
     final String fullName = getMetricName(name);
@@ -178,17 +175,17 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
 
   @Override
   public Timer timer(String name, MetricRegistry.MetricSupplier<Timer> metricSupplier) {
-    throw new UnsupportedOperationException("This method is not used in IoTDB project");
+    throw new UnsupportedOperationException(METHOD_NOT_USED_EXCEPTION_MESSAGE);
   }
 
   @Override
   public SortedMap<String, Gauge> getGauges(MetricFilter metricFilter) {
-    throw new UnsupportedOperationException("This method is not used in IoTDB project");
+    throw new UnsupportedOperationException(METHOD_NOT_USED_EXCEPTION_MESSAGE);
   }
 
   @Override
   public Counter counter(String name, MetricRegistry.MetricSupplier<Counter> metricSupplier) {
-    throw new UnsupportedOperationException("This method is not used in IoTDB project");
+    throw new UnsupportedOperationException(METHOD_NOT_USED_EXCEPTION_MESSAGE);
   }
 
   @Override
@@ -198,17 +195,17 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
 
   @Override
   public Meter meter(String name) {
-    throw new UnsupportedOperationException("Meter is not used in Ratis Metrics");
+    throw new UnsupportedOperationException(METER_NOT_USED_EXCEPTION_MESSAGE);
   }
 
   @Override
   public Meter meter(String name, MetricRegistry.MetricSupplier<Meter> metricSupplier) {
-    throw new UnsupportedOperationException("Meter is not used in Ratis Metrics");
+    throw new UnsupportedOperationException(METER_NOT_USED_EXCEPTION_MESSAGE);
   }
 
   @Override
   public Metric get(String name) {
-    throw new UnsupportedOperationException("Meter is not used in Ratis Metrics");
+    throw new UnsupportedOperationException(METER_NOT_USED_EXCEPTION_MESSAGE);
   }
 
   @Override
@@ -218,7 +215,7 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
 
   @Override
   public MetricRegistry getDropWizardMetricRegistry() {
-    throw new UnsupportedOperationException("This method is not used in IoTDB project");
+    throw new UnsupportedOperationException(METHOD_NOT_USED_EXCEPTION_MESSAGE);
   }
 
   @Override
@@ -249,5 +246,15 @@ public class IoTDBMetricRegistry implements RatisMetricRegistry {
   @Override
   public ConsoleReporter getConsoleReporter() {
     throw new UnsupportedOperationException("ConsoleReporter is not used in Ratis Metrics");
+  }
+
+  void removeAll() {
+    counterCache.forEach((name, counter) -> metricService.remove(MetricType.COUNTER, name));
+    gaugeCache.forEach((name, gauge) -> metricService.remove(MetricType.AUTO_GAUGE, name));
+    timerCache.forEach((name, timer) -> metricService.remove(MetricType.TIMER, name));
+    metricNameCache.clear();
+    counterCache.clear();
+    gaugeCache.clear();
+    timerCache.clear();
   }
 }

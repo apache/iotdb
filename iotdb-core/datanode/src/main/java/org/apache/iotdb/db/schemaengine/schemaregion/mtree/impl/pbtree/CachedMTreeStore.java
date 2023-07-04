@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree;
 
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -192,6 +193,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
     return node;
   }
 
+  @SuppressWarnings("java:S2445")
   private ICachedMNode loadChildFromDiskToParent(ICachedMNode parent, ICachedMNode node) {
     synchronized (parent) {
       ICachedMNode nodeAlreadyLoaded = parent.getChild(node.getName());

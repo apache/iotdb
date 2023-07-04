@@ -28,11 +28,11 @@ import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
-import org.apache.iotdb.confignode.consensus.request.read.udf.GetUDFJarPlan;
+import org.apache.iotdb.confignode.consensus.request.read.function.GetUDFJarPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
+import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.confignode.consensus.response.function.FunctionTableResp;
-import org.apache.iotdb.confignode.consensus.response.udf.JarResp;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
@@ -78,9 +78,9 @@ public class UDFManager {
     udfInfo.acquireUDFTableLock();
     try {
       final boolean isUsingURI = req.isIsUsingURI();
-      final String udfName = req.udfName.toUpperCase(),
-          jarMD5 = req.getJarMD5(),
-          jarName = req.getJarName();
+      final String udfName = req.udfName.toUpperCase();
+      final String jarMD5 = req.getJarMD5();
+      final String jarName = req.getJarName();
       final byte[] jarFile = req.getJarFile();
       udfInfo.validate(udfName, jarName, jarMD5);
 
@@ -183,19 +183,11 @@ public class UDFManager {
   }
 
   public TGetJarInListResp getUDFJar(TGetJarInListReq req) {
-    try {
-      return ((JarResp)
-              configManager
-                  .getConsensusManager()
-                  .read(new GetUDFJarPlan(req.getJarNameList()))
-                  .getDataset())
-          .convertToThriftResponse();
-    } catch (IOException e) {
-      LOGGER.error("Fail to get TriggerJar", e);
-      return new TGetJarInListResp(
-          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-              .setMessage(e.getMessage()),
-          Collections.emptyList());
-    }
+    return ((JarResp)
+            configManager
+                .getConsensusManager()
+                .read(new GetUDFJarPlan(req.getJarNameList()))
+                .getDataset())
+        .convertToThriftResponse();
   }
 }

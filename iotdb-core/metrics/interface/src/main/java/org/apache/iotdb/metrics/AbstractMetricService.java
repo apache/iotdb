@@ -70,7 +70,7 @@ public abstract class AbstractMetricService {
   /** The list of metric sets. */
   protected Set<IMetricSet> metricSets = new HashSet<>();
 
-  public AbstractMetricService() {
+  protected AbstractMetricService() {
     // empty constructor
   }
 
@@ -169,7 +169,7 @@ public abstract class AbstractMetricService {
           reporter = new IoTDBSessionReporter(metricManager);
           break;
         default:
-          continue;
+          break;
       }
       if (reporter == null) {
         LOGGER.warn("Failed to load reporter which type is {}", reporterType);
@@ -324,7 +324,7 @@ public abstract class AbstractMetricService {
         metricManager.count(delta, metric, metricLevel, tags), metric, tags);
   }
 
-  /** Gauge value with internal report */
+  /** Gauge value with internal report. */
   public void gaugeWithInternalReportAsync(
       long value, String metric, MetricLevel metricLevel, String... tags) {
     internalReporter.writeMetricToIoTDB(

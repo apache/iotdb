@@ -14,9 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.iotdb.jdbc;
 
 import org.apache.thrift.transport.TTransportException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 
@@ -26,6 +29,8 @@ import java.sql.SQLException;
 import java.util.Properties;
 
 public class IoTDBDataSource implements DataSource {
+
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBDataSource.class);
 
   private String url;
   private String user;
@@ -87,7 +92,7 @@ public class IoTDBDataSource implements DataSource {
     try {
       return new IoTDBConnection(url, properties);
     } catch (TTransportException e) {
-      e.printStackTrace();
+      logger.error(String.format("get connection error : %s", e.getMessage()));
     }
     return null;
   }
@@ -100,7 +105,7 @@ public class IoTDBDataSource implements DataSource {
       newProp.setProperty(PWD_STR, password);
       return new IoTDBConnection(url, newProp);
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error(String.format("get connection error : %s", e.getMessage()));
     }
     return null;
   }
@@ -111,10 +116,14 @@ public class IoTDBDataSource implements DataSource {
   }
 
   @Override
-  public void setLogWriter(PrintWriter printWriter) {}
+  public void setLogWriter(PrintWriter printWriter) {
+    // Do nothing
+  }
 
   @Override
-  public void setLoginTimeout(int i) {}
+  public void setLoginTimeout(int i) {
+    // Do nothing
+  }
 
   @Override
   public int getLoginTimeout() {

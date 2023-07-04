@@ -16,10 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+@SuppressWarnings("squid:S1104")
 public class FileElement {
   public TsFileResource resource;
 

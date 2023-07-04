@@ -85,7 +85,7 @@ public class CQInfo implements SnapshotProcessor {
     lock.writeLock().lock();
     try {
       if (cqMap.containsKey(cqId)) {
-        res.code = TSStatusCode.CQ_AlREADY_EXIST.getStatusCode();
+        res.code = TSStatusCode.CQ_ALREADY_EXIST.getStatusCode();
         res.message = String.format("CQ %s has already been created.", cqId);
       } else {
         CQEntry cqEntry =

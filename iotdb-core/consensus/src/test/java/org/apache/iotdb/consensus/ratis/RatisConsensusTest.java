@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -126,7 +127,7 @@ public class RatisConsensusTest {
     servers.get(0).changePeer(group.getGroupId(), peers);
 
     Assert.assertEquals(
-        ((TestUtils.IntegerCounter) stateMachines.get(0)).getConfiguration().size(), 3);
+        3, ((TestUtils.IntegerCounter) stateMachines.get(0)).getConfiguration().size());
     doConsensus(servers.get(0), group.getGroupId(), 10, 20);
   }
 
@@ -156,6 +157,7 @@ public class RatisConsensusTest {
     servers.get(0).addPeer(group.getGroupId(), peers.get(1));
     servers.get(1).transferLeader(group.getGroupId(), peers.get(1));
     servers.get(0).removePeer(group.getGroupId(), peers.get(0));
+    Assert.assertEquals(servers.get(1).getLeader(gid).getNodeId(), peers.get(1).getNodeId());
     servers.get(0).deletePeer(group.getGroupId());
   }
 
@@ -221,7 +223,7 @@ public class RatisConsensusTest {
             if (response.getException() != null) {
               response.getException().printStackTrace(System.out);
             }
-            Assert.assertEquals(response.getStatus().getCode(), 200);
+            Assert.assertEquals(200, response.getStatus().getCode());
             latch.countDown();
           });
     }

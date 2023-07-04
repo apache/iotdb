@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriver;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.queryengine.execution.driver.Driver;
@@ -80,5 +81,10 @@ public class PipelineDriverFactory {
 
   public void setDownstreamOperator(ExchangeOperator exchangeOperator) {
     this.driverContext.setDownstreamOperator(exchangeOperator);
+  }
+
+  @TestOnly
+  public Operator getOperation() {
+    return operation;
   }
 }

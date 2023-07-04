@@ -30,7 +30,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.utils.SetThreadName;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -116,8 +115,7 @@ public class LocalExecutionPlanner {
         throw new MemoryNotEnoughException(
             String.format(
                 "There is not enough memory to execute current fragment instance, current remaining free memory is %d, estimated memory usage for current fragment instance is %d",
-                freeMemoryForOperators, estimatedMemorySize),
-            TSStatusCode.MPP_MEMORY_NOT_ENOUGH.getStatusCode());
+                freeMemoryForOperators, estimatedMemorySize));
       } else {
         freeMemoryForOperators -= estimatedMemorySize;
         if (LOGGER.isDebugEnabled()) {

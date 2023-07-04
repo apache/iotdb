@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.consensus.request.write.region;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;

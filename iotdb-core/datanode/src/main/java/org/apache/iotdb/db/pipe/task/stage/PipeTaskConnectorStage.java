@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.task.stage;
 import org.apache.iotdb.db.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
 import org.apache.iotdb.db.pipe.execution.executor.PipeSubtaskExecutorManager;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
-import org.apache.iotdb.db.pipe.task.subtask.PipeConnectorSubtaskManager;
+import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtaskManager;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -47,7 +47,7 @@ public class PipeTaskConnectorStage extends PipeTaskStage {
 
   @Override
   public void createSubtask() throws PipeException {
-    // do nothing
+    // Do nothing
   }
 
   @Override

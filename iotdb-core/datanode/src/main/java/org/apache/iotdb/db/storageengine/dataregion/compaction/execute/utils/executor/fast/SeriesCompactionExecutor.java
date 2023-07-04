@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -63,7 +64,7 @@ public abstract class SeriesCompactionExecutor {
   // source files which are sorted by the start time of current device from old to new. Notice: If
   // the type of timeIndex is FileTimeIndex, it may contain resources in which the current device
   // does not exist.
-  protected List<FileElement> fileList = new ArrayList<>();;
+  protected List<FileElement> fileList = new ArrayList<>();
 
   protected final PriorityQueue<ChunkMetadataElement> chunkMetadataQueue;
 
@@ -85,7 +86,9 @@ public abstract class SeriesCompactionExecutor {
   // whether to put them in the point priority reader to deserialize or directly flush to chunk
   // writer. During the process of compacting overlapped page, there may be new overlapped pages
   // added into this list.
+  @SuppressWarnings("squid:S1068")
   private final List<PageElement> candidateOverlappedPages = new ArrayList<>();
+
   private long nextChunkStartTime = Long.MAX_VALUE;
 
   private long nextPageStartTime = Long.MAX_VALUE;
@@ -143,11 +146,11 @@ public abstract class SeriesCompactionExecutor {
 
       if (isChunkOverlap || isModified) {
         // has overlap or modified chunk, then deserialize it
-        summary.CHUNK_OVERLAP_OR_MODIFIED++;
+        summary.chunkOverlapOrModified++;
         compactWithOverlapChunks(firstChunkMetadataElement);
       } else {
         // has none overlap or modified chunk, flush it to file writer directly
-        summary.CHUNK_NONE_OVERLAP += 1;
+        summary.chunkNoneOverlap += 1;
         compactWithNonOverlapChunk(firstChunkMetadataElement);
       }
     }
@@ -197,7 +200,7 @@ public abstract class SeriesCompactionExecutor {
       checkShouldRemoveFile(chunkMetadataElement);
     } else {
       // unsealed chunk is not large enough or chunk.endTime > file.endTime, then deserialize chunk
-      summary.CHUNK_NONE_OVERLAP_BUT_DESERIALIZE += 1;
+      summary.chunkNoneOverlapButDeserialize += 1;
       deserializeChunkIntoPageQueue(chunkMetadataElement);
       compactPages();
     }
@@ -208,7 +211,12 @@ public abstract class SeriesCompactionExecutor {
 
   abstract void readChunk(ChunkMetadataElement chunkMetadataElement) throws IOException;
 
-  /** Deserialize files into chunk metadatas and put them into the chunk metadata queue. */
+  /**
+   * Deserialize files into chunk metadatas and put them into the chunk metadata queue.
+   *
+   * @throws IOException if io errors occurred
+   * @throws IllegalPathException if file path is illegal
+   */
   abstract void deserializeFileIntoChunkMetadataQueue(List<FileElement> fileElements)
       throws IOException, IllegalPathException;
 
@@ -231,12 +239,12 @@ public abstract class SeriesCompactionExecutor {
 
       if (isPageOverlap || modifiedStatus == ModifiedStatus.PARTIAL_DELETED) {
         // has overlap or modified pages, then deserialize it
-        summary.PAGE_OVERLAP_OR_MODIFIED += 1;
+        summary.pageOverlapOrModified += 1;
         pointPriorityReader.addNewPage(firstPageElement);
         compactWithOverlapPages();
       } else {
         // has none overlap or modified pages, flush it to chunk writer directly
-        summary.PAGE_NONE_OVERLAP += 1;
+        summary.pageNoneOverlap += 1;
         compactWithNonOverlapPage(firstPageElement);
       }
     }
@@ -263,7 +271,7 @@ public abstract class SeriesCompactionExecutor {
       checkShouldRemoveFile(pageElement);
     } else {
       // unsealed page is not large enough or page.endTime > file.endTime, then deserialze it
-      summary.PAGE_NONE_OVERLAP_BUT_DESERIALIZE += 1;
+      summary.pageNoneOverlapButDeserialize += 1;
       pointPriorityReader.addNewPage(pageElement);
 
       // write data points of the current page into chunk writer
@@ -337,11 +345,11 @@ public abstract class SeriesCompactionExecutor {
               || nextPageElement.pageHeader.getEndTime() >= nextChunkStartTime;
       if (isNextPageOverlap || nextPageModifiedStatus == ModifiedStatus.PARTIAL_DELETED) {
         // next page is overlapped or modified, then deserialize it
-        summary.PAGE_OVERLAP_OR_MODIFIED++;
+        summary.pageOverlapOrModified++;
         pointPriorityReader.addNewPage(nextPageElement);
       } else {
         // has none overlap or modified pages, flush it to chunk writer directly
-        summary.PAGE_FAKE_OVERLAP += 1;
+        summary.pageFakeOverlap += 1;
         compactWithNonOverlapPage(nextPageElement);
       }
     }
@@ -400,11 +408,13 @@ public abstract class SeriesCompactionExecutor {
    * Check whether current page is overlap with next chunk which has not been read into memory yet
    * before getting one page. If it is, then read next chunk into memory and deserialize it into
    * pages.
+   *
+   * @throws IOException if io errors occurred
    */
   private PageElement getPageFromPageQueue(long curTime) throws IOException {
     if (curTime >= nextChunkStartTime) {
       // overlap with next chunk, then read it into memory and deserialize it into page queue
-      summary.CHUNK_OVERLAP_OR_MODIFIED++;
+      summary.chunkOverlapOrModified++;
       ChunkMetadataElement chunkMetadataElement = chunkMetadataQueue.poll();
       nextChunkStartTime =
           chunkMetadataQueue.isEmpty() ? Long.MAX_VALUE : chunkMetadataQueue.peek().startTime;
@@ -419,6 +429,9 @@ public abstract class SeriesCompactionExecutor {
   /**
    * Check should remove file or not. If it is the last page in the chunk and the last chunk in the
    * file, then it means the file has been finished compacting and needs to be removed.
+   *
+   * @throws IOException if io errors occurred
+   * @throws IllegalPathException if file path is illegal
    */
   private void checkShouldRemoveFile(PageElement pageElement)
       throws IOException, IllegalPathException {
@@ -431,6 +444,9 @@ public abstract class SeriesCompactionExecutor {
   /**
    * Check if it is the last chunk in the file. If it is, it means the file has been finished
    * compacting and needs to be removed.
+   *
+   * @throws IOException if io errors occurred
+   * @throws IllegalPathException if file path is illegal
    */
   private void checkShouldRemoveFile(ChunkMetadataElement chunkMetadataElement)
       throws IOException, IllegalPathException {
@@ -444,6 +460,9 @@ public abstract class SeriesCompactionExecutor {
    * Remove file from sorted list. If the file to be removed is the first file, we should re-find
    * new overlapped files with the first file in the current file list, deserialize them into chunk
    * metadatas and put them into chunk metadata queue.
+   *
+   * @throws IllegalPathException if file path is illegal
+   * @throws IOException if io errors occurred
    */
   protected void removeFile(FileElement fileElement) throws IllegalPathException, IOException {
     boolean isFirstFile = fileList.get(0).equals(fileElement);
@@ -479,6 +498,7 @@ public abstract class SeriesCompactionExecutor {
     return pathModifications;
   }
 
+  @SuppressWarnings("squid:S3776")
   protected void updateSummary(ChunkMetadataElement chunkMetadataElement, ChunkStatus status) {
     switch (status) {
       case READ_IN:
@@ -524,6 +544,8 @@ public abstract class SeriesCompactionExecutor {
         } else {
           summary.increaseDeserializedChunkNum(1);
         }
+        break;
+      default:
         break;
     }
   }

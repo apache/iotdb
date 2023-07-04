@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Locale;
 
 /**
@@ -72,7 +73,11 @@ public class CompressionRatio {
     directory =
         SystemFileFactory.INSTANCE.getFile(
             FilePathUtils.regularizePath(CONFIG.getSystemDir()) + COMPRESSION_RATIO_DIR);
-    restore();
+    try {
+      restore();
+    } catch (IOException e) {
+      LOGGER.error("restore file error caused by ", e);
+    }
   }
 
   /**
@@ -107,7 +112,7 @@ public class CompressionRatio {
   private void persist(File oldFile, File newFile) throws IOException {
     checkDirectoryExist();
     if (!oldFile.exists()) {
-      newFile.createNewFile();
+      Files.createFile(newFile.toPath());
       LOGGER.debug(
           "Old ratio file {} doesn't exist, force create ratio file {}",
           oldFile.getAbsolutePath(),
@@ -128,7 +133,7 @@ public class CompressionRatio {
   }
 
   /** Restore compression ratio statistics from disk when system restart */
-  void restore() {
+  void restore() throws IOException {
     if (!directory.exists()) {
       return;
     }
@@ -157,6 +162,7 @@ public class CompressionRatio {
           calcTimes);
       for (int i = 0; i < ratioFiles.length; i++) {
         if (i != maxRatioIndex) {
+          Files.delete(ratioFiles[i].toPath());
           ratioFiles[i].delete();
         }
       }

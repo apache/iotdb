@@ -109,7 +109,7 @@ public class PipeHeartbeatParser {
                     .pipeHandleMetaChange(
                         needWriteConsensusOnConfigNodes.get(), needPushPipeMetaToDataNodes.get());
 
-                // reset flags after procedure is submitted
+                // Reset flags after procedure is submitted
                 needWriteConsensusOnConfigNodes.set(false);
                 needPushPipeMetaToDataNodes.set(false);
               }
@@ -160,13 +160,14 @@ public class PipeHeartbeatParser {
           continue;
         }
 
-        // update progress index
+        // Update progress index
         if (!runtimeMetaOnConfigNode
             .getValue()
             .getProgressIndex()
             .isAfter(runtimeMetaFromDataNode.getProgressIndex())) {
           LOGGER.info(
-              "Updating progress index for (pipe name: {}, consensus group id: {}) ... Progress index on config node: {}, progress index from data node: {}",
+              "Updating progress index for (pipe name: {}, consensus group id: {}) ... "
+                  + "Progress index on config node: {}, progress index from data node: {}",
               pipeMetaOnConfigNode.getStaticMeta().getPipeName(),
               runtimeMetaOnConfigNode.getKey(),
               runtimeMetaOnConfigNode.getValue().getProgressIndex(),
@@ -182,7 +183,7 @@ public class PipeHeartbeatParser {
           needWriteConsensusOnConfigNodes.set(true);
         }
 
-        // update runtime exception
+        // Update runtime exception
         final PipeTaskMeta pipeTaskMetaOnConfigNode = runtimeMetaOnConfigNode.getValue();
         pipeTaskMetaOnConfigNode.clearExceptionMessages();
         for (final PipeRuntimeException exception :
@@ -227,7 +228,8 @@ public class PipeHeartbeatParser {
 
                             LOGGER.warn(
                                 String.format(
-                                    "Detect PipeRuntimeConnectorCriticalException %s from DataNode, stop pipe %s.",
+                                    "Detect PipeRuntimeConnectorCriticalException %s "
+                                        + "from DataNode, stop pipe %s.",
                                     exception, pipeName));
                           });
             }

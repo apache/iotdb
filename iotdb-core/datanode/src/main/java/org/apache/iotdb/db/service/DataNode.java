@@ -533,8 +533,6 @@ public class DataNode implements DataNodeMBean {
     // must init after SchemaEngine and StorageEngine prepared well
     DataNodeRegionManager.getInstance().init();
 
-    registerManager.register(UpgradeSevice.getINSTANCE());
-
     // start region migrate service
     registerManager.register(RegionMigrateService.getInstance());
 
@@ -661,9 +659,11 @@ public class DataNode implements DataNodeMBean {
     }
 
     logger.debug("successfully registered all the UDFs");
-    for (UDFInformation udfInformation :
-        UDFManagementService.getInstance().getAllUDFInformation()) {
-      logger.debug("get udf: {}", udfInformation.getFunctionName());
+    if (logger.isDebugEnabled()) {
+      for (UDFInformation udfInformation :
+          UDFManagementService.getInstance().getAllUDFInformation()) {
+        logger.debug("get udf: {}", udfInformation.getFunctionName());
+      }
     }
   }
 
@@ -762,16 +762,17 @@ public class DataNode implements DataNodeMBean {
       throw new StartupException(e);
     }
     logger.debug("successfully registered all the triggers");
-    for (TriggerInformation triggerInformation :
-        TriggerManagementService.getInstance().getAllTriggerInformationInTriggerTable()) {
-      logger.debug("get trigger: {}", triggerInformation.getTriggerName());
+    if (logger.isDebugEnabled()) {
+      for (TriggerInformation triggerInformation :
+          TriggerManagementService.getInstance().getAllTriggerInformationInTriggerTable()) {
+        logger.debug("get trigger: {}", triggerInformation.getTriggerName());
+      }
+      for (TriggerExecutor triggerExecutor :
+          TriggerManagementService.getInstance().getAllTriggerExecutors()) {
+        logger.debug(
+            "get trigger executor: {}", triggerExecutor.getTriggerInformation().getTriggerName());
+      }
     }
-    for (TriggerExecutor triggerExecutor :
-        TriggerManagementService.getInstance().getAllTriggerExecutors()) {
-      logger.debug(
-          "get trigger executor: {}", triggerExecutor.getTriggerInformation().getTriggerName());
-    }
-
     // start TriggerInformationUpdater
     triggerInformationUpdater.startTriggerInformationUpdater();
   }

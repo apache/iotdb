@@ -26,22 +26,9 @@ import org.apache.iotdb.tsfile.exception.TsFileRuntimeException;
  * This Exception extends super class {@link TsFileRuntimeException}
  */
 public class TsFileDecodingException extends TsFileRuntimeException {
-
   private static final long serialVersionUID = -8632392900655017028L;
-
-  public TsFileDecodingException() {
-    // do nothing
-  }
-
-  public TsFileDecodingException(String message, Throwable cause) {
-    super(message, cause);
-  }
 
   public TsFileDecodingException(String message) {
     super(message);
-  }
-
-  public TsFileDecodingException(Throwable cause) {
-    super(cause);
   }
 }

@@ -16,8 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.IllegalSourceFileTypeException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -31,6 +33,7 @@ import java.util.List;
  */
 public interface ICompactionPerformer {
 
+  @SuppressWarnings("squid:S112")
   void perform() throws Exception;
 
   void setTargetFiles(List<TsFileResource> targetFiles);
@@ -38,11 +41,12 @@ public interface ICompactionPerformer {
   void setSummary(CompactionTaskSummary summary);
 
   default void setSourceFiles(List<TsFileResource> files) {
-    throw new RuntimeException("Cannot set single type of source files to this kind of performer");
+    throw new IllegalSourceFileTypeException(
+        "Cannot set single type of source files to this kind of performer");
   }
 
   default void setSourceFiles(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
-    throw new RuntimeException(
+    throw new IllegalSourceFileTypeException(
         "Cannot set both seq files and unseq files to this kind of performer");
   }
 }

@@ -62,16 +62,16 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   private String pattern;
 
-  private long historicalDataExtractionStartTime; // event time
-  private long historicalDataExtractionEndTime; // event time
+  private long historicalDataExtractionStartTime; // Event time
+  private long historicalDataExtractionEndTime; // Event time
 
-  private long historicalDataExtractionTimeLowerBound; // arrival time
+  private long historicalDataExtractionTimeLowerBound; // Arrival time
 
   private Queue<PipeTsFileInsertionEvent> pendingQueue;
 
   @Override
   public void validate(PipeParameterValidator validator) {
-    // do nothing
+    // Do nothing
   }
 
   @Override
@@ -87,7 +87,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
     pattern = parameters.getStringOrDefault(EXTRACTOR_PATTERN_KEY, EXTRACTOR_PATTERN_DEFAULT_VALUE);
 
-    // user may set the EXTRACTOR_HISTORY_START_TIME and EXTRACTOR_HISTORY_END_TIME without
+    // User may set the EXTRACTOR_HISTORY_START_TIME and EXTRACTOR_HISTORY_END_TIME without
     // enabling the historical data extraction, which may affect the realtime data extraction.
     final boolean isHistoricalExtractorEnabledByUser =
         parameters.getBooleanOrDefault(EXTRACTOR_HISTORY_ENABLE_KEY, true);
@@ -102,7 +102,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                 parameters.getString(EXTRACTOR_HISTORY_END_TIME), ZoneId.systemDefault())
             : Long.MAX_VALUE;
 
-    // enable historical extractor by default
+    // Enable historical extractor by default
     historicalDataExtractionTimeLowerBound =
         parameters.getBooleanOrDefault(EXTRACTOR_HISTORY_ENABLE_KEY, true)
             ? Long.MIN_VALUE

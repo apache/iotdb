@@ -17,9 +17,9 @@
  * under the License.
  *
  */
+
 package org.apache.iotdb.db.pipe.connector.legacy.pipedata;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.pipe.connector.legacy.loader.ILoader;
 
 import org.slf4j.Logger;
@@ -87,7 +87,7 @@ public abstract class PipeData {
     return pipeData;
   }
 
-  public static PipeData createPipeData(byte[] bytes) throws IllegalPathException, IOException {
+  public static PipeData createPipeData(byte[] bytes) throws IOException {
     return createPipeData(new DataInputStream(new ByteArrayInputStream(bytes)));
   }
 

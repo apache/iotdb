@@ -32,6 +32,7 @@ import java.util.List;
 public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskComparator {
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
+  @SuppressWarnings({"squid:S3776", "javabugs:S6320"})
   @Override
   public int compare(AbstractCompactionTask o1, AbstractCompactionTask o2) {
     if ((((o1 instanceof InnerSpaceCompactionTask) && (o2 instanceof CrossSpaceCompactionTask))

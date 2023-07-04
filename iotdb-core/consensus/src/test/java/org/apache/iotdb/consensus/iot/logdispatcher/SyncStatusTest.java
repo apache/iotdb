@@ -57,7 +57,7 @@ public class SyncStatusTest {
     FileUtils.deleteFully(storageDir);
   }
 
-  /** Confirm success from front to back */
+  /** Confirm success from front to back. */
   @Test
   public void sequenceTest() throws InterruptedException {
     IndexController controller =
@@ -88,7 +88,7 @@ public class SyncStatusTest {
     }
   }
 
-  /** Confirm success from back to front */
+  /** Confirm success from back to front. */
   @Test
   public void reverseTest() throws InterruptedException {
     IndexController controller =
@@ -126,7 +126,7 @@ public class SyncStatusTest {
         config.getReplication().getMaxPendingBatchesNum(), status.getNextSendingIndex());
   }
 
-  /** Confirm success first from front to back, then back to front */
+  /** Confirm success first from front to back, then back to front. */
   @Test
   public void mixedTest() throws InterruptedException {
     IndexController controller =
@@ -177,7 +177,7 @@ public class SyncStatusTest {
         config.getReplication().getMaxPendingBatchesNum(), status.getNextSendingIndex());
   }
 
-  /** Test Blocking while addNextBatch */
+  /** Test Blocking while addNextBatch. */
   @Test
   public void waitTest() throws InterruptedException, ExecutionException {
     IndexController controller =
