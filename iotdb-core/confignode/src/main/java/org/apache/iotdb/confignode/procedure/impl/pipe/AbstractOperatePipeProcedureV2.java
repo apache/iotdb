@@ -204,9 +204,9 @@ public abstract class AbstractOperatePipeProcedureV2
   }
 
   /**
-   * Handle only the given pipe's meta to avoid influencing other pipes.
+   * Parsing the given pipe's or all pipes' pushPipeMeta exceptions to string.
    *
-   * @param pipeName The given pipe's pipe name
+   * @param pipeName The given pipe's pipe name, null if report all pipes' exceptions.
    * @param respMap The responseMap after pushing pipe meta
    * @return Error messages for the given pipe after pushing pipe meta
    */
@@ -217,13 +217,19 @@ public abstract class AbstractOperatePipeProcedureV2
       int dataNodeId = respEntry.getKey();
       TPushPipeMetaResp resp = respEntry.getValue();
       if (resp.getStatus().getCode() == TSStatusCode.PUSH_PIPE_META_ERROR.getStatusCode()) {
+        exceptionMessageBuilder.append(String.format("DataNodeId: %s", dataNodeId));
         resp.getExceptionMessages()
             .forEach(
                 message -> {
-                  if (pipeName.equals(message.getPipeName())) {
+                  // Ignore the timeStamp for simplicity
+                  if (pipeName == null) {
                     exceptionMessageBuilder.append(
                         String.format(
-                            "DataNodeId: %s, Message: %s ", dataNodeId, message.getMessage()));
+                            "PipeName: %s, Message: %s ",
+                            message.getPipeName(), message.getMessage()));
+                  } else if (pipeName.equals(message.getPipeName())) {
+                    exceptionMessageBuilder.append(
+                        String.format("Message: %s ", message.getMessage()));
                   }
                 });
       }
