@@ -47,7 +47,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
@@ -201,41 +204,83 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   }
 
   private AggregateResult[] getNextAggregateResult() throws IOException {
-    curAggregateResults = new AggregateResult[paths.size()];
-    try {
-      // get aggregate results of non-aligned series
-      for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
-        MeasurementPath path = (MeasurementPath) entry.getKey();
-        List<Integer> indexes = entry.getValue();
-        GroupByExecutor groupByExecutor = pathExecutors.get(path);
-        List<AggregateResult> aggregations = groupByExecutor.calcResult(curStartTime, curEndTime);
-        for (int i = 0; i < aggregations.size(); i++) {
-          int resultIndex = indexes.get(i);
-          curAggregateResults[resultIndex] = aggregations.get(i);
-        }
-      }
-      // get aggregate results of aligned series
-      for (Map.Entry<AlignedPath, List<List<Integer>>> entry :
-          alignedPathToAggrIndexesMap.entrySet()) {
-        AlignedPath path = entry.getKey();
-        List<List<Integer>> indexesList = entry.getValue();
-        AlignedGroupByExecutor groupByExecutor = alignedPathExecutors.get(path);
-        List<List<AggregateResult>> aggregationsList =
-            groupByExecutor.calcAlignedResult(curStartTime, curEndTime);
-        for (int i = 0; i < path.getMeasurementList().size(); i++) {
-          List<AggregateResult> aggregations = aggregationsList.get(i);
-          List<Integer> indexes = indexesList.get(i);
-          for (int j = 0; j < aggregations.size(); j++) {
-            int resultIndex = indexes.get(j);
-            curAggregateResults[resultIndex] = aggregations.get(j);
-          }
-        }
-      }
-    } catch (QueryProcessException e) {
-      logger.error("GroupByWithoutValueFilterDataSet execute has error", e);
+    AggregateResult[] aggregateResults = new AggregateResult[paths.size()];
+    // exceptions queue
+    Queue<Exception> exs = new ConcurrentLinkedQueue<>();
+
+    // get aggregate results of non-aligned series
+    // multi thread optimization
+    pathToAggrIndexesMap
+        .entrySet()
+        .parallelStream()
+        .map(
+            entry -> {
+              MeasurementPath path = (MeasurementPath) entry.getKey();
+              GroupByExecutor groupByExecutor = pathExecutors.get(path);
+              try {
+                return new Pair<>(
+                    entry.getValue(), groupByExecutor.calcResult(curStartTime, curEndTime));
+              } catch (Exception e) {
+                logger.error("GroupByWithoutValueFilterDataSet execute has error", e);
+                exs.offer(e);
+                return null;
+              }
+            })
+        .filter(Objects::nonNull)
+        .forEach(
+            pair -> {
+              List<Integer> indexes = pair.left;
+              List<AggregateResult> aggregations = pair.right;
+              for (int i = 0; i < aggregations.size(); ++i) {
+                int resultIndex = indexes.get(i);
+                aggregateResults[resultIndex] = aggregations.get(i);
+              }
+            });
+
+    if (!exs.isEmpty()) {
+      Exception e = exs.peek();
       throw new IOException(e.getMessage(), e);
     }
-    return curAggregateResults;
+
+    // get aggregate results of aligned series
+    // multi thread optimization
+    alignedPathToAggrIndexesMap
+        .entrySet()
+        .parallelStream()
+        .map(
+            entry -> {
+              AlignedGroupByExecutor groupByExecutor = alignedPathExecutors.get(entry.getKey());
+              try {
+                return new Pair<>(
+                    entry, groupByExecutor.calcAlignedResult(curStartTime, curEndTime));
+              } catch (Exception e) {
+                logger.error("GroupByWithoutValueFilterDataSet execute has error", e);
+                exs.offer(e);
+                return null;
+              }
+            })
+        .filter(Objects::nonNull)
+        .forEach(
+            pair -> {
+              int pathMeasurementsNum = pair.left.getKey().getMeasurementList().size();
+              List<List<Integer>> indexesList = pair.left.getValue();
+              List<List<AggregateResult>> aggregationsList = pair.right;
+              for (int i = 0; i < pathMeasurementsNum; ++i) {
+                List<AggregateResult> aggregations = aggregationsList.get(i);
+                List<Integer> indexes = indexesList.get(i);
+                for (int j = 0; j < aggregations.size(); ++j) {
+                  int resultIndex = indexes.get(j);
+                  aggregateResults[resultIndex] = aggregations.get(j);
+                }
+              }
+            });
+
+    if (!exs.isEmpty()) {
+      Exception e = exs.peek();
+      throw new IOException(e.getMessage(), e);
+    }
+
+    return aggregateResults;
   }
 
   protected GroupByExecutor getGroupByExecutor(
