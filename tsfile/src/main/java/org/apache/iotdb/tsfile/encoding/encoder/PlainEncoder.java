@@ -24,7 +24,6 @@ import org.apache.iotdb.tsfile.exception.encoding.TsFileEncodingException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,7 +61,10 @@ public class PlainEncoder extends Encoder {
 
   @Override
   public void encode(int value, ByteArrayOutputStream out) {
-    ReadWriteForEncodingUtils.writeVarInt(value, out);
+    for (int i = 3; i >= 0; i--) {
+      out.write((byte) (((value) >> (i * 8)) & 0xFF));
+    }
+    // ReadWriteForEncodingUtils.writeVarInt(value, out);
   }
 
   @Override
