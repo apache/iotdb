@@ -35,10 +35,14 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   protected String dataRegionId;
   protected PipeTaskMeta pipeTaskMeta;
 
-  protected PipeRealtimeDataRegionExtractor() {}
+  protected PipeRealtimeDataRegionExtractor() {
+    // Do nothing
+  }
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {}
+  public void validate(PipeParameterValidator validator) throws Exception {
+    // Do nothing
+  }
 
   @Override
   public void customize(PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration)

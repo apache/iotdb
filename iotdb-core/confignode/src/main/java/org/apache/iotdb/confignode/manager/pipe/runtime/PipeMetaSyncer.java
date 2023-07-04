@@ -57,11 +57,11 @@ public class PipeMetaSyncer {
   public synchronized void start() {
     while (configManager.getConsensusManager() == null) {
       try {
-        LOGGER.info("consensus layer is not ready, sleep 1s...");
+        LOGGER.info("Consensus layer is not ready, sleep 1s...");
         TimeUnit.SECONDS.sleep(1);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("unexpected interruption during waiting for consensus layer ready.");
+        LOGGER.warn("Unexpected interruption during waiting for consensus layer ready.");
       }
     }
 

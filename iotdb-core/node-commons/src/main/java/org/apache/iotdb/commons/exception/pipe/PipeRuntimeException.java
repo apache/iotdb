@@ -28,7 +28,7 @@ import java.util.Objects;
 
 public abstract class PipeRuntimeException extends PipeException {
 
-  public PipeRuntimeException(String message) {
+  protected PipeRuntimeException(String message) {
     super(message);
   }
 
