@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.component;
 
-import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 
 /** This class maintains information of {@code GROUP BY} clause. */
 public class GroupByTimeComponent extends StatementNode {
