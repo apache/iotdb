@@ -199,7 +199,10 @@ public class PipeRuntimeMeta {
   @Override
   public int hashCode() {
     return Objects.hash(
-        status, consensusGroupId2TaskMetaMap, dataNodeId2PipeRuntimeExceptionMap, exceptionsClearTime.get());
+        status,
+        consensusGroupId2TaskMetaMap,
+        dataNodeId2PipeRuntimeExceptionMap,
+        exceptionsClearTime.get());
   }
 
   @Override
