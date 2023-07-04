@@ -17,6 +17,11 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+function on_stop(){
+    bash /iotdb/sbin/stop-confignode.sh
+}
+
+trap 'on_stop' SIGTERM SIGKILL SIGQUIT
 
 bash /iotdb/sbin/start-confignode.sh &
 sleep 5
