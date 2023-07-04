@@ -31,8 +31,20 @@ public class PipeConfig {
 
   /////////////////////////////// File ///////////////////////////////
 
+  public String getPipeHardlinkDirName() {
+    return COMMON_CONFIG.getPipeHardlinkDirName();
+  }
+
   public String getPipeHardlinkTsFileDirName() {
     return COMMON_CONFIG.getPipeHardlinkTsFileDirName();
+  }
+
+  public String getPipeHardlinkWALDirName() {
+    return COMMON_CONFIG.getPipeHardlinkWALDirName();
+  }
+
+  public boolean getPipeWALEnableHardLink() {
+    return COMMON_CONFIG.getPipeWALEnableHardLink();
   }
 
   /////////////////////////////// Subtask Executor ///////////////////////////////
