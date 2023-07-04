@@ -17,12 +17,6 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-function on_stop(){
-    echo "#### on_stop ####"
-    bash stop-confignode.sh
-}
-
-trap 'on_stop' SIGTERM SIGKILL SIGQUIT
 
 bash start-confignode.sh &
 sleep 5
