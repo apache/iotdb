@@ -109,17 +109,17 @@ public class PipeTableResp implements DataSet {
       final StringBuilder exceptionMessageBuilder = new StringBuilder();
       for (PipeRuntimeException e : runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap().values()) {
         exceptionMessageBuilder
-            .append(e.getMessage())
-            .append(", ")
             .append(DateTimeUtils.convertLongToDate(e.getTimeStamp()))
+            .append(", ")
+            .append(e.getMessage())
             .append("\n");
       }
       for (PipeTaskMeta pipeTaskMeta : runtimeMeta.getConsensusGroupId2TaskMetaMap().values()) {
         for (PipeRuntimeException e : pipeTaskMeta.getExceptionMessages()) {
           exceptionMessageBuilder
-              .append(e.getMessage())
-              .append(", ")
               .append(DateTimeUtils.convertLongToDate(e.getTimeStamp()))
+              .append(", ")
+              .append(e.getMessage())
               .append("\n");
         }
       }
