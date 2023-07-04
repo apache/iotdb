@@ -124,8 +124,6 @@
     </modules>
     <!-- Properties Management -->
     <properties>
-        <sonar.organization>asia-zengtao</sonar.organization>
-        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <maven.assembly.version>3.1.0</maven.assembly.version>
