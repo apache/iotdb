@@ -19,5 +19,4 @@
 
 *
 !distribution
-!docker/src/main/DockerCompose/entrypoint.sh
-!docker/src/main/DockerCompose/replace-conf-from-env.sh
+!docker/src/main/DockerCompose/start-1c1d.sh
