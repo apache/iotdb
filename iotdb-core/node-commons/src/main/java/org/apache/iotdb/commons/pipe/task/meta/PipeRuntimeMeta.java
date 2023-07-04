@@ -48,7 +48,7 @@ public class PipeRuntimeMeta {
    */
   private final Map<Integer, PipeRuntimeException> dataNodeId2PipeRuntimeExceptionMap;
 
-  private final AtomicLong clearTime = new AtomicLong(Long.MIN_VALUE);
+  private final AtomicLong exceptionsClearTime = new AtomicLong(Long.MIN_VALUE);
 
   public PipeRuntimeMeta() {
     status = new AtomicReference<>(PipeStatus.STOPPED);
@@ -74,13 +74,13 @@ public class PipeRuntimeMeta {
     return dataNodeId2PipeRuntimeExceptionMap;
   }
 
-  public long getClearTime() {
-    return clearTime.get();
+  public long getExceptionsClearTime() {
+    return exceptionsClearTime.get();
   }
 
-  public void setClearTime(long clearTime) {
-    if (clearTime > this.getClearTime()) {
-      this.clearTime.set(clearTime);
+  public void setExceptionsClearTime(long exceptionsClearTime) {
+    if (exceptionsClearTime > this.getExceptionsClearTime()) {
+      this.exceptionsClearTime.set(exceptionsClearTime);
     }
   }
 
@@ -108,7 +108,7 @@ public class PipeRuntimeMeta {
       entry.getValue().serialize(outputStream);
     }
 
-    ReadWriteIOUtils.write(clearTime.get(), outputStream);
+    ReadWriteIOUtils.write(exceptionsClearTime.get(), outputStream);
   }
 
   public void serialize(FileOutputStream outputStream) throws IOException {
@@ -128,7 +128,7 @@ public class PipeRuntimeMeta {
       entry.getValue().serialize(outputStream);
     }
 
-    ReadWriteIOUtils.write(clearTime.get(), outputStream);
+    ReadWriteIOUtils.write(exceptionsClearTime.get(), outputStream);
   }
 
   public static PipeRuntimeMeta deserialize(InputStream inputStream) throws IOException {
@@ -151,7 +151,7 @@ public class PipeRuntimeMeta {
           PipeRuntimeExceptionType.deserializeFrom(inputStream));
     }
 
-    pipeRuntimeMeta.clearTime.set(ReadWriteIOUtils.readLong(inputStream));
+    pipeRuntimeMeta.exceptionsClearTime.set(ReadWriteIOUtils.readLong(inputStream));
 
     return pipeRuntimeMeta;
   }
@@ -176,7 +176,7 @@ public class PipeRuntimeMeta {
           PipeRuntimeExceptionType.deserializeFrom(byteBuffer));
     }
 
-    pipeRuntimeMeta.clearTime.set(ReadWriteIOUtils.readLong(byteBuffer));
+    pipeRuntimeMeta.exceptionsClearTime.set(ReadWriteIOUtils.readLong(byteBuffer));
 
     return pipeRuntimeMeta;
   }
@@ -193,13 +193,13 @@ public class PipeRuntimeMeta {
     return Objects.equals(status.get().getType(), that.status.get().getType())
         && consensusGroupId2TaskMetaMap.equals(that.consensusGroupId2TaskMetaMap)
         && dataNodeId2PipeRuntimeExceptionMap.equals(that.dataNodeId2PipeRuntimeExceptionMap)
-        && clearTime.get() == that.clearTime.get();
+        && exceptionsClearTime.get() == that.exceptionsClearTime.get();
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        status, consensusGroupId2TaskMetaMap, dataNodeId2PipeRuntimeExceptionMap, clearTime.get());
+        status, consensusGroupId2TaskMetaMap, dataNodeId2PipeRuntimeExceptionMap, exceptionsClearTime.get());
   }
 
   @Override
@@ -211,8 +211,8 @@ public class PipeRuntimeMeta {
         + consensusGroupId2TaskMetaMap
         + ", dataNodeId2PipeMetaExceptionMap="
         + dataNodeId2PipeRuntimeExceptionMap
-        + ", clearTime="
-        + clearTime
+        + ", exceptionsClearTime="
+        + exceptionsClearTime
         + '}';
   }
 }

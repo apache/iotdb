@@ -266,7 +266,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
   public boolean clearExceptions(String pipeName) {
     AtomicBoolean isCleared = new AtomicBoolean(false);
     PipeRuntimeMeta runtimeMeta = pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta();
-    runtimeMeta.setClearTime(System.currentTimeMillis());
+    runtimeMeta.setExceptionsClearTime(System.currentTimeMillis());
     Map<Integer, PipeRuntimeException> exceptionMap =
         runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
     if (!exceptionMap.isEmpty()) {
