@@ -39,10 +39,12 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-import static org.apache.iotdb.db.it.alignbydevice.IoTDBAlignByDeviceIT.checkHeader;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -193,7 +195,6 @@ public class IoTDBAlignByDeviceWithViewIT {
       throws SQLException {
 
     ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-    System.out.println(resultSetMetaData);
     List<Integer> actualIndexToExpectedIndexList =
         checkHeader(resultSetMetaData, expectedHeaderStrings, headerTypes);
 
@@ -212,6 +213,25 @@ public class IoTDBAlignByDeviceWithViewIT {
       cnt++;
     }
     Assert.assertEquals(retArray.length, cnt);
+  }
+
+  private List<Integer> checkHeader(
+      ResultSetMetaData resultSetMetaData, String expectedHeaderStrings, int[] expectedTypes)
+      throws SQLException {
+    String[] expectedHeaders = expectedHeaderStrings.split(",");
+    Map<String, Integer> expectedHeaderToTypeIndexMap = new HashMap<>();
+    for (int i = 0; i < expectedHeaders.length; ++i) {
+      expectedHeaderToTypeIndexMap.put(expectedHeaders[i], i);
+    }
+
+    List<Integer> actualIndexToExpectedIndexList = new ArrayList<>();
+    for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+      Integer typeIndex = expectedHeaderToTypeIndexMap.get(resultSetMetaData.getColumnName(i));
+      Assert.assertNotNull(typeIndex);
+      Assert.assertEquals(expectedTypes[typeIndex], resultSetMetaData.getColumnType(i));
+      actualIndexToExpectedIndexList.add(typeIndex);
+    }
+    return actualIndexToExpectedIndexList;
   }
 
   private static final String[] VIEW_SQL_LIST =
