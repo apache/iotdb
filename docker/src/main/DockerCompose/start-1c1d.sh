@@ -24,6 +24,6 @@ function on_stop(){
 
 trap 'on_stop' SIGTERM SIGKILL SIGQUIT
 
-bash start-confignode.sh > /dev/null 2>&1 &
+bash start-confignode.sh &
 sleep 5
 bash start-datanode.sh
