@@ -237,10 +237,17 @@ public class CommonDescriptor {
   }
 
   private void loadPipeProps(Properties properties) {
+    config.setPipeHardlinkDirName(
+        properties.getProperty("pipe_hardlink_dir_name", config.getPipeHardlinkDirName()));
     config.setPipeHardlinkTsFileDirName(
         properties.getProperty(
             "pipe_hardlink_tsfile_dir_name", config.getPipeHardlinkTsFileDirName()));
-
+    config.setPipeHardlinkWALDirName(
+        properties.getProperty("pipe_hardlink_wal_dir_name", config.getPipeHardlinkWALDirName()));
+    config.setPipeWALEnableHardLink(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_wal_enable_hardlink", Boolean.toString(config.getPipeWALEnableHardLink()))));
     config.setPipeSubtaskExecutorMaxThreadNum(
         Integer.parseInt(
             properties.getProperty(
