@@ -300,7 +300,13 @@ public abstract class CacheManager implements ICacheManager {
         collectVolatileNodes(child, nodesToPersist);
       }
     } else {
-      addToNodeCache(getCacheEntry(node), node);
+      // add back to cache
+      CacheEntry cacheEntry = getCacheEntry(node);
+      while (cacheEntry != null && !isInNodeCache(cacheEntry)) {
+        addToNodeCache(cacheEntry, node);
+        node = node.getParent();
+        cacheEntry = getCacheEntry(node);
+      }
     }
   }
 
