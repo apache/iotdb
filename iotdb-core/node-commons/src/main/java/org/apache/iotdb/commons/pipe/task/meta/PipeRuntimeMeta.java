@@ -40,6 +40,12 @@ public class PipeRuntimeMeta {
 
   private final AtomicReference<PipeStatus> status;
   private final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupId2TaskMetaMap;
+
+  /**
+   * Stores the exceptions encountered during pushing pipeMeta to DataNodes. The exceptions are all
+   * instances of PipeRuntimeCriticalException, so that the failure of pushing pipeMeta will result
+   * in the halt of transferring data.
+   */
   private final Map<Integer, PipeRuntimeException> dataNodeId2PipeRuntimeExceptionMap;
 
   public PipeRuntimeMeta() {

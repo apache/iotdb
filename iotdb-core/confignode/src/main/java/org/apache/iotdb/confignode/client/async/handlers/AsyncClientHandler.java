@@ -28,11 +28,13 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.CheckTimeSeriesExis
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CountPathsUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackListRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipeHeartbeatRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.PushPipeMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SchemaUpdateRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -208,6 +210,14 @@ public class AsyncClientHandler<Q, R> {
             dataNodeLocationMap,
             (Map<Integer, TPipeHeartbeatResp>) responseMap,
             countDownLatch);
+      case PUSH_PIPE_META:
+        return new PushPipeMetaRPCHandler(
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TPushPipeMetaResp>) responseMap,
+            countDownLatch);
       case SET_TTL:
       case CREATE_DATA_REGION:
       case CREATE_SCHEMA_REGION:
@@ -230,7 +240,6 @@ public class AsyncClientHandler<Q, R> {
       case UPDATE_TEMPLATE:
       case CHANGE_REGION_LEADER:
       case KILL_QUERY_INSTANCE:
-      case PUSH_PIPE_META:
       default:
         return new AsyncTSStatusRPCHandler(
             requestType,

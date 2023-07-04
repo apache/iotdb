@@ -178,6 +178,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
@@ -934,18 +936,21 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus pushPipeMeta(TPushPipeMetaReq req) {
+  public TPushPipeMetaResp pushPipeMeta(TPushPipeMetaReq req) {
     final List<PipeMeta> pipeMetas = new ArrayList<>();
     for (ByteBuffer byteBuffer : req.getPipeMetas()) {
       pipeMetas.add(PipeMeta.deserialize(byteBuffer));
     }
-    try {
-      PipeAgent.task().handlePipeMetaChanges(pipeMetas);
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (Exception e) {
-      LOGGER.error("Error occurred when pushing pipe meta", e);
-      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    TPushPipeMetaResp resp = new TPushPipeMetaResp();
+    List<TPushPipeMetaRespExceptionMessage> exceptionMessages =
+        PipeAgent.task().handlePipeMetaChanges(pipeMetas);
+    if (exceptionMessages.isEmpty()) {
+      resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    } else {
+      resp.setStatus(new TSStatus(TSStatusCode.PUSH_PIPE_META_ERROR.getStatusCode()));
+      resp.setExceptionMessages(exceptionMessages);
     }
+    return resp;
   }
 
   @Override

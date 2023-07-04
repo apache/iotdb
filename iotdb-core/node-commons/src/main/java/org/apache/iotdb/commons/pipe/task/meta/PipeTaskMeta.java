@@ -41,6 +41,13 @@ public class PipeTaskMeta {
 
   private final AtomicReference<ProgressIndex> progressIndex = new AtomicReference<>();
   private final AtomicInteger leaderDataNodeId = new AtomicInteger(0);
+
+  /**
+   * Stores the exceptions encountered during run time of each pipe task. The exceptions are
+   * instances of PipeRuntimeCriticalException, PipeRuntimeConnectorCriticalException and
+   * PipeRuntimeNonCriticalException. The failure of them, respectively, will lead to the stop of
+   * the pipe, the stop of the pipes sharing the same connector, and nothing.
+   */
   private final Queue<PipeRuntimeException> exceptionMessages = new ConcurrentLinkedQueue<>();
 
   public PipeTaskMeta(/* @NotNull */ ProgressIndex progressIndex, int leaderDataNodeId) {
