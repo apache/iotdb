@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.query.control.SessionManager;
@@ -665,8 +666,12 @@ public class DateTimeUtils {
   }
 
   public static String convertLongToDate(long timestamp) {
-    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-    switch (timePrecision) {
+    return convertLongToDate(
+        timestamp, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+  }
+
+  public static String convertLongToDate(long timestamp, String sourcePrecision) {
+    switch (sourcePrecision) {
       case "ns":
         timestamp /= 1000_000_000;
         break;
