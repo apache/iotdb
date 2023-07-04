@@ -30,7 +30,7 @@
         {
             "label": "build",
             "type": "shell",
-            "command": "mvn clean install -DskipTests -Drat.skip=true",
+            "command": "mvn clean package -DskipTests -Drat.skip=true",
             "problemMatcher":[]
         },
         {

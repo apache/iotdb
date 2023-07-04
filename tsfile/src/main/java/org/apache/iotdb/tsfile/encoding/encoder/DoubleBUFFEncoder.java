@@ -30,8 +30,9 @@ public class DoubleBUFFEncoder extends Encoder {
 
   private static final int lenlen = 10;
   private static final int perlen = 5;
+  private static final int maxlen = 16;
   private static final int[] len = {0, 5, 8, 11, 15, 18, 21, 25, 28, 31, 35};
-  private static final double eps = 1e-5;
+  private static final double eps = 1e-4;
 
   private int maxFloatLength;
   private boolean first;
@@ -65,12 +66,12 @@ public class DoubleBUFFEncoder extends Encoder {
       maxValue = Math.max(maxValue, (long) Math.ceil(value));
     }
     double tmp = value;
-    tmp -= Math.floor(tmp);
+    tmp -= Math.floor(tmp + eps);
     int curFloatLength = 0;
-    while (tmp > eps) {
+    while (tmp > eps && curFloatLength < maxlen) {
       curFloatLength++;
       tmp *= 10;
-      tmp -= Math.floor(tmp);
+      tmp -= Math.floor(tmp + eps);
     }
     maxFloatLength = Math.max(maxFloatLength, curFloatLength);
     li.add(value);
@@ -84,9 +85,7 @@ public class DoubleBUFFEncoder extends Encoder {
       reset();
       return;
     }
-    countA = Long.SIZE - Long.numberOfLeadingZeros(maxValue - minValue);
-    if (maxFloatLength > lenlen) countB = len[lenlen] + perlen * (maxFloatLength - lenlen);
-    else countB = len[maxFloatLength];
+    calc();
     writeBits(li.size(), Integer.SIZE, out);
     writeBits(countA, Integer.SIZE, out);
     writeBits(countB, Integer.SIZE, out);
@@ -142,18 +141,21 @@ public class DoubleBUFFEncoder extends Encoder {
   @Override
   public int getOneItemMaxSize() {
     if (first) return 0;
-    countA = Long.SIZE - Long.numberOfLeadingZeros(maxValue - minValue);
-    if (maxFloatLength > lenlen) countB = len[lenlen] + perlen * (maxFloatLength - lenlen);
-    else countB = len[maxFloatLength];
+    calc();
     return countA + countB;
   }
 
   @Override
   public long getMaxByteSize() {
     if (first) return 0;
+    calc();
+    return (countA + countB) * li.size() + Integer.SIZE * 3 + Long.SIZE;
+  }
+
+  private void calc() {
+    maxFloatLength = Math.min(maxFloatLength, maxlen);
     countA = Long.SIZE - Long.numberOfLeadingZeros(maxValue - minValue);
     if (maxFloatLength > lenlen) countB = len[lenlen] + perlen * (maxFloatLength - lenlen);
     else countB = len[maxFloatLength];
-    return (countA + countB) * li.size() + Integer.SIZE * 3 + Long.SIZE;
   }
 }
