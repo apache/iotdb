@@ -185,11 +185,11 @@ public class IoTDBMetadataFetchIT {
           new Set[] {
             new HashSet<>(
                 Arrays.asList(
-                    "root.ln.wf01.wt01,",
-                    "root.ln.wf01.wt02,",
-                    "root.ln1.wf01.wt01,",
-                    "root.ln2.wf01.wt01,")),
-            new HashSet<>(Arrays.asList("root.ln.wf01.wt01,", "root.ln.wf01.wt02,")),
+                    "root.ln.wf01.wt01,1",
+                    "root.ln.wf01.wt02,1",
+                    "root.ln1.wf01.wt01,1",
+                    "root.ln2.wf01.wt01,1")),
+            new HashSet<>(Arrays.asList("root.ln.wf01.wt01,1", "root.ln.wf01.wt02,1")),
             new HashSet<>()
           };
 
@@ -204,9 +204,11 @@ public class IoTDBMetadataFetchIT {
               while (resultSet.next()) {
                 StringBuilder builder = new StringBuilder();
                 for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-                  builder.append(resultSet.getString(i)).append(",");
+                  builder.append(resultSet.getString(i));
+                  if (i < resultSetMetaData.getColumnCount()) {
+                    builder.append(",");
+                  }
                 }
-                Assert.assertTrue(standard.contains(builder.toString()));
                 String string = builder.toString();
                 Assert.assertTrue(standard.contains(string));
                 standard.remove(string);

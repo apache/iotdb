@@ -195,7 +195,6 @@ import java.net.URL;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -1033,19 +1032,27 @@ public class PlanExecutor implements IPlanExecutor {
       throws MetadataException {
     ListDataSet listDataSet =
         new ListDataSet(
-            Collections.singletonList(new PartialPath(COLUMN_STORAGE_GROUP, false)),
-            Collections.singletonList(TSDataType.TEXT));
+            Arrays.asList(
+                new PartialPath(COLUMN_STORAGE_GROUP, false),
+                new PartialPath(COLUMN_VIRTUAL_STORAGE_GROUP_NUM, false)),
+            Arrays.asList(TSDataType.TEXT, TSDataType.INT32));
     List<PartialPath> storageGroupList =
         getStorageGroupNames(showStorageGroupPlan.getPath(), showStorageGroupPlan.isPrefixMatch());
-    addToDataSet(storageGroupList, listDataSet);
+    List<Integer> virtualStorageGroupNumList =
+        StorageEngine.getInstance().getVirtualStorageGroupNumList(storageGroupList);
+    addStorageGroupInfoToDataSet(storageGroupList, virtualStorageGroupNumList, listDataSet);
     return listDataSet;
   }
 
-  private void addToDataSet(Collection<PartialPath> paths, ListDataSet dataSet) {
-    for (PartialPath s : paths) {
+  private void addStorageGroupInfoToDataSet(
+      List<PartialPath> paths, List<Integer> virtualStorageGroupNumList, ListDataSet dataSet) {
+    for (int i = 0; i < paths.size(); i++) {
       RowRecord record = new RowRecord(0);
       Field field = new Field(TSDataType.TEXT);
-      field.setBinaryV(new Binary(s.getFullPath()));
+      field.setBinaryV(new Binary(paths.get(i).getFullPath()));
+      record.addField(field);
+      field = new Field(TSDataType.INT32);
+      field.setIntV(virtualStorageGroupNumList.get(i));
       record.addField(field);
       dataSet.putRecord(record);
     }
@@ -2389,7 +2396,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
     PartialPath path = setStorageGroupPlan.getPath();
     try {
-      IoTDB.metaManager.setStorageGroup(path);
+      IoTDB.metaManager.setStorageGroup(path, setStorageGroupPlan.getVirtualStorageGroupNum());
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }

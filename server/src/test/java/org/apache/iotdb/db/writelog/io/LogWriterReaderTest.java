@@ -23,9 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -43,7 +41,7 @@ import static org.junit.Assert.assertEquals;
 
 public class LogWriterReaderTest {
 
-  private static String filePath = "logtest.test";
+  private static String filePath = "D:\\logtest.bin";
   ByteBuffer logsBuffer = ByteBuffer.allocate(64 * 1024);
   List<PhysicalPlan> plans = new ArrayList<>();
 
@@ -52,24 +50,36 @@ public class LogWriterReaderTest {
     if (new File(filePath).exists()) {
       new File(filePath).delete();
     }
-    InsertRowPlan insertRowPlan1 =
-        new InsertRowPlan(
-            new PartialPath("d1"),
-            10L,
-            new String[] {"s1", "s2"},
-            new TSDataType[] {TSDataType.INT64, TSDataType.INT64},
-            new String[] {"1", "2"});
-    InsertRowPlan insertRowPlan2 =
-        new InsertRowPlan(
-            new PartialPath("d1"),
-            10L,
-            new String[] {"s1", "s2"},
-            new TSDataType[] {TSDataType.INT64, TSDataType.INT64},
-            new String[] {"1", "2"});
-    DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 10L, new PartialPath("root.d1.s1"));
-    plans.add(insertRowPlan1);
-    plans.add(insertRowPlan2);
-    plans.add(deletePlan);
+    //    InsertRowPlan insertRowPlan1 =
+    //        new InsertRowPlan(
+    //            new PartialPath("d1"),
+    //            10L,
+    //            new String[] {"s1", "s2"},
+    //            new TSDataType[] {TSDataType.INT64, TSDataType.INT64},
+    //            new String[] {"1", "2"});
+    //    InsertRowPlan insertRowPlan2 =
+    //        new InsertRowPlan(
+    //            new PartialPath("d1"),
+    //            10L,
+    //            new String[] {"s1", "s2"},
+    //            new TSDataType[] {TSDataType.INT64, TSDataType.INT64},
+    //            new String[] {"1", "2"});
+    //    DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 10L, new
+    // PartialPath("root.d1.s1"));
+    //    plans.add(insertRowPlan1);
+    //    plans.add(insertRowPlan2);
+    //    plans.add(deletePlan);
+
+    PartialPath storageGroupPath1 = new PartialPath("root.ln34");
+    PartialPath storageGroupPath2 = new PartialPath("root.ln35");
+    PartialPath storageGroupPath3 = new PartialPath("root.ln36");
+    SetStorageGroupPlan setStorageGroupPlan1 = new SetStorageGroupPlan(storageGroupPath1, 4);
+    SetStorageGroupPlan setStorageGroupPlan2 = new SetStorageGroupPlan(storageGroupPath2, 5);
+    SetStorageGroupPlan setStorageGroupPlan3 = new SetStorageGroupPlan(storageGroupPath3, 6);
+    plans.add(setStorageGroupPlan1);
+    plans.add(setStorageGroupPlan2);
+    plans.add(setStorageGroupPlan3);
+
     for (PhysicalPlan plan : plans) {
       plan.serialize(logsBuffer);
     }
@@ -89,12 +99,20 @@ public class LogWriterReaderTest {
       while (reader.hasNext()) {
         res.add(reader.next());
       }
+
+      //      System.out.println((SetStorageGroupPlan)res.get);
       for (int i = 0; i < plans.size(); i++) {
         assertEquals(plans.get(i), res.get(i));
+        System.out.println(res.get(i));
+        System.out.println(res.get(i).getIndex());
+        System.out.println(res.get(i) instanceof SetStorageGroupPlan);
+        SetStorageGroupPlan setStorageGroupPlan = (SetStorageGroupPlan) res.get(i);
+        System.out.println(setStorageGroupPlan.getVirtualStorageGroupNum());
+        System.out.println("=======================");
       }
       reader.close();
     } finally {
-      new File(filePath).delete();
+      //      new File(filePath).delete();
     }
   }
 

@@ -147,11 +147,11 @@ public class IoTDBDDLVersionAdaptionIT {
         new Set[] {
           new HashSet<>(
               Arrays.asList(
-                  "root.ln.wf01.wt01,",
-                  "root.ln.wf01.wt02,",
-                  "root.ln1.wf01.wt01,",
-                  "root.ln2.wf01.wt01,")),
-          new HashSet<>(Arrays.asList("root.ln.wf01.wt01,", "root.ln.wf01.wt02,")),
+                  "root.ln.wf01.wt01,1,",
+                  "root.ln.wf01.wt02,1,",
+                  "root.ln1.wf01.wt01,1,",
+                  "root.ln2.wf01.wt01,1,")),
+          new HashSet<>(Arrays.asList("root.ln.wf01.wt01,1,", "root.ln.wf01.wt02,1,")),
           new HashSet<>()
         };
     executeAndCheckResult(sqls, standards);

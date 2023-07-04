@@ -1177,7 +1177,7 @@ public class IoTDBSimpleQueryIT {
             for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
               builder.append(resultSet.getString(i));
             }
-            Assert.assertEquals(builder.toString(), "root.group-with-hyphen");
+            Assert.assertEquals(builder.toString(), "root.group-with-hyphen1");
           }
         }
       }

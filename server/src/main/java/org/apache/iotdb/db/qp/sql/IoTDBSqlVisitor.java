@@ -186,10 +186,19 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   @Override
   public Operator visitCreateStorageGroup(IoTDBSqlParser.CreateStorageGroupContext ctx) {
+    int virtualStorageGroupNum = 0;
+    if (ctx.INTEGER_LITERAL() != null) {
+      TerminalNode virtualStorageGroupNumNode = ctx.INTEGER_LITERAL();
+      virtualStorageGroupNum = Integer.parseInt(virtualStorageGroupNumNode.toString());
+    }
     SetStorageGroupOperator setStorageGroupOperator =
         new SetStorageGroupOperator(SQLConstant.TOK_METADATA_SET_FILE_LEVEL);
     PartialPath path = parsePrefixPath(ctx.prefixPath());
-    setStorageGroupOperator.setPath(path);
+    if (virtualStorageGroupNum == 0) {
+      setStorageGroupOperator.setPath(path);
+    } else {
+      setStorageGroupOperator.setPath(path, virtualStorageGroupNum);
+    }
     return setStorageGroupOperator;
   }
 

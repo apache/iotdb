@@ -682,6 +682,25 @@ public class StorageEngine implements IService {
   }
 
   /**
+   * get storage group's virtual storage group num
+   *
+   * @param pathList
+   * @return virtual storage group num list
+   */
+  public List<Integer> getVirtualStorageGroupNumList(List<PartialPath> pathList) {
+    try {
+      List<Integer> virtualStorageGroupNumList = new ArrayList<>(pathList.size());
+      for (PartialPath path : pathList) {
+        IStorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
+        virtualStorageGroupNumList.add(storageGroupMNode.getVirtualStorageGroupNum());
+      }
+      return virtualStorageGroupNumList;
+    } catch (MetadataException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  /**
    * get lock holder for each sg
    *
    * @return storage group processor

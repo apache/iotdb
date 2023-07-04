@@ -374,7 +374,11 @@ public class IoTDBInterpreterTest {
   @Test
   public void testShowStorageGroup() {
     InterpreterResult actual = interpreter.internalInterpret("SHOW STORAGE GROUP", null);
-    String gt = "storage group\n" + "root.test.wf02\n" + "root.test.wf01";
+    String gt =
+        "storage group\t"
+            + "virtual storage group num\n"
+            + "root.test.wf02\t1\n"
+            + "root.test.wf01\t1";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     Assert.assertEquals(gt, actual.message().get(0).getData());

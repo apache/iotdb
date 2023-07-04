@@ -40,12 +40,21 @@ public class HashVirtualPartitioner implements VirtualPartitioner {
   }
 
   @Override
+  public int deviceToVirtualStorageGroupId(PartialPath deviceId, int virtualStorageGroupNum) {
+    return toStorageGroupId(deviceId, virtualStorageGroupNum);
+  }
+
+  @Override
   public int getPartitionCount() {
     return STORAGE_GROUP_NUM;
   }
 
   private int toStorageGroupId(PartialPath deviceId) {
     return Math.abs(deviceId.hashCode() % STORAGE_GROUP_NUM);
+  }
+
+  private int toStorageGroupId(PartialPath deviceId, int virtualStorageGroupNum) {
+    return Math.abs(deviceId.hashCode() % virtualStorageGroupNum);
   }
 
   @TestOnly

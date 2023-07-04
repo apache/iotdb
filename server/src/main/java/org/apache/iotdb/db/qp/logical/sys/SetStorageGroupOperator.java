@@ -28,6 +28,8 @@ public class SetStorageGroupOperator extends Operator {
 
   private PartialPath path;
 
+  private int virtualStorageGroupNum;
+
   public SetStorageGroupOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = OperatorType.SET_STORAGE_GROUP;
@@ -41,8 +43,13 @@ public class SetStorageGroupOperator extends Operator {
     this.path = path;
   }
 
+  public void setPath(PartialPath path, int virtualStorageGroupNum) {
+    this.path = path;
+    this.virtualStorageGroupNum = virtualStorageGroupNum;
+  }
+
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator) {
-    return new SetStorageGroupPlan(path);
+    return new SetStorageGroupPlan(path, virtualStorageGroupNum);
   }
 }

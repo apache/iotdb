@@ -633,7 +633,9 @@ WITHOUT
 WRITABLE
     : W R I T A B L E
     ;
-
+VIRTUALSTORAGEGROUPNUM
+    : V I R T U A L S T O R A G E G R O U P N U M
+    ;
 
 // Data Type Keywords
 
