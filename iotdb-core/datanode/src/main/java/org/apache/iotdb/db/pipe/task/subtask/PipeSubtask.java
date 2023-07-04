@@ -172,7 +172,8 @@ public abstract class PipeSubtask
   }
 
   /**
-   * .
+   * Set the shouldStopSubmittingSelf state from false to true, in order to stop submitting the
+   * subtask.
    *
    * @return true if the shouldStopSubmittingSelf state is changed from false to true, false
    *     otherwise

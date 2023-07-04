@@ -193,7 +193,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   /////////////////////////////// Pipe Runtime Management ///////////////////////////////
 
-  /** .Handle the data region leader change event and update the pipe task meta accordingly */
+  /** Handle the data region leader change event and update the pipe task meta accordingly. */
   public TSStatus handleLeaderChange(PipeHandleLeaderChangePlan plan) {
     plan.getConsensusGroupId2NewDataRegionLeaderIdMap()
         .forEach(
