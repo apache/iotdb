@@ -2648,6 +2648,9 @@ public class DataRegion implements IDataRegionForQuery {
         Thread.currentThread().interrupt();
       }
     }
+    if (timedCompactionScheduleTask != null) {
+      timedCompactionScheduleTask.shutdownNow();
+    }
   }
 
   public TsFileManager getTsFileResourceManager() {
