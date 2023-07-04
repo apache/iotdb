@@ -189,6 +189,8 @@ public abstract class Operator {
 
     SETTLE,
 
+    BACKUP,
+
     UNSET_TEMPLATE,
     PRUNE_TEMPLATE,
     APPEND_TEMPLATE,

@@ -158,6 +158,7 @@ public class IoTDBConstant {
   public static final String UNSEQUENCE_FLODER_NAME = "unsequence";
   public static final String FILE_NAME_SEPARATOR = "-";
   public static final String UPGRADE_FOLDER_NAME = "upgrade";
+  public static final String BACKUP_DATA_TMP_FOLDER_NAME = "backup_tmp";
 
   // system folder name
   public static final String SYSTEM_FOLDER_NAME = "system";
@@ -171,6 +172,7 @@ public class IoTDBConstant {
   public static final String TRIGGER_FOLDER_NAME = "trigger";
   public static final String ARCHIVING_FOLDER_NAME = "archiving";
   public static final String ARCHIVING_LOG_FOLDER_NAME = "archiving_task";
+  public static final String BACKUP_SYSTEM_TMP_FOLDER_NAME = "backup_tmp";
 
   // Operation Sync folder name
   public static final String OPERATION_SYNC_FOLDER_NAME = "operationsync";

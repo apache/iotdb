@@ -90,6 +90,7 @@ import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.BackupPlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
@@ -150,6 +151,7 @@ import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationInformation;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
+import org.apache.iotdb.db.service.BackupService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.tools.TsFileRewriteTool;
@@ -432,6 +434,9 @@ public class PlanExecutor implements IPlanExecutor {
         return true;
       case SHOW_QUERY_RESOURCE:
         return processShowQueryResource();
+      case BACKUP:
+        backup((BackupPlan) plan);
+        return true;
       case SET_ARCHIVING:
         operateSetArchiving((SetArchivingPlan) plan);
         return true;
@@ -2728,6 +2733,16 @@ public class PlanExecutor implements IPlanExecutor {
         StorageEngine.getInstance().setSettling(sgPath, false);
       }
       throw new StorageEngineException(e.getMessage());
+    }
+  }
+
+  private void backup(BackupPlan plan) {
+    String outputPath = plan.getOutputPath();
+    boolean isSync = plan.getIsSyncBackup();
+    if (plan.getIsFullBackup()) {
+      BackupService.getINSTANCE().performFullBackup(outputPath, isSync);
+    } else {
+      BackupService.getINSTANCE().performDifferentialBackup(outputPath, isSync);
     }
   }
 }

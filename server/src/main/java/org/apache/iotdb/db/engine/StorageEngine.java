@@ -1011,6 +1011,12 @@ public class StorageEngine implements IService {
     processorMap.get(sgPath).setSettling(isSettling);
   }
 
+  public void applyReadLockAndCollectFilesForBackup(List<TsFileResource> resources) {
+    for (StorageGroupManager storageGroupManager : processorMap.values()) {
+      storageGroupManager.applyReadLockAndCollectFilesForBackup(resources);
+    }
+  }
+
   /**
    * merge all storage groups.
    *

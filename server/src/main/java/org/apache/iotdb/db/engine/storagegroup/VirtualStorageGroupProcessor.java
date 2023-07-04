@@ -3267,6 +3267,31 @@ public class VirtualStorageGroupProcessor {
     }
   }
 
+  public void applyReadLockAndCollectFilesForBackup(List<TsFileResource> resources) {
+    // Acquire read lock to prevent change on TsFileList during the for loop.
+    readLock();
+    try {
+      for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
+        if (!resource.isClosed()) {
+          continue;
+        }
+        // The read lock acquired here will be released in BackupExecutor.
+        resource.readLock();
+        resources.add(resource);
+      }
+      for (TsFileResource resource : tsFileManager.getTsFileList(false)) {
+        if (!resource.isClosed()) {
+          continue;
+        }
+        // The read lock acquired here will be released in BackupExecutor.
+        resource.readLock();
+        resources.add(resource);
+      }
+    } finally {
+      readUnlock();
+    }
+  }
+
   public void setCustomCloseFileListeners(List<CloseFileListener> customCloseFileListeners) {
     this.customCloseFileListeners = customCloseFileListeners;
   }

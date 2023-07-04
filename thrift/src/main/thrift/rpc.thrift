@@ -455,6 +455,12 @@ struct TSConnectionInfoResp {
   1: required list<TSConnectionInfo> connectionInfoList
 }
 
+struct TSBackupReq {
+  1: required string outputPath
+  2: required bool isFullBackup
+  3: required bool isSyncBackup
+}
+
 service TSIService {
   TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
@@ -557,4 +563,6 @@ service TSIService {
   TSBackupConfigurationResp getBackupConfiguration();
 
   TSConnectionInfoResp fetchAllConnectionsInfo();
+
+  TSStatus executeBackup(1:TSBackupReq req);
 }
