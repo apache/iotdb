@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -91,8 +92,9 @@ public class SizeTieredCompactionSelector
    * @param taskPriorityQueue it stores the batches of files to be compacted and the total size of
    *     each batch
    * @return return whether to continue the search to higher levels
-   * @throws IOException
+   * @throws IOException if the name of tsfile is incorrect
    */
+  @SuppressWarnings({"squid:S3776", "squid:S135"})
   private boolean selectLevelTask(
       int level, PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue)
       throws IOException {
@@ -170,7 +172,7 @@ public class SizeTieredCompactionSelector
         }
       }
       List<List<TsFileResource>> taskList = new LinkedList<>();
-      while (taskPriorityQueue.size() > 0) {
+      while (!taskPriorityQueue.isEmpty()) {
         List<TsFileResource> resources = taskPriorityQueue.poll().left;
         taskList.add(resources);
       }

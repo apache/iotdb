@@ -28,7 +28,9 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -83,18 +85,55 @@ public class RegionWriteExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RegionWriteExecutor.class);
 
-  private static final DataNodeRegionManager REGION_MANAGER = DataNodeRegionManager.getInstance();
-
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
   private static final String METADATA_ERROR_MSG = "Metadata error: ";
 
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+
+  private final IConsensus dataRegionConsensus;
+
+  private final IConsensus schemaRegionConsensus;
+
+  private final DataNodeRegionManager regionManager;
+
+  private final SchemaEngine schemaEngine;
+
+  private final ClusterTemplateManager clusterTemplateManager;
+
+  private final TriggerFireVisitor triggerFireVisitor;
+
+  public RegionWriteExecutor() {
+    dataRegionConsensus = DataRegionConsensusImpl.getInstance();
+    schemaRegionConsensus = SchemaRegionConsensusImpl.getInstance();
+    regionManager = DataNodeRegionManager.getInstance();
+    schemaEngine = SchemaEngine.getInstance();
+    clusterTemplateManager = ClusterTemplateManager.getInstance();
+    triggerFireVisitor = new TriggerFireVisitor();
+  }
+
+  @TestOnly
+  public RegionWriteExecutor(
+      IConsensus dataRegionConsensus,
+      IConsensus schemaRegionConsensus,
+      DataNodeRegionManager regionManager,
+      SchemaEngine schemaEngine,
+      ClusterTemplateManager clusterTemplateManager,
+      TriggerFireVisitor triggerFireVisitor) {
+    this.dataRegionConsensus = dataRegionConsensus;
+    this.schemaRegionConsensus = schemaRegionConsensus;
+    this.regionManager = regionManager;
+    this.schemaEngine = schemaEngine;
+    this.clusterTemplateManager = clusterTemplateManager;
+    this.triggerFireVisitor = triggerFireVisitor;
+  }
+
   @SuppressWarnings("squid:S1181")
   public RegionExecutionResult execute(ConsensusGroupId groupId, PlanNode planNode) {
     try {
       WritePlanNodeExecutionContext context =
-          new WritePlanNodeExecutionContext(groupId, REGION_MANAGER.getRegionLock(groupId));
+          new WritePlanNodeExecutionContext(groupId, regionManager.getRegionLock(groupId));
       WritePlanNodeExecutionVisitor executionVisitor = new WritePlanNodeExecutionVisitor();
       return planNode.accept(executionVisitor, context);
     } catch (Throwable e) {
@@ -107,49 +146,8 @@ public class RegionWriteExecutor {
     }
   }
 
-  public static ConsensusWriteResponse fireTriggerAndInsert(
-      ConsensusGroupId groupId, PlanNode planNode) {
-    long triggerCostTime = 0;
-    ConsensusWriteResponse writeResponse;
-    TriggerFireVisitor visitor = new TriggerFireVisitor();
-    long startTime = System.nanoTime();
-    // fire Trigger before the insertion
-    TriggerFireResult result = visitor.process(planNode, TriggerEvent.BEFORE_INSERT);
-    triggerCostTime += (System.nanoTime() - startTime);
-    if (result.equals(TriggerFireResult.TERMINATION)) {
-      TSStatus triggerError = new TSStatus(TSStatusCode.TRIGGER_FIRE_ERROR.getStatusCode());
-      triggerError.setMessage(
-          "Failed to complete the insertion because trigger error before the insertion.");
-      writeResponse = ConsensusWriteResponse.newBuilder().setStatus(triggerError).build();
-    } else {
-      boolean hasFailedTriggerBeforeInsertion =
-          result.equals(TriggerFireResult.FAILED_NO_TERMINATION);
-
-      long startWriteTime = System.nanoTime();
-      writeResponse = DataRegionConsensusImpl.getInstance().write(groupId, planNode);
-      PERFORMANCE_OVERVIEW_METRICS.recordScheduleStorageCost(System.nanoTime() - startWriteTime);
-
-      // fire Trigger after the insertion
-      if (writeResponse.isSuccessful()) {
-        startTime = System.nanoTime();
-        result = visitor.process(planNode, TriggerEvent.AFTER_INSERT);
-        if (hasFailedTriggerBeforeInsertion || !result.equals(TriggerFireResult.SUCCESS)) {
-          TSStatus triggerError = new TSStatus(TSStatusCode.TRIGGER_FIRE_ERROR.getStatusCode());
-          triggerError.setMessage(
-              "Meet trigger error before/after the insertion, the insertion itself is completed.");
-          writeResponse = ConsensusWriteResponse.newBuilder().setStatus(triggerError).build();
-        }
-        triggerCostTime += (System.nanoTime() - startTime);
-      }
-    }
-    PERFORMANCE_OVERVIEW_METRICS.recordScheduleTriggerCost(triggerCostTime);
-    return writeResponse;
-  }
-
-  private static class WritePlanNodeExecutionVisitor
+  private class WritePlanNodeExecutionVisitor
       extends PlanVisitor<RegionExecutionResult, WritePlanNodeExecutionContext> {
-
-    private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
     @Override
     public RegionExecutionResult visitPlan(PlanNode node, WritePlanNodeExecutionContext context) {
@@ -188,9 +186,9 @@ public class RegionWriteExecutor {
     private ConsensusWriteResponse executePlanNodeInConsensusLayer(
         ConsensusGroupId groupId, PlanNode planNode) {
       if (groupId instanceof DataRegionId) {
-        return DataRegionConsensusImpl.getInstance().write(groupId, planNode);
+        return dataRegionConsensus.write(groupId, planNode);
       } else {
-        return SchemaRegionConsensusImpl.getInstance().write(groupId, planNode);
+        return schemaRegionConsensus.write(groupId, planNode);
       }
     }
 
@@ -259,6 +257,44 @@ public class RegionWriteExecutor {
       }
     }
 
+    private ConsensusWriteResponse fireTriggerAndInsert(
+        ConsensusGroupId groupId, PlanNode planNode) {
+      long triggerCostTime = 0;
+      ConsensusWriteResponse writeResponse;
+      long startTime = System.nanoTime();
+      // fire Trigger before the insertion
+      TriggerFireResult result = triggerFireVisitor.process(planNode, TriggerEvent.BEFORE_INSERT);
+      triggerCostTime += (System.nanoTime() - startTime);
+      if (result.equals(TriggerFireResult.TERMINATION)) {
+        TSStatus triggerError = new TSStatus(TSStatusCode.TRIGGER_FIRE_ERROR.getStatusCode());
+        triggerError.setMessage(
+            "Failed to complete the insertion because trigger error before the insertion.");
+        writeResponse = ConsensusWriteResponse.newBuilder().setStatus(triggerError).build();
+      } else {
+        boolean hasFailedTriggerBeforeInsertion =
+            result.equals(TriggerFireResult.FAILED_NO_TERMINATION);
+
+        long startWriteTime = System.nanoTime();
+        writeResponse = dataRegionConsensus.write(groupId, planNode);
+        PERFORMANCE_OVERVIEW_METRICS.recordScheduleStorageCost(System.nanoTime() - startWriteTime);
+
+        // fire Trigger after the insertion
+        if (writeResponse.isSuccessful()) {
+          startTime = System.nanoTime();
+          result = triggerFireVisitor.process(planNode, TriggerEvent.AFTER_INSERT);
+          if (hasFailedTriggerBeforeInsertion || !result.equals(TriggerFireResult.SUCCESS)) {
+            TSStatus triggerError = new TSStatus(TSStatusCode.TRIGGER_FIRE_ERROR.getStatusCode());
+            triggerError.setMessage(
+                "Meet trigger error before/after the insertion, the insertion itself is completed.");
+            writeResponse = ConsensusWriteResponse.newBuilder().setStatus(triggerError).build();
+          }
+          triggerCostTime += (System.nanoTime() - startTime);
+        }
+      }
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleTriggerCost(triggerCostTime);
+      return writeResponse;
+    }
+
     @Override
     public RegionExecutionResult visitDeleteData(
         DeleteDataNode node, WritePlanNodeExecutionContext context) {
@@ -275,13 +311,13 @@ public class RegionWriteExecutor {
     public RegionExecutionResult visitCreateTimeSeries(
         CreateTimeSeriesNode node, WritePlanNodeExecutionContext context) {
       ISchemaRegion schemaRegion =
-          SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
+          schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
       RegionExecutionResult result =
           checkQuotaBeforeCreatingTimeSeries(schemaRegion, node.getPath().getDevicePath(), 1);
       if (result != null) {
         return result;
       }
-      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+      if (CONFIG.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
           Map<Integer, MetadataException> failingMeasurementMap =
@@ -314,14 +350,14 @@ public class RegionWriteExecutor {
     public RegionExecutionResult visitCreateAlignedTimeSeries(
         CreateAlignedTimeSeriesNode node, WritePlanNodeExecutionContext context) {
       ISchemaRegion schemaRegion =
-          SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
+          schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
       RegionExecutionResult result =
           checkQuotaBeforeCreatingTimeSeries(
               schemaRegion, node.getDevicePath(), node.getMeasurements().size());
       if (result != null) {
         return result;
       }
-      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+      if (CONFIG.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
           Map<Integer, MetadataException> failingMeasurementMap =
@@ -352,7 +388,7 @@ public class RegionWriteExecutor {
     public RegionExecutionResult visitCreateMultiTimeSeries(
         CreateMultiTimeSeriesNode node, WritePlanNodeExecutionContext context) {
       ISchemaRegion schemaRegion =
-          SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
+          schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
       RegionExecutionResult result;
       for (Map.Entry<PartialPath, MeasurementGroup> entry :
           node.getMeasurementGroupMap().entrySet()) {
@@ -363,7 +399,7 @@ public class RegionWriteExecutor {
           return result;
         }
       }
-      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+      if (CONFIG.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
           List<TSStatus> failingStatus = new ArrayList<>();
@@ -455,14 +491,14 @@ public class RegionWriteExecutor {
     public RegionExecutionResult visitInternalCreateTimeSeries(
         InternalCreateTimeSeriesNode node, WritePlanNodeExecutionContext context) {
       ISchemaRegion schemaRegion =
-          SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
+          schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
       RegionExecutionResult result =
           checkQuotaBeforeCreatingTimeSeries(
               schemaRegion, node.getDevicePath(), node.getMeasurementGroup().size());
       if (result != null) {
         return result;
       }
-      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+      if (CONFIG.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
           List<TSStatus> failingStatus = new ArrayList<>();
@@ -512,7 +548,7 @@ public class RegionWriteExecutor {
     public RegionExecutionResult visitInternalCreateMultiTimeSeries(
         InternalCreateMultiTimeSeriesNode node, WritePlanNodeExecutionContext context) {
       ISchemaRegion schemaRegion =
-          SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
+          schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
       RegionExecutionResult result;
       for (Map.Entry<PartialPath, Pair<Boolean, MeasurementGroup>> deviceEntry :
           node.getDeviceMap().entrySet()) {
@@ -523,7 +559,7 @@ public class RegionWriteExecutor {
           return result;
         }
       }
-      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+      if (CONFIG.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
           List<TSStatus> failingStatus = new ArrayList<>();
@@ -655,7 +691,7 @@ public class RegionWriteExecutor {
     public RegionExecutionResult visitAlterTimeSeries(
         AlterTimeSeriesNode node, WritePlanNodeExecutionContext context) {
       ISchemaRegion schemaRegion =
-          SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
+          schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
       try {
         List<MeasurementPath> measurementPathList =
             schemaRegion.fetchSchema(node.getPath(), Collections.emptyMap(), false);
@@ -684,7 +720,7 @@ public class RegionWriteExecutor {
       context.getRegionWriteValidationRWLock().readLock().lock();
       try {
         Pair<Template, PartialPath> templateSetInfo =
-            ClusterTemplateManager.getInstance().checkTemplateSetInfo(node.getActivatePath());
+            clusterTemplateManager.checkTemplateSetInfo(node.getActivatePath());
         if (templateSetInfo == null) {
           // The activation has already been validated during analyzing.
           // That means the template is being unset during the activation plan transport.
@@ -699,7 +735,7 @@ public class RegionWriteExecutor {
           return result;
         }
         ISchemaRegion schemaRegion =
-            SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
+            schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
         RegionExecutionResult result =
             checkQuotaBeforeCreatingTimeSeries(
                 schemaRegion, node.getActivatePath(), templateSetInfo.left.getMeasurementNumber());
@@ -716,10 +752,10 @@ public class RegionWriteExecutor {
       context.getRegionWriteValidationRWLock().readLock().lock();
       try {
         ISchemaRegion schemaRegion =
-            SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
+            schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
         for (PartialPath devicePath : node.getTemplateActivationMap().keySet()) {
           Pair<Template, PartialPath> templateSetInfo =
-              ClusterTemplateManager.getInstance().checkTemplateSetInfo(devicePath);
+              clusterTemplateManager.checkTemplateSetInfo(devicePath);
           if (templateSetInfo == null) {
             // The activation has already been validated during analyzing.
             // That means the template is being unset during the activation plan transport.
@@ -754,11 +790,11 @@ public class RegionWriteExecutor {
       context.getRegionWriteValidationRWLock().readLock().lock();
       try {
         ISchemaRegion schemaRegion =
-            SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
+            schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
         for (Map.Entry<PartialPath, Pair<Integer, Integer>> entry :
             node.getTemplateActivationMap().entrySet()) {
           Pair<Template, PartialPath> templateSetInfo =
-              ClusterTemplateManager.getInstance().checkTemplateSetInfo(entry.getKey());
+              clusterTemplateManager.checkTemplateSetInfo(entry.getKey());
           if (templateSetInfo == null) {
             // The activation has already been validated during analyzing.
             // That means the template is being unset during the activation plan transport.
@@ -792,8 +828,8 @@ public class RegionWriteExecutor {
     public RegionExecutionResult visitCreateLogicalView(
         CreateLogicalViewNode node, WritePlanNodeExecutionContext context) {
       ISchemaRegion schemaRegion =
-          SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) context.getRegionId());
-      if (config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
+          schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
+      if (CONFIG.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
         context.getRegionWriteValidationRWLock().writeLock().lock();
         try {
           // step 1. make sure all target paths are NOT exist.

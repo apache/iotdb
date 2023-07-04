@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
@@ -135,11 +136,23 @@ public class QueryStatementTest {
         checkErrorQuerySql(errorSql);
       } catch (SemanticException e) {
         assertEquals(errorMsg, e.getMessage());
+        continue;
       } catch (Exception ex) {
-        logger.error("Meets error in test sql: {}", errorSql, ex);
-        fail();
+        fail(String.format("Meets exception %s in test sql: `%s`", errorMsg, errorSql));
       }
+      fail(String.format("Sql: `%s` must throw exception: %s", errorSql, errorMsg));
     }
+  }
+
+  @Test
+  public void getPathsTest() {
+    String sql = "SELECT count(s1 + s3) FROM root.sg.d1 WHERE s2 > 0 and time < 1000";
+    QueryStatement statement =
+        (QueryStatement) StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
+    List<PartialPath> fullPaths = statement.getPaths();
+    assertEquals(2, fullPaths.size());
+    assertEquals("root.sg.d1.s1", fullPaths.get(0).getFullPath());
+    assertEquals("root.sg.d1.s3", fullPaths.get(1).getFullPath());
   }
 
   private void checkErrorQuerySql(String sql) {

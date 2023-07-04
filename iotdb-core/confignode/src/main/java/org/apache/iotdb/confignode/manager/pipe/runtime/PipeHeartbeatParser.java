@@ -109,7 +109,7 @@ public class PipeHeartbeatParser {
                     .pipeHandleMetaChange(
                         needWriteConsensusOnConfigNodes.get(), needPushPipeMetaToDataNodes.get());
 
-                // reset flags after procedure is submitted
+                // Reset flags after procedure is submitted
                 needWriteConsensusOnConfigNodes.set(false);
                 needPushPipeMetaToDataNodes.set(false);
               }
@@ -160,7 +160,7 @@ public class PipeHeartbeatParser {
           continue;
         }
 
-        // update progress index
+        // Update progress index
         if (!runtimeMetaOnConfigNode
             .getValue()
             .getProgressIndex()
@@ -183,7 +183,7 @@ public class PipeHeartbeatParser {
           needWriteConsensusOnConfigNodes.set(true);
         }
 
-        // update runtime exception
+        // Update runtime exception
         final PipeTaskMeta pipeTaskMetaOnConfigNode = runtimeMetaOnConfigNode.getValue();
         pipeTaskMetaOnConfigNode.clearExceptionMessages();
         for (final PipeRuntimeException exception :

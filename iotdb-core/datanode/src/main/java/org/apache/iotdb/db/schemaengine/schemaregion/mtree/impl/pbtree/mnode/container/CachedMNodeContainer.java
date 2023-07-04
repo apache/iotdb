@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container;
 
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
@@ -136,17 +137,17 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
 
   @Override
   public synchronized ICachedMNode remove(Object key) {
-    ICachedMNode result = remove(childCache, key);
+    ICachedMNode result = removeFromMap(childCache, key);
     if (result == null) {
-      result = remove(newChildBuffer, key);
+      result = removeFromMap(newChildBuffer, key);
     }
     if (result == null) {
-      result = remove(updatedChildBuffer, key);
+      result = removeFromMap(updatedChildBuffer, key);
     }
     return result;
   }
 
-  private ICachedMNode remove(Map<String, ICachedMNode> map, Object key) {
+  private ICachedMNode removeFromMap(Map<String, ICachedMNode> map, Object key) {
     return map == null ? null : map.remove(key);
   }
 
@@ -322,7 +323,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
 
   @Override
   public synchronized void updateMNode(String name) {
-    ICachedMNode node = remove(childCache, name);
+    ICachedMNode node = removeFromMap(childCache, name);
     if (node != null) {
       if (updatedChildBuffer == null) {
         updatedChildBuffer = new ConcurrentHashMap<>();
@@ -333,9 +334,9 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
 
   @Override
   public synchronized void moveMNodeToCache(String name) {
-    ICachedMNode node = remove(newChildBuffer, name);
+    ICachedMNode node = removeFromMap(newChildBuffer, name);
     if (node == null) {
-      node = remove(updatedChildBuffer, name);
+      node = removeFromMap(updatedChildBuffer, name);
     }
     if (childCache == null) {
       childCache = new ConcurrentHashMap<>();
@@ -345,7 +346,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
 
   @Override
   public synchronized void evictMNode(String name) {
-    remove(childCache, name);
+    removeFromMap(childCache, name);
   }
 
   public synchronized String toString() {
@@ -501,6 +502,11 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     @Override
     public boolean equals(Object o) {
       return o == this;
+    }
+
+    @Override
+    public int hashCode() {
+      return super.hashCode();
     }
   }
 }

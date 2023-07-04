@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.session.pool;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
@@ -70,6 +71,10 @@ import java.util.concurrent.ConcurrentMap;
  * <p>Another case that you have to manually call closeResultSet() is that when there is exception
  * when you call SessionDataSetWrapper.hasNext() or next()
  */
+
+// ignore Generic exceptions & Throwable should never be throw, ignore Either log or rethrow this
+// exception.
+@SuppressWarnings({"squid:S112", "java:S1181", "java:S2139"})
 public class SessionPool implements ISessionPool {
 
   private static final Logger logger = LoggerFactory.getLogger(SessionPool.class);

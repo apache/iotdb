@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -163,7 +164,7 @@ public abstract class SchemaQueryScanNode extends SourceNode {
     return limit == that.limit
         && offset == that.offset
         && isPrefixPath == that.isPrefixPath
-        && path.equals(that.path);
+        && Objects.equals(path, that.path);
   }
 
   @Override

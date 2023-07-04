@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.sink;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelIndex;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
@@ -145,5 +146,10 @@ public class IdentitySinkOperator implements Operator {
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
     return 0L;
+  }
+
+  @TestOnly
+  public List<Operator> getChildren() {
+    return children;
   }
 }

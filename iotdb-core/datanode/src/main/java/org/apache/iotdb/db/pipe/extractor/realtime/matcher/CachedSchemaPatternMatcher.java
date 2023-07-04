@@ -136,7 +136,12 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
                 // case 2: for example, pattern is root.a.b.c and device is root.a.b
                 // in this case, we need to check the full path
                 else {
-                  for (String measurement : measurements) {
+                  for (final String measurement : measurements) {
+                    // ignore null measurement for partial insert
+                    if (measurement == null) {
+                      continue;
+                    }
+
                     // for example, pattern is root.a.b.c, device is root.a.b and measurement is c
                     // in this case, the extractor can be matched. other cases are not matched.
                     // please note that there should be a . between device and measurement.

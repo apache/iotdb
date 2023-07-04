@@ -77,7 +77,10 @@ public class ExportTsFile extends AbstractTsFileTool {
 
   private static long timeout = -1;
 
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  @SuppressWarnings({
+    "squid:S3776",
+    "squid:S2093"
+  }) // Suppress high Cognitive Complexity warning, ignore try-with-resources
   /** main function of export tsFile tool. */
   public static void main(String[] args) {
     Options options = createOptions();
@@ -110,13 +113,7 @@ public class ExportTsFile extends AbstractTsFileTool {
       parseBasicParams(commandLine);
       parseSpecialParams(commandLine);
 
-    } catch (ArgsErrorException e) {
-      IoTPrinter.println("Invalid args: " + e.getMessage());
-      exitCode = CODE_ERROR;
-    }
-
-    try (Session sessionNew = new Session(host, Integer.parseInt(port), username, password)) {
-      session = sessionNew;
+      session = new Session(host, Integer.parseInt(port), username, password);
       session.open(false);
 
       if (queryCommand == null) {
@@ -143,6 +140,9 @@ public class ExportTsFile extends AbstractTsFileTool {
 
     } catch (IOException e) {
       IoTPrinter.println("Failed to operate on file, because " + e.getMessage());
+      exitCode = CODE_ERROR;
+    } catch (ArgsErrorException e) {
+      IoTPrinter.println("Invalid args: " + e.getMessage());
       exitCode = CODE_ERROR;
     } catch (IoTDBConnectionException e) {
       IoTPrinter.println("Connect failed because " + e.getMessage());
@@ -293,7 +293,10 @@ public class ExportTsFile extends AbstractTsFileTool {
     }
   }
 
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  @SuppressWarnings({
+    "squid:S3776",
+    "squid:S6541"
+  }) // Suppress high Cognitive Complexity warning, Suppress many task in one method warning
   public static void writeTsFileFile(SessionDataSet sessionDataSet, String filePath)
       throws IOException, IoTDBConnectionException, StatementExecutionException,
           WriteProcessException {
@@ -352,7 +355,8 @@ public class ExportTsFile extends AbstractTsFileTool {
       while (sessionDataSet.hasNext()) {
         RowRecord rowRecord = sessionDataSet.next();
         List<Field> fields = rowRecord.getFields();
-        for (int i = 0; i < fields.size(); ) {
+        int i = 0;
+        while (i < fields.size()) {
           for (Tablet tablet : tabletList) {
             int rowIndex = tablet.rowSize++;
             tablet.addTimestamp(rowIndex, rowRecord.getTimestamp());

@@ -20,10 +20,11 @@
 package org.apache.iotdb.db.queryengine.exception;
 
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 public class MemoryNotEnoughException extends IoTDBException {
 
-  public MemoryNotEnoughException(String message, int errorCode) {
-    super(message, errorCode);
+  public MemoryNotEnoughException(String message) {
+    super(message, TSStatusCode.QUOTA_MEM_QUERY_NOT_ENOUGH.getStatusCode(), true);
   }
 }

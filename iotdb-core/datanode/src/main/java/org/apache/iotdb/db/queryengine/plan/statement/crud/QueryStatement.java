@@ -333,10 +333,6 @@ public class QueryStatement extends Statement {
     return resultSetFormat == ResultSetFormat.ALIGN_BY_DEVICE;
   }
 
-  public boolean disableAlign() {
-    return resultSetFormat == ResultSetFormat.DISABLE_ALIGN;
-  }
-
   public boolean isOrderByTime() {
     return orderByComponent != null && orderByComponent.isOrderByTime();
   }
@@ -474,9 +470,6 @@ public class QueryStatement extends Statement {
 
   public void semanticCheck() {
     if (isAggregationQuery()) {
-      if (disableAlign()) {
-        throw new SemanticException("AGGREGATION doesn't support disable align clause.");
-      }
       if (groupByComponent != null && isGroupByLevel()) {
         throw new SemanticException("GROUP BY CLAUSES doesn't support GROUP BY LEVEL now.");
       }
@@ -600,9 +593,6 @@ public class QueryStatement extends Statement {
       if (isAlignByDevice()) {
         throw new SemanticException("Last query doesn't support align by device.");
       }
-      if (disableAlign()) {
-        throw new SemanticException("Disable align cannot be applied to LAST query.");
-      }
       for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
         Expression expression = resultColumn.getExpression();
         if (!(expression instanceof TimeSeriesOperand)) {
@@ -634,9 +624,6 @@ public class QueryStatement extends Statement {
       }
       if (getSeriesOffset() > 0) {
         throw new SemanticException("select into: soffset clauses are not supported.");
-      }
-      if (disableAlign()) {
-        throw new SemanticException("select into: disable align clauses are not supported.");
       }
       if (isLastQuery()) {
         throw new SemanticException("select into: last clauses are not supported.");

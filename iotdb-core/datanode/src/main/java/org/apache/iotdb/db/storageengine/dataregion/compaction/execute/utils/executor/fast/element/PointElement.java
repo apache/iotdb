@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element;
 
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -24,6 +25,7 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 import java.io.IOException;
 
+@SuppressWarnings("squid:S1104")
 public class PointElement {
   public long timestamp;
   public long priority;

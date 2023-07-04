@@ -16,12 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant;
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.IInnerUnseqSpaceSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SizeTieredCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 
+@SuppressWarnings("squid:S6548")
 public enum InnerUnsequenceCompactionSelector {
   SIZE_TIERED;
 
@@ -30,9 +32,10 @@ public enum InnerUnsequenceCompactionSelector {
     if (SIZE_TIERED.toString().equalsIgnoreCase(name)) {
       return SIZE_TIERED;
     }
-    throw new RuntimeException("Illegal Compaction Selector " + name);
+    throw new IllegalCompactionSelectorNameException("Illegal Compaction Selector " + name);
   }
 
+  @SuppressWarnings("squid:S1301")
   public IInnerUnseqSpaceSelector createInstance(
       String storageGroupName,
       String dataRegionId,

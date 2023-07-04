@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -26,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class SchemaQueryMergeNode extends AbstractSchemaMergeNode {
 
@@ -72,5 +74,19 @@ public class SchemaQueryMergeNode extends AbstractSchemaMergeNode {
   @Override
   public String toString() {
     return String.format("SchemaQueryMergeNode-%s", getPlanNodeId());
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    SchemaQueryMergeNode that = (SchemaQueryMergeNode) o;
+    return orderByHeat == that.orderByHeat;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), orderByHeat);
   }
 }

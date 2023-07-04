@@ -66,7 +66,7 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
-    // validate extractor.history.enable and extractor.realtime.enable
+    // Validate extractor.history.enable and extractor.realtime.enable
     validator
         .validateAttributeValueRange(
             EXTRACTOR_HISTORY_ENABLE_KEY, true, Boolean.TRUE.toString(), Boolean.FALSE.toString())
@@ -80,7 +80,7 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
             validator.getParameters().getBooleanOrDefault(EXTRACTOR_HISTORY_ENABLE_KEY, true),
             validator.getParameters().getBooleanOrDefault(EXTRACTOR_REALTIME_ENABLE, true));
 
-    // validate extractor.realtime.mode
+    // Validate extractor.realtime.mode
     if (validator.getParameters().getBooleanOrDefault(EXTRACTOR_REALTIME_ENABLE, true)) {
       validator.validateAttributeValueRange(
           EXTRACTOR_REALTIME_MODE,
@@ -98,18 +98,18 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
   }
 
   private void constructHistoricalExtractor() {
-    // enable historical extractor by default
+    // Enable historical extractor by default
     historicalExtractor = new PipeHistoricalDataRegionTsFileExtractor();
   }
 
   private void constructRealtimeExtractor(PipeParameters parameters) {
-    // enable realtime extractor by default
+    // Enable realtime extractor by default
     if (!parameters.getBooleanOrDefault(EXTRACTOR_REALTIME_ENABLE, true)) {
       realtimeExtractor = new PipeRealtimeDataRegionFakeExtractor();
       return;
     }
 
-    // use hybrid mode by default
+    // Use hybrid mode by default
     if (!parameters.hasAttribute(EXTRACTOR_REALTIME_MODE)) {
       realtimeExtractor = new PipeRealtimeDataRegionHybridExtractor();
       return;

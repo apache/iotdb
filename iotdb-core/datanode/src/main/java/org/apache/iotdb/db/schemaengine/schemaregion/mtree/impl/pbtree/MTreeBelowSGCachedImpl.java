@@ -111,7 +111,10 @@ public class MTreeBelowSGCachedImpl {
   private static final Logger logger = LoggerFactory.getLogger(MTreeBelowSGCachedImpl.class);
 
   private final CachedMTreeStore store;
+
+  @SuppressWarnings("java:S3077")
   private volatile ICachedMNode storageGroupMNode;
+
   private final ICachedMNode rootNode;
   private final Function<IMeasurementMNode<ICachedMNode>, Map<String, String>> tagGetter;
   private final IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
@@ -1017,6 +1020,7 @@ public class MTreeBelowSGCachedImpl {
   // endregion
 
   // region Interfaces for schema reader
+  @SuppressWarnings("java:S2095")
   public ISchemaReader<IDeviceSchemaInfo> getDeviceReader(IShowDevicesPlan showDevicesPlan)
       throws MetadataException {
     EntityCollector<IDeviceSchemaInfo, ICachedMNode> collector =
@@ -1152,6 +1156,7 @@ public class MTreeBelowSGCachedImpl {
     }
   }
 
+  @SuppressWarnings("java:S2095")
   public ISchemaReader<INodeSchemaInfo> getNodeReader(IShowNodesPlan showNodesPlan)
       throws MetadataException {
     MNodeCollector<INodeSchemaInfo, ICachedMNode> collector =

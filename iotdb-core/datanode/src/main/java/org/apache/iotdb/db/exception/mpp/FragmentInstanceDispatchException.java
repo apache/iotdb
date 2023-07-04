@@ -23,11 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 
 public class FragmentInstanceDispatchException extends Exception {
 
-  private TSStatus failureStatus;
-
-  public FragmentInstanceDispatchException(Throwable t) {
-    super(t);
-  }
+  private final TSStatus failureStatus;
 
   public FragmentInstanceDispatchException(TSStatus failureStatus) {
     super(failureStatus.getMessage());

@@ -314,6 +314,14 @@ public abstract class AbstractEnv implements BaseEnv {
         getWriteConnection(null, username, password), getReadConnections(null, username, password));
   }
 
+  @Override
+  public Connection getConnectionWithSpecifiedDataNode(
+      DataNodeWrapper dataNode, String username, String password) throws SQLException {
+    return new ClusterTestConnection(
+        getWriteConnectionWithSpecifiedDataNode(dataNode, null, username, password),
+        getReadConnections(null, username, password));
+  }
+
   private Connection getConnection(String endpoint, int queryTimeout) throws SQLException {
     IoTDBConnection connection =
         (IoTDBConnection)
@@ -387,6 +395,12 @@ public abstract class AbstractEnv implements BaseEnv {
       dataNode = this.dataNodeWrapperList.get(0);
     }
 
+    return getWriteConnectionWithSpecifiedDataNode(dataNode, version, username, password);
+  }
+
+  protected NodeConnection getWriteConnectionWithSpecifiedDataNode(
+      DataNodeWrapper dataNode, Constant.Version version, String username, String password)
+      throws SQLException {
     String endpoint = dataNode.getIp() + ":" + dataNode.getPort();
     Connection writeConnection =
         DriverManager.getConnection(

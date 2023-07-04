@@ -268,6 +268,10 @@ public class IoTDBConstant {
   // compaction mods of previous version (<0.13)
   public static final String COMPACTION_MODIFICATION_FILE_NAME_FROM_OLD = "merge.mods";
 
+  public static final String SETTLE_SUFFIX = ".settle";
+  public static final String MODS_SETTLE_FILE_SUFFIX = ".mods.settle";
+  public static final String BLANK = "";
+
   // write ahead log
   public static final String WAL_FILE_PREFIX = "_";
   public static final String WAL_FILE_SUFFIX = ".wal";

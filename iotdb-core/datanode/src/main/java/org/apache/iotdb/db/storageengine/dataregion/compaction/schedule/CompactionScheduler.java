@@ -52,6 +52,8 @@ public class CompactionScheduler {
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
+  private CompactionScheduler() {}
+
   /**
    * Select compaction task and submit them to CompactionTaskManager.
    *

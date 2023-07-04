@@ -32,7 +32,6 @@ import org.apache.iotdb.commons.partition.StorageExecutor;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
-import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
@@ -352,16 +351,6 @@ public class LoadTsFileScheduler implements IScheduler {
   @Override
   public FragmentInfo getFragmentInfo() {
     return null;
-  }
-
-  @Override
-  public void abortFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause) {
-    // Do nothing
-  }
-
-  @Override
-  public void cancelFragment(PlanFragmentId planFragmentId) {
-    // Do nothing
   }
 
   public enum LoadCommand {

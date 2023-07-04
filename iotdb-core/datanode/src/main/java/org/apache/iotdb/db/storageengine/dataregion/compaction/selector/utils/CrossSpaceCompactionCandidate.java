@@ -72,6 +72,7 @@ public class CrossSpaceCompactionCandidate {
     return nextSplit;
   }
 
+  @SuppressWarnings({"squid:S3776", "squid:S135"})
   private boolean prepareNextSplit() throws IOException {
     boolean nextUnseqFileHasOverlap = false;
     TsFileResourceCandidate unseqFile = unseqFiles.get(nextUnseqFileIndex);
@@ -177,8 +178,13 @@ public class CrossSpaceCompactionCandidate {
   }
 
   public static class CrossCompactionTaskResourceSplit {
+    @SuppressWarnings("squid:S1104")
     public TsFileResourceCandidate unseqFile;
+
+    @SuppressWarnings("squid:S1104")
     public List<TsFileResourceCandidate> seqFiles;
+
+    @SuppressWarnings("squid:S1104")
     public boolean hasOverlap;
 
     public CrossCompactionTaskResourceSplit(
@@ -192,9 +198,15 @@ public class CrossSpaceCompactionCandidate {
   }
 
   public static class TsFileResourceCandidate {
+    @SuppressWarnings("squid:S1104")
     public TsFileResource resource;
+
+    @SuppressWarnings("squid:S1104")
     public boolean selected;
+
+    @SuppressWarnings("squid:S1104")
     public boolean isValidCandidate;
+
     private Map<String, DeviceInfo> deviceInfoMap;
 
     private boolean hasDetailedDeviceInfo;
@@ -208,7 +220,7 @@ public class CrossSpaceCompactionCandidate {
     }
 
     /**
-     * The TsFile is unsealed means there may be more data which will be inserted into this file
+     * The TsFile is unsealed means there may be more data which will be inserted into this file.
      *
      * @return Whether the TsFile is unsealed.
      */

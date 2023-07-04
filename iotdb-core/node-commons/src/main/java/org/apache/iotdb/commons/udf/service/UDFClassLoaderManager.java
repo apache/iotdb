@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.commons.utils.TestOnly;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +55,13 @@ public class UDFClassLoaderManager implements IService {
     queryIdToUDFClassLoaderMap = new ConcurrentHashMap<>();
   }
 
+  @TestOnly
+  private UDFClassLoaderManager() throws IOException {
+    this.libRoot = null;
+    queryIdToUDFClassLoaderMap = new ConcurrentHashMap<>();
+    activeClassLoader.set(new UDFClassLoader(""));
+  }
+
   public void initializeUDFQuery(String queryId) {
     activeClassLoader.get().acquire();
     queryIdToUDFClassLoaderMap.put(queryId, activeClassLoader.get());
@@ -77,10 +85,6 @@ public class UDFClassLoaderManager implements IService {
     if (deprecatedClassLoader != null) {
       deprecatedClassLoader.markAsDeprecated();
     }
-    return activeClassLoader.get();
-  }
-
-  public UDFClassLoader getActiveClassLoader() {
     return activeClassLoader.get();
   }
 
@@ -123,6 +127,15 @@ public class UDFClassLoaderManager implements IService {
   }
 
   public static UDFClassLoaderManager getInstance() {
+    return INSTANCE;
+  }
+
+  @TestOnly
+  public static synchronized UDFClassLoaderManager setupAndGetInstance() throws IOException {
+
+    if (INSTANCE == null) {
+      INSTANCE = new UDFClassLoaderManager();
+    }
     return INSTANCE;
   }
 }

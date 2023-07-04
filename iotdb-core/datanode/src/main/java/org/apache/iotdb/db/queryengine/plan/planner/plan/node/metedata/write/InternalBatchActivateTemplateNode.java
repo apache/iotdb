@@ -38,11 +38,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class InternalBatchActivateTemplateNode extends WritePlanNode {
 
   // devicePath -> <templateId, templateSetLevel>
-  private Map<PartialPath, Pair<Integer, Integer>> templateActivationMap;
+  private final Map<PartialPath, Pair<Integer, Integer>> templateActivationMap;
 
   private TRegionReplicaSet regionReplicaSet;
 
@@ -158,5 +159,20 @@ public class InternalBatchActivateTemplateNode extends WritePlanNode {
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitInternalBatchActivateTemplate(this, context);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    InternalBatchActivateTemplateNode that = (InternalBatchActivateTemplateNode) o;
+    return Objects.equals(templateActivationMap, that.templateActivationMap)
+        && Objects.equals(regionReplicaSet, that.regionReplicaSet);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), templateActivationMap, regionReplicaSet);
   }
 }

@@ -38,10 +38,10 @@ import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTrigger
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
+import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.confignode.consensus.response.trigger.TransferringTriggersResp;
 import org.apache.iotdb.confignode.consensus.response.trigger.TriggerLocationResp;
 import org.apache.iotdb.confignode.consensus.response.trigger.TriggerTableResp;
-import org.apache.iotdb.confignode.consensus.response.udf.JarResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;

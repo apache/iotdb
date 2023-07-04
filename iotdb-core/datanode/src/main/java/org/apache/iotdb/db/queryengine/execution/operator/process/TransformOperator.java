@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process;
 
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.NodeRef;
@@ -376,5 +377,10 @@ public class TransformOperator implements ProcessOperator {
     // Collector may cache points, here we use maximum usage
     return (long)
         (inputOperator.calculateRetainedSizeAfterCallingNext() + udfCollectorMemoryBudgetInMB);
+  }
+
+  @TestOnly
+  public LayerPointReader[] getTransformers() {
+    return transformers;
   }
 }

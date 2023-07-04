@@ -552,7 +552,7 @@ public class DateTimeUtils {
         temp *= 10;
         temp += (ch - '0');
       } else {
-        String unit = duration.charAt(i) + "";
+        String unit = String.valueOf(duration.charAt(i));
         // This is to identify units with two letters.
         if (i + 1 < duration.length() && !Character.isDigit(duration.charAt(i + 1))) {
           i++;

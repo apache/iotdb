@@ -24,17 +24,21 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
+import org.apache.iotdb.commons.schema.tree.SchemaIterator;
 import org.apache.iotdb.db.schemaengine.SchemaConstant;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl.ShowTimeSeriesResult;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl.SchemaReaderLimitOffsetWrapper;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl.TimeseriesReaderWithViewFetch;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -215,94 +219,86 @@ public class TagManager {
 
   public ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReaderWithIndex(
       IShowTimeSeriesPlan plan) {
+    // schemaFilter must not null
+    SchemaFilter schemaFilter = plan.getSchemaFilter();
+    // currently, only one TagFilter is supported
+    // all IMeasurementMNode in allMatchedNodes satisfied TagFilter
     Iterator<IMeasurementMNode<?>> allMatchedNodes =
-        getMatchedTimeseriesInIndex((TagFilter) plan.getSchemaFilter()).iterator();
+        getMatchedTimeseriesInIndex(
+                (TagFilter) SchemaFilter.extract(schemaFilter, SchemaFilterType.TAGS_FILTER).get(0))
+            .iterator();
     PartialPath pathPattern = plan.getPath();
-    int curOffset = 0;
-    int count = 0;
-    long limit = plan.getLimit();
-    long offset = plan.getOffset();
-    boolean hasLimit = limit > 0 || offset > 0;
-    while (curOffset < offset && allMatchedNodes.hasNext()) {
-      IMeasurementMNode<?> node = allMatchedNodes.next();
-      if (plan.isPrefixMatch()
-          ? pathPattern.prefixMatchFullPath(node.getPartialPath())
-          : pathPattern.matchFullPath(node.getPartialPath())) {
-        curOffset++;
-      }
-    }
-    return new ISchemaReader<ITimeSeriesSchemaInfo>() {
-      private ITimeSeriesSchemaInfo nextMatched;
-      private Throwable throwable;
+    SchemaIterator<ITimeSeriesSchemaInfo> schemaIterator =
+        new SchemaIterator<ITimeSeriesSchemaInfo>() {
+          private ITimeSeriesSchemaInfo nextMatched;
+          private Throwable throwable;
 
-      @Override
-      public boolean isSuccess() {
-        return throwable == null;
-      }
+          @Override
+          public boolean hasNext() {
+            if (throwable == null && nextMatched == null) {
+              try {
+                getNext();
+              } catch (Throwable e) {
+                throwable = e;
+              }
+            }
+            return throwable == null && nextMatched != null;
+          }
 
-      @Override
-      public Throwable getFailure() {
-        return throwable;
-      }
+          @Override
+          public ITimeSeriesSchemaInfo next() {
+            if (!hasNext()) {
+              throw new NoSuchElementException();
+            }
+            ITimeSeriesSchemaInfo result = nextMatched;
+            nextMatched = null;
+            return result;
+          }
 
-      @Override
-      public void close() {
-        // do nothing
-      }
-
-      @Override
-      public ListenableFuture<?> isBlocked() {
-        return NOT_BLOCKED;
-      }
-
-      @Override
-      public boolean hasNext() {
-        if (throwable == null) {
-          if (hasLimit && count >= limit) {
-            return false;
-          } else if (nextMatched == null) {
-            try {
-              getNext();
-            } catch (Throwable e) {
-              throwable = e;
+          private void getNext() throws IOException {
+            nextMatched = null;
+            while (allMatchedNodes.hasNext()) {
+              IMeasurementMNode<?> node = allMatchedNodes.next();
+              if (plan.isPrefixMatch()
+                  ? pathPattern.prefixMatchFullPath(node.getPartialPath())
+                  : pathPattern.matchFullPath(node.getPartialPath())) {
+                Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
+                    readTagFile(node.getOffset());
+                nextMatched =
+                    new ShowTimeSeriesResult(
+                        node.getFullPath(),
+                        node.getAlias(),
+                        node.getSchema(),
+                        tagAndAttributePair.left,
+                        tagAndAttributePair.right,
+                        node.getParent().getAsDeviceMNode().isAligned());
+                break;
+              }
             }
           }
-        }
-        return throwable == null && nextMatched != null;
-      }
 
-      @Override
-      public ITimeSeriesSchemaInfo next() {
-        if (!hasNext()) {
-          throw new NoSuchElementException();
-        }
-        ITimeSeriesSchemaInfo result = nextMatched;
-        nextMatched = null;
-        return result;
-      }
-
-      private void getNext() throws IOException {
-        nextMatched = null;
-        while (allMatchedNodes.hasNext()) {
-          IMeasurementMNode<?> node = allMatchedNodes.next();
-          if (plan.isPrefixMatch()
-              ? pathPattern.prefixMatchFullPath(node.getPartialPath())
-              : pathPattern.matchFullPath(node.getPartialPath())) {
-            Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
-                readTagFile(node.getOffset());
-            nextMatched =
-                new ShowTimeSeriesResult(
-                    node.getFullPath(),
-                    node.getAlias(),
-                    node.getSchema(),
-                    tagAndAttributePair.left,
-                    tagAndAttributePair.right,
-                    node.getParent().getAsDeviceMNode().isAligned());
-            break;
+          @Override
+          public Throwable getFailure() {
+            return throwable;
           }
-        }
-      }
-    };
+
+          @Override
+          public boolean isSuccess() {
+            return throwable == null;
+          }
+
+          @Override
+          public void close() {
+            // do nothing
+          }
+        };
+    ISchemaReader<ITimeSeriesSchemaInfo> reader =
+        new TimeseriesReaderWithViewFetch(schemaIterator, schemaFilter);
+    if (plan.getLimit() > 0 || plan.getOffset() > 0) {
+      return new SchemaReaderLimitOffsetWrapper<>(reader, plan.getLimit(), plan.getOffset());
+    } else {
+      return reader;
+    }
   }
 
   /**

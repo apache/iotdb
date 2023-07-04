@@ -42,9 +42,9 @@ import java.util.Objects;
 
 public class InternalCreateTimeSeriesNode extends WritePlanNode {
 
-  private PartialPath devicePath;
-  private MeasurementGroup measurementGroup;
-  private boolean isAligned;
+  private final PartialPath devicePath;
+  private final MeasurementGroup measurementGroup;
+  private final boolean isAligned;
 
   private TRegionReplicaSet regionReplicaSet;
 

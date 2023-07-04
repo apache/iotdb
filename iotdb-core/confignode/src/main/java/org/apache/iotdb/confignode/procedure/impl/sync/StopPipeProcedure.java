@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.procedure.impl.sync;
 
 import org.apache.iotdb.commons.sync.PipeInfo;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -44,6 +45,13 @@ public class StopPipeProcedure extends Procedure<ConfigNodeProcedureEnv> {
 
   public StopPipeProcedure() {
     super();
+  }
+
+  @TestOnly
+  public StopPipeProcedure(PipeInfo pipeInfo) {
+    this();
+    this.pipeName = pipeInfo.getPipeName();
+    this.pipeInfo = pipeInfo;
   }
 
   @Override

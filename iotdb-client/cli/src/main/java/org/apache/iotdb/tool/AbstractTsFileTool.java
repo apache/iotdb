@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tool;
 
 import org.apache.iotdb.cli.utils.IoTPrinter;
