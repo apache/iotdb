@@ -189,6 +189,11 @@ public class PipeHeartbeatParser {
         for (final PipeRuntimeException exception :
             runtimeMetaFromDataNode.getExceptionMessages()) {
 
+          if (exception.getTimeStamp() < pipeMetaOnConfigNode.getRuntimeMeta().getClearTime()) {
+            // Ignore the exception if it's recorded before clear
+            continue;
+          }
+
           pipeTaskMetaOnConfigNode.trackExceptionMessage(exception);
 
           if (exception instanceof PipeRuntimeCriticalException) {

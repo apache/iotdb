@@ -89,7 +89,7 @@ public class PipeTaskAgent {
 
   public synchronized List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChanges(
       List<PipeMeta> pipeMetaListFromConfigNode) {
-    // do nothing if data node is removing or removed
+    // Do nothing if data node is removing or removed
     if (PipeAgent.runtime().isShutdown()) {
       return Collections.emptyList();
     }
@@ -328,9 +328,9 @@ public class PipeTaskAgent {
         }
       }
 
-      // drop the pipe if
-      // 1. the pipe with the same name but with different creation time has been created before
-      // 2. the pipe with the same name and the same creation time has been dropped before, but the
+      // Drop the pipe if
+      // 1. The pipe with the same name but with different creation time has been created before
+      // 2. The pipe with the same name and the same creation time has been dropped before, but the
       //  pipe task meta has not been cleaned up
       dropPipe(pipeName, existedPipeMeta.getStaticMeta().getCreationTime());
     }
@@ -378,12 +378,12 @@ public class PipeTaskAgent {
       return;
     }
 
-    // mark pipe meta as dropped first. this will help us detect if the pipe meta has been dropped
+    // Mark pipe meta as dropped first. This will help us detect if the pipe meta has been dropped
     // but the pipe task meta has not been cleaned up (in case of failure when executing
     // dropPipeTaskByConsensusGroup).
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
 
-    // drop pipe tasks and trigger drop() method for each pipe task
+    // Drop pipe tasks and trigger drop() method for each pipe task
     final Map<TConsensusGroupId, PipeTask> pipeTasks =
         pipeTaskManager.removePipeTasks(existedPipeMeta.getStaticMeta());
     if (pipeTasks == null) {
@@ -411,7 +411,7 @@ public class PipeTaskAgent {
       return;
     }
 
-    // Mark pipe meta as dropped first. this will help us detect if the pipe meta has been dropped
+    // Mark pipe meta as dropped first. This will help us detect if the pipe meta has been dropped
     // but the pipe task meta has not been cleaned up (in case of failure when executing
     // dropPipeTaskByConsensusGroup).
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
@@ -490,7 +490,7 @@ public class PipeTaskAgent {
                 + existedPipeMeta.getRuntimeMeta().getStatus().get().name());
     }
 
-    // trigger start() method for each pipe task
+    // Trigger start() method for each pipe task
     final Map<TConsensusGroupId, PipeTask> pipeTasks =
         pipeTaskManager.getPipeTasks(existedPipeMeta.getStaticMeta());
     if (pipeTasks == null) {
@@ -505,12 +505,12 @@ public class PipeTaskAgent {
       pipeTask.start();
     }
 
-    // set pipe meta status to RUNNING
+    // Set pipe meta status to RUNNING
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
-    // clear exception messages if started successfully
+    // Clear exception messages if started successfully
     existedPipeMeta
         .getRuntimeMeta()
-        .getConsensusGroupIdToTaskMetaMap()
+        .getConsensusGroupId2TaskMetaMap()
         .values()
         .forEach(PipeTaskMeta::clearExceptionMessages);
   }
@@ -605,7 +605,7 @@ public class PipeTaskAgent {
     pipeMetaKeeper
         .getPipeMeta(pipeStaticMeta.getPipeName())
         .getRuntimeMeta()
-        .getConsensusGroupIdToTaskMetaMap()
+        .getConsensusGroupId2TaskMetaMap()
         .put(consensusGroupId, pipeTaskMeta);
   }
 
@@ -613,7 +613,7 @@ public class PipeTaskAgent {
     pipeMetaKeeper
         .getPipeMeta(pipeStaticMeta.getPipeName())
         .getRuntimeMeta()
-        .getConsensusGroupIdToTaskMetaMap()
+        .getConsensusGroupId2TaskMetaMap()
         .remove(dataRegionGroupId);
     final PipeTask pipeTask = pipeTaskManager.removePipeTask(pipeStaticMeta, dataRegionGroupId);
     if (pipeTask != null) {
@@ -632,7 +632,7 @@ public class PipeTaskAgent {
 
   public synchronized void collectPipeMetaList(THeartbeatReq req, THeartbeatResp resp)
       throws TException {
-    // do nothing if data node is removing or removed, or request does not need pipe meta list
+    // Do nothing if data node is removing or removed, or request does not need pipe meta list
     if (PipeAgent.runtime().isShutdown() || !req.isNeedPipeMetaList()) {
       return;
     }
@@ -651,7 +651,7 @@ public class PipeTaskAgent {
 
   public synchronized void collectPipeMetaList(TPipeHeartbeatReq req, TPipeHeartbeatResp resp)
       throws TException {
-    // do nothing if data node is removing or removed, or request does not need pipe meta list
+    // Do nothing if data node is removing or removed, or request does not need pipe meta list
     if (PipeAgent.runtime().isShutdown()) {
       return;
     }

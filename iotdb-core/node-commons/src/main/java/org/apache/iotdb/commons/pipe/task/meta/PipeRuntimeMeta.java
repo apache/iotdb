@@ -79,7 +79,9 @@ public class PipeRuntimeMeta {
   }
 
   public void setClearTime(long clearTime) {
-    this.clearTime.set(clearTime);
+    if (clearTime > this.getClearTime()) {
+      this.clearTime.set(clearTime);
+    }
   }
 
   public ByteBuffer serialize() throws IOException {
@@ -209,6 +211,8 @@ public class PipeRuntimeMeta {
         + consensusGroupId2TaskMetaMap
         + ", dataNodeId2PipeMetaExceptionMap="
         + dataNodeId2PipeRuntimeExceptionMap
+        + ", clearTime="
+        + clearTime
         + '}';
   }
 }

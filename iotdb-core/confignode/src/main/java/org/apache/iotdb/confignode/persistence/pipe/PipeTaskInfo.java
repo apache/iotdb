@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
+import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
@@ -232,6 +233,12 @@ public class PipeTaskInfo implements SnapshotProcessor {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
+  /**
+   * Replace the local pipeMetas by the pipeMetas from the leader ConfigNode.
+   *
+   * @param plan The plan containing all the pipeMetas from leader ConfigNode
+   * @return SUCCESS_STATUS
+   */
   public TSStatus handleMetaChanges(PipeHandleMetaChangePlan plan) {
     LOGGER.info("Handling pipe meta changes ...");
     pipeMetaKeeper.clear();
@@ -242,6 +249,22 @@ public class PipeTaskInfo implements SnapshotProcessor {
               LOGGER.info("Recording pipe meta: {}", pipeMeta);
             });
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  /**
+   * Clear the exceptions of a pipe locally after it starts successfully. The messages will then be
+   * updated to all the nodes through PipeHandleMetaChangeProcedure.
+   *
+   * @param pipeName The name of the pipes to be clear exception
+   */
+  public void clearExceptions(String pipeName) {
+    PipeRuntimeMeta runtimeMeta = pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta();
+    runtimeMeta.setClearTime(System.currentTimeMillis());
+    runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap().clear();
+    runtimeMeta
+        .getConsensusGroupId2TaskMetaMap()
+        .values()
+        .forEach(PipeTaskMeta::clearExceptionMessages);
   }
 
   /////////////////////////////// Snapshot ///////////////////////////////

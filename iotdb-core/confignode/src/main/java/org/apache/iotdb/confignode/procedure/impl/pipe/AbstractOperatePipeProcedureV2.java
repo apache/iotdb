@@ -54,27 +54,23 @@ public abstract class AbstractOperatePipeProcedureV2
 
   private static final int RETRY_THRESHOLD = 1;
 
-  // only used in rollback to reduce the number of network calls
+  // Only used in rollback to reduce the number of network calls
   protected boolean isRollbackFromOperateOnDataNodesSuccessful = false;
 
   protected abstract PipeTaskOperation getOperation();
 
-  /**
-   * Execute at state VALIDATE_TASK
-   *
-   * @return true if procedure can finish directly
-   */
+  /** Execute at state VALIDATE_TASK. */
   protected abstract void executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException;
 
-  /** Execute at state CALCULATE_INFO_FOR_TASK */
+  /** Execute at state CALCULATE_INFO_FOR_TASK. */
   protected abstract void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env)
       throws PipeException;
 
-  /** Execute at state WRITE_CONFIG_NODE_CONSENSUS */
+  /** Execute at state WRITE_CONFIG_NODE_CONSENSUS. */
   protected abstract void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
       throws PipeException;
 
-  /** Execute at state OPERATE_ON_DATA_NODES */
+  /** Execute at state OPERATE_ON_DATA_NODES. */
   protected abstract void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws PipeException, IOException;
 
@@ -100,6 +96,8 @@ public abstract class AbstractOperatePipeProcedureV2
           executeFromOperateOnDataNodes(env);
           env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
           return Flow.NO_MORE_STATE;
+        default:
+          break;
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
