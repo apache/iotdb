@@ -168,11 +168,11 @@ public class AnalyzeTest {
       expectedAnalysis.setRespDatasetHeader(
           new DatasetHeader(
               Arrays.asList(
-                  new ColumnHeader("root.sg.d1.s1", TSDataType.INT32, "root.sg.d1.s1"),
-                  new ColumnHeader("root.sg.d1.s1 / 2", TSDataType.DOUBLE, "root.sg.d1.s1 / 2"),
-                  new ColumnHeader("root.sg.d1.s1 * 3", TSDataType.DOUBLE, "root.sg.d1.s1 * 3"),
-                  new ColumnHeader("root.sg.d1.s1 % 4", TSDataType.DOUBLE, "root.sg.d1.s1 % 4"),
-                  new ColumnHeader("root.sg.d1.s1 - 5", TSDataType.DOUBLE, "root.sg.d1.s1 - 5")),
+                  new ColumnHeader("root.sg.d1.s1", TSDataType.INT32, null),
+                  new ColumnHeader("root.sg.d1.s1 / 2", TSDataType.DOUBLE, null),
+                  new ColumnHeader("root.sg.d1.s1 * 3", TSDataType.DOUBLE, null),
+                  new ColumnHeader("root.sg.d1.s1 % 4", TSDataType.DOUBLE, null),
+                  new ColumnHeader("root.sg.d1.s1 - 5", TSDataType.DOUBLE, null)),
               false));
       alignByTimeAnalysisEqualTest(actualAnalysis, expectedAnalysis);
     } catch (Exception e) {
