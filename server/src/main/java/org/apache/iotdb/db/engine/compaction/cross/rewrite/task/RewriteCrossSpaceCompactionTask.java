@@ -169,13 +169,22 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       compactionLogger.logFiles(selectedUnSeqTsFileResourceList, STR_SOURCE_FILES);
       compactionLogger.logFiles(targetTsfileResourceList, STR_TARGET_FILES);
       // indicates that the cross compaction is complete and the result can be reused during a
+      logger.info("{} [Compaction] Close the logger", fullStorageGroupName);
       // restart recovery
       compactionLogger.close();
+      logger.info(
+          "{} [Compaction] compaction with seqFiles:{}, unSeqFiles:{}, target:{}",
+          fullStorageGroupName,
+          selectedSeqTsFileResourceList,
+          selectedUnSeqTsFileResourceList,
+          targetTsfileResourceList);
 
       CompactionUtils.compact(
           selectedSeqTsFileResourceList, selectedUnSeqTsFileResourceList, targetTsfileResourceList);
 
       CompactionUtils.moveTargetFile(targetTsfileResourceList, false, fullStorageGroupName);
+
+      logger.info("{} [Compaction] start to rename mods file", fullStorageGroupName);
       CompactionUtils.combineModsInCompaction(
           selectedSeqTsFileResourceList, selectedUnSeqTsFileResourceList, targetTsfileResourceList);
 
@@ -186,6 +195,10 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
           targetTsfileResourceList,
           timePartition,
           true);
+
+      logger.info(
+          "{} [Compaction] Compacted target files, try to get the write lock of source files",
+          fullStorageGroupName);
 
       releaseReadAndLockWrite(selectedSeqTsFileResourceList);
       releaseReadAndLockWrite(selectedUnSeqTsFileResourceList);
