@@ -2921,6 +2921,9 @@ public class DataRegion implements IDataRegionForQuery {
         logger.debug("{} is removed during deleting partitions", tsFileResource.getTsFilePath());
       }
     }
+    if (timedCompactionScheduleTask != null) {
+      timedCompactionScheduleTask.shutdownNow();
+    }
   }
 
   public TsFileManager getTsFileResourceManager() {
