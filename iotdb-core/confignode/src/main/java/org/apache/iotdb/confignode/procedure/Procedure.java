@@ -64,7 +64,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   private volatile long timeout = NO_TIMEOUT;
   private volatile long lastUpdate;
 
-  private AtomicReference<byte[]> result = null;
+  private final AtomicReference<byte[]> result = new AtomicReference<>();
   private volatile boolean locked = false;
   private boolean lockedWhenLoading = false;
 
@@ -173,7 +173,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     }
 
     // result
-    if (result != null) {
+    if (result.get() != null) {
       stream.writeInt(result.get().length);
       stream.write(result.get());
     } else {
@@ -652,7 +652,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    * @param result the serialized result that will be passed to the client
    */
   protected void setResult(byte[] result) {
-    this.result = new AtomicReference<>(result);
+    this.result.set(result);
   }
 
   /**
