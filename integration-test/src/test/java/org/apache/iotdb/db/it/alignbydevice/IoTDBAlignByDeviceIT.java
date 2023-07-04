@@ -992,7 +992,7 @@ public class IoTDBAlignByDeviceIT {
     }
   }
 
-  private List<Integer> checkHeader(
+  public static List<Integer> checkHeader(
       ResultSetMetaData resultSetMetaData, String expectedHeaderStrings, int[] expectedTypes)
       throws SQLException {
     String[] expectedHeaders = expectedHeaderStrings.split(",");

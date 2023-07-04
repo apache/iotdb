@@ -42,7 +42,7 @@ public abstract class GroupByComponent extends StatementNode {
 
   public void setControlColumnExpression(Expression controlColumnExpression) {
     this.controlColumnExpression =
-        ExpressionAnalyzer.semiNormalizeExpression(controlColumnExpression);
+        ExpressionAnalyzer.toLowerCaseExpression(controlColumnExpression);
   }
 
   public Expression getControlColumnExpression() {

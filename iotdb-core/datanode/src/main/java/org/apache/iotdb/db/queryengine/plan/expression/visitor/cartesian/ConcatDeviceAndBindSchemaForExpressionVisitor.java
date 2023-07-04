@@ -41,6 +41,7 @@ import static org.apache.iotdb.db.utils.TypeInferenceUtils.bindTypeForAggregatio
 
 public class ConcatDeviceAndBindSchemaForExpressionVisitor
     extends CartesianProductVisitor<ConcatDeviceAndBindSchemaForExpressionVisitor.Context> {
+
   @Override
   public List<Expression> visitFunctionExpression(
       FunctionExpression functionExpression, Context context) {

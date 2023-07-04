@@ -47,8 +47,8 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.BindTypeForTimeSe
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.CollectAggregationExpressionsVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.CollectSourceExpressionsVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionNormalizeVisitor;
-import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionSemiNormalizeVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.GetMeasurementExpressionVisitor;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.LowercaseNormalizeVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ReplaceRawPathWithGroupedPathVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForPredicateVisitor;
@@ -676,8 +676,8 @@ public class ExpressionAnalyzer {
    *
    * @return normalized expression
    */
-  public static Expression semiNormalizeExpression(Expression expression) {
-    return new ExpressionSemiNormalizeVisitor().process(expression, null);
+  public static Expression toLowerCaseExpression(Expression expression) {
+    return new LowercaseNormalizeVisitor().process(expression, null);
   }
 
   /** Check for arithmetic expression, logical expression, UDF. Returns true if it exists. */

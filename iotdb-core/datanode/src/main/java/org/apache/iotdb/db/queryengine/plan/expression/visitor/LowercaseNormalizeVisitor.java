@@ -25,7 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ExpressionSemiNormalizeVisitor extends ReconstructVisitor<Void> {
+public class LowercaseNormalizeVisitor extends ReconstructVisitor<Void> {
 
   @Override
   public Expression visitFunctionExpression(FunctionExpression functionExpression, Void context) {

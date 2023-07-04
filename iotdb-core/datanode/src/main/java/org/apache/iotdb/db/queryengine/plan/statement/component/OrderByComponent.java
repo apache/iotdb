@@ -86,7 +86,7 @@ public class OrderByComponent extends StatementNode {
   public void addExpressionSortItem(SortItem sortItem) {
     this.sortItemList.add(sortItem);
     this.sortItemExpressionList.add(
-        ExpressionAnalyzer.semiNormalizeExpression(sortItem.getExpression()));
+        ExpressionAnalyzer.toLowerCaseExpression(sortItem.getExpression()));
   }
 
   public List<SortItem> getSortItemList() {

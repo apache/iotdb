@@ -616,7 +616,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
           // add outputExpressions
           Expression normalizedMeasurementExpression =
-              ExpressionAnalyzer.semiNormalizeExpression(measurementExpression);
+              ExpressionAnalyzer.toLowerCaseExpression(measurementExpression);
           analyzeExpressionType(analysis, normalizedMeasurementExpression);
           outputExpressions.add(
               new Pair<>(
@@ -667,7 +667,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           ExpressionAnalyzer.getMeasurementExpression(expression, analysis);
       measurementToDeviceSelectExpressions
           .computeIfAbsent(measurementExpression, key -> new LinkedHashMap<>())
-          .put(device.getFullPath(), ExpressionAnalyzer.semiNormalizeExpression(expression));
+          .put(device.getFullPath(), ExpressionAnalyzer.toLowerCaseExpression(expression));
     }
   }
 
@@ -680,7 +680,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       String deviceName = deviceNameSelectExpressionEntry.getKey();
       Expression expression = deviceNameSelectExpressionEntry.getValue();
 
-      Expression normalizedExpression = ExpressionAnalyzer.semiNormalizeExpression(expression);
+      Expression normalizedExpression = ExpressionAnalyzer.toLowerCaseExpression(expression);
       analyzeExpressionType(analysis, normalizedExpression);
       deviceToSelectExpressions
           .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
@@ -1358,7 +1358,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (normalizedOutputExpressionsUnderDevice.size() < outputExpressionsUnderDevice.size()) {
       throw new SemanticException(
           "Views or measurement aliases representing the same data source "
-              + "cannot be queried concurrently  in ALIGN BY DEVICE queries.");
+              + "cannot be queried concurrently in ALIGN BY DEVICE queries.");
     }
   }
 
