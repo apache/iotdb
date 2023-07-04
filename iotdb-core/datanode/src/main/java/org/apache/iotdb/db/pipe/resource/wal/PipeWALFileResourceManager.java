@@ -143,14 +143,12 @@ public class PipeWALFileResourceManager {
   }
 
   public synchronized void clear(String dataDir) {
-    File pipeWALDir =
+    File pipeWalDir =
         new File(
-            dataDir,
-            PipeConfig.getInstance().getPipeHardlinkDirName()
-                + File.separator
-                + PipeConfig.getInstance().getPipeHardlinkWALDirName());
-    if (pipeWALDir.exists()) {
-      FileUtils.deleteDirectory(pipeWALDir);
+            dataDir + File.separator + PipeConfig.getInstance().getPipeHardlinkDirName(),
+            PipeConfig.getInstance().getPipeHardlinkWALDirName());
+    if (pipeWalDir.exists()) {
+      FileUtils.deleteDirectory(pipeWalDir);
     }
   }
 

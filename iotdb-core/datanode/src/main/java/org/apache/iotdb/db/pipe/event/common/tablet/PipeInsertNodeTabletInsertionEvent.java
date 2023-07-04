@@ -100,8 +100,10 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       if (CommonDescriptor.getInstance().getConfig().getPipeWALEnableHardLink()) {
         PipeResourceManager.walFile()
             .decreaseFileReference(walEntryHandler.getWalEntryPosition().getWalFile());
+      } else {
+        PipeResourceManager.wal().unpin(walEntryHandler.getMemTableId());
       }
-      PipeResourceManager.wal().unpin(walEntryHandler.getMemTableId());
+
       return true;
     } catch (Exception e) {
       LOGGER.warn(
