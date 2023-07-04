@@ -19,19 +19,17 @@
 
 package org.apache.iotdb.tsfile.encoding;
 
-import org.apache.iotdb.tsfile.encoding.encoder.SDTEncoder;
-import org.apache.iotdb.tsfile.read.common.IOMonitor2.ValuePoint;
-
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
+import java.util.Collections;
 import java.util.List;
-
-import static org.junit.Assert.assertEquals;
+import org.apache.iotdb.tsfile.encoding.encoder.SDTEncoder;
+import org.apache.iotdb.tsfile.read.common.ValuePoint;
+import org.junit.Test;
 
 public class SDTEncoderTest {
 
@@ -235,8 +233,8 @@ public class SDTEncoderTest {
     String csvData = "D:\\full-game\\BallSpeed.csv";
     //    double[] eList = new double[] {500000, 400000, 300000, 200000, 160000, 100000, 50000,
     // 10000};
-    double[] eList = new double[] {160000};
-    int[] startList = new int[] {1, 200000, 300000, 400000, 500000, 600000, 700000, 800000, 900000};
+    double[] eList = new double[]{160000};
+    int[] startList = new int[]{1, 200000, 300000, 400000, 500000, 600000, 700000, 800000, 900000};
     List<Double> elapsedTime_withValueIndex_list = new ArrayList<>();
     List<Double> elapsedTime_withoutValueIndex_list = new ArrayList<>();
     List<Double> traversedComplexity_list = new ArrayList<>();
@@ -304,18 +302,19 @@ public class SDTEncoderTest {
 
         //    ValuePoint[] myArray = (ValuePoint[]) points.toArray();
         //    Arrays.sort(points.toArray());
-        points.sort(
-            new Comparator<ValuePoint>() {
-              public int compare(ValuePoint o1, ValuePoint o2) {
-                return ((Comparable) (o1.value)).compareTo(o2.value);
-              }
-            });
+//        points.sort(
+//            new Comparator<ValuePoint>() {
+//              public int compare(ValuePoint o1, ValuePoint o2) {
+//                return ((Comparable) (o1.value)).compareTo(o2.value);
+//              }
+//            });
+        Collections.sort(points);
 
         long startTime = System.nanoTime();
 
         // 计算maxLB
         traversedComplexity += selectValues.size();
-        long maxVal = points.get(points.size() - 2).value;
+        double maxVal = points.get(points.size() - 2).value;
         double threshold = maxVal - e; // maxLB
         //    System.out.println("threshold(maxLB)=" + threshold);
 
@@ -380,7 +379,7 @@ public class SDTEncoderTest {
         long elapsedTime = System.nanoTime() - startTime;
         elapsedTime_withValueIndex += elapsedTime;
         //        System.out.println("search with value index: " + elapsedTime / 1000000.0 + " ms");
-        //        System.out.println("TP=(" + candidateTPidx + "," + candidateTPvalue + ")");
+        System.out.println("TP=(" + candidateTPidx + "," + candidateTPvalue + ")");
         System.out.println("search interval number=" + prune_intervals_end.size());
         int traversedPoints = 0;
         for (int i = 0; i < prune_intervals_start.size(); i++) {
@@ -408,8 +407,8 @@ public class SDTEncoderTest {
         elapsedTime_withoutValueIndex += elapsedTime;
         //        System.out.println("search without value index: " + elapsedTime / 1000000.0 + "
         // ms");
-        //        System.out.println("TP=(" + candidateTPidx_raw + "," + candidateTPvalue_raw +
-        // ")");
+        System.out.println("TP=(" + candidateTPidx_raw + "," + candidateTPvalue_raw +
+            ")");
       }
       elapsedTime_withValueIndex_list.add(
           elapsedTime_withValueIndex / startList.length / 1000000.0);

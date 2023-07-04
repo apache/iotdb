@@ -19,6 +19,14 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -45,18 +53,8 @@ import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * Sql format: SELECT min_time(s0), max_time(s0), first_value(s0), last_value(s0), min_value(s0),
@@ -253,7 +251,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
     }
 
     // iterate futureChunkList
-    ListIterator itr = futureChunkList.listIterator();
+    ListIterator<ChunkSuit4CPV> itr = futureChunkList.listIterator();
     while (itr.hasNext()) {
       ChunkSuit4CPV chunkSuit4CPV = (ChunkSuit4CPV) (itr.next());
       ChunkMetadata chunkMetadata = chunkSuit4CPV.getChunkMetadata();
@@ -303,9 +301,9 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
 
   /**
    * @param curStartTime closed
-   * @param curEndTime open
-   * @param startTime closed
-   * @param endTime open
+   * @param curEndTime   open
+   * @param startTime    closed
+   * @param endTime      open
    */
   @Override
   public List<AggregateResult> calcResult(
@@ -355,15 +353,12 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
     // currentChunkList
     while (currentChunkList.size() > 0) { // loop 1
       // sorted by bottomValue, find BP candidate set
-      currentChunkList.sort(
-          new Comparator<ChunkSuit4CPV>() { // TODO double check the sort order logic for different
-            // aggregations
-            public int compare(ChunkSuit4CPV o1, ChunkSuit4CPV o2) {
-              return ((Comparable) (o1.getStatistics().getMinValue()))
-                  .compareTo(o2.getStatistics().getMinValue());
-              // NOTE here get statistics from ChunkSuit4CPV, not from ChunkSuit4CPV.ChunkMetadata
-            }
-          });
+      // TODO double check the sort order logic for different aggregations
+      currentChunkList.sort((o1, o2) -> {
+        return ((Comparable) (o1.getStatistics().getMinValue())).compareTo(
+            o2.getStatistics().getMinValue());
+        // NOTE here get statistics from ChunkSuit4CPV, not from ChunkSuit4CPV.ChunkMetadata
+      });
       // NOTE here get statistics from ChunkSuit4CPV, not from ChunkSuit4CPV.ChunkMetadata
       Object value = currentChunkList.get(0).getStatistics().getMinValue();
       List<ChunkSuit4CPV> candidateSet = new ArrayList<>();
@@ -376,21 +371,13 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
         }
       }
 
-      List<ChunkSuit4CPV> nonLazyLoad =
-          new ArrayList<>(
-              candidateSet); // TODO check, whether nonLazyLoad remove affects candidateSet
-      nonLazyLoad.sort(
-          new Comparator<ChunkSuit4CPV>() { // TODO double check the sort order logic for version
-            public int compare(ChunkSuit4CPV o1, ChunkSuit4CPV o2) {
-              return new MergeReaderPriority(
-                      o2.getChunkMetadata().getVersion(),
-                      o2.getChunkMetadata().getOffsetOfChunkHeader())
-                  .compareTo(
-                      new MergeReaderPriority(
-                          o1.getChunkMetadata().getVersion(),
-                          o1.getChunkMetadata().getOffsetOfChunkHeader()));
-            }
-          });
+      // TODO check, whether nonLazyLoad remove affects candidateSet
+      List<ChunkSuit4CPV> nonLazyLoad = new ArrayList<>(candidateSet);
+      // TODO double check the sort order logic for version
+      nonLazyLoad.sort((o1, o2) -> new MergeReaderPriority(o2.getChunkMetadata().getVersion(),
+          o2.getChunkMetadata().getOffsetOfChunkHeader())
+          .compareTo(new MergeReaderPriority(o1.getChunkMetadata().getVersion(),
+              o1.getChunkMetadata().getOffsetOfChunkHeader())));
       while (true) { // loop 2
         // if there is no chunk for lazy loading, then load all chunks in candidateSet,
         // and apply deleteIntervals, deleting BP no matter out of deletion or update
@@ -484,7 +471,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
             results
                 .get(4)
                 .updateResultUsingValues(
-                    new long[] {candidateTimestamp}, 1, new Object[] {candidateValue});
+                    new long[]{candidateTimestamp}, 1, new Object[]{candidateValue});
             return; // finished
           } else if (!isUpdate) {
             // verify whether the candidate point is updated
@@ -513,7 +500,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
             results
                 .get(4)
                 .updateResultUsingValues(
-                    new long[] {candidateTimestamp}, 1, new Object[] {candidateValue});
+                    new long[]{candidateTimestamp}, 1, new Object[]{candidateValue});
             return; // finished
           } else {
             // the candidate point is updated, then label the chunk as already lazy loaded,
@@ -580,8 +567,8 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           new Comparator<ChunkSuit4CPV>() { // TODO double check the sort order logic for version
             public int compare(ChunkSuit4CPV o1, ChunkSuit4CPV o2) {
               return new MergeReaderPriority(
-                      o2.getChunkMetadata().getVersion(),
-                      o2.getChunkMetadata().getOffsetOfChunkHeader())
+                  o2.getChunkMetadata().getVersion(),
+                  o2.getChunkMetadata().getOffsetOfChunkHeader())
                   .compareTo(
                       new MergeReaderPriority(
                           o1.getChunkMetadata().getVersion(),
@@ -614,7 +601,8 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                   .setDeleteIntervalList(chunkSuit4CPV.getChunkMetadata().getDeleteIntervalList());
             }
             // chunk data read operation (c): get all data points
-            chunkSuit4CPV.getPageReader().updateBPTP(chunkSuit4CPV);
+//            chunkSuit4CPV.getPageReader().updateBPTP(chunkSuit4CPV);
+            chunkSuit4CPV.getPageReader().updateTP_withValueIndex(chunkSuit4CPV); // TODO
             // check if empty
             if (chunkSuit4CPV.statistics.getCount() == 0) {
               currentChunkList.remove(chunkSuit4CPV);
@@ -685,7 +673,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
             results
                 .get(5)
                 .updateResultUsingValues(
-                    new long[] {candidateTimestamp}, 1, new Object[] {candidateValue});
+                    new long[]{candidateTimestamp}, 1, new Object[]{candidateValue});
             return; // finished
           } else if (!isUpdate) {
             // verify whether the candidate point is updated
@@ -714,7 +702,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
             results
                 .get(5)
                 .updateResultUsingValues(
-                    new long[] {candidateTimestamp}, 1, new Object[] {candidateValue});
+                    new long[]{candidateTimestamp}, 1, new Object[]{candidateValue});
             return; // finished
           } else {
             // the candidate point is updated, then label the chunk as already lazy loaded,
@@ -761,8 +749,8 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                 return res;
               } else {
                 return new MergeReaderPriority(
-                        o2.getChunkMetadata().getVersion(),
-                        o2.getChunkMetadata().getOffsetOfChunkHeader())
+                    o2.getChunkMetadata().getVersion(),
+                    o2.getChunkMetadata().getOffsetOfChunkHeader())
                     .compareTo(
                         new MergeReaderPriority(
                             o1.getChunkMetadata().getVersion(),
@@ -839,11 +827,11 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           results
               .get(0)
               .updateResultUsingValues(
-                  new long[] {candidateTimestamp}, 1, new Object[] {candidateValue});
+                  new long[]{candidateTimestamp}, 1, new Object[]{candidateValue});
           results
               .get(2)
               .updateResultUsingValues(
-                  new long[] {candidateTimestamp}, 1, new Object[] {candidateValue});
+                  new long[]{candidateTimestamp}, 1, new Object[]{candidateValue});
           return;
         }
       }
@@ -872,8 +860,8 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                 return res;
               } else {
                 return new MergeReaderPriority(
-                        o2.getChunkMetadata().getVersion(),
-                        o2.getChunkMetadata().getOffsetOfChunkHeader())
+                    o2.getChunkMetadata().getVersion(),
+                    o2.getChunkMetadata().getOffsetOfChunkHeader())
                     .compareTo(
                         new MergeReaderPriority(
                             o1.getChunkMetadata().getVersion(),
@@ -951,11 +939,11 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           results
               .get(1)
               .updateResultUsingValues(
-                  new long[] {candidateTimestamp}, 1, new Object[] {candidateValue});
+                  new long[]{candidateTimestamp}, 1, new Object[]{candidateValue});
           results
               .get(3)
               .updateResultUsingValues(
-                  new long[] {candidateTimestamp}, 1, new Object[] {candidateValue});
+                  new long[]{candidateTimestamp}, 1, new Object[]{candidateValue});
           return;
         }
       }

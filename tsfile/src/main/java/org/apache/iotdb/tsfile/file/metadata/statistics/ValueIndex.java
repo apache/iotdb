@@ -1,10 +1,12 @@
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.tsfile.encoding.encoder.DeltaBinaryEncoder.IntDeltaEncoder;
 import org.apache.iotdb.tsfile.encoding.encoder.DoublePrecisionEncoderV2;
 import org.apache.iotdb.tsfile.encoding.encoder.SDTEncoder;
+import org.apache.iotdb.tsfile.read.common.ValuePoint;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
-
 import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
 import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 
@@ -19,6 +21,8 @@ public class ValueIndex {
   public PublicBAOS valueOut = new PublicBAOS();
   public IntArrayList modelPointIdx_list = new IntArrayList();
   public DoubleArrayList modelPointVal_list = new DoubleArrayList();
+
+  public List<ValuePoint> sortedModelPoints = new ArrayList<>(); // sorted by value in ascending order
 
   // this is necessary, otherwise serialized twice by timeseriesMetadata and chunkMetadata
   // causing learn() executed more than once!!
