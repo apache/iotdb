@@ -27,6 +27,7 @@ import org.junit.Test;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
@@ -230,155 +231,196 @@ public class SDTEncoderTest {
 
   @Test
   public void mytest2() throws Exception {
+    // when e=2*std=160000 is the best
     String csvData = "D:\\full-game\\BallSpeed.csv";
-    int start = 200000;
-    int range = 100000;
-    int end = start + range;
-    SDTEncoder encoder = new SDTEncoder();
-    double e = 100000; // std/2
-    encoder.setCompDeviation(e / 2);
-    long count = 0;
-    String line;
-    List<Integer> timestampList = new ArrayList<>(); // idx
-    List<Long> valueList = new ArrayList<>();
-    List<Integer> selectTimestamps = new ArrayList<>();
-    List<Long> selectValues = new ArrayList<>();
-    List<ValuePoint> points = new ArrayList<>();
-    int idx = 0;
-    try (BufferedReader reader = new BufferedReader(new FileReader(csvData))) {
-      while ((line = reader.readLine()) != null) {
-        count++;
-        if (count >= start && count < end) {
-          idx++;
-          int time = idx; // not real timestamp, but relative position id
-          long value = Long.parseLong(line.split(",")[1]);
-          timestampList.add(time);
-          valueList.add(value);
-          points.add(new ValuePoint(time, value));
-          if (encoder.encodeLong(time, value)) {
-            selectTimestamps.add((int) encoder.getTime());
-            selectValues.add(encoder.getLongValue());
+    double[] eList = new double[] {500000, 400000, 300000, 200000, 160000, 100000, 50000, 10000};
+    int[] startList = new int[] {1, 200000, 300000, 400000, 500000, 600000, 700000, 800000, 900000};
+    List<Double> elapsedTime_withValueIndex_list = new ArrayList<>();
+    List<Double> elapsedTime_withoutValueIndex_list = new ArrayList<>();
+    List<Double> traversedComplexity_list = new ArrayList<>();
+    List<Double> std_list = new ArrayList<>();
+    for (double e : eList) {
+      double elapsedTime_withValueIndex = 0;
+      double elapsedTime_withoutValueIndex = 0;
+      double traversedComplexity = 0;
+      for (int start : startList) {
+        int range = 50000;
+        int end = start + range;
+        SDTEncoder encoder = new SDTEncoder();
+        encoder.setCompDeviation(e / 2);
+        long count = 0;
+        String line;
+        List<Integer> timestampList = new ArrayList<>(); // idx
+        List<Long> valueList = new ArrayList<>();
+        List<Integer> selectTimestamps = new ArrayList<>();
+        List<Long> selectValues = new ArrayList<>();
+        List<ValuePoint> points = new ArrayList<>();
+        int idx = 0;
+        try (BufferedReader reader = new BufferedReader(new FileReader(csvData))) {
+          long cnt = 0;
+          double sumX2 = 0.0;
+          double sumX1 = 0.0;
+          while ((line = reader.readLine()) != null) {
+            count++;
+            if (count >= start && count < end) {
+              idx++;
+              int time = idx; // not real timestamp, but relative position id
+              long value = Long.parseLong(line.split(",")[1]);
+
+              cnt++;
+              sumX1 += value;
+              sumX2 += value * value;
+
+              timestampList.add(time);
+              valueList.add(value);
+              points.add(new ValuePoint(time, value));
+              if (encoder.encodeLong(time, value)) {
+                selectTimestamps.add((int) encoder.getTime());
+                selectValues.add(encoder.getLongValue());
+              }
+              if (count == end - 1) { // last point
+                selectTimestamps.add(time);
+                selectValues.add(value);
+              }
+            } else if (count >= end) {
+              break;
+            }
           }
-          if (count == end - 1) { // last point
-            selectTimestamps.add(time);
-            selectValues.add(value);
+          double std = Math.sqrt(sumX2 / cnt - Math.pow(sumX1 / cnt, 2));
+          std_list.add(Math.sqrt(Math.pow(std, 2) * cnt / (cnt - 1)));
+        }
+
+        //    System.out.println("e=" + e);
+        //    System.out.println("t=" + timestampList + ";");
+        //    System.out.println("v=" + valueList + ";");
+        //    System.out.println("at=" + selectTimestamps + ";");
+        //    System.out.println("av=" + selectValues + ";");
+        //        System.out.println("v.size=" + valueList.size());
+        //        System.out.println("av.size=" + selectTimestamps.size());
+
+        //        System.out.println("start test------");
+
+        //    ValuePoint[] myArray = (ValuePoint[]) points.toArray();
+        //    Arrays.sort(points.toArray());
+        points.sort(
+            new Comparator<ValuePoint>() {
+              public int compare(ValuePoint o1, ValuePoint o2) {
+                return ((Comparable) (o1.value)).compareTo(o2.value);
+              }
+            });
+
+        long startTime = System.nanoTime();
+
+        // 计算maxLB
+        traversedComplexity += selectValues.size();
+        long maxVal = points.get(points.size() - 2).value;
+        double threshold = maxVal - e; // maxLB
+        //    System.out.println("threshold(maxLB)=" + threshold);
+
+        // 计算UB<maxLB的剪枝段
+        traversedComplexity += selectValues.size();
+        List<Integer> prune_intervals_start = new ArrayList<>();
+        List<Integer> prune_intervals_end = new ArrayList<>();
+        int interval_start = -1;
+        int interval_end = -1;
+        for (int i = 1; i < selectTimestamps.size(); i++) {
+          int t1 = selectTimestamps.get(i - 1);
+          int t2 = selectTimestamps.get(i);
+          double v1 = selectValues.get(i - 1) + e; // UB
+          double v2 = selectValues.get(i) + e; // UB
+          if (v1 < threshold && v2 < threshold) {
+            if (interval_start < 0) {
+              interval_start = t1;
+            }
+            interval_end = t2; // continuous
+          } else if (v1 < threshold && v2 >= threshold) {
+            if (interval_start < 0) {
+              interval_start = t1;
+            }
+            prune_intervals_start.add(interval_start);
+            prune_intervals_end.add(
+                (int) Math.floor((threshold - v1) * (t2 - t1) / (v2 - v1) + t1));
+            interval_start = -1; // discontinuous
+          } else if (v1 >= threshold && v2 < threshold) {
+            interval_start = (int) Math.ceil((threshold - v1) * (t2 - t1) / (v2 - v1) + t1);
+            interval_end = t2; // continuous
           }
-        } else if (count >= end) {
-          break;
         }
-      }
-    }
+        if (interval_start > 0) {
+          prune_intervals_start.add(interval_start);
+          prune_intervals_end.add(interval_end);
+        }
+        //    System.out.println("UB<maxLB prune intervals (included ends, starting from 1):");
+        //    System.out.println(prune_intervals_start);
+        //    System.out.println(prune_intervals_end);
 
-    //    System.out.println("e=" + e);
-    //    System.out.println("t=" + timestampList + ";");
-    //    System.out.println("v=" + valueList + ";");
-    //    System.out.println("at=" + selectTimestamps + ";");
-    //    System.out.println("av=" + selectValues + ";");
-    System.out.println("v.size=" + valueList.size());
-    System.out.println("av.size=" + selectTimestamps.size());
-
-    System.out.println("start test------");
-
-    //    ValuePoint[] myArray = (ValuePoint[]) points.toArray();
-    //    Arrays.sort(points.toArray());
-    points.sort(
-        new Comparator<ValuePoint>() {
-          public int compare(ValuePoint o1, ValuePoint o2) {
-            return ((Comparable) (o1.value)).compareTo(o2.value);
+        // 对剪枝段取余后搜索遍历计算TP
+        int startIdx = 1;
+        int endIdx = range;
+        startIdx = startIdx - 1; // as excluded treated
+        endIdx = endIdx + 1; // as excluded treated
+        prune_intervals_start.add(endIdx); // turn into search_intervals_end (excluded)
+        prune_intervals_end.add(0, startIdx); // turn into search_intervals_start (excluded)
+        long candidateTPvalue = -1;
+        int candidateTPidx = -1;
+        for (int i = 0; i < prune_intervals_start.size(); i++) {
+          int search_interval_start = prune_intervals_end.get(i) + 1; // included
+          int search_interval_end = prune_intervals_start.get(i) - 1; // included
+          //          System.out.println(search_interval_start + "," + search_interval_end);
+          for (int j = search_interval_start; j <= search_interval_end; j++) { // starting from 1
+            long v = valueList.get(j - 1); // java list starting from 0
+            if (v > candidateTPvalue) {
+              candidateTPvalue = v;
+              candidateTPidx = j;
+            }
           }
-        });
-
-    long startTime = System.nanoTime();
-
-    // 计算maxLB
-    long maxVal = points.get(points.size() - 1).value;
-    double threshold = maxVal - e; // maxLB
-    //    System.out.println("threshold(maxLB)=" + threshold);
-
-    // 计算UB<maxLB的剪枝段
-    List<Integer> prune_intervals_start = new ArrayList<>();
-    List<Integer> prune_intervals_end = new ArrayList<>();
-    int interval_start = -1;
-    int interval_end = -1;
-    for (int i = 1; i < selectTimestamps.size(); i++) {
-      int t1 = selectTimestamps.get(i - 1);
-      int t2 = selectTimestamps.get(i);
-      double v1 = selectValues.get(i - 1) + e; // UB
-      double v2 = selectValues.get(i) + e; // UB
-      if (v1 < threshold && v2 < threshold) {
-        if (interval_start < 0) {
-          interval_start = t1;
         }
-        interval_end = t2; // continuous
-      } else if (v1 < threshold && v2 >= threshold) {
-        if (interval_start < 0) {
-          interval_start = t1;
+        long elapsedTime = System.nanoTime() - startTime;
+        elapsedTime_withValueIndex += elapsedTime;
+        //        System.out.println("search with value index: " + elapsedTime / 1000000.0 + " ms");
+        //        System.out.println("TP=(" + candidateTPidx + "," + candidateTPvalue + ")");
+        //        System.out.println("search interval number=" + prune_intervals_end.size());
+        int traversedPoints = 0;
+        for (int i = 0; i < prune_intervals_start.size(); i++) {
+          int search_interval_start = prune_intervals_end.get(i) + 1; // included
+          int search_interval_end = prune_intervals_start.get(i) - 1; // included
+          if (search_interval_end >= search_interval_start) {
+            traversedPoints += (search_interval_end - search_interval_start + 1);
+          }
         }
-        prune_intervals_start.add(interval_start);
-        prune_intervals_end.add((int) Math.floor((threshold - v1) * (t2 - t1) / (v2 - v1) + t1));
-        interval_start = -1; // discontinuous
-      } else if (v1 >= threshold && v2 < threshold) {
-        interval_start = (int) Math.ceil((threshold - v1) * (t2 - t1) / (v2 - v1) + t1);
-        interval_end = t2; // continuous
-      }
-    }
-    if (interval_start > 0) {
-      prune_intervals_start.add(interval_start);
-      prune_intervals_end.add(interval_end);
-    }
-    //    System.out.println("UB<maxLB prune intervals (included ends, starting from 1):");
-    //    System.out.println(prune_intervals_start);
-    //    System.out.println(prune_intervals_end);
+        traversedComplexity += traversedPoints;
+        //        System.out.println("number of traversed points: " + traversedPoints);
 
-    // 对剪枝段取余后搜索遍历计算TP
-    int startIdx = 1;
-    int endIdx = range;
-    startIdx = startIdx - 1; // as excluded treated
-    endIdx = endIdx + 1; // as excluded treated
-    prune_intervals_start.add(endIdx); // turn into search_intervals_end (excluded)
-    prune_intervals_end.add(0, startIdx); // turn into search_intervals_start (excluded)
-    long candidateTPvalue = -1;
-    int candidateTPidx = -1;
-    for (int i = 0; i < prune_intervals_start.size(); i++) {
-      int search_interval_start = prune_intervals_end.get(i) + 1; // included
-      int search_interval_end = prune_intervals_start.get(i) - 1; // included
-      //      System.out.println(search_interval_start + "," + search_interval_end);
-      for (int j = search_interval_start; j <= search_interval_end; j++) { // starting from 1
-        long v = valueList.get(j - 1); // java list starting from 0
-        if (v > candidateTPvalue) {
-          candidateTPvalue = v;
-          candidateTPidx = j;
+        //        System.out.println("start test------");
+        startTime = System.nanoTime();
+        long candidateTPvalue_raw = -1;
+        int candidateTPidx_raw = -1;
+        for (int j = 1; j <= valueList.size(); j++) { // starting from 1
+          long v = valueList.get(j - 1); // java list starting from 0
+          if (v > candidateTPvalue_raw) {
+            candidateTPvalue_raw = v;
+            candidateTPidx_raw = j;
+          }
         }
+        elapsedTime = System.nanoTime() - startTime;
+        elapsedTime_withoutValueIndex += elapsedTime;
+        //        System.out.println("search without value index: " + elapsedTime / 1000000.0 + "
+        // ms");
+        //        System.out.println("TP=(" + candidateTPidx_raw + "," + candidateTPvalue_raw +
+        // ")");
       }
+      elapsedTime_withValueIndex_list.add(
+          elapsedTime_withValueIndex / startList.length / 1000000.0);
+      elapsedTime_withoutValueIndex_list.add(
+          elapsedTime_withoutValueIndex / startList.length / 1000000.0);
+      traversedComplexity_list.add(traversedComplexity / startList.length);
     }
-    long elapsedTime = System.nanoTime() - startTime;
-    System.out.println("search with value index: " + elapsedTime / 1000000.0 + " m s");
-    System.out.println("TP=(" + candidateTPidx + "," + candidateTPvalue + ")");
-    System.out.println("search interval number=" + prune_intervals_end.size());
-    int traversedPoints = 0;
-    for (int i = 0; i < prune_intervals_start.size(); i++) {
-      int search_interval_start = prune_intervals_end.get(i) + 1; // included
-      int search_interval_end = prune_intervals_start.get(i) - 1; // included
-      if (search_interval_end >= search_interval_start) {
-        traversedPoints += (search_interval_end - search_interval_start + 1);
-      }
-    }
-    System.out.println("number of traversed points: " + traversedPoints);
-
-    System.out.println("start test------");
-    startTime = System.nanoTime();
-    long candidateTPvalue_raw = -1;
-    int candidateTPidx_raw = -1;
-    for (int j = 1; j <= valueList.size(); j++) { // starting from 1
-      long v = valueList.get(j - 1); // java list starting from 0
-      if (v > candidateTPvalue_raw) {
-        candidateTPvalue_raw = v;
-        candidateTPidx_raw = j;
-      }
-    }
-    elapsedTime = System.nanoTime() - startTime;
-    System.out.println("search without value index: " + elapsedTime / 1000000.0 + " m s");
-    System.out.println("TP=(" + candidateTPidx_raw + "," + candidateTPvalue_raw + ")");
+    System.out.println("=================");
+    System.out.println("eList: " + Arrays.toString(eList));
+    System.out.println("time with index: " + elapsedTime_withValueIndex_list);
+    System.out.println("time without index: " + elapsedTime_withoutValueIndex_list);
+    System.out.println("traversed points: " + traversedComplexity_list);
+    System.out.println("std: " + std_list);
   }
 
   @Test
