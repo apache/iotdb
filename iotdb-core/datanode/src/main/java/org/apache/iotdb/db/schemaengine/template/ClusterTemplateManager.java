@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -135,16 +136,20 @@ public class ClusterTemplateManager implements ITemplateManager {
   private TCreateSchemaTemplateReq constructTCreateSchemaTemplateReq(
       CreateSchemaTemplateStatement statement) {
     TCreateSchemaTemplateReq req = new TCreateSchemaTemplateReq();
-    Template template =
-        new Template(
-            statement.getName(),
-            statement.getMeasurements(),
-            statement.getDataTypes(),
-            statement.getEncodings(),
-            statement.getCompressors(),
-            statement.isAligned());
-    req.setName(template.getName());
-    req.setSerializedTemplate(template.serialize());
+    try {
+      Template template =
+          new Template(
+              statement.getName(),
+              statement.getMeasurements(),
+              statement.getDataTypes(),
+              statement.getEncodings(),
+              statement.getCompressors(),
+              statement.isAligned());
+      req.setName(template.getName());
+      req.setSerializedTemplate(template.serialize());
+    } catch (IllegalPathException e) {
+      throw new SchemaExecutionException(e);
+    }
     return req;
   }
 
