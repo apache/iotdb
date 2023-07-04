@@ -54,6 +54,24 @@ public class CrossSpaceCompactionCandidate {
     init(seqFiles, unseqFiles);
   }
 
+  public void addReadLock() {
+    for (TsFileResourceCandidate resourceCandidate : seqFiles) {
+      resourceCandidate.resource.readLock();
+    }
+    for (TsFileResourceCandidate resourceCandidate : unseqFiles) {
+      resourceCandidate.resource.readLock();
+    }
+  }
+
+  public void releaseReadLock() {
+    for (TsFileResourceCandidate resourceCandidate : seqFiles) {
+      resourceCandidate.resource.readUnlock();
+    }
+    for (TsFileResourceCandidate resourceCandidate : unseqFiles) {
+      resourceCandidate.resource.readUnlock();
+    }
+  }
+
   private void init(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
     this.seqFiles = copySeqResource(seqFiles);
     // it is necessary that unseqFiles are all available
@@ -81,8 +99,7 @@ public class CrossSpaceCompactionCandidate {
     // check one by one. And we cannot skip any device in the unseq file because it may lead to
     // omission of target seq file
     if (!unseqFile.hasDetailedDeviceInfo()) {
-      // It means unseq file resource has been deleted due to TTL and cannot upgrade to
-      // DEVICE_TIME_INDEX
+      // unseq file resource has been deleted due to TTL and cannot upgrade to DEVICE_TIME_INDEX
       return false;
     }
     for (DeviceInfo unseqDeviceInfo : unseqFile.getDevices()) {
@@ -247,7 +264,7 @@ public class CrossSpaceCompactionCandidate {
       hasDetailedDeviceInfo = true;
     }
 
-    protected void markAsSelected() {
+    public void markAsSelected() {
       this.selected = true;
     }
 
