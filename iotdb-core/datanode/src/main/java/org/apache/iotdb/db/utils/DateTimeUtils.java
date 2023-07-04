@@ -666,8 +666,12 @@ public class DateTimeUtils {
   }
 
   public static String convertLongToDate(long timestamp) {
-    String timePrecision = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
-    switch (timePrecision) {
+    return convertLongToDate(
+        timestamp, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+  }
+
+  public static String convertLongToDate(long timestamp, String sourcePrecision) {
+    switch (sourcePrecision) {
       case "ns":
         timestamp /= 1000_000;
         break;
