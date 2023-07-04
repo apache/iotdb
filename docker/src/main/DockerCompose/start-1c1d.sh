@@ -18,6 +18,6 @@
 # under the License.
 #
 
-bash start-confignode.sh &
+bash /iotdb/sbin/start-confignode.sh &
 sleep 5
-bash start-datanode.sh
+bash /iotdb/sbin/start-datanode.sh
