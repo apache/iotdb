@@ -229,6 +229,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setTimestampPrecision(String timestampPrecision) {
+    cnConfig.setTimestampPrecision(timestampPrecision);
+    dnConfig.setTimestampPrecision(timestampPrecision);
+    return this;
+  }
+
+  @Override
   public CommonConfig setConfigNodeRatisSnapshotTriggerThreshold(
       int ratisSnapshotTriggerThreshold) {
     cnConfig.setConfigNodeRatisSnapshotTriggerThreshold(ratisSnapshotTriggerThreshold);

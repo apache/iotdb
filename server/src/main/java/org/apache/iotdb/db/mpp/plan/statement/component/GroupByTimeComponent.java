@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.component;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 
 /** This class maintains information of {@code GROUP BY} clause. */
@@ -41,7 +42,9 @@ public class GroupByTimeComponent extends StatementNode {
   // if it is left close and right open interval
   private boolean leftCRightO = true;
 
-  public GroupByTimeComponent() {}
+  public GroupByTimeComponent() {
+    // do nothing
+  }
 
   public boolean isLeftCRightO() {
     return leftCRightO;
@@ -123,8 +126,16 @@ public class GroupByTimeComponent extends StatementNode {
       }
       sqlBuilder.append(',').append(' ');
     }
-    String intervalStr = interval + (isIntervalByMonth ? "mo" : "ms");
-    String slidingStepStr = slidingStep + (isSlidingStepByMonth ? "mo" : "ms");
+    String intervalStr =
+        interval
+            + (isIntervalByMonth
+                ? "mo"
+                : CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+    String slidingStepStr =
+        slidingStep
+            + (isSlidingStepByMonth
+                ? "mo"
+                : CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
     sqlBuilder.append(intervalStr);
     if (!slidingStepStr.equals(intervalStr)) {
       sqlBuilder.append(',').append(' ');
