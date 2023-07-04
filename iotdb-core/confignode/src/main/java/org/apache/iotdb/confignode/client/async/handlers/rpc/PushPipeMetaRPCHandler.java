@@ -50,8 +50,6 @@ public class PushPipeMetaRPCHandler extends AbstractAsyncRPCHandler<TPushPipeMet
     responseMap.put(requestId, response);
 
     if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // Remove only if success
-      dataNodeLocationMap.remove(requestId);
       LOGGER.info("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
     } else {
       LOGGER.error(
@@ -60,6 +58,9 @@ public class PushPipeMetaRPCHandler extends AbstractAsyncRPCHandler<TPushPipeMet
           formattedTargetLocation,
           response);
     }
+
+    // Always remove to avoid retrying
+    dataNodeLocationMap.remove(requestId);
 
     // Always CountDown
     countDownLatch.countDown();

@@ -217,7 +217,7 @@ public abstract class AbstractOperatePipeProcedureV2
       int dataNodeId = respEntry.getKey();
       TPushPipeMetaResp resp = respEntry.getValue();
       if (resp.getStatus().getCode() == TSStatusCode.PUSH_PIPE_META_ERROR.getStatusCode()) {
-        exceptionMessageBuilder.append(String.format("DataNodeId: %s", dataNodeId));
+        exceptionMessageBuilder.append(String.format("DataNodeId: %s ", dataNodeId));
         resp.getExceptionMessages()
             .forEach(
                 message -> {
