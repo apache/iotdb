@@ -287,12 +287,12 @@ public abstract class CacheManager implements ICacheManager {
   }
 
   private void collectVolatileNodes(ICachedMNode node, List<ICachedMNode> nodesToPersist) {
+    if(node.isMeasurement()){
+      return;
+    }
     Iterator<ICachedMNode> bufferIterator =
         getCachedMNodeContainer(node).getChildrenBufferIterator();
-
-    if (bufferIterator.hasNext()) {
-      nodesToPersist.add(node);
-    }
+    nodesToPersist.add(node);
 
     ICachedMNode child;
     while (bufferIterator.hasNext()) {

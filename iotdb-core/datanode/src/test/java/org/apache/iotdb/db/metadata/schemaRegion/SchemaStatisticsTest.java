@@ -55,7 +55,6 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
   }
 
   @Test
-  @Ignore
   public void testMemoryStatistics() throws Exception {
     ISchemaRegion schemaRegion1 = getSchemaRegion("root.sg1", 0);
     ISchemaRegion schemaRegion2 = getSchemaRegion("root.sg2", 1);
@@ -74,8 +73,8 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
     schemaRegion1.deleteTimeseriesInBlackList(patternTree);
     schemaRegion2.deleteTimeseriesInBlackList(patternTree);
 
-    if (testParams.getTestModeName().equals("SchemaFile-PartialMemory")
-        || testParams.getTestModeName().equals("SchemaFile-NonMemory")) {
+    if (testParams.getTestModeName().equals("PBTree-PartialMemory")
+        || testParams.getTestModeName().equals("PBTree-NonMemory")) {
 
       IMNodeFactory<?> nodeFactory = CacheMNodeFactory.getInstance();
       // wait release and flush task
@@ -161,10 +160,10 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
     }
     Assert.assertEquals(0, schemaRegion1.getSchemaRegionStatistics().getSchemaRegionId());
     Assert.assertEquals(1, schemaRegion2.getSchemaRegionStatistics().getSchemaRegionId());
-    checkSchemaFileStatistics(engineStatistics);
+    checkPBTreeStatistics(engineStatistics);
   }
 
-  private void checkSchemaFileStatistics(ISchemaEngineStatistics engineStatistics) {
+  private void checkPBTreeStatistics(ISchemaEngineStatistics engineStatistics) {
     if (engineStatistics instanceof CachedSchemaEngineStatistics) {
       CachedSchemaEngineStatistics cachedEngineStatistics =
           (CachedSchemaEngineStatistics) engineStatistics;
@@ -231,7 +230,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
   }
 
   @Test
-  public void testSchemaFileNodeStatistics() throws Exception {
+  public void testPBTreeNodeStatistics() throws Exception {
     if (testParams.getSchemaEngineMode().equals("PBTree")) {
       ISchemaRegion schemaRegion1 = getSchemaRegion("root.sg1", 0);
       ISchemaRegion schemaRegion2 = getSchemaRegion("root.sg2", 1);
