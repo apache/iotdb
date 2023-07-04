@@ -21,7 +21,7 @@ function on_stop(){
     bash /iotdb/sbin/stop-confignode.sh
 }
 
-trap 'on_stop' SIGTERM SIGKILL SIGQUIT
+trap 'on_stop' SIGTERM SIGKILL SIGQUIT SIGINT
 
 bash /iotdb/sbin/start-confignode.sh &
 sleep 5
