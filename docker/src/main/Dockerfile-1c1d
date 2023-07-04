@@ -29,8 +29,7 @@ RUN apt update \
   && unzip /apache-iotdb-*-bin.zip -d / \
   && rm /apache-iotdb-*-bin.zip \
   && mv /apache-iotdb-* /iotdb \
-  && mv /entrypoint.sh /iotdb/sbin \
-  && mv /replace-conf-from-env.sh /iotdb/sbin \
+  && mv /start-1c1d.sh /iotdb/sbin \
   && sed -i 's/dn_internal_address=127.0.0.1/dn_internal_address=0.0.0.0/g' /iotdb/conf/iotdb-datanode.properties \
   && sed -i 's/cn_internal_address=127.0.0.1/cn_internal_address=0.0.0.0/g' /iotdb/conf/iotdb-confignode.properties \
   && sed -i 's/config_node_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus/config_node_consensus_protocol_class=org.apache.iotdb.consensus.simple.SimpleConsensus/g' /iotdb/conf/iotdb-common.properties \
