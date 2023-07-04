@@ -17,11 +17,6 @@ public class ValueIndex {
   public DoublePrecisionEncoderV2 valueEncoder = new DoublePrecisionEncoderV2();
   public PublicBAOS idxOut = new PublicBAOS();
   public PublicBAOS valueOut = new PublicBAOS();
-  public int lastIdx = 0;
-  public int lastIntValue = 0;
-  public long lastLongValue = 0;
-  public float lastFloatValue = 0;
-  public double lastDoubleValue = 0;
   public IntArrayList modelPointIdx_list = new IntArrayList();
   public DoubleArrayList modelPointVal_list = new DoubleArrayList();
 
@@ -82,19 +77,35 @@ public class ValueIndex {
     isLearned = true;
     initForLearn(); // set self-adapting CompDeviation for sdtEncoder
     int pos = 0;
+    boolean hasDataToFlush = false;
     for (double v : values.toArray()) {
       pos++; // starting from 1
       if (sdtEncoder.encodeDouble(pos, v)) {
-        idxEncoder.encode((int) sdtEncoder.getTime(), idxOut);
-        valueEncoder.encode(sdtEncoder.getDoubleValue(), valueOut);
+        if (pos > 1) {
+          // the first point value is stored as FirstValue in statistics, so here no need store the
+          // first point
+          // the last point won't be checked by the if SDT encode logic
+          idxEncoder.encode((int) sdtEncoder.getTime(), idxOut);
+          valueEncoder.encode(sdtEncoder.getDoubleValue(), valueOut);
+          if (!hasDataToFlush) {
+            hasDataToFlush = true;
+          }
+        }
       }
     }
-    // add the last point except the first point
-    if (values.size() >= 2) { // means there is last point except the first point
-      idxEncoder.encode(pos, idxOut);
-      valueEncoder.encode(values.getLast(), valueOut);
+    //    // add the last point except the first point
+    //    if (values.size() >= 2) { // means there is last point except the first point
+    //      idxEncoder.encode(pos, idxOut);
+    //      valueEncoder.encode(values.getLast(), valueOut);
+    //    }
+
+    if (hasDataToFlush) {
+      // otherwise no need flush, because GorillaV2 encoding will output NaN even if
+      // hasDataToFlush=false
+      idxEncoder.flush(idxOut); // necessary
+      valueEncoder.flush(valueOut); // necessary
     }
-    idxEncoder.flush(idxOut);
-    valueEncoder.flush(valueOut);
+
+    values = null; // raw values are not needed any more
   }
 }

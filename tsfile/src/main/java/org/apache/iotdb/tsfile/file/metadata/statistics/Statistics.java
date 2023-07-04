@@ -130,17 +130,17 @@ public abstract class Statistics<T> {
     byteLen += ReadWriteForEncodingUtils.writeUnsignedVarInt(count, outputStream);
     byteLen += ReadWriteIOUtils.write(startTime, outputStream);
     byteLen += ReadWriteIOUtils.write(endTime, outputStream);
-    // serialize stepRegress
-    byteLen += serializeStepRegress(outputStream);
-    // TODO serialize value index
-    byteLen += serializeValueIndex(outputStream);
     // value statistics of different data type
     byteLen += serializeStats(outputStream);
+    // serialize stepRegress
+    byteLen += serializeStepRegress(outputStream);
+    // serialize value index
+    byteLen += serializeValueIndex(outputStream);
     return byteLen;
   }
 
   int serializeValueIndex(OutputStream outputStream) throws IOException {
-    valueIndex.learn(); // TODO ensure executed once and only once
+    valueIndex.learn(); // ensure executed once and only once
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(valueIndex.idxOut.size(), outputStream);
     outputStream.write(
@@ -162,7 +162,7 @@ public abstract class Statistics<T> {
    * last segment keys are not serialized here, because they are minTime and endTime respectively.
    */
   int serializeStepRegress(OutputStream outputStream) throws IOException {
-    stepRegress.learn(); // TODO ensure executed once and only once
+    stepRegress.learn(); // ensure executed once and only once
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(stepRegress.getSlope(), outputStream); // K
     DoubleArrayList segmentKeys = stepRegress.getSegmentKeys();
@@ -574,35 +574,91 @@ public abstract class Statistics<T> {
     statistics.setCount(ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
     statistics.setStartTime(ReadWriteIOUtils.readLong(buffer));
     statistics.setEndTime(ReadWriteIOUtils.readLong(buffer));
-    statistics.deserializeStepRegress(buffer);
-    statistics.deserializeValueIndex(buffer); // TODO
     statistics.deserialize(buffer);
+    statistics.deserializeStepRegress(buffer);
+    statistics.deserializeValueIndex(buffer);
     statistics.isEmpty = false;
     return statistics;
   }
 
   void deserializeValueIndex(ByteBuffer buffer) throws IOException {
+    // add the first point
+    valueIndex.modelPointIdx_list.add(1);
+    switch (getType()) {
+      case INT32:
+        int intV = (int) getFirstValue();
+        valueIndex.modelPointVal_list.add((double) intV);
+        break;
+      case INT64:
+        long longV = (long) getFirstValue();
+        valueIndex.modelPointVal_list.add((double) longV);
+        break;
+      case FLOAT:
+        float floatV = (float) getFirstValue();
+        valueIndex.modelPointVal_list.add((double) floatV);
+        break;
+      case DOUBLE:
+        double doubleV = (double) getFirstValue();
+        valueIndex.modelPointVal_list.add(doubleV);
+        break;
+      default:
+        throw new IOException("unsupported");
+    }
+
     int idxSize = ReadWriteIOUtils.readInt(buffer);
-    ByteBuffer idxBuffer = buffer.slice();
-    idxBuffer.limit(idxSize);
+    if (idxSize > 0) {
+      ByteBuffer idxBuffer = buffer.slice();
+      idxBuffer.limit(idxSize);
+      Decoder idxDecoder = new IntDeltaDecoder();
+      while (idxDecoder.hasNext(idxBuffer)) {
+        int idx = idxDecoder.readInt(idxBuffer);
+        valueIndex.modelPointIdx_list.add(idx);
+      }
+    }
+
     buffer.position(buffer.position() + idxSize);
-    Decoder idxDecoder = new IntDeltaDecoder();
-    while (idxDecoder.hasNext(idxBuffer)) {
-      int idx = idxDecoder.readInt(idxBuffer);
-      valueIndex.modelPointIdx_list.add(idx);
+    int valueSize = ReadWriteIOUtils.readInt(buffer);
+    if (valueSize > 0) {
+      ByteBuffer valueBuffer = buffer.slice();
+      valueBuffer.limit(valueSize);
+      Decoder valueDecoder = new DoublePrecisionDecoderV2();
+      while (valueDecoder.hasNext(valueBuffer)) {
+        double value = valueDecoder.readDouble(valueBuffer);
+        valueIndex.modelPointVal_list.add(value);
+      }
     }
 
-    int valueSize = ReadWriteIOUtils.readInt(buffer); // valueOut.size()
-    ByteBuffer valueBuffer = buffer.slice();
-    valueBuffer.limit(valueSize);
+    // add the last point except the first point
+    if (count >= 2) { // otherwise only one point no need to store again
+      valueIndex.modelPointIdx_list.add(count);
+      switch (getType()) {
+        case INT32:
+          int intV = (int) getLastValue();
+          valueIndex.modelPointVal_list.add((double) intV);
+          break;
+        case INT64:
+          long longV = (long) getLastValue();
+          valueIndex.modelPointVal_list.add((double) longV);
+          break;
+        case FLOAT:
+          float floatV = (float) getLastValue();
+          valueIndex.modelPointVal_list.add((double) floatV);
+          break;
+        case DOUBLE:
+          double doubleV = (double) getLastValue();
+          valueIndex.modelPointVal_list.add(doubleV);
+          break;
+        default:
+          throw new IOException("unsupported");
+      }
+    }
+
+    // error bound
     buffer.position(buffer.position() + valueSize);
-    Decoder valueDecoder = new DoublePrecisionDecoderV2();
-    while (valueDecoder.hasNext(valueBuffer)) {
-      double value = valueDecoder.readDouble(valueBuffer);
-      valueIndex.modelPointVal_list.add(value);
-    }
-
     valueIndex.errorBound = ReadWriteIOUtils.readDouble(buffer);
+
+    //    System.out.println(valueIndex.modelPointIdx_list);
+    //    System.out.println(valueIndex.modelPointVal_list);
   }
 
   void deserializeStepRegress(ByteBuffer byteBuffer) {
