@@ -144,7 +144,7 @@ public class PipeTaskMeta {
 
   @Override
   public int hashCode() {
-    return Objects.hash(progressIndex, leaderDataNodeId, exceptionMessages);
+    return Objects.hash(progressIndex.get(), leaderDataNodeId.get(), exceptionMessages);
   }
 
   @Override

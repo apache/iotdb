@@ -34,19 +34,21 @@ import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeRuntimeMeta {
 
   private final AtomicReference<PipeStatus> status;
   private final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupId2TaskMetaMap;
-
   /**
    * Stores the exceptions encountered during pushing pipeMeta to DataNodes. The exceptions are all
    * instances of PipeRuntimeCriticalException, so that the failure of pushing pipeMeta will result
    * in the halt of transferring data.
    */
   private final Map<Integer, PipeRuntimeException> dataNodeId2PipeRuntimeExceptionMap;
+
+  private final AtomicLong clearTime = new AtomicLong(Long.MIN_VALUE);
 
   public PipeRuntimeMeta() {
     status = new AtomicReference<>(PipeStatus.STOPPED);
@@ -72,6 +74,14 @@ public class PipeRuntimeMeta {
     return dataNodeId2PipeRuntimeExceptionMap;
   }
 
+  public long getClearTime() {
+    return clearTime.get();
+  }
+
+  public void setClearTime(long clearTime) {
+    this.clearTime.set(clearTime);
+  }
+
   public ByteBuffer serialize() throws IOException {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
@@ -95,6 +105,8 @@ public class PipeRuntimeMeta {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       entry.getValue().serialize(outputStream);
     }
+
+    ReadWriteIOUtils.write(clearTime.get(), outputStream);
   }
 
   public void serialize(FileOutputStream outputStream) throws IOException {
@@ -113,6 +125,8 @@ public class PipeRuntimeMeta {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       entry.getValue().serialize(outputStream);
     }
+
+    ReadWriteIOUtils.write(clearTime.get(), outputStream);
   }
 
   public static PipeRuntimeMeta deserialize(InputStream inputStream) throws IOException {
@@ -134,6 +148,8 @@ public class PipeRuntimeMeta {
           ReadWriteIOUtils.readInt(inputStream),
           PipeRuntimeExceptionType.deserializeFrom(inputStream));
     }
+
+    pipeRuntimeMeta.clearTime.set(ReadWriteIOUtils.readLong(inputStream));
 
     return pipeRuntimeMeta;
   }
@@ -158,6 +174,8 @@ public class PipeRuntimeMeta {
           PipeRuntimeExceptionType.deserializeFrom(byteBuffer));
     }
 
+    pipeRuntimeMeta.clearTime.set(ReadWriteIOUtils.readLong(byteBuffer));
+
     return pipeRuntimeMeta;
   }
 
@@ -172,12 +190,14 @@ public class PipeRuntimeMeta {
     PipeRuntimeMeta that = (PipeRuntimeMeta) o;
     return Objects.equals(status.get().getType(), that.status.get().getType())
         && consensusGroupId2TaskMetaMap.equals(that.consensusGroupId2TaskMetaMap)
-        && dataNodeId2PipeRuntimeExceptionMap.equals(that.dataNodeId2PipeRuntimeExceptionMap);
+        && dataNodeId2PipeRuntimeExceptionMap.equals(that.dataNodeId2PipeRuntimeExceptionMap)
+        && clearTime.get() == that.clearTime.get();
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(status, consensusGroupId2TaskMetaMap, dataNodeId2PipeRuntimeExceptionMap);
+    return Objects.hash(
+        status, consensusGroupId2TaskMetaMap, dataNodeId2PipeRuntimeExceptionMap, clearTime.get());
   }
 
   @Override
