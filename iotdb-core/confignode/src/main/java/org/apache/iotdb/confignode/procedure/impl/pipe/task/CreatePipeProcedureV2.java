@@ -110,7 +110,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                         .getPartitionManager()
                         .getRegionStorageGroup(regionGroupId);
                 if (databaseName != null && !databaseName.equals(IoTDBConfig.SYSTEM_DATABASE)) {
-                  // pipe only collect user's data, filter metric database here.
+                  // Pipe only collect user's data, filter metric database here.
                   consensusGroupIdToTaskMetaMap.put(
                       regionGroupId,
                       new PipeTaskMeta(new MinimumProgressIndex(), regionLeaderNodeId));

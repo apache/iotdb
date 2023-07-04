@@ -208,7 +208,7 @@ public class ConfigManager implements IManager {
   private static final CommonConfig COMMON_CONF = CommonDescriptor.getInstance().getConfig();
 
   /** Manage PartitionTable read/write requests through the ConsensusLayer. */
-  private AtomicReference<ConsensusManager> consensusManager;
+  private final AtomicReference<ConsensusManager> consensusManager = new AtomicReference<>();
 
   /** Manage cluster node. */
   private final NodeManager nodeManager;
@@ -305,12 +305,11 @@ public class ConfigManager implements IManager {
   }
 
   public void initConsensusManager() throws IOException {
-    ConsensusManager consensusManager = new ConsensusManager(this, this.stateMachine);
-    this.consensusManager = new AtomicReference<>(consensusManager);
+    this.consensusManager.set(new ConsensusManager(this, this.stateMachine));
   }
 
   public void close() throws IOException {
-    if (consensusManager != null) {
+    if (consensusManager.get() != null) {
       consensusManager.get().close();
     }
     if (partitionManager != null) {
@@ -1122,7 +1121,7 @@ public class ConfigManager implements IManager {
   public TSStatus createPeerForConsensusGroup(List<TConfigNodeLocation> configNodeLocations) {
     for (int i = 0; i < 30; i++) {
       try {
-        if (consensusManager == null) {
+        if (consensusManager.get() == null) {
           Thread.sleep(1000);
         } else {
           // When add non Seed-ConfigNode to the ConfigNodeGroup, the parameter should be emptyList

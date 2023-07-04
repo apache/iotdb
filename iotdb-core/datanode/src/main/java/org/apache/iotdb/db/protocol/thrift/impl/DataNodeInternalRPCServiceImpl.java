@@ -505,8 +505,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus invalidateMatchedSchemaCache(TInvalidateMatchedSchemaCacheReq req)
-      throws TException {
+  public TSStatus invalidateMatchedSchemaCache(TInvalidateMatchedSchemaCacheReq req) {
     DataNodeSchemaCache cache = DataNodeSchemaCache.getInstance();
     cache.takeWriteLock();
     try {
@@ -519,8 +518,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TFetchSchemaBlackListResp fetchSchemaBlackList(TFetchSchemaBlackListReq req)
-      throws TException {
+  public TFetchSchemaBlackListResp fetchSchemaBlackList(TFetchSchemaBlackListReq req) {
     PathPatternTree patternTree = PathPatternTree.deserialize(req.pathPatternTree);
     TFetchSchemaBlackListResp resp = new TFetchSchemaBlackListResp();
     PathPatternTree result = new PathPatternTree();
@@ -550,7 +548,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     try {
       result.serialize(dataOutputStream);
     } catch (IOException ignored) {
-      // won't reach here
+      // Won't reach here
     }
     resp.setPathPatternTree(outputStream.toByteArray());
     return resp;
@@ -638,7 +636,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           try {
             result.put(new PartialPath(k), v);
           } catch (IllegalPathException ignored) {
-            // won't reach here
+            // Won't reach here
           }
         });
     return result;
@@ -670,14 +668,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
                   .getDatabaseFullPath());
     } catch (IllegalPathException ignored) {
-      // won't reach here
+      // Won't reach here
     }
     return storageGroupPath;
   }
 
   @Override
-  public TSStatus rollbackSchemaBlackListWithTemplate(TRollbackSchemaBlackListWithTemplateReq req)
-      throws TException {
+  public TSStatus rollbackSchemaBlackListWithTemplate(TRollbackSchemaBlackListWithTemplateReq req) {
     Map<PartialPath, List<Integer>> templateSetInfo =
         transformTemplateSetInfo(req.getTemplateSetInfo());
     return executeInternalSchemaTask(
@@ -821,8 +818,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus constructViewSchemaBlackList(TConstructViewSchemaBlackListReq req)
-      throws TException {
+  public TSStatus constructViewSchemaBlackList(TConstructViewSchemaBlackListReq req) {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     AtomicInteger preDeletedNum = new AtomicInteger(0);
@@ -857,8 +853,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus rollbackViewSchemaBlackList(TRollbackViewSchemaBlackListReq req)
-      throws TException {
+  public TSStatus rollbackViewSchemaBlackList(TRollbackViewSchemaBlackListReq req) {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     return executeInternalSchemaTask(
@@ -906,7 +901,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus alterView(TAlterViewReq req) throws TException {
+  public TSStatus alterView(TAlterViewReq req) {
     List<TConsensusGroupId> consensusGroupIdList = req.getSchemaRegionIdList();
     List<ByteBuffer> viewBinaryList = req.getViewBinaryList();
     Map<TConsensusGroupId, Map<PartialPath, ViewExpression>> schemaRegionRequestMap =
