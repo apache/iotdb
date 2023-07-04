@@ -189,7 +189,7 @@ public class ChunkMetadata implements Comparable<ChunkMetadata> {
    * @return ChunkMetaData object
    */
   public static ChunkMetadata deserializeFrom(
-      ByteBuffer buffer, TimeseriesMetadata timeseriesMetadata) {
+      ByteBuffer buffer, TimeseriesMetadata timeseriesMetadata) throws IOException {
     ChunkMetadata chunkMetaData = new ChunkMetadata();
 
     chunkMetaData.measurementUid = timeseriesMetadata.getMeasurementId();

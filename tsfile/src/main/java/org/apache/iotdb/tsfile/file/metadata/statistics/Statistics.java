@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
+import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
+import org.apache.iotdb.tsfile.encoding.decoder.DeltaBinaryDecoder.IntDeltaDecoder;
+import org.apache.iotdb.tsfile.encoding.decoder.DoublePrecisionDecoderV2;
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.exception.write.UnknownColumnTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -59,6 +62,8 @@ public abstract class Statistics<T> {
   private long endTime = Long.MIN_VALUE;
 
   private StepRegress stepRegress = new StepRegress();
+
+  public ValueIndex valueIndex = new ValueIndex();
 
   /** @author Yuyuan Kang */
   final String OPERATION_NOT_SUPPORT_FORMAT = "%s statistics does not support operation: %s";
@@ -109,10 +114,13 @@ public abstract class Statistics<T> {
 
   public abstract TSDataType getType();
 
+  @Deprecated
   public int getSerializedSize() {
     return ReadWriteForEncodingUtils.uVarIntSize(count) // count
         + 16 // startTime, endTime
         + getStatsSize();
+    // stepRegress not counted
+    // value index not counted
   }
 
   public abstract int getStatsSize();
@@ -122,10 +130,30 @@ public abstract class Statistics<T> {
     byteLen += ReadWriteForEncodingUtils.writeUnsignedVarInt(count, outputStream);
     byteLen += ReadWriteIOUtils.write(startTime, outputStream);
     byteLen += ReadWriteIOUtils.write(endTime, outputStream);
-    // TODO serialize stepRegress
+    // serialize stepRegress
     byteLen += serializeStepRegress(outputStream);
+    // TODO serialize value index
+    byteLen += serializeValueIndex(outputStream);
     // value statistics of different data type
     byteLen += serializeStats(outputStream);
+    return byteLen;
+  }
+
+  int serializeValueIndex(OutputStream outputStream) throws IOException {
+    valueIndex.learn(); // TODO ensure executed once and only once
+    int byteLen = 0;
+    byteLen += ReadWriteIOUtils.write(valueIndex.idxOut.size(), outputStream);
+    outputStream.write(
+        valueIndex.idxOut.getBuf(), 0, valueIndex.idxOut.size()); // NOTE len is important
+    byteLen += valueIndex.idxOut.getBuf().length;
+
+    byteLen += ReadWriteIOUtils.write(valueIndex.valueOut.size(), outputStream);
+    outputStream.write(
+        valueIndex.valueOut.getBuf(), 0, valueIndex.valueOut.size()); // NOTE len is important
+    byteLen += valueIndex.valueOut.getBuf().length;
+
+    byteLen += ReadWriteIOUtils.write(valueIndex.errorBound, outputStream);
+
     return byteLen;
   }
 
@@ -134,8 +162,8 @@ public abstract class Statistics<T> {
    * last segment keys are not serialized here, because they are minTime and endTime respectively.
    */
   int serializeStepRegress(OutputStream outputStream) throws IOException {
+    stepRegress.learn(); // TODO ensure executed once and only once
     int byteLen = 0;
-    stepRegress.learn(); // TODO ensure excuted once and only once
     byteLen += ReadWriteIOUtils.write(stepRegress.getSlope(), outputStream); // K
     DoubleArrayList segmentKeys = stepRegress.getSegmentKeys();
     // t1 is startTime, tm is endTime, so no need serialize t1 and tm
@@ -223,6 +251,9 @@ public abstract class Statistics<T> {
       // TODO M4-LSM if there are more than one chunk in a time series, then access each
       // chunkMetadata anyway
       this.stepRegress = stats.stepRegress;
+      // TODO
+      this.valueIndex = stats.valueIndex;
+
       isEmpty = false;
     } else {
       String thisClass = this.getClass().toString();
@@ -233,6 +264,7 @@ public abstract class Statistics<T> {
     }
   }
 
+  @Deprecated
   public void update(long time, boolean value) {
     if (time < this.startTime) {
       startTime = time;
@@ -242,61 +274,66 @@ public abstract class Statistics<T> {
     }
     count++;
     updateStats(value);
-    updateStepRegress(time);
   }
 
   /** @author Yuyuan Kang */
   public void update(long time, int value) {
+    count++;
     if (time < this.startTime) {
       startTime = time;
     }
     if (time > this.endTime) {
       endTime = time;
     }
-    count++;
-    updateStats(value, time);
+    // update time index
     updateStepRegress(time);
+    updateValueIndex(value);
+    updateStats(value, time);
   }
 
   /** @author Yuyuan Kang */
   public void update(long time, long value) {
+    count++;
     if (time < this.startTime) {
       startTime = time;
     }
     if (time > this.endTime) {
       endTime = time;
     }
-    count++;
-    updateStats(value, time);
     updateStepRegress(time);
+    updateValueIndex(value);
+    updateStats(value, time);
   }
 
   /** @author Yuyuan Kang */
   public void update(long time, float value) {
+    count++;
     if (time < this.startTime) {
       startTime = time;
     }
     if (time > this.endTime) {
       endTime = time;
     }
-    count++;
-    updateStats(value, time);
     updateStepRegress(time);
+    updateValueIndex(value);
+    updateStats(value, time);
   }
 
   /** @author Yuyuan Kang */
   public void update(long time, double value) {
+    count++;
     if (time < this.startTime) {
       startTime = time;
     }
     if (time > this.endTime) {
       endTime = time;
     }
-    count++;
-    updateStats(value, time);
     updateStepRegress(time);
+    updateValueIndex(value);
+    updateStats(value, time);
   }
 
+  @Deprecated
   public void update(long time, Binary value) {
     if (time < startTime) {
       startTime = time;
@@ -306,9 +343,9 @@ public abstract class Statistics<T> {
     }
     count++;
     updateStats(value);
-    updateStepRegress(time);
   }
 
+  @Deprecated
   public void update(long[] time, boolean[] values, int batchSize) {
     if (time[0] < startTime) {
       startTime = time[0];
@@ -318,61 +355,65 @@ public abstract class Statistics<T> {
     }
     count += batchSize;
     updateStats(values, batchSize);
-    updateStepRegress(time, batchSize);
   }
 
   /** @author Yuyuan Kang */
   public void update(long[] time, int[] values, int batchSize) {
+    count += batchSize;
     if (time[0] < startTime) {
       startTime = time[0];
     }
     if (time[batchSize - 1] > this.endTime) {
       endTime = time[batchSize - 1];
     }
-    count += batchSize;
-    updateStats(values, time, batchSize);
     updateStepRegress(time, batchSize);
+    updateValueIndex(values, batchSize);
+    updateStats(values, time, batchSize);
   }
 
   /** @author Yuyuan Kang */
   public void update(long[] time, long[] values, int batchSize) {
+    count += batchSize;
     if (time[0] < startTime) {
       startTime = time[0];
     }
     if (time[batchSize - 1] > this.endTime) {
       endTime = time[batchSize - 1];
     }
-    count += batchSize;
-    updateStats(values, time, batchSize);
     updateStepRegress(time, batchSize);
+    updateValueIndex(values, batchSize);
+    updateStats(values, time, batchSize);
   }
 
   /** @author Yuyuan Kang */
   public void update(long[] time, float[] values, int batchSize) {
+    count += batchSize;
     if (time[0] < startTime) {
       startTime = time[0];
     }
     if (time[batchSize - 1] > this.endTime) {
       endTime = time[batchSize - 1];
     }
-    count += batchSize;
-    updateStats(values, time, batchSize);
     updateStepRegress(time, batchSize);
+    updateValueIndex(values, batchSize);
+    updateStats(values, time, batchSize);
   }
 
   /** @author Yuyuan Kang */
   public void update(long[] time, double[] values, int batchSize) {
+    count += batchSize;
     if (time[0] < startTime) {
       startTime = time[0];
     }
     if (time[batchSize - 1] > this.endTime) {
       endTime = time[batchSize - 1];
     }
-    count += batchSize;
-    updateStats(values, time, batchSize);
     updateStepRegress(time, batchSize);
+    updateValueIndex(values, batchSize);
+    updateStats(values, time, batchSize);
   }
 
+  @Deprecated
   public void update(long[] time, Binary[] values, int batchSize) {
     if (time[0] < startTime) {
       startTime = time[0];
@@ -382,7 +423,6 @@ public abstract class Statistics<T> {
     }
     count += batchSize;
     updateStats(values, batchSize);
-    updateStepRegress(time, batchSize);
   }
 
   protected abstract void mergeStatisticsValue(Statistics stats);
@@ -412,6 +452,46 @@ public abstract class Statistics<T> {
   void updateStepRegress(long[] timestamps, int batchSize) {
     for (int i = 0; i < batchSize; i++) {
       updateStepRegress(timestamps[i]);
+    }
+  }
+
+  void updateValueIndex(int value) {
+    valueIndex.insert(value);
+  }
+
+  void updateValueIndex(long value) {
+    valueIndex.insert(value);
+  }
+
+  void updateValueIndex(float value) {
+    valueIndex.insert(value);
+  }
+
+  void updateValueIndex(double value) {
+    valueIndex.insert(value);
+  }
+
+  void updateValueIndex(int[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
+      updateValueIndex(values[i]);
+    }
+  }
+
+  void updateValueIndex(long[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
+      updateValueIndex(values[i]);
+    }
+  }
+
+  void updateValueIndex(float[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
+      updateValueIndex(values[i]);
+    }
+  }
+
+  void updateValueIndex(double[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
+      updateValueIndex(values[i]);
     }
   }
 
@@ -477,6 +557,7 @@ public abstract class Statistics<T> {
     throw new UnsupportedOperationException();
   }
 
+  @Deprecated
   public static Statistics deserialize(InputStream inputStream, TSDataType dataType)
       throws IOException {
     Statistics statistics = getStatsByType(dataType);
@@ -488,15 +569,40 @@ public abstract class Statistics<T> {
     return statistics;
   }
 
-  public static Statistics deserialize(ByteBuffer buffer, TSDataType dataType) {
+  public static Statistics deserialize(ByteBuffer buffer, TSDataType dataType) throws IOException {
     Statistics statistics = getStatsByType(dataType);
     statistics.setCount(ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
     statistics.setStartTime(ReadWriteIOUtils.readLong(buffer));
     statistics.setEndTime(ReadWriteIOUtils.readLong(buffer));
-    statistics.deserializeStepRegress(buffer); // TODO
+    statistics.deserializeStepRegress(buffer);
+    statistics.deserializeValueIndex(buffer); // TODO
     statistics.deserialize(buffer);
     statistics.isEmpty = false;
     return statistics;
+  }
+
+  void deserializeValueIndex(ByteBuffer buffer) throws IOException {
+    int idxSize = ReadWriteIOUtils.readInt(buffer);
+    ByteBuffer idxBuffer = buffer.slice();
+    idxBuffer.limit(idxSize);
+    buffer.position(buffer.position() + idxSize);
+    Decoder idxDecoder = new IntDeltaDecoder();
+    while (idxDecoder.hasNext(idxBuffer)) {
+      int idx = idxDecoder.readInt(idxBuffer);
+      valueIndex.modelPointIdx_list.add(idx);
+    }
+
+    int valueSize = ReadWriteIOUtils.readInt(buffer); // valueOut.size()
+    ByteBuffer valueBuffer = buffer.slice();
+    valueBuffer.limit(valueSize);
+    buffer.position(buffer.position() + valueSize);
+    Decoder valueDecoder = new DoublePrecisionDecoderV2();
+    while (valueDecoder.hasNext(valueBuffer)) {
+      double value = valueDecoder.readDouble(valueBuffer);
+      valueIndex.modelPointVal_list.add(value);
+    }
+
+    valueIndex.errorBound = ReadWriteIOUtils.readDouble(buffer);
   }
 
   void deserializeStepRegress(ByteBuffer byteBuffer) {

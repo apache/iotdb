@@ -233,7 +233,9 @@ public class SDTEncoderTest {
   public void mytest2() throws Exception {
     // when e=2*std=160000 is the best
     String csvData = "D:\\full-game\\BallSpeed.csv";
-    double[] eList = new double[] {500000, 400000, 300000, 200000, 160000, 100000, 50000, 10000};
+    //    double[] eList = new double[] {500000, 400000, 300000, 200000, 160000, 100000, 50000,
+    // 10000};
+    double[] eList = new double[] {160000};
     int[] startList = new int[] {1, 200000, 300000, 400000, 500000, 600000, 700000, 800000, 900000};
     List<Double> elapsedTime_withValueIndex_list = new ArrayList<>();
     List<Double> elapsedTime_withoutValueIndex_list = new ArrayList<>();
@@ -295,8 +297,8 @@ public class SDTEncoderTest {
         //    System.out.println("v=" + valueList + ";");
         //    System.out.println("at=" + selectTimestamps + ";");
         //    System.out.println("av=" + selectValues + ";");
-        //        System.out.println("v.size=" + valueList.size());
-        //        System.out.println("av.size=" + selectTimestamps.size());
+        System.out.println("v.size=" + valueList.size());
+        System.out.println("av.size=" + selectTimestamps.size());
 
         //        System.out.println("start test------");
 
@@ -379,7 +381,7 @@ public class SDTEncoderTest {
         elapsedTime_withValueIndex += elapsedTime;
         //        System.out.println("search with value index: " + elapsedTime / 1000000.0 + " ms");
         //        System.out.println("TP=(" + candidateTPidx + "," + candidateTPvalue + ")");
-        //        System.out.println("search interval number=" + prune_intervals_end.size());
+        System.out.println("search interval number=" + prune_intervals_end.size());
         int traversedPoints = 0;
         for (int i = 0; i < prune_intervals_start.size(); i++) {
           int search_interval_start = prune_intervals_end.get(i) + 1; // included
@@ -389,7 +391,7 @@ public class SDTEncoderTest {
           }
         }
         traversedComplexity += traversedPoints;
-        //        System.out.println("number of traversed points: " + traversedPoints);
+        System.out.println("number of traversed points: " + traversedPoints);
 
         //        System.out.println("start test------");
         startTime = System.nanoTime();

@@ -72,7 +72,7 @@ public abstract class DeltaBinaryDecoder extends Decoder {
   }
 
   @Override
-  public boolean hasNext(ByteBuffer buffer) throws IOException {
+  public boolean hasNext(ByteBuffer buffer) {
     return (nextReadIndex < readIntTotalCount) || buffer.remaining() > 0;
   }
 
