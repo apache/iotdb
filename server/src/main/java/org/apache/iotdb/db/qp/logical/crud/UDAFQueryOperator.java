@@ -20,6 +20,7 @@ package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.path.*;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDAFPlan;
@@ -29,11 +30,7 @@ import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * For a UDAFPlan, we construct an inner AggregationPlan for it. Example: select
@@ -127,6 +124,20 @@ public class UDAFQueryOperator extends QueryOperator {
                 + innerAggregationPlan.getDeduplicatedPaths().get(i)
                 + ")",
             i);
+        PartialPath partialPath = innerAggregationPlan.getDeduplicatedPaths().get(i);
+        if (partialPath instanceof MeasurementPath) {
+          MeasurementPath measurementPath = (MeasurementPath) partialPath;
+          String alias = measurementPath.getMeasurementAlias();
+          if (Objects.nonNull(alias) && !"".equals(alias)) {
+            String fullPath = innerAggregationPlan.getDeduplicatedPaths().get(i).getFullPath();
+            fullPath =
+                fullPath.replace(
+                    measurementPath.getTailNode(), measurementPath.getMeasurementAlias());
+            aggrIndexMap.put(
+                innerAggregationPlan.getDeduplicatedAggregations().get(i) + "(" + fullPath + ")",
+                i);
+          }
+        }
       }
       for (ResultColumn rc : getInnerResultColumnsCache()) {
         expressionToInnerResultIndexMap.put(
