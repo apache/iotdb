@@ -665,21 +665,21 @@ public class DateTimeUtils {
     }
   }
 
-  public static String convertLongToDate(long timestampInMs) {
+  public static String convertLongToDate(long timestamp) {
     return convertLongToDate(
-        timestampInMs, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+        timestamp, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
   }
 
-  public static String convertLongToDate(long timestampInMs, String targetPrecision) {
-    switch (targetPrecision) {
+  public static String convertLongToDate(long timestamp, String sourcePrecision) {
+    switch (sourcePrecision) {
       case "ns":
-        timestampInMs /= 1000_000;
+        timestamp /= 1000_000;
         break;
       case "us":
-        timestampInMs /= 1000;
+        timestamp /= 1000;
         break;
     }
-    return LocalDateTime.ofInstant(Instant.ofEpochMilli(timestampInMs), ZoneId.systemDefault())
+    return LocalDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneId.systemDefault())
         .toString();
   }
 
