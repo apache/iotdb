@@ -102,7 +102,17 @@ In order to make it easier and faster to express multiple timeseries paths, IoTD
 
 `**` represents (`*`)+, which is one or more layers of `*`. For example, `root.vehicle.device1.**` represents all paths prefixed by `root.vehicle.device1` with layers greater than or equal to 4, like `root.vehicle.device1.*`, `root.vehicle.device1.*.*`, `root.vehicle.device1.*.*.*`, etc; `root.vehicle.**.sensor1` represents a path which is prefixed with `root.vehicle` and suffixed with `sensor1` and has at least 4 layers.
 
-> Note1: Wildcard `*` and `**` cannot be placed at the beginning of the path.
+`*(start,end)` represents start to end layers, included start, excluded end. For example, `root.vehicle.device1.*(1,4)` represents all paths prefixed by `root.vehicle.device1` with layers greater than or equal to 4 and less than 7,  like `root.vehicle.device1.*`, `root.vehicle.device1.*.*`, `root.vehicle.device1.*.*.*`; `root.vehicle.*(1,4).sensor1` represents a path which is prefixed with `root.vehicle` and suffixed with `sensor1` and has 4 layers or 5 layers or 6 layers.
+
+`*(,end)` represents zero to end layers, included zero, excluded end. For example, `root.vehicle.device1.*(,4)` represents all paths prefixed by `root.vehicle.device1` with layers greater than or equal to 3 and less than 7,  like `root.vehicle.device1`, `root.vehicle.device1.*`, `root.vehicle.device1.*.*`, `root.vehicle.device1.*.*.*`; `root.vehicle.*(,4).sensor1` represents a path which is prefixed with `root.vehicle` and suffixed with `sensor1` and has 3 layers or 4 layers or 5 layers or 6 layers.
+
+`*(start,)` represents start or more layers, `**` stands for `*(1, )`. For example, `root.vehicle.device1.*(2,)` represents all paths prefixed by `root.vehicle.device1` with layers greater than or equal to 5, like `root.vehicle.device1.*.*`, `root.vehicle.device1.*.*.*`, etc. `root.vehicle.*(2,).sensor1` represents a path which is prefixed with `root.vehicle` and suffixed with `sensor1` and has at least 5 layers.
+
+`*(,)` represents zero or more layers. For example, `root.vehicle.device1.*(,)` represents all paths prefixed by `root.vehicle.device1` with layers greater than or equal to 3, like `root.vehicle.device1`, `root.vehicle.device1.*`, `root.vehicle.device1.*.*`, `root.vehicle.device1.*.*.*`, etc; `root.vehicle.*(,).sensor1` represents a path which is prefixed with `root.vehicle` and suffixed with `sensor1` and has at least 3 layers.
+
+`*(n)` represents exactly n layers. `*` stands for `*(1)`. For example, `root.vehicle.*(2).sensor1` represents a 5-layer path which is prefixed with `root.vehicle` and suffixed with `sensor1`.
+
+> Note1: Wildcard `*` and `**` and `*(start,end)` cannot be placed at the beginning of the path.
 
 
 ## Timeseries

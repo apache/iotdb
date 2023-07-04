@@ -1190,3 +1190,149 @@ The result set is：
 | Time | temperature | speed |
 | ---- | ----------- | ----- |
 | ...  | ...         | ...   |
+
+## Use wildcard
+
+In some scenarios where the query is based on the path nodes, only the names of some nodes in the path can be determined to query the indicators, and wildcards need to be used to replace some unknown nodes.
+
+#### wildcard list
+
+| wildcard       | description                                                   |
+|----------------|---------------------------------------------------------------|
+| `*`            | represents one layer.                                         |
+| `**`           | represents (`*`)+, which is one or more layers of `*`.        |
+| `*(start.end)` | represents start to end layers, included start, excluded end. |
+| `*(start,)`    | represents start or more layers, `**` stands for `*(1, )`.    |
+| `*(,end)`      | represents zero to end layers, included zero, excluded end.   |
+| `*(,)`         | represents zero or more layers.                               |
+| `*(n)`         | represents exactly n layers.                                  |
+
+
+#### time series：
+
+```
++----------------------------------------------------------------+-----+-------------+--------+--------+-----------+----+----------+
+|                                                      timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
++----------------------------------------------------------------+-----+-------------+--------+--------+-----------+----+----------+
+|          root.ln.wf01.wf02.wf03.wf04.wf05.wf06.wf07.wf08.status| null|      root.ln| BOOLEAN|     RLE|     SNAPPY|null|      null|
+|root.ln.wf01.wf02.wf03.wf04.wf05.wf06.wf07.wf08.wf09.wf10.status| null|      root.ln| BOOLEAN|     RLE|     SNAPPY|null|      null|
+|     root.ln.wf01.wf02.wf03.wf04.wf05.wf06.wf07.wf08.wf09.status| null|      root.ln| BOOLEAN|     RLE|     SNAPPY|null|      null|
+|               root.ln.wf01.wf02.wf03.wf04.wf05.wf06.wf07.status| null|      root.ln| BOOLEAN|     RLE|     SNAPPY|null|      null|
+|                    root.ln.wf01.wf02.wf03.wf04.wf05.wf06.status| null|      root.ln| BOOLEAN|     RLE|     SNAPPY|null|      null|
+|                         root.ln.wf01.wf02.wf03.wf04.wf05.status| null|      root.ln| BOOLEAN|     RLE|     SNAPPY|null|      null|
+|                              root.ln.wf01.wf02.wf03.wf04.status| null|      root.ln| BOOLEAN|     RLE|     SNAPPY|null|      null|
+|                                   root.ln.wf01.wf02.wf03.status| null|      root.ln| BOOLEAN|     RLE|     SNAPPY|null|      null|
+|                                        root.ln.wf01.wf02.status| null|      root.ln| BOOLEAN|     RLE|     SNAPPY|null|      null|
+|                                             root.ln.wf01.status| null|      root.ln| BOOLEAN|     RLE|     SNAPPY|null|      null|
++----------------------------------------------------------------+-----+-------------+--------+--------+-----------+----+----------+
+```
+
+#### known storage group `root.ln`; one path node named `wf05`; You need to query the `status` indicator of the next node of a known path node.
+
+```sql
+select status from root.ln.*(,).`wf05`.*;
+select status from root.ln.*(,).`wf05`.*(1);
+```
+
+The result set is：
+
+```
++-----------------------------+--------------------------------------------+
+|                         Time|root.ln.wf01.wf02.wf03.wf04.wf05.wf06.status|
++-----------------------------+--------------------------------------------+
+|1970-01-01T08:00:00.001+08:00|                                        true|
++-----------------------------+--------------------------------------------+
+Total line number = 1
+It costs 0.005s
+```
+
+#### known storage group `root.ln`; one path node named `wf05`; You need to query all the `status` indicators after the next node of the known path node.
+
+```sql
+select status from root.ln.*(,).`wf05`.**;
+select status from root.ln.*(,).`wf05`.*(1,);
+```
+
+The result set is：
+
+```
++-----------------------------+----------------------------------------------------------------+-----------------------------------------------------------+------------------------------------------------------+-------------------------------------------------+--------------------------------------------+
+|                         Time|root.ln.wf01.wf02.wf03.wf04.wf05.wf06.wf07.wf08.wf09.wf10.status|root.ln.wf01.wf02.wf03.wf04.wf05.wf06.wf07.wf08.wf09.status|root.ln.wf01.wf02.wf03.wf04.wf05.wf06.wf07.wf08.status|root.ln.wf01.wf02.wf03.wf04.wf05.wf06.wf07.status|root.ln.wf01.wf02.wf03.wf04.wf05.wf06.status|
++-----------------------------+----------------------------------------------------------------+-----------------------------------------------------------+------------------------------------------------------+-------------------------------------------------+--------------------------------------------+
+|1970-01-01T08:00:00.001+08:00|                                                            true|                                                       true|                                                  true|                                             true|                                        true|
++-----------------------------+----------------------------------------------------------------+-----------------------------------------------------------+------------------------------------------------------+-------------------------------------------------+--------------------------------------------+
+Total line number = 1
+It costs 0.012s
+```
+
+#### known storage group `root.ln`; two path node named `wf01`，`wf05`; The relative order of the two path nodes 'wf01' is on the left of 'wf05'. Query all `status` indicators that meet the conditions.
+
+```sql
+select status from root.ln.*(,).wf01.*(,).`wf05`.*(,);
+```
+
+The result set is：
+
+```
++-----------------------------+----------------------------------------------------------------+-----------------------------------------------------------+------------------------------------------------------+-------------------------------------------------+--------------------------------------------+---------------------------------------+
+|                         Time|root.ln.wf01.wf02.wf03.wf04.wf05.wf06.wf07.wf08.wf09.wf10.status|root.ln.wf01.wf02.wf03.wf04.wf05.wf06.wf07.wf08.wf09.status|root.ln.wf01.wf02.wf03.wf04.wf05.wf06.wf07.wf08.status|root.ln.wf01.wf02.wf03.wf04.wf05.wf06.wf07.status|root.ln.wf01.wf02.wf03.wf04.wf05.wf06.status|root.ln.wf01.wf02.wf03.wf04.wf05.status|
++-----------------------------+----------------------------------------------------------------+-----------------------------------------------------------+------------------------------------------------------+-------------------------------------------------+--------------------------------------------+---------------------------------------+
+|1970-01-01T08:00:00.001+08:00|                                                            true|                                                       true|                                                  true|                                             true|                                        true|                                   true|
++-----------------------------+----------------------------------------------------------------+-----------------------------------------------------------+------------------------------------------------------+-------------------------------------------------+--------------------------------------------+---------------------------------------+
+Total line number = 1
+It costs 0.041s
+```
+
+#### known storage group `root.ln`; one path node named `wf05`; You need to query all the status indicators after the two nodes under the known path node.
+
+```sql
+select status from root.ln.*(,).`wf05`.*(2,);
+```
+
+The result set is：
+
+```
++-----------------------------+----------------------------------------------------------------+-----------------------------------------------------------+------------------------------------------------------+-------------------------------------------------+
+|                         Time|root.ln.wf01.wf02.wf03.wf04.wf05.wf06.wf07.wf08.wf09.wf10.status|root.ln.wf01.wf02.wf03.wf04.wf05.wf06.wf07.wf08.wf09.status|root.ln.wf01.wf02.wf03.wf04.wf05.wf06.wf07.wf08.status|root.ln.wf01.wf02.wf03.wf04.wf05.wf06.wf07.status|
++-----------------------------+----------------------------------------------------------------+-----------------------------------------------------------+------------------------------------------------------+-------------------------------------------------+
+|1970-01-01T08:00:00.001+08:00|                                                            true|                                                       true|                                                  true|                                             true|
++-----------------------------+----------------------------------------------------------------+-----------------------------------------------------------+------------------------------------------------------+-------------------------------------------------+
+Total line number = 1
+It costs 0.010s
+```
+
+#### known storage group `root.ln`; one path node named `wf05`; You need to query all the status indicators in the two nodes under the known path node.
+
+```sql
+select status from root.ln.*(,).`wf05`.*(,3);
+```
+
+The result set is：
+
+```
++-----------------------------+-------------------------------------------------+--------------------------------------------+---------------------------------------+
+|                         Time|root.ln.wf01.wf02.wf03.wf04.wf05.wf06.wf07.status|root.ln.wf01.wf02.wf03.wf04.wf05.wf06.status|root.ln.wf01.wf02.wf03.wf04.wf05.status|
++-----------------------------+-------------------------------------------------+--------------------------------------------+---------------------------------------+
+|1970-01-01T08:00:00.001+08:00|                                             true|                                        true|                                   true|
++-----------------------------+-------------------------------------------------+--------------------------------------------+---------------------------------------+
+Total line number = 1
+It costs 0.008s
+```
+
+#### known storage group `root.ln`; one path node named `wf05`; You need to query all the status indicators within the four nodes after the two nodes under the known path node.
+
+```sql
+select status from root.ln.*(,).`wf05`.*(2,5);
+```
+
+The result set is：
+
+```
++-----------------------------+-----------------------------------------------------------+------------------------------------------------------+-------------------------------------------------+
+|                         Time|root.ln.wf01.wf02.wf03.wf04.wf05.wf06.wf07.wf08.wf09.status|root.ln.wf01.wf02.wf03.wf04.wf05.wf06.wf07.wf08.status|root.ln.wf01.wf02.wf03.wf04.wf05.wf06.wf07.status|
++-----------------------------+-----------------------------------------------------------+------------------------------------------------------+-------------------------------------------------+
+|1970-01-01T08:00:00.001+08:00|                                                       true|                                                  true|                                             true|
++-----------------------------+-----------------------------------------------------------+------------------------------------------------------+-------------------------------------------------+
+Total line number = 1
+It costs 0.011s
+```

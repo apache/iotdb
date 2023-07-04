@@ -748,6 +748,7 @@ nodeName
     : wildcard
     | wildcard? ID wildcard?
     | wildcard? INTEGER_LITERAL wildcard?
+    | MORE_LAYERS_WILDCARD
     | QUTOED_ID_IN_NODE_NAME
     | STRING_LITERAL
     | DURATION_LITERAL

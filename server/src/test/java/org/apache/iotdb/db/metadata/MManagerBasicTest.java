@@ -2567,13 +2567,13 @@ public class MManagerBasicTest {
 
     Set<String> result = manager.getChildNodePathInNextLevel(new PartialPath("root.**"), 1, 1);
     Assert.assertEquals(1, result.size());
-    Assert.assertTrue(result.contains("root.sg.d2"));
+    Assert.assertTrue(result.contains("root.sg.d2.s"));
 
     result = manager.getChildNodePathInNextLevel(new PartialPath("root.**"), 3, 3);
     Assert.assertEquals(3, result.size());
-    Assert.assertTrue(result.contains("root.sg.d1.s"));
-    Assert.assertTrue(result.contains("root.sg.d2.s"));
-    Assert.assertTrue(result.contains("root.sg.d3.s"));
+    Assert.assertTrue(result.contains("root.sg.d1"));
+    Assert.assertTrue(result.contains("root.sg.d2"));
+    Assert.assertTrue(result.contains("root.sg.d3"));
 
     result = manager.getChildNodePathInNextLevel(new PartialPath("root.sg"), 1, 1);
     Assert.assertEquals(1, result.size());

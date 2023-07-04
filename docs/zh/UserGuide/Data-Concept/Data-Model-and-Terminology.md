@@ -104,7 +104,17 @@ wildcard
 
 `**`在路径中表示是（`*`）+，即为一层或多层`*`。例如`root.vehicle.device1.**`代表的是`root.vehicle.device1.*`, `root.vehicle.device1.*.*`, `root.vehicle.device1.*.*.*`等所有以`root.vehicle.device1`为前缀路径的大于等于 4 层的路径；`root.vehicle.**.sensor1`代表的是以`root.vehicle`为前缀，以`sensor1`为后缀，层次大于等于 4 层的路径。
 
-> 注意：`*`和`**`不能放在路径开头。
+`*(start,end)`在路径中表示最少start层（包含），最多end层（不包含）。例如`root.vehicle.device1.*(1,4)`代表的是`root.vehicle.device1.*`, `root.vehicle.device1.*.*`, `root.vehicle.device1.*.*.*`层数在4，5，6中的路径；`root.vehicle.*(1,4).sensor1`代表的是以`root.vehicle`为前缀，以`sensor1`为后缀，层次在4，5，6中的路径。
+
+`*(,end)`在路径中表示最少0层（包含），最多end层（不包含）。例如`root.vehicle.device1.*(,4)`代表的是`root.vehicle.device1`, `root.vehicle.device1.*`, `root.vehicle.device1.*.*`, `root.vehicle.device1.*.*.*`层数在3，4，5，6中的路径；`root.vehicle.*(,4).sensor1`代表的是以`root.vehicle`为前缀，以`sensor1`为后缀，层次在3，4，5，6中的路径。
+
+`*(start,)`在路径中表示最少start层（包含），最多层数不限制。`*(1,)`等价于`**`。例如`root.vehicle.device1.*(2,)`代表的是`root.vehicle.device1.*.*`, `root.vehicle.device1.*.*.*`等所有以`root.vehicle.device1`为前缀路径的大于等于 5 层的路径；`root.vehicle.*(2,).sensor1`代表的是以`root.vehicle`为前缀，以`sensor1`为后缀，层次大于等于 5 层的路径。
+
+`*(,)`在路径中表示最少0层（包含），最多层数不限制；即为0层或0层以上。例如`root.vehicle.device1.**`代表的是`root.vehicle.device1`, `root.vehicle.device1.*`, `root.vehicle.device1.*.*`, `root.vehicle.device1.*.*.*`等所有以`root.vehicle.device1`为前缀路径的大于等于 3 层的路径；`root.vehicle.*(,).sensor1`代表的是以`root.vehicle`为前缀，以`sensor1`为后缀，层次大于等于 3 层的路径。
+
+`*(n)`在路径中表示固定n层。`*(1)`等价于`*`。例如`root.vehicle.*(2).sensor1`代表的是以`root.vehicle`为前缀，以`sensor1`为后缀，层次等于 5 层的路径。
+
+> 注意：`*`，`**`和`*(start,end)`不能放在路径开头。
 
 
 ### 时间序列

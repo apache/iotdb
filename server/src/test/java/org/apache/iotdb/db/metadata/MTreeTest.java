@@ -588,6 +588,233 @@ public class MTreeTest {
   }
 
   @Test
+  public void testShowStorageGroup() {
+    MTree root = new MTree();
+    try {
+      root.setStorageGroup(new PartialPath("root.la"));
+      root.setStorageGroup(new PartialPath("root.lb.lc"));
+      root.setStorageGroup(new PartialPath("root.ld.le.lf"));
+
+      List<PartialPath> list = new ArrayList<>();
+      // zero layers
+      assertEquals(list, root.getBelongedStorageGroups(new PartialPath("root.*(0)")));
+      assertEquals(list, root.getBelongedStorageGroups(new PartialPath("root.*(0,1)")));
+      assertEquals(list, root.getBelongedStorageGroups(new PartialPath("root.*(,1)")));
+      // one layer
+      list.add(new PartialPath("root.la"));
+      assertEquals(list, root.getBelongedStorageGroups(new PartialPath("root.*")));
+      assertEquals(list, root.getBelongedStorageGroups(new PartialPath("root.*(1)")));
+      assertEquals(list, root.getBelongedStorageGroups(new PartialPath("root.*(1,2)")));
+      // zero to two layers
+      list.add(new PartialPath("root.lb.lc"));
+      assertEquals(list, root.getBelongedStorageGroups(new PartialPath("root.*(0,3)")));
+      // all layers
+      list.add(new PartialPath("root.ld.le.lf"));
+      assertEquals(list, root.getBelongedStorageGroups(new PartialPath("root.**")));
+      assertEquals(list, root.getBelongedStorageGroups(new PartialPath("root.*(0,4)")));
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testShowDevices() {
+    MTree root = new MTree();
+    try {
+      root.setStorageGroup(new PartialPath("root.ln"));
+      root.createTimeseries(
+          new PartialPath("root.ln.a1.status"),
+          TSDataType.BOOLEAN,
+          TSEncoding.PLAIN,
+          CompressionType.SNAPPY,
+          Collections.emptyMap(),
+          null);
+      root.createTimeseries(
+          new PartialPath("root.ln.a1.b1.status"),
+          TSDataType.BOOLEAN,
+          TSEncoding.PLAIN,
+          CompressionType.SNAPPY,
+          Collections.emptyMap(),
+          null);
+      root.createTimeseries(
+          new PartialPath("root.ln.a1.b1.c1.status"),
+          TSDataType.BOOLEAN,
+          TSEncoding.PLAIN,
+          CompressionType.SNAPPY,
+          Collections.emptyMap(),
+          null);
+      root.createTimeseries(
+          new PartialPath("root.ln.a1.b1.c1.d1.status"),
+          TSDataType.BOOLEAN,
+          TSEncoding.PLAIN,
+          CompressionType.SNAPPY,
+          Collections.emptyMap(),
+          null);
+
+      assertEquals(
+          root.getDevices(new PartialPath("root.ln.a1"), false),
+          root.getDevices(new PartialPath("root.ln.a1.*(0)"), false));
+      assertEquals(
+          root.getDevices(new PartialPath("root.ln.a1.*"), false),
+          root.getDevices(new PartialPath("root.ln.a1.*(1)"), false));
+      assertEquals(
+          root.getDevices(new PartialPath("root.ln.a1.**"), false),
+          root.getDevices(new PartialPath("root.ln.a1.*(1,)"), false));
+      assertEquals(
+          root.getDevices(new PartialPath("root.ln.a1.*.*"), false),
+          root.getDevices(new PartialPath("root.ln.a1.*(2)"), false));
+      assertEquals(4, root.getDevices(new PartialPath("root.ln.*(0,)"), false).size());
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testShowTimeSeries() {
+    MTree root = new MTree();
+    try {
+      root.setStorageGroup(new PartialPath("root.ln"));
+      root.createTimeseries(
+          new PartialPath("root.ln.a1.status"),
+          TSDataType.BOOLEAN,
+          TSEncoding.PLAIN,
+          CompressionType.SNAPPY,
+          Collections.emptyMap(),
+          null);
+      root.createTimeseries(
+          new PartialPath("root.ln.a1.b1.status"),
+          TSDataType.BOOLEAN,
+          TSEncoding.PLAIN,
+          CompressionType.SNAPPY,
+          Collections.emptyMap(),
+          null);
+      root.createTimeseries(
+          new PartialPath("root.ln.a1.b1.c1.status"),
+          TSDataType.BOOLEAN,
+          TSEncoding.PLAIN,
+          CompressionType.SNAPPY,
+          Collections.emptyMap(),
+          null);
+      root.createTimeseries(
+          new PartialPath("root.ln.a1.b1.c1.d1.status"),
+          TSDataType.BOOLEAN,
+          TSEncoding.PLAIN,
+          CompressionType.SNAPPY,
+          Collections.emptyMap(),
+          null);
+
+      assertEquals(
+          root.getMeasurementPaths(new PartialPath("root.ln.a1")),
+          root.getMeasurementPaths(new PartialPath("root.ln.a1.*(0)")));
+      assertEquals(
+          root.getMeasurementPaths(new PartialPath("root.ln.a1.*")),
+          root.getMeasurementPaths(new PartialPath("root.ln.a1.*(1)")));
+      assertEquals(
+          root.getMeasurementPaths(new PartialPath("root.ln.a1.**")),
+          root.getMeasurementPaths(new PartialPath("root.ln.a1.*(1,)")));
+      assertEquals(
+          root.getMeasurementPaths(new PartialPath("root.ln.a1.*.*")),
+          root.getMeasurementPaths(new PartialPath("root.ln.a1.*(2)")));
+      assertEquals(4, root.getMeasurementPaths(new PartialPath("root.ln.a1.*(0,)")).size());
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCountDevices() {
+    MTree root = new MTree();
+    try {
+      root.setStorageGroup(new PartialPath("root.ln"));
+      root.createTimeseries(
+          new PartialPath("root.ln.a1.status"),
+          TSDataType.BOOLEAN,
+          TSEncoding.PLAIN,
+          CompressionType.SNAPPY,
+          Collections.emptyMap(),
+          null);
+      root.createTimeseries(
+          new PartialPath("root.ln.a1.b1.status"),
+          TSDataType.BOOLEAN,
+          TSEncoding.PLAIN,
+          CompressionType.SNAPPY,
+          Collections.emptyMap(),
+          null);
+      root.createTimeseries(
+          new PartialPath("root.ln.a1.b1.c1.status"),
+          TSDataType.BOOLEAN,
+          TSEncoding.PLAIN,
+          CompressionType.SNAPPY,
+          Collections.emptyMap(),
+          null);
+      root.createTimeseries(
+          new PartialPath("root.ln.a1.b1.c1.d1.status"),
+          TSDataType.BOOLEAN,
+          TSEncoding.PLAIN,
+          CompressionType.SNAPPY,
+          Collections.emptyMap(),
+          null);
+
+      assertEquals(1, root.getDevicesNum(new PartialPath("root.ln.a1.*(0)")));
+      assertEquals(1, root.getDevicesNum(new PartialPath("root.ln.a1.*(1)")));
+      assertEquals(3, root.getDevicesNum(new PartialPath("root.ln.a1.*(1,)")));
+      assertEquals(1, root.getDevicesNum(new PartialPath("root.ln.a1.*(2)")));
+      assertEquals(4, root.getDevicesNum(new PartialPath("root.ln.a1.*(0,)")));
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCountTimeSeries() {
+    MTree root = new MTree();
+    try {
+      root.setStorageGroup(new PartialPath("root.ln"));
+      root.createTimeseries(
+          new PartialPath("root.ln.a1.status"),
+          TSDataType.BOOLEAN,
+          TSEncoding.PLAIN,
+          CompressionType.SNAPPY,
+          Collections.emptyMap(),
+          null);
+      root.createTimeseries(
+          new PartialPath("root.ln.a1.b1.status"),
+          TSDataType.BOOLEAN,
+          TSEncoding.PLAIN,
+          CompressionType.SNAPPY,
+          Collections.emptyMap(),
+          null);
+      root.createTimeseries(
+          new PartialPath("root.ln.a1.b1.c1.status"),
+          TSDataType.BOOLEAN,
+          TSEncoding.PLAIN,
+          CompressionType.SNAPPY,
+          Collections.emptyMap(),
+          null);
+      root.createTimeseries(
+          new PartialPath("root.ln.a1.b1.c1.d1.status"),
+          TSDataType.BOOLEAN,
+          TSEncoding.PLAIN,
+          CompressionType.SNAPPY,
+          Collections.emptyMap(),
+          null);
+
+      assertEquals(0, root.getAllTimeseriesCount(new PartialPath("root.ln.a1.*(0)")));
+      assertEquals(1, root.getAllTimeseriesCount(new PartialPath("root.ln.a1.*(1)")));
+      assertEquals(4, root.getAllTimeseriesCount(new PartialPath("root.ln.a1.*(1,)")));
+      assertEquals(1, root.getAllTimeseriesCount(new PartialPath("root.ln.a1.*(2)")));
+      assertEquals(4, root.getAllTimeseriesCount(new PartialPath("root.ln.a1.*(0,)")));
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void testGetAllFileNamesByPath() {
     // set storage group first
     MTree root = new MTree();
@@ -887,13 +1114,20 @@ public class MTreeTest {
         null);
 
     Assert.assertEquals(7, root.getStorageGroupNum(new PartialPath("root.**")));
+    Assert.assertEquals(7, root.getStorageGroupNum(new PartialPath("root.*(1,)")));
     Assert.assertEquals(3, root.getStorageGroupNum(new PartialPath("root.*")));
+    Assert.assertEquals(3, root.getStorageGroupNum(new PartialPath("root.*(1)")));
     Assert.assertEquals(2, root.getStorageGroupNum(new PartialPath("root.*.*")));
+    Assert.assertEquals(2, root.getStorageGroupNum(new PartialPath("root.*(2)")));
     Assert.assertEquals(2, root.getStorageGroupNum(new PartialPath("root.*.*.*")));
+    Assert.assertEquals(2, root.getStorageGroupNum(new PartialPath("root.*(3)")));
     Assert.assertEquals(1, root.getStorageGroupNum(new PartialPath("root.*.sg1")));
+    Assert.assertEquals(1, root.getStorageGroupNum(new PartialPath("root.*(1).sg1")));
     Assert.assertEquals(2, root.getStorageGroupNum(new PartialPath("root.**.sg1")));
+    Assert.assertEquals(2, root.getStorageGroupNum(new PartialPath("root.*(1,).sg1")));
     Assert.assertEquals(1, root.getStorageGroupNum(new PartialPath("root.sg3")));
     Assert.assertEquals(2, root.getStorageGroupNum(new PartialPath("root.*.b.*")));
+    Assert.assertEquals(2, root.getStorageGroupNum(new PartialPath("root.*(1).b.*(1)")));
   }
 
   @Test
