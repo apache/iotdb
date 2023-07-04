@@ -40,7 +40,9 @@ public class PipeStaticMeta {
   private PipeParameters processorParameters;
   private PipeParameters connectorParameters;
 
-  private PipeStaticMeta() {}
+  private PipeStaticMeta() {
+    // Empty constructor
+  }
 
   public PipeStaticMeta(
       String pipeName,

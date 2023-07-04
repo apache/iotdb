@@ -395,6 +395,17 @@ struct TPushPipeMetaReq {
   1: required list<binary> pipeMetas
 }
 
+struct TPushPipeMetaResp {
+  1: required common.TSStatus status
+  2: optional list<TPushPipeMetaRespExceptionMessage> exceptionMessages
+}
+
+struct TPushPipeMetaRespExceptionMessage {
+  1: required string pipeName
+  2: required string message
+  3: required i64 timeStamp
+}
+
 struct TConstructViewSchemaBlackListReq{
     1: required list<common.TConsensusGroupId> schemaRegionIdList
     2: required binary pathPatternTree
@@ -803,7 +814,7 @@ service IDataNodeRPCService {
  /**
   * Send pipeMetas to DataNodes, for synchronization
   */
-  common.TSStatus pushPipeMeta(TPushPipeMetaReq req)
+  TPushPipeMetaResp pushPipeMeta(TPushPipeMetaReq req)
 
   /**
   * ConfigNode will ask DataNode for pipe meta in every few seconds

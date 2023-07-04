@@ -80,10 +80,7 @@ public class PipeMetaSyncer {
   private synchronized void sync() {
     final TSStatus status = configManager.getProcedureManager().pipeMetaSync();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn(
-          "PipeMetaSyncer meets error in syncing pipe meta, code: {}, message: {}",
-          status.getCode(),
-          status.getMessage());
+      configManager.getProcedureManager().pipeHandleMetaChange(true, true);
     }
   }
 

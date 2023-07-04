@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.confignode.procedure.impl.pipe;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -26,8 +25,9 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedExcepti
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
 import org.apache.iotdb.confignode.procedure.state.pipe.task.OperatePipeTaskState;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -38,6 +38,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * This procedure manage 4 kinds of PIPE operations: CREATE, START, STOP and DROP.
@@ -181,7 +182,16 @@ public abstract class AbstractOperatePipeProcedureV2
     return OperatePipeTaskState.VALIDATE_TASK;
   }
 
-  protected TSStatus pushPipeMetaToDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  /**
+   * Pushing all the pipeMeta's to all the dataNodes, forcing an update to the the pipe's runtime
+   * state.
+   *
+   * @param env ConfigNodeProcedureEnv
+   * @return The responseMap after pushing pipe meta
+   * @throws IOException Exception when Serializing to byte buffer
+   */
+  protected Map<Integer, TPushPipeMetaResp> pushPipeMetaToDataNodes(ConfigNodeProcedureEnv env)
+      throws IOException {
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
     for (PipeMeta pipeMeta :
         env.getConfigManager()
@@ -192,11 +202,46 @@ public abstract class AbstractOperatePipeProcedureV2
       pipeMetaBinaryList.add(pipeMeta.serialize());
     }
 
-    return RpcUtils.squashResponseStatusList(env.pushPipeMetaToDataNodes(pipeMetaBinaryList));
+    return env.pushPipeMetaToDataNodes(pipeMetaBinaryList);
+  }
+
+  /**
+   * Parsing the given pipe's or all pipes' pushPipeMeta exceptions to string.
+   *
+   * @param pipeName The given pipe's pipe name, null if report all pipes' exceptions.
+   * @param respMap The responseMap after pushing pipe meta
+   * @return Error messages for the given pipe after pushing pipe meta
+   */
+  protected String parsePushPipeMetaExceptionForPipe(
+      String pipeName, Map<Integer, TPushPipeMetaResp> respMap) {
+    final StringBuilder exceptionMessageBuilder = new StringBuilder();
+    for (Map.Entry<Integer, TPushPipeMetaResp> respEntry : respMap.entrySet()) {
+      int dataNodeId = respEntry.getKey();
+      TPushPipeMetaResp resp = respEntry.getValue();
+      if (resp.getStatus().getCode() == TSStatusCode.PUSH_PIPE_META_ERROR.getStatusCode()) {
+        exceptionMessageBuilder.append(String.format("DataNodeId: %s ", dataNodeId));
+        resp.getExceptionMessages()
+            .forEach(
+                message -> {
+                  // Ignore the timeStamp for simplicity
+                  if (pipeName == null) {
+                    exceptionMessageBuilder.append(
+                        String.format(
+                            "PipeName: %s, Message: %s ",
+                            message.getPipeName(), message.getMessage()));
+                  } else if (pipeName.equals(message.getPipeName())) {
+                    exceptionMessageBuilder.append(
+                        String.format("Message: %s ", message.getMessage()));
+                  }
+                });
+      }
+    }
+    return exceptionMessageBuilder.toString();
   }
 
   protected void pushPipeMetaToDataNodesIgnoreException(ConfigNodeProcedureEnv env) {
     try {
+      // Ignore the exceptions reported
       pushPipeMetaToDataNodes(env);
     } catch (Throwable throwable) {
       LOGGER.info("Failed to push pipe meta list to data nodes, will retry later.", throwable);

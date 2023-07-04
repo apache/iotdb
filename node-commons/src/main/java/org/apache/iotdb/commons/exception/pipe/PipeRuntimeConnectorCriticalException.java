@@ -32,42 +32,56 @@ public class PipeRuntimeConnectorCriticalException extends PipeRuntimeCriticalEx
     super(message);
   }
 
+  public PipeRuntimeConnectorCriticalException(String message, long timeStamp) {
+    super(message, timeStamp);
+  }
+
   @Override
   public boolean equals(Object obj) {
     return obj instanceof PipeRuntimeConnectorCriticalException
-        && Objects.equals(getMessage(), ((PipeRuntimeConnectorCriticalException) obj).getMessage());
+        && Objects.equals(getMessage(), ((PipeRuntimeConnectorCriticalException) obj).getMessage())
+        && Objects.equals(getTimeStamp(), ((PipeRuntimeException) obj).getTimeStamp());
   }
 
   @Override
   public int hashCode() {
-    return getMessage().hashCode();
+    return Objects.hash(getMessage(), getTimeStamp());
   }
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {
     PipeRuntimeExceptionType.CONNECTOR_CRITICAL_EXCEPTION.serialize(byteBuffer);
     ReadWriteIOUtils.write(getMessage(), byteBuffer);
+    ReadWriteIOUtils.write(getTimeStamp(), byteBuffer);
   }
 
   @Override
   public void serialize(OutputStream stream) throws IOException {
     PipeRuntimeExceptionType.CONNECTOR_CRITICAL_EXCEPTION.serialize(stream);
     ReadWriteIOUtils.write(getMessage(), stream);
+    ReadWriteIOUtils.write(getTimeStamp(), stream);
   }
 
   public static PipeRuntimeConnectorCriticalException deserializeFrom(ByteBuffer byteBuffer) {
     final String message = ReadWriteIOUtils.readString(byteBuffer);
-    return new PipeRuntimeConnectorCriticalException(message);
+    final long timeStamp = ReadWriteIOUtils.readLong(byteBuffer);
+    return new PipeRuntimeConnectorCriticalException(message, timeStamp);
   }
 
   public static PipeRuntimeConnectorCriticalException deserializeFrom(InputStream stream)
       throws IOException {
     final String message = ReadWriteIOUtils.readString(stream);
-    return new PipeRuntimeConnectorCriticalException(message);
+    final long timeStamp = ReadWriteIOUtils.readLong(stream);
+    return new PipeRuntimeConnectorCriticalException(message, timeStamp);
   }
 
   @Override
   public String toString() {
-    return "PipeRuntimeConnectorCriticalException{ message: " + getMessage() + " }";
+    return "PipeRuntimeConnectorCriticalException{"
+        + "message='"
+        + getMessage()
+        + "', timeStamp="
+        + getTimeStamp()
+        + "}";
   }
 }

@@ -140,9 +140,9 @@ public class PipeHeartbeatParser {
       }
 
       final Map<TConsensusGroupId, PipeTaskMeta> pipeTaskMetaMapOnConfigNode =
-          pipeMetaOnConfigNode.getRuntimeMeta().getConsensusGroupIdToTaskMetaMap();
+          pipeMetaOnConfigNode.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
       final Map<TConsensusGroupId, PipeTaskMeta> pipeTaskMetaMapFromDataNode =
-          pipeMetaFromDataNode.getRuntimeMeta().getConsensusGroupIdToTaskMetaMap();
+          pipeMetaFromDataNode.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
       for (final Map.Entry<TConsensusGroupId, PipeTaskMeta> runtimeMetaOnConfigNode :
           pipeTaskMetaMapOnConfigNode.entrySet()) {
         if (runtimeMetaOnConfigNode.getValue().getLeaderDataNodeId() != dataNodeId) {
@@ -186,6 +186,12 @@ public class PipeHeartbeatParser {
         pipeTaskMetaOnConfigNode.clearExceptionMessages();
         for (final PipeRuntimeException exception :
             runtimeMetaFromDataNode.getExceptionMessages()) {
+
+          if (exception.getTimeStamp()
+              < pipeMetaOnConfigNode.getRuntimeMeta().getExceptionsClearTime()) {
+            // Ignore the exception if it's recorded before clear
+            continue;
+          }
 
           pipeTaskMetaOnConfigNode.trackExceptionMessage(exception);
 

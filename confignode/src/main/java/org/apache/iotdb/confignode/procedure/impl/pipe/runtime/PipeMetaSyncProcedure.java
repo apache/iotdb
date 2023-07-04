@@ -23,6 +23,8 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Map;
 
 public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
 
@@ -66,10 +69,20 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
+  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
     LOGGER.info("PipeMetaSyncProcedure: executeFromOperateOnDataNodes");
 
-    pushPipeMetaToDataNodesIgnoreException(env);
+    Map<Integer, TPushPipeMetaResp> respMap = pushPipeMetaToDataNodes(env);
+    if (env.getConfigManager()
+        .getPipeManager()
+        .getPipeTaskCoordinator()
+        .getPipeTaskInfo()
+        .recordPushPipeMetaExceptions(respMap)) {
+      throw new PipeException(
+          String.format(
+              "Failed to push pipe meta to dataNodes, details: %s",
+              parsePushPipeMetaExceptionForPipe(null, respMap)));
+    }
   }
 
   @Override
