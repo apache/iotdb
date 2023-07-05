@@ -154,9 +154,9 @@ public class IoTDBAlignByDeviceWithViewIT {
   public void testLastQuery() {
     String[] expectedRetArray =
         new String[] {
-          "20,root.sg1.d2.s1,20.0,FLOAT",
           "23,root.sg1.d1.s1,230000.0,FLOAT",
           "23,root.sg1.d3.s1,230000.0,FLOAT",
+          "20,root.sg1.d2.s1,20.0,FLOAT",
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();

@@ -642,8 +642,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     // when the select expression of any device is empty,
     // the where expression map also need remove this device
-    noMeasurementDevices.forEach(
-        devicePath -> analysis.getDeviceToWhereExpression().remove(devicePath.getFullPath()));
+    if (analysis.getDeviceToWhereExpression() != null) {
+      noMeasurementDevices.forEach(
+          devicePath -> analysis.getDeviceToWhereExpression().remove(devicePath.getFullPath()));
+    }
 
     analysis.setDeviceToSelectExpressions(deviceToSelectExpressions);
 
