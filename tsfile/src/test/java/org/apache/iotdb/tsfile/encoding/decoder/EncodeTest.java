@@ -28,7 +28,7 @@ public class EncodeTest {
     String Input = "/home/ubuntu/datasets";
     String Output =
         "/home/ubuntu/encoderle.csv"; // the direction of output compression ratio and speed
-    int repeatTime = 4; // set repeat time
+    int repeatTime = 5; // set repeat time
 
     String[] dataTypeNames = {"INT32", "INT64", "FLOAT", "DOUBLE"};
     // select encoding algorithms
