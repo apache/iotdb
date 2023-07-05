@@ -160,7 +160,7 @@ public class Analysis {
 
   private Set<Expression> deviceViewOutputExpressions;
 
-  private Map<String, Set<Expression>> deviceToOutputExpressions = new HashMap<>();
+  private final Map<String, Set<Expression>> deviceToOutputExpressions = new HashMap<>();
 
   // indicates whether DeviceView need special process when rewriteSource in DistributionPlan,
   // you can see SourceRewriter#visitDeviceView to get more information
@@ -731,9 +731,5 @@ public class Analysis {
 
   public Map<String, Set<Expression>> getDeviceToOutputExpressions() {
     return deviceToOutputExpressions;
-  }
-
-  public void setDeviceToOutputExpressions(Map<String, Set<Expression>> deviceToOutputExpressions) {
-    this.deviceToOutputExpressions = deviceToOutputExpressions;
   }
 }
