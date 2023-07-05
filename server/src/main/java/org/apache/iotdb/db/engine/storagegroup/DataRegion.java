@@ -1572,6 +1572,7 @@ public class DataRegion implements IDataRegionForQuery {
     if (resource.tryWriteLock()) {
       try {
         // try to delete physical data file
+        long fileSize = resource.getTsFileSize();
         resource.remove();
         tsFileManager.remove(resource, isSeq);
         logger.info(
@@ -1580,6 +1581,7 @@ public class DataRegion implements IDataRegionForQuery {
             new Date(ttlLowerBound),
             dataTTL,
             config.getTimestampPrecision());
+        TsFileMetricManager.getInstance().deleteFile(fileSize, isSeq, 1);
       } finally {
         resource.writeUnlock();
       }
