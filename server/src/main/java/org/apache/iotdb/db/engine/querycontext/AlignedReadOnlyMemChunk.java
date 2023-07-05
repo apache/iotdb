@@ -68,17 +68,17 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
   }
 
   private void initAlignedChunkMetaFromTsBlock() throws QueryProcessException {
-    // time chunk
+    // Time chunk
     Statistics timeStatistics = Statistics.getStatsByType(TSDataType.VECTOR);
     IChunkMetadata timeChunkMetadata =
         new ChunkMetadata(timeChunkName, TSDataType.VECTOR, 0, timeStatistics);
     List<IChunkMetadata> valueChunkMetadataList = new ArrayList<>();
-    // update time chunk
+    // Update time chunk
     for (int row = 0; row < tsBlock.getPositionCount(); row++) {
       timeStatistics.update(tsBlock.getTimeColumn().getLong(row));
     }
     timeStatistics.setEmpty(false);
-    // update value chunk
+    // Update value chunk
     for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
       Statistics valueStatistics = Statistics.getStatsByType(dataTypes.get(column));
       valueStatistics.setEmpty(true);

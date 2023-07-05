@@ -113,7 +113,9 @@ public class PrimitiveArrayManager {
     TOTAL_ALLOCATION_REQUEST_COUNT.set(0);
   }
 
-  private PrimitiveArrayManager() {}
+  private PrimitiveArrayManager() {
+    // Empty constructor
+  }
 
   /**
    * Get or allocate primitive data lists according to type.

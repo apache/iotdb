@@ -27,7 +27,7 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.CheckTimeSeriesExis
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CountPathsUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackListRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipeHeartbeatRPCHandler;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.PushPipeMetaRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.PipePushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SchemaUpdateRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
@@ -210,7 +210,7 @@ public class AsyncClientHandler<Q, R> {
             (Map<Integer, TPipeHeartbeatResp>) responseMap,
             countDownLatch);
       case PUSH_PIPE_META:
-        return new PushPipeMetaRPCHandler(
+        return new PipePushMetaRPCHandler(
             requestType,
             requestId,
             targetDataNode,

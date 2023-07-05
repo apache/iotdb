@@ -75,7 +75,7 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
     }
     if (aliveTaskCount == 1) {
       close();
-      // this subtask is out of life cycle, should never be used again
+      // This subtask is out of life cycle, should never be used again
       return true;
     }
     aliveTaskCount--;

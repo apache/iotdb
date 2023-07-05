@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.procedure.impl.pipe;
 
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
@@ -54,27 +55,35 @@ public abstract class AbstractOperatePipeProcedureV2
 
   private static final int RETRY_THRESHOLD = 1;
 
-  // only used in rollback to reduce the number of network calls
+  // Only used in rollback to reduce the number of network calls
   protected boolean isRollbackFromOperateOnDataNodesSuccessful = false;
 
   protected abstract PipeTaskOperation getOperation();
 
   /**
-   * Execute at state VALIDATE_TASK
+   * Execute at state VALIDATE_TASK.
    *
-   * @return true if procedure can finish directly
+   * @throws PipeException if validation for pipe parameters failed
    */
   protected abstract void executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException;
 
-  /** Execute at state CALCULATE_INFO_FOR_TASK */
-  protected abstract void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env)
-      throws PipeException;
+  /** Execute at state CALCULATE_INFO_FOR_TASK. */
+  protected abstract void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env);
 
-  /** Execute at state WRITE_CONFIG_NODE_CONSENSUS */
+  /**
+   * Execute at state WRITE_CONFIG_NODE_CONSENSUS.
+   *
+   * @throws PipeException if configNode consensus write failed
+   */
   protected abstract void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
       throws PipeException;
 
-  /** Execute at state OPERATE_ON_DATA_NODES */
+  /**
+   * Execute at state OPERATE_ON_DATA_NODES.
+   *
+   * @throws PipeException if push pipe metas to dataNodes failed
+   * @throws IOException Exception when Serializing to byte buffer
+   */
   protected abstract void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws PipeException, IOException;
 
@@ -100,6 +109,9 @@ public abstract class AbstractOperatePipeProcedureV2
           executeFromOperateOnDataNodes(env);
           env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
           return Flow.NO_MORE_STATE;
+        default:
+          throw new UnsupportedOperationException(
+              String.format("Unknown state during executing operatePipeProcedure, %s", state));
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
@@ -145,7 +157,7 @@ public abstract class AbstractOperatePipeProcedureV2
         }
         break;
       case OPERATE_ON_DATA_NODES:
-        // we have to make sure that rollbackFromOperateOnDataNodes is executed before
+        // We have to make sure that rollbackFromOperateOnDataNodes is executed before
         // rollbackFromWriteConfigNodeConsensus, because rollbackFromOperateOnDataNodes is
         // executed based on the consensus of config nodes that is written by
         // rollbackFromWriteConfigNodeConsensus
@@ -218,7 +230,7 @@ public abstract class AbstractOperatePipeProcedureV2
     for (Map.Entry<Integer, TPushPipeMetaResp> respEntry : respMap.entrySet()) {
       int dataNodeId = respEntry.getKey();
       TPushPipeMetaResp resp = respEntry.getValue();
-      if (resp.getStatus().getCode() == TSStatusCode.PUSH_PIPE_META_ERROR.getStatusCode()) {
+      if (resp.getStatus().getCode() == TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()) {
         exceptionMessageBuilder.append(String.format("DataNodeId: %s ", dataNodeId));
         resp.getExceptionMessages()
             .forEach(
@@ -234,6 +246,7 @@ public abstract class AbstractOperatePipeProcedureV2
                         String.format("Message: %s ", message.getMessage()));
                   }
                 });
+        exceptionMessageBuilder.append(". ");
       }
     }
     return exceptionMessageBuilder.toString();
@@ -243,8 +256,8 @@ public abstract class AbstractOperatePipeProcedureV2
     try {
       // Ignore the exceptions reported
       pushPipeMetaToDataNodes(env);
-    } catch (Throwable throwable) {
-      LOGGER.info("Failed to push pipe meta list to data nodes, will retry later.", throwable);
+    } catch (Exception e) {
+      LOGGER.info("Failed to push pipe meta list to data nodes, will retry later.", e);
     }
   }
 

@@ -42,24 +42,24 @@ public class PipeRuntimeMeta {
   private final AtomicReference<PipeStatus> status;
   private final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupId2TaskMetaMap;
   /**
-   * Stores the exceptions encountered during pushing pipeMeta to DataNodes. The exceptions are all
-   * instances of PipeRuntimeCriticalException, so that the failure of pushing pipeMeta will result
-   * in the halt of transferring data.
+   * Stores the newest exceptions encountered group by dataNodes. The exceptions are all instances
+   * of 1. PipeRuntimeCriticalException, to record the failure of pushing pipeMeta, and will result
+   * in the halt of pipe execution. 2. PipeRuntimeConnectorCriticalException, to record the
+   * exception reported by other pipes sharing the same connector, and will stop the pipe likewise.
    */
-  private final Map<Integer, PipeRuntimeException> dataNodeId2PipeRuntimeExceptionMap;
+  private final Map<Integer, PipeRuntimeException> dataNodeId2PipeRuntimeExceptionMap =
+      new ConcurrentHashMap<>();
 
   private final AtomicLong exceptionsClearTime = new AtomicLong(Long.MIN_VALUE);
 
   public PipeRuntimeMeta() {
     status = new AtomicReference<>(PipeStatus.STOPPED);
     consensusGroupId2TaskMetaMap = new ConcurrentHashMap<>();
-    dataNodeId2PipeRuntimeExceptionMap = new ConcurrentHashMap<>();
   }
 
   public PipeRuntimeMeta(Map<TConsensusGroupId, PipeTaskMeta> consensusGroupId2TaskMetaMap) {
     status = new AtomicReference<>(PipeStatus.STOPPED);
     this.consensusGroupId2TaskMetaMap = consensusGroupId2TaskMetaMap;
-    dataNodeId2PipeRuntimeExceptionMap = new ConcurrentHashMap<>();
   }
 
   public AtomicReference<PipeStatus> getStatus() {
@@ -216,6 +216,6 @@ public class PipeRuntimeMeta {
         + dataNodeId2PipeRuntimeExceptionMap
         + ", exceptionsClearTime="
         + exceptionsClearTime
-        + '}';
+        + ", isStoppedByConfigNode=";
   }
 }

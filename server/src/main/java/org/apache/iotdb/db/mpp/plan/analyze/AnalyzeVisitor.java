@@ -861,7 +861,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   /**
    * This method is used to analyze GROUP BY TAGS query.
    *
-   * <p>TODO: support slimit/soffset/value filter
+   * @throws SemanticException if there are value filters
+   *     <p>TODO: support slimit/soffset/value filter
    */
   private void analyzeGroupByTag(
       Analysis analysis,
@@ -1283,7 +1284,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   // For last query
   private void analyzeOrderBy(Analysis analysis, QueryStatement queryStatement) {
-    if (!queryStatement.hasOrderBy()) return;
+    if (!queryStatement.hasOrderBy()) {
+      return;
+    }
 
     if (queryStatement.onlyOrderByTimeseries()) {
       analysis.setTimeseriesOrderingForLastQuery(
@@ -1638,7 +1641,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   /**
-   * get TTimePartitionSlot list about this time filter
+   * Get TTimePartitionSlot list about this time filter.
    *
    * @return List<TTimePartitionSlot>, if contains (-oo, XXX] time range, res.right.left = true; if
    *     contains [XX, +oo), res.right.right = true
@@ -1843,6 +1846,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
    *
    * <p>an inconsistent example: select s0 from root.sg1.d1, root.sg1.d2 align by device, return
    * false while root.sg1.d1.s0 is INT32 and root.sg1.d2.s0 is FLOAT.
+   *
+   * @throws SemanticException if the data types of the same measurement are not the same across
+   *     devices,
    */
   private void checkDataTypeConsistencyInAlignByDevice(
       Analysis analysis, List<Expression> expressions) {
@@ -2399,7 +2405,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
   }
 
-  /** get analysis according to statement and params */
+  /** Get analysis according to statement and params. */
   private Analysis getAnalysisForWriting(
       Analysis analysis, List<DataPartitionQueryParam> dataPartitionQueryParams) {
 
@@ -3278,6 +3284,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   /**
+   * Find all the views in given paths.
+   *
    * @param pathList the paths you want to check
    * @param schemaTree the given schema tree
    * @return if all paths you give can be found in schema tree, return a pair of view paths and

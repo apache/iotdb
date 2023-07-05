@@ -50,29 +50,28 @@ import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HE
 import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
 public abstract class AlignedTVList extends TVList {
-  private static final int NULL_FLAG = -1;
 
-  // data types of this aligned tvList
+  // Data types of this aligned tvList
   protected List<TSDataType> dataTypes;
 
-  // record total memory size of binary column
+  // Record total memory size of binary column
   protected long[] memoryBinaryChunkSize;
 
-  // data type list -> list of TVList, add 1 when expanded -> primitive array of basic type
-  // index relation: columnIndex(dataTypeIndex) -> arrayIndex -> elementIndex
+  // Data type list -> list of TVList, add 1 when expanded -> primitive array of basic type
+  // Index relation: columnIndex(dataTypeIndex) -> arrayIndex -> elementIndex
   protected List<List<Object>> values;
 
-  // list of index array, add 1 when expanded -> data point index array
-  // index relation: arrayIndex -> elementIndex
-  // used in sort method, sort only changes indices
+  // List of index array, add 1 when expanded -> data point index array
+  // Index relation: arrayIndex -> elementIndex
+  // Used in sort method, sort only changes indices
   protected List<int[]> indices;
 
-  // data type list -> list of BitMap, add 1 when expanded -> BitMap(maybe null), marked means the
-  // value is null
-  // index relation: columnIndex(dataTypeIndex) -> arrayIndex -> elementIndex
+  // Data type list -> list of BitMap, add 1 when expanded -> BitMap(maybe null), marked means the
+  // Value is null
+  // Index relation: columnIndex(dataTypeIndex) -> arrayIndex -> elementIndex
   protected List<List<BitMap>> bitMaps;
 
-  // if a sensor chunk size of Text datatype reaches the threshold, this flag will be set true
+  // If a sensor chunk size of Text datatype reaches the threshold, this flag will be set true
   boolean reachMaxChunkSizeFlag;
 
   AlignedTVList(List<TSDataType> types) {
@@ -143,7 +142,7 @@ public abstract class AlignedTVList extends TVList {
       for (Object valueArray : columnValues) {
         cloneList.values.get(i).add(cloneValue(dataTypes.get(i), valueArray));
       }
-      // clone bitmap in columnIndex
+      // Clone bitmap in columnIndex
       if (bitMaps != null && bitMaps.get(i) != null) {
         List<BitMap> columnBitMaps = bitMaps.get(i);
         if (cloneList.bitMaps == null) {
@@ -230,6 +229,12 @@ public abstract class AlignedTVList extends TVList {
   protected TimeValuePair getTimeValuePair(
       int index, long time, Integer floatPrecision, TSEncoding encoding) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  @Override
+  public TimeValuePair getTimeValuePair(int index) {
+    return new TimeValuePair(
+        getTime(index), (TsPrimitiveType) getAlignedValueForQuery(index, null, null));
   }
 
   private Object getAlignedValueForQuery(
@@ -639,7 +644,7 @@ public abstract class AlignedTVList extends TVList {
   }
 
   /**
-   * Get the row index value in index column
+   * Get the row index value in index column.
    *
    * @param index row index
    */
@@ -672,12 +677,6 @@ public abstract class AlignedTVList extends TVList {
       }
     }
     return validRowIndex;
-  }
-
-  @Override
-  public TimeValuePair getTimeValuePair(int index) {
-    return new TimeValuePair(
-        getTime(index), (TsPrimitiveType) getAlignedValueForQuery(index, null, null));
   }
 
   protected TimeValuePair getTimeValuePair(

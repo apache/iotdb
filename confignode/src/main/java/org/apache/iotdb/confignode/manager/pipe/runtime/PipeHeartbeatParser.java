@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalExcep
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
@@ -202,7 +203,9 @@ public class PipeHeartbeatParser {
                 .getStatus()
                 .get()
                 .equals(PipeStatus.STOPPED)) {
-              pipeMetaOnConfigNode.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
+              PipeRuntimeMeta runtimeMeta = pipeMetaOnConfigNode.getRuntimeMeta();
+              runtimeMeta.setIsStoppedByConfigNode(true);
+              runtimeMeta.getStatus().set(PipeStatus.STOPPED);
 
               needWriteConsensusOnConfigNodes.set(true);
               needPushPipeMetaToDataNodes.set(true);
@@ -221,11 +224,21 @@ public class PipeHeartbeatParser {
                           .getPipeTaskInfo()
                           .showPipes())
                   .filter(true, pipeName).getAllPipeMeta().stream()
-                      .map(pipeMeta -> pipeMeta.getRuntimeMeta().getStatus())
-                      .filter(status -> !status.get().equals(PipeStatus.STOPPED))
+                      .map(PipeMeta::getRuntimeMeta)
+                      .filter(
+                          runtimeMeta -> !runtimeMeta.getStatus().get().equals(PipeStatus.STOPPED))
                       .forEach(
-                          status -> {
-                            status.set(PipeStatus.STOPPED);
+                          runtimeMeta -> {
+                            // Record the connector exception for each pipe affected
+                            Map<Integer, PipeRuntimeException> exceptionMap =
+                                runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
+                            if (!exceptionMap.containsKey(dataNodeId)
+                                || exceptionMap.get(dataNodeId).getTimeStamp()
+                                    < exception.getTimeStamp()) {
+                              exceptionMap.put(dataNodeId, exception);
+                            }
+                            runtimeMeta.setIsStoppedByConfigNode(true);
+                            runtimeMeta.getStatus().set(PipeStatus.STOPPED);
 
                             needWriteConsensusOnConfigNodes.set(true);
                             needPushPipeMetaToDataNodes.set(true);

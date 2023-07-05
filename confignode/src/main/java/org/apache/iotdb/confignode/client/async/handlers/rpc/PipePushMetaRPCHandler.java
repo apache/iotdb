@@ -31,10 +31,10 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class PushPipeMetaRPCHandler extends AbstractAsyncRPCHandler<TPushPipeMetaResp> {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PushPipeMetaRPCHandler.class);
+public class PipePushMetaRPCHandler extends AbstractAsyncRPCHandler<TPushPipeMetaResp> {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipePushMetaRPCHandler.class);
 
-  public PushPipeMetaRPCHandler(
+  public PipePushMetaRPCHandler(
       DataNodeRequestType requestType,
       int requestId,
       TDataNodeLocation targetDataNode,
@@ -79,7 +79,7 @@ public class PushPipeMetaRPCHandler extends AbstractAsyncRPCHandler<TPushPipeMet
 
     responseMap.put(
         requestId,
-        new TPushPipeMetaResp(RpcUtils.getStatus(TSStatusCode.PUSH_PIPE_META_ERROR, errorMsg)));
+        new TPushPipeMetaResp(RpcUtils.getStatus(TSStatusCode.PIPE_PUSH_META_ERROR, errorMsg)));
 
     // Always CountDown
     countDownLatch.countDown();

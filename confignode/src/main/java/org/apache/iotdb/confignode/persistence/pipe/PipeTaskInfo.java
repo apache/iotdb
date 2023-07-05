@@ -145,7 +145,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
           pipeName,
           isPipeExisted(pipeName) ? "true" : "false");
     }
-    // no matter whether the pipe exists, we allow the drop operation executed on all nodes to
+    // No matter whether the pipe exists, we allow the drop operation executed on all nodes to
     // ensure the consistency.
     // DO NOTHING HERE!
   }
@@ -254,23 +254,46 @@ public class PipeTaskInfo implements SnapshotProcessor {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
+  public boolean hasExceptions(String pipeName) {
+    if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
+      return false;
+    }
+    PipeRuntimeMeta runtimeMeta = pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta();
+    Map<Integer, PipeRuntimeException> exceptionMap =
+        runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
+    if (!exceptionMap.isEmpty()) {
+      return true;
+    }
+    AtomicBoolean hasException = new AtomicBoolean(false);
+    runtimeMeta
+        .getConsensusGroupId2TaskMetaMap()
+        .values()
+        .forEach(
+            pipeTaskMeta -> {
+              if (pipeTaskMeta.getExceptionMessages().iterator().hasNext()) {
+                hasException.set(true);
+              }
+            });
+    return hasException.get();
+  }
+
   /**
    * Clear the exceptions of a pipe locally after it starts successfully. If there are exceptions
    * cleared, the messages will then be updated to all the nodes through
    * PipeHandleMetaChangeProcedure.
    *
    * @param pipeName The name of the pipes to be clear exception
-   * @return true if there are exceptions cleared
    */
-  public boolean clearExceptions(String pipeName) {
-    AtomicBoolean isCleared = new AtomicBoolean(false);
+  public void clearExceptions(String pipeName) {
+    if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
+      return;
+    }
     PipeRuntimeMeta runtimeMeta = pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta();
     runtimeMeta.setExceptionsClearTime(System.currentTimeMillis());
     Map<Integer, PipeRuntimeException> exceptionMap =
         runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
     if (!exceptionMap.isEmpty()) {
       exceptionMap.clear();
-      isCleared.set(true);
     }
     runtimeMeta
         .getConsensusGroupId2TaskMetaMap()
@@ -278,11 +301,9 @@ public class PipeTaskInfo implements SnapshotProcessor {
         .forEach(
             pipeTaskMeta -> {
               if (pipeTaskMeta.getExceptionMessages().iterator().hasNext()) {
-                isCleared.set(true);
                 pipeTaskMeta.clearExceptionMessages();
               }
             });
-    return isCleared.get();
   }
 
   /**
@@ -298,21 +319,30 @@ public class PipeTaskInfo implements SnapshotProcessor {
     for (Map.Entry<Integer, TPushPipeMetaResp> respEntry : respMap.entrySet()) {
       int dataNodeId = respEntry.getKey();
       TPushPipeMetaResp resp = respEntry.getValue();
-      if (resp.getStatus().getCode() == TSStatusCode.PUSH_PIPE_META_ERROR.getStatusCode()) {
+      if (resp.getStatus().getCode() == TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()) {
         hasException = true;
+        if (!resp.isSetExceptionMessages()) {
+          // The pushPipeMeta process on dataNode encountered internal errors
+          continue;
+        }
         resp.getExceptionMessages()
             .forEach(
                 message -> {
-                  PipeRuntimeMeta runtimeMeta =
-                      pipeMetaKeeper.getPipeMeta(message.getPipeName()).getRuntimeMeta();
-                  // Mark the status of the pipe with exception as stopped
-                  runtimeMeta.getStatus().set(PipeStatus.STOPPED);
-                  runtimeMeta
-                      .getDataNodeId2PipeRuntimeExceptionMap()
-                      .put(
+                  if (pipeMetaKeeper.containsPipeMeta(message.getPipeName())) {
+                    PipeRuntimeMeta runtimeMeta =
+                        pipeMetaKeeper.getPipeMeta(message.getPipeName()).getRuntimeMeta();
+                    // Mark the status of the pipe with exception as stopped
+                    runtimeMeta.getStatus().set(PipeStatus.STOPPED);
+                    Map<Integer, PipeRuntimeException> exceptionMap =
+                        runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
+                    if (!exceptionMap.containsKey(dataNodeId)
+                        || exceptionMap.get(dataNodeId).getTimeStamp() < message.getTimeStamp()) {
+                      exceptionMap.put(
                           dataNodeId,
                           new PipeRuntimeCriticalException(
                               message.getMessage(), message.getTimeStamp()));
+                    }
+                  }
                 });
       }
     }

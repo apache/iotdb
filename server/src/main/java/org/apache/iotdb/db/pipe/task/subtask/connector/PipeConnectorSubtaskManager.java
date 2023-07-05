@@ -141,7 +141,9 @@ public class PipeConnectorSubtaskManager {
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////
 
-  private PipeConnectorSubtaskManager() {}
+  private PipeConnectorSubtaskManager() {
+    // Empty constructor
+  }
 
   private static class PipeSubtaskManagerHolder {
     private static final PipeConnectorSubtaskManager INSTANCE = new PipeConnectorSubtaskManager();

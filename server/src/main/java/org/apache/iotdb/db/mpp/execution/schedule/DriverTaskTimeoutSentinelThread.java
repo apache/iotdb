@@ -43,7 +43,7 @@ public class DriverTaskTimeoutSentinelThread extends AbstractDriverThread {
   public void execute(DriverTask task) throws InterruptedException {
     task.lock();
     try {
-      // if this task is already in an end state, it means that the resource releasing will be
+      // If this task is already in an end state, it means that the resource releasing will be
       // handled by other threads, we don't care anymore.
       if (task.isEndState()) {
         return;
@@ -51,7 +51,7 @@ public class DriverTaskTimeoutSentinelThread extends AbstractDriverThread {
     } finally {
       task.unlock();
     }
-    // if this task is not timeout, we can wait it to timeout.
+    // If this task is not timeout, we can wait it to timeout.
     long waitTime = task.getDDL() - System.currentTimeMillis();
     while (waitTime > 0L) {
       // After this time, the task must be timeout.
@@ -61,7 +61,7 @@ public class DriverTaskTimeoutSentinelThread extends AbstractDriverThread {
 
     task.lock();
     try {
-      // if this task is already in an end state, it means that the resource releasing will be
+      // If this task is already in an end state, it means that the resource releasing will be
       // handled by other threads, we don't care anymore.
       if (task.isEndState()) {
         return;

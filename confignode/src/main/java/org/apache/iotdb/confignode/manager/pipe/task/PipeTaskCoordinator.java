@@ -65,8 +65,10 @@ public class PipeTaskCoordinator {
   }
 
   public TSStatus startPipe(String pipeName) {
+    // Whether there are exceptions to clear
+    boolean hasException = pipeTaskInfo.hasExceptions(pipeName);
     TSStatus status = configManager.getProcedureManager().startPipe(pipeName);
-    if (status == RpcUtils.SUCCESS_STATUS && pipeTaskInfo.clearExceptions(pipeName)) {
+    if (status == RpcUtils.SUCCESS_STATUS && hasException) {
       LOGGER.info("Pipe {} has started successfully, clear its exceptions.", pipeName);
       configManager.getProcedureManager().pipeHandleMetaChange(true, true);
     }

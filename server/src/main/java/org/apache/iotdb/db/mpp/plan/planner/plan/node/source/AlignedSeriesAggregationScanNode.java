@@ -102,7 +102,9 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
   }
 
   @Override
-  public void open() throws Exception {}
+  public void open() throws Exception {
+    // Do nothing
+  }
 
   @Override
   public TRegionReplicaSet getRegionReplicaSet() {
@@ -115,7 +117,9 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
   }
 
   @Override
-  public void close() throws Exception {}
+  public void close() throws Exception {
+    // Do nothing
+  }
 
   @Override
   public List<PlanNode> getChildren() {
