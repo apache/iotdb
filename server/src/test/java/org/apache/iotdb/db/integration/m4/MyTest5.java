@@ -99,7 +99,7 @@ public class MyTest5 {
         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.m4");
       statement.execute("CREATE TIMESERIES root.m4.d1.s1 with datatype=double,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.m4.d1.s2 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.m4.d1.s2 with datatype=INT64,encoding=PLAIN");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }

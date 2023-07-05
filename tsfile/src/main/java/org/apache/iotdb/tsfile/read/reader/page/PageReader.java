@@ -18,11 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.reader.page;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
@@ -46,39 +41,35 @@ import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 public class PageReader implements IPageReader {
 
   private PageHeader pageHeader;
 
   protected TSDataType dataType;
 
-  /**
-   * decoder for value column
-   */
+  /** decoder for value column */
   protected Decoder valueDecoder;
 
-  /**
-   * decoder for time column
-   */
+  /** decoder for time column */
   protected Decoder timeDecoder;
 
-  /**
-   * time column in memory
-   */
+  /** time column in memory */
   public ByteBuffer timeBuffer;
 
-  /**
-   * value column in memory
-   */
+  /** value column in memory */
   public ByteBuffer valueBuffer;
 
   public int timeBufferLength;
 
   protected Filter filter;
 
-  /**
-   * A list of deleted intervals.
-   */
+  /** A list of deleted intervals. */
   private List<TimeRange> deleteIntervalList;
 
   private int deleteCursor = 0;
@@ -122,9 +113,7 @@ public class PageReader implements IPageReader {
     valueBuffer.position(timeBufferLength);
   }
 
-  /**
-   * the chunk partially overlaps in time with the current M4 interval Ii
-   */
+  /** the chunk partially overlaps in time with the current M4 interval Ii */
   public void split4CPV(
       long startTime,
       long endTime,
@@ -137,10 +126,10 @@ public class PageReader implements IPageReader {
     // endTime is excluded so -1
     int numberOfSpans =
         (int)
-            Math.floor(
-                (Math.min(chunkMetadata.getEndTime(), endTime - 1) - curStartTime)
-                    * 1.0
-                    / interval)
+                Math.floor(
+                    (Math.min(chunkMetadata.getEndTime(), endTime - 1) - curStartTime)
+                        * 1.0
+                        / interval)
             + 1;
     for (int n = 0; n < numberOfSpans; n++) {
       long leftEndIncluded = curStartTime + n * interval;
@@ -178,20 +167,23 @@ public class PageReader implements IPageReader {
   }
 
   public void updateTP_withValueIndex(ChunkSuit4CPV chunkSuit4CPV) {
-    // NOTE: get valueIndex from chunkSuit4CPV.getChunkMetadata().getStatistics(), not chunkSuit4CPV.getStatistics()!
+    // NOTE: get valueIndex from chunkSuit4CPV.getChunkMetadata().getStatistics(), not
+    // chunkSuit4CPV.getStatistics()!
     ValueIndex valueIndex = chunkSuit4CPV.getChunkMetadata().getStatistics().valueIndex;
 
     // step 1: find threshold
-    // iterate SDT points from value big to small to find the first point not deleted
     boolean isFound = false;
     double foundValue = 0;
-    for (ValuePoint valuePoint : valueIndex.sortedModelPoints) {
+    // iterate SDT points from value big to small to find the first point not deleted
+    for (int n = valueIndex.sortedModelPoints.size() - 1; n >= 0; n--) { // NOTE from big to small
+      ValuePoint valuePoint = valueIndex.sortedModelPoints.get(n);
       int idx = valuePoint.index; // index starting from 1
       int pos = idx - 1; // pos starting from 0
       long time = timeBuffer.getLong(pos * 8);
       // check if deleted
-      deleteCursor = 0; // TODO check
-      if ((pos >= chunkSuit4CPV.startPos) && (pos <= chunkSuit4CPV.endPos) && !isDeleted(time)) {
+      if ((pos >= chunkSuit4CPV.startPos)
+          && (pos <= chunkSuit4CPV.endPos)
+          && !isDeleted_NoHistoryDeleteCursor(time)) {
         //  startPos&endPos conveys the virtual deletes of the current M4 time span
         isFound = true;
         foundValue = valuePoint.value;
@@ -208,23 +200,31 @@ public class PageReader implements IPageReader {
     // increment global chunkSuit4CPV.modelPointsCursor
     int idx2;
     // note that the first and last points of a chunk are stored in model points
-    // there must exist idx2-1 >= startPos, otherwise this chunk won't be processed for the current time span
-    // there must exist idx1-1 <= endPos, otherwise this chunk won't be processed for the current time span
+    // there must exist idx2-1 >= startPos, otherwise this chunk won't be processed for the current
+    // time span
     while ((idx2 = valueIndex.modelPointIdx_list.get(chunkSuit4CPV.modelPointsCursor)) - 1
         < chunkSuit4CPV.startPos) { // TODO check
       // -1 because idx starting from 1 while pos starting from 0
       chunkSuit4CPV.modelPointsCursor++;
+      // pointing to the right end of the first model segment that passes the left endpoint of the
+      // current time span
     }
-    // increment local cursor starting from chunkSuit4CPV.modelPointsCursor for iterating model segments for the current time span
-    // do not increment modelPointsCursor because the model segments for this time span may be iterated multiple times
-    int localCursor = chunkSuit4CPV.modelPointsCursor;
+    // increment local cursor starting from chunkSuit4CPV.modelPointsCursor for iterating model
+    // segments for the current time span
+    // do not increment modelPointsCursor because the model segments for this time span may be
+    // iterated multiple times
+    int localCursor =
+        chunkSuit4CPV.modelPointsCursor; // pointing to the right end of the model segment
     List<Integer> prune_intervals_start = new ArrayList<>();
     List<Integer> prune_intervals_end = new ArrayList<>();
     int interval_start = -1;
     int interval_end = -1;
     int idx1;
-    while ((idx1 = valueIndex.modelPointIdx_list.get(localCursor - 1)) - 1
-        <= chunkSuit4CPV.endPos) {
+    // there must exist idx1-1 <= endPos, otherwise this chunk won't be processed for the current
+    // time span
+    while (localCursor < valueIndex.modelPointIdx_list.size()
+        && (idx1 = valueIndex.modelPointIdx_list.get(localCursor - 1)) - 1
+            <= chunkSuit4CPV.endPos) {
       idx2 = valueIndex.modelPointIdx_list.get(localCursor);
       double v1_UB = valueIndex.modelPointVal_list.get(localCursor - 1) + valueIndex.errorBound;
       double v2_UB = valueIndex.modelPointVal_list.get(localCursor) + valueIndex.errorBound;
@@ -242,8 +242,8 @@ public class PageReader implements IPageReader {
             (int) Math.floor((threshold_LB - v1_UB) * (idx2 - idx1) / (v2_UB - v1_UB) + idx1));
         interval_start = -1; // discontinuous
       } else if (v1_UB >= threshold_LB && v2_UB < threshold_LB) {
-        interval_start = (int) Math.ceil(
-            (threshold_LB - v1_UB) * (idx2 - idx1) / (v2_UB - v1_UB) + idx1);
+        interval_start =
+            (int) Math.ceil((threshold_LB - v1_UB) * (idx2 - idx1) / (v2_UB - v1_UB) + idx1);
         interval_end = idx2; // continuous
       }
       localCursor++;
@@ -273,31 +273,34 @@ public class PageReader implements IPageReader {
       int prune_idx2 = prune_intervals_end.get(prune_intervals_end.size() - 1);
       if (prune_idx2 - 1 >= search_endPos) {
         // -1 for included, -1 for starting from 0
-        search_endPos = Math.min(search_endPos,
-            prune_intervals_start.get(prune_intervals_start.size() - 1) - 1 - 1);
+        search_endPos =
+            Math.min(
+                search_endPos, prune_intervals_start.get(prune_intervals_start.size() - 1) - 1 - 1);
         prune_intervals_start.remove(prune_intervals_start.size() - 1);
         prune_intervals_end.remove(prune_intervals_end.size() - 1);
       }
     }
     // add search_endPos+1 to the end of prune_intervals_start
     // turning into search_intervals_end (excluded endpoints)
-    prune_intervals_start.add(search_endPos + 1);
+    // note that idx&prune_interval&search_interval starting from 1, pos starting from 0
+    prune_intervals_start.add(search_endPos + 1 + 1); // +1 for starting from 1, +1 for excluded
     // add search_startPos-1 to the start of prune_intervals_end
     // turning into search_intervals_start (excluded endpoints)
-    prune_intervals_end.add(0, search_startPos - 1);
+    prune_intervals_end.add(0, search_startPos + 1 - 1); // +1 for starting from 1, +1 for excluded
 
     // step 4: search unpruned intervals
     // TODO deal with normal delete intervals
     if (dataType == TSDataType.DOUBLE) {
       double candidateTPvalue = -1;
       long candidateTPtime = -1;
+      // note that idx&prune_interval&search_interval starting from 1, pos starting from 0
       for (int i = 0; i < prune_intervals_start.size(); i++) {
         int search_interval_start = prune_intervals_end.get(i) + 1; // included
         int search_interval_end = prune_intervals_start.get(i) - 1; // included
-        for (int j = search_interval_start; j <= search_interval_end; j++) { // starting from 1
-          double v = valueBuffer.getDouble(timeBufferLength + (j - 1) * 8);
-          long t = timeBuffer.getLong((j - 1) * 8);
-          if (v > candidateTPvalue && !isDeleted(t)) {
+        for (int j = search_interval_start; j <= search_interval_end; j++) { // idx starting from 1
+          double v = valueBuffer.getDouble(timeBufferLength + (j - 1) * 8); // pos starting from 0
+          long t = timeBuffer.getLong((j - 1) * 8); // pos starting from 0
+          if (v > candidateTPvalue && !isDeleted_NoHistoryDeleteCursor(t)) {
             candidateTPvalue = v;
             candidateTPtime = t;
           }
@@ -305,7 +308,7 @@ public class PageReader implements IPageReader {
       }
       chunkSuit4CPV.statistics.setMaxInfo(new MinMaxInfo(candidateTPvalue, candidateTPtime));
     } else if (dataType == TSDataType.INT64) {
-      long candidateTPvalue = -1;
+      long candidateTPvalue = -1; // NOTE for TP
       long candidateTPtime = -1;
       for (int i = 0; i < prune_intervals_start.size(); i++) {
         int search_interval_start = prune_intervals_end.get(i) + 1; // included
@@ -313,7 +316,7 @@ public class PageReader implements IPageReader {
         for (int j = search_interval_start; j <= search_interval_end; j++) { // starting from 1
           long v = valueBuffer.getLong(timeBufferLength + (j - 1) * 8);
           long t = timeBuffer.getLong((j - 1) * 8);
-          if (v > candidateTPvalue && !isDeleted(t)) {
+          if (v > candidateTPvalue && !isDeleted_NoHistoryDeleteCursor(t)) {
             candidateTPvalue = v;
             candidateTPtime = t;
           }
@@ -335,9 +338,9 @@ public class PageReader implements IPageReader {
       case INT64:
         statistics = new LongStatistics();
         break;
-//      case FLOAT:
-//        statistics = new FloatStatistics();
-//        break;
+        //      case FLOAT:
+        //        statistics = new FloatStatistics();
+        //        break;
       case DOUBLE:
         statistics = new DoubleStatistics();
         break;
@@ -361,16 +364,18 @@ public class PageReader implements IPageReader {
             // only updateStats, actually only need to update BP and TP
           }
           break;
-//        case FLOAT:
-//          float aFloat = valueBuffer.getFloat(timeBufferLength + pos * 8);
-//          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aFloat))) {
-//            // update statistics of chunkMetadata1
-//            statistics.updateStats(aFloat, timestamp);
-//            count++;
-//            // ATTENTION: do not use update() interface which will also update StepRegress!
-//            // only updateStats, actually only need to update BP and TP
-//          }
-//          break;
+          //        case FLOAT:
+          //          float aFloat = valueBuffer.getFloat(timeBufferLength + pos * 8);
+          //          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp,
+          // aFloat))) {
+          //            // update statistics of chunkMetadata1
+          //            statistics.updateStats(aFloat, timestamp);
+          //            count++;
+          //            // ATTENTION: do not use update() interface which will also update
+          // StepRegress!
+          //            // only updateStats, actually only need to update BP and TP
+          //          }
+          //          break;
         case DOUBLE:
           double aDouble = valueBuffer.getDouble(timeBufferLength + pos * 8);
           if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aDouble))) {
@@ -394,9 +399,7 @@ public class PageReader implements IPageReader {
     IOMonitor2.addMeasure(Operation.SEARCH_ARRAY_c_genBPTP, System.nanoTime() - start);
   }
 
-  /**
-   * @return the returned BatchData may be empty, but never be null
-   */
+  /** @return the returned BatchData may be empty, but never be null */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
@@ -481,6 +484,20 @@ public class PageReader implements IPageReader {
   }
 
   protected boolean isDeleted(long timestamp) {
+    while (deleteIntervalList != null && deleteCursor < deleteIntervalList.size()) {
+      if (deleteIntervalList.get(deleteCursor).contains(timestamp)) {
+        return true;
+      } else if (deleteIntervalList.get(deleteCursor).getMax() < timestamp) {
+        deleteCursor++;
+      } else {
+        return false;
+      }
+    }
+    return false;
+  }
+
+  protected boolean isDeleted_NoHistoryDeleteCursor(long timestamp) {
+    deleteCursor = 0;
     while (deleteIntervalList != null && deleteCursor < deleteIntervalList.size()) {
       if (deleteIntervalList.get(deleteCursor).contains(timestamp)) {
         return true;

@@ -18,12 +18,6 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.Objects;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.encoding.decoder.DeltaBinaryDecoder.IntDeltaDecoder;
 import org.apache.iotdb.tsfile.encoding.decoder.DoublePrecisionDecoderV2;
@@ -34,15 +28,23 @@ import org.apache.iotdb.tsfile.read.common.ValuePoint;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.Objects;
+
 /**
  * This class is used for recording statistic information of each measurement in a delta file. While
  * writing processing, the processor records the statistics information. Statistics includes
- * maximum, minimum and null value count up to version 0.0.1.<br> Each data type extends this
- * Statistic as super class.<br>
+ * maximum, minimum and null value count up to version 0.0.1.<br>
+ * Each data type extends this Statistic as super class.<br>
  * <br>
  * For the statistics in the Unseq file TimeSeriesMetadata, only firstValue, lastValue, startTime
  * and endTime can be used.</br>
@@ -55,9 +57,7 @@ public abstract class Statistics<T> {
    */
   protected boolean isEmpty = true;
 
-  /**
-   * number of time-value points
-   */
+  /** number of time-value points */
   private int count = 0;
 
   private long startTime = Long.MAX_VALUE;
@@ -67,9 +67,7 @@ public abstract class Statistics<T> {
 
   public ValueIndex valueIndex = new ValueIndex();
 
-  /**
-   * @author Yuyuan Kang
-   */
+  /** @author Yuyuan Kang */
   final String OPERATION_NOT_SUPPORT_FORMAT = "%s statistics does not support operation: %s";
 
   /**
@@ -147,14 +145,14 @@ public abstract class Statistics<T> {
     valueIndex.learn(); // ensure executed once and only once
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(valueIndex.idxOut.size(), outputStream);
-    outputStream.write(
-        valueIndex.idxOut.getBuf(), 0, valueIndex.idxOut.size()); // NOTE len is important
-    byteLen += valueIndex.idxOut.getBuf().length;
+    // NOTE use size instead of buffer is important
+    outputStream.write(valueIndex.idxOut.getBuf(), 0, valueIndex.idxOut.size());
+    byteLen += valueIndex.idxOut.size();
 
     byteLen += ReadWriteIOUtils.write(valueIndex.valueOut.size(), outputStream);
-    outputStream.write(
-        valueIndex.valueOut.getBuf(), 0, valueIndex.valueOut.size()); // NOTE len is important
-    byteLen += valueIndex.valueOut.getBuf().length;
+    // NOTE use size instead of buffer is important
+    outputStream.write(valueIndex.valueOut.getBuf(), 0, valueIndex.valueOut.size());
+    byteLen += valueIndex.valueOut.size();
 
     byteLen += ReadWriteIOUtils.write(valueIndex.errorBound, outputStream);
 
@@ -180,23 +178,17 @@ public abstract class Statistics<T> {
 
   abstract int serializeStats(OutputStream outputStream) throws IOException;
 
-  /**
-   * read data from the inputStream.
-   */
+  /** read data from the inputStream. */
   public abstract void deserialize(InputStream inputStream) throws IOException;
 
   public abstract void deserialize(ByteBuffer byteBuffer);
 
   //  public abstract void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes);
 
-  /**
-   * @author Yuyuan Kang
-   */
+  /** @author Yuyuan Kang */
   public abstract MinMaxInfo<T> getMinInfo();
 
-  /**
-   * @author Yuyuan Kang
-   */
+  /** @author Yuyuan Kang */
   public abstract MinMaxInfo<T> getMaxInfo();
 
   public abstract T getMinValue();
@@ -207,14 +199,10 @@ public abstract class Statistics<T> {
 
   public abstract T getMaxValue();
 
-  /**
-   * @author Yuyuan Kang
-   */
+  /** @author Yuyuan Kang */
   public abstract long getBottomTimestamp();
 
-  /**
-   * @author Yuyuan Kang
-   */
+  /** @author Yuyuan Kang */
   public abstract long getTopTimestamp();
 
   public abstract T getFirstValue();
@@ -290,9 +278,7 @@ public abstract class Statistics<T> {
     updateStats(value);
   }
 
-  /**
-   * @author Yuyuan Kang
-   */
+  /** @author Yuyuan Kang */
   public void update(long time, int value) {
     count++;
     if (time < this.startTime) {
@@ -307,9 +293,7 @@ public abstract class Statistics<T> {
     updateStats(value, time);
   }
 
-  /**
-   * @author Yuyuan Kang
-   */
+  /** @author Yuyuan Kang */
   public void update(long time, long value) {
     count++;
     if (time < this.startTime) {
@@ -323,9 +307,7 @@ public abstract class Statistics<T> {
     updateStats(value, time);
   }
 
-  /**
-   * @author Yuyuan Kang
-   */
+  /** @author Yuyuan Kang */
   public void update(long time, float value) {
     count++;
     if (time < this.startTime) {
@@ -339,9 +321,7 @@ public abstract class Statistics<T> {
     updateStats(value, time);
   }
 
-  /**
-   * @author Yuyuan Kang
-   */
+  /** @author Yuyuan Kang */
   public void update(long time, double value) {
     count++;
     if (time < this.startTime) {
@@ -379,9 +359,7 @@ public abstract class Statistics<T> {
     updateStats(values, batchSize);
   }
 
-  /**
-   * @author Yuyuan Kang
-   */
+  /** @author Yuyuan Kang */
   public void update(long[] time, int[] values, int batchSize) {
     count += batchSize;
     if (time[0] < startTime) {
@@ -395,9 +373,7 @@ public abstract class Statistics<T> {
     updateStats(values, time, batchSize);
   }
 
-  /**
-   * @author Yuyuan Kang
-   */
+  /** @author Yuyuan Kang */
   public void update(long[] time, long[] values, int batchSize) {
     count += batchSize;
     if (time[0] < startTime) {
@@ -411,9 +387,7 @@ public abstract class Statistics<T> {
     updateStats(values, time, batchSize);
   }
 
-  /**
-   * @author Yuyuan Kang
-   */
+  /** @author Yuyuan Kang */
   public void update(long[] time, float[] values, int batchSize) {
     count += batchSize;
     if (time[0] < startTime) {
@@ -427,9 +401,7 @@ public abstract class Statistics<T> {
     updateStats(values, time, batchSize);
   }
 
-  /**
-   * @author Yuyuan Kang
-   */
+  /** @author Yuyuan Kang */
   public void update(long[] time, double[] values, int batchSize) {
     count += batchSize;
     if (time[0] < startTime) {
@@ -465,14 +437,10 @@ public abstract class Statistics<T> {
     isEmpty = empty;
   }
 
-  /**
-   * @author Yuyuan Kang
-   */
+  /** @author Yuyuan Kang */
   public abstract void updateMinInfo(T val, long timestamp);
 
-  /**
-   * @author Yuyuan Kang
-   */
+  /** @author Yuyuan Kang */
   public abstract void updateMaxInfo(T val, long timestamp);
 
   void updateStats(boolean value) {
@@ -529,30 +497,22 @@ public abstract class Statistics<T> {
     }
   }
 
-  /**
-   * @author Yuyuan Kang
-   */
+  /** @author Yuyuan Kang */
   public void updateStats(int value, long timestamp) {
     throw new UnsupportedOperationException();
   }
 
-  /**
-   * @author Yuyuan Kang
-   */
+  /** @author Yuyuan Kang */
   public void updateStats(long value, long timestamp) {
     throw new UnsupportedOperationException();
   }
 
-  /**
-   * @author Yuyuan Kang
-   */
+  /** @author Yuyuan Kang */
   public void updateStats(float value, long timestamp) {
     throw new UnsupportedOperationException();
   }
 
-  /**
-   * @author Yuyuan Kang
-   */
+  /** @author Yuyuan Kang */
   public void updateStats(double value, long timestamp) {
     throw new UnsupportedOperationException();
   }
@@ -565,30 +525,22 @@ public abstract class Statistics<T> {
     throw new UnsupportedOperationException();
   }
 
-  /**
-   * @author Yuyuan Kang
-   */
+  /** @author Yuyuan Kang */
   void updateStats(int[] values, long[] timestamps, int batchSize) {
     throw new UnsupportedOperationException();
   }
 
-  /**
-   * @author Yuyuan Kang
-   */
+  /** @author Yuyuan Kang */
   void updateStats(long[] values, long[] timestamps, int batchSize) {
     throw new UnsupportedOperationException();
   }
 
-  /**
-   * @author Yuyuan Kang
-   */
+  /** @author Yuyuan Kang */
   void updateStats(float[] values, long[] timestamps, int batchSize) {
     throw new UnsupportedOperationException();
   }
 
-  /**
-   * @author Yuyuan Kang
-   */
+  /** @author Yuyuan Kang */
   void updateStats(double[] values, long[] timestamps, int batchSize) {
     throw new UnsupportedOperationException();
   }
@@ -601,7 +553,7 @@ public abstract class Statistics<T> {
    * @param min min timestamp
    * @param max max timestamp
    * @author Yuyuan Kang This method with two parameters is only used by {@code unsequence} which
-   * updates/inserts/deletes timestamp.
+   *     updates/inserts/deletes timestamp.
    */
   public void updateStats(long min, long bottomTimestamp, long max, long topTimestamp) {
     throw new UnsupportedOperationException();
@@ -635,23 +587,23 @@ public abstract class Statistics<T> {
     // add the first point
     valueIndex.modelPointIdx_list.add(1);
     switch (getType()) {
-//      case INT32:
-//        int intV = (int) getFirstValue();
-//        valueIndex.modelPointVal_list.add((double) intV);
-//        valueIndex.sortedModelPoints.add(new ValuePoint(1, (double) intV));
-//        break;
+        //      case INT32:
+        //        int intV = (int) getFirstValue();
+        //        valueIndex.modelPointVal_list.add((double) intV);
+        //        valueIndex.sortedModelPoints.add(new ValuePoint(1, (double) intV));
+        //        break;
       case INT64:
-        long longV = (long) getFirstValue();
+        long longV = (Long) getFirstValue();
         valueIndex.modelPointVal_list.add((double) longV);
         valueIndex.sortedModelPoints.add(new ValuePoint(1, (double) longV));
         break;
-//      case FLOAT:
-//        float floatV = (float) getFirstValue();
-//        valueIndex.modelPointVal_list.add((double) floatV);
-//        valueIndex.sortedModelPoints.add(new ValuePoint(1, (double) floatV));
-//        break;
+        //      case FLOAT:
+        //        float floatV = (float) getFirstValue();
+        //        valueIndex.modelPointVal_list.add((double) floatV);
+        //        valueIndex.sortedModelPoints.add(new ValuePoint(1, (double) floatV));
+        //        break;
       case DOUBLE:
-        double doubleV = (double) getFirstValue();
+        double doubleV = (Double) getFirstValue();
         valueIndex.modelPointVal_list.add(doubleV);
         valueIndex.sortedModelPoints.add(new ValuePoint(1, doubleV));
         break;
@@ -693,23 +645,23 @@ public abstract class Statistics<T> {
     if (count >= 2) { // otherwise only one point no need to store again
       valueIndex.modelPointIdx_list.add(count);
       switch (getType()) {
-//        case INT32:
-//          int intV = (int) getLastValue();
-//          valueIndex.modelPointVal_list.add((double) intV);
-//          valueIndex.sortedModelPoints.add(new ValuePoint(count, (double) intV));
-//          break;
+          //        case INT32:
+          //          int intV = (int) getLastValue();
+          //          valueIndex.modelPointVal_list.add((double) intV);
+          //          valueIndex.sortedModelPoints.add(new ValuePoint(count, (double) intV));
+          //          break;
         case INT64:
-          long longV = (long) getLastValue();
+          long longV = (Long) getLastValue();
           valueIndex.modelPointVal_list.add((double) longV);
           valueIndex.sortedModelPoints.add(new ValuePoint(count, (double) longV));
           break;
-//        case FLOAT:
-//          float floatV = (float) getLastValue();
-//          valueIndex.modelPointVal_list.add((double) floatV);
-//          valueIndex.sortedModelPoints.add(new ValuePoint(count, (double) floatV));
-//          break;
+          //        case FLOAT:
+          //          float floatV = (float) getLastValue();
+          //          valueIndex.modelPointVal_list.add((double) floatV);
+          //          valueIndex.sortedModelPoints.add(new ValuePoint(count, (double) floatV));
+          //          break;
         case DOUBLE:
-          double doubleV = (double) getLastValue();
+          double doubleV = (Double) getLastValue();
           valueIndex.modelPointVal_list.add(doubleV);
           valueIndex.sortedModelPoints.add(new ValuePoint(count, doubleV));
           break;

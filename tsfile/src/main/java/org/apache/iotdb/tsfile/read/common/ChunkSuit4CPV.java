@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.tsfile.read.common;
 
-import java.io.IOException;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -33,10 +32,14 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.StepRegress;
 import org.apache.iotdb.tsfile.read.common.IOMonitor2.Operation;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 
+import java.io.IOException;
+
 public class ChunkSuit4CPV {
 
   private ChunkMetadata chunkMetadata; // fixed info, including version, dataType, stepRegress
-  public int modelPointsCursor = 1; // starting from 0, pointing to the right end of the model segment, moving forward as processing time spans
+  public int modelPointsCursor =
+      1; // starting from 0, pointing to the right end of the model segment, moving forward as
+  // processing time spans
 
   public Statistics statistics; // dynamically updated, includes FP/LP/BP/TP info
 
@@ -282,10 +285,10 @@ public class ChunkSuit4CPV {
       long timestamp = pageReader.timeBuffer.getLong(estimatedPos * 8);
       statistics.setStartTime(timestamp);
       switch (chunkMetadata.getDataType()) {
-        // iotdb的int类型的plain编码用的是自制的不支持random access
-        //      case INT32:
-        //        return new MinMaxInfo(pageReader.valueBuffer.getInt(estimatedPos * 4),
-        //            pageReader.timeBuffer.getLong(estimatedPos * 8));
+          // iotdb的int类型的plain编码用的是自制的不支持random access
+          //      case INT32:
+          //        return new MinMaxInfo(pageReader.valueBuffer.getInt(estimatedPos * 4),
+          //            pageReader.timeBuffer.getLong(estimatedPos * 8));
         case INT64:
           long longVal =
               pageReader.valueBuffer.getLong(pageReader.timeBufferLength + estimatedPos * 8);
@@ -328,10 +331,10 @@ public class ChunkSuit4CPV {
       long timestamp = pageReader.timeBuffer.getLong(estimatedPos * 8);
       statistics.setStartTime(timestamp);
       switch (chunkMetadata.getDataType()) {
-        // iotdb的int类型的plain编码用的是自制的不支持random access
-        //      case INT32:
-        //        return new MinMaxInfo(pageReader.valueBuffer.getInt(estimatedPos * 4),
-        //            pageReader.timeBuffer.getLong(estimatedPos * 8));
+          // iotdb的int类型的plain编码用的是自制的不支持random access
+          //      case INT32:
+          //        return new MinMaxInfo(pageReader.valueBuffer.getInt(estimatedPos * 4),
+          //            pageReader.timeBuffer.getLong(estimatedPos * 8));
         case INT64:
           long longVal =
               pageReader.valueBuffer.getLong(pageReader.timeBufferLength + estimatedPos * 8);
@@ -399,10 +402,10 @@ public class ChunkSuit4CPV {
       long timestamp = pageReader.timeBuffer.getLong(estimatedPos * 8);
       statistics.setEndTime(timestamp);
       switch (chunkMetadata.getDataType()) {
-        // iotdb的int类型的plain编码用的是自制的不支持random access
-        //      case INT32:
-        //        return new MinMaxInfo(pageReader.valueBuffer.getInt(estimatedPos * 4),
-        //            pageReader.timeBuffer.getLong(estimatedPos * 8));
+          // iotdb的int类型的plain编码用的是自制的不支持random access
+          //      case INT32:
+          //        return new MinMaxInfo(pageReader.valueBuffer.getInt(estimatedPos * 4),
+          //            pageReader.timeBuffer.getLong(estimatedPos * 8));
         case INT64:
           long longVal =
               pageReader.valueBuffer.getLong(pageReader.timeBufferLength + estimatedPos * 8);
@@ -451,10 +454,10 @@ public class ChunkSuit4CPV {
       long timestamp = pageReader.timeBuffer.getLong(estimatedPos * 8);
       statistics.setEndTime(timestamp);
       switch (chunkMetadata.getDataType()) {
-        // iotdb的int类型的plain编码用的是自制的不支持random access
-        //      case INT32:
-        //        return new MinMaxInfo(pageReader.valueBuffer.getInt(estimatedPos * 4),
-        //            pageReader.timeBuffer.getLong(estimatedPos * 8));
+          // iotdb的int类型的plain编码用的是自制的不支持random access
+          //      case INT32:
+          //        return new MinMaxInfo(pageReader.valueBuffer.getInt(estimatedPos * 4),
+          //            pageReader.timeBuffer.getLong(estimatedPos * 8));
         case INT64:
           long longVal =
               pageReader.valueBuffer.getLong(pageReader.timeBufferLength + estimatedPos * 8);
