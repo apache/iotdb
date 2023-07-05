@@ -64,6 +64,7 @@ public class IoTDBAlignByDeviceWithViewIT {
       }
     } catch (Exception e) {
       e.printStackTrace();
+      fail("Execute view sql meets error: " + e.getMessage());
     }
   }
 
