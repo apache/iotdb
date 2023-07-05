@@ -63,7 +63,7 @@ struct TGetDataBlockRequest {
   1: required TFragmentInstanceId sourceFragmentInstanceId
   2: required i32 startSequenceId
   3: required i32 endSequenceId
-  // index of upstream SinkChannel
+  // Index of upstream SinkChannel
   4: required i32 index
 }
 
@@ -75,13 +75,13 @@ struct TAcknowledgeDataBlockEvent {
   1: required TFragmentInstanceId sourceFragmentInstanceId
   2: required i32 startSequenceId
   3: required i32 endSequenceId
-  // index of upstream SinkChannel
+  // Index of upstream SinkChannel
   4: required i32 index
 }
 
 struct TCloseSinkChannelEvent {
   1: required TFragmentInstanceId sourceFragmentInstanceId
-  // index of upstream SinkChannel
+  // Index of upstream SinkChannel
   2: required i32 index
 }
 
@@ -141,7 +141,7 @@ struct TFetchFragmentInstanceInfoReq {
   1: required TFragmentInstanceId fragmentInstanceId
 }
 
-// TODO: need to supply more fields according to implementation
+// TODO: Need to supply more fields according to implementation
 struct TFragmentInstanceInfoResp {
   1: required string state
   2: optional i64 endTime
