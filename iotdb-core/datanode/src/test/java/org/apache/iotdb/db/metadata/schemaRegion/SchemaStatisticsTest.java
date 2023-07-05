@@ -161,6 +161,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
     Assert.assertEquals(1, schemaRegion2.getSchemaRegionStatistics().getSchemaRegionId());
     checkPBTreeStatistics(engineStatistics);
   }
+
   @Test
   public void testMemoryStatistics() throws Exception {
     ISchemaRegion schemaRegion1 = getSchemaRegion("root.sg1", 0);
