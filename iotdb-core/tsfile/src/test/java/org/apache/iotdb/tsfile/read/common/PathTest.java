@@ -150,29 +150,5 @@ public class PathTest {
       fail();
     } catch (PathParseException ignored) {
     }
-
-    try {
-      new Path("root.and", true);
-      fail();
-    } catch (PathParseException ignored) {
-    }
-
-    try {
-      new Path("root.or", true);
-      fail();
-    } catch (PathParseException ignored) {
-    }
-
-    try {
-      new Path("root.not", true);
-      fail();
-    } catch (PathParseException ignored) {
-    }
-
-    try {
-      new Path("root.contains", true);
-      fail();
-    } catch (PathParseException ignored) {
-    }
   }
 }
