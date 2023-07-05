@@ -2141,9 +2141,17 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Analysis analysis = new Analysis();
     analysis.setStatement(alterTimeSeriesStatement);
 
-    if (alterTimeSeriesStatement.getAlias() != null) {
-      checkIsTemplateCompatible(
-          alterTimeSeriesStatement.getPath(), alterTimeSeriesStatement.getAlias());
+    Pair<Template, PartialPath> templateInfo =
+        schemaFetcher.checkTemplateSetAndPreSetInfo(
+            alterTimeSeriesStatement.getPath(), alterTimeSeriesStatement.getAlias());
+    if (templateInfo != null) {
+      throw new RuntimeException(
+          new TemplateImcompatibeException(
+              String.format(
+                  "Cannot alter template timeseries [%s] since schema template [%s] already set on path [%s].",
+                  alterTimeSeriesStatement.getPath().getFullPath(),
+                  templateInfo.left.getName(),
+                  templateInfo.right)));
     }
 
     PathPatternTree patternTree = new PathPatternTree();
