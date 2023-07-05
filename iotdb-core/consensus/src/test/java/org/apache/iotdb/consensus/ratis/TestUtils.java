@@ -25,17 +25,21 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.ConsensusGroup;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
+import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.RatisConfig;
 
 import org.apache.ratis.thirdparty.com.google.common.base.Preconditions;
 import org.apache.ratis.util.FileUtils;
+import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -331,8 +335,29 @@ public class TestUtils {
       return this;
     }
 
+    MiniClusterFactory setSMProvider(Supplier<IStateMachine> smProvider) {
+      this.smProvider = smProvider;
+      return this;
+    }
+
     MiniCluster create() {
       return new MiniCluster(gid, replicas, peerStorageProvider, smProvider, ratisConfig);
     }
+  }
+
+  public static void write(IConsensus consensus, ConsensusGroupId gid, int count) {
+    for (int i = 0; i < count; i++) {
+      final ByteBufferConsensusRequest increment = TestRequest.incrRequest();
+      final ConsensusWriteResponse response = consensus.write(gid, increment);
+      System.out.println(response.getException());
+      Assert.assertEquals(200, response.getStatus().getCode());
+    }
+  }
+
+  public static int read(IConsensus consensus, ConsensusGroupId gid) {
+    final ByteBufferConsensusRequest getReq = TestUtils.TestRequest.getRequest();
+    final ConsensusReadResponse response = consensus.read(gid, getReq);
+    final TestUtils.TestDataSet result = (TestUtils.TestDataSet) response.getDataset();
+    return result.getNumber();
   }
 }
