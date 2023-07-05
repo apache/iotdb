@@ -26,7 +26,7 @@ from iotdb.mlnode.data_access.offline.dataset import (TimeSeriesDataset,
 from iotdb.mlnode.data_access.offline.source import (FileDataSource,
                                                      ThriftDataSource)
 from iotdb.mlnode.exception import BadConfigValueError, MissingConfigError
-from iotdb.mlnode.parser import TaskOptions
+from iotdb.mlnode.parser import TaskOptions, ForecastTaskOptions
 
 
 def _dataset_common_config(**kwargs):
@@ -48,12 +48,12 @@ _dataset_default_config_dict = {
 def create_dataset(query_body: str, task_options: TaskOptions) -> Dataset:
     task_type = task_options.get_task_type()
     if task_type == TaskType.FORECAST:
-        return create_forecast_dataset(query_body, task_options)
+        return create_forecast_dataset(query_body, type(ForecastTaskOptions)(task_options))
     else:
         raise Exception(f"task type {task_type} not supported.")
 
 
-def create_forecast_dataset(query_body: str, task_options: TaskOptions) -> Dataset:
+def create_forecast_dataset(query_body: str, task_options: ForecastTaskOptions) -> Dataset:
     """
     Factory method for all support dataset
     currently implement two types of PyTorch dataset: WindowDataset, TimeSeriesDataset
@@ -69,43 +69,7 @@ def create_forecast_dataset(query_body: str, task_options: TaskOptions) -> Datas
         dataset: torch.nn.Module
         dataset_config: dict of dataset configurations
     """
-    if source_type == DataSourceType.FILE:
-        if 'filename' not in kwargs.keys():
-            raise MissingConfigError('filename')
-        datasource = FileDataSource(kwargs['filename'])
-    elif source_type == DataSourceType.THRIFT:
-        if 'query_expressions' not in kwargs.keys():
-            raise MissingConfigError('query_expressions')
-        if 'query_filter' not in kwargs.keys():
-            raise MissingConfigError('query_filter')
-        datasource = ThriftDataSource(kwargs['query_expressions'], kwargs['query_filter'])
-    else:
-        raise BadConfigValueError('source_type', source_type, f"It should be one of {list(DataSourceType)}")
+    datasource = ThriftDataSource(query_body)
+    dataset = WindowDataset(datasource, task_options.input_length,task_options.predict_length)
 
-    if dataset_type not in list(DatasetType):
-        raise BadConfigValueError('dataset_type', dataset_type, f'It should be one of {list(DatasetType)}')
-    dataset_config = _dataset_default_config_dict[dataset_type]
-
-    for k, v in kwargs.items():
-        if k in dataset_config.keys():
-            dataset_config[k] = v
-
-    if dataset_type == DatasetType.TIMESERIES:
-        dataset = TimeSeriesDataset(datasource, **dataset_config)
-    elif dataset_type == DatasetType.WINDOW:
-        dataset = WindowDataset(datasource, **dataset_config)
-    else:
-        raise BadConfigValueError('dataset_type', dataset_type, f'It should be one of {list(DatasetType)}')
-
-    if 'input_vars' in kwargs.keys() and dataset.get_variable_num() != kwargs['input_vars']:
-        raise BadConfigValueError('input_vars', kwargs['input_vars'],
-                                  f'Variable number of fetched data should be consistent with '
-                                  f'input_vars, but got: {dataset.get_variable_num()}')
-
-    data_config = dataset_config.copy()
-    data_config['input_vars'] = dataset.get_variable_num()
-    data_config['output_vars'] = dataset.get_variable_num()
-    data_config['source_type'] = str(source_type)
-    data_config['dataset_type'] = str(dataset_type)
-
-    return dataset, data_config
+    return dataset

@@ -20,7 +20,7 @@ from iotdb.mlnode.config import descriptor
 from iotdb.mlnode.constant import TSStatusCode
 from iotdb.mlnode.data_access.factory import create_dataset
 from iotdb.mlnode.log import logger
-from iotdb.mlnode.parser import parse_forecast_request, parse_task_options
+from iotdb.mlnode.parser import parse_forecast_request, parse_task_options, ForecastTaskOptions
 from iotdb.mlnode.process.manager import TaskManager
 from iotdb.mlnode.serde import convert_to_binary
 from iotdb.mlnode.storage import model_storage
@@ -49,12 +49,12 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
             # parse options
             task_options = parse_task_options(req.options)
 
-            # create task
+            # create task according to task type
             task = self.__task_manager.create_forecast_training_task(
                 model_id=req.modelId,
-                task_options=task_options,
+                task_options=type(ForecastTaskOptions)(task_options),
                 hyperparameters=req.hyperparameters,
-                dataset=create_dataset(req.queryBody, task_options)
+                dataset=create_dataset(req.datasetFetchSQL, task_options)
             )
 
             return get_status(TSStatusCode.SUCCESS_STATUS)

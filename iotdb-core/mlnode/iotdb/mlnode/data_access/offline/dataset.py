@@ -27,7 +27,7 @@ from iotdb.mlnode.data_access.utils.timefeatures import time_features
 class TimeSeriesDataset(Dataset):
     """
     Build Row-by-Row dataset (with each element as multivariable time series at
-    the same time and correponding timestamp embedding)
+    the same time and corresponding timestamp embedding)
 
     Args:
         data_source: the whole multivariate time series for a while

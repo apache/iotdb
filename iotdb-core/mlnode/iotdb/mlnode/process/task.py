@@ -27,12 +27,11 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
-from iotdb.mlnode.algorithm.factory import create_forecast_model
 from iotdb.mlnode.algorithm.hyperparameter import parse_fixed_hyperparameters, generate_hyperparameters
 from iotdb.mlnode.client import client_manager
 from iotdb.mlnode.config import descriptor
 from iotdb.mlnode.log import logger
-from iotdb.mlnode.parser import TaskOptions
+from iotdb.mlnode.parser import ForecastTaskOptions
 from iotdb.mlnode.process.trial import ForecastingTrainingTrial
 from iotdb.mlnode.storage import model_storage
 from iotdb.thrift.common.ttypes import TrainingState
@@ -47,7 +46,7 @@ class ForestingTrainingObjective:
 
     def __init__(
             self,
-            task_options: TaskOptions,
+            task_options: ForecastTaskOptions,
             hyperparameters: Dict[str, str],
             dataset: Dataset,
             pid_info: Dict
@@ -58,9 +57,12 @@ class ForestingTrainingObjective:
         self.pid_info = pid_info
 
     def __call__(self, optuna_suggest: optuna.Trial):
-        model_configs, task_configs = generate_hyperparameters(optuna_suggest, self.task_options, self.hyperparameters)
-        model = create_forecast_model(self.task_options, model_configs)
-        trial = ForecastingTrainingTrial(model, task_configs, self.dataset)
+        model_hyperparameters, task_hyperparameters = generate_hyperparameters(optuna_suggest,
+                                                                               self.task_options, self.hyperparameters)
+        trial = ForecastingTrainingTrial(task_options=self.task_options,
+                                         model_hyperparameters=model_hyperparameters,
+                                         task_hyperparameters=task_hyperparameters,
+                                         dataset=self.dataset)
         loss = trial.start()
         return loss
 
@@ -90,17 +92,14 @@ class _BasicTrainingTask(_BasicTask):
     def __init__(
             self,
             model_id: str,
-            task_options: TaskOptions,
             hyperparameters: Dict[str, str],
             dataset: Dataset,
             pid_info: Dict
     ):
         super().__init__(pid_info)
         self.model_id = model_id
-        self.task_options = task_options
         self.hyperparameters = hyperparameters
         self.dataset = dataset
-
         self.confignode_client = client_manager.borrow_config_node_client()
 
     @abstractmethod
@@ -108,6 +107,66 @@ class _BasicTrainingTask(_BasicTask):
         raise NotImplementedError
 
 
+class ForecastFixedParamTrainingTask(_BasicTrainingTask):
+    def __init__(
+            self,
+            model_id: str,
+            task_options: ForecastTaskOptions,
+            hyperparameters: Dict[str, str],
+            dataset: Dataset,
+            pid_info: Dict
+    ):
+        super().__init__(model_id, hyperparameters, dataset, pid_info)
+        model_hyperparameters, task_hyperparameters = parse_fixed_hyperparameters(task_options, hyperparameters)
+        self.trial = ForecastingTrainingTrial(
+            task_options,
+            model_hyperparameters,
+            task_hyperparameters,
+            dataset)
+
+    def __call__(self):
+        try:
+            self.pid_info[self.model_id] = os.getpid()
+            self.trial.start()
+            self.confignode_client.update_model_state(self.model_id, TrainingState.FINISHED, self.trial.trial_id)
+        except Exception as e:
+            logger.warn(e)
+            self.confignode_client.update_model_state(self.model_id, TrainingState.FAILED, self.trial.trial_id)
+            raise e
+
+
+class ForecastAutoTuningTrainingTask(_BasicTrainingTask):
+    def __init__(
+            self,
+            model_id: str,
+            task_options: ForecastTaskOptions,
+            hyperparameters: Dict[str, str],
+            dataset: Dataset,
+            pid_info: Dict
+    ):
+        super().__init__(model_id, hyperparameters, dataset, pid_info)
+        self.study = optuna.create_study(direction='minimize')
+        self.task_options = task_options
+
+    def __call__(self):
+        self.pid_info[self.model_id] = os.getpid()
+        try:
+            self.study.optimize(ForestingTrainingObjective(
+                task_options=self.task_options,
+                hyperparameters=self.hyperparameters,
+                dataset=self.dataset,
+                pid_info=self.pid_info),
+                n_trials=descriptor.get_config().get_mn_tuning_trial_num(),
+                n_jobs=descriptor.get_config().get_mn_tuning_trial_concurrency())
+            best_trial_id = 'tid_' + str(self.study.best_trial._trial_id)
+            self.confignode_client.update_model_state(self.model_id, TrainingState.FINISHED, best_trial_id)
+        except Exception as e:
+            logger.warn(e)
+            self.confignode_client.update_model_state(self.model_id, TrainingState.FAILED)
+            raise e
+
+
+# Inference Task
 class _BasicInferenceTask(_BasicTask):
     def __init__(
             self,
@@ -137,77 +196,6 @@ class _BasicInferenceTask(_BasicTask):
     @abstractmethod
     def data_align(self, *args):
         raise NotImplementedError
-
-
-class ForecastFixedParamTrainingTask(_BasicTrainingTask):
-    def __init__(
-            self,
-            model_id: str,
-            task_options: TaskOptions,
-            hyperparameters: Dict[str, str],
-            dataset: Dataset,
-            pid_info: Dict
-    ):
-        """
-        Args:
-            task_configs: dict of task configurations
-            model_configs: dict of model configurations
-            pid_info: a map shared between processes, can be used to find the pid with model_id and trial_id
-            data_configs: dict of data configurations
-            dataset: training dataset
-        """
-        super().__init__(model_id, task_options, hyperparameters, dataset, pid_info)
-        model_configs, task_configs = parse_fixed_hyperparameters(task_options, hyperparameters)
-        self.trial = ForecastingTrainingTrial(create_forecast_model(task_options, model_configs),
-                                              task_configs,
-                                              dataset)
-
-    def __call__(self):
-        try:
-            self.pid_info[self.model_id] = os.getpid()
-            self.trial.start()
-            self.confignode_client.update_model_state(self.model_id, TrainingState.FINISHED, self.trial.trial_id)
-        except Exception as e:
-            logger.warn(e)
-            self.confignode_client.update_model_state(self.model_id, TrainingState.FAILED, self.trial.trial_id)
-            raise e
-
-
-class ForecastAutoTuningTrainingTask(_BasicTrainingTask):
-    def __init__(
-            self,
-            model_id: str,
-            task_options: TaskOptions,
-            hyperparameters: Dict[str, str],
-            dataset: Dataset,
-            pid_info: Dict
-    ):
-        """
-        Args:
-            task_configs: dict of task configurations
-            model_configs: dict of model configurations
-            pid_info: a map shared between processes, can be used to find the pid with model_id and trial_id
-            data_configs: dict of data configurations
-            dataset: training dataset
-        """
-        super().__init__(model_id, task_options, hyperparameters, dataset, pid_info)
-        self.study = optuna.create_study(direction='minimize')
-
-    def __call__(self):
-        self.pid_info[self.model_id] = os.getpid()
-        try:
-            self.study.optimize(ForestingTrainingObjective(
-                self.task_configs,
-                self.model_configs,
-                self.dataset),
-                n_trials=descriptor.get_config().get_mn_tuning_trial_num(),
-                n_jobs=descriptor.get_config().get_mn_tuning_trial_concurrency())
-            best_trial_id = 'tid_' + str(self.study.best_trial._trial_id)
-            self.confignode_client.update_model_state(self.model_id, TrainingState.FINISHED, best_trial_id)
-        except Exception as e:
-            logger.warn(e)
-            self.confignode_client.update_model_state(self.model_id, TrainingState.FAILED)
-            raise e
 
 
 class ForecastingInferenceTask(_BasicInferenceTask):

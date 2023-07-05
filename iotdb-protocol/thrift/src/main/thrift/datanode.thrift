@@ -448,10 +448,9 @@ struct TFetchMoreDataResp{
 }
 
 struct TFetchTimeseriesReq {
-  1: required list<string> queryExpressions
-  2: optional string queryFilter
-  3: optional i32 fetchSize
-  4: optional i64 timeout
+  1: required string queryBody
+  2: optional i32 fetchSize
+  3: optional i64 timeout
 }
 
 struct TFetchTimeseriesResp {

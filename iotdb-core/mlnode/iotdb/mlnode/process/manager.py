@@ -51,7 +51,7 @@ class TaskManager(object):
 
     def create_forecast_training_task(self,
                                       model_id: str,
-                                      task_options: TaskOptions,
+                                      task_options: ForecastTaskOptions,
                                       hyperparameters: Dict[str, str],
                                       dataset: Dataset):
         """
@@ -67,10 +67,10 @@ class TaskManager(object):
         """
         if task_options.auto_tuning:
             return ForecastAutoTuningTrainingTask(
-                model_id,
-                task_options,
-                hyperparameters,
-                dataset,
+                model_id=model_id,
+                task_options=task_options,
+                hyperparameters=hyperparameters,
+                dataset=dataset,
                 pid_info=self.__pid_info,
             )
         else:

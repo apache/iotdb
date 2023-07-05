@@ -63,9 +63,8 @@ class FileDataSource(DataSource):
 
 
 class ThriftDataSource(DataSource):
-    def __init__(self, query_expressions: List = None, query_filter: str = None):
-        self.query_expressions = query_expressions
-        self.query_filter = query_filter
+    def __init__(self, query_body: str = None):
+        self.query_body = query_body
         super(ThriftDataSource, self).__init__()
 
     def _read_data(self) -> None:
@@ -74,7 +73,7 @@ class ThriftDataSource(DataSource):
         except Exception:
             raise RuntimeError('Fail to establish connection with DataNode')
 
-        raw_data = data_client.fetch_timeseries(self.query_expressions, self.query_filter)
+        raw_data = data_client.fetch_timeseries(self.query_body)
 
         cols_data = raw_data.columns[1:]
         self.data = raw_data[cols_data].values

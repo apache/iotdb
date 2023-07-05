@@ -151,13 +151,11 @@ class DataNodeClient(object):
         self.__client = IMLNodeInternalRPCService.Client(protocol)
 
     def fetch_timeseries(self,
-                         query_expressions: List[str],
-                         query_filter: str = None,
+                         query_body: str,
                          fetch_size: int = DEFAULT_FETCH_SIZE,
                          timeout: int = DEFAULT_TIMEOUT) -> pd.DataFrame:
         req = TFetchTimeseriesReq(
-            queryExpressions=query_expressions,
-            queryFilter=query_filter,
+            queryBody=query_body,
             fetchSize=fetch_size,
             timeout=timeout
         )
@@ -166,17 +164,17 @@ class DataNodeClient(object):
             verify_success(resp.status, "An error occurs when calling fetch_timeseries()")
 
             if len(resp.tsDataset) == 0:
-                raise RuntimeError(f'No data fetched with query filter: {query_filter}')
+                raise RuntimeError(f'No data fetched with sql: {query_body}')
             data = serde.convert_to_df(resp.columnNameList,
                                        resp.columnTypeList,
                                        resp.columnNameIndexMap,
                                        resp.tsDataset)
             if data.empty:
                 raise RuntimeError(
-                    f'Fetched empty data with query expressions: {query_expressions} and query filter: {query_filter}')
+                    f'Fetched empty data with sql: {query_body}')
         except Exception as e:
             logger.warn(
-                f'Fail to fetch data with query expressions: {query_expressions} and query filter: {query_filter}')
+                f'Fail to fetch data with sql: {query_body}')
             raise e
         query_id = resp.queryId
         column_name_list = resp.columnNameList

@@ -24,60 +24,16 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 
+from iotdb.mlnode.algorithm.factory import create_forecast_model
 from iotdb.mlnode.algorithm.metric import all_metrics, build_metrics
 from iotdb.mlnode.client import client_manager
 from iotdb.mlnode.constant import DEFAULT_TRIAL_ID
 from iotdb.mlnode.log import logger
-from iotdb.mlnode.parser import TaskOptions
+from iotdb.mlnode.parser import ForecastTaskOptions
 from iotdb.mlnode.storage import model_storage
 from iotdb.thrift.common.ttypes import TrainingState
 
 
-def _parse_trial_config(**kwargs):
-    support_cfg = {
-        "batch_size": 32,
-        "learning_rate": 0.0001,
-        "epochs": 10,
-        "input_len": 96,
-        "pred_len": 96,
-        "num_workers": 0,
-        "use_gpu": False,
-        # "gpu": 0,
-        # "use_multi_gpu": False,
-        # "devices": [0],
-        "metric_names": ["MSE"],
-        "model_id": 'default',
-        "trial_id": 'default_trial'
-    }
-
-    trial_config = {}
-
-    for k, v in kwargs.items():
-        if k in support_cfg.keys():
-            if not isinstance(v, type(support_cfg[k])):
-                raise RuntimeError(
-                    'Trial config {} should have {} type, but got {} instead'.format(k, type(support_cfg[k]).__name__,
-                                                                                     type(v).__name__)
-                )
-            trial_config[k] = v
-
-    if trial_config['input_len'] <= 0:
-        raise RuntimeError(
-            'Trial config input_len should be positive integer but got {}'.format(trial_config['input_len'])
-        )
-
-    if trial_config['pred_len'] <= 0:
-        raise RuntimeError(
-            'Trial config pred_len should be positive integer but got {}'.format(trial_config['pred_len'])
-        )
-
-    for metric in trial_config['metric_names']:
-        if metric not in all_metrics:
-            raise RuntimeError(
-                f'Unknown metric type: ({metric}), which'
-                f' should be one of {all_metrics}'
-            )
-    return trial_config
 
 
 class BasicTrial(object):
@@ -98,7 +54,7 @@ class BasicTrial(object):
         self.metric_names = task_configs['metric_names']
         self.use_gpu = task_configs['use_gpu']
         self.model = model
-        self.model_configs = model_configs
+        self.model_configs = model
 
         self.device = self.__acquire_device()
         self.model = self.model.to(self.device)
@@ -132,21 +88,16 @@ class BasicTrial(object):
 class ForecastingTrainingTrial(BasicTrial):
     def __init__(
             self,
-            model: nn.Module,
-            task_configs: Dict,
+            task_options: ForecastTaskOptions,
+            model_hyperparameters: Dict,
+            task_hyperparameters: Dict,
             dataset: Dataset
     ):
         """
         A training trial, accept all parameters needed and train a single model.
-
-        Args:
-            trial_configs: dict of trial's configurations
-            model: torch.nn.Module
-            model_configs: dict of model's configurations
-            dataset: training dataset
-            **kwargs:
         """
-        super(ForecastingTrainingTrial, self).__init__(model, task_configs, dataset)
+        model = create_forecast_model(task_options, model_hyperparameters)
+        super(ForecastingTrainingTrial, self).__init__(model, task_hyperparameters, dataset)
         self.trial_id = DEFAULT_TRIAL_ID
         self.dataloader = self._build_dataloader()
         self.datanode_client = client_manager.borrow_data_node_client()

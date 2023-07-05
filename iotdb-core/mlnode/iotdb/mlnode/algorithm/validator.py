@@ -17,6 +17,8 @@
 #
 from abc import abstractmethod
 
+from iotdb.mlnode.exception import BadConfigValueError
+
 
 class Validator(object):
     @abstractmethod
@@ -33,12 +35,13 @@ class Validator(object):
         raise NotImplementedError("Subclasses must implement the validate() method.")
 
 
-class FloatRangeValidator(Validator):
+class NumberRangeValidator(Validator):
     def __init__(self, min_value, max_value):
         self.min_value = min_value
         self.max_value = max_value
 
     def validate(self, value):
-        if isinstance(value, float) and self.min_value <= value <= self.max_value:
+        if self.min_value <= value <= self.max_value:
             return True
-        return False
+        raise RuntimeError("Expect value between {0} and {1}, got {2} instead." \
+                           .format(self.min_value, self.max_value, value))

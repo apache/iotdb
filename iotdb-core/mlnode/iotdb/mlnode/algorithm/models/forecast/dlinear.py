@@ -23,9 +23,9 @@ import torch
 import torch.nn as nn
 
 from iotdb.mlnode.algorithm.enums import ForecastTaskType
-from iotdb.mlnode.algorithm.hyperparameter import FloatHyperparameter, HyperparameterName
-from iotdb.mlnode.algorithm.validator import FloatRangeValidator
-from iotdb.mlnode.exception import BadConfigValueError
+from iotdb.mlnode.algorithm.hyperparameter import HyperparameterName, IntHyperparameter
+from iotdb.mlnode.algorithm.validator import NumberRangeValidator
+
 
 
 class MovingAverageBlock(nn.Module):
@@ -64,12 +64,11 @@ class DLinear(nn.Module):
 
     def __init__(
             self,
-            kernel_size=25,
-            input_len=96,
-            pred_len=96,
-            input_vars=1,
-            output_vars=1,
-            forecast_task_type=ForecastTaskType.ENDOGENOUS,  # TODO, support others
+            kernel_size: int,
+            input_len: int,
+            pred_len: int,
+            input_vars: int,
+            # forecast_task_type=ForecastTaskType.ENDOGENOUS,  TODO, support others
     ):
         super(DLinear, self).__init__()
         self.input_len = input_len
@@ -138,40 +137,13 @@ class DLinearIndividual(nn.Module):
         return x.permute(0, 2, 1)  # to [Batch, Output length, Channel]
 
 
-def _model_config(**kwargs):
-    return {
-        'kernel_size': 25,
-        **kwargs
-    }
-
-
-dlinear_hyperparameter_map = {
-    HyperparameterName.LEARNING_RATE: FloatHyperparameter(name=HyperparameterName.LEARNING_RATE.name(),
-                                                          log=True,
-                                                          default_value=1e-3,
-                                                          value_validators=[FloatRangeValidator(1, 10)],
-                                                          default_low=1e-5,
-                                                          low_validators=[],
-                                                          default_high=1e-1,
-                                                          high_validators=[]),
+dlinear_structure_hyperparameter_map = {
+    HyperparameterName.KERNEL_SIZE: IntHyperparameter(name=HyperparameterName.KERNEL_SIZE.name(),
+                                                      log=True,
+                                                      default_value=25,
+                                                      value_validators=[NumberRangeValidator(1, 1e10)],
+                                                      default_low=5,
+                                                      low_validators=[],
+                                                      default_high=50,
+                                                      high_validators=[])
 }
-
-
-def dlinear(common_config: Dict, kernel_size=25, **kwargs) -> Tuple[DLinear, Dict]:
-    config = _model_config()
-    config.update(**common_config)
-    if not kernel_size > 0:
-        raise BadConfigValueError('kernel_size', kernel_size,
-                                  'Kernel size of dlinear should larger than 0')
-    config['kernel_size'] = kernel_size
-    return DLinear(**config), config
-
-
-def dlinear_individual(common_config: Dict, kernel_size=25, **kwargs) -> Tuple[DLinearIndividual, Dict]:
-    config = _model_config()
-    config.update(**common_config)
-    if not kernel_size > 0:
-        raise BadConfigValueError('kernel_size', kernel_size,
-                                  'Kernel size of dlinear_individual should larger than 0')
-    config['kernel_size'] = kernel_size
-    return DLinearIndividual(**config), config
