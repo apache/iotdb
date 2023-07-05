@@ -73,8 +73,8 @@ public class MyTest2 {
     originalSeqTsFileSize = config.getSeqTsFileSize();
     originalUnSeqTsFileSize = config.getUnSeqTsFileSize();
 
-    originalUseChunkIndex = TSFileDescriptor.getInstance().getConfig().isUseChunkIndex();
-    TSFileDescriptor.getInstance().getConfig().setUseChunkIndex(false);
+    originalUseChunkIndex = TSFileDescriptor.getInstance().getConfig().isUseTimeIndex();
+    TSFileDescriptor.getInstance().getConfig().setUseTimeIndex(false);
 
     config.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
 
@@ -96,7 +96,7 @@ public class MyTest2 {
     config.setEnableCPV(originalEnableCPV);
     config.setSeqTsFileSize(originalSeqTsFileSize);
     config.setUnSeqTsFileSize(originalUnSeqTsFileSize);
-    TSFileDescriptor.getInstance().getConfig().setUseChunkIndex(originalUseChunkIndex);
+    TSFileDescriptor.getInstance().getConfig().setUseTimeIndex(originalUseChunkIndex);
   }
 
   @Test

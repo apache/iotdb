@@ -411,8 +411,9 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                   .getPageReader()
                   .setDeleteIntervalList(chunkSuit4CPV.getChunkMetadata().getDeleteIntervalList());
             }
-            // chunk data read operation (c): get all data points
-            chunkSuit4CPV.getPageReader().updateBPTP(chunkSuit4CPV);
+            // chunk data read operation (c)
+            //            chunkSuit4CPV.getPageReader().updateBPTP(chunkSuit4CPV);
+            chunkSuit4CPV.getPageReader().updateBP_withValueIndex(chunkSuit4CPV);
             // check if empty
             if (chunkSuit4CPV.statistics.getCount() == 0) {
               currentChunkList.remove(chunkSuit4CPV);
@@ -608,7 +609,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                   .getPageReader()
                   .setDeleteIntervalList(chunkSuit4CPV.getChunkMetadata().getDeleteIntervalList());
             }
-            // chunk data read operation (c): get all data points
+            // chunk data read operation (c)
             //            chunkSuit4CPV.getPageReader().updateBPTP(chunkSuit4CPV);
             chunkSuit4CPV.getPageReader().updateTP_withValueIndex(chunkSuit4CPV); // TODO
             // check if empty

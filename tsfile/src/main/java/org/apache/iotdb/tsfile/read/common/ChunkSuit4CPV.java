@@ -251,7 +251,7 @@ public class ChunkSuit4CPV {
   public int updateFPwithTheClosetPointEqualOrAfter(long targetTimestamp) throws IOException {
     long start = System.nanoTime();
     int estimatedPos;
-    if (TSFileDescriptor.getInstance().getConfig().isUseChunkIndex()) {
+    if (TSFileDescriptor.getInstance().getConfig().isUseTimeIndex()) {
       StepRegress stepRegress = chunkMetadata.getStatistics().getStepRegress();
       // infer position starts from 1, so minus 1 here
       estimatedPos = (int) Math.round(stepRegress.infer(targetTimestamp)) - 1;
@@ -368,7 +368,7 @@ public class ChunkSuit4CPV {
   public int updateLPwithTheClosetPointEqualOrBefore(long targetTimestamp) throws IOException {
     long start = System.nanoTime();
     int estimatedPos;
-    if (TSFileDescriptor.getInstance().getConfig().isUseChunkIndex()) {
+    if (TSFileDescriptor.getInstance().getConfig().isUseTimeIndex()) {
       StepRegress stepRegress = chunkMetadata.getStatistics().getStepRegress();
       // infer position starts from 1, so minus 1 here
       estimatedPos = (int) Math.round(stepRegress.infer(targetTimestamp)) - 1;
@@ -490,7 +490,7 @@ public class ChunkSuit4CPV {
   public boolean checkIfExist(long targetTimestamp) throws IOException {
     long start = System.nanoTime();
     boolean exist;
-    if (TSFileDescriptor.getInstance().getConfig().isUseChunkIndex()) {
+    if (TSFileDescriptor.getInstance().getConfig().isUseTimeIndex()) {
       StepRegress stepRegress = chunkMetadata.getStatistics().getStepRegress();
       // infer position starts from 1, so minus 1 here
       // TODO debug buffer.get(index)

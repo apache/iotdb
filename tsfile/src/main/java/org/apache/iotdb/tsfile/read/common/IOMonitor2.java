@@ -27,8 +27,9 @@ public class IOMonitor2 {
     UDTFAlignByTimeDataSet_M4_POINT, // mac
     UDTFAlignByTimeDataSet_M4_TIMEWINDOW, // mac_tw
     GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_UseIndex, // cpv
-    GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_NotUseIndex, // cpv_noIndex
-
+    GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_NoTimeIndex, // cpv_noTimeIndex
+    GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_NoValueIndex, // cpv_noValueIndex
+    GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_NoTimeValueIndex, // cpv_noTimeValueIndex
     GroupByWithoutValueFilterDataSet_LocalGroupByExecutor_UseStatistics, // moc
     GroupByWithoutValueFilterDataSet_LocalGroupByExecutor_NotUseStatistics // mac_groupBy
   }

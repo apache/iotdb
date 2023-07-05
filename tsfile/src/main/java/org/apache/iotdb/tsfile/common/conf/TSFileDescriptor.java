@@ -108,12 +108,15 @@ public class TSFileDescriptor {
       conf.setUseStatistics(
           Boolean.parseBoolean(
               properties.getProperty("use_Statistics", Boolean.toString(conf.isUseStatistics()))));
-      conf.setUseChunkIndex(
+      conf.setUseTimeIndex(
           Boolean.parseBoolean(
-              properties.getProperty("use_ChunkIndex", Boolean.toString(conf.isUseChunkIndex()))));
+              properties.getProperty("use_TimeIndex", Boolean.toString(conf.isUseTimeIndex()))));
       conf.setUseMad(
           Boolean.parseBoolean(
               properties.getProperty("use_Mad", Boolean.toString(conf.isUseMad()))));
+      conf.setUseValueIndex(
+          Boolean.parseBoolean(
+              properties.getProperty("use_ValueIndex", Boolean.toString(conf.isUseValueIndex()))));
       conf.setGroupSizeInByte(
           Integer.parseInt(
               properties.getProperty(

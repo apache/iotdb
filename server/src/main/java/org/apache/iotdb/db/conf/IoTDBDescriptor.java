@@ -906,12 +906,12 @@ public class IoTDBDescriptor {
                         TSFileDescriptor.getInstance().getConfig().isUseStatistics()))));
     TSFileDescriptor.getInstance()
         .getConfig()
-        .setUseChunkIndex(
+        .setUseTimeIndex(
             Boolean.parseBoolean(
                 properties.getProperty(
-                    "use_ChunkIndex",
+                    "use_TimeIndex",
                     Boolean.toString(
-                        TSFileDescriptor.getInstance().getConfig().isUseChunkIndex()))));
+                        TSFileDescriptor.getInstance().getConfig().isUseTimeIndex()))));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setUseMad(
@@ -919,6 +919,14 @@ public class IoTDBDescriptor {
                 properties.getProperty(
                     "use_Mad",
                     Boolean.toString(TSFileDescriptor.getInstance().getConfig().isUseMad()))));
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setUseValueIndex(
+            Boolean.parseBoolean(
+                properties.getProperty(
+                    "use_ValueIndex",
+                    Boolean.toString(
+                        TSFileDescriptor.getInstance().getConfig().isUseValueIndex()))));
     TSFileDescriptor.getInstance()
         .getConfig()
         .setGroupSizeInByte(

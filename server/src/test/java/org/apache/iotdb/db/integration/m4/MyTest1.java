@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.jdbc.IoTDBStatement;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
 import org.junit.After;
@@ -71,8 +72,8 @@ public class MyTest1 {
     originalEnableCPV = config.isEnableCPV();
     config.setEnableCPV(true); // CPV
 
-    originalUseChunkIndex = TSFileDescriptor.getInstance().getConfig().isUseChunkIndex();
-    TSFileDescriptor.getInstance().getConfig().setUseChunkIndex(false);
+    originalUseChunkIndex = TSFileDescriptor.getInstance().getConfig().isUseTimeIndex();
+    TSFileDescriptor.getInstance().getConfig().setUseTimeIndex(false);
 
     originalUseMad = TSFileDescriptor.getInstance().getConfig().isUseMad();
     TSFileDescriptor.getInstance().getConfig().setUseMad(true);
@@ -87,7 +88,7 @@ public class MyTest1 {
     EnvironmentUtils.cleanEnv();
     config.setCompactionStrategy(originalCompactionStrategy);
     config.setEnableCPV(originalEnableCPV);
-    TSFileDescriptor.getInstance().getConfig().setUseChunkIndex(originalUseChunkIndex);
+    TSFileDescriptor.getInstance().getConfig().setUseTimeIndex(originalUseChunkIndex);
     TSFileDescriptor.getInstance().getConfig().setUseMad(originalUseMad);
   }
 
@@ -132,6 +133,7 @@ public class MyTest1 {
           Assert.assertEquals(res[i++], ans);
         }
       }
+      System.out.println(((IoTDBStatement) statement).executeFinish());
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

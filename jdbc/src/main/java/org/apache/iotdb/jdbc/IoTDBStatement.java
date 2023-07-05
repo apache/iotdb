@@ -25,6 +25,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteFinishResp;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
@@ -381,6 +382,12 @@ public class IoTDBStatement implements Statement {
             e);
       }
     }
+  }
+
+  public String executeFinish() throws TException, StatementExecutionException {
+    TSExecuteFinishResp ret = client.executeFinish();
+    RpcUtils.verifySuccess(ret.getStatus());
+    return ret.executionInfo;
   }
 
   private ResultSet executeQuerySQL(String sql, long timeoutInMS) throws TException, SQLException {

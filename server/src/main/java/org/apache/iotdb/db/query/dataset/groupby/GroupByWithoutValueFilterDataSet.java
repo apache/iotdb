@@ -201,12 +201,21 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       boolean ascending)
       throws StorageEngineException, QueryProcessException {
     if (CONFIG.isEnableCPV()) {
-      if (TSFileDescriptor.getInstance().getConfig().isUseChunkIndex()) {
+      if (TSFileDescriptor.getInstance().getConfig().isUseTimeIndex()
+          && TSFileDescriptor.getInstance().getConfig().isUseValueIndex()) {
         IOMonitor2.dataSetType =
             DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_UseIndex;
+      } else if (!TSFileDescriptor.getInstance().getConfig().isUseTimeIndex()
+          && TSFileDescriptor.getInstance().getConfig().isUseValueIndex()) {
+        IOMonitor2.dataSetType =
+            DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_NoTimeIndex;
+      } else if (TSFileDescriptor.getInstance().getConfig().isUseTimeIndex()
+          && !TSFileDescriptor.getInstance().getConfig().isUseValueIndex()) {
+        IOMonitor2.dataSetType =
+            DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_NoValueIndex;
       } else {
         IOMonitor2.dataSetType =
-            DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_NotUseIndex;
+            DataSetType.GroupByWithoutValueFilterDataSet_LocalGroupByExecutor4CPV_NoTimeValueIndex;
       }
       return new LocalGroupByExecutor4CPV(
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);

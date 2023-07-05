@@ -71,8 +71,8 @@ public class MyTmpTest {
     originalEnableCPV = config.isEnableCPV();
     config.setEnableCPV(true); // CPV
 
-    originalUseChunkIndex = TSFileDescriptor.getInstance().getConfig().isUseChunkIndex();
-    TSFileDescriptor.getInstance().getConfig().setUseChunkIndex(true);
+    originalUseChunkIndex = TSFileDescriptor.getInstance().getConfig().isUseTimeIndex();
+    TSFileDescriptor.getInstance().getConfig().setUseTimeIndex(true);
 
     originalUseMad = TSFileDescriptor.getInstance().getConfig().isUseMad();
     TSFileDescriptor.getInstance().getConfig().setUseMad(true);
@@ -87,7 +87,7 @@ public class MyTmpTest {
     EnvironmentUtils.cleanEnv();
     config.setCompactionStrategy(originalCompactionStrategy);
     config.setEnableCPV(originalEnableCPV);
-    TSFileDescriptor.getInstance().getConfig().setUseChunkIndex(originalUseChunkIndex);
+    TSFileDescriptor.getInstance().getConfig().setUseTimeIndex(originalUseChunkIndex);
     TSFileDescriptor.getInstance().getConfig().setUseMad(originalUseMad);
   }
 

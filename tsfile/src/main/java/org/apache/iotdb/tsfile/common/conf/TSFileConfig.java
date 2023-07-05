@@ -29,7 +29,9 @@ public class TSFileConfig implements Serializable {
 
   private boolean useStatistics = true;
 
-  private boolean useChunkIndex = true;
+  private boolean useTimeIndex = true;
+
+  private boolean useValueIndex = true;
 
   private boolean useMad = false;
 
@@ -161,12 +163,12 @@ public class TSFileConfig implements Serializable {
     this.useStatistics = useStatistics;
   }
 
-  public boolean isUseChunkIndex() {
-    return useChunkIndex;
+  public boolean isUseTimeIndex() {
+    return useTimeIndex;
   }
 
-  public void setUseChunkIndex(boolean useChunkIndex) {
-    this.useChunkIndex = useChunkIndex;
+  public void setUseTimeIndex(boolean useTimeIndex) {
+    this.useTimeIndex = useTimeIndex;
   }
 
   public boolean isUseMad() {
@@ -175,6 +177,14 @@ public class TSFileConfig implements Serializable {
 
   public void setUseMad(boolean useMad) {
     this.useMad = useMad;
+  }
+
+  public boolean isUseValueIndex() {
+    return useValueIndex;
+  }
+
+  public void setUseValueIndex(boolean useValueIndex) {
+    this.useValueIndex = useValueIndex;
   }
 
   public int getGroupSizeInByte() {
