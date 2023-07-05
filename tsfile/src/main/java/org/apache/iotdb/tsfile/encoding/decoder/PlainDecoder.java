@@ -45,7 +45,8 @@ public class PlainDecoder extends Decoder {
 
   @Override
   public int readInt(ByteBuffer buffer) {
-    return ReadWriteForEncodingUtils.readVarInt(buffer);
+    return buffer.getInt();
+    // return ReadWriteForEncodingUtils.readVarInt(buffer);
   }
 
   @Override
