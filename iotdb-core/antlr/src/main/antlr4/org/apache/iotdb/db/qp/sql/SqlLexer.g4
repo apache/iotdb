@@ -1121,27 +1121,15 @@ OPERATOR_IS : I S;
 
 OPERATOR_IN : I N;
 
-OPERATOR_AND
-    : AND
-    | '&'
-    | '&&'
-    ;
+OPERATOR_BITWISE_AND : '&';
 
-OPERATOR_OR
-    : OR
-    | '|'
-    | '||'
-    ;
+OPERATOR_LOGICAL_AND : '&&';
 
-OPERATOR_NOT
-    : NOT | '!'
-    ;
+OPERATOR_BITWISE_OR : '|';
 
-OPERATOR_CONTAINS
-    : CONTAINS
-    ;
+OPERATOR_LOGICAL_OR : '||';
 
-
+OPERATOR_NOT : '!';
 
 /**
  * 4. Constructors Symbols
