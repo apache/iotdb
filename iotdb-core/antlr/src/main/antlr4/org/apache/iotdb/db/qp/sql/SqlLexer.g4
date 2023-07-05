@@ -65,6 +65,10 @@ ALTER
     : A L T E R
     ;
 
+AND
+    : A N D
+    ;
+
 ANY
     : A N Y
     ;
@@ -149,12 +153,16 @@ CONNECTOR
     : C O N N E C T O R
     ;
 
-CONTINUOUS
-    : C O N T I N U O U S
-    ;
-
 CONTAIN
     : C O N T A I N
+    ;
+
+CONTAINS
+    : C O N T A I N S
+    ;
+
+CONTINUOUS
+    : C O N T I N U O U S
     ;
 
 COUNT
@@ -414,8 +422,17 @@ NONE
     : N O N E
     ;
 
+NOT
+    : N O T
+    ;
+
+
 NOW
     : N O W
+    ;
+
+NULL
+    : N U L L
     ;
 
 NULLS
@@ -436,6 +453,10 @@ OFFSET
 
 ON
     : O N
+    ;
+
+OR
+    : O R
     ;
 
 ORDER
@@ -1101,24 +1122,25 @@ OPERATOR_IS : I S;
 OPERATOR_IN : I N;
 
 OPERATOR_AND
-    : A N D
+    : AND
     | '&'
     | '&&'
     ;
 
 OPERATOR_OR
-    : O R
+    : OR
     | '|'
     | '||'
     ;
 
 OPERATOR_NOT
-    : N O T | '!'
+    : NOT | '!'
     ;
 
 OPERATOR_CONTAINS
-    : C O N T A I N S
+    : CONTAINS
     ;
+
 
 
 /**
@@ -1195,7 +1217,7 @@ BOOLEAN_LITERAL
 // Other Literals
 
 NULL_LITERAL
-    : N U L L
+    : NULL
     ;
 
 NAN_LITERAL

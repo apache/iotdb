@@ -366,31 +366,7 @@ public class PartialPathTest {
     }
 
     try {
-      new PartialPath("root.sg.d1", "contains");
-      fail();
-    } catch (IllegalPathException ignored) {
-    }
-
-    try {
       new PartialPath("root.sg", "watermark_embedding");
-      fail();
-    } catch (IllegalPathException ignored) {
-    }
-
-    try {
-      new PartialPath("root.sg", "and");
-      fail();
-    } catch (IllegalPathException ignored) {
-    }
-
-    try {
-      new PartialPath("root.sg.d1", "or");
-      fail();
-    } catch (IllegalPathException ignored) {
-    }
-
-    try {
-      new PartialPath("root.sg.d1", "not");
       fail();
     } catch (IllegalPathException ignored) {
     }
