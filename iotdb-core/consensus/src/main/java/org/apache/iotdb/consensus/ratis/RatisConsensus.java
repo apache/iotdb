@@ -128,7 +128,7 @@ class RatisConsensus implements IConsensus {
   private final RatisLogMonitor monitor = new RatisLogMonitor();
 
   private final RatisMetricSet ratisMetricSet;
-  private TConsensusGroupType consensusGroupType = null;
+  private final TConsensusGroupType consensusGroupType;
 
   public RatisConsensus(ConsensusConfig config, IStateMachine.Registry registry)
       throws IOException {
@@ -142,6 +142,7 @@ class RatisConsensus implements IConsensus {
 
     Utils.initRatisConfig(properties, config.getRatisConfig());
     this.config = config.getRatisConfig();
+    this.consensusGroupType = config.getConsensusGroupType();
     this.ratisMetricSet = new RatisMetricSet();
 
     this.triggerSnapshotThreshold = this.config.getImpl().getTriggerSnapshotFileSize();
@@ -271,11 +272,11 @@ class RatisConsensus implements IConsensus {
     RaftClientRequest clientRequest =
         buildRawRequest(raftGroupId, message, RaftClientRequest.writeRequestType());
 
-    long writeToRatisStartTime = System.nanoTime();
     RaftClientReply localServerReply;
     RaftPeer suggestedLeader = null;
     if (isLeader(consensusGroupId) && waitUntilLeaderReady(raftGroupId)) {
-      try {
+      try (AutoCloseable ignored =
+          RatisMetricsManager.getInstance().startWriteLocallyTimer(consensusGroupType)) {
         localServerReply = writeLocallyWithRetry(clientRequest);
         if (localServerReply.isSuccess()) {
           ResponseMessage responseMessage = (ResponseMessage) localServerReply.getMessage();
@@ -286,22 +287,16 @@ class RatisConsensus implements IConsensus {
         if (ex != null) { // local server is not leader
           suggestedLeader = ex.getSuggestedLeader();
         }
-      } catch (IOException e) {
+      } catch (Exception e) {
         return failedWrite(new RatisRequestFailedException(e));
-      } finally {
-        if (consensusGroupType == null) {
-          consensusGroupType = Utils.getConsensusGroupTypeFromPrefix(raftGroupId.toString());
-        }
-        // statistic the time of write locally
-        RatisMetricsManager.getInstance()
-            .recordWriteLocallyCost(System.nanoTime() - writeToRatisStartTime, consensusGroupType);
       }
     }
 
     // 2. try raft client
     TSStatus writeResult;
     RatisClient client = null;
-    try {
+    try (AutoCloseable ignored =
+        RatisMetricsManager.getInstance().startWriteRemotelyTimer(consensusGroupType)) {
       client = getRaftClient(raftGroup);
       RaftClientReply reply = writeRemotelyWithRetry(client, message);
       if (!reply.isSuccess()) {
@@ -314,12 +309,6 @@ class RatisConsensus implements IConsensus {
       if (client != null) {
         client.returnSelf();
       }
-      if (consensusGroupType == null) {
-        consensusGroupType = Utils.getConsensusGroupTypeFromPrefix(raftGroupId.toString());
-      }
-      // statistic the time of write remotely
-      RatisMetricsManager.getInstance()
-          .recordWriteRemotelyCost(System.nanoTime() - writeToRatisStartTime, consensusGroupType);
     }
 
     if (suggestedLeader != null) {
@@ -340,22 +329,16 @@ class RatisConsensus implements IConsensus {
     }
 
     RaftClientReply reply;
-    try {
+    try (AutoCloseable ignored =
+        RatisMetricsManager.getInstance().startReadTimer(consensusGroupType)) {
       RequestMessage message = new RequestMessage(IConsensusRequest);
       RaftClientRequest clientRequest =
           buildRawRequest(groupId, message, RaftClientRequest.staleReadRequestType(-1));
-      long readRatisStartTime = System.nanoTime();
       reply = server.submitClientRequest(clientRequest);
-      if (consensusGroupType == null) {
-        consensusGroupType = Utils.getConsensusGroupTypeFromPrefix(groupId.toString());
-      }
-      // statistic the time of submit read request
-      RatisMetricsManager.getInstance()
-          .recordReadRequestCost(System.nanoTime() - readRatisStartTime, consensusGroupType);
       if (!reply.isSuccess()) {
         return failedRead(new RatisRequestFailedException(reply.getException()));
       }
-    } catch (IOException e) {
+    } catch (Exception e) {
       return failedRead(new RatisRequestFailedException(e));
     }
 

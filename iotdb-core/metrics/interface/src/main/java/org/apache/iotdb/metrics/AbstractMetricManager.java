@@ -441,10 +441,10 @@ public abstract class AbstractMetricManager {
     if (!isEnableMetricInGivenLevel(metricLevel)) {
       return true;
     }
-    if (!nameToMetaInfo.containsKey(name)) {
+    MetricInfo.MetaInfo metaInfo = nameToMetaInfo.get(name);
+    if (metaInfo == null) {
       return false;
     }
-    MetricInfo.MetaInfo metaInfo = nameToMetaInfo.get(name);
     return !metaInfo.hasSameKey(tags);
   }
 
