@@ -2879,6 +2879,9 @@ public class DataRegion implements IDataRegionForQuery {
         break;
       }
     }
+    if (timedCompactionScheduleTask != null) {
+      timedCompactionScheduleTask.shutdownNow();
+    }
   }
 
   // may remove the processorEntrys
@@ -2920,9 +2923,6 @@ public class DataRegion implements IDataRegionForQuery {
                 new DataRegionId(Integer.valueOf(dataRegionId)), tsFileResource.getTimePartition());
         logger.debug("{} is removed during deleting partitions", tsFileResource.getTsFilePath());
       }
-    }
-    if (timedCompactionScheduleTask != null) {
-      timedCompactionScheduleTask.shutdownNow();
     }
   }
 
