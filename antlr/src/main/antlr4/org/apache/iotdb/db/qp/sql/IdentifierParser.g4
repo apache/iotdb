@@ -39,7 +39,7 @@ keyWords
     | ALIGNED
     | ALL
     | ALTER
-    | ADD
+    | AND
     | ANY
     | APPEND
     | AS

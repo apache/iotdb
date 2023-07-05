@@ -97,24 +97,24 @@ public class PathTest {
     Assert.assertEquals("drop_trigger", o.getMeasurement());
 
     Path p = new Path("root.sg.and", true);
-    Assert.assertEquals("root.sg", o.getDevice());
-    Assert.assertEquals("and", o.getMeasurement());
+    Assert.assertEquals("root.sg", p.getDevice());
+    Assert.assertEquals("and", p.getMeasurement());
 
     p = new Path("root.sg.or", true);
-    Assert.assertEquals("root.sg", o.getDevice());
-    Assert.assertEquals("or", o.getMeasurement());
+    Assert.assertEquals("root.sg", p.getDevice());
+    Assert.assertEquals("or", p.getMeasurement());
 
     p = new Path("root.sg.not", true);
-    Assert.assertEquals("root.sg", o.getDevice());
-    Assert.assertEquals("not", o.getMeasurement());
+    Assert.assertEquals("root.sg", p.getDevice());
+    Assert.assertEquals("not", p.getMeasurement());
 
     p = new Path("root.sg.null", true);
-    Assert.assertEquals("root.sg", o.getDevice());
-    Assert.assertEquals("null", o.getMeasurement());
+    Assert.assertEquals("root.sg", p.getDevice());
+    Assert.assertEquals("null", p.getMeasurement());
 
     p = new Path("root.sg.contains", true);
-    Assert.assertEquals("root.sg", o.getDevice());
-    Assert.assertEquals("contains", o.getMeasurement());
+    Assert.assertEquals("root.sg", p.getDevice());
+    Assert.assertEquals("contains", p.getMeasurement());
   }
 
   @Test
