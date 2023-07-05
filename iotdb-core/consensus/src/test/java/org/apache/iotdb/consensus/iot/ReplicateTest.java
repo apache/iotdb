@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.consensus.iot;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -93,6 +94,7 @@ public class ReplicateTest {
                           .setThisNodeId(peers.get(i).getNodeId())
                           .setThisNode(peers.get(i).getEndpoint())
                           .setStorageDir(peersStorage.get(i).getAbsolutePath())
+                          .setConsensusGroupType(TConsensusGroupType.DataRegion)
                           .build(),
                       groupId -> stateMachines.get(finalI))
                   .orElseThrow(
