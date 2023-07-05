@@ -258,7 +258,7 @@ public class FileGenerator {
     try {
       writeToTsFile(schema);
     } catch (WriteProcessException e) {
-      e.printStackTrace();
+      LOG.warn("Write to tsfile error", e);
     }
     LOG.info("write to file successfully!!");
   }
@@ -337,7 +337,7 @@ public class FileGenerator {
     try {
       return new Scanner(file);
     } catch (FileNotFoundException e) {
-      e.printStackTrace();
+      LOG.warn("Get data from file {} error, will return null Scanner", path, e);
       return null;
     }
   }
