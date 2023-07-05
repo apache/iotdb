@@ -100,13 +100,15 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
               : CacheMNodeFactory.getInstance();
       // schemaRegion1
       IMNode<?> sg1 =
-          nodeFactory.createDatabaseDeviceMNode(
+          nodeFactory.createDatabaseMNode(
               null, "sg1", CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
       sg1.setFullPath("root.sg1");
       long size1 = sg1.estimateSize();
-      IMNode<?> tmp =
+      IMNode<?> tmp = nodeFactory.createDeviceMNode(sg1, "v");
+      size1 += tmp.estimateSize();
+      tmp =
           nodeFactory.createMeasurementMNode(
-              sg1.getAsDeviceMNode(),
+              tmp.getAsDeviceMNode(),
               "d0",
               new MeasurementSchema(
                   "d0", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY),
@@ -114,7 +116,9 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
       size1 += tmp.estimateSize();
       tmp = nodeFactory.createInternalMNode(sg1.getAsMNode(), "d1");
       size1 += tmp.estimateSize();
-      tmp = nodeFactory.createDeviceMNode(tmp, "s2");
+      tmp = nodeFactory.createInternalMNode(tmp, "s2");
+      size1 += tmp.estimateSize();
+      tmp = nodeFactory.createDeviceMNode(tmp, "v");
       size1 += tmp.estimateSize();
       size1 +=
           nodeFactory
@@ -132,7 +136,9 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
               null, "sg2", CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
       sg2.setFullPath("root.sg2");
       long size2 = sg2.estimateSize();
-      tmp = nodeFactory.createDeviceMNode(sg2, "d1");
+      tmp = nodeFactory.createInternalMNode(sg2, "d1");
+      size2 += tmp.estimateSize();
+      tmp = nodeFactory.createDeviceMNode(tmp, "v");
       size2 += tmp.estimateSize();
       size2 +=
           nodeFactory
@@ -143,7 +149,9 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
                       "s3", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY),
                   null)
               .estimateSize();
-      tmp = nodeFactory.createDeviceMNode(sg2, "d2");
+      tmp = nodeFactory.createInternalMNode(sg2, "d2");
+      size2 += tmp.estimateSize();
+      tmp = nodeFactory.createDeviceMNode(tmp, "v");
       size2 += tmp.estimateSize();
       size2 +=
           nodeFactory
