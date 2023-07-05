@@ -223,6 +223,7 @@ public class PipeHeartbeatParser {
                           .getPipeTaskInfo()
                           .showPipes())
                   .filter(true, pipeName).getAllPipeMeta().stream()
+                      .filter(pipeMeta -> !pipeMeta.getStaticMeta().getPipeName().equals(pipeName))
                       .map(PipeMeta::getRuntimeMeta)
                       .filter(
                           runtimeMeta -> !runtimeMeta.getStatus().get().equals(PipeStatus.STOPPED))
