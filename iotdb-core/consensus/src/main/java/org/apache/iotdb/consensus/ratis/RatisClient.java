@@ -61,7 +61,7 @@ class RatisClient implements AutoCloseable {
     return raftClient;
   }
 
-  private void destroy() {
+  private void invalidate() {
     try {
       raftClient.close();
     } catch (IOException e) {
@@ -97,7 +97,7 @@ class RatisClient implements AutoCloseable {
 
     @Override
     public void destroyObject(RaftGroup key, PooledObject<RatisClient> pooledObject) {
-      pooledObject.getObject().destroy();
+      pooledObject.getObject().invalidate();
     }
 
     @Override
