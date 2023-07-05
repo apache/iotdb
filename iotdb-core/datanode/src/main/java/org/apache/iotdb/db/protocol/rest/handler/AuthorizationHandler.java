@@ -17,35 +17,24 @@
 
 package org.apache.iotdb.db.protocol.rest.handler;
 
-import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 
 public class AuthorizationHandler {
 
   public Response checkAuthority(SecurityContext securityContext, Statement statement) {
     String userName = securityContext.getUserPrincipal().getName();
-    try {
-      if (!AuthorityChecker.checkAuthorization(statement, userName)) {
-        return Response.ok()
-            .entity(
-                new ExecutionStatus()
-                    .code(TSStatusCode.NO_PERMISSION.getStatusCode())
-                    .message(TSStatusCode.NO_PERMISSION.name()))
-            .build();
-      }
-    } catch (AuthException e) {
+    if (!AuthorityChecker.checkAuthorization(statement, userName)) {
       return Response.ok()
           .entity(
               new ExecutionStatus()
-                  .message(e.getMessage())
-                  .code(Status.BAD_REQUEST.getStatusCode()))
+                  .code(TSStatusCode.NO_PERMISSION.getStatusCode())
+                  .message(TSStatusCode.NO_PERMISSION.name()))
           .build();
     }
     return null;
