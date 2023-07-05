@@ -65,10 +65,6 @@ ALTER
     : A L T E R
     ;
 
-AND
-    : A N D
-    ;
-
 ANY
     : A N Y
     ;
@@ -155,10 +151,6 @@ CONNECTOR
 
 CONTAIN
     : C O N T A I N
-    ;
-
-CONTAINS
-    : C O N T A I N S
     ;
 
 CONTINUOUS
@@ -422,17 +414,8 @@ NONE
     : N O N E
     ;
 
-NOT
-    : N O T
-    ;
-
-
 NOW
     : N O W
-    ;
-
-NULL
-    : N U L L
     ;
 
 NULLS
@@ -453,10 +436,6 @@ OFFSET
 
 ON
     : O N
-    ;
-
-OR
-    : O R
     ;
 
 ORDER
@@ -1141,6 +1120,21 @@ OPERATOR_CONTAINS
     : CONTAINS
     ;
 
+AND
+    : A N D
+    ;
+
+CONTAINS
+    : C O N T A I N S
+    ;
+
+NOT
+    : N O T
+    ;
+
+OR
+    : O R
+    ;
 
 
 /**
@@ -1222,6 +1216,10 @@ NULL_LITERAL
 
 NAN_LITERAL
     : N A N
+    ;
+
+NULL
+    : N U L L
     ;
 
 /**
