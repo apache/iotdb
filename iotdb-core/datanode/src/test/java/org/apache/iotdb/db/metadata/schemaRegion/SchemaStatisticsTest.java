@@ -54,6 +54,114 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
   }
 
   @Test
+  public void testMemoryStatistics2() throws Exception {
+    ISchemaRegion schemaRegion1 = getSchemaRegion("root.sg1", 0);
+    ISchemaRegion schemaRegion2 = getSchemaRegion("root.sg2", 1);
+    ISchemaEngineStatistics engineStatistics =
+        SchemaEngine.getInstance().getSchemaEngineStatistics();
+
+    SchemaRegionTestUtil.createSimpleTimeseriesByList(
+        schemaRegion1, Arrays.asList("root.sg1.v.d0", "root.sg1.d1.v.s1", "root.sg1.d1.s2.v.t1"));
+    SchemaRegionTestUtil.createSimpleTimeseriesByList(
+        schemaRegion2, Arrays.asList("root.sg2.d1.v.s3", "root.sg2.d2.v.s1", "root.sg2.d2.v.s2"));
+    PathPatternTree patternTree = new PathPatternTree();
+    patternTree.appendPathPattern(new PartialPath("root.**.s1"));
+    patternTree.constructTree();
+    Assert.assertTrue(schemaRegion1.constructSchemaBlackList(patternTree) >= 1);
+    Assert.assertTrue(schemaRegion2.constructSchemaBlackList(patternTree) >= 1);
+    schemaRegion1.deleteTimeseriesInBlackList(patternTree);
+    schemaRegion2.deleteTimeseriesInBlackList(patternTree);
+
+    if (testParams.getTestModeName().equals("PBTree-PartialMemory")
+        || testParams.getTestModeName().equals("PBTree-NonMemory")) {
+
+      IMNodeFactory<?> nodeFactory = CacheMNodeFactory.getInstance();
+      // wait release and flush task
+      Thread.sleep(1000);
+      // schemaRegion1
+      IMNode<?> sg1 =
+          nodeFactory.createDatabaseMNode(
+              null, "sg1", CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+      sg1.setFullPath("root.sg1");
+      long size1 = sg1.estimateSize();
+      Assert.assertEquals(size1, schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
+      // schemaRegion2
+      IMNode<?> sg2 =
+          nodeFactory.createDatabaseMNode(
+              null, "sg2", CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+      sg2.setFullPath("root.sg2");
+      long size2 = sg2.estimateSize();
+      Assert.assertEquals(size2, schemaRegion2.getSchemaRegionStatistics().getRegionMemoryUsage());
+      Assert.assertEquals(size1 + size2, engineStatistics.getMemoryUsage());
+    } else {
+      IMNodeFactory nodeFactory =
+          testParams.getSchemaEngineMode().equals("Memory")
+              ? MemMNodeFactory.getInstance()
+              : CacheMNodeFactory.getInstance();
+      // schemaRegion1
+      IMNode<?> sg1 =
+          nodeFactory.createDatabaseDeviceMNode(
+              null, "sg1", CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+      sg1.setFullPath("root.sg1");
+      long size1 = sg1.estimateSize();
+      IMNode<?> tmp =
+          nodeFactory.createMeasurementMNode(
+              sg1.getAsDeviceMNode(),
+              "d0",
+              new MeasurementSchema(
+                  "d0", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY),
+              null);
+      size1 += tmp.estimateSize();
+      tmp = nodeFactory.createInternalMNode(sg1.getAsMNode(), "d1");
+      size1 += tmp.estimateSize();
+      tmp = nodeFactory.createDeviceMNode(tmp, "s2");
+      size1 += tmp.estimateSize();
+      size1 +=
+          nodeFactory
+              .createMeasurementMNode(
+                  tmp.getAsDeviceMNode(),
+                  "t1",
+                  new MeasurementSchema(
+                      "t1", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY),
+                  null)
+              .estimateSize();
+      Assert.assertEquals(size1, schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
+      // schemaRegion2
+      IMNode<?> sg2 =
+          nodeFactory.createDatabaseMNode(
+              null, "sg2", CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+      sg2.setFullPath("root.sg2");
+      long size2 = sg2.estimateSize();
+      tmp = nodeFactory.createDeviceMNode(sg2, "d1");
+      size2 += tmp.estimateSize();
+      size2 +=
+          nodeFactory
+              .createMeasurementMNode(
+                  tmp.getAsDeviceMNode(),
+                  "s3",
+                  new MeasurementSchema(
+                      "s3", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY),
+                  null)
+              .estimateSize();
+      tmp = nodeFactory.createDeviceMNode(sg2, "d2");
+      size2 += tmp.estimateSize();
+      size2 +=
+          nodeFactory
+              .createMeasurementMNode(
+                  tmp.getAsDeviceMNode(),
+                  "s2",
+                  new MeasurementSchema(
+                      "s2", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY),
+                  null)
+              .estimateSize();
+      Assert.assertEquals(size2, schemaRegion2.getSchemaRegionStatistics().getRegionMemoryUsage());
+      Assert.assertEquals(size1 + size2, engineStatistics.getMemoryUsage());
+    }
+    Assert.assertEquals(0, schemaRegion1.getSchemaRegionStatistics().getSchemaRegionId());
+    Assert.assertEquals(1, schemaRegion2.getSchemaRegionStatistics().getSchemaRegionId());
+    checkPBTreeStatistics(engineStatistics);
+  }
+  @Test
   public void testMemoryStatistics() throws Exception {
     ISchemaRegion schemaRegion1 = getSchemaRegion("root.sg1", 0);
     ISchemaRegion schemaRegion2 = getSchemaRegion("root.sg2", 1);
