@@ -85,11 +85,16 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws PipeException {
+  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+      throws PipeException, IOException {
     LOGGER.info("DropPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
-    // Will not rollback
-    pushPipeMetaToDataNodesIgnoreException(env);
+    String exceptionMessage =
+        parsePushPipeMetaExceptionForPipe(pipeName, pushPipeMetaToDataNodes(env));
+    if (!exceptionMessage.isEmpty()) {
+      throw new PipeException(
+          String.format("Failed to drop pipe %s, details: %s", pipeName, exceptionMessage));
+    }
   }
 
   @Override

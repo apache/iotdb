@@ -267,15 +267,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req) {
     LOGGER.debug("receive FragmentInstance to group[{}]", req.getConsensusGroupId());
 
-    // deserialize ConsensusGroupId
+    // Deserialize ConsensusGroupId
     ConsensusGroupId groupId = null;
     if (req.consensusGroupId != null) {
       try {
         groupId = ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
-      } catch (Throwable t) {
-        LOGGER.warn("Deserialize ConsensusGroupId failed. ", t);
+      } catch (Exception e) {
+        LOGGER.warn("Deserialize ConsensusGroupId failed. ", e);
         TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
-        resp.setMessage("Deserialize ConsensusGroupId failed: " + t.getMessage());
+        resp.setMessage("Deserialize ConsensusGroupId failed: " + e.getMessage());
         return resp;
       }
     }
@@ -285,10 +285,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     FragmentInstance fragmentInstance;
     try {
       fragmentInstance = FragmentInstance.deserializeFrom(req.fragmentInstance.body);
-    } catch (Throwable t) {
-      LOGGER.warn("Deserialize FragmentInstance failed.", t);
+    } catch (Exception e) {
+      LOGGER.warn("Deserialize FragmentInstance failed.", e);
       TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
-      resp.setMessage("Deserialize FragmentInstance failed: " + t.getMessage());
+      resp.setMessage("Deserialize FragmentInstance failed: " + e.getMessage());
       return resp;
     }
 
@@ -379,7 +379,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TLoadResp sendTsFilePieceNode(TTsFilePieceReq req) throws TException {
+  public TLoadResp sendTsFilePieceNode(TTsFilePieceReq req) {
     LOGGER.info("Receive load node from uuid {}.", req.uuid);
 
     ConsensusGroupId groupId =
@@ -398,7 +398,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TLoadResp sendLoadCommand(TLoadCommandReq req) throws TException {
+  public TLoadResp sendLoadCommand(TLoadCommandReq req) {
 
     TSStatus resultStatus =
         StorageEngine.getInstance()
@@ -481,7 +481,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus rollbackSchemaBlackList(TRollbackSchemaBlackListReq req) throws TException {
+  public TSStatus rollbackSchemaBlackList(TRollbackSchemaBlackListReq req) {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     return executeInternalSchemaTask(
@@ -555,7 +555,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus deleteDataForDeleteSchema(TDeleteDataForDeleteSchemaReq req) throws TException {
+  public TSStatus deleteDataForDeleteSchema(TDeleteDataForDeleteSchemaReq req) {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     List<PartialPath> pathList = patternTree.getAllPathPatterns();
@@ -730,7 +730,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             consensusGroupId -> {
               ReadWriteLock readWriteLock =
                   regionManager.getRegionLock(new SchemaRegionId(consensusGroupId.getId()));
-              // count paths using template for unset template shall block all template activation
+              // Count paths using template for unset template shall block all template activation
               readWriteLock.writeLock().lock();
               try {
                 ISchemaRegion schemaRegion =
@@ -755,8 +755,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TCheckTimeSeriesExistenceResp checkTimeSeriesExistence(TCheckTimeSeriesExistenceReq req)
-      throws TException {
+  public TCheckTimeSeriesExistenceResp checkTimeSeriesExistence(TCheckTimeSeriesExistenceReq req) {
     PathPatternTree patternTree = PathPatternTree.deserialize(req.patternTree);
     TCheckTimeSeriesExistenceResp resp = new TCheckTimeSeriesExistenceResp();
     TSStatus status =
@@ -765,7 +764,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             consensusGroupId -> {
               ReadWriteLock readWriteLock =
                   regionManager.getRegionLock(new SchemaRegionId(consensusGroupId.getId()));
-              // check timeseries existence for set template shall block all timeseries creation
+              // Check timeseries existence for set template shall block all timeseries creation
               readWriteLock.writeLock().lock();
               try {
                 ISchemaRegion schemaRegion =
@@ -878,7 +877,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus deleteViewSchema(TDeleteViewSchemaReq req) throws TException {
+  public TSStatus deleteViewSchema(TDeleteViewSchemaReq req) {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     return executeInternalSchemaTask(
@@ -937,16 +936,21 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     for (ByteBuffer byteBuffer : req.getPipeMetas()) {
       pipeMetas.add(PipeMeta.deserialize(byteBuffer));
     }
-    TPushPipeMetaResp resp = new TPushPipeMetaResp();
-    List<TPushPipeMetaRespExceptionMessage> exceptionMessages =
-        PipeAgent.task().handlePipeMetaChanges(pipeMetas);
-    if (exceptionMessages.isEmpty()) {
-      resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-    } else {
-      resp.setStatus(new TSStatus(TSStatusCode.PUSH_PIPE_META_ERROR.getStatusCode()));
-      resp.setExceptionMessages(exceptionMessages);
+    try {
+      List<TPushPipeMetaRespExceptionMessage> exceptionMessages =
+          PipeAgent.task().handlePipeMetaChanges(pipeMetas);
+
+      return exceptionMessages.isEmpty()
+          ? new TPushPipeMetaResp()
+              .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
+          : new TPushPipeMetaResp()
+              .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()))
+              .setExceptionMessages(exceptionMessages);
+    } catch (Exception e) {
+      LOGGER.error("Error occurred when pushing pipe meta", e);
+      return new TPushPipeMetaResp()
+          .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()));
     }
-    return resp;
   }
 
   @Override
@@ -995,7 +999,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported");
       }
 
-      // 1. add time filter in where
+      // 1. Add time filter in where
       Expression timeFilter =
           new LogicAndExpression(
               new GreaterEqualExpression(
@@ -1011,7 +1015,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         s.setWhereCondition(new WhereCondition(timeFilter));
       }
 
-      // 2. add time range in group by time
+      // 2. Add time range in group by time
       if (s.getGroupByTimeComponent() != null) {
         s.getGroupByTimeComponent().setStartTime(req.startTime);
         s.getGroupByTimeComponent().setEndTime(req.endTime);
@@ -1021,7 +1025,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
       long queryId =
           SESSION_MANAGER.requestQueryId(session, SESSION_MANAGER.requestStatementId(session));
-      // create and cache dataset
+      // Create and cache dataset
       ExecutionResult result =
           COORDINATOR.execute(
               s,
@@ -1041,7 +1045,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
       try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
         if (queryExecution != null) {
-          // consume up all the result
+          // Consume up all the result
           while (true) {
             Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
             if (!optionalTsBlock.isPresent()) {
@@ -1061,7 +1065,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus deleteModelMetrics(TDeleteModelMetricsReq req) throws TException {
+  public TSStatus deleteModelMetrics(TDeleteModelMetricsReq req) {
     IClientSession session = new InternalClientSession(req.getModelId());
     SESSION_MANAGER.registerSession(session);
     SESSION_MANAGER.supplySession(
@@ -1108,7 +1112,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       }
       filteredPatternTree.constructTree();
     } catch (IllegalPathException e) {
-      // won't reach here
+      // Won't reach here
     }
     return filteredPatternTree;
   }
@@ -1175,7 +1179,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus updateRegionCache(TRegionRouteReq req) throws TException {
+  public TSStatus updateRegionCache(TRegionRouteReq req) {
     boolean result = ClusterPartitionFetcher.getInstance().updateRegionCache(req);
     if (result) {
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
@@ -1376,7 +1380,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus updateTemplate(TUpdateTemplateReq req) throws TException {
+  public TSStatus updateTemplate(TUpdateTemplateReq req) {
     switch (TemplateInternalRPCUpdateType.getType(req.type)) {
       case ADD_TEMPLATE_SET_INFO:
         ClusterTemplateManager.getInstance().addTemplateSetInfo(req.getTemplateInfo());
@@ -1393,6 +1397,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       case UPDATE_TEMPLATE_INFO:
         ClusterTemplateManager.getInstance().updateTemplateInfo(req.getTemplateInfo());
         break;
+      default:
+        LOGGER.warn("Unsupported type {} when updating template", req.type);
+        return RpcUtils.getStatus(TSStatusCode.ILLEGAL_PARAMETER);
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
@@ -1511,7 +1518,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus addRegionPeer(TMaintainPeerReq req) throws TException {
+  public TSStatus addRegionPeer(TMaintainPeerReq req) {
     TConsensusGroupId regionId = req.getRegionId();
     String selectedDataNodeIP = req.getDestNode().getInternalEndPoint().getIp();
     boolean submitSucceed = RegionMigrateService.getInstance().submitAddRegionPeerTask(req);
@@ -1529,7 +1536,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus removeRegionPeer(TMaintainPeerReq req) throws TException {
+  public TSStatus removeRegionPeer(TMaintainPeerReq req) {
     TConsensusGroupId regionId = req.getRegionId();
     String selectedDataNodeIP = req.getDestNode().getInternalEndPoint().getIp();
     boolean submitSucceed = RegionMigrateService.getInstance().submitRemoveRegionPeerTask(req);
@@ -1547,7 +1554,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus deleteOldRegionPeer(TMaintainPeerReq req) throws TException {
+  public TSStatus deleteOldRegionPeer(TMaintainPeerReq req) {
     TConsensusGroupId regionId = req.getRegionId();
     String selectedDataNodeIP = req.getDestNode().getInternalEndPoint().getIp();
     boolean submitSucceed = RegionMigrateService.getInstance().submitDeleteOldRegionPeerTask(req);
@@ -1592,11 +1599,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus createTriggerInstance(TCreateTriggerInstanceReq req) throws TException {
+  public TSStatus createTriggerInstance(TCreateTriggerInstanceReq req) {
     TriggerInformation triggerInformation = TriggerInformation.deserialize(req.triggerInformation);
     try {
-      // register trigger information with TriggerRegistrationService
-      // config nodes take responsibility for synchronization control
+      // Register trigger information with TriggerRegistrationService
+      // Config nodes take responsibility for synchronization control
       TriggerManagementService.getInstance().register(triggerInformation, req.jarFile);
     } catch (Exception e) {
       LOGGER.warn(
@@ -1610,7 +1617,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus activeTriggerInstance(TActiveTriggerInstanceReq req) throws TException {
+  public TSStatus activeTriggerInstance(TActiveTriggerInstanceReq req) {
     try {
       TriggerManagementService.getInstance().activeTrigger(req.triggerName);
     } catch (Exception e) {
@@ -1625,7 +1632,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus inactiveTriggerInstance(TInactiveTriggerInstanceReq req) throws TException {
+  public TSStatus inactiveTriggerInstance(TInactiveTriggerInstanceReq req) {
     try {
       TriggerManagementService.getInstance().inactiveTrigger(req.triggerName);
     } catch (Exception e) {
@@ -1641,7 +1648,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus dropTriggerInstance(TDropTriggerInstanceReq req) throws TException {
+  public TSStatus dropTriggerInstance(TDropTriggerInstanceReq req) {
     try {
       TriggerManagementService.getInstance().dropTrigger(req.triggerName, req.needToDeleteJarFile);
     } catch (Exception e) {
@@ -1656,7 +1663,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus updateTriggerLocation(TUpdateTriggerLocationReq req) throws TException {
+  public TSStatus updateTriggerLocation(TUpdateTriggerLocationReq req) {
     try {
       TriggerManagementService.getInstance()
           .updateLocationOfStatefulTrigger(req.triggerName, req.newLocation);
@@ -1675,7 +1682,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TFireTriggerResp fireTrigger(TFireTriggerReq req) {
     String triggerName = req.getTriggerName();
     TriggerExecutor executor = TriggerManagementService.getInstance().getExecutor(triggerName);
-    // no executor for given trigger name on this data node
+    // No executor for given trigger name on this data node
     if (executor == null) {
       return new TFireTriggerResp(false, TriggerFireResult.FAILED_NO_TERMINATION.getId());
     }
@@ -1768,7 +1775,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus disableDataNode(TDisableDataNodeReq req) throws TException {
+  public TSStatus disableDataNode(TDisableDataNodeReq req) {
     LOGGER.info("start disable data node in the request: {}", req);
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     status.setMessage("disable datanode succeed");
@@ -1817,6 +1824,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   public void handleClientExit() {
-    // do nothing
+    // Do nothing
   }
 }

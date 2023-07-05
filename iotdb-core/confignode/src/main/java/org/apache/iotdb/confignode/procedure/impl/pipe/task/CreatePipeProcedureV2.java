@@ -85,7 +85,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   }
 
   @Override
-  protected void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) throws PipeException {
+  protected void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
     LOGGER.info(
         "CreatePipeProcedureV2: executeFromCalculateInfoForTask({})",
         createPipeRequest.getPipeName());
@@ -149,7 +149,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     if (!exceptionMessage.isEmpty()) {
       throw new PipeException(
           String.format(
-              "Failed to create pipe for pipe %s, details: %s",
+              "Failed to create pipe %s, details: %s",
               createPipeRequest.getPipeName(), exceptionMessage));
     }
   }
@@ -196,7 +196,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     if (!exceptionMessage.isEmpty()) {
       throw new PipeException(
           String.format(
-              "Failed to rollback create pipe for pipe %s, details: %s",
+              "Failed to rollback create pipe %s, details: %s",
               createPipeRequest.getPipeName(), exceptionMessage));
     }
   }

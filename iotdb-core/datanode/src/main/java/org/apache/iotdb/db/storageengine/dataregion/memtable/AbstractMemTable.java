@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -53,18 +54,18 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 public abstract class AbstractMemTable implements IMemTable {
-  /** each memTable node has a unique int value identifier, init when recovering wal */
+  /** Each memTable node has a unique int value identifier, init when recovering wal. */
   public static final AtomicLong memTableIdCounter = new AtomicLong(-1);
 
   private static final int FIXED_SERIALIZED_SIZE = Byte.BYTES + 2 * Integer.BYTES + 6 * Long.BYTES;
 
   private static final DeviceIDFactory deviceIDFactory = DeviceIDFactory.getInstance();
 
-  /** DeviceId -> chunkGroup(MeasurementId -> chunk) */
+  /** DeviceId -> chunkGroup(MeasurementId -> chunk). */
   private final Map<IDeviceID, IWritableMemChunkGroup> memTableMap;
 
   /**
-   * The initial value is true because we want calculate the text data size when recover memTable!!
+   * The initial value is true because we want calculate the text data size when recover memTable.
    */
   protected boolean disableMemControl = true;
 
@@ -72,11 +73,11 @@ public abstract class AbstractMemTable implements IMemTable {
   private volatile FlushStatus flushStatus = FlushStatus.WORKING;
   private final int avgSeriesPointNumThreshold =
       IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
-  /** memory size of data points, including TEXT values */
+  /** Memory size of data points, including TEXT values. */
   private long memSize = 0;
   /**
-   * memory usage of all TVLists memory usage regardless of whether these TVLists are full,
-   * including TEXT values
+   * Memory usage of all TVLists memory usage regardless of whether these TVLists are full,
+   * including TEXT values.
    */
   private long tvListRamCost = 0;
 
@@ -110,7 +111,7 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   /**
-   * create this MemChunk if it's not exist
+   * Create this MemChunk if it's not exist.
    *
    * @param deviceId device id
    * @param schemaList measurement schemaList
@@ -151,7 +152,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void insert(InsertRowNode insertRowNode) {
-    // if this insert plan isn't from storage storageengine (mainly from test), we should set a temp
+    // If this insert plan isn't from storage storageEngine (mainly from test), we should set a temp
     // device
     // id for it
     if (insertRowNode.getDeviceID() == null) {
@@ -165,7 +166,7 @@ public abstract class AbstractMemTable implements IMemTable {
     List<TSDataType> dataTypes = new ArrayList<>();
     int nullPointsNumber = 0;
     for (int i = 0; i < insertRowNode.getMeasurements().length; i++) {
-      // use measurements[i] to ignore failed partial insert
+      // Use measurements[i] to ignore failed partial insert
       if (measurements[i] == null || values[i] == null) {
         if (values[i] == null) {
           nullPointsNumber++;
@@ -198,7 +199,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void insertAlignedRow(InsertRowNode insertRowNode) {
-    // if this insert node isn't from storage storageengine, we should set a temp device id for it
+    // If this insert node isn't from storage storageEngine, we should set a temp device id for it
     if (insertRowNode.getDeviceID() == null) {
       insertRowNode.setDeviceID(deviceIDFactory.getDeviceID(insertRowNode.getDevicePath()));
     }
@@ -208,7 +209,7 @@ public abstract class AbstractMemTable implements IMemTable {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     for (int i = 0; i < insertRowNode.getMeasurements().length; i++) {
-      // use measurements[i] to ignore failed partial insert
+      // Use measurements[i] to ignore failed partial insert
       if (measurements[i] == null) {
         schemaList.add(null);
         continue;
@@ -239,7 +240,7 @@ public abstract class AbstractMemTable implements IMemTable {
   public void insertTablet(InsertTabletNode insertTabletNode, int start, int end)
       throws WriteProcessException {
     try {
-      write(insertTabletNode, start, end);
+      writeTabletNode(insertTabletNode, start, end);
       memSize += MemUtils.getTabletSize(insertTabletNode, start, end, disableMemControl);
       int pointsInserted =
           (insertTabletNode.getDataTypes().length - insertTabletNode.getFailedMeasurementNumber())
@@ -305,8 +306,8 @@ public abstract class AbstractMemTable implements IMemTable {
     }
   }
 
-  public void write(InsertTabletNode insertTabletNode, int start, int end) {
-    // if this insert plan isn't from storage storageengine, we should set a temp device id for it
+  public void writeTabletNode(InsertTabletNode insertTabletNode, int start, int end) {
+    // If this insert plan isn't from storage storageengine, we should set a temp device id for it
     if (insertTabletNode.getDeviceID() == null) {
       insertTabletNode.setDeviceID(deviceIDFactory.getDeviceID(insertTabletNode.getDevicePath()));
     }
@@ -435,6 +436,8 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   /**
+   * Delete data by path and timeStamp.
+   *
    * @param originalPath the original path pattern or full path to be used to match timeseries, e.g.
    *     root.sg.**, root.sg.*.s, root.sg.d.s
    * @param devicePath one of the device path patterns generated by original path, e.g. given
@@ -456,7 +459,7 @@ public abstract class AbstractMemTable implements IMemTable {
             targetDeviceList.add(new Pair<>(devicePathInMemTable, entry.getValue()));
           }
         } catch (IllegalPathException e) {
-          // won't reach here
+          // Won't reach here
         }
       }
 
@@ -558,7 +561,7 @@ public abstract class AbstractMemTable implements IMemTable {
     this.flushStatus = flushStatus;
   }
 
-  /** Notice: this method is concurrent unsafe */
+  /** Notice: this method is concurrent unsafe. */
   @Override
   public int serializedSize() {
     if (isSignalMemTable()) {
@@ -573,7 +576,7 @@ public abstract class AbstractMemTable implements IMemTable {
     return size;
   }
 
-  /** Notice: this method is concurrent unsafe */
+  /** Notice: this method is concurrent unsafe. */
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
     WALWriteUtils.write(isSignalMemTable(), buffer);
@@ -632,7 +635,9 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   public static class Factory {
-    private Factory() {}
+    private Factory() {
+      // Empty constructor
+    }
 
     public static IMemTable create(DataInputStream stream) throws IOException {
       boolean isSignal = ReadWriteIOUtils.readBool(stream);

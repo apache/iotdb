@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
@@ -163,17 +164,17 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
+  public boolean writeWithFlushCheck(
+      long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start, int end) {
+    throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
+  }
+
+  @Override
   public boolean writeAlignedValueWithFlushCheck(
       long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
     Object[] reorderedValue =
         checkAndReorderColumnValuesInInsertPlan(schemaList, objectValue, null).left;
     return putAlignedValueWithFlushCheck(insertTime, reorderedValue);
-  }
-
-  @Override
-  public boolean writeWithFlushCheck(
-      long[] times, Object valueList, BitMap bitMap, TSDataType dataType, int start, int end) {
-    throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + TSDataType.VECTOR);
   }
 
   @Override
@@ -194,7 +195,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   /**
    * Check metadata of columns and return array that mapping existed metadata to index of data
-   * column
+   * column.
    *
    * @param schemaListInInsertPlan Contains all existed schema in InsertPlan. If some timeseries
    *     have been deleted, there will be null in its slot.

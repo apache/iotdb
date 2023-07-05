@@ -109,7 +109,7 @@ public class PipeTableResp implements DataSet {
       final StringBuilder exceptionMessageBuilder = new StringBuilder();
       for (PipeRuntimeException e : runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap().values()) {
         exceptionMessageBuilder
-            .append(DateTimeUtils.convertLongToDate(e.getTimeStamp()))
+            .append(DateTimeUtils.convertLongToDate(e.getTimeStamp(), "ms"))
             .append(", ")
             .append(e.getMessage())
             .append("\n");
@@ -117,7 +117,7 @@ public class PipeTableResp implements DataSet {
       for (PipeTaskMeta pipeTaskMeta : runtimeMeta.getConsensusGroupId2TaskMetaMap().values()) {
         for (PipeRuntimeException e : pipeTaskMeta.getExceptionMessages()) {
           exceptionMessageBuilder
-              .append(DateTimeUtils.convertLongToDate(e.getTimeStamp()))
+              .append(DateTimeUtils.convertLongToDate(e.getTimeStamp(), "ms"))
               .append(", ")
               .append(e.getMessage())
               .append("\n");

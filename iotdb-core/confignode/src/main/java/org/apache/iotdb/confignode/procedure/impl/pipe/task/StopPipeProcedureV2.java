@@ -96,8 +96,7 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         parsePushPipeMetaExceptionForPipe(pipeName, pushPipeMetaToDataNodes(env));
     if (!exceptionMessage.isEmpty()) {
       throw new PipeException(
-          String.format(
-              "Failed to stop pipe for pipe %s, details: %s", pipeName, exceptionMessage));
+          String.format("Failed to stop pipe %s, details: %s", pipeName, exceptionMessage));
     }
   }
 
@@ -136,7 +135,7 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     if (!exceptionMessage.isEmpty()) {
       throw new PipeException(
           String.format(
-              "Failed to rollback stop pipe for pipe %s, details: %s", pipeName, exceptionMessage));
+              "Failed to rollback stop pipe %s, details: %s", pipeName, exceptionMessage));
     }
   }
 

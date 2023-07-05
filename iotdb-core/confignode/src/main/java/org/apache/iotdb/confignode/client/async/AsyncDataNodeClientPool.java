@@ -37,7 +37,7 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.CheckTimeSeriesExis
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CountPathsUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackListRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipeHeartbeatRPCHandler;
-import org.apache.iotdb.confignode.client.async.handlers.rpc.PushPipeMetaRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.PipePushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SchemaUpdateRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterViewReq;
@@ -230,7 +230,7 @@ public class AsyncDataNodeClientPool {
         case PUSH_PIPE_META:
           client.pushPipeMeta(
               (TPushPipeMetaReq) clientHandler.getRequest(requestId),
-              (PushPipeMetaRPCHandler)
+              (PipePushMetaRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
         case PIPE_HEARTBEAT:

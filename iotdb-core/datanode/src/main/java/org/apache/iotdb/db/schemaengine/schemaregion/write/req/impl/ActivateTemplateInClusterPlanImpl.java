@@ -29,7 +29,9 @@ public class ActivateTemplateInClusterPlanImpl implements IActivateTemplateInClu
   private int templateId;
   private boolean isAligned;
 
-  public ActivateTemplateInClusterPlanImpl() {}
+  public ActivateTemplateInClusterPlanImpl() {
+    // Empty constructor
+  }
 
   public ActivateTemplateInClusterPlanImpl(
       PartialPath activatePath, int templateSetLevel, int templateId) {

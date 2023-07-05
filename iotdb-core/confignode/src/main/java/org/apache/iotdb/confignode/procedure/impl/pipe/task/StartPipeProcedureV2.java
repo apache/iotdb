@@ -96,9 +96,15 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         parsePushPipeMetaExceptionForPipe(pipeName, pushPipeMetaToDataNodes(env));
     if (!exceptionMessage.isEmpty()) {
       throw new PipeException(
-          String.format(
-              "Failed to start pipe for pipe %s, details: %s", pipeName, exceptionMessage));
+          String.format("Failed to start pipe %s, details: %s", pipeName, exceptionMessage));
     }
+
+    // Clear exception messages if succeeded
+    env.getConfigManager()
+        .getPipeManager()
+        .getPipeTaskCoordinator()
+        .getPipeTaskInfo()
+        .clearExceptions(pipeName);
   }
 
   @Override
@@ -136,8 +142,7 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     if (!exceptionMessage.isEmpty()) {
       throw new PipeException(
           String.format(
-              "Failed to rollback start pipe for pipe %s, details: %s",
-              pipeName, exceptionMessage));
+              "Failed to rollback start pipe %s, details: %s", pipeName, exceptionMessage));
     }
   }
 
