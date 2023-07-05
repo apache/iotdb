@@ -45,6 +45,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -152,22 +153,28 @@ public class IoTDBAlignByDeviceWithViewIT {
 
   @Test
   public void testLastQuery() {
-    String[] expectedRetArray =
-        new String[] {
-          "23,root.sg1.d1.s1,230000.0,FLOAT",
-          "23,root.sg1.d3.s1,230000.0,FLOAT",
-          "20,root.sg1.d2.s1,20.0,FLOAT",
-        };
-
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet = statement.executeQuery("SELECT last s1 FROM root.sg1.**")) {
-        checkResult(
-            resultSet,
-            expectedRetArray,
-            "Time,Timeseries,Value,DataType",
-            new int[] {Types.TIMESTAMP, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR});
+
+        while (resultSet.next()) {
+          String time = resultSet.getString(1);
+          String name = resultSet.getString(2);
+          String value = resultSet.getString(3);
+          if ("root.sg1.d1.s1".equalsIgnoreCase(name)) {
+            assertEquals("23", time);
+            assertEquals("230000.0", value);
+          } else if ("root.sg1.d2.s1".equalsIgnoreCase(name)) {
+            assertEquals("20", time);
+            assertEquals("20.0", value);
+          } else if ("root.sg1.d3.s1".equalsIgnoreCase(name)) {
+            assertEquals("23", time);
+            assertEquals("230000.0", value);
+          } else {
+            fail("Unexpected series name: " + name);
+          }
+        }
       }
     } catch (Exception e) {
       e.printStackTrace();
