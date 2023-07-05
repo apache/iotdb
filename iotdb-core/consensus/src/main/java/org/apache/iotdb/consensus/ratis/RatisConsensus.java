@@ -128,7 +128,7 @@ class RatisConsensus implements IConsensus {
   private final RatisLogMonitor monitor = new RatisLogMonitor();
 
   private final RatisMetricSet ratisMetricSet;
-  private TConsensusGroupType consensusGroupType = null;
+  private final TConsensusGroupType consensusGroupType;
 
   public RatisConsensus(ConsensusConfig config, IStateMachine.Registry registry)
       throws IOException {
@@ -142,6 +142,7 @@ class RatisConsensus implements IConsensus {
 
     Utils.initRatisConfig(properties, config.getRatisConfig());
     this.config = config.getRatisConfig();
+    this.consensusGroupType = config.getConsensusGroupType();
     this.ratisMetricSet = new RatisMetricSet();
 
     this.triggerSnapshotThreshold = this.config.getImpl().getTriggerSnapshotFileSize();
@@ -289,9 +290,6 @@ class RatisConsensus implements IConsensus {
       } catch (IOException e) {
         return failedWrite(new RatisRequestFailedException(e));
       } finally {
-        if (consensusGroupType == null) {
-          consensusGroupType = Utils.getConsensusGroupTypeFromPrefix(raftGroupId.toString());
-        }
         // statistic the time of write locally
         RatisMetricsManager.getInstance()
             .recordWriteLocallyCost(System.nanoTime() - writeToRatisStartTime, consensusGroupType);
@@ -313,9 +311,6 @@ class RatisConsensus implements IConsensus {
     } finally {
       if (client != null) {
         client.returnSelf();
-      }
-      if (consensusGroupType == null) {
-        consensusGroupType = Utils.getConsensusGroupTypeFromPrefix(raftGroupId.toString());
       }
       // statistic the time of write remotely
       RatisMetricsManager.getInstance()
@@ -346,9 +341,6 @@ class RatisConsensus implements IConsensus {
           buildRawRequest(groupId, message, RaftClientRequest.staleReadRequestType(-1));
       long readRatisStartTime = System.nanoTime();
       reply = server.submitClientRequest(clientRequest);
-      if (consensusGroupType == null) {
-        consensusGroupType = Utils.getConsensusGroupTypeFromPrefix(groupId.toString());
-      }
       // statistic the time of submit read request
       RatisMetricsManager.getInstance()
           .recordReadRequestCost(System.nanoTime() - readRatisStartTime, consensusGroupType);
