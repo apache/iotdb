@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaEntityNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaInternalNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
@@ -214,16 +215,16 @@ public class ClusterSchemaTree implements ISchemaTree {
       PartialPath fullPath = logicalViewSchema.getSourcePathIfWritable();
       Pair<List<MeasurementPath>, Integer> searchResult = this.searchMeasurementPaths(fullPath);
       List<MeasurementPath> measurementPathList = searchResult.left;
-      if (measurementPathList.size() <= 0) {
-        throw new RuntimeException(
+      if (measurementPathList.isEmpty()) {
+        throw new SemanticException(
             new PathNotExistException(
                 String.format(
-                    "The source path of view [%s] does not exist.", fullPath.getFullPath())));
+                    "The source path [%s] of view does not exist.", fullPath.getFullPath())));
       } else if (measurementPathList.size() > 1) {
-        throw new RuntimeException(
+        throw new SemanticException(
             new UnexpectedException(
                 String.format(
-                    "The source paths of view [%s] are multiple.", fullPath.getFullPath())));
+                    "The source paths [%s] of view are multiple.", fullPath.getFullPath())));
       } else {
         Integer realIndex = schemaComputation.getIndexListOfLogicalViewPaths().get(index);
         MeasurementPath measurementPath = measurementPathList.get(0);
