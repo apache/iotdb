@@ -8,7 +8,6 @@ on:
       - master
       - 'rel/*'
       - "new_*"
-      - fix_python_ci_v2
     paths-ignore:
       - 'docs/**'
       - 'site/**'
