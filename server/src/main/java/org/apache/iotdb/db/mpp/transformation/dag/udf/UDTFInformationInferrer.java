@@ -67,7 +67,6 @@ public class UDTFInformationInferrer {
       List<TSDataType> childExpressionDataTypes,
       Map<String, String> attributes) {
     try {
-
       return reflectAndGetConfigurations(childExpressions, childExpressionDataTypes, attributes)
           .getAccessStrategy();
     } catch (Exception e) {
