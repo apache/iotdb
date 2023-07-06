@@ -218,12 +218,11 @@ public class ClusterSchemaTree implements ISchemaTree {
       if (measurementPathList.isEmpty()) {
         throw new SemanticException(
             new PathNotExistException(
-                String.format(
-                    "The source path [%s] of view [%s] does not exist.",
-                    fullPath.getFullPath(),
-                    schemaComputation
-                        .getDevicePath()
-                        .concatNode(logicalViewSchema.getMeasurementId()))));
+                fullPath.getFullPath(),
+                schemaComputation
+                    .getDevicePath()
+                    .concatNode(logicalViewSchema.getMeasurementId())
+                    .getFullPath()));
       } else if (measurementPathList.size() > 1) {
         throw new SemanticException(
             new UnexpectedException(

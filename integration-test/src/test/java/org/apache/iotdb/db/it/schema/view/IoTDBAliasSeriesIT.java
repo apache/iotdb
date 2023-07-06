@@ -115,6 +115,15 @@ public class IoTDBAliasSeriesIT {
         Assert.assertTrue(
             e.getMessage()
                 .contains(
+                    "Insertion is illegal because measurement [s01] under device [root.db.device] is duplicate"));
+      }
+      try {
+        statement.execute("insert into root.db.device(time,v_s01) values(1,true)");
+        Assert.fail("expect exception");
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage()
+                .contains(
                     "The source path [root.db.device.s01] of view [root.db.device.v_s01] does not exist"));
       }
     }
