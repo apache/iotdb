@@ -152,7 +152,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void insert(InsertRowNode insertRowNode) {
-    // If this insert plan isn't from storage storageEngine (mainly from test), we should set a temp
+    // If this insert plan isn't from storage engine (mainly from test), we should set a temp
     // device
     // id for it
     if (insertRowNode.getDeviceID() == null) {
