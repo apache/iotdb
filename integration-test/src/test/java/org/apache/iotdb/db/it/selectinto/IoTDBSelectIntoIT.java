@@ -561,7 +561,7 @@ public class IoTDBSelectIntoIT {
         Assert.assertTrue(
             e.getMessage(),
             e.getMessage()
-                .contains("No permissions for this operation, please add privilege READ_SCHEMA"));
+                .contains("No permissions for this operation, please add privilege READ_DATA"));
       }
     }
   }
@@ -571,7 +571,7 @@ public class IoTDBSelectIntoIT {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("CREATE USER tempuser2 'temppw2'");
-      adminStmt.execute("GRANT USER tempuser2 PRIVILEGES READ_TIMESERIES on root.sg.**;");
+      adminStmt.execute("GRANT USER tempuser2 PRIVILEGES WRITE_DATA on root.sg.**;");
 
       try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser2", "temppw2");
           Statement userStmt = userCon.createStatement()) {
@@ -582,8 +582,7 @@ public class IoTDBSelectIntoIT {
         Assert.assertTrue(
             e.getMessage(),
             e.getMessage()
-                .contains(
-                    "No permissions for this operation, please add privilege INSERT_TIMESERIES"));
+                .contains("No permissions for this operation, please add privilege READ_DATA"));
       }
     }
   }

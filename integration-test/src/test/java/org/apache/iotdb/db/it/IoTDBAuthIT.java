@@ -192,12 +192,12 @@ public class IoTDBAuthIT {
         Assert.assertThrows(
             SQLException.class,
             () -> adminStmt.execute("GRANT USER tempuser PRIVILEGES NOT_A_PRIVILEGE on root.a"));
-        // duplicate grant
         adminStmt.execute("GRANT USER tempuser PRIVILEGES USER_PRIVILEGE on root.**");
+        // duplicate grant
         Assert.assertThrows(
             SQLException.class,
             () -> adminStmt.execute("GRANT USER tempuser PRIVILEGES USER_PRIVILEGE on root.**"));
-        // grant on a illegal seriesPath
+        // grant on an illegal seriesPath
         Assert.assertThrows(
             SQLException.class,
             () -> adminStmt.execute("GRANT USER tempuser PRIVILEGES WRITE_SCHEMA on a.b"));
@@ -218,7 +218,7 @@ public class IoTDBAuthIT {
         Assert.assertThrows(
             SQLException.class,
             () -> adminStmt.execute("REVOKE USER tempuser1 PRIVILEGES USER_PRIVILEGE on root.**"));
-        // revoke on a illegal seriesPath
+        // revoke on an illegal seriesPath
         Assert.assertThrows(
             SQLException.class,
             () -> adminStmt.execute("REVOKE USER tempuser PRIVILEGES WRITE_SCHEMA on a.b"));
@@ -236,6 +236,7 @@ public class IoTDBAuthIT {
             () -> userStmt.execute("GRANT USER tempuser PRIVILEGES WRITE_SCHEMA on root.a.b"));
 
         adminStmt.execute("GRANT USER tempuser PRIVILEGES GRANT_PRIVILEGE on root.**");
+        userStmt.execute("GRANT USER tempuser PRIVILEGES WRITE_SCHEMA on root.**");
         userStmt.execute("REVOKE USER tempuser PRIVILEGES WRITE_SCHEMA on root.**");
       }
     }
@@ -471,10 +472,8 @@ public class IoTDBAuthIT {
       adminStmt.execute("CREATE USER user1 'password1'");
       adminStmt.execute("GRANT USER user1 PRIVILEGES READ_SCHEMA ON root.a.b");
       adminStmt.execute("CREATE ROLE role1");
-      adminStmt.execute(
-          "GRANT ROLE role1 PRIVILEGES READ_TIMESERIES,INSERT_TIMESERIES,DELETE_TIMESERIES ON root.a.b.c");
-      adminStmt.execute(
-          "GRANT ROLE role1 PRIVILEGES READ_TIMESERIES,INSERT_TIMESERIES,DELETE_TIMESERIES ON root.d.b.c");
+      adminStmt.execute("GRANT ROLE role1 PRIVILEGES READ_SCHEMA,WRITE_DATA ON root.a.b.c");
+      adminStmt.execute("GRANT ROLE role1 PRIVILEGES READ_SCHEMA,WRITE_DATA ON root.d.b.c");
       adminStmt.execute("GRANT role1 TO user1");
 
       ResultSet resultSet = adminStmt.executeQuery("LIST PRIVILEGES USER user1");
