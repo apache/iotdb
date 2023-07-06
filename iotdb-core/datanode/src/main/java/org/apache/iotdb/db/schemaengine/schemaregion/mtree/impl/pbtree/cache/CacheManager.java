@@ -302,8 +302,10 @@ public abstract class CacheManager implements ICacheManager {
     } else {
       // add back to cache
       CacheEntry cacheEntry = getCacheEntry(node);
-      while (cacheEntry != null && !isInNodeCache(cacheEntry)) {
-        addToNodeCache(cacheEntry, node);
+      while (!node.isDatabase()) {
+        if (cacheEntry != null && !isInNodeCache(cacheEntry)) {
+          addToNodeCache(cacheEntry, node);
+        }
         node = node.getParent();
         cacheEntry = getCacheEntry(node);
       }

@@ -29,6 +29,8 @@ import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.rescon.ISchemaEngineStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.factory.MemMNodeFactory;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.CacheMemoryManager;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.factory.CacheMNodeFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
@@ -51,6 +53,53 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
 
   public SchemaStatisticsTest(AbstractSchemaRegionTest.SchemaRegionTestParams testParams) {
     super(testParams);
+  }
+
+  @Test
+  public void testPBTreeMemoryStatistics() throws Exception {
+    ISchemaRegion schemaRegion1 = getSchemaRegion("root.sg1", 0);
+    ISchemaRegion schemaRegion2 = getSchemaRegion("root.sg2", 0);
+    ISchemaEngineStatistics engineStatistics =
+        SchemaEngine.getInstance().getSchemaEngineStatistics();
+
+    SchemaRegionTestUtil.createSimpleTimeseriesByList(
+        schemaRegion1, Arrays.asList("root.sg1.n.s0", "root.sg1.n.v.d1.s1", "root.sg1.n.v.d2.s2"));
+    SchemaRegionTestUtil.createSimpleTimeseriesByList(
+        schemaRegion2, Arrays.asList("root.sg2.d0.s0"));
+    PathPatternTree patternTree = new PathPatternTree();
+    patternTree.appendPathPattern(new PartialPath("root.**.s1"));
+    patternTree.appendPathPattern(new PartialPath("root.**.s2"));
+    patternTree.constructTree();
+    Assert.assertTrue(schemaRegion1.constructSchemaBlackList(patternTree) >= 1);
+    schemaRegion1.deleteTimeseriesInBlackList(patternTree);
+
+    if (testParams.getTestModeName().equals("PBTree-PartialMemory")
+        || testParams.getTestModeName().equals("PBTree-NonMemory")) {
+      IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
+      // wait release and flush task
+      Thread.sleep(1000);
+      // schemaRegion1
+      IMNode<ICachedMNode> sg1 =
+          nodeFactory.createDatabaseMNode(
+              null, "sg1", CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
+      sg1.setFullPath("root.sg1");
+      long size1 = sg1.estimateSize();
+      if (size1 != schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage()) {
+        // There are two possibilities here in PartialMemory mode:
+        // 1. only the "sg1" node remains
+        // 2. the "sg1" node and the "n" node remain
+        Assert.assertEquals("PBTree-PartialMemory", testParams.getTestModeName());
+        Assert.assertEquals(
+            size1 + nodeFactory.createDeviceMNode(sg1.getAsMNode(), "n").estimateSize(),
+            schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
+        CacheMemoryManager.getInstance().forceFlushAndRelease();
+        Thread.sleep(1000);
+        Assert.assertEquals(
+            size1, schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
+      }
+    }
+    Assert.assertEquals(0, schemaRegion1.getSchemaRegionStatistics().getSchemaRegionId());
+    checkPBTreeStatistics(engineStatistics);
   }
 
   @Test
@@ -191,17 +240,39 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
 
     if (testParams.getTestModeName().equals("PBTree-PartialMemory")
         || testParams.getTestModeName().equals("PBTree-NonMemory")) {
-
-      IMNodeFactory<?> nodeFactory = CacheMNodeFactory.getInstance();
+      IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
       // wait release and flush task
       Thread.sleep(1000);
       // schemaRegion1
-      IMNode<?> sg1 =
+      IMNode<ICachedMNode> sg1 =
           nodeFactory.createDatabaseDeviceMNode(
               null, "sg1", CommonDescriptor.getInstance().getConfig().getDefaultTTLInMs());
       sg1.setFullPath("root.sg1");
       long size1 = sg1.estimateSize();
-      Assert.assertEquals(size1, schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
+      if (sg1.estimateSize() != schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage()) {
+        // "d0" or "d1" node may remain in PartialMemory mode
+        Assert.assertEquals("PBTree-PartialMemory", testParams.getTestModeName());
+        long d0ExistSize =
+            size1
+                + nodeFactory
+                    .createMeasurementMNode(
+                        sg1.getAsDeviceMNode(),
+                        "d0",
+                        new MeasurementSchema(
+                            "d0", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY),
+                        null)
+                    .estimateSize();
+        long d1ExistSize =
+            size1 + nodeFactory.createInternalMNode(sg1.getAsMNode(), "d1").estimateSize();
+        Assert.assertTrue(
+            d0ExistSize == schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage()
+                || d1ExistSize == schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
+        CacheMemoryManager.getInstance().forceFlushAndRelease();
+        // wait release and flush task
+        Thread.sleep(1000);
+        Assert.assertEquals(
+            size1, schemaRegion1.getSchemaRegionStatistics().getRegionMemoryUsage());
+      }
       // schemaRegion2
       IMNode<?> sg2 =
           nodeFactory.createDatabaseMNode(
@@ -379,7 +450,13 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
         Assert.assertEquals(4, cachedRegionStatistics2.getUnpinnedMNodeNum());
       } else {
         Assert.assertEquals(1, cachedRegionStatistics1.getPinnedMNodeNum());
-        Assert.assertEquals(0, cachedRegionStatistics1.getUnpinnedMNodeNum());
+        if (0 != cachedRegionStatistics1.getUnpinnedMNodeNum()) {
+          // "d0" may remain in PartialMemory mode
+          Assert.assertEquals("PBTree-PartialMemory", testParams.getTestModeName());
+          CacheMemoryManager.getInstance().forceFlushAndRelease();
+          Thread.sleep(1000);
+          Assert.assertEquals(0, cachedRegionStatistics1.getUnpinnedMNodeNum());
+        }
         Assert.assertEquals(1, cachedRegionStatistics2.getPinnedMNodeNum());
         Assert.assertEquals(0, cachedRegionStatistics2.getUnpinnedMNodeNum());
       }
