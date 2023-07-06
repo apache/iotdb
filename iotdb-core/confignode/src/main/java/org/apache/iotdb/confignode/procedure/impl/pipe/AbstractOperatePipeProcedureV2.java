@@ -234,8 +234,6 @@ public abstract class AbstractOperatePipeProcedureV2
       TPushPipeMetaResp resp = respEntry.getValue();
 
       if (resp.getStatus().getCode() == TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()) {
-        AtomicBoolean hasException = new AtomicBoolean(false);
-
         if (!resp.isSetExceptionMessages()) {
           exceptionMessageBuilder.append(
               String.format(
@@ -243,6 +241,8 @@ public abstract class AbstractOperatePipeProcedureV2
                   dataNodeId));
           continue;
         }
+
+        AtomicBoolean hasException = new AtomicBoolean(false);
 
         resp.getExceptionMessages()
             .forEach(
@@ -263,9 +263,8 @@ public abstract class AbstractOperatePipeProcedureV2
         if (hasException.get()) {
           // Only print dataNodeId if the given pipe meets exception on that node
           exceptionMessageBuilder.insert(0, String.format("DataNodeId: %s ", dataNodeId));
+          exceptionMessageBuilder.append(". ");
         }
-
-        exceptionMessageBuilder.append(". ");
       }
     }
     return exceptionMessageBuilder.toString();
