@@ -95,6 +95,26 @@ public class PathTest {
     Path o = new Path("root.sg.drop_trigger", true);
     Assert.assertEquals("root.sg", o.getDevice());
     Assert.assertEquals("drop_trigger", o.getMeasurement());
+
+    Path p = new Path("root.sg.and", true);
+    Assert.assertEquals("root.sg", p.getDevice());
+    Assert.assertEquals("and", p.getMeasurement());
+
+    p = new Path("root.sg.or", true);
+    Assert.assertEquals("root.sg", p.getDevice());
+    Assert.assertEquals("or", p.getMeasurement());
+
+    p = new Path("root.sg.not", true);
+    Assert.assertEquals("root.sg", p.getDevice());
+    Assert.assertEquals("not", p.getMeasurement());
+
+    p = new Path("root.sg.null", true);
+    Assert.assertEquals("root.sg", p.getDevice());
+    Assert.assertEquals("null", p.getMeasurement());
+
+    p = new Path("root.sg.contains", true);
+    Assert.assertEquals("root.sg", p.getDevice());
+    Assert.assertEquals("contains", p.getMeasurement());
   }
 
   @Test
@@ -147,30 +167,6 @@ public class PathTest {
 
     try {
       new Path("root.a*b", true);
-      fail();
-    } catch (PathParseException ignored) {
-    }
-
-    try {
-      new Path("root.and", true);
-      fail();
-    } catch (PathParseException ignored) {
-    }
-
-    try {
-      new Path("root.or", true);
-      fail();
-    } catch (PathParseException ignored) {
-    }
-
-    try {
-      new Path("root.not", true);
-      fail();
-    } catch (PathParseException ignored) {
-    }
-
-    try {
-      new Path("root.contains", true);
       fail();
     } catch (PathParseException ignored) {
     }
