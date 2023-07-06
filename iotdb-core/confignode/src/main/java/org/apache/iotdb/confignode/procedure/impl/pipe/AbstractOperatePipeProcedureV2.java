@@ -83,7 +83,11 @@ public abstract class AbstractOperatePipeProcedureV2
     try {
       switch (state) {
         case VALIDATE_TASK:
-          env.getConfigManager().getPipeManager().getPipeTaskCoordinator().lock();
+          env.getConfigManager()
+              .getPipeManager()
+              .getPipeTaskCoordinator()
+              .getPipeTaskInfo()
+              .acquireWriteLock();
           executeFromValidateTask(env);
           setNextState(OperatePipeTaskState.CALCULATE_INFO_FOR_TASK);
           break;
@@ -97,7 +101,11 @@ public abstract class AbstractOperatePipeProcedureV2
           break;
         case OPERATE_ON_DATA_NODES:
           executeFromOperateOnDataNodes(env);
-          env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
+          env.getConfigManager()
+              .getPipeManager()
+              .getPipeTaskCoordinator()
+              .getPipeTaskInfo()
+              .releaseWriteLock();
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {
@@ -129,7 +137,11 @@ public abstract class AbstractOperatePipeProcedureV2
         try {
           rollbackFromValidateTask(env);
         } finally {
-          env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
+          env.getConfigManager()
+              .getPipeManager()
+              .getPipeTaskCoordinator()
+              .getPipeTaskInfo()
+              .releaseWriteLock();
         }
         break;
       case CALCULATE_INFO_FOR_TASK:

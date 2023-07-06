@@ -27,13 +27,32 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class PipeMetaKeeper {
 
   protected final Map<String, PipeMeta> pipeNameToPipeMetaMap;
 
+  private final ReentrantReadWriteLock pipeMetaKeeperLock = new ReentrantReadWriteLock(true);
+
   public PipeMetaKeeper() {
     pipeNameToPipeMetaMap = new ConcurrentHashMap<>();
+  }
+
+  public void acquireReadLock() {
+    pipeMetaKeeperLock.readLock().lock();
+  }
+
+  public void releaseReadLock() {
+    pipeMetaKeeperLock.readLock().unlock();
+  }
+
+  public void acquireWriteLock() {
+    pipeMetaKeeperLock.writeLock().lock();
+  }
+
+  public void releaseWriteLock() {
+    pipeMetaKeeperLock.writeLock().unlock();
   }
 
   public void addPipeMeta(String pipeName, PipeMeta pipeMeta) {

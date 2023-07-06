@@ -53,14 +53,6 @@ public class PipeTaskCoordinator {
     return pipeTaskInfo;
   }
 
-  public void lock() {
-    pipeTaskInfo.acquirePipeTaskInfoLock();
-  }
-
-  public void unlock() {
-    pipeTaskInfo.releasePipeTaskInfoLock();
-  }
-
   public TSStatus createPipe(TCreatePipeReq req) {
     return configManager.getProcedureManager().createPipe(req);
   }

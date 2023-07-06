@@ -109,7 +109,7 @@ public class PipeHeartbeatParser {
                     .pipeHandleMetaChange(
                         needWriteConsensusOnConfigNodes.get(), needPushPipeMetaToDataNodes.get());
 
-                // Reset flags after procedure is submitted
+                // reset flags after procedure is submitted
                 needWriteConsensusOnConfigNodes.set(false);
                 needPushPipeMetaToDataNodes.set(false);
               }
@@ -124,118 +124,123 @@ public class PipeHeartbeatParser {
       pipeMetaMapFromDataNode.put(pipeMeta.getStaticMeta(), pipeMeta);
     }
 
-    for (final PipeMeta pipeMetaOnConfigNode :
-        configManager
-            .getPipeManager()
-            .getPipeTaskCoordinator()
-            .getPipeTaskInfo()
-            .getPipeMetaList()) {
-      final PipeMeta pipeMetaFromDataNode =
-          pipeMetaMapFromDataNode.get(pipeMetaOnConfigNode.getStaticMeta());
-      if (pipeMetaFromDataNode == null) {
-        LOGGER.info(
-            "PipeRuntimeCoordinator meets error in updating pipeMetaKeeper, "
-                + "pipeMetaFromDataNode is null, pipeMetaOnConfigNode: {}",
-            pipeMetaOnConfigNode);
-        continue;
-      }
-
-      final Map<TConsensusGroupId, PipeTaskMeta> pipeTaskMetaMapOnConfigNode =
-          pipeMetaOnConfigNode.getRuntimeMeta().getConsensusGroupIdToTaskMetaMap();
-      final Map<TConsensusGroupId, PipeTaskMeta> pipeTaskMetaMapFromDataNode =
-          pipeMetaFromDataNode.getRuntimeMeta().getConsensusGroupIdToTaskMetaMap();
-      for (final Map.Entry<TConsensusGroupId, PipeTaskMeta> runtimeMetaOnConfigNode :
-          pipeTaskMetaMapOnConfigNode.entrySet()) {
-        if (runtimeMetaOnConfigNode.getValue().getLeaderDataNodeId() != dataNodeId) {
-          continue;
-        }
-
-        final PipeTaskMeta runtimeMetaFromDataNode =
-            pipeTaskMetaMapFromDataNode.get(runtimeMetaOnConfigNode.getKey());
-        if (runtimeMetaFromDataNode == null) {
-          LOGGER.warn(
+    configManager.getPipeManager().getPipeTaskCoordinator().getPipeTaskInfo().acquireWriteLock();
+    try {
+      for (final PipeMeta pipeMetaOnConfigNode :
+          configManager
+              .getPipeManager()
+              .getPipeTaskCoordinator()
+              .getPipeTaskInfo()
+              .getPipeMetaList()) {
+        final PipeMeta pipeMetaFromDataNode =
+            pipeMetaMapFromDataNode.get(pipeMetaOnConfigNode.getStaticMeta());
+        if (pipeMetaFromDataNode == null) {
+          LOGGER.info(
               "PipeRuntimeCoordinator meets error in updating pipeMetaKeeper, "
-                  + "runtimeMetaFromDataNode is null, runtimeMetaOnConfigNode: {}",
-              runtimeMetaOnConfigNode);
+                  + "pipeMetaFromDataNode is null, pipeMetaOnConfigNode: {}",
+              pipeMetaOnConfigNode);
           continue;
         }
 
-        // Update progress index
-        if (!runtimeMetaOnConfigNode
-            .getValue()
-            .getProgressIndex()
-            .isAfter(runtimeMetaFromDataNode.getProgressIndex())) {
-          LOGGER.info(
-              "Updating progress index for (pipe name: {}, consensus group id: {}) ... "
-                  + "Progress index on config node: {}, progress index from data node: {}",
-              pipeMetaOnConfigNode.getStaticMeta().getPipeName(),
-              runtimeMetaOnConfigNode.getKey(),
-              runtimeMetaOnConfigNode.getValue().getProgressIndex(),
-              runtimeMetaFromDataNode.getProgressIndex());
-          LOGGER.info(
-              "Progress index for (pipe name: {}, consensus group id: {}) is updated to {}",
-              pipeMetaOnConfigNode.getStaticMeta().getPipeName(),
-              runtimeMetaOnConfigNode.getKey(),
-              runtimeMetaOnConfigNode
-                  .getValue()
-                  .updateProgressIndex(runtimeMetaFromDataNode.getProgressIndex()));
+        final Map<TConsensusGroupId, PipeTaskMeta> pipeTaskMetaMapOnConfigNode =
+            pipeMetaOnConfigNode.getRuntimeMeta().getConsensusGroupIdToTaskMetaMap();
+        final Map<TConsensusGroupId, PipeTaskMeta> pipeTaskMetaMapFromDataNode =
+            pipeMetaFromDataNode.getRuntimeMeta().getConsensusGroupIdToTaskMetaMap();
+        for (final Map.Entry<TConsensusGroupId, PipeTaskMeta> runtimeMetaOnConfigNode :
+            pipeTaskMetaMapOnConfigNode.entrySet()) {
+          if (runtimeMetaOnConfigNode.getValue().getLeaderDataNodeId() != dataNodeId) {
+            continue;
+          }
 
-          needWriteConsensusOnConfigNodes.set(true);
-        }
+          final PipeTaskMeta runtimeMetaFromDataNode =
+              pipeTaskMetaMapFromDataNode.get(runtimeMetaOnConfigNode.getKey());
+          if (runtimeMetaFromDataNode == null) {
+            LOGGER.warn(
+                "PipeRuntimeCoordinator meets error in updating pipeMetaKeeper, "
+                    + "runtimeMetaFromDataNode is null, runtimeMetaOnConfigNode: {}",
+                runtimeMetaOnConfigNode);
+            continue;
+          }
 
-        // Update runtime exception
-        final PipeTaskMeta pipeTaskMetaOnConfigNode = runtimeMetaOnConfigNode.getValue();
-        pipeTaskMetaOnConfigNode.clearExceptionMessages();
-        for (final PipeRuntimeException exception :
-            runtimeMetaFromDataNode.getExceptionMessages()) {
+          // update progress index
+          if (!runtimeMetaOnConfigNode
+              .getValue()
+              .getProgressIndex()
+              .isAfter(runtimeMetaFromDataNode.getProgressIndex())) {
+            LOGGER.info(
+                "Updating progress index for (pipe name: {}, consensus group id: {}) ... "
+                    + "Progress index on config node: {}, progress index from data node: {}",
+                pipeMetaOnConfigNode.getStaticMeta().getPipeName(),
+                runtimeMetaOnConfigNode.getKey(),
+                runtimeMetaOnConfigNode.getValue().getProgressIndex(),
+                runtimeMetaFromDataNode.getProgressIndex());
+            LOGGER.info(
+                "Progress index for (pipe name: {}, consensus group id: {}) is updated to {}",
+                pipeMetaOnConfigNode.getStaticMeta().getPipeName(),
+                runtimeMetaOnConfigNode.getKey(),
+                runtimeMetaOnConfigNode
+                    .getValue()
+                    .updateProgressIndex(runtimeMetaFromDataNode.getProgressIndex()));
 
-          pipeTaskMetaOnConfigNode.trackExceptionMessage(exception);
+            needWriteConsensusOnConfigNodes.set(true);
+          }
 
-          if (exception instanceof PipeRuntimeCriticalException) {
-            final String pipeName = pipeMetaOnConfigNode.getStaticMeta().getPipeName();
-            if (!pipeMetaOnConfigNode
-                .getRuntimeMeta()
-                .getStatus()
-                .get()
-                .equals(PipeStatus.STOPPED)) {
-              pipeMetaOnConfigNode.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
+          // update runtime exception
+          final PipeTaskMeta pipeTaskMetaOnConfigNode = runtimeMetaOnConfigNode.getValue();
+          pipeTaskMetaOnConfigNode.clearExceptionMessages();
+          for (final PipeRuntimeException exception :
+              runtimeMetaFromDataNode.getExceptionMessages()) {
 
-              needWriteConsensusOnConfigNodes.set(true);
-              needPushPipeMetaToDataNodes.set(true);
+            pipeTaskMetaOnConfigNode.trackExceptionMessage(exception);
 
-              LOGGER.warn(
-                  "Detect PipeRuntimeCriticalException {} from DataNode, stop pipe {}.",
-                  exception,
-                  pipeName);
-            }
+            if (exception instanceof PipeRuntimeCriticalException) {
+              final String pipeName = pipeMetaOnConfigNode.getStaticMeta().getPipeName();
+              if (!pipeMetaOnConfigNode
+                  .getRuntimeMeta()
+                  .getStatus()
+                  .get()
+                  .equals(PipeStatus.STOPPED)) {
+                pipeMetaOnConfigNode.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
 
-            if (exception instanceof PipeRuntimeConnectorCriticalException) {
-              ((PipeTableResp)
-                      configManager
-                          .getPipeManager()
-                          .getPipeTaskCoordinator()
-                          .getPipeTaskInfo()
-                          .showPipes())
-                  .filter(true, pipeName).getAllPipeMeta().stream()
-                      .map(pipeMeta -> pipeMeta.getRuntimeMeta().getStatus())
-                      .filter(status -> !status.get().equals(PipeStatus.STOPPED))
-                      .forEach(
-                          status -> {
-                            status.set(PipeStatus.STOPPED);
+                needWriteConsensusOnConfigNodes.set(true);
+                needPushPipeMetaToDataNodes.set(true);
 
-                            needWriteConsensusOnConfigNodes.set(true);
-                            needPushPipeMetaToDataNodes.set(true);
+                LOGGER.warn(
+                    "Detect PipeRuntimeCriticalException {} from DataNode, stop pipe {}.",
+                    exception,
+                    pipeName);
+              }
 
-                            LOGGER.warn(
-                                String.format(
-                                    "Detect PipeRuntimeConnectorCriticalException %s "
-                                        + "from DataNode, stop pipe %s.",
-                                    exception, pipeName));
-                          });
+              if (exception instanceof PipeRuntimeConnectorCriticalException) {
+                ((PipeTableResp)
+                        configManager
+                            .getPipeManager()
+                            .getPipeTaskCoordinator()
+                            .getPipeTaskInfo()
+                            .showPipes())
+                    .filter(true, pipeName).getAllPipeMeta().stream()
+                        .map(pipeMeta -> pipeMeta.getRuntimeMeta().getStatus())
+                        .filter(status -> !status.get().equals(PipeStatus.STOPPED))
+                        .forEach(
+                            status -> {
+                              status.set(PipeStatus.STOPPED);
+
+                              needWriteConsensusOnConfigNodes.set(true);
+                              needPushPipeMetaToDataNodes.set(true);
+
+                              LOGGER.warn(
+                                  String.format(
+                                      "Detect PipeRuntimeConnectorCriticalException %s "
+                                          + "from DataNode, stop pipe %s.",
+                                      exception, pipeName));
+                            });
+              }
             }
           }
         }
       }
+    } finally {
+      configManager.getPipeManager().getPipeTaskCoordinator().getPipeTaskInfo().releaseWriteLock();
     }
   }
 }

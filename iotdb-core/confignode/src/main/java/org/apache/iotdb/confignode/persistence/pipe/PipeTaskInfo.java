@@ -46,7 +46,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Map;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -54,8 +53,6 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskInfo.class);
   private static final String SNAPSHOT_FILE_NAME = "pipe_task_info.bin";
-
-  private final ReentrantLock pipeTaskInfoLock = new ReentrantLock(true);
 
   private final PipeMetaKeeper pipeMetaKeeper;
 
@@ -65,12 +62,20 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   /////////////////////////////// Lock ///////////////////////////////
 
-  public void acquirePipeTaskInfoLock() {
-    pipeTaskInfoLock.lock();
+  public void acquireReadLock() {
+    pipeMetaKeeper.acquireReadLock();
   }
 
-  public void releasePipeTaskInfoLock() {
-    pipeTaskInfoLock.unlock();
+  public void releaseReadLock() {
+    pipeMetaKeeper.releaseReadLock();
+  }
+
+  public void acquireWriteLock() {
+    pipeMetaKeeper.acquireWriteLock();
+  }
+
+  public void releaseWriteLock() {
+    pipeMetaKeeper.releaseWriteLock();
   }
 
   /////////////////////////////// Validator ///////////////////////////////
@@ -157,38 +162,55 @@ public class PipeTaskInfo implements SnapshotProcessor {
   /////////////////////////////// Pipe Task Management ///////////////////////////////
 
   public TSStatus createPipe(CreatePipePlanV2 plan) {
+    acquireWriteLock();
     pipeMetaKeeper.addPipeMeta(
         plan.getPipeStaticMeta().getPipeName(),
         new PipeMeta(plan.getPipeStaticMeta(), plan.getPipeRuntimeMeta()));
+    releaseWriteLock();
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   public TSStatus setPipeStatus(SetPipeStatusPlanV2 plan) {
+    acquireWriteLock();
     pipeMetaKeeper
         .getPipeMeta(plan.getPipeName())
         .getRuntimeMeta()
         .getStatus()
         .set(plan.getPipeStatus());
+    releaseWriteLock();
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   public TSStatus dropPipe(DropPipePlanV2 plan) {
+    acquireWriteLock();
     pipeMetaKeeper.removePipeMeta(plan.getPipeName());
+    releaseWriteLock();
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   public DataSet showPipes() {
-    return new PipeTableResp(
-        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-        StreamSupport.stream(getPipeMetaList().spliterator(), false).collect(Collectors.toList()));
+    acquireReadLock();
+    PipeTableResp resp =
+        new PipeTableResp(
+            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+            StreamSupport.stream(getPipeMetaList().spliterator(), false)
+                .collect(Collectors.toList()));
+    releaseReadLock();
+    return resp;
   }
 
   public Iterable<PipeMeta> getPipeMetaList() {
-    return pipeMetaKeeper.getPipeMetaList();
+    acquireReadLock();
+    Iterable<PipeMeta> pipeMetaList = pipeMetaKeeper.getPipeMetaList();
+    releaseReadLock();
+    return pipeMetaList;
   }
 
   public boolean isEmpty() {
-    return pipeMetaKeeper.isEmpty();
+    acquireReadLock();
+    boolean isEmpty = pipeMetaKeeper.isEmpty();
+    releaseReadLock();
+    return isEmpty;
   }
 
   /////////////////////////////// Pipe Runtime Management ///////////////////////////////

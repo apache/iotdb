@@ -78,9 +78,12 @@ public class PipeHeartbeatScheduler {
   }
 
   private synchronized void heartbeat() {
+    configManager.getPipeManager().getPipeTaskCoordinator().getPipeTaskInfo().acquireReadLock();
     if (configManager.getPipeManager().getPipeTaskCoordinator().getPipeTaskInfo().isEmpty()) {
+      configManager.getPipeManager().getPipeTaskCoordinator().getPipeTaskInfo().releaseReadLock();
       return;
     }
+    configManager.getPipeManager().getPipeTaskCoordinator().getPipeTaskInfo().releaseReadLock();
 
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
