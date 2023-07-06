@@ -53,7 +53,7 @@ public class EnvFactory {
             break;
         }
       } catch (ClassNotFoundException e) {
-        e.printStackTrace();
+        logger.error("Get env error", e);
         System.exit(-1);
       }
     }
