@@ -199,7 +199,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void insertAlignedRow(InsertRowNode insertRowNode) {
-    // If this insert node isn't from storage storageEngine, we should set a temp device id for it
+    // If this insert node isn't from storage engine, we should set a temp device id for it
     if (insertRowNode.getDeviceID() == null) {
       insertRowNode.setDeviceID(deviceIDFactory.getDeviceID(insertRowNode.getDevicePath()));
     }
