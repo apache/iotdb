@@ -38,7 +38,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 /**
  * LocalTextModificationAccessor uses a file on local file system to store the modifications in text
@@ -50,8 +52,11 @@ public class LocalTextModificationAccessor
   private static final Logger logger = LoggerFactory.getLogger(LocalTextModificationAccessor.class);
   private static final String SEPARATOR = ",";
   private static final String ABORT_MARK = "aborted";
+  private static final String NO_MODIFICATION_MSG = "No modification has been written to this file";
+  private static final String TRUNCATE_MODIFICATION_MSG =
+      "An error occurred when reading modifications, and the remaining modifications will be truncated to size {}.";
 
-  private String filePath;
+  private final String filePath;
   private BufferedWriter writer;
 
   /**
@@ -67,7 +72,7 @@ public class LocalTextModificationAccessor
   public Collection<Modification> read() {
     File file = FSFactoryProducer.getFSFactory().getFile(filePath);
     if (!file.exists()) {
-      logger.debug("No modification has been written to this file");
+      logger.debug(NO_MODIFICATION_MSG);
       return new ArrayList<>();
     }
 
@@ -86,23 +91,96 @@ public class LocalTextModificationAccessor
       }
     } catch (IOException e) {
       crashed = true;
-      logger.error(
-          "An error occurred when reading modifications, and the remaining modifications will be truncated to size {}.",
-          truncatedSize,
-          e);
+      logger.error(TRUNCATE_MODIFICATION_MSG, truncatedSize, e);
     }
 
     if (crashed) {
-      try (FileOutputStream outputStream = new FileOutputStream(file, true)) {
-        outputStream.getChannel().truncate(truncatedSize);
-      } catch (FileNotFoundException e) {
-        logger.debug("No modification has been written to this file");
-      } catch (IOException e) {
-        logger.error(
-            "An error occurred when truncating modifications to size {}.", truncatedSize, e);
-      }
+      truncateModFile(file, truncatedSize);
     }
     return modificationList;
+  }
+
+  @Override
+  public Iterator<Modification> getModificationIterator() {
+    File file = FSFactoryProducer.getFSFactory().getFile(filePath);
+    final String[] line = new String[1];
+    TracedBufferedReader reader;
+    try {
+      reader = new TracedBufferedReader(new FileReader(file));
+    } catch (FileNotFoundException e) {
+      logger.debug(NO_MODIFICATION_MSG);
+
+      // return empty iterator
+      return new Iterator<Modification>() {
+        @Override
+        public boolean hasNext() {
+          return false;
+        }
+
+        @Override
+        public Modification next() {
+          try {
+            return null;
+          } catch (Exception e) {
+            // just for passing Sonar
+            throw new NoSuchElementException();
+          }
+        }
+      };
+    }
+    return new Iterator<Modification>() {
+      @Override
+      public boolean hasNext() {
+        try {
+          boolean hasNext = (line[0] = reader.readLine()) != null;
+          if (!hasNext) {
+            reader.close();
+          }
+          return hasNext;
+        } catch (IOException e) {
+          try {
+            reader.close();
+          } catch (IOException ex) {
+            ex.printStackTrace();
+          }
+          logger.error(TRUNCATE_MODIFICATION_MSG, 0, e);
+          truncateModFile(file, 0);
+        }
+
+        return false;
+      }
+
+      @Override
+      public Modification next() {
+        if (line[0] == null) {
+          throw new NoSuchElementException();
+        }
+        try {
+          return decodeModification(line[0]);
+        } catch (IOException e) {
+          try {
+            reader.close();
+          } catch (IOException ex) {
+            ex.printStackTrace();
+          }
+          logger.error(TRUNCATE_MODIFICATION_MSG, 0, e);
+          truncateModFile(file, 0);
+        } catch (Exception e) {
+          e.printStackTrace();
+        }
+        return null;
+      }
+    };
+  }
+
+  private void truncateModFile(File file, long truncatedSize) {
+    try (FileOutputStream outputStream = new FileOutputStream(file, true)) {
+      outputStream.getChannel().truncate(truncatedSize);
+    } catch (FileNotFoundException e) {
+      logger.debug(NO_MODIFICATION_MSG);
+    } catch (IOException e) {
+      logger.error("An error occurred when truncating modifications to size {}.", truncatedSize, e);
+    }
   }
 
   @Override

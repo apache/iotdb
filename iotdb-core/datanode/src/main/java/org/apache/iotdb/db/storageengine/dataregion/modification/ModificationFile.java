@@ -131,6 +131,10 @@ public class ModificationFile implements AutoCloseable {
     }
   }
 
+  public Iterable<Modification> getModificationsIter() {
+    return () -> reader.getModificationIterator();
+  }
+
   public String getFilePath() {
     return filePath;
   }
