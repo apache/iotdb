@@ -40,6 +40,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * This procedure manage 4 kinds of PIPE operations: CREATE, START, STOP and DROP.
@@ -227,16 +228,28 @@ public abstract class AbstractOperatePipeProcedureV2
   protected String parsePushPipeMetaExceptionForPipe(
       String pipeName, Map<Integer, TPushPipeMetaResp> respMap) {
     final StringBuilder exceptionMessageBuilder = new StringBuilder();
+
     for (Map.Entry<Integer, TPushPipeMetaResp> respEntry : respMap.entrySet()) {
       int dataNodeId = respEntry.getKey();
       TPushPipeMetaResp resp = respEntry.getValue();
+
       if (resp.getStatus().getCode() == TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()) {
-        exceptionMessageBuilder.append(String.format("DataNodeId: %s ", dataNodeId));
+        AtomicBoolean hasException = new AtomicBoolean(false);
+
+        if (!resp.isSetExceptionMessages()) {
+          exceptionMessageBuilder.append(
+              String.format(
+                  "DataNodeId: %s, Message: Internal error while processing pushPipeMeta on dataNodes.",
+                  dataNodeId));
+          continue;
+        }
+
         resp.getExceptionMessages()
             .forEach(
                 message -> {
                   // Ignore the timeStamp for simplicity
                   if (pipeName == null) {
+                    hasException.set(true);
                     exceptionMessageBuilder.append(
                         String.format(
                             "PipeName: %s, Message: %s ",
@@ -246,6 +259,12 @@ public abstract class AbstractOperatePipeProcedureV2
                         String.format("Message: %s ", message.getMessage()));
                   }
                 });
+
+        if (hasException.get()) {
+          // Only print dataNodeId if the given pipe meets exception on that node
+          exceptionMessageBuilder.insert(0, String.format("DataNodeId: %s ", dataNodeId));
+        }
+
         exceptionMessageBuilder.append(". ");
       }
     }

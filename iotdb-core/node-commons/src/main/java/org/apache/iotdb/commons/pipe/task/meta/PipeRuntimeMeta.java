@@ -39,7 +39,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeRuntimeMeta {
 
-  private final AtomicReference<PipeStatus> status;
+  private final AtomicReference<PipeStatus> status = new AtomicReference<>(PipeStatus.STOPPED);
   private final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupId2TaskMetaMap;
   /**
    * Stores the newest exceptions encountered group by dataNodes. The exceptions are all instances
@@ -53,12 +53,10 @@ public class PipeRuntimeMeta {
   private final AtomicLong exceptionsClearTime = new AtomicLong(Long.MIN_VALUE);
 
   public PipeRuntimeMeta() {
-    status = new AtomicReference<>(PipeStatus.STOPPED);
     consensusGroupId2TaskMetaMap = new ConcurrentHashMap<>();
   }
 
   public PipeRuntimeMeta(Map<TConsensusGroupId, PipeTaskMeta> consensusGroupId2TaskMetaMap) {
-    status = new AtomicReference<>(PipeStatus.STOPPED);
     this.consensusGroupId2TaskMetaMap = consensusGroupId2TaskMetaMap;
   }
 
@@ -216,6 +214,6 @@ public class PipeRuntimeMeta {
         + dataNodeId2PipeRuntimeExceptionMap
         + ", exceptionsClearTime="
         + exceptionsClearTime.get()
-        + ", isStoppedByConfigNode=";
+        + "}";
   }
 }
