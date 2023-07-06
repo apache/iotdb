@@ -2583,7 +2583,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         return new NegationExpression(
             parseExpression(context.expressionAfterUnaryOperator, canUseFullPath));
       }
-      if (context.OPERATOR_NOT() != null) {
+      if (context.operator_not() != null) {
         return new LogicNotExpression(
             parseExpression(context.expressionAfterUnaryOperator, canUseFullPath));
       }
@@ -2626,10 +2626,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       if (context.OPERATOR_NEQ() != null) {
         return new NonEqualExpression(leftExpression, rightExpression);
       }
-      if (context.OPERATOR_AND() != null) {
+      if (context.operator_and() != null) {
         return new LogicAndExpression(leftExpression, rightExpression);
       }
-      if (context.OPERATOR_OR() != null) {
+      if (context.operator_or() != null) {
         return new LogicOrExpression(leftExpression, rightExpression);
       }
       throw new UnsupportedOperationException();
@@ -2658,7 +2658,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
       if (context.OPERATOR_BETWEEN() != null) {
         return new BetweenExpression(
-            firstExpression, secondExpression, thirdExpression, context.OPERATOR_NOT() != null);
+            firstExpression, secondExpression, thirdExpression, context.operator_not() != null);
       }
       throw new UnsupportedOperationException();
     }
@@ -2911,7 +2911,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private Expression parseIsNullExpression(ExpressionContext context, boolean canUseFullPath) {
     return new IsNullExpression(
         parseExpression(context.unaryBeforeIsNullExpression, canUseFullPath),
-        context.OPERATOR_NOT() != null);
+        context.operator_not() != null);
   }
 
   private Expression parseInExpression(ExpressionContext context, boolean canUseFullPath) {
@@ -2920,7 +2920,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     for (ConstantContext constantContext : context.constant()) {
       values.add(parseConstant(constantContext));
     }
-    return new InExpression(childExpression, context.OPERATOR_NOT() != null, values);
+    return new InExpression(childExpression, context.operator_not() != null, values);
   }
 
   private String parseConstant(ConstantContext constantContext) {
