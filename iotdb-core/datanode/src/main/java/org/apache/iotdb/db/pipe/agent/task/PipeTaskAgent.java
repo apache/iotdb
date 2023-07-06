@@ -84,6 +84,24 @@ public class PipeTaskAgent {
     pipeTaskManager = new PipeTaskManager();
   }
 
+  ////////////////////////// PipeMeta Lock Control //////////////////////////
+
+  private void acquireReadLock() {
+    pipeMetaKeeper.acquireReadLock();
+  }
+
+  private void releaseReadLock() {
+    pipeMetaKeeper.releaseReadLock();
+  }
+
+  private void acquireWriteLock() {
+    pipeMetaKeeper.acquireWriteLock();
+  }
+
+  private void releaseWriteLock() {
+    pipeMetaKeeper.releaseWriteLock();
+  }
+
   ////////////////////////// Pipe Task Management Entry //////////////////////////
 
   public synchronized void handlePipeMetaChanges(List<PipeMeta> pipeMetaListFromConfigNode) {
@@ -93,6 +111,7 @@ public class PipeTaskAgent {
     }
 
     final List<Exception> exceptions = new ArrayList<>();
+    acquireWriteLock();
 
     // Iterate through pipe meta list from config node, check if pipe meta exists on data node
     // or has changed
@@ -161,6 +180,7 @@ public class PipeTaskAgent {
       }
     }
 
+    releaseWriteLock();
     if (!exceptions.isEmpty()) {
       throw new PipeException(
           String.format(
@@ -267,6 +287,7 @@ public class PipeTaskAgent {
   }
 
   public synchronized void dropAllPipeTasks() {
+    acquireWriteLock();
     for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
       try {
         dropPipe(
@@ -279,6 +300,7 @@ public class PipeTaskAgent {
             e);
       }
     }
+    releaseWriteLock();
   }
 
   ////////////////////////// Manage by Pipe Name //////////////////////////
@@ -642,12 +664,15 @@ public class PipeTaskAgent {
 
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
     try {
+      acquireReadLock();
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
         LOGGER.info("Reporting pipe meta: {}", pipeMeta);
       }
     } catch (IOException e) {
       throw new TException(e);
+    } finally {
+      releaseReadLock();
     }
     resp.setPipeMetaList(pipeMetaBinaryList);
   }
@@ -662,12 +687,15 @@ public class PipeTaskAgent {
 
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
     try {
+      acquireReadLock();
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
         LOGGER.info("Reporting pipe meta: {}", pipeMeta);
       }
     } catch (IOException e) {
       throw new TException(e);
+    } finally {
+      releaseReadLock();
     }
     resp.setPipeMetaList(pipeMetaBinaryList);
   }
