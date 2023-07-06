@@ -152,7 +152,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   public boolean isPipeExisted(String pipeName) {
-    return pipeMetaKeeper.containsPipeMeta(pipeName);
+    acquireReadLock();
+    final boolean isExisted = pipeMetaKeeper.containsPipeMeta(pipeName);
+    releaseReadLock();
+    return isExisted;
   }
 
   private PipeStatus getPipeStatus(String pipeName) {
@@ -190,7 +193,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   public DataSet showPipes() {
     acquireReadLock();
-    PipeTableResp resp =
+    final PipeTableResp resp =
         new PipeTableResp(
             new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
             StreamSupport.stream(getPipeMetaList().spliterator(), false)
@@ -201,14 +204,14 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   public Iterable<PipeMeta> getPipeMetaList() {
     acquireReadLock();
-    Iterable<PipeMeta> pipeMetaList = pipeMetaKeeper.getPipeMetaList();
+    final Iterable<PipeMeta> pipeMetaList = pipeMetaKeeper.getPipeMetaList();
     releaseReadLock();
     return pipeMetaList;
   }
 
   public boolean isEmpty() {
     acquireReadLock();
-    boolean isEmpty = pipeMetaKeeper.isEmpty();
+    final boolean isEmpty = pipeMetaKeeper.isEmpty();
     releaseReadLock();
     return isEmpty;
   }
@@ -217,6 +220,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   /** Handle the data region leader change event and update the pipe task meta accordingly. */
   public TSStatus handleLeaderChange(PipeHandleLeaderChangePlan plan) {
+    acquireWriteLock();
     plan.getConsensusGroupId2NewDataRegionLeaderIdMap()
         .forEach(
             (dataRegionGroupId, newDataRegionLeader) ->
@@ -251,10 +255,12 @@ public class PipeTaskInfo implements SnapshotProcessor {
                             // the data region group has already been removed"
                           }
                         }));
+    releaseWriteLock();
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   public TSStatus handleMetaChanges(PipeHandleMetaChangePlan plan) {
+    acquireWriteLock();
     LOGGER.info("Handling pipe meta changes ...");
     pipeMetaKeeper.clear();
     plan.getPipeMetaList()
@@ -263,6 +269,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
               pipeMetaKeeper.addPipeMeta(pipeMeta.getStaticMeta().getPipeName(), pipeMeta);
               LOGGER.info("Recording pipe meta: {}", pipeMeta);
             });
+    releaseWriteLock();
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

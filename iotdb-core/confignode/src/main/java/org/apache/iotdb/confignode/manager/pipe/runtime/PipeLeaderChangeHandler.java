@@ -47,12 +47,9 @@ public class PipeLeaderChangeHandler implements IClusterStatusSubscriber {
   @Override
   public void onRegionGroupLeaderChanged(RouteChangeEvent event) {
     // if no pipe task, return
-    configManager.getPipeManager().getPipeTaskCoordinator().getPipeTaskInfo().acquireReadLock();
     if (configManager.getPipeManager().getPipeTaskCoordinator().getPipeTaskInfo().isEmpty()) {
-      configManager.getPipeManager().getPipeTaskCoordinator().getPipeTaskInfo().releaseReadLock();
       return;
     }
-    configManager.getPipeManager().getPipeTaskCoordinator().getPipeTaskInfo().releaseReadLock();
 
     // we only care about data region leader change
     final Map<TConsensusGroupId, Pair<Integer, Integer>> dataRegionGroupToOldAndNewLeaderPairMap =
