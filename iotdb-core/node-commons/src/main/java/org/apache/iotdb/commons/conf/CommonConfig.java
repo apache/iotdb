@@ -164,8 +164,9 @@ public class CommonConfig {
   private int pipeHeartbeatIntervalSecondsForCollectingPipeMeta = 100;
   private long pipeMetaSyncerInitialSyncDelayMinutes = 3;
   private long pipeMetaSyncerSyncIntervalMinutes = 3;
+  private boolean pipeExceptionStoppedAutoRestartRetryEnabled = true;
 
-  /** whether to use persistent schema mode. */
+  /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
 
   /** Whether to enable Last cache. */
@@ -532,6 +533,15 @@ public class CommonConfig {
 
   public void setPipeMetaSyncerSyncIntervalMinutes(long pipeMetaSyncerSyncIntervalMinutes) {
     this.pipeMetaSyncerSyncIntervalMinutes = pipeMetaSyncerSyncIntervalMinutes;
+  }
+
+  public boolean getPipeExceptionStoppedAutoRetryEnabled() {
+    return pipeExceptionStoppedAutoRestartRetryEnabled;
+  }
+
+  public void setPipeExceptionStoppedAutoRestartRetryEnabled(
+      boolean pipeExceptionStoppedAutoRestartRetryEnabled) {
+    this.pipeExceptionStoppedAutoRestartRetryEnabled = pipeExceptionStoppedAutoRestartRetryEnabled;
   }
 
   public long getPipeConnectorRetryIntervalMs() {
