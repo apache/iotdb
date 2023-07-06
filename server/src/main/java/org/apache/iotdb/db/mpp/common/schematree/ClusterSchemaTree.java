@@ -41,7 +41,6 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.rmi.UnexpectedException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -225,13 +224,12 @@ public class ClusterSchemaTree implements ISchemaTree {
                     .getFullPath()));
       } else if (measurementPathList.size() > 1) {
         throw new SemanticException(
-            new UnexpectedException(
-                String.format(
-                    "The source paths [%s] of view [%s] are multiple.",
-                    fullPath.getFullPath(),
-                    schemaComputation
-                        .getDevicePath()
-                        .concatNode(logicalViewSchema.getMeasurementId()))));
+            String.format(
+                "The source paths [%s] of view [%s] are multiple.",
+                fullPath.getFullPath(),
+                schemaComputation
+                    .getDevicePath()
+                    .concatNode(logicalViewSchema.getMeasurementId())));
       } else {
         Integer realIndex = schemaComputation.getIndexListOfLogicalViewPaths().get(index);
         MeasurementPath measurementPath = measurementPathList.get(0);
