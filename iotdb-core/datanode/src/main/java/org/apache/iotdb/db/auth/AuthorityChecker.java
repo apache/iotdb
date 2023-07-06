@@ -133,7 +133,8 @@ public class AuthorityChecker {
    *
    * @return true if the authority permission has passed
    */
-  public static boolean checkAuthorization(Statement statement, String username) {
+  public static boolean checkAuthorization(Statement statement, String username)
+      throws AuthException {
     if (!statement.isAuthenticationRequired()) {
       return true;
     }

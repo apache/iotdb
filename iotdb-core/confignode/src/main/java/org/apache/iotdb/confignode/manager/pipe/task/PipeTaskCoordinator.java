@@ -66,11 +66,15 @@ public class PipeTaskCoordinator {
   }
 
   public TSStatus startPipe(String pipeName) {
-    // Whether there are exceptions to clear
+    // To avoid concurrent read
     lock();
+    // Whether there are exceptions to clear
+    boolean hasException;
     try {
-      boolean hasException = pipeTaskInfo.hasExceptions(pipeName);
-    } finally {
+      hasException = pipeTaskInfo.hasExceptions(pipeName);
+    } catch (Exception e) {
+      // Set exception flag to true if failed
+      hasException = true;
       unlock();
     }
     TSStatus status = configManager.getProcedureManager().startPipe(pipeName);
