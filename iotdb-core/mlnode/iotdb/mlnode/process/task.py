@@ -57,7 +57,7 @@ class ForestingTrainingObjective:
         self.pid_info = pid_info
 
     def __call__(self, optuna_suggest: optuna.Trial):
-        model_hyperparameters, task_hyperparameters = generate_hyperparameters(optuna_suggest,
+        model_hyperparameters, task_hyperparameters = generate_hyperpweiarameters(optuna_suggest,
                                                                                self.task_options, self.hyperparameters)
         trial = ForecastingTrainingTrial(task_options=self.task_options,
                                          model_hyperparameters=model_hyperparameters,
