@@ -262,18 +262,18 @@ public class ChunkSuit4CPV {
         while (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
           estimatedPos++;
           //          IOMonitor.incPointsTravered();
-          IOMonitor2.DCP_D_traversedPointNum++;
+          IOMonitor2.DCP_D_timeIndex_traversedPointNum++;
         }
       } else if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
         while (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
           estimatedPos--;
           //          IOMonitor.incPointsTravered();
-          IOMonitor2.DCP_D_traversedPointNum++;
+          IOMonitor2.DCP_D_timeIndex_traversedPointNum++;
         }
         if (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
           estimatedPos++;
           //          IOMonitor.incPointsTravered();
-          IOMonitor2.DCP_D_traversedPointNum++;
+          IOMonitor2.DCP_D_timeIndex_traversedPointNum++;
         } // else equal
       } // else equal
       this.startPos = estimatedPos; // note this
@@ -316,7 +316,7 @@ public class ChunkSuit4CPV {
       while (pageReader.timeBuffer.remaining() > 0) {
         estimatedPos++;
         //        IOMonitor.incPointsTravered();
-        IOMonitor2.DCP_D_traversedPointNum++;
+        IOMonitor2.DCP_D_timeIndex_traversedPointNum++;
         long t = pageReader.timeBuffer.getLong();
         if (t >= targetTimestamp) {
           break;
@@ -379,18 +379,18 @@ public class ChunkSuit4CPV {
         while (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
           estimatedPos--;
           //          IOMonitor.incPointsTravered();
-          IOMonitor2.DCP_D_traversedPointNum++;
+          IOMonitor2.DCP_D_timeIndex_traversedPointNum++;
         }
       } else if (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
         while (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
           estimatedPos++;
           //          IOMonitor.incPointsTravered();
-          IOMonitor2.DCP_D_traversedPointNum++;
+          IOMonitor2.DCP_D_timeIndex_traversedPointNum++;
         }
         if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
           estimatedPos--;
           //          IOMonitor.incPointsTravered();
-          IOMonitor2.DCP_D_traversedPointNum++;
+          IOMonitor2.DCP_D_timeIndex_traversedPointNum++;
         } // else equal
       } // else equal
       this.endPos = estimatedPos; // note this
@@ -433,7 +433,7 @@ public class ChunkSuit4CPV {
       while (pageReader.timeBuffer.remaining() > 0) {
         estimatedPos++;
         //        IOMonitor.incPointsTravered();
-        IOMonitor2.DCP_D_traversedPointNum++;
+        IOMonitor2.DCP_D_timeIndex_traversedPointNum++;
         long t = pageReader.timeBuffer.getLong();
         if (t >= targetTimestamp) {
           break;
@@ -441,7 +441,7 @@ public class ChunkSuit4CPV {
       }
       if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
         //        IOMonitor.incPointsTravered();
-        IOMonitor2.DCP_D_traversedPointNum++;
+        IOMonitor2.DCP_D_timeIndex_traversedPointNum++;
         estimatedPos--;
       } // else equals no need to minus 1
 
@@ -502,18 +502,18 @@ public class ChunkSuit4CPV {
         while (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
           estimatedPos--;
           //          IOMonitor.incPointsTravered();
-          IOMonitor2.DCP_D_traversedPointNum++;
+          IOMonitor2.DCP_D_timeIndex_traversedPointNum++;
         }
       } else if (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
         while (pageReader.timeBuffer.getLong(estimatedPos * 8) < targetTimestamp) {
           estimatedPos++;
           //          IOMonitor.incPointsTravered();
-          IOMonitor2.DCP_D_traversedPointNum++;
+          IOMonitor2.DCP_D_timeIndex_traversedPointNum++;
         }
         if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
           estimatedPos--;
           //          IOMonitor.incPointsTravered();
-          IOMonitor2.DCP_D_traversedPointNum++;
+          IOMonitor2.DCP_D_timeIndex_traversedPointNum++;
         } // else equal
       } // else equal
 
@@ -532,7 +532,7 @@ public class ChunkSuit4CPV {
         if (!flag) {
           estimatedPos++;
           //          IOMonitor.incPointsTravered();
-          IOMonitor2.DCP_D_traversedPointNum++;
+          IOMonitor2.DCP_D_timeIndex_traversedPointNum++;
         }
         long t = pageReader.timeBuffer.getLong();
         if (t >= targetTimestamp) {

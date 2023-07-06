@@ -98,11 +98,8 @@ public class IOMonitor2 {
 
   public static int DCP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_count = 0; // level 4
   public static long DCP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_ns = 0; // level 4
-
-  public static long DCP_D_traversedPointNum = 0; // level 4
   public static int DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS_count = 0; // level 4
   public static long DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS_ns = 0; // level 4
-
   public static int SEARCH_ARRAY_a_verifBPTP_count = 0; // level 4
   public static long SEARCH_ARRAY_a_verifBPTP_ns = 0; // level 4
 
@@ -114,6 +111,10 @@ public class IOMonitor2 {
 
   public static int SEARCH_ARRAY_c_genBPTP_count = 0; // level 4
   public static long SEARCH_ARRAY_c_genBPTP_ns = 0; // level 4
+
+  public static long DCP_D_getAllSatisfiedPageData_traversedPointNum = 0; // level 5
+  public static long DCP_D_timeIndex_traversedPointNum = 0; // level 5
+  public static long DCP_D_valueIndex_traversedPointNum = 0; // level 5
 
   public static Operation M4_LSM_status =
       null; // for counting the number of calling BCD by each step of M4-LSM
@@ -195,8 +196,6 @@ public class IOMonitor2 {
     DCP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_count = 0;
     DCP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_ns = 0;
 
-    DCP_D_traversedPointNum = 0;
-
     DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS_count = 0;
     DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS_ns = 0;
 
@@ -208,6 +207,11 @@ public class IOMonitor2 {
     SEARCH_ARRAY_b_genLP_ns = 0;
     SEARCH_ARRAY_c_genBPTP_count = 0;
     SEARCH_ARRAY_c_genBPTP_ns = 0;
+
+    /** level 5 */
+    DCP_D_getAllSatisfiedPageData_traversedPointNum = 0;
+    DCP_D_timeIndex_traversedPointNum = 0;
+    DCP_D_valueIndex_traversedPointNum = 0;
 
     /** map from level 3 to level 4 */
     M4_LSM_status = null;
@@ -593,9 +597,19 @@ public class IOMonitor2 {
         .append(SEARCH_ARRAY_c_genBPTP_count)
         .append("\n");
     stringBuilder
-        .append("[4-cnt]DCP_D_traversedPointNum")
+        .append("[5-cnt]DCP_D_getAllSatisfiedPageData_traversedPointNum")
         .append(",")
-        .append(DCP_D_traversedPointNum)
+        .append(DCP_D_getAllSatisfiedPageData_traversedPointNum)
+        .append("\n");
+    stringBuilder
+        .append("[5-cnt]DCP_D_timeIndex_traversedPointNum")
+        .append(",")
+        .append(DCP_D_timeIndex_traversedPointNum)
+        .append("\n");
+    stringBuilder
+        .append("[5-cnt]DCP_D_valueIndex_traversedPointNum")
+        .append(",")
+        .append(DCP_D_valueIndex_traversedPointNum)
         .append("\n");
 
     stringBuilder
