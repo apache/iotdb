@@ -174,6 +174,7 @@ class FloatHyperparameter(Hyperparameter):
 
 
 class HyperparameterName(Enum):
+    # Training hyperparameter
     LEARNING_RATE = "learning_rate"
     EPOCHS = "epochs"
     BATCH_SIZE = "batch_size"
@@ -208,8 +209,10 @@ def parse_fixed_hyperparameters(
         task_options: TaskOptions,
         input_hyperparameters: Dict[str, str]
 ) -> Tuple[Dict, Dict]:
-    hyperparameter_map = get_model_hyperparameter_map(task_options.model_type)
-    return None, None
+    structure_hyperparameter_map = get_structure_hyperparameter_map(task_options.model_type)
+    model_hyperparameters = parse_dict(input_hyperparameters, structure_hyperparameter_map)
+    task_hyperparameters = parse_dict(input_hyperparameters, training_hyperparameter_map)
+    return model_hyperparameters, task_hyperparameters
 
 
 def parse_dict(input_hyperparameters: Dict[str, str], hyperparameter_template_map: Dict[str, Hyperparameter]) -> Dict:
@@ -233,5 +236,12 @@ def generate_hyperparameters(
         task_options: TaskOptions,
         input_hyperparameters: Dict[str, str]
 ) -> Tuple[Dict, Dict]:
-    hyperparameter_map = get_model_hyperparameter_map(task_options.model_type)
-    return None, None
+    structure_hyperparameter_map = get_structure_hyperparameter_map(task_options.model_type)
+    model_hyperparameters = {}
+    for hyperparameter_name, hyperparameter_template in structure_hyperparameter_map.items():
+        model_hyperparameters[hyperparameter_name] = hyperparameter_template.suggest_parameter(optuna_suggest)
+
+    task_hyperparameters = {}
+    for hyperparameter_name, hyperparameter_template in training_hyperparameter_map.items():
+        task_hyperparameters[hyperparameter_name] = hyperparameter_template.suggest_parameter(optuna_suggest)
+    return model_hyperparameters, task_hyperparameters
