@@ -22,6 +22,7 @@ from typing import Optional, List, Dict, Tuple
 import optuna
 
 from iotdb.mlnode.algorithm.models.forecast.dlinear import dlinear_structure_hyperparameter_map
+from iotdb.mlnode.algorithm.models.forecast.nbeats import nbeats_structure_hyperparameter_map
 from iotdb.mlnode.exception import BadConfigValueError
 
 from iotdb.mlnode.algorithm.enums import ForecastModelType
@@ -43,12 +44,12 @@ class Hyperparameter(object):
         raise NotImplementedError
 
     @abstractmethod
-    def validate(self, value):
-        pass
+    def validate_value(self, value):
+        raise NotImplementedError
 
     @abstractmethod
     def validate_range(self, min_value, max_value):
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def suggest_parameter(self, optuna_suggest: optuna.Trial):
@@ -56,7 +57,7 @@ class Hyperparameter(object):
 
     @abstractmethod
     def parse(self, string_value: str):
-        pass
+        raise NotImplementedError
 
 
 class IntHyperparameter(Hyperparameter):
@@ -69,7 +70,7 @@ class IntHyperparameter(Hyperparameter):
                  default_high: int,
                  high_validators: List[Validator],
                  step: Optional[int] = None,
-                 tuning: bool = True
+                 tuning: bool = False
                  ):
         super(IntHyperparameter, self).__init__(name)
         self.__log = log
@@ -80,31 +81,28 @@ class IntHyperparameter(Hyperparameter):
         self.__default_high = default_high
         self.__high_validators = high_validators
         self.__step = step
+        self.__tuning = tuning
 
     def get_default_value(self):
         return self.__default_value
 
-    def validate(self, value):
+    def __validate(self, value, validators: List[Validator] = None):
         try:
-            for validator in self.__value_validators:
+            for validator in validators:
                 validator.validate(int(value))
         except Exception as e:
             raise BadConfigValueError(self._name, value, str(e))
 
-    def validate_range(self, min_value: int, max_value: int):
-        try:
-            for validator in self.__low_validators:
-                validator.validate(min_value)
-        except Exception as e:
-            raise BadConfigValueError(self._name, min_value, str(e))
+    def validate_value(self, value):
+        self.__validate(value, self.__value_validators)
 
-        try:
-            for validator in self.__low_validators:
-                validator.validate(max_value)
-        except Exception as e:
-            raise BadConfigValueError(self._name, max_value, str(e))
+    def validate_range(self, min_value: int, max_value: int):
+        self.__validate(min_value, self.__low_validators)
+        self.__validate(max_value, self.__high_validators)
 
     def suggest_parameter(self, optuna_suggest: optuna.Trial):
+        if not self.__tuning:
+            return self.__default_value
         return optuna_suggest.suggest_int(
             name=self._name,
             low=self.__default_low,
@@ -126,7 +124,8 @@ class FloatHyperparameter(Hyperparameter):
                  low_validators: List[Validator],
                  default_high: float,
                  high_validators: List[Validator],
-                 step: Optional[float] = None):
+                 step: Optional[float] = None,
+                 tuning: bool = False):
         super(FloatHyperparameter, self).__init__(name)
         self.__log = log
         self.__default_value = default_value
@@ -136,11 +135,28 @@ class FloatHyperparameter(Hyperparameter):
         self.__default_high = default_high
         self.__high_validators = high_validators
         self.__step = step
+        self.__tuning = tuning
 
     def get_default_value(self):
         return self.__default_value
 
+    def __validate(self, value, validators: List[Validator] = None):
+        try:
+            for validator in validators:
+                validator.validate(float(value))
+        except Exception as e:
+            raise BadConfigValueError(self._name, value, str(e))
+
+    def validate_value(self, value):
+        self.__validate(value, self.__value_validators)
+
+    def validate_range(self, min_value: float, max_value: float):
+        self.__validate(min_value, self.__low_validators)
+        self.__validate(max_value, self.__high_validators)
+
     def suggest_parameter(self, optuna_suggest: optuna.Trial):
+        if not self.__tuning:
+            return self.__default_value
         return optuna_suggest.suggest_float(
             name=self._name,
             low=self.__default_low,
@@ -148,26 +164,6 @@ class FloatHyperparameter(Hyperparameter):
             step=self.__step,
             log=self.__log
         )
-
-    def validate(self, value):
-        try:
-            for validator in self.__value_validators:
-                validator.validate(float(value))
-        except Exception as e:
-            raise BadConfigValueError(self._name, value, str(e))
-
-    def validate_range(self, min_value: float, max_value: float):
-        try:
-            for validator in self.__low_validators:
-                validator.validate(min_value)
-        except Exception as e:
-            raise BadConfigValueError(self._name, min_value, str(e))
-
-        try:
-            for validator in self.__low_validators:
-                validator.validate(max_value)
-        except Exception as e:
-            raise BadConfigValueError(self._name, max_value, str(e))
 
     def parse(self, string_value: str):
         return float(string_value)
@@ -181,6 +177,11 @@ class HyperparameterName(Enum):
 
     # Structure hyperparameter
     KERNEL_SIZE = "kernel_size"
+    INPUT_VARS = "input_vars"
+    BLOCK_TYPE = "block_type"
+    D_MODEL = "d_model"
+    INNER_LAYERS = "inner_layer"
+    OUTER_LAYERS = "outer_layer"
 
     def name(self):
         return self.value
@@ -199,8 +200,16 @@ training_hyperparameter_map = {
 
 
 def get_structure_hyperparameter_map(model_type: ForecastModelType) -> Dict[str, Hyperparameter]:
+    """
+    Different model may have different structure hyperparameters.
+    This method returns the structure hyperparameter map for a given model type.
+    """
     if model_type == ForecastModelType.DLINEAR:
         return dlinear_structure_hyperparameter_map
+    elif model_type == ForecastModelType.DLINEAR_INDIVIDUAL:
+        return dlinear_structure_hyperparameter_map
+    elif model_type == ForecastModelType.NBEATS:
+        return nbeats_structure_hyperparameter_map
     else:
         raise NotImplementedError(f"Model type {model_type} is not supported yet")
 
@@ -209,6 +218,11 @@ def parse_fixed_hyperparameters(
         task_options: TaskOptions,
         input_hyperparameters: Dict[str, str]
 ) -> Tuple[Dict, Dict]:
+    """
+    Parse the input hyperparameters into model hyperparameters and task hyperparameters.
+    If the input hyperparameters contains hyperparameters that are not defined in the model or task,
+    use default value.
+    """
     structure_hyperparameter_map = get_structure_hyperparameter_map(task_options.model_type)
     model_hyperparameters = parse_dict(input_hyperparameters, structure_hyperparameter_map)
     task_hyperparameters = parse_dict(input_hyperparameters, training_hyperparameter_map)
@@ -223,7 +237,7 @@ def parse_dict(input_hyperparameters: Dict[str, str], hyperparameter_template_ma
         # if user define current hyperparameter
         if hyperparameter_name in input_hyperparameters.keys():
             value = hyperparameter_template.parse(input_hyperparameters[hyperparameter_name])
-            hyperparameter_template.validate(value)
+            hyperparameter_template.validate_value(value)
             hyperparameter[hyperparameter_name] = value
         # use default value
         else:
@@ -233,9 +247,12 @@ def parse_dict(input_hyperparameters: Dict[str, str], hyperparameter_template_ma
 
 def generate_hyperparameters(
         optuna_suggest: optuna.Trial,
-        task_options: TaskOptions,
-        input_hyperparameters: Dict[str, str]
+        task_options: TaskOptions
 ) -> Tuple[Dict, Dict]:
+    """
+    Generate hyperparameters for model and task by optuna in auto-tuning training.
+    """
+    # TODO : support user to define hyperparameters in auto_tuning training
     structure_hyperparameter_map = get_structure_hyperparameter_map(task_options.model_type)
     model_hyperparameters = {}
     for hyperparameter_name, hyperparameter_template in structure_hyperparameter_map.items():

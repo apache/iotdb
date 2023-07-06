@@ -20,11 +20,12 @@ from typing import Dict
 import torch.nn as nn
 
 from iotdb.mlnode.algorithm.enums import ForecastModelType, ForecastTaskType
-from iotdb.mlnode.algorithm.models.forecast.dlinear import DLinear
-from iotdb.mlnode.algorithm.models.forecast.nbeats import nbeats
+from iotdb.mlnode.algorithm.hyperparameter import HyperparameterName
+from iotdb.mlnode.algorithm.models.forecast.dlinear import DLinear, DLinearIndividual
+from iotdb.mlnode.algorithm.models.forecast.nbeats import NBeats
 from iotdb.mlnode.exception import BadConfigValueError
 # Common configs for all forecasting model with default values
-from iotdb.mlnode.parser import TaskOptions, ForecastTaskOptions
+from iotdb.mlnode.parser import ForecastTaskOptions
 
 
 def _common_config(**kwargs):
@@ -58,31 +59,30 @@ def create_forecast_model(
     Factory method for all support forecasting models
     the given arguments is common configs shared by all forecasting models
     """
-
     if task_options.model_type not in ForecastModelType.values():
         raise BadConfigValueError('model_name', f'It should be one of {ForecastModelType.values()}')
 
-    # if forecast_task_type is ForecastTaskType.ENDOGENOUS:
-    #     if input_vars != output_vars:
-    #         raise BadConfigValueError('forecast_task_type', forecast_task_type,
-    #                                   'Number of input/output variables should be '
-    #                                   'the same in endogenous forecast')
-
     if task_options.model_type == ForecastModelType.DLINEAR.value:
-        return DLinear(kernel_size=model_configs[],
+        return DLinear(kernel_size=model_configs[HyperparameterName.KERNEL_SIZE.value],
                        input_len=task_options.input_length,
                        pred_len=task_options.predict_length,
-                       input_vars=)
+                       input_vars=model_configs[HyperparameterName.INPUT_VARS.value])
     elif task_options.model_type == ForecastModelType.DLINEAR_INDIVIDUAL.value:
-        model, model_config = dlinear_individual(
-            common_config=model_configs
-        )
+        return DLinearIndividual(kernel_size=model_configs[HyperparameterName.KERNEL_SIZE.value],
+                                 input_len=task_options.input_length,
+                                 pred_len=task_options.predict_length,
+                                 input_vars=model_configs[HyperparameterName.INPUT_VARS.value]
+                                 )
     elif task_options.model_type == ForecastModelType.NBEATS.value:
-        model, model_config = nbeats(
-            common_config=model_configs
+        return NBeats(
+            block_type=model_configs[HyperparameterName.BLOCK_TYPE.value],
+            d_model=model_configs[HyperparameterName.D_MODEL.value],
+            inner_layers=model_configs[HyperparameterName.INNER_LAYERS.value],
+            outer_layers=model_configs[HyperparameterName.OUTER_LAYERS.value],
+            input_len=task_options.input_length,
+            pred_len=task_options.predict_length,
+            input_vars=model_configs[HyperparameterName.INPUT_VARS.value]
         )
     else:
         raise BadConfigValueError('model_name', task_options.model_type,
                                   f'It should be one of {ForecastModelType.values()}')
-
-    return model

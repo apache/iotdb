@@ -34,8 +34,6 @@ from iotdb.mlnode.storage import model_storage
 from iotdb.thrift.common.ttypes import TrainingState
 
 
-
-
 class BasicTrial(object):
     def __init__(
             self,
@@ -101,7 +99,7 @@ class ForecastingTrainingTrial(BasicTrial):
         self.trial_id = DEFAULT_TRIAL_ID
         self.dataloader = self._build_dataloader()
         self.datanode_client = client_manager.borrow_data_node_client()
-        self.confignode_client = client_manager.borrow_config_node_client()
+        self.configNode_client = client_manager.borrow_config_node_client()
         self.criterion = torch.nn.MSELoss()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
         self.metrics_dict = build_metrics(self.metric_names)
@@ -185,7 +183,7 @@ class ForecastingTrainingTrial(BasicTrial):
         Start training with the specified parameters, save the best model and report metrics to the db.
         """
         try:
-            self.confignode_client.update_model_state(self.model_id, TrainingState.RUNNING)
+            self.configNode_client.update_model_state(self.model_id, TrainingState.RUNNING)
             best_loss = np.inf
             best_metrics_dict = None
             model_path = None
@@ -205,10 +203,10 @@ class ForecastingTrainingTrial(BasicTrial):
             model_info.update(best_metrics_dict)
             model_info.update(self.trial_configs)
             model_info['model_path'] = model_path
-            self.confignode_client.update_model_info(self.model_id, self.trial_id, model_info)
-            self.confignode_client.update_model_state(self.model_id, TrainingState.FINISHED, self.trial_id)
+            self.configNode_client.update_model_info(self.model_id, self.trial_id, model_info)
+            self.configNode_client.update_model_state(self.model_id, TrainingState.FINISHED, self.trial_id)
             return best_loss
         except Exception as e:
             logger.warn(e)
-            self.confignode_client.update_model_state(self.model_id, TrainingState.FAILED)
+            self.configNode_client.update_model_state(self.model_id, TrainingState.FAILED)
             raise e

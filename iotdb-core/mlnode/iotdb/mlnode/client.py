@@ -202,6 +202,7 @@ class DataNodeClient(object):
                            query_filter: str = None,
                            fetch_size: int = DEFAULT_FETCH_SIZE,
                            timeout: int = DEFAULT_TIMEOUT) -> Tuple[int, bool, List[pd.DataFrame]]:
+        # TODO
         pass
 
     def record_model_metrics(self,
@@ -357,18 +358,3 @@ class ConfigNodeClient(object):
 
 
 client_manager = ClientManager()
-
-if __name__ == '__main__':
-    client = client_manager.borrow_mlnode_client()
-    import pickle
-    f = open('D:\\undergraduate\\DL\\iotdb\\mlnode\\iotdb\\mlnode\\test_tsdataset.pkl', 'rb')
-    ts_dataset = pickle.load(f)
-    client.create_forecast_task(
-        'D:\\undergraduate\\DL\\iotdb\\mlnode\\iotdb\\mlnode\\models\\Model_1\\tid_0.pt',
-        ts_dataset,
-        ['root.eg.etth1.s0'],
-        ['FLOAT'],
-        {'root.eg.etth1.s0': 0},
-        192,
-        'Model_2'
-    )

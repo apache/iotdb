@@ -50,6 +50,7 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
             task_options = parse_task_options(req.options)
 
             # create task according to task type
+            # currently, IoTDB-ML supports forecasting training task only
             task = self.__task_manager.create_forecast_training_task(
                 model_id=req.modelId,
                 task_options=type(ForecastTaskOptions)(task_options),

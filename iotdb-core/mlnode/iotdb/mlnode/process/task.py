@@ -37,56 +37,19 @@ from iotdb.mlnode.storage import model_storage
 from iotdb.thrift.common.ttypes import TrainingState
 
 
-class ForestingTrainingObjective:
-    """
-    A class which serve as a function, should accept trial as args
-    and return the optimization objective.
-    Optuna will try to minimize the objective.
-    """
-
-    def __init__(
-            self,
-            task_options: ForecastTaskOptions,
-            hyperparameters: Dict[str, str],
-            dataset: Dataset,
-            pid_info: Dict
-    ):
-        self.task_options = task_options
-        self.hyperparameters = hyperparameters
-        self.dataset = dataset
-        self.pid_info = pid_info
-
-    def __call__(self, optuna_suggest: optuna.Trial):
-        model_hyperparameters, task_hyperparameters = generate_hyperpweiarameters(optuna_suggest,
-                                                                               self.task_options, self.hyperparameters)
-        trial = ForecastingTrainingTrial(task_options=self.task_options,
-                                         model_hyperparameters=model_hyperparameters,
-                                         task_hyperparameters=task_hyperparameters,
-                                         dataset=self.dataset)
-        loss = trial.start()
-        return loss
-
-
 class _BasicTask(object):
-    """
-    This class serve as a function, accepting configs and launch trials
-    according to the configs.
-    """
-
     def __init__(
             self,
             pid_info: Dict
     ):
-        """
-        Args:
-            pid_info:
-        """
         self.pid_info = pid_info
 
     @abstractmethod
     def __call__(self):
         raise NotImplementedError
 
+
+# Training Task
 
 class _BasicTrainingTask(_BasicTask):
     def __init__(
@@ -100,7 +63,7 @@ class _BasicTrainingTask(_BasicTask):
         self.model_id = model_id
         self.hyperparameters = hyperparameters
         self.dataset = dataset
-        self.confignode_client = client_manager.borrow_config_node_client()
+        self.configNode_client = client_manager.borrow_config_node_client()
 
     @abstractmethod
     def __call__(self):
@@ -128,11 +91,41 @@ class ForecastFixedParamTrainingTask(_BasicTrainingTask):
         try:
             self.pid_info[self.model_id] = os.getpid()
             self.trial.start()
-            self.confignode_client.update_model_state(self.model_id, TrainingState.FINISHED, self.trial.trial_id)
+            self.configNode_client.update_model_state(self.model_id, TrainingState.FINISHED, self.trial.trial_id)
         except Exception as e:
             logger.warn(e)
-            self.confignode_client.update_model_state(self.model_id, TrainingState.FAILED, self.trial.trial_id)
+            self.configNode_client.update_model_state(self.model_id, TrainingState.FAILED, self.trial.trial_id)
             raise e
+
+
+class ForestingTrainingObjective:
+    """
+    A class which serve as a function, should accept trial as args
+    and return the optimization objective.
+    Optuna will try to minimize the objective.
+    Currently, user cannot define the range of hyperparameters.
+    """
+    def __init__(
+            self,
+            task_options: ForecastTaskOptions,
+            hyperparameters: Dict[str, str],
+            dataset: Dataset,
+            pid_info: Dict
+    ):
+        self.task_options = task_options
+        self.hyperparameters = hyperparameters
+        self.dataset = dataset
+        self.pid_info = pid_info
+
+    def __call__(self, optuna_suggest: optuna.Trial):
+        model_hyperparameters, task_hyperparameters = generate_hyperparameters(optuna_suggest,
+                                                                               self.task_options)
+        trial = ForecastingTrainingTrial(task_options=self.task_options,
+                                         model_hyperparameters=model_hyperparameters,
+                                         task_hyperparameters=task_hyperparameters,
+                                         dataset=self.dataset)
+        loss = trial.start()
+        return loss
 
 
 class ForecastAutoTuningTrainingTask(_BasicTrainingTask):
@@ -159,14 +152,15 @@ class ForecastAutoTuningTrainingTask(_BasicTrainingTask):
                 n_trials=descriptor.get_config().get_mn_tuning_trial_num(),
                 n_jobs=descriptor.get_config().get_mn_tuning_trial_concurrency())
             best_trial_id = 'tid_' + str(self.study.best_trial._trial_id)
-            self.confignode_client.update_model_state(self.model_id, TrainingState.FINISHED, best_trial_id)
+            self.configNode_client.update_model_state(self.model_id, TrainingState.FINISHED, best_trial_id)
         except Exception as e:
             logger.warn(e)
-            self.confignode_client.update_model_state(self.model_id, TrainingState.FAILED)
+            self.configNode_client.update_model_state(self.model_id, TrainingState.FAILED)
             raise e
 
 
 # Inference Task
+
 class _BasicInferenceTask(_BasicTask):
     def __init__(
             self,
@@ -176,14 +170,6 @@ class _BasicInferenceTask(_BasicTask):
             data: Tuple,
             model_path: str
     ):
-        """
-        Args:
-            task_configs:
-            model_configs:
-            pid_info:
-            data:
-            model:
-        """
         super().__init__(task_configs, model_configs, pid_info)
         self.data = data
         self.input_len = self.model_configs['input_len']

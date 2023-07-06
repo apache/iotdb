@@ -17,15 +17,12 @@
 #
 
 import math
-from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
 
-from iotdb.mlnode.algorithm.enums import ForecastTaskType
 from iotdb.mlnode.algorithm.hyperparameter import HyperparameterName, IntHyperparameter
 from iotdb.mlnode.algorithm.validator import NumberRangeValidator
-
 
 
 class MovingAverageBlock(nn.Module):
@@ -68,7 +65,7 @@ class DLinear(nn.Module):
             input_len: int,
             pred_len: int,
             input_vars: int,
-            # forecast_task_type=ForecastTaskType.ENDOGENOUS,  TODO, support others
+            # TODO : forecast_task_type=ForecastTaskType.ENDOGENOUS
     ):
         super(DLinear, self).__init__()
         self.input_len = input_len
@@ -102,8 +99,7 @@ class DLinearIndividual(nn.Module):
             input_len=96,
             pred_len=96,
             input_vars=1,
-            output_vars=1,
-            forecast_task_type=ForecastTaskType.ENDOGENOUS,  # TODO, support others
+            # TODO : forecast_task_type=ForecastTaskType.ENDOGENOUS
     ):
         super(DLinearIndividual, self).__init__()
         self.input_len = input_len

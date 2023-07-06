@@ -16,22 +16,21 @@
 # under the License.
 #
 
-import sys
-import signal
-import psutil
-
 import multiprocessing as mp
-from typing import Dict, Union
+import signal
+import sys
+from subprocess import call
+from typing import Dict
 
 import pandas as pd
+import psutil
 from torch.utils.data import Dataset
-from subprocess import call
 
 from iotdb.mlnode.log import logger
-from iotdb.mlnode.parser import TaskOptions, ForecastTaskOptions
+from iotdb.mlnode.parser import ForecastTaskOptions
 from iotdb.mlnode.process.task import (ForecastingInferenceTask,
                                        ForecastFixedParamTrainingTask,
-                                       ForecastAutoTuningTrainingTask)
+                                       ForecastAutoTuningTrainingTask, _BasicTrainingTask)
 
 
 class TaskManager(object):
@@ -55,12 +54,14 @@ class TaskManager(object):
                                       hyperparameters: Dict[str, str],
                                       dataset: Dataset):
         """
+        Create a training task for forecasting, which contains the training process
 
         Args:
-            model_id:
-            task_options:
+            model_id: the unique id of the model
+            task_options: the options of the task, contains task_type, model_type, etc.
             dataset: a torch dataset to be used for training
-            hyperparameters:
+            hyperparameters: a dict of hyperparameters, which is consisted of model_hyperparameters
+            and task_hyperparameters
 
         Returns:
             task: a training task for forecasting, which can be submitted to self.__training_process_pool
@@ -82,7 +83,7 @@ class TaskManager(object):
                 pid_info=self.__pid_info,
             )
 
-    def submit_training_task(self, task: Union[ForecastAutoTuningTrainingTask, ForecastFixedParamTrainingTask]) -> None:
+    def submit_training_task(self, task: _BasicTrainingTask) -> None:
         self.__training_process_pool.apply_async(task, args=())
         logger.info(f'Task: ({task.model_id}) - Training process submitted successfully')
 
