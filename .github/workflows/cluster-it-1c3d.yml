@@ -32,7 +32,7 @@ jobs:
       max-parallel: 20
       matrix:
         java: [ 8, 11, 17 ]
-        os: [ self-hosted ]
+        os: [ 'runnergroup 9' ]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
