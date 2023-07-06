@@ -46,8 +46,9 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.BindTypeForTimeSeriesOperandVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.CollectAggregationExpressionsVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.CollectSourceExpressionsVisitor;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionNormalizeVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.GetMeasurementExpressionVisitor;
-import org.apache.iotdb.db.queryengine.plan.expression.visitor.RemoveAliasFromExpressionVisitor;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.LowercaseNormalizeVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ReplaceRawPathWithGroupedPathVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForPredicateVisitor;
@@ -661,13 +662,22 @@ public class ExpressionAnalyzer {
   }
 
   /**
-   * Remove alias from expression. eg: root.sg.d1.status + 1 -> root.sg.d1.s2 + 1, and reconstruct
-   * the name of FunctionExpression to lowercase.
+   * Remove view and measurement alias from expression, and reconstruct the name of
+   * FunctionExpression to lowercase.
    *
-   * @return expression after removing alias
+   * @return normalized expression
    */
-  public static Expression removeAliasFromExpression(Expression expression) {
-    return new RemoveAliasFromExpressionVisitor().process(expression, null);
+  public static Expression normalizeExpression(Expression expression) {
+    return new ExpressionNormalizeVisitor().process(expression, null);
+  }
+
+  /**
+   * Reconstruct the name of FunctionExpression to lowercase.
+   *
+   * @return normalized expression
+   */
+  public static Expression toLowerCaseExpression(Expression expression) {
+    return new LowercaseNormalizeVisitor().process(expression, null);
   }
 
   /** Check for arithmetic expression, logical expression, UDF. Returns true if it exists. */
@@ -705,8 +715,8 @@ public class ExpressionAnalyzer {
     return ((TimeSeriesOperand) expression).getPath().getDevice();
   }
 
-  public static Expression getMeasurementExpression(Expression expression) {
-    return new GetMeasurementExpressionVisitor().process(expression, null);
+  public static Expression getMeasurementExpression(Expression expression, Analysis analysis) {
+    return new GetMeasurementExpressionVisitor().process(expression, analysis);
   }
 
   public static Expression evaluatePredicate(Expression predicate) {

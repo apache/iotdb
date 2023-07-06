@@ -828,4 +828,27 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       }
     }
   }
+
+  @Test
+  public void testActivateAndDropEmptyTemplate() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE SCHEMA TEMPLATE e_t;");
+      statement.execute("SET SCHEMA TEMPLATE e_t TO root.sg1.t.d1;");
+      statement.execute("insert into root.sg1.t.d2(timestamp,s1) values(now(),false);");
+      statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.t.d1;");
+      try (ResultSet resultSet = statement.executeQuery("show nodes in schema template e_t")) {
+        Assert.assertFalse(resultSet.next());
+      }
+      try (ResultSet resultSet = statement.executeQuery("show paths set schema template e_t")) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertFalse(resultSet.next());
+      }
+      statement.execute("DEACTIVATE SCHEMA TEMPLATE FROM root.sg1.t.d1;");
+      statement.execute("UNSET SCHEMA TEMPLATE e_t FROM root.sg1.t.d1;");
+      try (ResultSet resultSet = statement.executeQuery("show paths set schema template e_t")) {
+        Assert.assertFalse(resultSet.next());
+      }
+    }
+  }
 }

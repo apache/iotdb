@@ -31,6 +31,9 @@ import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -47,6 +50,7 @@ import static org.apache.iotdb.tsfile.Constant.SENSOR_3;
  * addMeasurement(MeasurementSchema measurementSchema) throws WriteProcessException
  */
 public class TsFileWriteWithTSRecord {
+  private static final Logger logger = LoggerFactory.getLogger(TsFileWriteWithTSRecord.class);
 
   public static void main(String[] args) {
     try {
@@ -73,7 +77,7 @@ public class TsFileWriteWithTSRecord {
         write(tsFileWriter, DEVICE_1, writeMeasurementScheams, 10000, 0, 0);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("TsFileWriteWithTSRecord meet error", e);
     }
   }
 

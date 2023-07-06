@@ -346,4 +346,58 @@ public class IoTDBAlterViewIT {
       Assert.assertTrue(expectedResult.isEmpty());
     }
   }
+
+  @Test
+  public void testUpsertAliasException() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create timeseries root.db.d1.s1 with datatype=INT32");
+      statement.execute("create view root.view.d1.s1 as root.db.d1.s1;");
+      try {
+        statement.execute("alter view root.view.d1.s1 upsert alias=a;");
+        Assert.fail("expect exception");
+      } catch (Exception e) {
+        Assert.assertTrue(e.getMessage().contains("View doesn't support alias"));
+      }
+    }
+  }
+
+  @Test
+  public void testAlterViewTagAttributesException() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create timeseries root.db.d1.s1 with datatype=INT32");
+      statement.execute("create view root.view.d1.s1 as root.db.d1.s1;");
+      try {
+        statement.execute("alter view root.view.d1.s1 add tags t1=a,t1=b;");
+        Assert.fail("expect exception");
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage().contains("There's duplicate [t1] in tag or attribute clause."));
+      }
+      statement.execute("alter view root.view.d1.s1 add tags t1=a,t2=b;");
+      try {
+        statement.execute("alter view root.view.d1.s1 set t1=a,t1=b;");
+        Assert.fail("expect exception");
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage().contains("There's duplicate [t1] in tag or attribute clause."));
+      }
+      try {
+        statement.execute("alter view root.view.d1.s1 upsert tags(t1=a,t1=b);");
+        Assert.fail("expect exception");
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage().contains("There's duplicate [t1] in tag or attribute clause."));
+      }
+      try {
+        statement.execute("alter view root.view.d1.s1 rename t2 to t1;");
+        Assert.fail("expect exception");
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage()
+                .contains("TimeSeries [root.view.d1.s1] already has a tag/attribute named [t1]"));
+      }
+    }
+  }
 }
