@@ -215,7 +215,7 @@ public class PipeRuntimeMeta {
         + ", dataNodeId2PipeMetaExceptionMap="
         + dataNodeId2PipeRuntimeExceptionMap
         + ", exceptionsClearTime="
-        + exceptionsClearTime
+        + exceptionsClearTime.get()
         + ", isStoppedByConfigNode=";
   }
 }
