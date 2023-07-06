@@ -32,8 +32,9 @@ jobs:
       max-parallel: 20
       matrix:
         java: [ 8, 11, 17 ]
+        os: [ self-hosted ]
     runs-on:
-      group: self-hosted
+      group: 'runnergroup 9'
       labels: iotdb
     steps:
       - uses: actions/checkout@v3
