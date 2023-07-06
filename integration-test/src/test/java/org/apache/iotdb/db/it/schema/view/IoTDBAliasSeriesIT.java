@@ -113,7 +113,9 @@ public class IoTDBAliasSeriesIT {
         Assert.fail("expect exception");
       } catch (Exception e) {
         Assert.assertTrue(
-            e.getMessage().contains("The source path [root.db.device.s01] of view does not exist"));
+            e.getMessage()
+                .contains(
+                    "The source path [root.db.device.s01] of view [root.db.device.v_s01] does not exist"));
       }
     }
   }
