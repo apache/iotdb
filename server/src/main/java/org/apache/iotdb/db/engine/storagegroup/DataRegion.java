@@ -2851,6 +2851,9 @@ public class DataRegion implements IDataRegionForQuery {
         break;
       }
     }
+    if (timedCompactionScheduleTask != null) {
+      timedCompactionScheduleTask.shutdownNow();
+    }
   }
 
   // may remove the processorEntrys
