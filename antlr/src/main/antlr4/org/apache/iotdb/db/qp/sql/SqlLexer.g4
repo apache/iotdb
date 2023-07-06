@@ -1059,11 +1059,6 @@ BOOLEAN_LITERAL
 
 
 // Other Literals
-
-NULL_LITERAL
-    : NULL
-    ;
-
 NAN_LITERAL
     : N A N
     ;
