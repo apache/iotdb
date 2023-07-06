@@ -119,6 +119,9 @@ public class AuthorityChecker {
                 + PrivilegeType.values()[
                     AuthorityChecker.translateToPermissionId(statement.getType())]);
       }
+    } catch (AuthException e) {
+      logger.warn("Meets error while checking authorization.", e);
+      return RpcUtils.getStatus(e.getCode(), e.getMessage());
     } catch (Exception e) {
       return onQueryException(
           e, OperationType.CHECK_AUTHORITY.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -132,6 +135,7 @@ public class AuthorityChecker {
    * Check whether specific user has the authorization to given plan.
    *
    * @return true if the authority permission has passed
+   * @throws AuthException if encountered authentification failure
    */
   public static boolean checkAuthorization(Statement statement, String username)
       throws AuthException {
