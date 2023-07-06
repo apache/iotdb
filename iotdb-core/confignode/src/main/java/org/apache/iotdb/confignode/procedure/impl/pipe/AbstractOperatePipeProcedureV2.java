@@ -263,7 +263,7 @@ public abstract class AbstractOperatePipeProcedureV2
 
         if (hasException.get()) {
           // Only print dataNodeId if the given pipe meets exception on that node
-          exceptionMessageBuilder.insert(0, String.format("DataNodeId: %s ", dataNodeId));
+          exceptionMessageBuilder.insert(0, String.format("DataNodeId: %s, ", dataNodeId));
           exceptionMessageBuilder.append(". ");
         }
       }
