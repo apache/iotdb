@@ -101,16 +101,12 @@ public abstract class AbstractOperatePipeProcedureV2
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {
-      if (isRollbackSupported(state)) {
-        LOGGER.error("Fail in OperatePipeProcedure", e);
-        setFailure(new ProcedureException(e.getMessage()));
-      } else {
-        LOGGER.error("Retrievable error trying to {} at state [{}]", getOperation(), state, e);
-        if (getCycles() > RETRY_THRESHOLD) {
-          setFailure(
-              new ProcedureException(
-                  String.format("Fail to %s because %s", getOperation().name(), e.getMessage())));
-        }
+      // Always retry
+      LOGGER.error("Retrievable error trying to {} at state [{}]", getOperation(), state, e);
+      if (getCycles() > RETRY_THRESHOLD) {
+        setFailure(
+            new ProcedureException(
+                String.format("Fail to %s because %s", getOperation().name(), e.getMessage())));
       }
     }
     return Flow.HAS_MORE_STATE;
