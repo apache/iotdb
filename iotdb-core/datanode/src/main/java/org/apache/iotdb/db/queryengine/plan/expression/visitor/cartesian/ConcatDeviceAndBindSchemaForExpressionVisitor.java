@@ -21,7 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
@@ -34,11 +36,12 @@ import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.cartesianProduct;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructFunctionExpressions;
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperands;
+import static org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForExpressionVisitor.transformViewPath;
 import static org.apache.iotdb.db.utils.TypeInferenceUtils.bindTypeForAggregationNonSeriesInputExpressions;
 
 public class ConcatDeviceAndBindSchemaForExpressionVisitor
     extends CartesianProductVisitor<ConcatDeviceAndBindSchemaForExpressionVisitor.Context> {
+
   @Override
   public List<Expression> visitFunctionExpression(
       FunctionExpression functionExpression, Context context) {
@@ -77,8 +80,31 @@ public class ConcatDeviceAndBindSchemaForExpressionVisitor
     if (actualPaths.isEmpty()) {
       return Collections.emptyList();
     }
-    List<PartialPath> noStarPaths = new ArrayList<>(actualPaths);
-    return reconstructTimeSeriesOperands(timeSeriesOperand, noStarPaths);
+
+    // process logical view
+    List<MeasurementPath> nonViewActualPaths = new ArrayList<>();
+    List<MeasurementPath> viewPaths = new ArrayList<>();
+    for (MeasurementPath measurementPath : actualPaths) {
+      if (measurementPath.getMeasurementSchema().isLogicalView()) {
+        viewPaths.add(measurementPath);
+      } else {
+        nonViewActualPaths.add(measurementPath);
+      }
+    }
+    List<Expression> reconstructTimeSeriesOperands =
+        ExpressionUtils.reconstructTimeSeriesOperands(timeSeriesOperand, nonViewActualPaths);
+    // handle logical views
+    for (MeasurementPath measurementPath : viewPaths) {
+      Expression replacedExpression = transformViewPath(measurementPath, context.getSchemaTree());
+      if (!(replacedExpression instanceof TimeSeriesOperand)) {
+        throw new SemanticException(
+            "Only writable view timeseries are supported in ALIGN BY DEVICE queries.");
+      }
+
+      replacedExpression.setViewPath(measurementPath);
+      reconstructTimeSeriesOperands.add(replacedExpression);
+    }
+    return reconstructTimeSeriesOperands;
   }
 
   @Override

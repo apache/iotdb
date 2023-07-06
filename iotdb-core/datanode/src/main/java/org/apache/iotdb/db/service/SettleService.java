@@ -86,29 +86,13 @@ public class SettleService implements IService {
           tmpSgResourcesMap.put(sgPath, tsFilePaths);
         }
       }
-      //      while (!StorageEngine.getInstance().isAllSgReady()) {
-      //        // wait for all sg ready
-      //      }
+
       List<TsFileResource> seqResourcesToBeSettled = new ArrayList<>();
       List<TsFileResource> unseqResourcesToBeSettled = new ArrayList<>();
-      //      for (Map.Entry<PartialPath, List<String>> entry : tmpSgResourcesMap.entrySet()) {
-      //        try {
-      //          StorageEngine.getInstance()
-      //              .getResourcesToBeSettled(
-      //                  entry.getKey(),
-      //                  seqResourcesToBeSettled,
-      //                  unseqResourcesToBeSettled,
-      //                  entry.getValue());
-      //        } catch (StorageEngineException e) {
-      //          e.printStackTrace();
-      //        } finally {
-      //          StorageEngine.getInstance().setSettling(entry.getKey(), false);
-      //        }
-      //      }
       startSettling(seqResourcesToBeSettled, unseqResourcesToBeSettled);
       setRecoverFinish(true);
     } catch (WriteProcessException e) {
-      e.printStackTrace();
+      logger.error("Start error", e);
     }
   }
 

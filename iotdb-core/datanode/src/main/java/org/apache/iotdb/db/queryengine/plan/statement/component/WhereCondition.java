@@ -32,7 +32,7 @@ public class WhereCondition extends StatementNode {
 
   // cast functionName to lowercase in where predicate
   public WhereCondition(Expression predicate) {
-    this.predicate = ExpressionAnalyzer.removeAliasFromExpression(predicate);
+    this.predicate = ExpressionAnalyzer.toLowerCaseExpression(predicate);
   }
 
   public Expression getPredicate() {
@@ -40,7 +40,7 @@ public class WhereCondition extends StatementNode {
   }
 
   public void setPredicate(Expression predicate) {
-    this.predicate = ExpressionAnalyzer.removeAliasFromExpression(predicate);
+    this.predicate = ExpressionAnalyzer.toLowerCaseExpression(predicate);
   }
 
   public String toSQLString() {
