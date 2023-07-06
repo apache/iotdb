@@ -317,23 +317,28 @@ public class PipeTaskInfo implements SnapshotProcessor {
    */
   public boolean recordPushPipeMetaExceptions(Map<Integer, TPushPipeMetaResp> respMap) {
     boolean hasException = false;
+
     for (Map.Entry<Integer, TPushPipeMetaResp> respEntry : respMap.entrySet()) {
       int dataNodeId = respEntry.getKey();
       TPushPipeMetaResp resp = respEntry.getValue();
+
       if (resp.getStatus().getCode() == TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()) {
         hasException = true;
         if (!resp.isSetExceptionMessages()) {
           // The pushPipeMeta process on dataNode encountered internal errors
           continue;
         }
+
         resp.getExceptionMessages()
             .forEach(
                 message -> {
                   if (pipeMetaKeeper.containsPipeMeta(message.getPipeName())) {
                     PipeRuntimeMeta runtimeMeta =
                         pipeMetaKeeper.getPipeMeta(message.getPipeName()).getRuntimeMeta();
+
                     // Mark the status of the pipe with exception as stopped
                     runtimeMeta.getStatus().set(PipeStatus.STOPPED);
+                    
                     Map<Integer, PipeRuntimeException> exceptionMap =
                         runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
                     if (!exceptionMap.containsKey(dataNodeId)
