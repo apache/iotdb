@@ -19,11 +19,10 @@
 -r requirements.txt
 # Pytest to run tests
 pytest==7.2.0
-thrift==0.14.1
 flake8==3.9.0
 black==20.8b1
 # Testcontainer
-testcontainers==3.6.1
+testcontainers==3.4.2
 # For releases
 twine==3.4.1
 wheel==0.38.1
