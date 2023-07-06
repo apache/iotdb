@@ -34,7 +34,7 @@ jobs:
         java: [ 8, 11, 17 ]
         os: [ self-hosted ]
     runs-on:
-      group: 'runnergroup 9'
+      group: self-hosted
       labels: iotdb
     steps:
       - uses: actions/checkout@v3
