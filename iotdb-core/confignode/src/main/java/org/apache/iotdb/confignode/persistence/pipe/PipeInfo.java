@@ -47,27 +47,27 @@ public class PipeInfo implements SnapshotProcessor {
 
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws IOException {
-    pipeTaskInfo.acquirePipeTaskInfoLock();
+    pipeTaskInfo.acquireReadLock();
     pipePluginInfo.acquirePipePluginInfoLock();
     try {
       return pipeTaskInfo.processTakeSnapshot(snapshotDir)
           && pipePluginInfo.processTakeSnapshot(snapshotDir);
     } finally {
       pipePluginInfo.releasePipePluginInfoLock();
-      pipeTaskInfo.releasePipeTaskInfoLock();
+      pipeTaskInfo.releaseReadLock();
     }
   }
 
   @Override
   public void processLoadSnapshot(File snapshotDir) throws IOException {
-    pipeTaskInfo.acquirePipeTaskInfoLock();
+    pipeTaskInfo.acquireWriteLock();
     pipePluginInfo.acquirePipePluginInfoLock();
     try {
       pipeTaskInfo.processLoadSnapshot(snapshotDir);
       pipePluginInfo.processLoadSnapshot(snapshotDir);
     } finally {
       pipePluginInfo.releasePipePluginInfoLock();
-      pipeTaskInfo.releasePipeTaskInfoLock();
+      pipeTaskInfo.releaseWriteLock();
     }
   }
 
