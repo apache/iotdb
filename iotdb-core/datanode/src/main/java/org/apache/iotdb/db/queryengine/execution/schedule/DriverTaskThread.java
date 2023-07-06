@@ -61,7 +61,7 @@ public class DriverTaskThread extends AbstractDriverThread {
   @Override
   public void execute(DriverTask task) throws InterruptedException {
     long startNanos = ticker.read();
-    // try to switch it to RUNNING
+    // Try to switch it to RUNNING
     if (!scheduler.readyToRunning(task)) {
       return;
     }

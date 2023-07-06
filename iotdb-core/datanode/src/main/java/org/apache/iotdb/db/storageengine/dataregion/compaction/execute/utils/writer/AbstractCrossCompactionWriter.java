@@ -184,6 +184,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
    * files. Then write these data into the last target file.
    *
    * @throws IOException if io errors occurred
+   * @throws RuntimeException if timeStamp is sooner than the last time
    */
   protected void checkTimeAndMayFlushChunkToCurrentFile(long timestamp, int subTaskId)
       throws IOException {
@@ -199,12 +200,12 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
 
     int fileIndex = seqFileIndexArray[subTaskId];
     boolean hasFlushedCurrentChunk = false;
-    // if timestamp is later than the current source seq tsfile, then flush chunk writer and move to
+    // If timestamp is later than the current source seq tsfile, then flush chunk writer and move to
     // next file
     while (timestamp > currentDeviceEndTime[fileIndex]
         && fileIndex != seqTsFileResources.size() - 1) {
       if (!hasFlushedCurrentChunk) {
-        // flush chunk to current file before moving target file index
+        // Flush chunk to current file before moving target file index
         sealChunk(targetFileWriters.get(fileIndex), chunkWriters[subTaskId], subTaskId);
         hasFlushedCurrentChunk = true;
       }

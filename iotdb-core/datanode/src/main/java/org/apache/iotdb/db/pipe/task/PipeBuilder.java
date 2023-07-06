@@ -46,7 +46,7 @@ public class PipeBuilder {
 
     final PipeRuntimeMeta pipeRuntimeMeta = pipeMeta.getRuntimeMeta();
     for (Map.Entry<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToPipeTaskMeta :
-        pipeRuntimeMeta.getConsensusGroupIdToTaskMetaMap().entrySet()) {
+        pipeRuntimeMeta.getConsensusGroupId2TaskMetaMap().entrySet()) {
       if (consensusGroupIdToPipeTaskMeta.getValue().getLeaderDataNodeId()
           == CONFIG.getDataNodeId()) {
         consensusGroupIdToPipeTaskMap.put(
