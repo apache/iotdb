@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.consensus.iot;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -93,6 +94,7 @@ public class ReplicateTest {
                           .setThisNodeId(peers.get(i).getNodeId())
                           .setThisNode(peers.get(i).getEndpoint())
                           .setStorageDir(peersStorage.get(i).getAbsolutePath())
+                          .setConsensusGroupType(TConsensusGroupType.DataRegion)
                           .build(),
                       groupId -> stateMachines.get(finalI))
                   .orElseThrow(
@@ -111,10 +113,10 @@ public class ReplicateTest {
   }
 
   /**
-   * The three nodes use the requests in the queue to replicate the requests to the other two nodes
+   * The three nodes use the requests in the queue to replicate the requests to the other two nodes.
    */
   @Test
-  public void ReplicateUsingQueueTest() throws IOException, InterruptedException {
+  public void replicateUsingQueueTest() throws IOException, InterruptedException {
     logger.info("Start ReplicateUsingQueueTest");
     servers.get(0).createPeer(group.getGroupId(), group.getPeers());
     servers.get(1).createPeer(group.getGroupId(), group.getPeers());
@@ -189,10 +191,10 @@ public class ReplicateTest {
   /**
    * First, suspend one node to test that the request replication between the two alive nodes is ok,
    * then restart all nodes to lose state in the queue, and test using WAL replication to make all
-   * nodes finally consistent
+   * nodes finally consistent.
    */
   @Test
-  public void ReplicateUsingWALTest() throws IOException, InterruptedException {
+  public void replicateUsingWALTest() throws IOException, InterruptedException {
     logger.info("Start ReplicateUsingWALTest");
     servers.get(0).createPeer(group.getGroupId(), group.getPeers());
     servers.get(1).createPeer(group.getGroupId(), group.getPeers());

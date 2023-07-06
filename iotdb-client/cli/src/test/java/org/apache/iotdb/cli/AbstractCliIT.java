@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.cli;
 
 import org.apache.iotdb.cli.AbstractCli.OperationResult;
@@ -63,7 +64,7 @@ public class AbstractCliIT {
       AbstractCli.HOST_ARGS,
       AbstractCli.HELP_ARGS,
       AbstractCli.PORT_ARGS,
-      AbstractCli.PASSWORD_ARGS,
+      AbstractCli.PW_ARGS,
       AbstractCli.USERNAME_ARGS,
       AbstractCli.ISO8601_ARGS,
       AbstractCli.MAX_PRINT_ROW_COUNT_ARGS,

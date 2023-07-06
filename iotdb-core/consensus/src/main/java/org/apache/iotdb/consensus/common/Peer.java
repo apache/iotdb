@@ -79,8 +79,12 @@ public class Peer {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     Peer peer = (Peer) o;
     return nodeId == peer.nodeId
         && Objects.equals(groupId, peer.groupId)

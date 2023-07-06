@@ -50,11 +50,13 @@ import org.apache.iotdb.commons.sync.PipeMessage;
 import org.apache.iotdb.commons.sync.PipeStatus;
 import org.apache.iotdb.commons.sync.TsFilePipeInfo;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
+import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.function.GetUDFJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
@@ -63,6 +65,9 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateS
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginJarPlan;
+import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginTablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.pipe.task.ShowPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
@@ -73,7 +78,6 @@ import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTransferrin
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerTablePlan;
-import org.apache.iotdb.confignode.consensus.request.read.udf.GetUDFJarPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
@@ -91,6 +95,8 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTimeParti
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
@@ -1370,6 +1376,35 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
+  public void GetPipePluginJarPlanTest() throws IOException {
+    List<String> jarNames = new ArrayList<>();
+    jarNames.add("org.apache.testJar");
+    jarNames.add("org.apache.testJar2");
+    GetPipePluginJarPlan getPipePluginJarPlan0 = new GetPipePluginJarPlan(jarNames);
+    GetPipePluginJarPlan getPipePluginJarPlan1 =
+        (GetPipePluginJarPlan)
+            ConfigPhysicalPlan.Factory.create(getPipePluginJarPlan0.serializeToByteBuffer());
+    Assert.assertEquals(getPipePluginJarPlan0, getPipePluginJarPlan1);
+  }
+
+  @Test
+  public void GetPipePluginTablePlanTest() throws IOException {
+    GetPipePluginTablePlan getPipePluginTablePlan0 = new GetPipePluginTablePlan();
+    GetPipePluginTablePlan getPipePluginTablePlan1 =
+        (GetPipePluginTablePlan)
+            ConfigPhysicalPlan.Factory.create(getPipePluginTablePlan0.serializeToByteBuffer());
+    Assert.assertEquals(getPipePluginTablePlan0, getPipePluginTablePlan1);
+  }
+
+  @Test
+  public void ShowPipePlanV2Test() throws IOException {
+    ShowPipePlanV2 showPipePlanV2 = new ShowPipePlanV2();
+    ShowPipePlanV2 showPipePlanV21 =
+        (ShowPipePlanV2) ConfigPhysicalPlan.Factory.create(showPipePlanV2.serializeToByteBuffer());
+    Assert.assertEquals(showPipePlanV2, showPipePlanV21);
+  }
+
+  @Test
   public void RemoveDataNodePlanTest() throws IOException {
     List<TDataNodeLocation> locations = new ArrayList<>();
     TDataNodeLocation location1 = new TDataNodeLocation();
@@ -1472,6 +1507,27 @@ public class ConfigPhysicalPlanSerDeTest {
     GetUDFJarPlan getUDFJarPlan1 =
         (GetUDFJarPlan) ConfigPhysicalPlan.Factory.create(getUDFJarPlan0.serializeToByteBuffer());
     Assert.assertEquals(getUDFJarPlan0.getJarNames(), getUDFJarPlan1.getJarNames());
+  }
+
+  @Test
+  public void CreateFunctionPlanTest() throws IOException {
+    UDFInformation udfInformation =
+        new UDFInformation("test1", "test1", false, true, "test1.jar", "12345");
+    CreateFunctionPlan createFunctionPlan0 =
+        new CreateFunctionPlan(udfInformation, new Binary(new byte[] {1, 2, 3}));
+    CreateFunctionPlan createFunctionPlan1 =
+        (CreateFunctionPlan)
+            ConfigPhysicalPlan.Factory.create(createFunctionPlan0.serializeToByteBuffer());
+    Assert.assertEquals(createFunctionPlan0, createFunctionPlan1);
+  }
+
+  @Test
+  public void DropFunctionPlanTest() throws IOException {
+    DropFunctionPlan dropFunctionPlan0 = new DropFunctionPlan("test");
+    DropFunctionPlan dropFunctionPlan1 =
+        (DropFunctionPlan)
+            ConfigPhysicalPlan.Factory.create(dropFunctionPlan0.serializeToByteBuffer());
+    Assert.assertEquals(dropFunctionPlan0, dropFunctionPlan1);
   }
 
   @Test

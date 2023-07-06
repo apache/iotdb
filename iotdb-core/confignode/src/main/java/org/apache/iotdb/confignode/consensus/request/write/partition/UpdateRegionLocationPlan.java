@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.consensus.request.write.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -43,7 +44,7 @@ public class UpdateRegionLocationPlan extends ConfigPhysicalPlan {
   }
 
   /**
-   * Constructor
+   * Constructor.
    *
    * @param regionId update the region location
    * @param oldNode remove the old location

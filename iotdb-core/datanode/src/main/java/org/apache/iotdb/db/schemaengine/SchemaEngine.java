@@ -71,6 +71,7 @@ public class SchemaEngine {
 
   private final SchemaRegionLoader schemaRegionLoader;
 
+  @SuppressWarnings("java:S3077")
   private volatile Map<SchemaRegionId, ISchemaRegion> schemaRegionMap;
 
   private ScheduledExecutorService timedForceMLogThread;
@@ -135,6 +136,7 @@ public class SchemaEngine {
    * Scan the database and schema region directories to recover schema regions and return the
    * collected local schema partition info for localSchemaPartitionTable recovery.
    */
+  @SuppressWarnings("java:S2142")
   private void initSchemaRegion() {
     File schemaDir = new File(config.getSchemaDir());
     File[] sgDirList = schemaDir.listFiles();
@@ -191,8 +193,7 @@ public class SchemaEngine {
         ISchemaRegion schemaRegion = future.get();
         schemaRegionMap.put(schemaRegion.getSchemaRegionId(), schemaRegion);
       } catch (ExecutionException | InterruptedException | RuntimeException e) {
-        logger.error("Something wrong happened during SchemaRegion recovery: {}", e.getMessage());
-        e.printStackTrace();
+        logger.error("Something wrong happened during SchemaRegion recovery", e);
       }
     }
     schemaRegionRecoverPools.shutdown();

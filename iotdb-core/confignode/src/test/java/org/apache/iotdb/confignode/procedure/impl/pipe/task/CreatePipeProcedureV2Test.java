@@ -42,9 +42,11 @@ public class CreatePipeProcedureV2Test {
     Map<String, String> extractorAttributes = new HashMap<>();
     Map<String, String> processorAttributes = new HashMap<>();
     Map<String, String> connectorAttributes = new HashMap<>();
-    extractorAttributes.put("extractor", "org.apache.iotdb.pipe.extractor.DefaultExtractor");
-    processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
-    connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocal.ThriftTransporter");
+    extractorAttributes.put("extractor", "iotdb-extractor");
+    processorAttributes.put("processor", "do-nothing-processor");
+    connectorAttributes.put("connector", "iotdb-thrift-connector");
+    connectorAttributes.put("host", "127.0.0.1");
+    connectorAttributes.put("port", "6667");
 
     CreatePipeProcedureV2 proc =
         new CreatePipeProcedureV2(

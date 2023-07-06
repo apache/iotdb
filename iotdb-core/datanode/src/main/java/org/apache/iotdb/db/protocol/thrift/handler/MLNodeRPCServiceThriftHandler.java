@@ -48,9 +48,13 @@ public class MLNodeRPCServiceThriftHandler implements TServerEventHandler {
   }
 
   @Override
-  public void preServe() {}
+  public void preServe() {
+    // do nothing
+  }
 
   @Override
   public void processContext(
-      ServerContext serverContext, TTransport tTransport, TTransport tTransport1) {}
+      ServerContext serverContext, TTransport tTransport, TTransport tTransport1) {
+    // do nothing
+  }
 }

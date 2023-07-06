@@ -34,7 +34,7 @@ import java.util.Map;
 public class InternalBatchActivateTemplateStatement extends Statement {
 
   // devicePath -> <Template, TemplateSetPath>
-  private Map<PartialPath, Pair<Template, PartialPath>> deviceMap;
+  private final Map<PartialPath, Pair<Template, PartialPath>> deviceMap;
 
   public InternalBatchActivateTemplateStatement(
       Map<PartialPath, Pair<Template, PartialPath>> deviceMap) {

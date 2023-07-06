@@ -60,14 +60,17 @@ public class UpdateProcedurePlan extends ConfigPhysicalPlan {
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    Procedure procedure = ProcedureFactory.getInstance().create(buffer);
-    this.procedure = procedure;
+    this.procedure = ProcedureFactory.getInstance().create(buffer);
   }
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     UpdateProcedurePlan that = (UpdateProcedurePlan) o;
     return Objects.equals(procedure, that.procedure);
   }

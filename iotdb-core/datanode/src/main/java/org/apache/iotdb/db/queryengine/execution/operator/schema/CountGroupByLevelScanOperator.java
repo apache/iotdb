@@ -35,6 +35,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -61,6 +62,7 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
   private ISchemaReader<T> schemaReader;
   private ListenableFuture<?> isBlocked;
   private TsBlock next;
+  private boolean isFinished;
 
   public CountGroupByLevelScanOperator(
       PlanNodeId sourceId,
@@ -104,9 +106,14 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
       try {
         ListenableFuture<?> readerBlocked = schemaReader.isBlocked();
         if (!readerBlocked.isDone()) {
+          SettableFuture<?> settableFuture = SettableFuture.create();
           readerBlocked.addListener(
-              () -> next = constructTsBlockAndClearMap(countMap), directExecutor());
-          return readerBlocked;
+              () -> {
+                next = constructTsBlockAndClearMap(countMap);
+                settableFuture.set(null);
+              },
+              directExecutor());
+          return settableFuture;
         } else if (schemaReader.hasNext()) {
           ISchemaInfo schemaInfo = schemaReader.next();
           PartialPath path = schemaInfo.getPartialPath();
@@ -130,6 +137,7 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
         } else {
           if (countMap.isEmpty()) {
             next = null;
+            isFinished = true;
           } else {
             next = constructTsBlockAndClearMap(countMap);
           }
@@ -180,7 +188,7 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
 
   @Override
   public boolean isFinished() throws Exception {
-    return !hasNextWithTimer();
+    return isFinished;
   }
 
   @Override

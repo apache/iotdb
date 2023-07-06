@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.commons.path;
 
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -134,37 +133,20 @@ public class PathPatternNode<V, VSerializer extends PathPatternNode.Serializer<V
     this.mark = mark;
   }
 
-  @TestOnly
-  public boolean equalWith(PathPatternNode<V, VSerializer> that) {
-    if (this == that) {
-      return true;
-    }
-    if (that == null || getClass() != that.getClass()) {
-      return false;
-    }
-    if (!Objects.equals(that.getName(), this.getName())) {
-      return false;
-    }
-    if (that.isLeaf() != this.isLeaf()) {
-      return false;
-    }
-    if (that.isPathPattern() != this.isPathPattern()) {
-      return false;
-    }
-    if (that.getChildren().size() != this.getChildren().size()) {
-      return false;
-    }
-    if (that.getValues() != null && !that.getValues().equals(this.getValues())) {
-      return false;
-    }
-    for (Map.Entry<String, PathPatternNode<V, VSerializer>> entry : this.getChildren().entrySet()) {
-      String nodeName = entry.getKey();
-      if (that.getChildren(nodeName) == null
-          || !that.getChildren(nodeName).equalWith(this.getChildren(nodeName))) {
-        return false;
-      }
-    }
-    return true;
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    PathPatternNode<?, ?> that = (PathPatternNode<?, ?>) o;
+    return mark == that.mark
+        && Objects.equals(name, that.name)
+        && Objects.equals(children, that.children)
+        && Objects.equals(valueSet, that.valueSet);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(name, children, valueSet, mark);
   }
 
   /**

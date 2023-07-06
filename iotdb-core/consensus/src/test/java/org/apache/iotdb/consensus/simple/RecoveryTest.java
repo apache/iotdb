@@ -16,8 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.consensus.simple;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
@@ -51,6 +53,7 @@ public class RecoveryTest {
                     .setThisNodeId(1)
                     .setThisNode(new TEndPoint("0.0.0.0", 9000))
                     .setStorageDir("target" + java.io.File.separator + "recovery")
+                    .setConsensusGroupType(TConsensusGroupType.DataRegion)
                     .build(),
                 gid -> new EmptyStateMachine())
             .orElseThrow(

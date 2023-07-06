@@ -21,7 +21,6 @@ package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PathPatternNode.VoidSerializer;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
@@ -35,6 +34,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 public class PathPatternTree {
@@ -155,6 +155,18 @@ public class PathPatternTree {
     return new ArrayList<>(results);
   }
 
+  public List<PartialPath> getAllDevicePaths() {
+    List<String> nodes = new ArrayList<>();
+    Set<List<String>> resultNodesSet = new HashSet<>();
+    searchDevicePath(root, nodes, resultNodesSet);
+
+    Set<PartialPath> resultPaths = new HashSet<>();
+    for (List<String> resultNodes : resultNodesSet) {
+      resultPaths.add(new PartialPath(resultNodes.toArray(new String[0])));
+    }
+    return new ArrayList<>(resultPaths);
+  }
+
   private void searchDevicePattern(
       PathPatternNode<Void, VoidSerializer> curNode, List<String> nodes, Set<String> results) {
     nodes.add(curNode.getName());
@@ -181,6 +193,40 @@ public class PathPatternTree {
     }
     for (PathPatternNode<Void, VoidSerializer> childNode : curNode.getChildren().values()) {
       searchDevicePattern(childNode, nodes, results);
+    }
+    nodes.remove(nodes.size() - 1);
+  }
+
+  private void searchDevicePath(
+      PathPatternNode<Void, VoidSerializer> curNode,
+      List<String> nodes,
+      Set<List<String>> resultNodesSet) {
+    nodes.add(curNode.getName());
+    if (curNode.isPathPattern()) {
+      if (!curNode.getName().equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+        resultNodesSet.add(
+            nodes.size() == 1
+                ? new ArrayList<>()
+                : new ArrayList<>(nodes.subList(0, nodes.size() - 1)));
+      } else {
+        // the device of root.sg.d.** is root.sg.d and root.sg.d.**
+        if (nodes.size() > 2) {
+          resultNodesSet.add(new ArrayList<>(nodes.subList(0, nodes.size() - 1)));
+        }
+        resultNodesSet.add(new ArrayList<>(nodes));
+      }
+      if (curNode.isLeaf()) {
+        nodes.remove(nodes.size() - 1);
+        return;
+      }
+    }
+    if (curNode.isWildcard()) {
+      resultNodesSet.add(new ArrayList<>(nodes));
+      nodes.remove(nodes.size() - 1);
+      return;
+    }
+    for (PathPatternNode<Void, VoidSerializer> childNode : curNode.getChildren().values()) {
+      searchDevicePath(childNode, nodes, resultNodesSet);
     }
     nodes.remove(nodes.size() - 1);
   }
@@ -280,14 +326,16 @@ public class PathPatternTree {
     return deserializedPatternTree;
   }
 
-  @TestOnly
-  public boolean equalWith(PathPatternTree that) {
-    if (this == that) {
-      return true;
-    }
-    if (that == null || getClass() != that.getClass()) {
-      return false;
-    }
-    return this.getRoot().equalWith(that.getRoot());
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    PathPatternTree that = (PathPatternTree) o;
+    return Objects.equals(root, that.root);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(root);
   }
 }

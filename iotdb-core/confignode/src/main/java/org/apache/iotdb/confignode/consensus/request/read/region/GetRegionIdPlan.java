@@ -101,8 +101,12 @@ public class GetRegionIdPlan extends ConfigPhysicalPlan {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     GetRegionIdPlan that = (GetRegionIdPlan) o;
     return database.equals(that.database)
         && partitionType.equals(that.partitionType)

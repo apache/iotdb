@@ -246,7 +246,7 @@ public class PathPatternTreeTest {
     }
     resultPatternTree.constructTree();
 
-    Assert.assertTrue(resultPatternTree.equalWith(patternTree));
+    Assert.assertEquals(resultPatternTree, patternTree);
 
     Assert.assertEquals(
         compressedDevicePaths.stream()
@@ -255,13 +255,17 @@ public class PathPatternTreeTest {
             .collect(Collectors.toList()),
         patternTree.getAllDevicePatterns().stream().sorted().collect(Collectors.toList()));
 
+    Assert.assertEquals(
+        compressedDevicePaths.stream().sorted().collect(Collectors.toList()),
+        patternTree.getAllDevicePaths().stream().sorted().collect(Collectors.toList()));
+
     PublicBAOS outputStream = new PublicBAOS();
     resultPatternTree.serialize(outputStream);
     ByteBuffer buffer = ByteBuffer.allocate(outputStream.size());
     buffer.put(outputStream.getBuf(), 0, outputStream.size());
     buffer.flip();
     PathPatternTree tmpPathPatternTree = PathPatternTree.deserialize(buffer);
-    Assert.assertTrue(resultPatternTree.equalWith(tmpPathPatternTree));
+    Assert.assertEquals(resultPatternTree, tmpPathPatternTree);
   }
 
   @Test

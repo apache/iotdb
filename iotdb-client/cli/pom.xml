@@ -160,7 +160,7 @@
                                 <filter>
                                     <artifact>org.apache.iotdb:iotdb-server</artifact>
                                     <includes>
-                                        <include>org/apache/iotdb/db/qp/utils/*</include>
+                                        <include>org/apache/iotdb/db/utils/*</include>
                                     </includes>
                                 </filter>
                             </filters>

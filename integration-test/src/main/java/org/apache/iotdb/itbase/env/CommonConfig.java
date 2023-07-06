@@ -77,6 +77,8 @@ public interface CommonConfig {
 
   CommonConfig setTimePartitionInterval(long timePartitionInterval);
 
+  CommonConfig setTimestampPrecision(String timestampPrecision);
+
   CommonConfig setConfigNodeRatisSnapshotTriggerThreshold(int ratisSnapshotTriggerThreshold);
 
   CommonConfig setMaxDegreeOfIndexNode(int maxDegreeOfIndexNode);

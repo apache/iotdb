@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -85,7 +86,7 @@ public class TsFileForceAppendWrite {
       fwriter.doTruncate();
       write(fwriter);
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("ForceAppendTsFileWriter truncate or write error ", e);
     }
   }
 

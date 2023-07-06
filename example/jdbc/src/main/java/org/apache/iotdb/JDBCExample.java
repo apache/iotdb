@@ -16,9 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb;
 
 import org.apache.iotdb.jdbc.IoTDBSQLException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -28,6 +32,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 public class JDBCExample {
+  private static Logger logger = LoggerFactory.getLogger(JDBCExample.class);
 
   public static void main(String[] args) throws ClassNotFoundException, SQLException {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
@@ -62,7 +67,7 @@ public class JDBCExample {
               "select count(**) from root where time >= 1 and time <= 100 group by ([0, 100), 20ms, 20ms)");
       outputResult(resultSet);
     } catch (IoTDBSQLException e) {
-      e.printStackTrace();
+      logger.error("IoTDB Jdbc example error", e);
     }
   }
 

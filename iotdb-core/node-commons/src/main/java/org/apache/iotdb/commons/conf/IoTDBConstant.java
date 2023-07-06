@@ -221,7 +221,6 @@ public class IoTDBConstant {
   public static final String SEQUENCE_FLODER_NAME = "sequence";
   public static final String UNSEQUENCE_FLODER_NAME = "unsequence";
   public static final String FILE_NAME_SEPARATOR = "-";
-  public static final String UPGRADE_FOLDER_NAME = "upgrade";
   public static final String CONSENSUS_FOLDER_NAME = "consensus";
   public static final String SNAPSHOT_FOLDER_NAME = "snapshot";
 
@@ -268,6 +267,10 @@ public class IoTDBConstant {
 
   // compaction mods of previous version (<0.13)
   public static final String COMPACTION_MODIFICATION_FILE_NAME_FROM_OLD = "merge.mods";
+
+  public static final String SETTLE_SUFFIX = ".settle";
+  public static final String MODS_SETTLE_FILE_SUFFIX = ".mods.settle";
+  public static final String BLANK = "";
 
   // write ahead log
   public static final String WAL_FILE_PREFIX = "_";

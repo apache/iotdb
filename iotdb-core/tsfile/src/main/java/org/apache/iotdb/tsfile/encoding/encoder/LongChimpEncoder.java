@@ -41,28 +41,28 @@ public class LongChimpEncoder extends GorillaEncoderV2 {
   private static final int PREVIOUS_VALUES = 128;
   private static final int PREVIOUS_VALUES_LOG2 = (int) (Math.log(PREVIOUS_VALUES) / Math.log(2));
   private static final int THRESHOLD = 6 + PREVIOUS_VALUES_LOG2;
-  private static final int SET_LSB = (int) Math.pow(2, THRESHOLD + 1) - 1;
+  private static final int SET_LSB = (int) Math.pow(2, THRESHOLD + 1d) - 1;
   private static final int CASE_ZERO_METADATA_LENGTH = PREVIOUS_VALUES_LOG2 + 2;
   private static final int CASE_ONE_METADATA_LENGTH = PREVIOUS_VALUES_LOG2 + 11;
-  public static final short[] LEADING_REPRESENTATION = {
+  protected static final short[] LEADING_REPRESENTATION = {
     0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7,
     7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
   };
 
-  public static final short[] LEADING_ROUND = {
+  protected static final short[] LEADING_ROUND = {
     0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 8, 8, 12, 12, 12, 12, 16, 16, 18, 18, 20, 20, 22, 22, 24, 24, 24,
     24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
     24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24
   };
 
-  private long storedValues[];
+  private long[] storedValues;
   private int[] indices;
   private int index = 0;
   private int current = 0;
 
   public LongChimpEncoder() {
     this.setType(TSEncoding.CHIMP);
-    this.indices = new int[(int) Math.pow(2, THRESHOLD + 1)];
+    this.indices = new int[(int) Math.pow(2, THRESHOLD + 1d)];
     this.storedValues = new long[PREVIOUS_VALUES];
   }
 
@@ -74,12 +74,12 @@ public class LongChimpEncoder extends GorillaEncoderV2 {
               / Byte.SIZE
           + 1;
 
-  public static final short[] leadingRepresentation = {
+  protected static final short[] leadingRepresentation = {
     0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7,
     7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
   };
 
-  public static final short[] leadingRound = {
+  protected static final short[] leadingRound = {
     0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 8, 8, 12, 12, 12, 12, 16, 16, 18, 18, 20, 20, 22, 22, 24, 24, 24,
     24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
     24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24
@@ -95,7 +95,7 @@ public class LongChimpEncoder extends GorillaEncoderV2 {
     super.reset();
     this.current = 0;
     this.index = 0;
-    this.indices = new int[(int) Math.pow(2, THRESHOLD + 1)];
+    this.indices = new int[(int) Math.pow(2, THRESHOLD + 1d)];
     this.storedValues = new long[PREVIOUS_VALUES];
   }
 
@@ -166,8 +166,8 @@ public class LongChimpEncoder extends GorillaEncoderV2 {
       if (trailingZeros > THRESHOLD) {
         int significantBits = VALUE_BITS_LENGTH_64BIT - leadingZeros - trailingZeros;
         writeBits(
-            512 * (PREVIOUS_VALUES + previousIndex)
-                + 64 * leadingRepresentation[leadingZeros]
+            512L * (PREVIOUS_VALUES + previousIndex)
+                + 64L * leadingRepresentation[leadingZeros]
                 + significantBits,
             CASE_ONE_METADATA_LENGTH,
             out);
@@ -187,7 +187,7 @@ public class LongChimpEncoder extends GorillaEncoderV2 {
       } else {
         storedLeadingZeros = leadingZeros;
         int significantBits = VALUE_BITS_LENGTH_64BIT - leadingZeros;
-        writeBits(24 + leadingRepresentation[leadingZeros], 5, out);
+        writeBits(24L + leadingRepresentation[leadingZeros], 5, out);
         writeBits(xor, significantBits, out);
       }
     }

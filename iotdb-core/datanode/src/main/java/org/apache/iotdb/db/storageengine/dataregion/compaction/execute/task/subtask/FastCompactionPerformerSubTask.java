@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -35,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
+@SuppressWarnings("squid:S107")
 public class FastCompactionPerformerSubTask implements Callable<Void> {
 
   private FastCompactionTaskSummary summary;
@@ -65,6 +67,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
   private List<IMeasurementSchema> measurementSchemas;
 
   /** Used for nonAligned timeseries. */
+  @SuppressWarnings("squid:S107")
   public FastCompactionPerformerSubTask(
       AbstractCompactionWriter compactionWriter,
       Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,

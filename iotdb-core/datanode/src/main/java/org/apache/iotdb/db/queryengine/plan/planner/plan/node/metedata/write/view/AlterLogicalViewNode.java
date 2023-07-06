@@ -47,13 +47,13 @@ public class AlterLogicalViewNode extends WritePlanNode {
    * A map from target path to source expression. Yht target path is the name of this logical view,
    * and the source expression is the data source of this view.
    */
-  private Map<PartialPath, ViewExpression> viewPathToSourceMap;
+  private final Map<PartialPath, ViewExpression> viewPathToSourceMap;
 
   /**
    * This variable will be set in function splitByPartition() according to analysis. And it will be
    * set when creating new split nodes.
    */
-  private TRegionReplicaSet regionReplicaSet = null;
+  private final TRegionReplicaSet regionReplicaSet = null;
 
   public AlterLogicalViewNode(PlanNodeId id, Map<PartialPath, ViewExpression> viewPathToSourceMap) {
     super(id);

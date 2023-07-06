@@ -25,9 +25,7 @@ import java.util.List;
 
 public class TransferringTriggersResp implements DataSet {
 
-  private List<String> transferringTriggers;
-
-  public TransferringTriggersResp() {}
+  private final List<String> transferringTriggers;
 
   public TransferringTriggersResp(List<String> transferringTriggers) {
     this.transferringTriggers = transferringTriggers;
@@ -35,9 +33,5 @@ public class TransferringTriggersResp implements DataSet {
 
   public List<String> getTransferringTriggers() {
     return transferringTriggers;
-  }
-
-  public void setTransferringTriggers(List<String> transferringTriggers) {
-    this.transferringTriggers = transferringTriggers;
   }
 }

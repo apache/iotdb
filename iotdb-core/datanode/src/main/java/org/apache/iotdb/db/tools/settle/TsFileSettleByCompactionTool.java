@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.tools.settle;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -35,10 +36,14 @@ import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.layered.TFramedTransport;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 
 public class TsFileSettleByCompactionTool {
+
+  private static final Logger logger = LoggerFactory.getLogger(TsFileSettleByCompactionTool.class);
 
   private static final String HOST_ARGS = "h";
   private static final String HOST_NAME = "host";
@@ -61,7 +66,7 @@ public class TsFileSettleByCompactionTool {
     try {
       commandLine = parser.parse(commandLineOptions, args);
     } catch (ParseException e) {
-      System.out.println("Parse command line args failed: " + e.getMessage());
+      logger.info("Parse command line args failed: {}", e.getMessage());
       return;
     }
 
@@ -70,19 +75,21 @@ public class TsFileSettleByCompactionTool {
     int port = Integer.parseInt(portValue);
     filePaths = commandLine.getOptionValues(FILE_PATH_ARGS);
 
-    TTransport transport = new TFramedTransport(new TSocket(hostValue, port));
-    transport.open();
-    TProtocol protocol = new TBinaryProtocol(transport);
-    IDataNodeRPCService.Client.Factory clientFactory = new IDataNodeRPCService.Client.Factory();
-    IDataNodeRPCService.Client client = clientFactory.getClient(protocol);
+    TProtocol protocol;
+    try (TTransport transport = new TFramedTransport(new TSocket(hostValue, port))) {
+      transport.open();
+      protocol = new TBinaryProtocol(transport);
+      IDataNodeRPCService.Client.Factory clientFactory = new IDataNodeRPCService.Client.Factory();
+      IDataNodeRPCService.Client client = clientFactory.getClient(protocol);
 
-    TSettleReq tSettleReq = new TSettleReq();
-    tSettleReq.setPaths(Arrays.asList(filePaths));
-    TSStatus result = client.settle(tSettleReq);
-    if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      System.out.println("Add Settle Compaction Task Successfully");
-    } else {
-      System.out.println("Add settle compaction task failed with status code: " + result);
+      TSettleReq settleReq = new TSettleReq();
+      settleReq.setPaths(Arrays.asList(filePaths));
+      TSStatus result = client.settle(settleReq);
+      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        logger.info("Add Settle Compaction Task Successfully");
+      } else {
+        logger.info("Add settle compaction task failed with status code: {}", result);
+      }
     }
   }
 

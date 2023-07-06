@@ -43,8 +43,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -151,11 +153,13 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   @Override
   public List<PlanNode> getChildren() {
-    return null;
+    return Collections.emptyList();
   }
 
   @Override
-  public void addChild(PlanNode child) {}
+  public void addChild(PlanNode child) {
+    // Do nothing
+  }
 
   @Override
   public PlanNode clone() {
@@ -169,14 +173,18 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return null;
+    return Collections.emptyList();
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    // Do nothing
+  }
 
   @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {}
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    // Do nothing
+  }
 
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
@@ -205,5 +213,26 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     } catch (IOException e) {
       logger.warn(String.format("Delete After Loading %s error.", tsFile), e);
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    LoadSingleTsFileNode loadSingleTsFileNode = (LoadSingleTsFileNode) o;
+    return Objects.equals(tsFile, loadSingleTsFileNode.tsFile)
+        && Objects.equals(resource, loadSingleTsFileNode.resource)
+        && Objects.equals(needDecodeTsFile, loadSingleTsFileNode.needDecodeTsFile)
+        && Objects.equals(deleteAfterLoad, loadSingleTsFileNode.deleteAfterLoad)
+        && Objects.equals(localRegionReplicaSet, loadSingleTsFileNode.localRegionReplicaSet);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(tsFile, resource, needDecodeTsFile, deleteAfterLoad, localRegionReplicaSet);
   }
 }

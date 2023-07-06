@@ -110,8 +110,12 @@ public class CountTimeSlotListPlan extends ConfigPhysicalPlan {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     CountTimeSlotListPlan that = (CountTimeSlotListPlan) o;
     return database.equals(that.database)
         && seriesSlotId.equals(that.seriesSlotId)

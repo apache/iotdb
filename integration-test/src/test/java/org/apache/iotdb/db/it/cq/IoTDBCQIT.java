@@ -310,7 +310,7 @@ public class IoTDBCQIT {
         fail();
       } catch (Exception e) {
         assertEquals(
-            TSStatusCode.CQ_AlREADY_EXIST.getStatusCode()
+            TSStatusCode.CQ_ALREADY_EXIST.getStatusCode()
                 + ": CQ s1_count_cq has already been created.",
             e.getMessage());
       } finally {

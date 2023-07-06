@@ -32,7 +32,7 @@ public class HavingCondition extends StatementNode {
 
   public HavingCondition(Expression predicate) {
     // cast functionName to lowercase in havingExpression
-    this.predicate = ExpressionAnalyzer.removeAliasFromExpression(predicate);
+    this.predicate = ExpressionAnalyzer.toLowerCaseExpression(predicate);
   }
 
   public Expression getPredicate() {
@@ -40,7 +40,7 @@ public class HavingCondition extends StatementNode {
   }
 
   public void setPredicate(Expression predicate) {
-    this.predicate = ExpressionAnalyzer.removeAliasFromExpression(predicate);
+    this.predicate = ExpressionAnalyzer.toLowerCaseExpression(predicate);
   }
 
   public String toSQLString() {

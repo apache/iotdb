@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -29,7 +30,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -69,13 +69,17 @@ public class CompactionUtils {
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
+  private CompactionUtils() {}
+
   /**
    * Update the targetResource. Move tmp target file to target file and serialize
    * xxx.tsfile.resource.
+   *
+   * @throws IOException if io errors occurred
    */
   public static void moveTargetFile(
       List<TsFileResource> targetResources, boolean isInnerSpace, String fullStorageGroupName)
-      throws IOException, WriteProcessException {
+      throws IOException {
     String fileSuffix;
     if (isInnerSpace) {
       fileSuffix = IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX;
@@ -116,6 +120,8 @@ public class CompactionUtils {
   /**
    * Collect all the compaction modification files of source files, and combines them as the
    * modification file of target file.
+   *
+   * @throws IOException if io errors occurred
    */
   public static void combineModsInCrossCompaction(
       List<TsFileResource> seqResources,
@@ -138,7 +144,7 @@ public class CompactionUtils {
           new HashSet<>(ModificationFile.getCompactionMods(seqResources.get(i)).getModifications());
       modifications.addAll(seqModifications);
       updateOneTargetMods(targetResource, modifications);
-      if (modifications.size() > 0) {
+      if (!modifications.isEmpty()) {
         FileMetrics.getInstance().increaseModFileNum(1);
         FileMetrics.getInstance().increaseModFileSize(targetResource.getModFile().getSize());
       }
@@ -149,6 +155,8 @@ public class CompactionUtils {
   /**
    * Collect all the compaction modification files of source files, and combines them as the
    * modification file of target file.
+   *
+   * @throws IOException if io errors occurred
    */
   public static void combineModsInInnerCompaction(
       Collection<TsFileResource> sourceFiles, TsFileResource targetTsFile) throws IOException {
@@ -160,7 +168,7 @@ public class CompactionUtils {
       }
     }
     updateOneTargetMods(targetTsFile, modifications);
-    if (modifications.size() > 0) {
+    if (!modifications.isEmpty()) {
       FileMetrics.getInstance().increaseModFileNum(1);
       FileMetrics.getInstance().increaseModFileSize(targetTsFile.getModFile().getSize());
     }
@@ -212,7 +220,11 @@ public class CompactionUtils {
     return result;
   }
 
-  /** Delete all modification files for source files */
+  /**
+   * Delete all modification files for source files.
+   *
+   * @throws IOException if io errors occurred
+   */
   public static void deleteModificationForSourceFile(
       Collection<TsFileResource> sourceFiles, String storageGroupName) throws IOException {
     logger.info("{} [Compaction] Start to delete modifications of source files", storageGroupName);
@@ -233,9 +245,9 @@ public class CompactionUtils {
   }
 
   public static void updateResource(
-      TsFileResource resource, TsFileIOWriter tsFileIOWriter, String deviceId) {
+      TsFileResource resource, TsFileIOWriter tsFileIoWriter, String deviceId) {
     List<ChunkMetadata> chunkMetadatasOfCurrentDevice =
-        tsFileIOWriter.getChunkMetadataListOfCurrentDeviceInMemory();
+        tsFileIoWriter.getChunkMetadataListOfCurrentDeviceInMemory();
     if (chunkMetadatasOfCurrentDevice != null) {
       // this target file contains current device
       for (ChunkMetadata chunkMetadata : chunkMetadatasOfCurrentDevice) {
@@ -307,7 +319,8 @@ public class CompactionUtils {
         long lastEndTime = lastDeviceInfo.right;
         if (lastEndTime >= currentStartTime) {
           logger.error(
-              "{} Device {} is overlapped between {} and {}, end time in {} is {}, start time in {} is {}",
+              "{} Device {} is overlapped between {} and {}, "
+                  + "end time in {} is {}, start time in {} is {}",
               storageGroupName,
               device,
               lastDeviceInfo.left,
@@ -342,7 +355,7 @@ public class CompactionUtils {
     return true;
   }
 
-  @SuppressWarnings("java:S6541") // do not warn about brain method
+  @SuppressWarnings({"squid:S6541", "squid:S3776", "squid:S1481"}) // do not warn about brain method
   public static boolean validateSingleTsFiles(TsFileResource resource) {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(resource.getTsFilePath())) {
       reader.readHeadMagic();
@@ -383,13 +396,13 @@ public class CompactionUtils {
                       header.getDataType(),
                       (header.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
               ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
-              if ((header.getChunkType() & (byte) TsFileConstant.TIME_COLUMN_MASK)
-                  == (byte) TsFileConstant.TIME_COLUMN_MASK) { // Time Chunk
+              if ((header.getChunkType() & TsFileConstant.TIME_COLUMN_MASK)
+                  == TsFileConstant.TIME_COLUMN_MASK) { // Time Chunk
                 TimePageReader timePageReader =
                     new TimePageReader(pageHeader, pageData, defaultTimeDecoder);
                 timeBatch.add(timePageReader.getNextTimeBatch());
-              } else if ((header.getChunkType() & (byte) TsFileConstant.VALUE_COLUMN_MASK)
-                  == (byte) TsFileConstant.VALUE_COLUMN_MASK) { // Value Chunk
+              } else if ((header.getChunkType() & TsFileConstant.VALUE_COLUMN_MASK)
+                  == TsFileConstant.VALUE_COLUMN_MASK) { // Value Chunk
                 ValuePageReader valuePageReader =
                     new ValuePageReader(pageHeader, pageData, header.getDataType(), valueDecoder);
                 TsPrimitiveType[] valueBatch =

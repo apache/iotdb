@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.consensus.request.write.partition;
 
 import org.apache.iotdb.commons.partition.DataPartitionTable;
@@ -35,7 +36,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-/** Create DataPartition by assignedDataPartition */
+/** Create DataPartition by assignedDataPartition. */
 public class CreateDataPartitionPlan extends ConfigPhysicalPlan {
 
   private Map<String, DataPartitionTable> assignedDataPartition;
@@ -86,8 +87,12 @@ public class CreateDataPartitionPlan extends ConfigPhysicalPlan {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     CreateDataPartitionPlan that = (CreateDataPartitionPlan) o;
     return assignedDataPartition.equals(that.assignedDataPartition);
   }

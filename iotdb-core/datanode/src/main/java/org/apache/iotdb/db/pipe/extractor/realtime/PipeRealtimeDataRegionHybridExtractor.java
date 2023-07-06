@@ -120,7 +120,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
 
   @Override
   public Event supply() {
-    PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.poll();
+    PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
 
     while (realtimeEvent != null) {
       Event suppliedEvent;
@@ -143,7 +143,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         return suppliedEvent;
       }
 
-      realtimeEvent = (PipeRealtimeEvent) pendingQueue.poll();
+      realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
     }
 
     // means the pending queue is empty.

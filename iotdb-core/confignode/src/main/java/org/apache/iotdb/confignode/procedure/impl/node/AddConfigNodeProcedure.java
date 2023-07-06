@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 /** add config node procedure */
 public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeState> {
@@ -165,5 +166,10 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
           && thatProc.tConfigNodeLocation.equals(this.tConfigNodeLocation);
     }
     return false;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(this.tConfigNodeLocation);
   }
 }

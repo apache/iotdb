@@ -45,8 +45,6 @@ import java.util.Set;
  * bit-index := a list of 01 sequence to record the position of the value above
  * }</pre>
  *
- * .
- *
  * <p>Decode switch or enum values using bitmap, bitmap-encode.{@code <length> <num> <encoded data>
  * }
  */

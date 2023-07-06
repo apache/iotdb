@@ -19,56 +19,103 @@
 
 package org.apache.iotdb.db.queryengine.execution;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
-import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class QueryStateMachineTest {
 
   @Test
   public void TestBasicTransition() {
     QueryStateMachine stateMachine = genQueryStateMachine();
-    Assert.assertEquals(stateMachine.getState(), QueryState.QUEUED);
+    Assert.assertEquals(QueryState.QUEUED, stateMachine.getState());
     stateMachine.transitionToPlanned();
-    Assert.assertEquals(stateMachine.getState(), QueryState.PLANNED);
+    Assert.assertEquals(QueryState.PLANNED, stateMachine.getState());
+    stateMachine.transitionToQueued();
+    Assert.assertEquals(QueryState.QUEUED, stateMachine.getState());
+    stateMachine.transitionToPlanned();
+    Assert.assertEquals(QueryState.PLANNED, stateMachine.getState());
     stateMachine.transitionToDispatching();
-    Assert.assertEquals(stateMachine.getState(), QueryState.DISPATCHING);
+    Assert.assertEquals(QueryState.DISPATCHING, stateMachine.getState());
     stateMachine.transitionToRunning();
-    Assert.assertEquals(stateMachine.getState(), QueryState.RUNNING);
+    Assert.assertEquals(QueryState.RUNNING, stateMachine.getState());
     stateMachine.transitionToAborted();
-    Assert.assertEquals(stateMachine.getState(), QueryState.ABORTED);
+    Assert.assertEquals(QueryState.ABORTED, stateMachine.getState());
 
     // StateMachine with Terminal State is not allowed to transition state
     stateMachine = genQueryStateMachine();
     stateMachine.transitionToCanceled();
-    Assert.assertEquals(stateMachine.getState(), QueryState.CANCELED);
+    Assert.assertEquals(QueryState.CANCELED, stateMachine.getState());
 
     stateMachine = genQueryStateMachine();
     stateMachine.transitionToFinished();
-    Assert.assertEquals(stateMachine.getState(), QueryState.FINISHED);
+    Assert.assertEquals(QueryState.FINISHED, stateMachine.getState());
+
+    stateMachine = genQueryStateMachine();
+    stateMachine.transitionToFailed();
+    Assert.assertEquals(QueryState.FAILED, stateMachine.getState());
+
+    stateMachine = genQueryStateMachine();
+    TSStatus status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+    status.setMessage("Unknown");
+    stateMachine.transitionToFailed(status);
+    Assert.assertEquals(QueryState.FAILED, stateMachine.getState());
+    assertEquals(
+        "no detailed failure reason in QueryStateMachine", stateMachine.getFailureMessage());
+    Throwable t = stateMachine.getFailureException();
+    assertTrue(t instanceof IoTDBException);
+    assertEquals(
+        TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode(), ((IoTDBException) t).getErrorCode());
+    assertEquals("Unknown", t.getMessage());
+  }
+
+  @Test
+  public void testFailure() {
+    QueryStateMachine stateMachine = genQueryStateMachine();
+    stateMachine.transitionToDispatching();
+    assertNotEquals(QueryState.DISPATCHING, stateMachine.getState());
+    assertEquals(QueryState.QUEUED, stateMachine.getState());
+    stateMachine.transitionToPlanned();
+    assertEquals(QueryState.PLANNED, stateMachine.getState());
+    RuntimeException expected = new RuntimeException("a");
+    stateMachine.transitionToCanceled(
+        expected, new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode()));
+    assertEquals(QueryState.CANCELED, stateMachine.getState());
+    assertEquals(
+        TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode(), stateMachine.getFailureStatus().code);
+    assertEquals(expected, stateMachine.getFailureException());
+    assertEquals("a", stateMachine.getFailureMessage());
+
+    try {
+      stateMachine.transitionToQueued();
+      fail();
+    } catch (IllegalStateException e) {
+      assertEquals("test_query cannot transition from CANCELED to QUEUED", e.getMessage());
+      assertNotEquals(QueryState.QUEUED, stateMachine.getState());
+    }
   }
 
   @Test
   public void TestListener() throws ExecutionException, InterruptedException {
     AtomicInteger stateChangeCounter = new AtomicInteger(0);
     QueryStateMachine stateMachine = genQueryStateMachine();
-    stateMachine.addStateChangeListener(
-        state -> {
-          stateChangeCounter.getAndIncrement();
-        });
+    stateMachine.addStateChangeListener(state -> stateChangeCounter.getAndIncrement());
     stateMachine.transitionToFinished();
     SettableFuture<QueryState> future = SettableFuture.create();
     stateMachine.addStateChangeListener(
@@ -78,7 +125,7 @@ public class QueryStateMachineTest {
           }
         });
     future.get();
-    Assert.assertEquals(stateChangeCounter.get(), 2);
+    Assert.assertEquals(2, stateChangeCounter.get());
   }
 
   @Test
@@ -93,25 +140,27 @@ public class QueryStateMachineTest {
           callbackFuture.set(null);
         },
         directExecutor());
-    Assert.assertEquals(stateChangeCounter.get(), 0);
+    Assert.assertEquals(0, stateChangeCounter.get());
     stateMachine.transitionToRunning();
     future.get();
     callbackFuture.get();
-    Assert.assertEquals(stateChangeCounter.get(), 1);
+    Assert.assertEquals(1, stateChangeCounter.get());
+  }
+
+  @Test
+  public void testTransitionToPendingRetry() {
+    QueryStateMachine stateMachine = genQueryStateMachine();
+    stateMachine.transitionToPlanned();
+    stateMachine.transitionToPendingRetry(
+        new TSStatus(TSStatusCode.CAN_NOT_CONNECT_DATANODE.getStatusCode()));
+    assertEquals(
+        TSStatusCode.CAN_NOT_CONNECT_DATANODE.getStatusCode(),
+        stateMachine.getFailureStatus().code);
   }
 
   private QueryStateMachine genQueryStateMachine() {
     return new QueryStateMachine(
         genQueryId(), IoTDBThreadPoolFactory.newSingleThreadExecutor("TestQueryStateMachine"));
-  }
-
-  private List<FragmentInstanceId> genFragmentInstanceIdList() {
-    return Arrays.asList(
-        new FragmentInstanceId(new PlanFragmentId(genQueryId(), 1), "1"),
-        new FragmentInstanceId(new PlanFragmentId(genQueryId(), 2), "1"),
-        new FragmentInstanceId(new PlanFragmentId(genQueryId(), 3), "1"),
-        new FragmentInstanceId(new PlanFragmentId(genQueryId(), 4), "1"),
-        new FragmentInstanceId(new PlanFragmentId(genQueryId(), 4), "2"));
   }
 
   private QueryId genQueryId() {

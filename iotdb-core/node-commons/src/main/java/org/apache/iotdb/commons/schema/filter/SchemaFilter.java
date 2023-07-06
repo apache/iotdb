@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.schema.filter;
 
 import org.apache.iotdb.commons.schema.filter.impl.AndFilter;
@@ -28,6 +29,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 public abstract class SchemaFilter {
 
@@ -68,6 +71,31 @@ public abstract class SchemaFilter {
         return new AndFilter(byteBuffer);
       default:
         throw new IllegalArgumentException("Unsupported schema filter type: " + type);
+    }
+  }
+
+  /**
+   * Extracts a certain type of SchemaFilter from the Filter tree.
+   *
+   * @param filterType type
+   * @return list of SchemaFilter with specific type
+   */
+  public static List<SchemaFilter> extract(SchemaFilter schemaFilter, SchemaFilterType filterType) {
+    List<SchemaFilter> res = new ArrayList<>();
+    internalExtract(res, schemaFilter, filterType);
+    return res;
+  }
+
+  private static void internalExtract(
+      List<SchemaFilter> result, SchemaFilter schemaFilter, SchemaFilterType filterType) {
+    if (schemaFilter.getSchemaFilterType().equals(filterType)) {
+      result.add(schemaFilter);
+    }
+    // if binary filter, check left and right
+    if (schemaFilter.getSchemaFilterType().equals(SchemaFilterType.AND)) {
+      AndFilter andFilter = (AndFilter) schemaFilter;
+      internalExtract(result, andFilter.getLeft(), filterType);
+      internalExtract(result, andFilter.getRight(), filterType);
     }
   }
 

@@ -34,6 +34,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -67,25 +68,6 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
   private ListenableFuture<?> isBlocked;
   private TsBlock next;
   private boolean isFinished;
-
-  protected SchemaQueryScanOperator(
-      PlanNodeId sourceId,
-      OperatorContext operatorContext,
-      int limit,
-      int offset,
-      PartialPath partialPath,
-      boolean isPrefixPath,
-      List<TSDataType> outputDataTypes) {
-    this.operatorContext = operatorContext;
-    this.limit = limit;
-    this.offset = offset;
-    this.partialPath = partialPath;
-    this.isPrefixPath = isPrefixPath;
-    this.sourceId = sourceId;
-    this.outputDataTypes = outputDataTypes;
-    this.schemaSource = null;
-    this.tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
-  }
 
   public SchemaQueryScanOperator(
       PlanNodeId sourceId, OperatorContext operatorContext, ISchemaSource<T> schemaSource) {
@@ -157,13 +139,15 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
       try {
         ListenableFuture<?> readerBlocked = schemaReader.isBlocked();
         if (!readerBlocked.isDone()) {
+          SettableFuture<?> settableFuture = SettableFuture.create();
           readerBlocked.addListener(
               () -> {
                 next = tsBlockBuilder.build();
                 tsBlockBuilder.reset();
+                settableFuture.set(null);
               },
               directExecutor());
-          return readerBlocked;
+          return settableFuture;
         } else if (schemaReader.hasNext()) {
           T element = schemaReader.next();
           setColumns(element, tsBlockBuilder);

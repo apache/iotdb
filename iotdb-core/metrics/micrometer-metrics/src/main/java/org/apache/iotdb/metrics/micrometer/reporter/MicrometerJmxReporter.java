@@ -41,13 +41,13 @@ public class MicrometerJmxReporter implements JmxReporter {
     try {
       Set<MeterRegistry> meterRegistrySet =
           Metrics.globalRegistry.getRegistries().stream()
-              .filter(reporter -> reporter instanceof JmxMeterRegistry)
+              .filter(JmxMeterRegistry.class::isInstance)
               .collect(Collectors.toSet());
-      if (meterRegistrySet.size() != 0) {
+      if (!meterRegistrySet.isEmpty()) {
         LOGGER.warn("Micrometer JmxReporter already start!");
         return false;
       }
-      Metrics.addRegistry(new JmxMeterRegistry(JmxConfig.DEFAULT, Clock.SYSTEM));
+      Metrics.addRegistry(new JmxMeterRegistry(MicrometerJmxConfig.DEFAULT, Clock.SYSTEM));
     } catch (Exception e) {
       LOGGER.warn("Micrometer JmxReporter failed to start, because ", e);
       return false;
@@ -61,7 +61,7 @@ public class MicrometerJmxReporter implements JmxReporter {
     try {
       Set<MeterRegistry> meterRegistrySet =
           Metrics.globalRegistry.getRegistries().stream()
-              .filter(reporter -> reporter instanceof JmxMeterRegistry)
+              .filter(JmxMeterRegistry.class::isInstance)
               .collect(Collectors.toSet());
       for (MeterRegistry meterRegistry : meterRegistrySet) {
         if (!meterRegistry.isClosed()) {

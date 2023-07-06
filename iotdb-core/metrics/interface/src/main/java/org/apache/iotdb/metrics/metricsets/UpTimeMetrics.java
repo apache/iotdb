@@ -34,7 +34,7 @@ public class UpTimeMetrics implements IMetricSet {
         "up_time",
         MetricLevel.CORE,
         metricConfig,
-        (config) -> System.nanoTime() - config.getUpTimeInNs());
+        config -> System.nanoTime() - config.getUpTimeInNs());
   }
 
   @Override

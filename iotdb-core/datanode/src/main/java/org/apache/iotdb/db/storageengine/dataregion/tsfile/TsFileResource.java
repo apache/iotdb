@@ -27,7 +27,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
-import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
@@ -38,7 +37,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeInd
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
-import org.apache.iotdb.db.storageengine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
@@ -116,14 +114,6 @@ public class TsFileResource {
   private boolean isSeq;
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
-
-  /** generated upgraded TsFile ResourceList used for upgrading v0.11.x/v2 -> 0.12/v3 */
-  private List<TsFileResource> upgradedResources;
-
-  /**
-   * load upgraded TsFile Resources to database processor used for upgrading v0.11.x/v2 -> 0.12/v3
-   */
-  private DataRegion.UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack;
 
   private DataRegion.SettleTsFileCallBack settleTsFileCallBack;
 
@@ -591,10 +581,6 @@ public class TsFileResource {
     return tsFileLock.tryReadLock();
   }
 
-  public void doUpgrade() {
-    UpgradeSevice.getINSTANCE().submitUpgradeTask(new UpgradeTask(this));
-  }
-
   public void removeModFile() throws IOException {
     getModFile().remove();
     modFile = null;
@@ -858,23 +844,6 @@ public class TsFileResource {
 
   public void setTimeSeriesMetadata(PartialPath path, ITimeSeriesMetadata timeSeriesMetadata) {
     this.pathToTimeSeriesMetadataMap.put(path, timeSeriesMetadata);
-  }
-
-  public void setUpgradedResources(List<TsFileResource> upgradedResources) {
-    this.upgradedResources = upgradedResources;
-  }
-
-  public List<TsFileResource> getUpgradedResources() {
-    return upgradedResources;
-  }
-
-  public void setUpgradeTsFileResourceCallBack(
-      DataRegion.UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack) {
-    this.upgradeTsFileResourceCallBack = upgradeTsFileResourceCallBack;
-  }
-
-  public DataRegion.UpgradeTsFileResourceCallBack getUpgradeTsFileResourceCallBack() {
-    return upgradeTsFileResourceCallBack;
   }
 
   public DataRegion.SettleTsFileCallBack getSettleTsFileCallBack() {

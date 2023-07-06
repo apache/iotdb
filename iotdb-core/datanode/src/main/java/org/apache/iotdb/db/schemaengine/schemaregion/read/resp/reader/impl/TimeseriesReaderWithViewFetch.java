@@ -16,11 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
+import org.apache.iotdb.commons.schema.tree.SchemaIterator;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.queryengine.common.NodeRef;
@@ -30,9 +33,9 @@ import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.CompleteMeasurementSchemaVisitor;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.Traverser;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
+import org.apache.iotdb.db.schemaengine.schemaregion.utils.filter.FilterContainsVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.filter.TimeseriesFilterVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.GetSourcePathsVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.TransformToExpressionVisitor;
@@ -53,11 +56,16 @@ import java.util.Queue;
 
 public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesSchemaInfo> {
   private static final Logger LOGGER = LoggerFactory.getLogger(TimeseriesReaderWithViewFetch.class);
-  private final Traverser<ITimeSeriesSchemaInfo, ?> traverser;
+  private final SchemaIterator<ITimeSeriesSchemaInfo> iterator;
   private final Queue<ITimeSeriesSchemaInfo> cachedViewList = new ArrayDeque<>();
   private ITimeSeriesSchemaInfo next = null;
   private boolean consumeView = false;
   private final SchemaFilter schemaFilter;
+  /**
+   * There is no need to pull the original sequence information from the view if needFetch is false.
+   * The default is false if not filtered by DataType.
+   */
+  private final boolean needFetch;
 
   /**
    * If isBlocked is null, it means the next is not fetched yet. If isBlocked.isDone() is false, it
@@ -70,28 +78,40 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
   private static final TimeseriesFilterVisitor FILTER_VISITOR = new TimeseriesFilterVisitor();
 
   public TimeseriesReaderWithViewFetch(
-      Traverser<ITimeSeriesSchemaInfo, ?> traverser, SchemaFilter schemaFilter) {
-    this.traverser = traverser;
+      SchemaIterator<ITimeSeriesSchemaInfo> iterator, SchemaFilter schemaFilter) {
+    this.iterator = iterator;
     this.schemaFilter = schemaFilter;
+    this.needFetch = new FilterContainsVisitor().process(schemaFilter, SchemaFilterType.DATA_TYPE);
+  }
+
+  public TimeseriesReaderWithViewFetch(
+      SchemaIterator<ITimeSeriesSchemaInfo> iterator,
+      SchemaFilter schemaFilter,
+      boolean needViewDetail) {
+    this.iterator = iterator;
+    this.schemaFilter = schemaFilter;
+    this.needFetch =
+        needViewDetail
+            || new FilterContainsVisitor().process(schemaFilter, SchemaFilterType.DATA_TYPE);
   }
 
   @Override
   public boolean isSuccess() {
-    return traverser.isSuccess();
+    return iterator.isSuccess();
   }
 
   @Override
   public Throwable getFailure() {
-    return traverser.getFailure();
+    return iterator.getFailure();
   }
 
   @Override
   public void close() {
-    traverser.close();
+    iterator.close();
   }
 
   /**
-   * Fetch ITimeSeriesSchemaInfo from the traverser and return only in the following three cases
+   * Fetch ITimeSeriesSchemaInfo from the iterator and return only in the following three cases
    *
    * <ol>
    *   <li>successfully fetched an info of normal time series. consumeView is false and next is not
@@ -111,11 +131,11 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
       // consume view list
       res = NOT_BLOCKED_TRUE;
     } else if (next == null) {
-      // get next from traverser
+      // get next from iterator
       ITimeSeriesSchemaInfo temp;
-      while (traverser.hasNext()) {
-        temp = traverser.next();
-        if (temp.isLogicalView()) {
+      while (iterator.hasNext()) {
+        temp = iterator.next();
+        if (needFetch && temp.isLogicalView()) {
           // view timeseries
           cachedViewList.add(temp.snapshot());
           if (cachedViewList.size() >= BATCH_CACHED_SIZE) {
@@ -142,6 +162,7 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
     return res;
   }
 
+  @SuppressWarnings("java:S2142")
   @Override
   public boolean hasNext() {
     try {
@@ -179,8 +200,8 @@ public class TimeseriesReaderWithViewFetch implements ISchemaReader<ITimeSeriesS
             return true;
           } else {
             // all cache view is no satisfied
-            while (traverser.hasNext()) {
-              ITimeSeriesSchemaInfo temp = traverser.next();
+            while (iterator.hasNext()) {
+              ITimeSeriesSchemaInfo temp = iterator.next();
               if (temp.isLogicalView()) {
                 cachedViewList.add(temp.snapshot());
                 if (cachedViewList.size() >= BATCH_CACHED_SIZE) {

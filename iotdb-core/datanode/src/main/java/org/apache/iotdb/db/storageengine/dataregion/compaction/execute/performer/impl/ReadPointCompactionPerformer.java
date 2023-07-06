@@ -64,11 +64,13 @@ import java.util.stream.Collectors;
 
 public class ReadPointCompactionPerformer
     implements ICrossCompactionPerformer, IUnseqCompactionPerformer {
-  private final Logger LOGGER = LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
+  @SuppressWarnings("squid:S1068")
+  private final Logger logger = LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
+
   private List<TsFileResource> seqFiles = Collections.emptyList();
   private List<TsFileResource> unseqFiles = Collections.emptyList();
 
-  private static final int subTaskNum =
+  private static final int SUB_TASK_NUM =
       IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
 
   private CompactionTaskSummary summary;
@@ -92,6 +94,7 @@ public class ReadPointCompactionPerformer
 
   public ReadPointCompactionPerformer() {}
 
+  @SuppressWarnings("squid:S2095") // Do not close device iterator
   @Override
   public void perform() throws Exception {
     long queryId = QueryResourceManager.getInstance().assignCompactionQueryId();
@@ -192,7 +195,7 @@ public class ReadPointCompactionPerformer
     Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice();
     List<String> allMeasurements = new ArrayList<>(schemaMap.keySet());
     allMeasurements.sort((String::compareTo));
-    int subTaskNums = Math.min(allMeasurements.size(), subTaskNum);
+    int subTaskNums = Math.min(allMeasurements.size(), SUB_TASK_NUM);
     // construct sub tasks and start compacting measurements in parallel
     if (subTaskNums > 0) {
       // assign the measurements for each subtask
@@ -230,8 +233,11 @@ public class ReadPointCompactionPerformer
   }
 
   /**
+   * Construct series data block reader.
+   *
    * @param measurementIds if device is aligned, then measurementIds contain all measurements. If
    *     device is not aligned, then measurementIds only contain one measurement.
+   * @throws IllegalPathException if the path is illegal
    */
   public static IDataBlockReader constructReader(
       String deviceId,
@@ -252,6 +258,7 @@ public class ReadPointCompactionPerformer
         seriesPath, new HashSet<>(allSensors), fragmentInstanceContext, queryDataSource, true);
   }
 
+  @SuppressWarnings("squid:S1172")
   public static void writeWithReader(
       AbstractCompactionWriter writer,
       IDataBlockReader reader,

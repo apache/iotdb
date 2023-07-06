@@ -240,9 +240,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
 
-  private final IPartitionFetcher PARTITION_FETCHER;
+  private final IPartitionFetcher partitionFetcher;
 
-  private final ISchemaFetcher SCHEMA_FETCHER;
+  private final ISchemaFetcher schemaFetcher;
 
   private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
   private final StorageEngine storageEngine = StorageEngine.getInstance();
@@ -257,8 +257,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   public DataNodeInternalRPCServiceImpl() {
     super();
-    PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
-    SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
+    partitionFetcher = ClusterPartitionFetcher.getInstance();
+    schemaFetcher = ClusterSchemaFetcher.getInstance();
   }
 
   @Override
@@ -503,8 +503,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus invalidateMatchedSchemaCache(TInvalidateMatchedSchemaCacheReq req)
-      throws TException {
+  public TSStatus invalidateMatchedSchemaCache(TInvalidateMatchedSchemaCacheReq req) {
     DataNodeSchemaCache cache = DataNodeSchemaCache.getInstance();
     cache.takeWriteLock();
     try {
@@ -517,8 +516,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TFetchSchemaBlackListResp fetchSchemaBlackList(TFetchSchemaBlackListReq req)
-      throws TException {
+  public TFetchSchemaBlackListResp fetchSchemaBlackList(TFetchSchemaBlackListReq req) {
     PathPatternTree patternTree = PathPatternTree.deserialize(req.pathPatternTree);
     TFetchSchemaBlackListResp resp = new TFetchSchemaBlackListResp();
     PathPatternTree result = new PathPatternTree();
@@ -548,7 +546,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     try {
       result.serialize(dataOutputStream);
     } catch (IOException ignored) {
-      // won't reach here
+      // Won't reach here
     }
     resp.setPathPatternTree(outputStream.toByteArray());
     return resp;
@@ -636,7 +634,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           try {
             result.put(new PartialPath(k), v);
           } catch (IllegalPathException ignored) {
-            // won't reach here
+            // Won't reach here
           }
         });
     return result;
@@ -645,15 +643,17 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   private Map<PartialPath, List<Integer>> filterTemplateSetInfo(
       Map<PartialPath, List<Integer>> templateSetInfo, TConsensusGroupId consensusGroupId) {
 
-    PartialPath storageGroupPath = getStorageGroupPath(consensusGroupId);
-    PartialPath storageGroupPattern = storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD);
     Map<PartialPath, List<Integer>> result = new HashMap<>();
-    templateSetInfo.forEach(
-        (k, v) -> {
-          if (storageGroupPattern.overlapWith(k) || storageGroupPath.overlapWith(k)) {
-            result.put(k, v);
-          }
-        });
+    PartialPath storageGroupPath = getStorageGroupPath(consensusGroupId);
+    if (null != storageGroupPath) {
+      PartialPath storageGroupPattern = storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD);
+      templateSetInfo.forEach(
+          (k, v) -> {
+            if (storageGroupPattern.overlapWith(k) || storageGroupPath.overlapWith(k)) {
+              result.put(k, v);
+            }
+          });
+    }
     return result;
   }
 
@@ -666,14 +666,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
                   .getDatabaseFullPath());
     } catch (IllegalPathException ignored) {
-      // won't reach here
+      // Won't reach here
     }
     return storageGroupPath;
   }
 
   @Override
-  public TSStatus rollbackSchemaBlackListWithTemplate(TRollbackSchemaBlackListWithTemplateReq req)
-      throws TException {
+  public TSStatus rollbackSchemaBlackListWithTemplate(TRollbackSchemaBlackListWithTemplateReq req) {
     Map<PartialPath, List<Integer>> templateSetInfo =
         transformTemplateSetInfo(req.getTemplateSetInfo());
     return executeInternalSchemaTask(
@@ -776,7 +775,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 }
                 for (PartialPath pattern : filteredPatternTree.getAllPathPatterns()) {
                   ISchemaSource<ITimeSeriesSchemaInfo> schemaSource =
-                      SchemaSourceFactory.getTimeSeriesSchemaSource(pattern);
+                      SchemaSourceFactory.getTimeSeriesSchemaCountSource(
+                          pattern, false, null, null);
                   try (ISchemaReader<ITimeSeriesSchemaInfo> schemaReader =
                       schemaSource.getSchemaReader(schemaRegion)) {
                     if (schemaReader.hasNext()) {
@@ -817,8 +817,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus constructViewSchemaBlackList(TConstructViewSchemaBlackListReq req)
-      throws TException {
+  public TSStatus constructViewSchemaBlackList(TConstructViewSchemaBlackListReq req) {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     AtomicInteger preDeletedNum = new AtomicInteger(0);
@@ -853,8 +852,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus rollbackViewSchemaBlackList(TRollbackViewSchemaBlackListReq req)
-      throws TException {
+  public TSStatus rollbackViewSchemaBlackList(TRollbackViewSchemaBlackListReq req) {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     return executeInternalSchemaTask(
@@ -902,7 +900,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus alterView(TAlterViewReq req) throws TException {
+  public TSStatus alterView(TAlterViewReq req) {
     List<TConsensusGroupId> consensusGroupIdList = req.getSchemaRegionIdList();
     List<ByteBuffer> viewBinaryList = req.getViewBinaryList();
     Map<TConsensusGroupId, Map<PartialPath, ViewExpression>> schemaRegionRequestMap =
@@ -1025,8 +1023,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               queryId,
               SESSION_MANAGER.getSessionInfo(session),
               executedSQL,
-              PARTITION_FETCHER,
-              SCHEMA_FETCHER,
+              partitionFetcher,
+              schemaFetcher,
               req.getTimeout());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -1074,8 +1072,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               queryId,
               SESSION_MANAGER.getSessionInfo(session),
               "",
-              PARTITION_FETCHER,
-              SCHEMA_FETCHER);
+              partitionFetcher,
+              schemaFetcher);
       return result.status;
     } catch (Exception e) {
       return ErrorHandlingUtils.onQueryException(e, OperationType.DELETE_TIMESERIES);
@@ -1187,22 +1185,20 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       DataRegionConsensusImpl.getInstance()
           .getAllConsensusGroupIds()
           .forEach(
-              groupId -> {
-                result.put(
-                    groupId.convertToTConsensusGroupId(),
-                    DataRegionConsensusImpl.getInstance().isLeader(groupId));
-              });
+              groupId ->
+                  result.put(
+                      groupId.convertToTConsensusGroupId(),
+                      DataRegionConsensusImpl.getInstance().isLeader(groupId)));
     }
 
     if (SchemaRegionConsensusImpl.getInstance() != null) {
       SchemaRegionConsensusImpl.getInstance()
           .getAllConsensusGroupIds()
           .forEach(
-              groupId -> {
-                result.put(
-                    groupId.convertToTConsensusGroupId(),
-                    SchemaRegionConsensusImpl.getInstance().isLeader(groupId));
-              });
+              groupId ->
+                  result.put(
+                      groupId.convertToTConsensusGroupId(),
+                      SchemaRegionConsensusImpl.getInstance().isLeader(groupId)));
     }
     return result;
   }
@@ -1783,6 +1779,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return status;
   }
 
+  @SuppressWarnings("squid:S2142") // ignore Either re-interrupt this method or rethrow
   @Override
   public TSStatus stopDataNode() {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -1814,5 +1811,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return status;
   }
 
-  public void handleClientExit() {}
+  public void handleClientExit() {
+    // do nothing
+  }
 }

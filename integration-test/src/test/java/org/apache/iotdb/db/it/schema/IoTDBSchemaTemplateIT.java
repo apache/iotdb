@@ -771,4 +771,84 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       Assert.assertTrue(expectedResult.isEmpty());
     }
   }
+
+  @Test
+  public void testLevelCountWithTemplate() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d1");
+      statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg1.d2");
+      statement.execute("SET SCHEMA TEMPLATE t3 TO root.sg1.d3");
+      // create timeseries of schema template
+      statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.d1");
+      statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.d2");
+      statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.d3");
+      // count
+      Set<String> expectedResult =
+          new HashSet<>(Arrays.asList("root.sg1.d1,2", "root.sg1.d2,2", "root.sg1.d3,1"));
+      try (ResultSet resultSet =
+          statement.executeQuery("COUNT TIMESERIES root.sg1.** group by level=2")) {
+        while (resultSet.next()) {
+          String actualResult =
+              resultSet.getString(ColumnHeaderConstant.COLUMN)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.COUNT_TIMESERIES);
+          Assert.assertTrue(expectedResult.contains(actualResult));
+          expectedResult.remove(actualResult);
+        }
+      }
+      Assert.assertTrue(expectedResult.isEmpty());
+    }
+  }
+
+  @Test
+  public void testAlterTemplateTimeseries() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d1;");
+      statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.d1;");
+      try {
+        statement.execute(
+            "ALTER timeseries root.sg1.d1.s1 UPSERT tags(s0_tag1=s0_tag1, s0_tag2=s0_tag2) attributes(s0_attr1=s0_attr1, s0_attr2=s0_attr2);");
+        Assert.fail("expect exception because the template timeseries does not support tag");
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage()
+                .contains(
+                    "Cannot alter template timeseries [root.sg1.d1.s1] since schema template [t1] already set on path [root.sg1.d1]"));
+      }
+      try {
+        statement.execute("ALTER timeseries root.sg1.d1.s1 UPSERT ALIAS=s0Alias;");
+        Assert.fail("expect exception because the template timeseries does not support alias");
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage()
+                .contains(
+                    "Cannot alter template timeseries [root.sg1.d1.s1] since schema template [t1] already set on path [root.sg1.d1]"));
+      }
+    }
+  }
+
+  @Test
+  public void testActivateAndDropEmptyTemplate() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE SCHEMA TEMPLATE e_t;");
+      statement.execute("SET SCHEMA TEMPLATE e_t TO root.sg1.t.d1;");
+      statement.execute("insert into root.sg1.t.d2(timestamp,s1) values(now(),false);");
+      statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.t.d1;");
+      try (ResultSet resultSet = statement.executeQuery("show nodes in schema template e_t")) {
+        Assert.assertFalse(resultSet.next());
+      }
+      try (ResultSet resultSet = statement.executeQuery("show paths set schema template e_t")) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertFalse(resultSet.next());
+      }
+      statement.execute("DEACTIVATE SCHEMA TEMPLATE FROM root.sg1.t.d1;");
+      statement.execute("UNSET SCHEMA TEMPLATE e_t FROM root.sg1.t.d1;");
+      try (ResultSet resultSet = statement.executeQuery("show paths set schema template e_t")) {
+        Assert.assertFalse(resultSet.next());
+      }
+    }
+  }
 }

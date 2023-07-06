@@ -16,12 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionTargetFileCountExceededException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ISeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
@@ -96,7 +98,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   @Override
   public void setTargetFiles(List<TsFileResource> targetFiles) {
     if (targetFiles.size() != 1) {
-      throw new RuntimeException(
+      throw new CompactionTargetFileCountExceededException(
           String.format(
               "Current performer only supports for one target file while getting %d target files",
               targetFiles.size()));
@@ -149,6 +151,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     return false;
   }
 
+  @SuppressWarnings("squid:S1135")
   private void compactNotAlignedSeries(
       String device,
       TsFileResource targetResource,

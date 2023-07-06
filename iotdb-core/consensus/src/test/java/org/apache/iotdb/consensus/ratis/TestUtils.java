@@ -16,8 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.consensus.ratis;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -132,7 +134,7 @@ public class TestUtils {
     }
 
     @Override
-    public DataSet read(IConsensusRequest IConsensusRequest) {
+    public DataSet read(IConsensusRequest request) {
       TestDataSet dataSet = new TestDataSet();
       dataSet.setNumber(integer.get());
       return dataSet;
@@ -254,6 +256,7 @@ public class TestUtils {
                             .setThisNode(peers.get(i).getEndpoint())
                             .setRatisConfig(config)
                             .setStorageDir(this.peerStorage.get(i).getAbsolutePath())
+                            .setConsensusGroupType(TConsensusGroupType.DataRegion)
                             .build(),
                         groupId -> stateMachines.get(fi))
                     .orElseThrow(

@@ -71,11 +71,11 @@ public class DeactivateTemplateProcedure
   private String queryId;
   private Map<PartialPath, List<Template>> templateSetInfo;
 
-  private transient String requestMessage;
+  private String requestMessage; // transient
   // generate from templateSetInfo by concat pattern and measurement in template
-  private transient PathPatternTree timeSeriesPatternTree;
-  private transient ByteBuffer timeSeriesPatternTreeBytes;
-  private transient Map<String, List<Integer>> dataNodeRequest;
+  private PathPatternTree timeSeriesPatternTree; // transient
+  private ByteBuffer timeSeriesPatternTreeBytes; // transient
+  private Map<String, List<Integer>> dataNodeRequest; // transient
 
   public DeactivateTemplateProcedure() {
     super();
@@ -188,21 +188,26 @@ public class DeactivateTemplateProcedure
   }
 
   private void invalidateCache(ConfigNodeProcedureEnv env) {
-    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    AsyncClientHandler<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(
-            DataNodeRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
-            new TInvalidateMatchedSchemaCacheReq(timeSeriesPatternTreeBytes),
-            dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
-    Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
-    for (TSStatus status : statusMap.values()) {
-      // all dataNodes must clear the related schema cache
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error("Failed to invalidate schema cache of template timeseries {}", requestMessage);
-        setFailure(new ProcedureException(new MetadataException("Invalidate schema cache failed")));
-        return;
+    // if no target timeseres, return directly
+    if (!timeSeriesPatternTree.isEmpty()) {
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+          env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
+      AsyncClientHandler<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
+          new AsyncClientHandler<>(
+              DataNodeRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
+              new TInvalidateMatchedSchemaCacheReq(timeSeriesPatternTreeBytes),
+              dataNodeLocationMap);
+      AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+      Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
+      for (TSStatus status : statusMap.values()) {
+        // all dataNodes must clear the related schema cache
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          LOGGER.error(
+              "Failed to invalidate schema cache of template timeseries {}", requestMessage);
+          setFailure(
+              new ProcedureException(new MetadataException("Invalidate schema cache failed")));
+          return;
+        }
       }
     }
 
@@ -210,27 +215,23 @@ public class DeactivateTemplateProcedure
   }
 
   private void deleteData(ConfigNodeProcedureEnv env) {
-
     Map<TConsensusGroupId, TRegionReplicaSet> relatedDataRegionGroup =
         env.getConfigManager().getRelatedDataRegionGroup(timeSeriesPatternTree);
 
-    // target timeseries has no data
-    if (relatedDataRegionGroup.isEmpty()) {
-      setNextState(DeactivateTemplateState.DEACTIVATE_TEMPLATE);
-      return;
+    // target timeseries has no data or no target timeseres, return directly
+    if (!relatedDataRegionGroup.isEmpty() && !timeSeriesPatternTree.isEmpty()) {
+      DeactivateTemplateRegionTaskExecutor<TDeleteDataForDeleteSchemaReq> deleteDataTask =
+          new DeactivateTemplateRegionTaskExecutor<>(
+              "delete data",
+              env,
+              relatedDataRegionGroup,
+              true,
+              DataNodeRequestType.DELETE_DATA_FOR_DELETE_SCHEMA,
+              ((dataNodeLocation, consensusGroupIdList) ->
+                  new TDeleteDataForDeleteSchemaReq(
+                      new ArrayList<>(consensusGroupIdList), timeSeriesPatternTreeBytes)));
+      deleteDataTask.execute();
     }
-
-    DeactivateTemplateRegionTaskExecutor<TDeleteDataForDeleteSchemaReq> deleteDataTask =
-        new DeactivateTemplateRegionTaskExecutor<>(
-            "delete data",
-            env,
-            relatedDataRegionGroup,
-            true,
-            DataNodeRequestType.DELETE_DATA_FOR_DELETE_SCHEMA,
-            ((dataNodeLocation, consensusGroupIdList) ->
-                new TDeleteDataForDeleteSchemaReq(
-                    new ArrayList<>(consensusGroupIdList), timeSeriesPatternTreeBytes)));
-    deleteDataTask.execute();
     setNextState(DeactivateTemplateState.DEACTIVATE_TEMPLATE);
   }
 

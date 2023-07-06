@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.consensus.response.function;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.udf.UDFInformation;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.consensus.common.DataSet;
 
@@ -31,7 +32,7 @@ import java.util.List;
 
 public class FunctionTableResp implements DataSet {
 
-  private TSStatus status;
+  private final TSStatus status;
 
   private final List<UDFInformation> allUdfInformation;
 
@@ -40,12 +41,14 @@ public class FunctionTableResp implements DataSet {
     this.allUdfInformation = allUdfInformation;
   }
 
+  @TestOnly
   public TSStatus getStatus() {
     return status;
   }
 
-  public void setStatus(TSStatus status) {
-    this.status = status;
+  @TestOnly
+  public List<UDFInformation> getAllUdfInformation() {
+    return allUdfInformation;
   }
 
   public TGetUDFTableResp convertToThriftResponse() throws IOException {

@@ -31,13 +31,13 @@ import java.util.Vector;
 
 public class LongSprintzEncoder extends SprintzEncoder {
 
-  /** bit packer */
+  // bit packer
   LongPacker packer;
 
-  /** Long Fire predictor * */
+  // Long Fire predictor
   LongFire firePred;
 
-  /** we save all value in a list and calculate its bitwidth. */
+  // we save all value in a list and calculate its bitwidth.
   protected Vector<Long> values;
 
   public LongSprintzEncoder() {
@@ -59,33 +59,38 @@ public class LongSprintzEncoder extends SprintzEncoder {
 
   @Override
   public long getMaxByteSize() {
-    return 1 + (1 + values.size()) * Long.BYTES;
+    return 1 + (1L + values.size()) * Long.BYTES;
   }
 
   protected Long predict(Long value, Long preVlaue) throws TsFileEncodingException {
     Long pred;
-    if (PredictMethod.equals("delta")) {
+    if (predictMethod.equals("delta")) {
       pred = delta(value, preVlaue);
-    } else if (PredictMethod.equals("fire")) {
+    } else if (predictMethod.equals("fire")) {
       pred = fire(value, preVlaue);
     } else {
       throw new TsFileEncodingException(
           "Config: Predict Method {} of SprintzEncoder is not supported.");
     }
-    if (pred <= 0) pred = -2 * pred;
-    else pred = 2 * pred - 1; // TODO:overflow
+    if (pred <= 0) {
+      pred = -2 * pred;
+    } else {
+      pred = 2 * pred - 1; // TODO:overflow
+    }
     return pred;
   }
 
   @Override
   protected void bitPack() throws IOException {
-    long preValue = values.get(0);
+    final long preValue = values.get(0);
     values.remove(0);
     this.bitWidth = ReadWriteForEncodingUtils.getLongMaxBitWidth(values);
     packer = new LongPacker(this.bitWidth);
     byte[] bytes = new byte[bitWidth];
     long[] tmpBuffer = new long[Block_size];
-    for (int i = 0; i < Block_size; i++) tmpBuffer[i] = values.get(i);
+    for (int i = 0; i < Block_size; i++) {
+      tmpBuffer[i] = values.get(i);
+    }
     packer.pack8Values(tmpBuffer, 0, bytes);
     ReadWriteForEncodingUtils.writeIntLittleEndianPaddedOnBitWidth(bitWidth, byteCache, 1);
     byteCache.write(ByteBuffer.allocate(8).putLong(preValue).array());

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -71,7 +72,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     isDeviceExistedInTargetFiles = new boolean[targetResources.size()];
     long memorySizeForEachWriter =
         (long)
-            (SystemInfo.getInstance().getMemorySizeForCompaction()
+            ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
                 / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
                 * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion()
                 / targetResources.size());
@@ -181,6 +182,8 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
    * selecting the source files: (1) unseq files may have some devices or measurements which are not
    * exist in seq files. (2) timestamp of one timeseries in unseq files may later than any seq
    * files. Then write these data into the last target file.
+   *
+   * @throws IOException if io errors occurred
    */
   protected void checkTimeAndMayFlushChunkToCurrentFile(long timestamp, int subTaskId)
       throws IOException {

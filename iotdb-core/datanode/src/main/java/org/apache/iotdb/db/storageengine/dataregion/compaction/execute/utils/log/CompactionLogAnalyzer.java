@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -51,7 +52,11 @@ public class CompactionLogAnalyzer {
     this.logFile = logFile;
   }
 
-  /** @return analyze (source files, target files, deleted target files) */
+  /**
+   * analyze (source files, target files, deleted target files).
+   *
+   * @throws IOException if io errors occurred
+   */
   public void analyze() throws IOException {
     String currLine;
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(logFile))) {
@@ -72,7 +77,11 @@ public class CompactionLogAnalyzer {
     }
   }
 
-  /** Analyze inner space compaction log of previous version (<0.13). */
+  /**
+   * Analyze inner space compaction log of previous version (<0.13).
+   *
+   * @throws IOException if io errors occurred
+   */
   public void analyzeOldInnerCompactionLog() throws IOException {
     isLogFromOld = true;
     String currLine;
@@ -105,7 +114,12 @@ public class CompactionLogAnalyzer {
     }
   }
 
-  /** Analyze cross space compaction log of previous version (<0.13). */
+  /**
+   * Analyze cross space compaction log of previous version (<0.13).
+   *
+   * @throws IOException if io errors occurred
+   */
+  @SuppressWarnings("squid:S135")
   public void analyzeOldCrossCompactionLog() throws IOException {
     isLogFromOld = true;
     String currLine;
