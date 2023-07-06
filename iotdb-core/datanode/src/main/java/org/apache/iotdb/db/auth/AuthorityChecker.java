@@ -134,8 +134,8 @@ public class AuthorityChecker {
   /**
    * Check whether specific user has the authorization to given plan.
    *
-   * @return true if the authority permission has passed
    * @throws AuthException if encountered authentification failure
+   * @return true if the authority permission has passed
    */
   public static boolean checkAuthorization(Statement statement, String username)
       throws AuthException {

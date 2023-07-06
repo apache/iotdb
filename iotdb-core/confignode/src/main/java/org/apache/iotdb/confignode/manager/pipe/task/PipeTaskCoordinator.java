@@ -72,9 +72,7 @@ public class PipeTaskCoordinator {
     boolean hasException;
     try {
       hasException = pipeTaskInfo.hasExceptions(pipeName);
-    } catch (Exception e) {
-      // Set exception flag to true if failed
-      hasException = true;
+    } finally {
       unlock();
     }
     TSStatus status = configManager.getProcedureManager().startPipe(pipeName);
