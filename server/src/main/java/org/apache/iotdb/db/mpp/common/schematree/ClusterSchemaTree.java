@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaEntityNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaInternalNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
@@ -40,7 +41,6 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.rmi.UnexpectedException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -214,16 +214,22 @@ public class ClusterSchemaTree implements ISchemaTree {
       PartialPath fullPath = logicalViewSchema.getSourcePathIfWritable();
       Pair<List<MeasurementPath>, Integer> searchResult = this.searchMeasurementPaths(fullPath);
       List<MeasurementPath> measurementPathList = searchResult.left;
-      if (measurementPathList.size() <= 0) {
-        throw new RuntimeException(
+      if (measurementPathList.isEmpty()) {
+        throw new SemanticException(
             new PathNotExistException(
-                String.format(
-                    "The source path of view [%s] does not exist.", fullPath.getFullPath())));
+                fullPath.getFullPath(),
+                schemaComputation
+                    .getDevicePath()
+                    .concatNode(logicalViewSchema.getMeasurementId())
+                    .getFullPath()));
       } else if (measurementPathList.size() > 1) {
-        throw new RuntimeException(
-            new UnexpectedException(
-                String.format(
-                    "The source paths of view [%s] are multiple.", fullPath.getFullPath())));
+        throw new SemanticException(
+            String.format(
+                "The source paths [%s] of view [%s] are multiple.",
+                fullPath.getFullPath(),
+                schemaComputation
+                    .getDevicePath()
+                    .concatNode(logicalViewSchema.getMeasurementId())));
       } else {
         Integer realIndex = schemaComputation.getIndexListOfLogicalViewPaths().get(index);
         MeasurementPath measurementPath = measurementPathList.get(0);
