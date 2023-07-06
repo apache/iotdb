@@ -33,7 +33,8 @@ jobs:
       matrix:
         java: [ 8, 11, 17 ]
     runs-on:
-      group: '(runnergroup 9)'
+      group: self-hosted
+      labels: iotdb
     steps:
       - uses: actions/checkout@v3
       - name: Set up JDK ${{ matrix.java }}
