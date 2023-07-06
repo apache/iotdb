@@ -338,7 +338,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
                     // Mark the status of the pipe with exception as stopped
                     runtimeMeta.getStatus().set(PipeStatus.STOPPED);
-                    
+
                     Map<Integer, PipeRuntimeException> exceptionMap =
                         runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
                     if (!exceptionMap.containsKey(dataNodeId)
