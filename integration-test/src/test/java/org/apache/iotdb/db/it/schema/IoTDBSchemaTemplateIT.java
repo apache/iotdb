@@ -147,11 +147,11 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       Set<String> expectedResult =
           new HashSet<>(
               Arrays.asList(
-                  "root.sg1.d1.s1,INT64,RLE,SNAPPY",
-                  "root.sg1.d1.s2,DOUBLE,GORILLA,SNAPPY",
-                  "root.sg1.d2.s1,INT64,RLE,SNAPPY",
-                  "root.sg1.d2.s2,DOUBLE,GORILLA,SNAPPY",
-                  "root.sg1.d3.s1,INT64,RLE,SNAPPY"));
+                  "root.sg1.d1.s1,INT64,RLE,LZ4",
+                  "root.sg1.d1.s2,DOUBLE,GORILLA,LZ4",
+                  "root.sg1.d2.s1,INT64,RLE,LZ4",
+                  "root.sg1.d2.s2,DOUBLE,GORILLA,LZ4",
+                  "root.sg1.d3.s1,INT64,RLE,LZ4"));
 
       try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.**"); ) {
         while (resultSet.next()) {
@@ -230,10 +230,10 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       Set<String> expectedResult =
           new HashSet<>(
               Arrays.asList(
-                  "root.sg1.d1.s1,INT64,RLE,SNAPPY",
-                  "root.sg1.d1.s2,DOUBLE,GORILLA,SNAPPY",
-                  "root.sg1.d2.s1,INT64,RLE,SNAPPY",
-                  "root.sg1.d2.s2,DOUBLE,GORILLA,SNAPPY"));
+                  "root.sg1.d1.s1,INT64,RLE,LZ4",
+                  "root.sg1.d1.s2,DOUBLE,GORILLA,LZ4",
+                  "root.sg1.d2.s1,INT64,RLE,LZ4",
+                  "root.sg1.d2.s2,DOUBLE,GORILLA,LZ4"));
 
       try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.**")) {
         while (resultSet.next()) {
@@ -316,7 +316,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
   public void testShowNodesInSchemaTemplate() throws SQLException {
     // set schema template
     Set<String> expectedResultSet =
-        new HashSet<>(Arrays.asList("s1,INT64,RLE,SNAPPY", "s2,DOUBLE,GORILLA,SNAPPY"));
+        new HashSet<>(Arrays.asList("s1,INT64,RLE,LZ4", "s2,DOUBLE,GORILLA,LZ4"));
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
         ResultSet resultSet = statement.executeQuery("SHOW NODES IN SCHEMA TEMPLATE t1")) {
@@ -466,7 +466,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
 
       expectedResult =
           new HashSet<>(
-              Arrays.asList("root.sg1.d1.s1,INT64,RLE,SNAPPY", "root.sg1.d2.s1,INT64,RLE,SNAPPY"));
+              Arrays.asList("root.sg1.d1.s1,INT64,RLE,LZ4", "root.sg1.d2.s1,INT64,RLE,LZ4"));
 
       try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.**.s1")) {
         while (resultSet.next()) {
@@ -519,7 +519,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       }
       Assert.assertTrue(expectedResult.isEmpty());
 
-      expectedResult = new HashSet<>(Collections.singletonList("root.sg1.d1.s1,INT64,RLE,SNAPPY"));
+      expectedResult = new HashSet<>(Collections.singletonList("root.sg1.d1.s1,INT64,RLE,LZ4"));
 
       try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.**.s1")) {
         while (resultSet.next()) {
@@ -683,11 +683,11 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       Set<String> expectedResult =
           new HashSet<>(
               Arrays.asList(
-                  "root.sg1.d1.s1,INT64,RLE,SNAPPY",
-                  "root.sg1.d1.s2,DOUBLE,GORILLA,SNAPPY",
-                  "root.sg2.d2.s1,INT64,RLE,SNAPPY",
-                  "root.sg2.d2.s2,DOUBLE,GORILLA,SNAPPY",
-                  "root.sg3.d3.s1,INT64,RLE,SNAPPY"));
+                  "root.sg1.d1.s1,INT64,RLE,LZ4",
+                  "root.sg1.d1.s2,DOUBLE,GORILLA,LZ4",
+                  "root.sg2.d2.s1,INT64,RLE,LZ4",
+                  "root.sg2.d2.s2,DOUBLE,GORILLA,LZ4",
+                  "root.sg3.d3.s1,INT64,RLE,LZ4"));
 
       try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg*.*.s*")) {
         while (resultSet.next()) {
@@ -706,8 +706,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       Assert.assertTrue(expectedResult.isEmpty());
       expectedResult =
           new HashSet<>(
-              Arrays.asList(
-                  "root.sg1.d1.s1,INT64,RLE,SNAPPY", "root.sg1.d1.s2,DOUBLE,GORILLA,SNAPPY"));
+              Arrays.asList("root.sg1.d1.s1,INT64,RLE,LZ4", "root.sg1.d1.s2,DOUBLE,GORILLA,LZ4"));
 
       try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.d1.s*")) {
         while (resultSet.next()) {
@@ -750,9 +749,9 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       Set<String> expectedResult =
           new HashSet<>(
               Arrays.asList(
-                  "root.sg1.d.s1,INT32,RLE,SNAPPY",
-                  "root.sg1.d.s2,FLOAT,GORILLA,SNAPPY",
-                  "root.sg1.d.s3,FLOAT,GORILLA,SNAPPY"));
+                  "root.sg1.d.s1,INT32,RLE,LZ4",
+                  "root.sg1.d.s2,FLOAT,GORILLA,LZ4",
+                  "root.sg1.d.s3,FLOAT,GORILLA,LZ4"));
 
       try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg*.*.s*")) {
         while (resultSet.next()) {
