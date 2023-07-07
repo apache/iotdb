@@ -40,6 +40,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -115,13 +116,21 @@ public abstract class AbstractOperatePipeProcedureV2
               String.format("Unknown state during executing operatePipeProcedure, %s", state));
       }
     } catch (Exception e) {
-      // Always retry
-      LOGGER.error("Retrievable error trying to {} at state [{}]", getOperation(), state, e);
       if (getCycles() > RETRY_THRESHOLD) {
         setFailure(
             new ProcedureException(
                 String.format("Fail to %s because %s", getOperation().name(), e.getMessage())));
       }
+      // Always retry
+      LOGGER.error(
+          "Retrievable error trying to {} at state [{}], retry [{}/{}]",
+          getOperation(),
+          state,
+          getCycles(),
+          RETRY_THRESHOLD,
+          e);
+      // Wait 3s for next retry
+      TimeUnit.MILLISECONDS.sleep(3000L);
     }
     return Flow.HAS_MORE_STATE;
   }
