@@ -94,10 +94,8 @@ public class AuthorInfoTest {
     Set<Integer> revokePrivilege = new HashSet<>();
     revokePrivilege.add(PrivilegeType.USER_PRIVILEGE.ordinal());
 
-    Map<String, List<String>> permissionInfo;
     List<String> privilege = new ArrayList<>();
-    privilege.add("root.** : CREATE_USER");
-    privilege.add("root.** : CREATE_USER");
+    privilege.add("root.** : USER_PRIVILEGE");
 
     List<PartialPath> paths = new ArrayList<>();
     paths.add(new PartialPath("root.ln"));
@@ -284,6 +282,7 @@ public class AuthorInfoTest {
     permissionInfoResp = authorInfo.executeListUserPrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    privilege.remove(0);
     Assert.assertEquals(
         privilege, permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_PRIVILEGE));
 
@@ -316,7 +315,6 @@ public class AuthorInfoTest {
     permissionInfoResp = authorInfo.executeListRolePrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    privilege.remove(0);
     Assert.assertEquals(
         0, permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_PRIVILEGE).size());
 

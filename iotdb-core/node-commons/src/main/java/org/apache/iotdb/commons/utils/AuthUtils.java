@@ -55,7 +55,7 @@ public class AuthUtils {
   private static final int MIN_ROLENAME_LENGTH = 4;
   private static final int MIN_LENGTH = 4;
   private static final int MAX_LENGTH = 32;
-  private static final String REX_PATTERN = "^[a-zA-Z][_0-9a-zA-Z]*$";
+  private static final String REX_PATTERN = "^[a-zA-Z]\\w*$";
 
   static {
     try {
@@ -138,6 +138,7 @@ public class AuthUtils {
   }
 
   public static void validateNameOrPassword(String str) throws AuthException {
+    // TODO @Spricoder
     int length = str.length();
     if (length < MIN_LENGTH) {
       throw new AuthException(
@@ -150,7 +151,8 @@ public class AuthUtils {
     } else if (str.matches(REX_PATTERN)) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PARAMETER,
-          "The name or password must start with a letter and can only contain letters, numbers, and underscores");
+          "The name or password must start with a letter and can only contain letters, numbers,"
+              + " and underscores");
     }
   }
 
