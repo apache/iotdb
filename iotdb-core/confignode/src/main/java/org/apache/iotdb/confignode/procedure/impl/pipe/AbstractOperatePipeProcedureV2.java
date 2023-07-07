@@ -116,9 +116,9 @@ public abstract class AbstractOperatePipeProcedureV2
               String.format("Unknown state during executing operatePipeProcedure, %s", state));
       }
     } catch (Exception e) {
+      // Retry before rollback
       if (getCycles() < RETRY_THRESHOLD) {
-        // Always retry
-        LOGGER.error(
+        LOGGER.warn(
             "Encountered error when trying to {} at state [{}], retry [{}/{}]",
             getOperation(),
             state,
@@ -128,7 +128,7 @@ public abstract class AbstractOperatePipeProcedureV2
         // Wait 3s for next retry
         TimeUnit.MILLISECONDS.sleep(3000L);
       } else {
-        LOGGER.error(
+        LOGGER.warn(
             "All {} retries failed when trying to {} at state [{}], will rollback...",
             RETRY_THRESHOLD,
             getOperation(),
