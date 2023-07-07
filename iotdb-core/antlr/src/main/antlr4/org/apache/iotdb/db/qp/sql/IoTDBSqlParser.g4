@@ -1101,9 +1101,9 @@ constant
     | (MINUS|PLUS|DIV)? realLiteral
     | (MINUS|PLUS|DIV)? INTEGER_LITERAL
     | STRING_LITERAL
-    | BOOLEAN_LITERAL
+    | boolean_literal
     | null_literal
-    | NAN_LITERAL
+    | nan_literal
     ;
 
 datetimeLiteral
@@ -1199,6 +1199,15 @@ operator_contains
     
 null_literal
     : NULL
+    ;
+
+nan_literal
+    : NAN
+    ;
+
+boolean_literal
+    : TRUE
+    | FALSE
     ;
 
 // Attribute Clause

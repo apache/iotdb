@@ -1699,7 +1699,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private Literal parseLiteral(ConstantContext constantContext) {
     String text = constantContext.getText();
-    if (constantContext.BOOLEAN_LITERAL() != null) {
+    if (constantContext.boolean_literal() != null) {
       return new BooleanLiteral(text);
     } else if (constantContext.STRING_LITERAL() != null) {
       return new StringLiteral(parseStringLiteral(text));
@@ -2924,7 +2924,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private String parseConstant(ConstantContext constantContext) {
     String text = constantContext.getText();
-    if (constantContext.BOOLEAN_LITERAL() != null
+    if (constantContext.boolean_literal() != null
         || constantContext.INTEGER_LITERAL() != null
         || constantContext.realLiteral() != null) {
       return text;
@@ -2939,7 +2939,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private Expression parseConstantOperand(ConstantContext constantContext) {
     String text = constantContext.getText();
-    if (constantContext.BOOLEAN_LITERAL() != null) {
+    if (constantContext.boolean_literal() != null) {
       return new ConstantOperand(TSDataType.BOOLEAN, text);
     } else if (constantContext.STRING_LITERAL() != null) {
       return new ConstantOperand(TSDataType.TEXT, parseStringLiteral(text));
