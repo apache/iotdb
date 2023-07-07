@@ -243,15 +243,15 @@ dropSchemaTemplate
 // Get Region Id
 getRegionId
     : SHOW (DATA|SCHEMA) REGIONID OF path=prefixPath WHERE (SERIESSLOTID operator_eq
-        seriesSlot=INTEGER_LITERAL|DEVICEID operator_eq deviceId=prefixPath) (OPERATOR_AND (TIMESLOTID operator_eq timeSlot=INTEGER_LITERAL|
+        seriesSlot=INTEGER_LITERAL|DEVICEID operator_eq deviceId=prefixPath) (operator_and (TIMESLOTID operator_eq timeSlot=INTEGER_LITERAL|
         TIMESTAMP operator_eq timeStamp=INTEGER_LITERAL))?
     ;
 
 // Get Time Slot List
 getTimeSlotList
     : SHOW TIMESLOTID OF path=prefixPath WHERE SERIESSLOTID operator_eq seriesSlot=INTEGER_LITERAL
-        (OPERATOR_AND STARTTIME operator_eq startTime=INTEGER_LITERAL)?
-        (OPERATOR_AND ENDTIME operator_eq endTime=INTEGER_LITERAL)?
+        (operator_and STARTTIME operator_eq startTime=INTEGER_LITERAL)?
+        (operator_and ENDTIME operator_eq endTime=INTEGER_LITERAL)?
     ;
 
 // Get Series Slot List
@@ -917,7 +917,7 @@ constant
     | (MINUS|PLUS)? INTEGER_LITERAL
     | STRING_LITERAL
     | BOOLEAN_LITERAL
-    | NULL_LITERAL
+    | null_literal
     | NAN_LITERAL
     ;
 
@@ -952,16 +952,16 @@ expression
     | time=(TIME | TIMESTAMP)
     | fullPathInExpression
     | functionName LR_BRACKET expression (COMMA expression)* RR_BRACKET
-    | (PLUS | MINUS | OPERATOR_NOT) expressionAfterUnaryOperator=expression
+    | (PLUS | MINUS | operator_not) expressionAfterUnaryOperator=expression
     | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
     | leftExpression=expression (PLUS | MINUS) rightExpression=expression
     | leftExpression=expression (OPERATOR_GT | OPERATOR_GTE | OPERATOR_LT | OPERATOR_LTE | OPERATOR_SEQ | OPERATOR_DEQ | OPERATOR_NEQ) rightExpression=expression
-    | unaryBeforeRegularOrLikeExpression=expression OPERATOR_NOT? (REGEXP | LIKE) STRING_LITERAL
-    | firstExpression=expression OPERATOR_NOT? OPERATOR_BETWEEN secondExpression=expression OPERATOR_AND thirdExpression=expression
-    | unaryBeforeIsNullExpression=expression OPERATOR_IS OPERATOR_NOT? NULL_LITERAL
-    | unaryBeforeInExpression=expression OPERATOR_NOT? (OPERATOR_IN | OPERATOR_CONTAINS) LR_BRACKET constant (COMMA constant)* RR_BRACKET
-    | leftExpression=expression OPERATOR_AND rightExpression=expression
-    | leftExpression=expression OPERATOR_OR rightExpression=expression
+    | unaryBeforeRegularOrLikeExpression=expression operator_not? (REGEXP | LIKE) STRING_LITERAL
+    | firstExpression=expression operator_not? OPERATOR_BETWEEN secondExpression=expression operator_and thirdExpression=expression
+    | unaryBeforeIsNullExpression=expression OPERATOR_IS operator_not? null_literal
+    | unaryBeforeInExpression=expression operator_not? (OPERATOR_IN | operator_contains) LR_BRACKET constant (COMMA constant)* RR_BRACKET
+    | leftExpression=expression operator_and rightExpression=expression
+    | leftExpression=expression operator_or rightExpression=expression
     ;
 
 functionName
@@ -970,12 +970,37 @@ functionName
     ;
 
 containsExpression
-    : name=attributeKey OPERATOR_CONTAINS value=attributeValue
+    : name=attributeKey operator_contains value=attributeValue
     ;
 
 operator_eq
     : OPERATOR_SEQ
     | OPERATOR_DEQ
+    ;
+
+operator_and
+    : AND
+    | OPERATOR_BITWISE_AND
+    | OPERATOR_LOGICAL_AND
+    ;
+
+operator_or
+    : OR
+    | OPERATOR_BITWISE_OR
+    | OPERATOR_LOGICAL_OR
+    ;
+    
+operator_not
+    : NOT
+    | OPERATOR_NOT
+    ;
+    
+operator_contains
+    : CONTAINS
+    ;
+    
+null_literal
+    : NULL
     ;
 
 // Attribute Clause

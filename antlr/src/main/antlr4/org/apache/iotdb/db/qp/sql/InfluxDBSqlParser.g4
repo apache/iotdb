@@ -59,10 +59,10 @@ predicate
     | constant
     | time=(TIME | TIMESTAMP)
     | nodeName
-    | OPERATOR_NOT predicateAfterUnaryOperator=predicate
+    | operator_not predicateAfterUnaryOperator=predicate
     | leftPredicate=predicate (OPERATOR_GT | OPERATOR_GTE | OPERATOR_LT | OPERATOR_LTE | OPERATOR_SEQ | OPERATOR_NEQ) rightPredicate=predicate
-    | leftPredicate=predicate OPERATOR_AND rightPredicate=predicate
-    | leftPredicate=predicate OPERATOR_OR rightPredicate=predicate
+    | leftPredicate=predicate operator_and rightPredicate=predicate
+    | leftPredicate=predicate operator_or rightPredicate=predicate
     ;
 
 fromClause
@@ -77,6 +77,24 @@ nodeName
     | DEVICE
     ;
 
+// Operator
+
+operator_and
+    : AND
+    | OPERATOR_BITWISE_AND
+    | OPERATOR_LOGICAL_AND
+    ;
+
+operator_or
+    : OR
+    | OPERATOR_BITWISE_OR
+    | OPERATOR_LOGICAL_OR
+    ;
+    
+operator_not
+    : NOT
+    | OPERATOR_NOT
+    ;
 
 // Constant & Literal
 
@@ -86,7 +104,7 @@ constant
     | (MINUS|PLUS)? INTEGER_LITERAL
     | STRING_LITERAL
     | BOOLEAN_LITERAL
-    | NULL_LITERAL
+    | null_literal
     | NAN_LITERAL
     ;
 
@@ -109,4 +127,8 @@ realLiteral
 datetimeLiteral
     : DATETIME_LITERAL
     | NOW LR_BRACKET RR_BRACKET
+    ;
+
+null_literal
+    : NULL
     ;

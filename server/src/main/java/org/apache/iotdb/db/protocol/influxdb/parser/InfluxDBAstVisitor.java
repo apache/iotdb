@@ -179,7 +179,7 @@ public class InfluxDBAstVisitor extends InfluxDBSqlParserBaseVisitor<Statement> 
       return parsePredicate(context.predicateInBracket);
     }
 
-    if (context.OPERATOR_NOT() != null) {
+    if (context.operator_not() != null) {
       return new LogicNotExpression(parsePredicate(context.predicateAfterUnaryOperator));
     }
 
@@ -205,10 +205,10 @@ public class InfluxDBAstVisitor extends InfluxDBSqlParserBaseVisitor<Statement> 
       if (context.OPERATOR_NEQ() != null) {
         return new NonEqualExpression(leftExpression, rightExpression);
       }
-      if (context.OPERATOR_AND() != null) {
+      if (context.operator_and() != null) {
         return new LogicAndExpression(leftExpression, rightExpression);
       }
-      if (context.OPERATOR_OR() != null) {
+      if (context.operator_or() != null) {
         return new LogicOrExpression(leftExpression, rightExpression);
       }
       throw new UnsupportedOperationException();

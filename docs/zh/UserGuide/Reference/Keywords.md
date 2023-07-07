@@ -26,11 +26,6 @@
 - ROOT
 - TIME
 - TIMESTAMP
-- AND
-- OR
-- NOT
-- NULL
-- CONTAINS
 
 一般关键字：
 

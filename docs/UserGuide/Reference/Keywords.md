@@ -26,11 +26,6 @@ Reserved words（Can not be used as identifier）:
 - ROOT
 - TIME
 - TIMESTAMP
-- AND
-- OR
-- NOT
-- NULL
-- CONTAINS
 
 Common Keywords:
 
