@@ -211,19 +211,35 @@ public class FunctionExpression extends Expression {
 
   @Override
   public boolean isMappable(Map<NodeRef<Expression>, TSDataType> expressionTypes) {
-    if (isBuiltInAggregationFunctionExpression()
-        || (isBuiltInFunction() && BuiltinFunction.isMappable(functionName))) {
-      return true;
+    if (!isBuiltInAggregationFunctionExpression()
+        && !(isBuiltInFunction() && BuiltinFunction.isMappable(functionName))) {
+      // this is a UDF function
+      boolean isCurrentMappable =
+          new UDTFInformationInferrer(functionName)
+              .getAccessStrategy(
+                  expressions.stream()
+                      .map(Expression::getExpressionString)
+                      .collect(Collectors.toList()),
+                  expressions.stream()
+                      .map(f -> expressionTypes.get(NodeRef.of(f)))
+                      .collect(Collectors.toList()),
+                  functionAttributes)
+              .getAccessStrategyType()
+              .equals(AccessStrategy.AccessStrategyType.MAPPABLE_ROW_BY_ROW);
+      if (!isCurrentMappable) {
+        return false;
+      }
     }
-    return new UDTFInformationInferrer(functionName)
-        .getAccessStrategy(
-            expressions.stream().map(Expression::toString).collect(Collectors.toList()),
-            expressions.stream()
-                .map(f -> expressionTypes.get(NodeRef.of(f)))
-                .collect(Collectors.toList()),
-            functionAttributes)
-        .getAccessStrategyType()
-        .equals(AccessStrategy.AccessStrategyType.MAPPABLE_ROW_BY_ROW);
+
+    // Function expression is mappable only when all its child expressions are mappable
+    boolean hasNonMappableChild = false;
+    for (Expression child : expressions) {
+      if (!child.isMappable(expressionTypes)) {
+        hasNonMappableChild = true;
+        break;
+      }
+    }
+    return !hasNonMappableChild;
   }
 
   public List<PartialPath> getPaths() {
