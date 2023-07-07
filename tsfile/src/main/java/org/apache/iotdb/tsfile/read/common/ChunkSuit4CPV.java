@@ -32,9 +32,13 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.StepRegress;
 import org.apache.iotdb.tsfile.read.common.IOMonitor2.Operation;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 
 public class ChunkSuit4CPV {
+  private static final Logger M4_CHUNK_METADATA = LoggerFactory.getLogger("M4_CHUNK_METADATA");
 
   private ChunkMetadata chunkMetadata; // fixed info, including version, dataType, stepRegress
   public int modelPointsCursor =
@@ -377,12 +381,13 @@ public class ChunkSuit4CPV {
       // TODO debug
       try {
         long tmp = pageReader.timeBuffer.getLong(estimatedPos * 8);
-      } catch (IndexOutOfBoundsException e) {
-        System.out.println("targetTimestamp=" + targetTimestamp);
-        System.out.println("estimatedPos=" + estimatedPos);
-        System.out.println("count=" + chunkMetadata.getStatistics().getCount());
-        System.out.println("stepregress segmentKeys=" + stepRegress.getSegmentKeys());
-        System.out.println("stepregress slope=" + stepRegress.getSlope());
+      } catch (Exception e) {
+        M4_CHUNK_METADATA.info("targetTimestamp=" + targetTimestamp);
+        M4_CHUNK_METADATA.info("estimatedPos=" + estimatedPos);
+        M4_CHUNK_METADATA.info("count=" + chunkMetadata.getStatistics().getCount());
+        M4_CHUNK_METADATA.info("stepregress segmentKeys=" + stepRegress.getSegmentKeys());
+        M4_CHUNK_METADATA.info("stepregress slope=" + stepRegress.getSlope());
+        throw e;
       }
 
       if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
