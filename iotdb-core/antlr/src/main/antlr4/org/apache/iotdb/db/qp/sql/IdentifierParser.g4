@@ -39,6 +39,7 @@ keyWords
     | ALIGNED
     | ALL
     | ALTER
+    | AND
     | ANY
     | APPEND
     | AS
@@ -59,6 +60,7 @@ keyWords
     | CONDITION
     | CONFIGNODES
     | CONFIGURATION
+    | CONTAINS
     | CONTINUOUS
     | COUNT
     | CONTAIN
@@ -123,11 +125,14 @@ keyWords
     | MODELS
     | NODES
     | NONE
+    | NOT
     | NOW
+    | NULL
     | OF
     | OFF
     | OFFSET
     | ON
+    | OR
     | ORDER
     | ONSUCCESS
     | PARTITION

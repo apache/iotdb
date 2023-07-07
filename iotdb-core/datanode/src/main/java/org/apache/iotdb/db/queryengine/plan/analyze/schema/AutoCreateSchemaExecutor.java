@@ -71,7 +71,7 @@ class AutoCreateSchemaExecutor {
     this.statementExecutor = statementExecutor;
   }
 
-  // auto create the missing measurements and merge them into given schemaTree
+  // Auto create the missing measurements and merge them into given schemaTree
   void autoCreateTimeSeries(
       ClusterSchemaTree schemaTree,
       PartialPath devicePath,
@@ -79,7 +79,7 @@ class AutoCreateSchemaExecutor {
       String[] measurements,
       IntFunction<TSDataType> getDataType,
       boolean isAligned) {
-    // auto create the rest missing timeseries
+    // Auto create the rest missing timeSeries
     List<String> missingMeasurements = new ArrayList<>(indexOfTargetMeasurements.size());
     List<TSDataType> dataTypesOfMissingMeasurement =
         new ArrayList<>(indexOfTargetMeasurements.size());
@@ -91,7 +91,7 @@ class AutoCreateSchemaExecutor {
         index -> {
           TSDataType tsDataType = getDataType.apply(index);
           // tsDataType == null means insert null value to a non-exist series
-          // should skip creating them
+          // Should skip creating them
           if (tsDataType != null) {
             missingMeasurements.add(measurements[index]);
             dataTypesOfMissingMeasurement.add(tsDataType);
@@ -121,7 +121,7 @@ class AutoCreateSchemaExecutor {
       List<String[]> measurementsList,
       List<TSDataType[]> tsDataTypesList,
       List<Boolean> isAlignedList) {
-    // check whether there is template should be activated
+    // Check whether there is template should be activated
     Map<PartialPath, Pair<Boolean, MeasurementGroup>> devicesNeedAutoCreateTimeSeries =
         new HashMap<>();
     int deviceIndex;
@@ -132,7 +132,7 @@ class AutoCreateSchemaExecutor {
       devicePath = devicePathList.get(deviceIndex);
       indexOfTargetMeasurements = indexOfTargetMeasurementsList.get(i);
 
-      // there are measurements need to be created as normal timeseries
+      // There are measurements need to be created as normal timeseries
       int finalDeviceIndex = deviceIndex;
       List<Integer> finalIndexOfMeasurementsNotInTemplate = indexOfTargetMeasurements;
       devicesNeedAutoCreateTimeSeries.compute(
@@ -163,13 +163,13 @@ class AutoCreateSchemaExecutor {
     }
   }
 
-  // used for insert record or tablet
+  // Used for insert record or tablet
   void autoExtendTemplate(
       String templateName, List<String> measurementList, List<TSDataType> dataTypeList) {
     internalExtendTemplate(templateName, measurementList, dataTypeList, null, null);
   }
 
-  // used for insert records or tablets
+  // Used for insert records or tablets
   void autoExtendTemplate(Map<String, TemplateExtendInfo> templateExtendInfoMap) {
     TemplateExtendInfo templateExtendInfo;
     for (Map.Entry<String, TemplateExtendInfo> entry : templateExtendInfoMap.entrySet()) {
@@ -214,7 +214,7 @@ class AutoCreateSchemaExecutor {
     for (Map.Entry<PartialPath, Pair<Template, PartialPath>> entry :
         devicesNeedActivateTemplate.entrySet()) {
       devicePath = entry.getKey();
-      // take the latest template
+      // Take the latest template
       template = templateManager.getTemplate(entry.getValue().left.getId());
       for (Map.Entry<String, IMeasurementSchema> measurementEntry :
           template.getSchemaMap().entrySet()) {
@@ -228,7 +228,7 @@ class AutoCreateSchemaExecutor {
     }
   }
 
-  // used for load TsFile
+  // Used for load TsFile
   @SuppressWarnings("squid:S107")
   void autoCreateMissingMeasurements(
       ClusterSchemaTree schemaTree,
@@ -240,7 +240,7 @@ class AutoCreateSchemaExecutor {
       List<TSEncoding[]> encodingsList,
       List<CompressionType[]> compressionTypesList,
       List<Boolean> isAlignedList) {
-    // check whether there is template should be activated
+    // Check whether there is template should be activated
 
     Map<PartialPath, Pair<Template, PartialPath>> devicesNeedActivateTemplate = new HashMap<>();
     Map<PartialPath, Pair<Boolean, MeasurementGroup>> devicesNeedAutoCreateTimeSeries =
@@ -263,7 +263,7 @@ class AutoCreateSchemaExecutor {
       }
 
       if (templateInfo == null) {
-        // there are measurements need to be created as normal timeseries
+        // There are measurements need to be created as normal timeseries
         int finalDeviceIndex = deviceIndex;
         List<Integer> finalIndexOfMeasurementsNotInTemplate = indexOfTargetMeasurements;
         devicesNeedAutoCreateTimeSeries.compute(
@@ -301,7 +301,7 @@ class AutoCreateSchemaExecutor {
             checkMeasurementsInSchemaTemplate(
                 indexOfTargetMeasurements, measurementsList.get(deviceIndex), template);
         if (schemaTree.getMatchedDevices(devicePath).isEmpty()) {
-          // not activated yet
+          // Not activated yet
           devicesNeedActivateTemplate.putIfAbsent(devicePath, templateInfo);
         }
 
@@ -365,7 +365,7 @@ class AutoCreateSchemaExecutor {
       for (Map.Entry<PartialPath, Pair<Template, PartialPath>> entry :
           devicesNeedActivateTemplate.entrySet()) {
         devicePath = entry.getKey();
-        // take the latest template
+        // Take the latest template
         template = templateManager.getTemplate(entry.getValue().left.getId());
         for (Map.Entry<String, IMeasurementSchema> measurementEntry :
             template.getSchemaMap().entrySet()) {
@@ -386,7 +386,7 @@ class AutoCreateSchemaExecutor {
 
   private List<Integer> checkMeasurementsInSchemaTemplate(
       List<Integer> indexOfTargetMeasurements, String[] measurements, Template template) {
-    // check whether there is template should be activated
+    // Check whether there is template should be activated
     boolean shouldActivateTemplate = false;
     for (int index : indexOfTargetMeasurements) {
       if (template.hasSchema(measurements[index])) {
@@ -407,7 +407,7 @@ class AutoCreateSchemaExecutor {
     }
   }
 
-  // try to create the target timeseries and merge schema of successfully created
+  // Try to create the target timeseries and merge schema of successfully created
   // timeseries and existing timeseries into given schemaTree
   private void internalCreateTimeSeries(
       ClusterSchemaTree schemaTree,
@@ -444,7 +444,7 @@ class AutoCreateSchemaExecutor {
     }
   }
 
-  // auto create timeseries and return the existing timeseries info
+  // Auto create timeseries and return the existing timeseries info
   private List<MeasurementPath> executeInternalCreateTimeseriesStatement(Statement statement) {
 
     ExecutionResult executionResult = statementExecutor.apply(statement);
