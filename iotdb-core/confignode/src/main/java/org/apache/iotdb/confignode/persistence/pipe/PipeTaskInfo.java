@@ -49,9 +49,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -286,6 +285,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   public boolean hasExceptions(String pipeName) {
+    acquireReadLock();
     if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
       return false;
     }
@@ -305,6 +305,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
                 hasException.set(true);
               }
             });
+    releaseReadLock();
     return hasException.get();
   }
 

@@ -58,15 +58,8 @@ public class PipeTaskCoordinator {
   }
 
   public TSStatus startPipe(String pipeName) {
-    // To avoid concurrent read
-    lock();
     // Whether there are exceptions to clear
-    boolean hasException;
-    try {
-      hasException = pipeTaskInfo.hasExceptions(pipeName);
-    } finally {
-      unlock();
-    }
+    boolean hasException = pipeTaskInfo.hasExceptions(pipeName);
     TSStatus status = configManager.getProcedureManager().startPipe(pipeName);
     if (status == RpcUtils.SUCCESS_STATUS && hasException) {
       LOGGER.info("Pipe {} has started successfully, clear its exceptions.", pipeName);
@@ -94,23 +87,36 @@ public class PipeTaskCoordinator {
   }
 
   public TShowPipeResp showPipes(TShowPipeReq req) {
-    return ((PipeTableResp)
-            configManager.getConsensusManager().read(new ShowPipePlanV2()).getDataset())
-        .filter(req.whereClause, req.pipeName)
-        .convertToTShowPipeResp();
+    // Should take read lock here to avoid writes between read() and convertTo...()
+    pipeTaskInfo.acquireReadLock();
+    final TShowPipeResp resp =
+        ((PipeTableResp)
+                configManager.getConsensusManager().read(new ShowPipePlanV2()).getDataset())
+            .filter(req.whereClause, req.pipeName)
+            .convertToTShowPipeResp();
+    pipeTaskInfo.releaseReadLock();
+    return resp;
   }
 
   public TGetAllPipeInfoResp getAllPipeInfo() {
+    TGetAllPipeInfoResp resp;
+    // Should take read lock here to avoid writes between read() and convertTo...()
+    pipeTaskInfo.acquireReadLock();
     try {
-      return ((PipeTableResp)
-              configManager.getConsensusManager().read(new ShowPipePlanV2()).getDataset())
-          .convertToTGetAllPipeInfoResp();
+      resp =
+          ((PipeTableResp)
+                  configManager.getConsensusManager().read(new ShowPipePlanV2()).getDataset())
+              .convertToTGetAllPipeInfoResp();
     } catch (IOException e) {
       LOGGER.error("Fail to get AllPipeInfo", e);
-      return new TGetAllPipeInfoResp(
-          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-              .setMessage(e.getMessage()),
-          Collections.emptyList());
+      resp =
+          new TGetAllPipeInfoResp(
+              new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+                  .setMessage(e.getMessage()),
+              Collections.emptyList());
+    } finally {
+      pipeTaskInfo.releaseReadLock();
     }
+    return resp;
   }
 }
