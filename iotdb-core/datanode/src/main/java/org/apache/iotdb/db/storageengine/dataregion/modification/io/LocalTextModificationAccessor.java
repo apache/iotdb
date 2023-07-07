@@ -70,41 +70,25 @@ public class LocalTextModificationAccessor
 
   @Override
   public Collection<Modification> read() {
-    File file = FSFactoryProducer.getFSFactory().getFile(filePath);
-    if (!file.exists()) {
-      logger.debug(NO_MODIFICATION_MSG);
-      return new ArrayList<>();
+    List<Modification> result = new ArrayList<>();
+    Iterator<Modification> iterator = getModificationIterator();
+    while (iterator.hasNext()) {
+      result.add(iterator.next());
     }
-
-    String line;
-    long truncatedSize = 0;
-    boolean crashed = false;
-    List<Modification> modificationList = new ArrayList<>();
-    try (TracedBufferedReader reader = new TracedBufferedReader(new FileReader(file))) {
-      while ((line = reader.readLine()) != null) {
-        if (line.equals(ABORT_MARK) && !modificationList.isEmpty()) {
-          modificationList.remove(modificationList.size() - 1);
-        } else {
-          modificationList.add(decodeModification(line));
-        }
-        truncatedSize = reader.position();
-      }
-    } catch (IOException e) {
-      crashed = true;
-      logger.error(TRUNCATE_MODIFICATION_MSG, truncatedSize, e);
-    }
-
-    if (crashed) {
-      truncateModFile(file, truncatedSize);
-    }
-    return modificationList;
+    return result;
   }
 
   @Override
   public Iterator<Modification> getModificationIterator() {
     File file = FSFactoryProducer.getFSFactory().getFile(filePath);
-    final String[] line = new String[1];
-    TracedBufferedReader reader;
+    // we need to cache two lines to ensure because of ABORT case
+    final String[] cachedLines = new String[2];
+    final Modification[] cachedModification = new Modification[1];
+    final TracedBufferedReader reader;
+    final long[] truncatedSize = {0};
+    final boolean[] isInit = new boolean[] {true};
+    final boolean[] isTruncated = new boolean[1];
+
     try {
       reader = new TracedBufferedReader(new FileReader(file));
     } catch (FileNotFoundException e) {
@@ -132,19 +116,58 @@ public class LocalTextModificationAccessor
       @Override
       public boolean hasNext() {
         try {
-          boolean hasNext = (line[0] = reader.readLine()) != null;
+          if (isTruncated[0]) {
+            return false;
+          }
+
+          truncatedSize[0] = reader.position();
+          boolean hasNext = true;
+          if (cachedLines[1] == null && cachedLines[0] == null) {
+            // we need to read two lines when init,
+            // otherwise means there are no more lines
+            if (isInit[0]) {
+              hasNext = (cachedLines[0] = reader.readLine()) != null;
+
+              // the first line may be ABORT when init
+              if (ABORT_MARK.equals(cachedLines[0])) {
+                cachedLines[0] = null;
+                isInit[0] = true;
+                return hasNext();
+              }
+
+              if (hasNext) {
+                cachedLines[1] = reader.readLine();
+              }
+              isInit[0] = false;
+            } else {
+              return false;
+            }
+          } else if (cachedLines[1] == null) {
+            cachedLines[1] = reader.readLine();
+          }
+
+          // meet ABORT line, the last line also need to be discarded
+          if (ABORT_MARK.equals(cachedLines[1])) {
+            cachedLines[0] = null;
+            cachedLines[1] = null;
+            isInit[0] = true;
+            return hasNext();
+          }
+
           if (!hasNext) {
             reader.close();
+            return false;
           }
-          return hasNext;
+          cachedModification[0] = decodeModification(cachedLines[0]);
+          return true;
         } catch (IOException e) {
           try {
             reader.close();
           } catch (IOException ex) {
-            ex.printStackTrace();
+            logger.warn("Fail to close reader", ex);
           }
           logger.error(TRUNCATE_MODIFICATION_MSG, 0, e);
-          truncateModFile(file, 0);
+          truncateModFile(file, cachedLines[1] == null ? truncatedSize[0] : truncatedSize[0]);
         }
 
         return false;
@@ -152,23 +175,14 @@ public class LocalTextModificationAccessor
 
       @Override
       public Modification next() {
-        if (line[0] == null) {
+        if (cachedModification[0] == null) {
           throw new NoSuchElementException();
+        } else {
+          cachedLines[0] = cachedLines[1];
+          cachedLines[1] = null;
         }
-        try {
-          return decodeModification(line[0]);
-        } catch (IOException e) {
-          try {
-            reader.close();
-          } catch (IOException ex) {
-            ex.printStackTrace();
-          }
-          logger.error(TRUNCATE_MODIFICATION_MSG, 0, e);
-          truncateModFile(file, 0);
-        } catch (Exception e) {
-          e.printStackTrace();
-        }
-        return null;
+
+        return cachedModification[0];
       }
     };
   }

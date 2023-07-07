@@ -38,7 +38,7 @@ public interface ModificationReader {
 
   /**
    * Get an iterator over this mod file, others keep consistence with {@link #read()}. Please ensure
-   * call one and only one hasNext() before call next().
+   * you have called hasNext() with return of {@code true} before calling next().
    *
    * @return the modification iterator.
    */
