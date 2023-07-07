@@ -38,11 +38,14 @@ jobs:
       matrix:
         java: [ 8, 11, 17 ]
         os: [ ubuntu-latest ]
+        it_task: [ 'others', 'datanode' ]
         include:
           - java: 17
             os: macos-latest
-            it_task: [ 'others', 'datanode' ]
-        it_task: [ 'others', 'datanode' ]
+            it_task: 'datanode'
+          - java: 17
+            os: macos-latest
+            it_task: 'others'
     runs-on: ${{ matrix.os }}
 
     steps:
