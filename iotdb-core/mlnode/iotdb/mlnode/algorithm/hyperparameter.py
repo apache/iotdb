@@ -174,6 +174,8 @@ class HyperparameterName(Enum):
     LEARNING_RATE = "learning_rate"
     EPOCHS = "epochs"
     BATCH_SIZE = "batch_size"
+    USE_GPU = "use_gpu"
+    NUM_WORKERS = "num_workers"
 
     # Structure hyperparameter
     KERNEL_SIZE = "kernel_size"
@@ -195,7 +197,8 @@ training_hyperparameter_map = {
                                                                  default_low=1e-5,
                                                                  low_validators=[],
                                                                  default_high=1e-1,
-                                                                 high_validators=[])
+                                                                 high_validators=[],
+                                                                 tuning=True),
 }
 
 

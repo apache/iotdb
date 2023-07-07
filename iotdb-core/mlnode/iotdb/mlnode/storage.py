@@ -48,14 +48,12 @@ class ModelStorage(object):
                    model_config: Dict,
                    model_id: str,
                    trial_id: str) -> str:
-        """
-        Note: model config for time series should contain 'input_len' and 'input_vars'
-        """
         model_dir_path = os.path.join(self.__model_dir, f'{model_id}')
         if not os.path.exists(model_dir_path):
             os.makedirs(model_dir_path)
         model_file_path = os.path.join(model_dir_path, f'{trial_id}.pt')
 
+        # Note: model config for time series should contain 'input_len' and 'input_vars'
         sample_input = [torch.randn(1, model_config['input_len'], model_config['input_vars'])]
         self.lock.acquire()
         torch.jit.save(torch.jit.trace(model, sample_input),
@@ -101,5 +99,4 @@ class ModelStorage(object):
             del self.__model_cache[file_path]
 
 
-# initialize a singleton
 model_storage = ModelStorage()

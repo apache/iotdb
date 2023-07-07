@@ -55,7 +55,7 @@ class TimeSeriesDataset(Dataset):
         return len(self.data)
 
 
-class WindowDataset(TimeSeriesDataset):
+class WindowDataset(Dataset):
     """
     Build Windowed dataset (with each element as multivariable time series
     with a sliding window and corresponding timestamps embedding),
@@ -78,7 +78,10 @@ class WindowDataset(TimeSeriesDataset):
                  time_embed: str = 'h'):
         self.input_len = input_len
         self.pred_len = pred_len
-        super(WindowDataset, self).__init__(data_source, time_embed)
+        self.time_embed = time_embed
+        self.data = data_source.get_data()
+        self.data_stamp = time_features(data_source.get_timestamp(), time_embed=self.time_embed).transpose(1, 0)
+        self.n_vars = self.data.shape[-1]
         if input_len > self.data.shape[0]:
             raise RuntimeError('input_len should not be larger than the number of time series points')
         if pred_len > self.data.shape[0]:
@@ -97,3 +100,7 @@ class WindowDataset(TimeSeriesDataset):
 
     def __len__(self) -> int:
         return len(self.data) - self.input_len - self.pred_len + 1
+
+    def get_variable_num(self) -> int:
+        return self.n_vars  # number of series in data_source
+

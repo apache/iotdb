@@ -19,6 +19,7 @@
 from iotdb.mlnode.config import descriptor
 from iotdb.mlnode.constant import TSStatusCode
 from iotdb.mlnode.data_access.factory import create_dataset
+from iotdb.mlnode.data_access.offline.dataset import WindowDataset
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.parser import parse_forecast_request, parse_task_options, ForecastTaskOptions
 from iotdb.mlnode.process.manager import TaskManager
@@ -55,7 +56,7 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
                 model_id=req.modelId,
                 task_options=type(ForecastTaskOptions)(task_options),
                 hyperparameters=req.hyperparameters,
-                dataset=create_dataset(req.datasetFetchSQL, task_options)
+                dataset=type(WindowDataset)(create_dataset(req.datasetFetchSQL, task_options))
             )
 
             return get_status(TSStatusCode.SUCCESS_STATUS)
@@ -69,12 +70,9 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
 
     def forecast(self, req: TForecastReq):
         model_path, data, pred_length = parse_forecast_request(req)
-        model, model_configs = model_storage.load_model(model_path)
-        task_configs = {'pred_len': pred_length}
         try:
             task = self.__task_manager.create_forecast_task(
-                task_configs,
-                model_configs,
+                pred_length,
                 data,
                 model_path
             )

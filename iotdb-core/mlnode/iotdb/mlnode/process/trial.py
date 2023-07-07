@@ -25,9 +25,11 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 
 from iotdb.mlnode.algorithm.factory import create_forecast_model
-from iotdb.mlnode.algorithm.metric import all_metrics, build_metrics
+from iotdb.mlnode.algorithm.hyperparameter import HyperparameterName
+from iotdb.mlnode.algorithm.metric import build_metrics, forecast_metric_names
 from iotdb.mlnode.client import client_manager
-from iotdb.mlnode.constant import DEFAULT_TRIAL_ID
+from iotdb.mlnode.constant import DEFAULT_TRIAL_ID, OptionsKey
+from iotdb.mlnode.data_access.offline.dataset import WindowDataset
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.parser import ForecastTaskOptions
 from iotdb.mlnode.storage import model_storage
@@ -37,26 +39,21 @@ from iotdb.thrift.common.ttypes import TrainingState
 class BasicTrial(object):
     def __init__(
             self,
+            model_id: str,
             model: nn.Module,
             task_configs: Dict,
             dataset: Dataset
     ):
-        self.trial_configs = task_configs
-        self.model_id = task_configs['model_id']
-        self.trial_id = task_configs['trial_id']
-        self.batch_size = task_configs['batch_size']
-        self.learning_rate = task_configs['learning_rate']
-        self.epochs = task_configs['epochs']
-        self.num_workers = task_configs['num_workers']
-        self.pred_len = task_configs['pred_len']
-        self.metric_names = task_configs['metric_names']
-        self.use_gpu = task_configs['use_gpu']
-        self.model = model
-        self.model_configs = model
-
+        self.model_id = model_id
         self.device = self.__acquire_device()
-        self.model = self.model.to(self.device)
+        self.model = model.to(self.device)
         self.dataset = dataset
+        self.trial_configs = task_configs
+        self.batch_size = task_configs[HyperparameterName.BATCH_SIZE]
+        self.learning_rate = task_configs[HyperparameterName.LEARNING_RATE]
+        self.epochs = task_configs[HyperparameterName.EPOCHS]
+        self.num_workers = task_configs[HyperparameterName.NUM_WORKERS]
+        self.use_gpu = task_configs[HyperparameterName.USE_GPU]
 
     def __acquire_device(self):
         if self.use_gpu:
@@ -86,23 +83,30 @@ class BasicTrial(object):
 class ForecastingTrainingTrial(BasicTrial):
     def __init__(
             self,
+            model_id: str,
             task_options: ForecastTaskOptions,
             model_hyperparameters: Dict,
             task_hyperparameters: Dict,
-            dataset: Dataset
+            dataset: WindowDataset
     ):
         """
         A training trial, accept all parameters needed and train a single model.
         """
-        model = create_forecast_model(task_options, model_hyperparameters)
-        super(ForecastingTrainingTrial, self).__init__(model, task_hyperparameters, dataset)
+        self.model_configs = model_hyperparameters
+        self.model_configs[HyperparameterName.INPUT_VARS.value] = dataset.get_variable_num()
+        self.model_configs[OptionsKey.INPUT_LENGTH.value] = task_options.input_length
+        self.model_configs[OptionsKey.PREDICT_LENGTH.value] = task_options.predict_length
+        model = create_forecast_model(task_options, self.model_configs)
+
+        super(ForecastingTrainingTrial, self).__init__(model_id, model, task_hyperparameters, dataset)
         self.trial_id = DEFAULT_TRIAL_ID
+        self.pred_len = task_options.predict_length
         self.dataloader = self._build_dataloader()
         self.datanode_client = client_manager.borrow_data_node_client()
         self.configNode_client = client_manager.borrow_config_node_client()
         self.criterion = torch.nn.MSELoss()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
-        self.metrics_dict = build_metrics(self.metric_names)
+        self.metrics_dict = build_metrics(forecast_metric_names)
 
     def train(self, epoch: int) -> float:
         self.model.train()
@@ -142,7 +146,7 @@ class ForecastingTrainingTrial(BasicTrial):
     def vali(self, epoch: int) -> Tuple[float, Dict]:
         self.model.eval()
         val_loss = []
-        metrics_value_dict = {name: [] for name in self.metric_names}
+        metrics_value_dict = {name: [] for name in forecast_metric_names}
         for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(self.dataloader):
             batch_x = batch_x.float().to(self.device)
             batch_y = batch_y.float().to(self.device)
@@ -160,7 +164,7 @@ class ForecastingTrainingTrial(BasicTrial):
             loss = self.criterion(outputs, batch_y)
             val_loss.append(loss.item())
 
-            for name in self.metric_names:
+            for name in forecast_metric_names:
                 metric = self.metrics_dict[name]
                 value = metric(outputs.detach().cpu().numpy(), batch_y.detach().cpu().numpy())
                 metrics_value_dict[name].append(value)

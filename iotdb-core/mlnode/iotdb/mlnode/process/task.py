@@ -25,11 +25,12 @@ import numpy as np
 import optuna
 import pandas as pd
 import torch
-from torch.utils.data import Dataset
 
 from iotdb.mlnode.algorithm.hyperparameter import parse_fixed_hyperparameters, generate_hyperparameters
 from iotdb.mlnode.client import client_manager
 from iotdb.mlnode.config import descriptor
+from iotdb.mlnode.constant import OptionsKey
+from iotdb.mlnode.data_access.offline.dataset import WindowDataset
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.parser import ForecastTaskOptions
 from iotdb.mlnode.process.trial import ForecastingTrainingTrial
@@ -56,13 +57,11 @@ class _BasicTrainingTask(_BasicTask):
             self,
             model_id: str,
             hyperparameters: Dict[str, str],
-            dataset: Dataset,
             pid_info: Dict
     ):
         super().__init__(pid_info)
         self.model_id = model_id
         self.hyperparameters = hyperparameters
-        self.dataset = dataset
         self.configNode_client = client_manager.borrow_config_node_client()
 
     @abstractmethod
@@ -76,12 +75,14 @@ class ForecastFixedParamTrainingTask(_BasicTrainingTask):
             model_id: str,
             task_options: ForecastTaskOptions,
             hyperparameters: Dict[str, str],
-            dataset: Dataset,
+            dataset: WindowDataset,
             pid_info: Dict
     ):
-        super().__init__(model_id, hyperparameters, dataset, pid_info)
+        super().__init__(model_id, hyperparameters, pid_info)
         model_hyperparameters, task_hyperparameters = parse_fixed_hyperparameters(task_options, hyperparameters)
+        self.dataset = dataset
         self.trial = ForecastingTrainingTrial(
+            model_id,
             task_options,
             model_hyperparameters,
             task_hyperparameters,
@@ -105,22 +106,27 @@ class ForestingTrainingObjective:
     Optuna will try to minimize the objective.
     Currently, user cannot define the range of hyperparameters.
     """
+
     def __init__(
             self,
+            model_id: str,
             task_options: ForecastTaskOptions,
             hyperparameters: Dict[str, str],
-            dataset: Dataset,
+            dataset: WindowDataset,
             pid_info: Dict
     ):
         self.task_options = task_options
         self.hyperparameters = hyperparameters
         self.dataset = dataset
         self.pid_info = pid_info
+        self.model_id = model_id
 
     def __call__(self, optuna_suggest: optuna.Trial):
         model_hyperparameters, task_hyperparameters = generate_hyperparameters(optuna_suggest,
                                                                                self.task_options)
-        trial = ForecastingTrainingTrial(task_options=self.task_options,
+        trial = ForecastingTrainingTrial(
+                                         model_id=self.model_id,
+                                         task_options=self.task_options,
                                          model_hyperparameters=model_hyperparameters,
                                          task_hyperparameters=task_hyperparameters,
                                          dataset=self.dataset)
@@ -134,17 +140,19 @@ class ForecastAutoTuningTrainingTask(_BasicTrainingTask):
             model_id: str,
             task_options: ForecastTaskOptions,
             hyperparameters: Dict[str, str],
-            dataset: Dataset,
+            dataset: WindowDataset,
             pid_info: Dict
     ):
-        super().__init__(model_id, hyperparameters, dataset, pid_info)
+        super().__init__(model_id, hyperparameters, pid_info)
         self.study = optuna.create_study(direction='minimize')
         self.task_options = task_options
+        self.dataset = dataset
 
     def __call__(self):
         self.pid_info[self.model_id] = os.getpid()
         try:
             self.study.optimize(ForestingTrainingObjective(
+                model_id=self.model_id,
                 task_options=self.task_options,
                 hyperparameters=self.hyperparameters,
                 dataset=self.dataset,
@@ -164,15 +172,12 @@ class ForecastAutoTuningTrainingTask(_BasicTrainingTask):
 class _BasicInferenceTask(_BasicTask):
     def __init__(
             self,
-            task_configs: Dict,
-            model_configs: Dict,
             pid_info: Dict,
             data: Tuple,
             model_path: str
     ):
-        super().__init__(task_configs, model_configs, pid_info)
+        super().__init__(pid_info)
         self.data = data
-        self.input_len = self.model_configs['input_len']
         self.model_path = model_path
 
     @abstractmethod
@@ -187,27 +192,28 @@ class _BasicInferenceTask(_BasicTask):
 class ForecastingInferenceTask(_BasicInferenceTask):
     def __init__(
             self,
-            task_configs: Dict,
-            model_configs: Dict,
+            predict_length: int,
             pid_info: Dict,
             data: Tuple,
             model_path: str
     ):
-        super().__init__(task_configs, model_configs, pid_info, data, model_path)
-        self.pred_len = self.task_configs['pred_len']
-        self.model_pred_len = self.model_configs['pred_len']
+        super().__init__(pid_info, data, model_path)
+        self.pred_len = predict_length
 
     def __call__(self, pipe: Connection = None):
-        self.model, _ = model_storage.load_model(self.model_path)
+        self.model, self.model_configs = model_storage.load_model(self.model_path)
+        self.model_pred_len = self.model_configs[OptionsKey.PREDICT_LENGTH]
+        self.model_input_len = self.model_configs[OptionsKey.INPUT_LENGTH]
+
         data, time_stamp = self.data
-        L, C = data.shape
+        _, c = data.shape
         time_stamp = pd.to_datetime(time_stamp.values[:, 0], unit='ms', utc=True) \
             .tz_convert('Asia/Shanghai')  # for iotdb
         data, time_stamp = self.data_align(data, time_stamp)
         full_data, full_data_stamp = data, time_stamp
         current_pred_len = 0
         while current_pred_len < self.pred_len:
-            current_data = full_data[:, -self.input_len:, :]
+            current_data = full_data[:, -self.model_input_len:, :]
             current_data = torch.Tensor(current_data)
             output_data = self.model(current_data).detach().numpy()
             full_data = np.concatenate([full_data, output_data], axis=1)
@@ -216,7 +222,7 @@ class ForecastingInferenceTask(_BasicInferenceTask):
         ret_data = pd.concat(
             [pd.DataFrame(full_data_stamp.astype(np.int64)),
              pd.DataFrame(full_data[0, -self.pred_len:, :]).astype(np.double)], axis=1)
-        ret_data.columns = list(np.arange(0, C + 1))
+        ret_data.columns = list(np.arange(0, c + 1))
         pipe.send(ret_data)
 
     def data_align(self, data: pd.DataFrame, data_stamp) -> Tuple[np.ndarray, pd.DataFrame]:
@@ -230,15 +236,15 @@ class ForecastingInferenceTask(_BasicInferenceTask):
         time_deltas = data_stamp.diff().dropna()
         mean_timedelta = time_deltas.mean()[0]
         data = data.values
-        if data.shape[0] < self.input_len:
-            extra_len = self.input_len - data.shape[0]
+        if data.shape[0] < self.model_input_len:
+            extra_len = self.model_input_len - data.shape[0]
             data = np.concatenate([np.mean(data, axis=0, keepdims=True).repeat(extra_len, axis=0), data], axis=0)
             extrapolated_timestamp = pd.date_range(data_stamp[0][0] - extra_len * mean_timedelta, periods=extra_len,
                                                    freq=mean_timedelta)
             data_stamp = pd.concat([extrapolated_timestamp.to_frame(), data_stamp])
         else:
-            data = data[-self.input_len:, :]
-            data_stamp = data_stamp[-self.input_len:]
+            data = data[-self.model_input_len:, :]
+            data_stamp = data_stamp[-self.model_input_len:]
         data = data[None, :]  # add batch dim
         return data, data_stamp
 

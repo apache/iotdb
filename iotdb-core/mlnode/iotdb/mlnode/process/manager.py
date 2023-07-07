@@ -24,8 +24,8 @@ from typing import Dict
 
 import pandas as pd
 import psutil
-from torch.utils.data import Dataset
 
+from iotdb.mlnode.data_access.offline.dataset import WindowDataset
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.parser import ForecastTaskOptions
 from iotdb.mlnode.process.task import (ForecastingInferenceTask,
@@ -52,7 +52,7 @@ class TaskManager(object):
                                       model_id: str,
                                       task_options: ForecastTaskOptions,
                                       hyperparameters: Dict[str, str],
-                                      dataset: Dataset):
+                                      dataset: WindowDataset):
         """
         Create a training task for forecasting, which contains the training process
 
@@ -88,13 +88,11 @@ class TaskManager(object):
         logger.info(f'Task: ({task.model_id}) - Training process submitted successfully')
 
     def create_forecast_task(self,
-                             task_configs,
-                             model_configs,
+                             predict_length,
                              data,
                              model_path) -> ForecastingInferenceTask:
         task = ForecastingInferenceTask(
-            task_configs,
-            model_configs,
+            predict_length,
             self.__pid_info,
             data,
             model_path

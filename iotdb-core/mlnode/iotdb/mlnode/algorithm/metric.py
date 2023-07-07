@@ -75,3 +75,6 @@ def build_metrics(metric_names: List) -> Dict[str, Metric]:
     for metric_name in metric_names:
         metrics_dict[metric_name] = eval(metric_name)()
     return metrics_dict
+
+
+forecast_metric_names = ["MSE"]

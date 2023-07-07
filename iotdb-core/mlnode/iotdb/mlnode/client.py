@@ -316,7 +316,7 @@ class ConfigNodeClient(object):
             state=training_state,
             bestTrailId=best_trail_id
         )
-        for i in range(0, self.__RETRY_NUM):
+        for _ in range(0, self.__RETRY_NUM):
             try:
                 status = self.__client.updateModelState(req)
                 if not self.__update_config_node_leader(status):
@@ -342,7 +342,7 @@ class ConfigNodeClient(object):
             modelInfo={k: str(v) for k, v in model_info.items()},
         )
 
-        for i in range(0, self.__RETRY_NUM):
+        for _ in range(0, self.__RETRY_NUM):
             try:
                 status = self.__client.updateModelInfo(req)
                 if not self.__update_config_node_leader(status):

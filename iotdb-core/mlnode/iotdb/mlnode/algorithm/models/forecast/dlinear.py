@@ -78,7 +78,7 @@ class DLinear(nn.Module):
         self.linear_seasonal = nn.Linear(self.input_len, self.pred_len)
         self.linear_trend = nn.Linear(self.input_len, self.pred_len)
 
-    def forward(self, x, *args):
+    def forward(self, x):
         # x: [Batch, Input length, Channel]
         seasonal_init, trend_init = self.decomposition(x)
         seasonal_init, trend_init = seasonal_init.permute(0, 2, 1), trend_init.permute(0, 2, 1)
