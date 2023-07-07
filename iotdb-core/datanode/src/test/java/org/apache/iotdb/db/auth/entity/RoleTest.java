@@ -36,11 +36,10 @@ public class RoleTest {
     PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.ln"));
     role.setPrivilegeList(Collections.singletonList(pathPrivilege));
     role.setPrivileges(new PartialPath("root.ln"), Collections.singleton(1));
-    Assert.assertEquals(
-        "Role{name='role', privilegeList=[root.ln : INSERT_TIMESERIES]}", role.toString());
+    Assert.assertEquals("Role{name='role', privilegeList=[root.ln : WRITE_DATA]}", role.toString());
     Role role1 = new Role("role1");
     role1.deserialize(role.serialize());
     Assert.assertEquals(
-        "Role{name='role', privilegeList=[root.ln : INSERT_TIMESERIES]}", role1.toString());
+        "Role{name='role', privilegeList=[root.ln : WRITE_DATA]}", role1.toString());
   }
 }
