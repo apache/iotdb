@@ -30,6 +30,8 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.ssl.SSLContextBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
@@ -38,7 +40,7 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 
 public class SSLClient {
-
+  private static Logger logger = LoggerFactory.getLogger(SSLClient.class);
   private static SSLConnectionSocketFactory sslConnectionSocketFactory = null;
   private static PoolingHttpClientConnectionManager poolingHttpClientConnectionManager = null;
 
@@ -82,7 +84,7 @@ public class SSLClient {
       poolingHttpClientConnectionManager = new PoolingHttpClientConnectionManager(registryBuilder);
       poolingHttpClientConnectionManager.setMaxTotal(10);
     } catch (NoSuchAlgorithmException | KeyStoreException | KeyManagementException e) {
-      e.printStackTrace();
+      logger.error("Build error", e);
     }
   }
 

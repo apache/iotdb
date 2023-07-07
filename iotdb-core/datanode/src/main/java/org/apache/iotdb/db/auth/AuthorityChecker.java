@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -76,7 +77,7 @@ public class AuthorityChecker {
       return false;
     } else if (permission == PrivilegeType.MODIFY_PASSWORD.ordinal()
         && username.equals(targetUser)) {
-      // a user can modify his own password
+      // A user can modify his own password
       return true;
     }
 
@@ -119,7 +120,7 @@ public class AuthorityChecker {
                     AuthorityChecker.translateToPermissionId(statement.getType())]);
       }
     } catch (AuthException e) {
-      logger.warn("meet error while checking authorization.", e);
+      logger.warn("Meets error while checking authorization.", e);
       return RpcUtils.getStatus(e.getCode(), e.getMessage());
     } catch (Exception e) {
       return onQueryException(
@@ -130,7 +131,12 @@ public class AuthorityChecker {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
-  /** Check whether specific user has the authorization to given plan. */
+  /**
+   * Check whether specific user has the authorization to given plan.
+   *
+   * @throws AuthException if encountered authentification failure
+   * @return true if the authority permission has passed
+   */
   public static boolean checkAuthorization(Statement statement, String username)
       throws AuthException {
     if (!statement.isAuthenticationRequired()) {

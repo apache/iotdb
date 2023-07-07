@@ -110,7 +110,7 @@ public class MemMTreeSnapshotUtil {
 
   private static boolean deleteFile(File snapshot) {
     try {
-      Files.delete(snapshot.toPath());
+      Files.deleteIfExists(snapshot.toPath());
       return true;
     } catch (IOException e) {
       logger.error(e.getMessage(), e);

@@ -229,14 +229,14 @@ public class PipeConnectorSubtask extends PipeSubtask {
   }
 
   @Override
-  // synchronized for outputPipeConnector.close() and releaseLastEvent() in super.close()
+  // Synchronized for outputPipeConnector.close() and releaseLastEvent() in super.close()
   // make sure that the lastEvent will not be updated after pipeProcessor.close() to avoid
   // resource leak because of the lastEvent is not released.
   public synchronized void close() {
     try {
       outputPipeConnector.close();
 
-      // should be called after outputPipeConnector.close()
+      // Should be called after outputPipeConnector.close()
       super.close();
     } catch (Exception e) {
       LOGGER.info(
