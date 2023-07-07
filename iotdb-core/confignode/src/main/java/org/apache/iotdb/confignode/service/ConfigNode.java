@@ -83,7 +83,7 @@ public class ConfigNode implements ConfigNodeMBean {
   private ConfigManager configManager;
 
   private ConfigNode() {
-    // we do not init anything here, so that we can re-initialize the instance in IT.
+    // We do not init anything here, so that we can re-initialize the instance in IT.
   }
 
   public static void main(String[] args) {
@@ -230,7 +230,7 @@ public class ConfigNode implements ConfigNodeMBean {
   private void setUpMetricService() throws StartupException {
     MetricConfigDescriptor.getInstance().getMetricConfig().setNodeId(CONF.getConfigNodeId());
     registerManager.register(MetricService.getInstance());
-    // bind predefined metric sets
+    // Bind predefined metric sets
     MetricService.getInstance().addMetricSet(new UpTimeMetrics());
     MetricService.getInstance().addMetricSet(new JvmMetrics());
     MetricService.getInstance().addMetricSet(new LogbackMetrics());
@@ -252,7 +252,12 @@ public class ConfigNode implements ConfigNodeMBean {
     LOGGER.info("Successfully initialize ConfigManager.");
   }
 
-  /** Register Non-seed ConfigNode when first startup. */
+  /**
+   * Register Non-seed ConfigNode when first startup.
+   *
+   * @throws StartupException if register failed.
+   * @throws IOException if consensus manager init failed.
+   */
   private void sendRegisterConfigNodeRequest() throws StartupException, IOException {
     TConfigNodeRegisterReq req =
         new TConfigNodeRegisterReq(
@@ -364,7 +369,11 @@ public class ConfigNode implements ConfigNodeMBean {
     registerManager.register(configNodeRPCService);
   }
 
-  /** Deactivating ConfigNode internal services. */
+  /**
+   * Deactivating ConfigNode internal services.
+   *
+   * @throws IOException if close configManager failed.
+   */
   public void deactivate() throws IOException {
     LOGGER.info("Deactivating {}...", ConfigNodeConstant.GLOBAL_NAME);
     registerManager.deregisterAll();
