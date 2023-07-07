@@ -168,8 +168,8 @@ public class PageReader implements IPageReader {
   }
 
   public void updateTP_withValueIndex(ChunkSuit4CPV chunkSuit4CPV) {
-    long start = System.nanoTime();
     if (TSFileDescriptor.getInstance().getConfig().isUseValueIndex()) {
+      long start = System.nanoTime();
       // NOTE: get valueIndex from chunkSuit4CPV.getChunkMetadata().getStatistics(), not
       // chunkSuit4CPV.getStatistics()!
       ValueIndex valueIndex = chunkSuit4CPV.getChunkMetadata().getStatistics().valueIndex;
@@ -197,7 +197,9 @@ public class PageReader implements IPageReader {
       if (!isFound) { // unfortunately all sdt points are deleted
         // this includes the case that all points including model points are deleted,
         // which is handled by updateBPTP
-        updateBPTP(chunkSuit4CPV); // then fall back to baseline method
+        updateBPTP_withoutTimeMeasure(chunkSuit4CPV); // then fall back to baseline method
+        // time measured here, avoid counting twice
+        IOMonitor2.addMeasure(Operation.SEARCH_ARRAY_c_genBPTP, System.nanoTime() - start);
         return;
       }
       double threshold_LB = foundValue - valueIndex.errorBound; // near max LB
@@ -340,15 +342,15 @@ public class PageReader implements IPageReader {
       } else {
         throw new UnSupportedDataTypeException(String.valueOf(dataType));
       }
-    } else {
+      IOMonitor2.addMeasure(Operation.SEARCH_ARRAY_c_genBPTP, System.nanoTime() - start);
+    } else { // not use value index
       updateBPTP(chunkSuit4CPV);
     }
-    IOMonitor2.addMeasure(Operation.SEARCH_ARRAY_c_genBPTP, System.nanoTime() - start);
   }
 
   public void updateBP_withValueIndex(ChunkSuit4CPV chunkSuit4CPV) {
-    long start = System.nanoTime();
     if (TSFileDescriptor.getInstance().getConfig().isUseValueIndex()) {
+      long start = System.nanoTime();
       // NOTE: get valueIndex from chunkSuit4CPV.getChunkMetadata().getStatistics(), not
       // chunkSuit4CPV.getStatistics()!
       ValueIndex valueIndex = chunkSuit4CPV.getChunkMetadata().getStatistics().valueIndex;
@@ -376,8 +378,10 @@ public class PageReader implements IPageReader {
       if (!isFound) { // unfortunately all sdt points are deleted
         // this includes the case that all points including model points are deleted,
         // which is handled by updateBPTP
-        updateBPTP(chunkSuit4CPV); // then fall back to baseline method
-        return;
+        updateBPTP_withoutTimeMeasure(chunkSuit4CPV); // then fall back to baseline method
+        // time measured here, avoid counting twice
+        IOMonitor2.addMeasure(Operation.SEARCH_ARRAY_c_genBPTP, System.nanoTime() - start);
+        return; // note here
       }
       double threshold_UB = foundValue + valueIndex.errorBound; // near min UB
 
@@ -520,14 +524,13 @@ public class PageReader implements IPageReader {
       } else {
         throw new UnSupportedDataTypeException(String.valueOf(dataType));
       }
-    } else {
+      IOMonitor2.addMeasure(Operation.SEARCH_ARRAY_c_genBPTP, System.nanoTime() - start);
+    } else { // not use value index
       updateBPTP(chunkSuit4CPV);
     }
-    IOMonitor2.addMeasure(Operation.SEARCH_ARRAY_c_genBPTP, System.nanoTime() - start);
   }
 
-  public void updateBPTP(ChunkSuit4CPV chunkSuit4CPV) {
-    long start = System.nanoTime();
+  public void updateBPTP_withoutTimeMeasure(ChunkSuit4CPV chunkSuit4CPV) {
     deleteCursor = 0; // TODO DEBUG
     Statistics statistics = null;
     switch (dataType) {
@@ -592,6 +595,11 @@ public class PageReader implements IPageReader {
     } else {
       chunkSuit4CPV.statistics.setCount(0); // otherwise count won't be zero
     }
+  }
+
+  public void updateBPTP(ChunkSuit4CPV chunkSuit4CPV) {
+    long start = System.nanoTime();
+    updateBPTP_withoutTimeMeasure(chunkSuit4CPV);
     IOMonitor2.addMeasure(Operation.SEARCH_ARRAY_c_genBPTP, System.nanoTime() - start);
   }
 

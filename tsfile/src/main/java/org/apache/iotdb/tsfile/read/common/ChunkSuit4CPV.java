@@ -315,7 +315,6 @@ public class ChunkSuit4CPV {
       pageReader.valueBuffer.position(pageReader.timeBufferLength);
       while (pageReader.timeBuffer.remaining() > 0) {
         estimatedPos++;
-        //        IOMonitor.incPointsTravered();
         IOMonitor2.DCP_D_timeIndex_traversedPointNum++;
         long t = pageReader.timeBuffer.getLong();
         if (t >= targetTimestamp) {
