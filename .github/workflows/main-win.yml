@@ -43,7 +43,7 @@ jobs:
         # the server module:
         #   -pl server -am -DskipTests=true -Diotdb.test.only=true
         # but we just add labels here to make the action name more graceful
-        it_task: [ 'others', 'server' ]
+        it_task: [ 'others', 'iotdb-core/datanode' ]
     runs-on: windows-latest
 
     steps:
@@ -51,7 +51,7 @@ jobs:
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v3
         with:
-          distribution: liberica
+          distribution: corretto
           java-version: ${{ matrix.java }}
       - name: Cache Maven packages
         uses: actions/cache@v3
@@ -61,9 +61,9 @@ jobs:
           restore-keys: ${{ runner.os }}-m2-
       - name: Check Apache Rat
         run: mvn -B apache-rat:check
-      - name: Test Server Module with Maven
+      - name: Test Datanode Module with Maven
         shell: bash
-        if: ${{ matrix.it_task == 'server'}}
+        if: ${{ matrix.it_task == 'iotdb-core/datanode'}}
         run: mvn clean integration-test -Dtest.port.closed=true -pl iotdb-core/datanode -am -DskipTests=true -Diotdb.test.only=true
       - name: Test Other Modules with Maven
         shell: bash
