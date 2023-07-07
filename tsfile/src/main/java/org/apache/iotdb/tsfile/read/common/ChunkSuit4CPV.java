@@ -374,6 +374,17 @@ public class ChunkSuit4CPV {
 
       // search from estimatePos in the timeBuffer to find the closet timestamp equal to or smaller
       // than the given timestamp
+      // TODO debug
+      try {
+        long tmp = pageReader.timeBuffer.getLong(estimatedPos * 8);
+      } catch (IndexOutOfBoundsException e) {
+        System.out.println("targetTimestamp=" + targetTimestamp);
+        System.out.println("estimatedPos=" + estimatedPos);
+        System.out.println("count=" + chunkMetadata.getStatistics().getCount());
+        System.out.println("stepregress segmentKeys=" + stepRegress.getSegmentKeys());
+        System.out.println("stepregress slope=" + stepRegress.getSlope());
+      }
+
       if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
         while (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
           estimatedPos--;
