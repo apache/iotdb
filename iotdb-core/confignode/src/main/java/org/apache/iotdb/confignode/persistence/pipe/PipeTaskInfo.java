@@ -255,16 +255,26 @@ public class PipeTaskInfo implements SnapshotProcessor {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  public boolean hasExceptions(String pipeName) {
+  /**
+   * Used to detect whether a pipe has exceptions or is automatically Stopped.
+   *
+   * @param pipeName The name of the pipes to be clear exception
+   */
+  public boolean hasExceptionsOrIsAutoStopped(String pipeName) {
     if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
       return false;
     }
     PipeRuntimeMeta runtimeMeta = pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta();
+    if (runtimeMeta.getIsAutoStopped()) {
+      return true;
+    }
+
     Map<Integer, PipeRuntimeException> exceptionMap =
         runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
     if (!exceptionMap.isEmpty()) {
       return true;
     }
+
     AtomicBoolean hasException = new AtomicBoolean(false);
     runtimeMeta
         .getConsensusGroupId2TaskMetaMap()
@@ -279,18 +289,22 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   /**
-   * Clear the exceptions of a pipe locally after it starts successfully. If there are exceptions
-   * cleared, the messages will then be updated to all the nodes through
-   * PipeHandleMetaChangeProcedure.
+   * Clear the exceptions of, and set the isAutoStopped flag to false for a pipe locally after it
+   * starts successfully. If there are exceptions cleared or flag changed, the messages will then be
+   * updated to all the nodes through PipeHandleMetaChangeProcedure.
    *
    * @param pipeName The name of the pipes to be clear exception
    */
-  public void clearExceptions(String pipeName) {
+  public void clearExceptionsAndSetAutoStoppedToFalse(String pipeName) {
     if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
       return;
     }
     PipeRuntimeMeta runtimeMeta = pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta();
     runtimeMeta.setExceptionsClearTime(System.currentTimeMillis());
+
+    // Clear the isAutoStopped flag as well, to avoid unnecessary retry.
+    runtimeMeta.setIsAutoStopped(false);
+
     Map<Integer, PipeRuntimeException> exceptionMap =
         runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
     if (!exceptionMap.isEmpty()) {
@@ -353,6 +367,41 @@ public class PipeTaskInfo implements SnapshotProcessor {
       }
     }
     return hasException;
+  }
+
+  /**
+   * Set the statuses of all the pipes stopped automatically to RUNNING, in order to try restarting
+   * them.
+   *
+   * @return true if there are pipes need restarting
+   */
+  public boolean autoRestart() {
+    AtomicBoolean needRestart = new AtomicBoolean(false);
+    pipeMetaKeeper
+        .getPipeMetaList()
+        .forEach(
+            pipeMeta -> {
+              if (pipeMeta.getRuntimeMeta().getIsAutoStopped()) {
+                pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+                needRestart.set(true);
+              }
+            });
+    return needRestart.get();
+  }
+
+  /**
+   * Clear the exceptions of, and set the isAutoStopped flag to false for the successfully restarted
+   * pipe.
+   */
+  public void handleSuccessfulRestart() {
+    pipeMetaKeeper
+        .getPipeMetaList()
+        .forEach(
+            pipeMeta -> {
+              if (pipeMeta.getRuntimeMeta().getStatus().get().equals(PipeStatus.RUNNING)) {
+                clearExceptionsAndSetAutoStoppedToFalse(pipeMeta.getStaticMeta().getPipeName());
+              }
+            });
   }
 
   /////////////////////////////// Snapshot ///////////////////////////////

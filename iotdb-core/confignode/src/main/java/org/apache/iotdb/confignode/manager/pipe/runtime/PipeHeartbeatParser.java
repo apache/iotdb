@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalExcep
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
@@ -204,7 +205,9 @@ public class PipeHeartbeatParser {
                 .getStatus()
                 .get()
                 .equals(PipeStatus.STOPPED)) {
-              pipeMetaOnConfigNode.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
+              PipeRuntimeMeta runtimeMeta = pipeMetaOnConfigNode.getRuntimeMeta();
+              runtimeMeta.getStatus().set(PipeStatus.STOPPED);
+              runtimeMeta.setIsAutoStopped(true);
 
               needWriteConsensusOnConfigNodes.set(true);
               needPushPipeMetaToDataNodes.set(true);
@@ -238,6 +241,7 @@ public class PipeHeartbeatParser {
                               exceptionMap.put(dataNodeId, exception);
                             }
                             runtimeMeta.getStatus().set(PipeStatus.STOPPED);
+                            runtimeMeta.setIsAutoStopped(true);
 
                             needWriteConsensusOnConfigNodes.set(true);
                             needPushPipeMetaToDataNodes.set(true);

@@ -71,13 +71,15 @@ public class PipeTaskCoordinator {
     // Whether there are exceptions to clear
     boolean hasException;
     try {
-      hasException = pipeTaskInfo.hasExceptions(pipeName);
+      hasException = pipeTaskInfo.hasExceptionsOrIsAutoStopped(pipeName);
     } finally {
       unlock();
     }
     TSStatus status = configManager.getProcedureManager().startPipe(pipeName);
     if (status == RpcUtils.SUCCESS_STATUS && hasException) {
-      LOGGER.info("Pipe {} has started successfully, clear its exceptions.", pipeName);
+      LOGGER.info(
+          "Pipe {} has started successfully, clear its exceptions set its autoStopped flag to false.",
+          pipeName);
       configManager.getProcedureManager().pipeHandleMetaChange(true, true);
     }
     return status;

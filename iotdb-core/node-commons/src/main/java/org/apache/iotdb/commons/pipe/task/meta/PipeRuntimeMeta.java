@@ -34,6 +34,7 @@ import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -51,6 +52,8 @@ public class PipeRuntimeMeta {
       new ConcurrentHashMap<>();
 
   private final AtomicLong exceptionsClearTime = new AtomicLong(Long.MIN_VALUE);
+
+  private final AtomicBoolean isAutoStopped = new AtomicBoolean(false);
 
   public PipeRuntimeMeta() {
     consensusGroupId2TaskMetaMap = new ConcurrentHashMap<>();
@@ -82,6 +85,14 @@ public class PipeRuntimeMeta {
     }
   }
 
+  public boolean getIsAutoStopped() {
+    return isAutoStopped.get();
+  }
+
+  public void setIsAutoStopped(boolean isAutoStopped) {
+    this.isAutoStopped.set(isAutoStopped);
+  }
+
   public ByteBuffer serialize() throws IOException {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
@@ -107,6 +118,7 @@ public class PipeRuntimeMeta {
     }
 
     ReadWriteIOUtils.write(exceptionsClearTime.get(), outputStream);
+    ReadWriteIOUtils.write(isAutoStopped.get(), outputStream);
   }
 
   public void serialize(FileOutputStream outputStream) throws IOException {
@@ -127,6 +139,7 @@ public class PipeRuntimeMeta {
     }
 
     ReadWriteIOUtils.write(exceptionsClearTime.get(), outputStream);
+    ReadWriteIOUtils.write(isAutoStopped.get(), outputStream);
   }
 
   public static PipeRuntimeMeta deserialize(InputStream inputStream) throws IOException {
@@ -150,6 +163,7 @@ public class PipeRuntimeMeta {
     }
 
     pipeRuntimeMeta.exceptionsClearTime.set(ReadWriteIOUtils.readLong(inputStream));
+    pipeRuntimeMeta.isAutoStopped.set(ReadWriteIOUtils.readBool(inputStream));
 
     return pipeRuntimeMeta;
   }
@@ -175,6 +189,7 @@ public class PipeRuntimeMeta {
     }
 
     pipeRuntimeMeta.exceptionsClearTime.set(ReadWriteIOUtils.readLong(byteBuffer));
+    pipeRuntimeMeta.isAutoStopped.set(ReadWriteIOUtils.readBool(byteBuffer));
 
     return pipeRuntimeMeta;
   }
@@ -191,7 +206,8 @@ public class PipeRuntimeMeta {
     return Objects.equals(status.get().getType(), that.status.get().getType())
         && consensusGroupId2TaskMetaMap.equals(that.consensusGroupId2TaskMetaMap)
         && dataNodeId2PipeRuntimeExceptionMap.equals(that.dataNodeId2PipeRuntimeExceptionMap)
-        && exceptionsClearTime.get() == that.exceptionsClearTime.get();
+        && exceptionsClearTime.get() == that.exceptionsClearTime.get()
+        && isAutoStopped.get() == that.isAutoStopped.get();
   }
 
   @Override
@@ -200,7 +216,8 @@ public class PipeRuntimeMeta {
         status,
         consensusGroupId2TaskMetaMap,
         dataNodeId2PipeRuntimeExceptionMap,
-        exceptionsClearTime.get());
+        exceptionsClearTime.get(),
+        isAutoStopped.get());
   }
 
   @Override
@@ -214,6 +231,8 @@ public class PipeRuntimeMeta {
         + dataNodeId2PipeRuntimeExceptionMap
         + ", exceptionsClearTime="
         + exceptionsClearTime.get()
+        + ", isAutoStopped"
+        + isAutoStopped.get()
         + "}";
   }
 }

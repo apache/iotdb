@@ -99,12 +99,12 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
           String.format("Failed to start pipe %s, details: %s", pipeName, exceptionMessage));
     }
 
-    // Clear exception messages if succeeded
+    // Clear exception messages and set isAutoStopped flag to false if succeeded
     env.getConfigManager()
         .getPipeManager()
         .getPipeTaskCoordinator()
         .getPipeTaskInfo()
-        .clearExceptions(pipeName);
+        .clearExceptionsAndSetAutoStoppedToFalse(pipeName);
   }
 
   @Override

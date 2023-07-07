@@ -106,7 +106,7 @@ public class CommonConfig {
    */
   private int selectorNumOfClientManager = 1;
 
-  /** whether to use thrift compression. */
+  /** Whether to use thrift compression. */
   private boolean isRpcThriftCompressionEnabled = false;
 
   private int coreClientNumForEachNode = DefaultProperty.CORE_CLIENT_NUM_FOR_EACH_NODE;
@@ -125,7 +125,7 @@ public class CommonConfig {
 
   private final int TTimePartitionSlotTransmitLimit = 1000;
 
-  /** Disk Monitor */
+  /** Disk Monitor. */
   private double diskSpaceWarningThreshold = 0.05;
 
   /** Ip and port of target ML node. */
@@ -163,7 +163,8 @@ public class CommonConfig {
   private int pipeHeartbeatIntervalSecondsForCollectingPipeMeta = 100;
   private long pipeMetaSyncerInitialSyncDelayMinutes = 3;
   private long pipeMetaSyncerSyncIntervalMinutes = 3;
-  private boolean pipeExceptionStoppedAutoRestartRetryEnabled = true;
+  private boolean pipeExceptionStoppedAutoRestartEnabled = true;
+  private long pipeMetaSyncerAutoRestartPipeRound = 5;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -536,13 +537,21 @@ public class CommonConfig {
     this.pipeMetaSyncerSyncIntervalMinutes = pipeMetaSyncerSyncIntervalMinutes;
   }
 
-  public boolean getPipeExceptionStoppedAutoRetryEnabled() {
-    return pipeExceptionStoppedAutoRestartRetryEnabled;
+  public boolean getPipeExceptionStoppedAutoRestartEnabled() {
+    return pipeExceptionStoppedAutoRestartEnabled;
   }
 
-  public void setPipeExceptionStoppedAutoRestartRetryEnabled(
-      boolean pipeExceptionStoppedAutoRestartRetryEnabled) {
-    this.pipeExceptionStoppedAutoRestartRetryEnabled = pipeExceptionStoppedAutoRestartRetryEnabled;
+  public void setPipeExceptionStoppedAutoRestartEnabled(
+      boolean pipeExceptionStoppedAutoRestartEnabled) {
+    this.pipeExceptionStoppedAutoRestartEnabled = pipeExceptionStoppedAutoRestartEnabled;
+  }
+
+  public long getPipeMetaSyncerAutoRestartPipeRound() {
+    return pipeMetaSyncerAutoRestartPipeRound;
+  }
+
+  public void setPipeMetaSyncerAutoRestartPipeRound(long pipeMetaSyncerAutoRestartPipeRound) {
+    this.pipeMetaSyncerAutoRestartPipeRound = pipeMetaSyncerAutoRestartPipeRound;
   }
 
   public long getPipeConnectorRetryIntervalMs() {

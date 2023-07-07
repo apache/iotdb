@@ -45,7 +45,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * This procedure manage 4 kinds of PIPE operations: CREATE, START, STOP and DROP.
  *
- * <p>This class extends AbstractNodeProcedure to make sure that pipe task procedures can be
+ * <p>This class extends {@link AbstractNodeProcedure} to make sure that pipe task procedures can be
  * executed in sequence and node procedures can be locked when a pipe task procedure is running.
  */
 public abstract class AbstractOperatePipeProcedureV2

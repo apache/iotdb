@@ -23,8 +23,11 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.ProcedureManager;
+import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -33,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class PipeMetaSyncer {
 
@@ -49,6 +53,11 @@ public class PipeMetaSyncer {
   private final ConfigManager configManager;
 
   private Future<?> metaSyncFuture;
+
+  private final AtomicInteger pipeAutoRestartRoundCounter = new AtomicInteger(0);
+
+  private final boolean autoRestartPipeEnabled =
+      CommonDescriptor.getInstance().getConfig().getPipeExceptionStoppedAutoRestartEnabled();
 
   PipeMetaSyncer(ConfigManager configManager) {
     this.configManager = configManager;
@@ -78,9 +87,30 @@ public class PipeMetaSyncer {
   }
 
   private synchronized void sync() {
-    final TSStatus status = configManager.getProcedureManager().pipeMetaSync();
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      configManager.getProcedureManager().pipeHandleMetaChange(true, true);
+    ProcedureManager procedureManager = configManager.getProcedureManager();
+    PipeTaskInfo pipeTaskInfo =
+        configManager.getPipeManager().getPipeTaskCoordinator().getPipeTaskInfo();
+    boolean needRestart = false;
+
+    if (autoRestartPipeEnabled
+        && pipeAutoRestartRoundCounter.get()
+            == CommonDescriptor.getInstance().getConfig().getPipeMetaSyncerAutoRestartPipeRound()) {
+      needRestart = pipeTaskInfo.autoRestart();
+      pipeAutoRestartRoundCounter.set(0);
+    }
+
+    final TSStatus status = procedureManager.pipeMetaSync();
+
+    if (needRestart) {
+      pipeTaskInfo.handleSuccessfulRestart();
+    }
+
+    if (needRestart || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      procedureManager.pipeHandleMetaChange(true, true);
+    }
+
+    if (autoRestartPipeEnabled) {
+      pipeAutoRestartRoundCounter.incrementAndGet();
     }
   }
 
