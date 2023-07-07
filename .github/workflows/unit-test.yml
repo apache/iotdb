@@ -1,7 +1,7 @@
 # This workflow will build a Java project with Maven
 # For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
 
-name: Main Win
+name: Main Mac and Linux
 
 on:
   push:
@@ -31,20 +31,22 @@ env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
 
 jobs:
-  win-ut:
+  unix-ut:
     strategy:
       fail-fast: false
       max-parallel: 20
       matrix:
         java: [ 8, 11, 17 ]
-        # to reduce the CI time cost; we split the whole CI to 2 parts:
-        # modules except the server:
-        #   -Diotdb.skip.test=true
-        # the server module:
-        #   -pl server -am -DskipTests=true -Diotdb.test.only=true
-        # but we just add labels here to make the action name more graceful
+        os: [ ubuntu-latest, windows-latest ]
         it_task: [ 'others', 'datanode' ]
-    runs-on: windows-latest
+        include:
+          - java: 17
+            os: macos-latest
+            it_task: 'datanode'
+          - java: 17
+            os: macos-latest
+            it_task: 'others'
+    runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v3
@@ -60,7 +62,7 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Check Apache Rat
-        run: mvn -B apache-rat:check
+        run: mvn -B apache-rat:check -P site -P code-coverage
       - name: Test Datanode Module with Maven
         shell: bash
         if: ${{ matrix.it_task == 'datanode'}}
@@ -71,4 +73,3 @@ jobs:
         run: |
           mvn clean install -DskipTests
           mvn clean test -Dtest.port.closed=true -Diotdb.test.skip=true -P get-jar-with-dependencies
-
