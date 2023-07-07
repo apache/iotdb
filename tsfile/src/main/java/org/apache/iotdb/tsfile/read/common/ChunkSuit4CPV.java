@@ -32,13 +32,11 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.StepRegress;
 import org.apache.iotdb.tsfile.read.common.IOMonitor2.Operation;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 
 public class ChunkSuit4CPV {
-  private static final Logger M4_CHUNK_METADATA = LoggerFactory.getLogger("M4_CHUNK_METADATA");
+
+  //  private static final Logger M4_CHUNK_METADATA = LoggerFactory.getLogger("M4_CHUNK_METADATA");
 
   private ChunkMetadata chunkMetadata; // fixed info, including version, dataType, stepRegress
   public int modelPointsCursor =
@@ -258,7 +256,10 @@ public class ChunkSuit4CPV {
     if (TSFileDescriptor.getInstance().getConfig().isUseTimeIndex()) {
       StepRegress stepRegress = chunkMetadata.getStatistics().getStepRegress();
       // infer position starts from 1, so minus 1 here
-      estimatedPos = (int) Math.round(stepRegress.infer(targetTimestamp)) - 1;
+      // note get count from global chunkMetadata.getStatistics().getCount(), not local
+      // statistics.getCount
+      estimatedPos =
+          stepRegress.infer(targetTimestamp, chunkMetadata.getStatistics().getCount()) - 1;
 
       // search from estimatePos in the timeBuffer to find the closet timestamp equal to or larger
       // than the given timestamp
@@ -374,24 +375,13 @@ public class ChunkSuit4CPV {
     if (TSFileDescriptor.getInstance().getConfig().isUseTimeIndex()) {
       StepRegress stepRegress = chunkMetadata.getStatistics().getStepRegress();
       // infer position starts from 1, so minus 1 here
-      estimatedPos = (int) Math.round(stepRegress.infer(targetTimestamp)) - 1;
+      // note get count from global chunkMetadata.getStatistics().getCount(), not local
+      // statistics.getCount
+      estimatedPos =
+          stepRegress.infer(targetTimestamp, chunkMetadata.getStatistics().getCount()) - 1;
 
       // search from estimatePos in the timeBuffer to find the closet timestamp equal to or smaller
       // than the given timestamp
-      // TODO debug
-      try {
-        long tmp = pageReader.timeBuffer.getLong(estimatedPos * 8);
-      } catch (Exception e) {
-        M4_CHUNK_METADATA.info("targetTimestamp=" + targetTimestamp);
-        M4_CHUNK_METADATA.info("estimatedPos=" + estimatedPos);
-        M4_CHUNK_METADATA.info("count=" + chunkMetadata.getStatistics().getCount());
-        M4_CHUNK_METADATA.info("stepregress segmentKeys=" + stepRegress.getSegmentKeys());
-        M4_CHUNK_METADATA.info(
-            "stepregress segmentIntercepts=" + stepRegress.getSegmentIntercepts());
-        M4_CHUNK_METADATA.info("stepregress slope=" + stepRegress.getSlope());
-        throw e;
-      }
-
       if (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
         while (pageReader.timeBuffer.getLong(estimatedPos * 8) > targetTimestamp) {
           estimatedPos--;
@@ -510,8 +500,10 @@ public class ChunkSuit4CPV {
     if (TSFileDescriptor.getInstance().getConfig().isUseTimeIndex()) {
       StepRegress stepRegress = chunkMetadata.getStatistics().getStepRegress();
       // infer position starts from 1, so minus 1 here
-      // TODO debug buffer.get(index)
-      int estimatedPos = (int) Math.round(stepRegress.infer(targetTimestamp)) - 1;
+      // note get count from global chunkMetadata.getStatistics().getCount(), not local
+      // statistics.getCount
+      int estimatedPos =
+          stepRegress.infer(targetTimestamp, chunkMetadata.getStatistics().getCount()) - 1;
 
       // search from estimatePos in the timeBuffer to find the closet timestamp equal to or smaller
       // than the given timestamp

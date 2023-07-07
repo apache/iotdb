@@ -61,7 +61,7 @@ public class StepRegress {
 
   private double mean = 0; // mean of intervals
   private double stdDev = 0; // standard deviation of intervals
-  private long count = 0;
+  public long count = 0;
   private double sumX2 = 0.0;
   private double sumX1 = 0.0;
 
@@ -409,12 +409,22 @@ public class StepRegress {
     }
   }
 
+  public int infer(double t, int count) throws IOException {
+    int pos = (int) Math.round(infer_internal(t)); // starting from 1
+    // As double loses precision, although the last point is passed at the phase of learning,
+    // the inferred pos by rounding may still exceed max position count.
+    if (pos > count) {
+      pos--;
+    }
+    return pos;
+  }
+
   /**
    * @param t input timestamp
    * @return output the value of the step regression function f(t), which is the estimated position
    *     in the chunk. Pay attention that f(t) starts from (startTime,1), ends at (endTime,count).
    */
-  public double infer(double t) throws IOException {
+  public double infer_internal(double t) throws IOException {
     if (segmentKeys.size() == 1) { // TODO DEBUG
       return 1;
     }
