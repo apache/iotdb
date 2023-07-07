@@ -153,7 +153,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
               int BP_v_int = ((IntegerStatistics) statistics).getMinValue();
               int TP_v_int = ((IntegerStatistics) statistics).getMaxValue();
               M4_CHUNK_METADATA.debug(
-                  "M4_CHUNK_METADATA,{},{},{},{},{},{},{},{},{},{}",
+                  "M4_CHUNK_METADATA,{},{},{},{},{},{},{},{},{},{},{}",
                   FP_t,
                   LP_t,
                   BP_t,
@@ -163,7 +163,8 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                   BP_v_int,
                   TP_v_int,
                   chunkSuit4CPV.getChunkMetadata().getVersion(),
-                  chunkSuit4CPV.getChunkMetadata().getOffsetOfChunkHeader());
+                  chunkSuit4CPV.getChunkMetadata().getOffsetOfChunkHeader(),
+                  statistics.getCount());
               break;
             case INT64:
               long FP_v_long = ((LongStatistics) statistics).getFirstValue();
@@ -171,7 +172,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
               long BP_v_long = ((LongStatistics) statistics).getMinValue();
               long TP_v_long = ((LongStatistics) statistics).getMaxValue();
               M4_CHUNK_METADATA.debug(
-                  "M4_CHUNK_METADATA,{},{},{},{},{},{},{},{},{},{}",
+                  "M4_CHUNK_METADATA,{},{},{},{},{},{},{},{},{},{},{}",
                   FP_t,
                   LP_t,
                   BP_t,
@@ -181,7 +182,8 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                   BP_v_long,
                   TP_v_long,
                   chunkSuit4CPV.getChunkMetadata().getVersion(),
-                  chunkSuit4CPV.getChunkMetadata().getOffsetOfChunkHeader());
+                  chunkSuit4CPV.getChunkMetadata().getOffsetOfChunkHeader(),
+                  statistics.getCount());
               break;
             case FLOAT:
               float FP_v_float = ((FloatStatistics) statistics).getFirstValue();
@@ -189,7 +191,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
               float BP_v_float = ((FloatStatistics) statistics).getMinValue();
               float TP_v_float = ((FloatStatistics) statistics).getMaxValue();
               M4_CHUNK_METADATA.debug(
-                  "M4_CHUNK_METADATA,{},{},{},{},{},{},{},{},{},{}",
+                  "M4_CHUNK_METADATA,{},{},{},{},{},{},{},{},{},{},{}",
                   FP_t,
                   LP_t,
                   BP_t,
@@ -199,7 +201,8 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                   BP_v_float,
                   TP_v_float,
                   chunkSuit4CPV.getChunkMetadata().getVersion(),
-                  chunkSuit4CPV.getChunkMetadata().getOffsetOfChunkHeader());
+                  chunkSuit4CPV.getChunkMetadata().getOffsetOfChunkHeader(),
+                  statistics.getCount());
               break;
             case DOUBLE:
               double FP_v_double = ((DoubleStatistics) statistics).getFirstValue();
@@ -207,7 +210,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
               double BP_v_double = ((DoubleStatistics) statistics).getMinValue();
               double TP_v_double = ((DoubleStatistics) statistics).getMaxValue();
               M4_CHUNK_METADATA.debug(
-                  "M4_CHUNK_METADATA,{},{},{},{},{},{},{},{},{},{}",
+                  "M4_CHUNK_METADATA,{},{},{},{},{},{},{},{},{},{},{}",
                   FP_t,
                   LP_t,
                   BP_t,
@@ -217,7 +220,8 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                   BP_v_double,
                   TP_v_double,
                   chunkSuit4CPV.getChunkMetadata().getVersion(),
-                  chunkSuit4CPV.getChunkMetadata().getOffsetOfChunkHeader());
+                  chunkSuit4CPV.getChunkMetadata().getOffsetOfChunkHeader(),
+                  statistics.getCount());
               break;
             default:
               throw new QueryProcessException("unsupported data type!");

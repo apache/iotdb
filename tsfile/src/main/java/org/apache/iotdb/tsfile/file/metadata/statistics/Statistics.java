@@ -135,13 +135,27 @@ public abstract class Statistics<T> {
     // value statistics of different data type
     byteLen += serializeStats(outputStream);
     // serialize stepRegress
-    byteLen += serializeStepRegress(outputStream);
+    byteLen += serializeStepRegress(outputStream, true);
     // serialize value index
-    byteLen += serializeValueIndex(outputStream);
+    byteLen += serializeValueIndex(outputStream, true);
     return byteLen;
   }
 
-  int serializeValueIndex(OutputStream outputStream) throws IOException {
+  public int serialize(OutputStream outputStream, boolean log) throws IOException {
+    int byteLen = 0;
+    byteLen += ReadWriteForEncodingUtils.writeUnsignedVarInt(count, outputStream);
+    byteLen += ReadWriteIOUtils.write(startTime, outputStream);
+    byteLen += ReadWriteIOUtils.write(endTime, outputStream);
+    // value statistics of different data type
+    byteLen += serializeStats(outputStream);
+    // serialize stepRegress
+    byteLen += serializeStepRegress(outputStream, log);
+    // serialize value index
+    byteLen += serializeValueIndex(outputStream, log);
+    return byteLen;
+  }
+
+  int serializeValueIndex(OutputStream outputStream, boolean log) throws IOException {
     valueIndex.learn(); // ensure executed once and only once
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(valueIndex.idxOut.size(), outputStream);
@@ -155,7 +169,12 @@ public abstract class Statistics<T> {
     byteLen += valueIndex.valueOut.size();
 
     byteLen += ReadWriteIOUtils.write(valueIndex.errorBound, outputStream);
-    LOG.info("value_index_serialize_byteLen,{}", byteLen);
+    if (log) {
+      LOG.info(
+          "value_index_serialize_byteLen,{},modelPoint_count_exceptFPvLPv,{}",
+          byteLen,
+          valueIndex.modelPointCount);
+    }
     return byteLen;
   }
 
@@ -163,7 +182,7 @@ public abstract class Statistics<T> {
    * slope, m: the number of segment keys, m-2 segment keys in between when m>=2. The first and the
    * last segment keys are not serialized here, because they are minTime and endTime respectively.
    */
-  int serializeStepRegress(OutputStream outputStream) throws IOException {
+  int serializeStepRegress(OutputStream outputStream, boolean log) throws IOException {
     stepRegress.learn(); // ensure executed once and only once
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(stepRegress.getSlope(), outputStream); // K
@@ -173,7 +192,12 @@ public abstract class Statistics<T> {
     for (int i = 1; i < segmentKeys.size() - 1; i++) { // t2,t3,...,tm-1
       byteLen += ReadWriteIOUtils.write(segmentKeys.get(i), outputStream);
     }
-    LOG.info("time_index_serialize_byteLen,{}", byteLen);
+    if (log) {
+      LOG.info(
+          "time_index_serialize_byteLen,{},segmentKeys_size_includeFPtLPt,{}",
+          byteLen,
+          segmentKeys.size());
+    }
     return byteLen;
   }
 

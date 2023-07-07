@@ -131,7 +131,8 @@ public class TimeseriesMetadata implements Accountable {
     byteLen += ReadWriteIOUtils.write(dataType, outputStream);
     byteLen +=
         ReadWriteForEncodingUtils.writeUnsignedVarInt(chunkMetaDataListDataSize, outputStream);
-    byteLen += statistics.serialize(outputStream);
+    // log false to avoid interfere with chunk statistics log info
+    byteLen += statistics.serialize(outputStream, false);
     chunkMetadataListBuffer.writeTo(outputStream);
     byteLen += chunkMetadataListBuffer.size();
     return byteLen;

@@ -31,6 +31,8 @@ public class ValueIndex {
   // causing learn() executed more than once!!
   private boolean isLearned = false;
 
+  public int modelPointCount = 0; // except the first and last points
+
   private double stdDev = 0; // standard deviation of intervals
   private long count = 0;
   private double sumX2 = 0.0;
@@ -92,6 +94,7 @@ public class ValueIndex {
           // the first point value is stored as FirstValue in statistics, so here no need store the
           // first point
           // the last point won't be checked by the if SDT encode logic
+          modelPointCount++;
           idxEncoder.encode((int) sdtEncoder.getTime(), idxOut);
           valueEncoder.encode(sdtEncoder.getDoubleValue(), valueOut);
           if (!hasDataToFlush) {
