@@ -155,7 +155,7 @@ public abstract class Statistics<T> {
     byteLen += valueIndex.valueOut.size();
 
     byteLen += ReadWriteIOUtils.write(valueIndex.errorBound, outputStream);
-
+    LOG.info("value_index_serialize_byteLen,{}", byteLen);
     return byteLen;
   }
 
@@ -173,6 +173,7 @@ public abstract class Statistics<T> {
     for (int i = 1; i < segmentKeys.size() - 1; i++) { // t2,t3,...,tm-1
       byteLen += ReadWriteIOUtils.write(segmentKeys.get(i), outputStream);
     }
+    LOG.info("time_index_serialize_byteLen,{}", byteLen);
     return byteLen;
   }
 
