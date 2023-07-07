@@ -41,8 +41,9 @@ jobs:
         include:
           - java: 17
             os: macos-latest
-        it_task: [ 'others', 'iotdb-core/datanode' ]
-    runs-on: ${{ matrix.os}}
+            it_task: [ 'others', 'datanode' ]
+        it_task: [ 'others', 'datanode' ]
+    runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v3
@@ -61,7 +62,7 @@ jobs:
         run: mvn -B apache-rat:check -P site -P code-coverage
       - name: Test Datanode Module with Maven
         shell: bash
-        if: ${{ matrix.it_task == 'iotdb-core/datanode'}}
+        if: ${{ matrix.it_task == 'datanode'}}
         run: mvn clean integration-test -Dtest.port.closed=true -pl iotdb-core/datanode -am -DskipTests=true -Diotdb.test.only=true
       - name: Test Other Modules with Maven
         shell: bash
