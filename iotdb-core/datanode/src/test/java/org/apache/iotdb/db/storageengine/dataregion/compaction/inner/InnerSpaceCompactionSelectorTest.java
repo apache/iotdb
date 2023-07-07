@@ -654,5 +654,6 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
     List<TsFileResource> resources = tsFileManager.getOrCreateSequenceListByTimePartition(0);
     List<List<TsFileResource>> taskResource = selector.selectInnerSpaceTask(resources);
     Assert.assertEquals(1, taskResource.size());
+    modFile.remove();
   }
 }
