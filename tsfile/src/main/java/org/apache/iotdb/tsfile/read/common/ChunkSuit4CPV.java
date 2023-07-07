@@ -386,6 +386,8 @@ public class ChunkSuit4CPV {
         M4_CHUNK_METADATA.info("estimatedPos=" + estimatedPos);
         M4_CHUNK_METADATA.info("count=" + chunkMetadata.getStatistics().getCount());
         M4_CHUNK_METADATA.info("stepregress segmentKeys=" + stepRegress.getSegmentKeys());
+        M4_CHUNK_METADATA.info(
+            "stepregress segmentIntercepts=" + stepRegress.getSegmentIntercepts());
         M4_CHUNK_METADATA.info("stepregress slope=" + stepRegress.getSlope());
         throw e;
       }
