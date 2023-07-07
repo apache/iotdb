@@ -22,6 +22,8 @@ package org.apache.iotdb.tsfile.read.common.block.column;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
+import org.xerial.snappy.Snappy;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -45,28 +47,39 @@ public class TsBlockSerde {
     //    +-------------+---------------+---------+------------+-----------+----------+
     //    | int32       | list[byte]    | int32   | list[byte] |  bytes    | byte     |
     //    +-------------+---------------+---------+------------+-----------+----------+
+    ByteBuffer uncompressed;
+    try {
+      uncompressed = ByteBuffer.wrap(Snappy.uncompress(byteBuffer.array()));
+    } catch (IOException e) {
+      e.printStackTrace();
+      return null;
+    }
+    return deserializeUncompressed(uncompressed);
+  }
 
+  public TsBlock deserializeUncompressed(ByteBuffer uncompressed) {
     // Value column count.
-    int valueColumnCount = byteBuffer.getInt();
+    int valueColumnCount = uncompressed.getInt();
 
     // Value column data types.
     List<TSDataType> valueColumnDataTypes = new ArrayList<>(valueColumnCount);
     for (int i = 0; i < valueColumnCount; i++) {
-      valueColumnDataTypes.add(TSDataType.deserializeFrom(byteBuffer));
+      valueColumnDataTypes.add(TSDataType.deserializeFrom(uncompressed));
     }
 
     // Position count.
-    int positionCount = byteBuffer.getInt();
+    int positionCount = uncompressed.getInt();
 
     // Column encodings.
     List<ColumnEncoding> columnEncodings = new ArrayList<>(valueColumnCount + 1);
     for (int i = 0; i < valueColumnCount + 1; i++) {
-      columnEncodings.add(ColumnEncoding.deserializeFrom(byteBuffer));
+      columnEncodings.add(ColumnEncoding.deserializeFrom(uncompressed));
     }
 
     // Time column.
     TimeColumn timeColumn =
-        ColumnEncoderFactory.get(columnEncodings.get(0)).readTimeColumn(byteBuffer, positionCount);
+        ColumnEncoderFactory.get(columnEncodings.get(0))
+            .readTimeColumn(uncompressed, positionCount);
 
     // Value columns
     Column[] valueColumns = new Column[valueColumnCount];
@@ -74,7 +87,7 @@ public class TsBlockSerde {
       // Value column.
       valueColumns[i] =
           ColumnEncoderFactory.get(columnEncodings.get(1 + i))
-              .readColumn(byteBuffer, valueColumnDataTypes.get(i), positionCount);
+              .readColumn(uncompressed, valueColumnDataTypes.get(i), positionCount);
     }
 
     return new TsBlock(positionCount, timeColumn, valueColumns);
@@ -117,6 +130,6 @@ public class TsBlockSerde {
       columnEncoder.writeColumn(dataOutputStream, tsBlock.getColumn(i));
     }
 
-    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+    return ByteBuffer.wrap(Snappy.compress(byteArrayOutputStream.toByteArray()));
   }
 }

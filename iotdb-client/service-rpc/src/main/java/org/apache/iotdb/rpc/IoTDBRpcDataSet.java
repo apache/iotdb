@@ -349,7 +349,7 @@ public class IoTDBRpcDataSet {
     lastReadWasNull = false;
     ByteBuffer byteBuffer = queryResult.get(queryResultIndex);
     queryResultIndex++;
-    curTsBlock = serde.deserialize(byteBuffer);
+    curTsBlock = serde.deserializeUncompressed(byteBuffer);
     tsBlockIndex = -1;
     tsBlockSize = curTsBlock.getPositionCount();
   }

@@ -31,6 +31,8 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.xerial.snappy.Snappy;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -414,7 +416,13 @@ public class QueryDataSetUtils {
       if (!optionalByteBuffer.isPresent()) {
         break;
       }
-      ByteBuffer byteBuffer = optionalByteBuffer.get();
+      ByteBuffer origin = optionalByteBuffer.get();
+      ByteBuffer byteBuffer;
+      try {
+        byteBuffer = ByteBuffer.wrap(Snappy.uncompress(origin.array()));
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
       byteBuffer.mark();
       int valueColumnCount = byteBuffer.getInt();
       for (int i = 0; i < valueColumnCount; i++) {
