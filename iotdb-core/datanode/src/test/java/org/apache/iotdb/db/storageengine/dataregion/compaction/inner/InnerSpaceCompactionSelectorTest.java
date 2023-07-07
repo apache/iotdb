@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.inner;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
@@ -26,6 +27,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SizeTieredCompactionSelector;
+import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -40,6 +43,8 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
   @Before
@@ -622,5 +627,32 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
     if (fail.get()) {
       Assert.fail();
     }
+  }
+
+  @Test
+  public void testSelectWhenModsFileGreaterThan50M()
+      throws IOException, MetadataException, WriteProcessException {
+    createFiles(6, 2, 3, 50, 0, 10000, 50, 50, false, true);
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    TsFileResource tsFileResource = seqResources.get(0);
+
+    ModificationFile modFile = tsFileResource.getModFile();
+
+    while (modFile.getSize() < 1024 * 1024 * 50) {
+      modFile.write(
+          new Deletion(
+              new PartialPath(COMPACTION_TEST_SG + PATH_SEPARATOR + "**"),
+              Long.MIN_VALUE,
+              Long.MAX_VALUE));
+    }
+
+    SizeTieredCompactionSelector selector =
+        new SizeTieredCompactionSelector("", "", 0, true, tsFileManager);
+    // copy candidate source file list
+    List<TsFileResource> resources = tsFileManager.getOrCreateSequenceListByTimePartition(0);
+    List<List<TsFileResource>> taskResource = selector.selectInnerSpaceTask(resources);
+    Assert.assertEquals(1, taskResource.size());
   }
 }

@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.ICompactionTaskComparator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.IInnerSeqSpaceSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.IInnerUnseqSpaceSelector;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -41,6 +42,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.PriorityQueue;
 
 /**
@@ -152,10 +154,13 @@ public class SizeTieredCompactionSelector
   }
 
   /**
-   * This method searches for a batch of files to be compacted from layer 0 to the highest layer. If
-   * there are more than a batch of files to be merged on a certain layer, it does not search to
-   * higher layers. It creates a compaction thread for each batch of files and put it into the
-   * candidateCompactionTaskQueue of the {@link CompactionTaskManager}.
+   * This method is used to select a batch of files to be merged. There are two ways to select
+   * files.If the first method selects the appropriate file, the second method is not executed. The
+   * first one is based on the mods file corresponding to the file. We will preferentially select
+   * file with mods file larger than 50M. The second way is based on the file layer from layer 0 to
+   * the highest layer. If there are more than a batch of files to be merged on a certain layer, it
+   * does not search to higher layers. It creates a compaction thread for each batch of files and
+   * put it into the candidateCompactionTaskQueue of the {@link CompactionTaskManager}.
    *
    * @return Returns whether the file was found and submits the merge task
    */
@@ -165,12 +170,17 @@ public class SizeTieredCompactionSelector
     PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue =
         new PriorityQueue<>(new SizeTieredCompactionTaskComparator());
     try {
-      int maxLevel = searchMaxFileLevel();
-      for (int currentLevel = 0; currentLevel <= maxLevel; currentLevel++) {
-        if (!selectLevelTask(currentLevel, taskPriorityQueue)) {
-          break;
+      selectMaxModsFileTask(taskPriorityQueue);
+
+      if (taskPriorityQueue.isEmpty()) {
+        int maxLevel = searchMaxFileLevel();
+        for (int currentLevel = 0; currentLevel <= maxLevel; currentLevel++) {
+          if (!selectLevelTask(currentLevel, taskPriorityQueue)) {
+            break;
+          }
         }
       }
+
       List<List<TsFileResource>> taskList = new LinkedList<>();
       while (!taskPriorityQueue.isEmpty()) {
         List<TsFileResource> resources = taskPriorityQueue.poll().left;
@@ -181,6 +191,18 @@ public class SizeTieredCompactionSelector
       LOGGER.error("Exception occurs while selecting files", e);
     }
     return Collections.emptyList();
+  }
+
+  private void selectMaxModsFileTask(
+      PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue) {
+    for (TsFileResource tsFileResource : tsFileResources) {
+      ModificationFile modFile = tsFileResource.getModFile();
+      if (!Objects.isNull(modFile) && modFile.getSize() > 1024 * 1024 * 50) {
+        taskPriorityQueue.add(
+            new Pair<>(Collections.singletonList(tsFileResource), tsFileResource.getTsFileSize()));
+        LOGGER.debug("select tsfile {},the mod file size is {}", tsFileResource, modFile.getSize());
+      }
+    }
   }
 
   private int searchMaxFileLevel() throws IOException {
