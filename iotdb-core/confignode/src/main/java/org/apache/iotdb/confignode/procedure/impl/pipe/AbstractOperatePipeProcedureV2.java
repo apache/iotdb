@@ -116,7 +116,18 @@ public abstract class AbstractOperatePipeProcedureV2
               String.format("Unknown state during executing operatePipeProcedure, %s", state));
       }
     } catch (Exception e) {
-      if (getCycles() == RETRY_THRESHOLD) {
+      if (getCycles() < RETRY_THRESHOLD) {
+        // Always retry
+        LOGGER.error(
+            "Encountered error when trying to {} at state [{}], retry [{}/{}]",
+            getOperation(),
+            state,
+            getCycles() + 1,
+            RETRY_THRESHOLD,
+            e);
+        // Wait 3s for next retry
+        TimeUnit.MILLISECONDS.sleep(3000L);
+      } else {
         LOGGER.error(
             "All {} retries failed when trying to {} at state [{}], will rollback...",
             RETRY_THRESHOLD,
@@ -126,18 +137,7 @@ public abstract class AbstractOperatePipeProcedureV2
         setFailure(
             new ProcedureException(
                 String.format("Fail to %s because %s", getOperation().name(), e.getMessage())));
-        return Flow.HAS_MORE_STATE;
       }
-      // Always retry
-      LOGGER.error(
-          "Encountered error when trying to {} at state [{}], retry [{}/{}]",
-          getOperation(),
-          state,
-          getCycles() + 1,
-          RETRY_THRESHOLD,
-          e);
-      // Wait 3s for next retry
-      TimeUnit.MILLISECONDS.sleep(3000L);
     }
     return Flow.HAS_MORE_STATE;
   }
