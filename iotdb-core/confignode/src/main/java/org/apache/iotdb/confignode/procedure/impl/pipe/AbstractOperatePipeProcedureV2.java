@@ -252,12 +252,12 @@ public abstract class AbstractOperatePipeProcedureV2
                     hasException.set(true);
                     exceptionMessageBuilder.append(
                         String.format(
-                            "PipeName: %s, Message: %s ",
+                            "PipeName: %s, Message: %s",
                             message.getPipeName(), message.getMessage()));
                   } else if (pipeName.equals(message.getPipeName())) {
                     hasException.set(true);
                     exceptionMessageBuilder.append(
-                        String.format("Message: %s ", message.getMessage()));
+                        String.format("Message: %s", message.getMessage()));
                   }
                 });
 
