@@ -114,7 +114,7 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 |描述| DataNode 内网通信地址 |
 |类型| string |
 |默认值| 127.0.0.1 |
-|改后生效方式|重启服务生效|
+|改后生效方式|仅允许在第一次启动服务前修改|
 
 * dn\_internal\_port
 
@@ -123,7 +123,7 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 |描述| DataNode 内网通信端口    |
 |类型| int                |
 |默认值| 10730               |
-|改后生效方式| 重启服务生效             |
+|改后生效方式| 仅允许在第一次启动服务前修改             |
 
 * dn\_mpp\_data\_exchange\_port
 
@@ -132,7 +132,7 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 |描述| MPP 数据交换端口 |
 |类型| int |
 |默认值| 10740 |
-|改后生效方式|重启服务生效|
+|改后生效方式|仅允许在第一次启动服务前修改|
 
 * dn\_schema\_region\_consensus\_port
 
@@ -141,7 +141,7 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 |描述| DataNode 元数据副本的共识协议通信端口 |
 |类型| int |
 |默认值| 10750 |
-|改后生效方式|重启服务生效|
+|改后生效方式|仅允许在第一次启动服务前修改|
 
 * dn\_data\_region\_consensus\_port
 
@@ -150,7 +150,7 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 |描述| DataNode 数据副本的共识协议通信端口 |
 |类型| int |
 |默认值| 10760 |
-|改后生效方式|重启服务生效|
+|改后生效方式|仅允许在第一次启动服务前修改|
 
 * dn\_join\_cluster\_retry\_interval\_ms
 
@@ -170,7 +170,7 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 |描述| ConfigNode 地址，DataNode 启动时通过此地址加入集群 |
 |类型| String                              |
 |默认值| 127.0.0.1:10710                     |
-|改后生效方式| 重启服务生效                              |
+|改后生效方式| 仅允许在第一次启动服务前修改                              |
 
 #### 连接配置
 

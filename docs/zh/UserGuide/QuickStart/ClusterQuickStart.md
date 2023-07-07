@@ -19,17 +19,17 @@
 
 -->
 
-## 集群快速上手
+# 集群版
 
 以本地环境为例，演示 IoTDB 集群的启动、扩容与缩容。
 
 **注意：本文档为使用本地不同端口，进行伪分布式环境部署的教程，仅用于练习。在真实环境部署时，一般不需要修改节点端口，仅需配置节点 IPV4 地址或域名即可。**
 
-### 1. 准备启动环境
+## 1. 准备启动环境
 
 解压 apache-iotdb-1.0.0-all-bin.zip 至 cluster0 目录。
 
-### 2. 启动最小集群
+## 2. 启动最小集群
 
 在 Linux 环境中，部署 1 个 ConfigNode 和 1 个 DataNode（1C1D）集群版，默认 1 副本：
 ```
@@ -37,7 +37,7 @@
 ./cluster0/sbin/start-datanode.sh
 ```
 
-### 3. 验证最小集群
+## 3. 验证最小集群
 
 + 最小集群启动成功，启动 Cli 进行验证：
 ```
@@ -58,11 +58,11 @@ Total line number = 2
 It costs 0.242s
 ```
 
-### 4. 准备扩容环境
+## 4. 准备扩容环境
 
 解压 apache-iotdb-1.0.0-all-bin.zip 至 cluster1 目录和 cluster2 目录
 
-### 5. 修改节点配置文件
+## 5. 修改节点配置文件
 
 对于 cluster1 目录：
 
@@ -112,7 +112,7 @@ It costs 0.242s
 | dn\_data\_region\_consensus\_port    | 10762           |
 | dn\_target\_config\_node\_list       | 127.0.0.1:10710 |
 
-### 6. 集群扩容
+## 6. 集群扩容
 
 将集群扩容至 3 个 ConfigNode 和 3 个 DataNode（3C3D）集群版，
 指令执行顺序为先启动 ConfigNode，再启动 DataNode：
@@ -123,7 +123,7 @@ It costs 0.242s
 ./cluster2/sbin/start-datanode.sh
 ```
 
-### 7. 验证扩容结果
+## 7. 验证扩容结果
 
 在 Cli 执行 `show cluster details`，结果如下：
 ```
@@ -142,7 +142,7 @@ Total line number = 6
 It costs 0.012s
 ```
 
-### 8. 集群缩容
+## 8. 集群缩容
 
 + 缩容一个 ConfigNode：
 ```
@@ -162,7 +162,7 @@ It costs 0.012s
 ./cluster0/sbin/remove-confignode.sh 4
 ```
 
-### 9. 验证缩容结果
+## 9. 验证缩容结果
 
 在 Cli 执行 `show cluster details`，结果如下：
 ```
@@ -178,3 +178,4 @@ IoTDB> show cluster details
 Total line number = 4
 It costs 0.005s
 ```
+
