@@ -72,7 +72,9 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
   }
 
   @Override
-  public void open() throws Exception {}
+  public void open() throws Exception {
+    // Do nothing
+  }
 
   @Override
   public TRegionReplicaSet getRegionReplicaSet() {
@@ -85,7 +87,9 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
   }
 
   @Override
-  public void close() throws Exception {}
+  public void close() throws Exception {
+    // Do nothing
+  }
 
   @Override
   public List<PlanNode> getChildren() {
@@ -120,9 +124,15 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
     AlignedLastQueryScanNode that = (AlignedLastQueryScanNode) o;
     return Objects.equals(seriesPath, that.seriesPath)
         && Objects.equals(outputViewPath, that.outputViewPath)

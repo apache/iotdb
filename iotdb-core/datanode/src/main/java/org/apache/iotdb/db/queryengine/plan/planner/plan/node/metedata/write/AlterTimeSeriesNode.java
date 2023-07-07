@@ -54,13 +54,13 @@ public class AlterTimeSeriesNode extends WritePlanNode {
    */
   private Map<String, String> alterMap;
 
-  /** used when the alterType is UPSERT */
+  /** Used when the alterType is UPSERT. */
   private String alias;
 
   private Map<String, String> tagsMap;
   private Map<String, String> attributesMap;
 
-  private transient boolean isAlterView;
+  private boolean isAlterView;
 
   private TRegionReplicaSet regionReplicaSet;
 
@@ -80,6 +80,7 @@ public class AlterTimeSeriesNode extends WritePlanNode {
     this.alias = alias;
     this.tagsMap = tagsMap;
     this.attributesMap = attributesMap;
+    this.isAlterView = isAlterView;
   }
 
   public PartialPath getPath() {
@@ -144,7 +145,9 @@ public class AlterTimeSeriesNode extends WritePlanNode {
   }
 
   @Override
-  public void addChild(PlanNode child) {}
+  public void addChild(PlanNode child) {
+    // Do nothing
+  }
 
   @Override
   public PlanNode clone() {

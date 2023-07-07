@@ -104,7 +104,7 @@ public class ProcedureExecutor<Env> {
     for (int i = 0; i < corePoolSize; i++) {
       workerThreads.add(new WorkerThread(threadGroup));
     }
-    // add worker Monitor
+    // Add worker monitor
     workerMonitorExecutor.add(new WorkerMonitor());
 
     scheduler.start();
@@ -118,7 +118,7 @@ public class ProcedureExecutor<Env> {
     int waitingCount = 0;
     int waitingTimeoutCount = 0;
     List<Procedure> procedureList = new ArrayList<>();
-    // load procedure wal file
+    // Load procedure wal file
     store.load(procedureList);
     for (Procedure<Env> proc : procedureList) {
       if (proc.isFinished()) {

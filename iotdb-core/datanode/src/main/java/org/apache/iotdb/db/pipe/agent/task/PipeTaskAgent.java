@@ -37,7 +37,7 @@ import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
-import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -48,6 +48,7 @@ import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -104,14 +105,15 @@ public class PipeTaskAgent {
 
   ////////////////////////// Pipe Task Management Entry //////////////////////////
 
-  public synchronized void handlePipeMetaChanges(List<PipeMeta> pipeMetaListFromConfigNode) {
+  public synchronized List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChanges(
+      List<PipeMeta> pipeMetaListFromConfigNode) {
     // Do nothing if data node is removing or removed
     if (PipeAgent.runtime().isShutdown()) {
-      return;
+      return Collections.emptyList();
     }
 
-    final List<Exception> exceptions = new ArrayList<>();
     acquireWriteLock();
+    final List<TPushPipeMetaRespExceptionMessage> exceptionMessages = new ArrayList<>();
 
     // Iterate through pipe meta list from config node, check if pipe meta exists on data node
     // or has changed
@@ -155,7 +157,9 @@ public class PipeTaskAgent {
             String.format(
                 "Failed to handle pipe meta changes for %s, because %s", pipeName, e.getMessage());
         LOGGER.warn("Failed to handle pipe meta changes for {}", pipeName, e);
-        exceptions.add(new PipeException(errorMessage, e));
+        exceptionMessages.add(
+            new TPushPipeMetaRespExceptionMessage(
+                pipeName, errorMessage, System.currentTimeMillis()));
       }
     }
 
@@ -172,20 +176,13 @@ public class PipeTaskAgent {
           dropPipe(metaOnDataNode.getStaticMeta().getPipeName());
         }
       } catch (Exception e) {
-        final String errorMessage =
-            String.format(
-                "Failed to handle pipe meta changes for %s, because %s", pipeName, e.getMessage());
+        // Do not record the error messages for the pipes don't exist on ConfigNode.
         LOGGER.warn("Failed to handle pipe meta changes for {}", pipeName, e);
-        exceptions.add(new PipeException(errorMessage, e));
       }
     }
 
     releaseWriteLock();
-    if (!exceptions.isEmpty()) {
-      throw new PipeException(
-          String.format(
-              "Failed to handle pipe meta changes on data node, because: %s", exceptions));
-    }
+    return exceptionMessages;
   }
 
   private void handlePipeRuntimeMetaChanges(
@@ -194,9 +191,9 @@ public class PipeTaskAgent {
       @NotNull PipeRuntimeMeta runtimeMetaOnDataNode) {
     // 1. Handle data region group leader changed first
     final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMapFromConfigNode =
-        runtimeMetaFromConfigNode.getConsensusGroupIdToTaskMetaMap();
+        runtimeMetaFromConfigNode.getConsensusGroupId2TaskMetaMap();
     final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMapOnDataNode =
-        runtimeMetaOnDataNode.getConsensusGroupIdToTaskMetaMap();
+        runtimeMetaOnDataNode.getConsensusGroupId2TaskMetaMap();
 
     // 1.1 Iterate over all consensus group ids in config node's pipe runtime meta, decide if we
     // need to drop and create a new task for each consensus group id
@@ -354,8 +351,8 @@ public class PipeTaskAgent {
       }
 
       // Drop the pipe if
-      // 1. the pipe with the same name but with different creation time has been created before
-      // 2. the pipe with the same name and the same creation time has been dropped before, but the
+      // 1. The pipe with the same name but with different creation time has been created before
+      // 2. The pipe with the same name and the same creation time has been dropped before, but the
       //  pipe task meta has not been cleaned up
       dropPipe(pipeName, existedPipeMeta.getStaticMeta().getCreationTime());
     }
@@ -403,7 +400,7 @@ public class PipeTaskAgent {
       return;
     }
 
-    // Mark pipe meta as dropped first. this will help us detect if the pipe meta has been dropped
+    // Mark pipe meta as dropped first. This will help us detect if the pipe meta has been dropped
     // but the pipe task meta has not been cleaned up (in case of failure when executing
     // dropPipeTaskByConsensusGroup).
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
@@ -436,7 +433,7 @@ public class PipeTaskAgent {
       return;
     }
 
-    // Mark pipe meta as dropped first. this will help us detect if the pipe meta has been dropped
+    // Mark pipe meta as dropped first. This will help us detect if the pipe meta has been dropped
     // but the pipe task meta has not been cleaned up (in case of failure when executing
     // dropPipeTaskByConsensusGroup).
     existedPipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.DROPPED);
@@ -535,7 +532,7 @@ public class PipeTaskAgent {
     // Clear exception messages if started successfully
     existedPipeMeta
         .getRuntimeMeta()
-        .getConsensusGroupIdToTaskMetaMap()
+        .getConsensusGroupId2TaskMetaMap()
         .values()
         .forEach(PipeTaskMeta::clearExceptionMessages);
   }
@@ -630,7 +627,7 @@ public class PipeTaskAgent {
     pipeMetaKeeper
         .getPipeMeta(pipeStaticMeta.getPipeName())
         .getRuntimeMeta()
-        .getConsensusGroupIdToTaskMetaMap()
+        .getConsensusGroupId2TaskMetaMap()
         .put(consensusGroupId, pipeTaskMeta);
   }
 
@@ -638,7 +635,7 @@ public class PipeTaskAgent {
     pipeMetaKeeper
         .getPipeMeta(pipeStaticMeta.getPipeName())
         .getRuntimeMeta()
-        .getConsensusGroupIdToTaskMetaMap()
+        .getConsensusGroupId2TaskMetaMap()
         .remove(dataRegionGroupId);
     final PipeTask pipeTask = pipeTaskManager.removePipeTask(pipeStaticMeta, dataRegionGroupId);
     if (pipeTask != null) {

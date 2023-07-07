@@ -91,6 +91,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -144,6 +145,7 @@ public class DataNode implements DataNodeMBean {
 
   public static void main(String[] args) {
     logger.info("IoTDB-DataNode environment variables: {}", IoTDBConfig.getEnvironmentVariables());
+    logger.info("IoTDB-DataNode default charset is: {}", Charset.defaultCharset().displayName());
     new DataNodeServerCommandLine().doMain(args);
   }
 
