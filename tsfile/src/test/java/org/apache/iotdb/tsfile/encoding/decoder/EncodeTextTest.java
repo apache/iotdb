@@ -38,7 +38,7 @@ public class EncodeTextTest {
 
       String Input = Inputs[idx];
       String Output = Outputs[idx];
-      int repeatTime = 3; // set repeat time
+      int repeatTime = 10; // set repeat time
 
       // select encoding algorithms
       TSEncoding[] encodingList = {
@@ -216,7 +216,7 @@ public class EncodeTextTest {
               uncompressTime /= repeatTime;
 
               String[] record = {
-                f.toString(),
+                f.toString().replaceAll("^/home/ubuntu/", ""),
                 "TEXT",
                 encoding.toString(),
                 comp.toString(),

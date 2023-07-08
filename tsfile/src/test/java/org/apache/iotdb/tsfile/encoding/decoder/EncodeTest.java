@@ -28,7 +28,9 @@ public class EncodeTest {
     String[] Inputs = {
       "/home/ubuntu/Datasets/Real-World/Numerical", "/home/ubuntu/Datasets/Synthetic/Numerical"
     };
-    String[] Outputs = {"/home/ubuntu/Real_Numerical_result.csv", "Synthetic_Numerical_result.csv"};
+    String[] Outputs = {
+      "/home/ubuntu/Real_Numerical_result.csv", "/home/ubuntu/Synthetic_Numerical_result.csv"
+    };
 
     for (int idx = 0; idx < 2; idx++) {
 
@@ -213,7 +215,7 @@ public class EncodeTest {
                       uncompressTime /= repeatTime;
 
                       String[] record = {
-                        f.toString(),
+                        f.toString().replaceAll("^/home/ubuntu/", ""),
                         dataTypeName,
                         encoding.toString(),
                         comp.toString(),
@@ -334,7 +336,7 @@ public class EncodeTest {
                       uncompressTime /= repeatTime;
 
                       String[] record = {
-                        f.toString(),
+                        f.toString().replaceAll("^/home/ubuntu/", ""),
                         dataTypeName,
                         encoding.toString(),
                         comp.toString(),
@@ -455,7 +457,7 @@ public class EncodeTest {
                       uncompressTime /= repeatTime;
 
                       String[] record = {
-                        f.toString(),
+                        f.toString().replaceAll("^/home/ubuntu/", ""),
                         dataTypeName,
                         encoding.toString(),
                         comp.toString(),
@@ -576,7 +578,7 @@ public class EncodeTest {
                       uncompressTime /= repeatTime;
 
                       String[] record = {
-                        f.toString(),
+                        f.toString().replaceAll("^/home/ubuntu/", ""),
                         dataTypeName,
                         encoding.toString(),
                         comp.toString(),
