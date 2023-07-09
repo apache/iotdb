@@ -1890,7 +1890,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (ctx.SGLEVEL() != null) {
       loadTsFileStatement.setSgLevel(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
     } else if (ctx.VERIFY() != null) {
-      loadTsFileStatement.setVerifySchema(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
+      loadTsFileStatement.setVerifySchema(Boolean.parseBoolean(ctx.boolean_literal().getText()));
     } else {
       throw new SemanticException(
           String.format(
@@ -3093,8 +3093,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitFlush(IoTDBSqlParser.FlushContext ctx) {
     FlushStatement flushStatement = new FlushStatement(StatementType.FLUSH);
     List<PartialPath> storageGroups = null;
-    if (ctx.BOOLEAN_LITERAL() != null) {
-      flushStatement.setSeq(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
+    if (ctx.boolean_literal() != null) {
+      flushStatement.setSeq(Boolean.parseBoolean(ctx.boolean_literal().getText()));
     }
     if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
       throw new SemanticException("FLUSH ON CLUSTER is not supported in standalone mode");

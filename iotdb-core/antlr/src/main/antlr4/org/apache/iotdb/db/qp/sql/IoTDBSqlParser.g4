@@ -935,7 +935,7 @@ fullMerge
 
 // Flush
 flush
-    : FLUSH prefixPath? (COMMA prefixPath)* BOOLEAN_LITERAL? (ON (LOCAL | CLUSTER))?
+    : FLUSH prefixPath? (COMMA prefixPath)* boolean_literal? (ON (LOCAL | CLUSTER))?
     ;
 
 // Clear Cache
@@ -1023,7 +1023,7 @@ loadFileAttributeClauses
 
 loadFileAttributeClause
     : SGLEVEL operator_eq INTEGER_LITERAL
-    | VERIFY operator_eq BOOLEAN_LITERAL
+    | VERIFY operator_eq boolean_literal
     | ONSUCCESS operator_eq (DELETE|NONE)
     ;
 
