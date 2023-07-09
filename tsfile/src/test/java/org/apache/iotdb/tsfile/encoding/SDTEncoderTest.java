@@ -72,12 +72,18 @@ public class SDTEncoderTest {
   @Test
   public void mytest1() throws Exception {
     String csvData = "D:\\full-game\\BallSpeed.csv";
-    int start = 200000;
-    int range = 100000;
+    //    String csvData = "D:\\desktop\\tmp2.csv";
+    int start = 200000; // counting from 1
+    //    int start = 1; // counting from 1
+    int range = 200;
+    //    int range = 10000;
     int end = start + range;
     SDTEncoder encoder = new SDTEncoder();
-    double e = 100000; // std/2
+    double e = 40000; // std*2
+    //    double e = 5; // std*2
     encoder.setCompDeviation(e / 2);
+    boolean hasHeader = false;
+    //    boolean hasHeader = true;
     long count = 0;
     String line;
     List<Long> timestampList = new ArrayList<>();
@@ -86,6 +92,9 @@ public class SDTEncoderTest {
     List<Long> selectValues = new ArrayList<>();
     long idx = 0;
     try (BufferedReader reader = new BufferedReader(new FileReader(csvData))) {
+      if (hasHeader) {
+        reader.readLine(); // header
+      }
       while ((line = reader.readLine()) != null) {
         count++;
         if (count >= start && count < end) {
@@ -143,7 +152,7 @@ public class SDTEncoderTest {
             + "% y<thresold ===> (t-t1)*(v2-v1)/(t2-t1)+v1<threshold\n"
             + "% 如果v2>=threshold>v1: 则t<(threshold-v1)*(t2-t1)/(v2-v1)+t1，于是[t1,(threshold-v1)*(t2-t1)/(v2-v1)+t1)内的点可剪枝\n"
             + "% 如果v2<threshold<=v1: 则t>(threshold-v1)*(t2-t1)/(v2-v1)+t1，于是((threshold-v1)*(t2-t1)/(v2-v1)+t1,t2]内的点可剪枝\n"
-            + "rank=1\n"
+            + "rank=2\n"
             + "threshold=sortedX(rank)\n"
             + "hold on, yline(threshold);\n"
             + "hold on, plot(at(sortedInds(rank)),threshold,'o')\n"
