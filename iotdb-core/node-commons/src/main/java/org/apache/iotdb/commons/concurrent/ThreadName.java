@@ -174,7 +174,7 @@ public enum ThreadName {
 
   private final String name;
   private static final Logger log = LoggerFactory.getLogger(ThreadName.class);
-  private static Set<ThreadName> queryThreadNames =
+  private static final Set<ThreadName> queryThreadNames =
       new HashSet<>(
           Arrays.asList(
               QUERY_WORKER,
@@ -183,7 +183,7 @@ public enum ThreadName {
               FRAGMENT_INSTANCE_MANAGEMENT,
               FRAGMENT_INSTANCE_NOTIFICATION,
               DRIVER_TASK_SCHEDULER_NOTIFICATION));
-  private static Set<ThreadName> mppThreadNames =
+  private static final Set<ThreadName> mppThreadNames =
       new HashSet<>(
           Arrays.asList(
               MPP_COORDINATOR_SCHEDULED_EXECUTOR,
@@ -196,14 +196,14 @@ public enum ThreadName {
               DATANODE_INTERNAL_RPC_PROCESSOR,
               MPP_COORDINATOR_WRITE_EXECUTOR,
               ASYNC_DATANODE_MPP_DATA_EXCHANGE_CLIENT_POOL));
-  private static Set<ThreadName> compactionThreadNames =
+  private static final Set<ThreadName> compactionThreadNames =
       new HashSet<>(Arrays.asList(COMPACTION_WORKER, COMPACTION_SUB_TASK, COMPACTION_SCHEDULE));
 
-  private static Set<ThreadName> walThreadNames =
+  private static final Set<ThreadName> walThreadNames =
       new HashSet<>(
           Arrays.asList(WAL_SERIALIZE, WAL_SYNC, WAL_DELETE, WAL_RECOVER, TSFILE_RECOVER));
 
-  private static Set<ThreadName> flushThreadNames =
+  private static final Set<ThreadName> flushThreadNames =
       new HashSet<>(
           Arrays.asList(
               FLUSH,
@@ -211,7 +211,7 @@ public enum ThreadName {
               FLUSH_TASK_SUBMIT,
               TIMED_FLUSH_SEQ_MEMTABLE,
               TIMED_FLUSH_UNSEQ_MEMTABLE));
-  private static Set<ThreadName> schemaEngineThreadNames =
+  private static final Set<ThreadName> schemaEngineThreadNames =
       new HashSet<>(
           Arrays.asList(
               SCHEMA_REGION_RELEASE_PROCESSOR,
@@ -221,10 +221,10 @@ public enum ThreadName {
               SCHEMA_FLUSH_MONITOR,
               SCHEMA_FORCE_MLOG));
 
-  private static Set<ThreadName> clientServiceThreadNames =
+  private static final Set<ThreadName> clientServiceThreadNames =
       new HashSet<>(Arrays.asList(CLIENT_RPC_SERVICE, CLIENT_RPC_PROCESSOR));
 
-  private static Set<ThreadName> iotConsensusThrreadNames =
+  private static final Set<ThreadName> iotConsensusThreadNames =
       new HashSet<>(
           Arrays.asList(
               IOT_CONSENSUS_RPC_SERVICE,
@@ -232,7 +232,7 @@ public enum ThreadName {
               ASYNC_DATANODE_IOT_CONSENSUS_CLIENT_POOL,
               LOG_DISPATCHER));
 
-  private static Set<ThreadName> ratisThreadNames =
+  private static final Set<ThreadName> ratisThreadNames =
       new HashSet<>(
           Arrays.asList(
               RAFT_SERVER_PROXY_EXECUTOR,
@@ -251,7 +251,7 @@ public enum ThreadName {
               GPRC_DEFAULT_WORKER_ELG,
               GRPC_DEFAULT_EXECUTOR,
               GROUP_MANAGEMENT));
-  private static Set<ThreadName> computeThreadNames =
+  private static final Set<ThreadName> computeThreadNames =
       new HashSet<>(
           Arrays.asList(
               PIPE_ASSIGNER_EXECUTOR_POOL,
@@ -264,7 +264,7 @@ public enum ThreadName {
               WINDOW_EVALUATION_SERVICE,
               STATEFUL_TRIGGER_INFORMATION_UPDATER));
 
-  private static Set<ThreadName> jvmThreadNames =
+  private static final Set<ThreadName> jvmThreadNames =
       new HashSet<>(
           Arrays.asList(
               JVM_PAUSE_MONITOR,
@@ -282,34 +282,34 @@ public enum ThreadName {
               SIGNAL_DISPATCHER,
               DESTROY_JVM,
               COMMON_CLEANER));
-  private static Set<ThreadName> configNodeRpcThreadNames =
+  private static final Set<ThreadName> configNodeRpcThreadNames =
       new HashSet<>(
           Arrays.asList(
               CONFIGNODE_RPC_SERVICE, CONFIGNODE_RPC_PROCESSOR, ASYNC_CONFIGNODE_CLIENT_POOL));
 
-  private static Set<ThreadName> configNodeQueryThreadNames =
+  private static final Set<ThreadName> configNodeQueryThreadNames =
       new HashSet<>(Arrays.asList(CQ_SCHEDULER));
 
-  private static Set<ThreadName> configNodeWriteThreadNames =
+  private static final Set<ThreadName> configNodeWriteThreadNames =
       new HashSet<>(Arrays.asList(CONFIG_NODE_SIMPLE_CONSENSUS_WAL_FLUSH));
 
-  private static Set<ThreadName> configNodeHeartbeatThreadNames =
+  private static final Set<ThreadName> configNodeHeartbeatThreadNames =
       new HashSet<>(
           Arrays.asList(
               CONFIG_NODE_HEART_BEAT_SERVICE,
               ASYNC_CONFIGNODE_HEARTBEAT_CLIENT_POOL,
               ASYNC_DATANODE_HEARTBEAT_CLIENT_POOL));
 
-  private static Set<ThreadName> configNodeLoadBalanceThreadNames =
+  private static final Set<ThreadName> configNodeLoadBalanceThreadNames =
       new HashSet<>(Arrays.asList(CONFIG_NODE_LOAD_STATISTIC));
 
-  private static Set<ThreadName> configNodeRegionManagementThreadNames =
+  private static final Set<ThreadName> configNodeRegionManagementThreadNames =
       new HashSet<>(Arrays.asList(CONFIG_NODE_REGION_MAINTAINER));
 
-  private static Set<ThreadName> configNodeRecoverThreadNames =
+  private static final Set<ThreadName> configNodeRecoverThreadNames =
       new HashSet<>(Arrays.asList(CONFIG_NODE_RECOVER));
 
-  private static Set<ThreadName> configNodeProcedureThreadNames =
+  private static final Set<ThreadName> configNodeProcedureThreadNames =
       new HashSet(
           Arrays.asList(
               CONFIG_NODE_PROCEDURE_WORKER,
@@ -317,7 +317,7 @@ public enum ThreadName {
               CONFIG_NODE_TIMEOUT_EXECUTOR,
               CONFIG_NODE_RETRY_FAILED_TASK));
 
-  private static Set<ThreadName> metricsThreadNames =
+  private static final Set<ThreadName> metricsThreadNames =
       new HashSet<>(
           Arrays.asList(
               SYSTEM_SCHEDULE_METRICS,
@@ -326,7 +326,7 @@ public enum ThreadName {
               PROMETHEUS_REACTOR_HTTP_NIO,
               PROMETHEUS_REACTOR_HTTP_EPOLL,
               PROMETHEUS_BOUNDED_ELASTIC));
-  private static Set<ThreadName> otherThreadNames =
+  private static final Set<ThreadName> otherThreadNames =
       new HashSet<>(
           Arrays.asList(
               TTL_CHECK,
@@ -340,7 +340,7 @@ public enum ThreadName {
               REGION_MIGRATE,
               STORAGE_ENGINE_RECOVER_TRIGGER));
 
-  private static Set<ThreadName>[] threadNameSetList =
+  private static final Set<ThreadName>[] threadNameSetList =
       new Set[] {
         queryThreadNames,
         mppThreadNames,
@@ -349,7 +349,7 @@ public enum ThreadName {
         flushThreadNames,
         schemaEngineThreadNames,
         clientServiceThreadNames,
-        iotConsensusThrreadNames,
+        iotConsensusThreadNames,
         ratisThreadNames,
         computeThreadNames,
         jvmThreadNames,
@@ -365,7 +365,7 @@ public enum ThreadName {
         otherThreadNames
       };
 
-  private static ThreadModule[] modules =
+  private static final ThreadModule[] modules =
       new ThreadModule[] {
         ThreadModule.QUERY,
         ThreadModule.MPP,
