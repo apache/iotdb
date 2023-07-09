@@ -47,15 +47,15 @@ public class PipeConnectorSubtask extends PipeSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConnectorSubtask.class);
 
-  // for input and output
+  // For input and output
   private final BoundedBlockingPendingQueue<Event> inputPendingQueue;
   private final PipeConnector outputPipeConnector;
 
-  // for heartbeat scheduling
+  // For heartbeat scheduling
   private static final int HEARTBEAT_CHECK_INTERVAL = 1000;
   private int executeOnceInvokedTimes;
 
-  // for thread pool to execute callbacks
+  // For thread pool to execute callbacks
   protected final DecoratingLock callbackDecoratingLock = new DecoratingLock();
   protected ExecutorService subtaskCallbackListeningExecutor;
 
@@ -83,7 +83,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
   public Boolean call() throws Exception {
     final boolean hasAtLeastOneEventProcessed = super.call();
 
-    // wait for the callable to be decorated by Futures.addCallback in the executorService
+    // Wait for the callable to be decorated by Futures.addCallback in the executorService
     // to make sure that the callback can be submitted again on success or failure.
     callbackDecoratingLock.waitForDecorated();
 
@@ -102,7 +102,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
     }
 
     final Event event = lastEvent != null ? lastEvent : inputPendingQueue.waitedPoll();
-    // record this event for retrying on connection failure or other exceptions
+    // Record this event for retrying on connection failure or other exceptions
     lastEvent = event;
     if (event == null) {
       return false;
@@ -133,7 +133,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
 
   @Override
   public void onFailure(@NotNull Throwable throwable) {
-    // retry to connect to the target system if the connection is broken
+    // Retry to connect to the target system if the connection is broken
     if (throwable instanceof PipeConnectionException) {
       LOGGER.warn(
           "PipeConnectionException occurred, retrying to connect to the target system...",
@@ -165,7 +165,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
         }
       }
 
-      // stop current pipe task if failed to reconnect to the target system after MAX_RETRY_TIMES
+      // Stop current pipe task if failed to reconnect to the target system after MAX_RETRY_TIMES
       // times
       if (retry == MAX_RETRY_TIMES) {
         if (lastEvent instanceof EnrichedEvent) {
@@ -194,12 +194,12 @@ public class PipeConnectorSubtask extends PipeSubtask {
           // FIXME: non-EnrichedEvent should be reported to the ConfigNode instead of being logged
         }
 
-        // although the pipe task will be stopped, we still don't release the last event here
-        // because we need to keep it for the next retry. if user wants to restart the task,
-        // the last event will be processed again. the last event will be released when the task
+        // Although the pipe task will be stopped, we still don't release the last event here
+        // Because we need to keep it for the next retry. If user wants to restart the task,
+        // the last event will be processed again. The last event will be released when the task
         // is dropped or the process is running normally.
 
-        // stop current pipe task if failed to reconnect to the target system after MAX_RETRY_TIMES
+        // Stop current pipe task if failed to reconnect to the target system after MAX_RETRY_TIMES
         return;
       }
     } else {
@@ -209,7 +209,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
           throwable);
     }
 
-    // handle other exceptions as usual
+    // Handle other exceptions as usual
     super.onFailure(new PipeRuntimeConnectorCriticalException(throwable.getMessage()));
   }
 
@@ -229,14 +229,14 @@ public class PipeConnectorSubtask extends PipeSubtask {
   }
 
   @Override
-  // synchronized for outputPipeConnector.close() and releaseLastEvent() in super.close()
+  // Synchronized for outputPipeConnector.close() and releaseLastEvent() in super.close()
   // make sure that the lastEvent will not be updated after pipeProcessor.close() to avoid
   // resource leak because of the lastEvent is not released.
   public synchronized void close() {
     try {
       outputPipeConnector.close();
 
-      // should be called after outputPipeConnector.close()
+      // Should be called after outputPipeConnector.close()
       super.close();
     } catch (Exception e) {
       LOGGER.info(

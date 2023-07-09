@@ -65,7 +65,7 @@ delete from root.ln.wf02.wt02.status
 
 ## 多传感器时间序列值删除    
 
-当 ln 集团 wf02 子站的 wt02 设备在 2017-11-01 16:26:00 之前的供电状态和设备硬件版本都需要删除，此时可以使用含义更广的 [路径模式（Path Pattern）](../Data-Concept/Data-Model-and-Terminology.md) 进行删除操作，进行此操作的 SQL 语句为：
+当 ln 集团 wf02 子站的 wt02 设备在 2017-11-01 16:26:00 之前的供电状态和设备硬件版本都需要删除，此时可以使用含义更广的 [路径模式（Path Pattern）](../Basic-Concept/Data-Model-and-Terminology.md) 进行删除操作，进行此操作的 SQL 语句为：
 
 
 ```sql

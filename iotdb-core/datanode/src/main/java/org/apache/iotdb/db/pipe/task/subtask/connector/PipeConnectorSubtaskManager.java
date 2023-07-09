@@ -56,7 +56,7 @@ public class PipeConnectorSubtaskManager {
         new TreeMap<>(pipeConnectorParameters.getAttribute()).toString();
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
-      // 1. construct, validate and customize PipeConnector, and then handshake (create connection)
+      // 1. Construct, validate and customize PipeConnector, and then handshake (create connection)
       // with the target
       final String connectorKey =
           pipeConnectorParameters.getStringOrDefault(
@@ -86,7 +86,7 @@ public class PipeConnectorSubtaskManager {
             "Failed to construct PipeConnector, because of " + e.getMessage(), e);
       }
 
-      // 2. construct PipeConnectorSubtaskLifeCycle to manage PipeConnectorSubtask's life cycle
+      // 2. Construct PipeConnectorSubtaskLifeCycle to manage PipeConnectorSubtask's life cycle
       final BoundedBlockingPendingQueue<Event> pendingQueue =
           new BoundedBlockingPendingQueue<>(
               PipeConfig.getInstance().getPipeConnectorPendingQueueSize());
@@ -141,7 +141,9 @@ public class PipeConnectorSubtaskManager {
 
   /////////////////////////  Singleton Instance Holder  /////////////////////////
 
-  private PipeConnectorSubtaskManager() {}
+  private PipeConnectorSubtaskManager() {
+    // Empty constructor
+  }
 
   private static class PipeSubtaskManagerHolder {
     private static final PipeConnectorSubtaskManager INSTANCE = new PipeConnectorSubtaskManager();

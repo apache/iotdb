@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
@@ -91,6 +92,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -112,8 +114,8 @@ public class DataNode implements DataNodeMBean {
           config.getSchemaDir() + File.separator + IoTDBStartCheck.PROPERTIES_FILE_NAME);
 
   /**
-   * when joining a cluster or getting configuration this node will retry at most "DEFAULT_RETRY"
-   * times before returning a failure to the client
+   * When joining a cluster or getting configuration this node will retry at most "DEFAULT_RETRY"
+   * times before returning a failure to the client.
    */
   private static final int DEFAULT_RETRY = 10;
 
@@ -125,7 +127,7 @@ public class DataNode implements DataNodeMBean {
   private final ResourcesInformationHolder resourcesInformationHolder =
       new ResourcesInformationHolder();
 
-  /** Responsible for keeping trigger information up to date */
+  /** Responsible for keeping trigger information up to date. */
   private final TriggerInformationUpdater triggerInformationUpdater =
       new TriggerInformationUpdater();
 
@@ -133,7 +135,7 @@ public class DataNode implements DataNodeMBean {
       "Unexpected interruption when waiting to register to the cluster";
 
   private DataNode() {
-    // we do not init anything here, so that we can re-initialize the instance in IT.
+    // We do not init anything here, so that we can re-initialize the instance in IT.
   }
 
   private static final RegisterManager registerManager = new RegisterManager();
@@ -144,6 +146,7 @@ public class DataNode implements DataNodeMBean {
 
   public static void main(String[] args) {
     logger.info("IoTDB-DataNode environment variables: {}", IoTDBConfig.getEnvironmentVariables());
+    logger.info("IoTDB-DataNode default charset is: {}", Charset.defaultCharset().displayName());
     new DataNodeServerCommandLine().doMain(args);
   }
 
@@ -344,7 +347,12 @@ public class DataNode implements DataNodeMBean {
     StorageEngine.getInstance().updateTTLInfo(runtimeConfiguration.getAllTTLInformation());
   }
 
-  /** Register this DataNode into cluster */
+  /**
+   * Register this DataNode into cluster.
+   *
+   * @throws StartupException if register failed.
+   * @throws IOException if serialize cluster name and dataNode Id failed.
+   */
   private void sendRegisterRequestToConfigNode() throws StartupException, IOException {
     logger.info("Sending register request to ConfigNode-leader...");
 
@@ -367,7 +375,7 @@ public class DataNode implements DataNodeMBean {
       }
 
       try {
-        // wait to start the next try
+        // Wait to start the next try
         Thread.sleep(DEFAULT_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -461,7 +469,11 @@ public class DataNode implements DataNodeMBean {
     preparePipeResources();
   }
 
-  /** register services and set up DataNode */
+  /**
+   * Register services and set up DataNode.
+   *
+   * @throws StartupException if start up failed.
+   */
   private void active() throws StartupException {
     try {
       processPid();
@@ -492,7 +504,7 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(new JMXService());
     JMXService.registerMBean(getInstance(), mbeanName);
 
-    // get resources for trigger,udf,pipe...
+    // Get resources for trigger,udf,pipe...
     prepareResources();
 
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
@@ -503,14 +515,14 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(FlushManager.getInstance());
     registerManager.register(CacheHitRatioMonitor.getInstance());
 
-    // close wal when using ratis consensus
+    // Close wal when using ratis consensus
     if (config.isClusterMode()
         && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
       config.setWalMode(WALMode.DISABLE);
     }
     registerManager.register(WALManager.getInstance());
 
-    // in mpp mode we need to start some other services
+    // In mpp mode we need to start some other services
     registerManager.register(StorageEngine.getInstance());
     registerManager.register(MPPDataExchangeService.getInstance());
     registerManager.register(DriverScheduler.getInstance());
@@ -530,10 +542,10 @@ public class DataNode implements DataNodeMBean {
       }
     }
 
-    // must init after SchemaEngine and StorageEngine prepared well
+    // Must init after SchemaEngine and StorageEngine prepared well
     DataNodeRegionManager.getInstance().init();
 
-    // start region migrate service
+    // Start region migrate service
     registerManager.register(RegionMigrateService.getInstance());
 
     registerManager.register(CompactionTaskManager.getInstance());
@@ -541,7 +553,7 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(PipeAgent.runtime());
   }
 
-  /** set up RPC and protocols after DataNode is available */
+  /** Set up RPC and protocols after DataNode is available */
   private void setUpRPCService() throws StartupException {
     // Start InternalRPCService to indicate that the current DataNode can accept cluster scheduling
     registerManager.register(DataNodeInternalRPCService.getInstance());
@@ -597,7 +609,7 @@ public class DataNode implements DataNodeMBean {
   }
 
   /**
-   * generate dataNodeConfiguration
+   * Generate dataNodeConfiguration.
    *
    * @return TDataNodeConfiguration
    */
@@ -634,7 +646,7 @@ public class DataNode implements DataNodeMBean {
       return;
     }
 
-    // get jars from config node
+    // Get jars from config node
     List<UDFInformation> udfNeedJarList = getJarListForUDF();
     int index = 0;
     while (index < udfNeedJarList.size()) {
@@ -649,7 +661,7 @@ public class DataNode implements DataNodeMBean {
       getJarOfUDFs(curList);
     }
 
-    // create instances of udf and do registration
+    // Create instances of udf and do registration
     try {
       for (UDFInformation udfInformation : resourcesInformationHolder.getUDFInformationList()) {
         UDFManagementService.getInstance().doRegister(udfInformation);
@@ -691,13 +703,13 @@ public class DataNode implements DataNodeMBean {
     List<UDFInformation> res = new ArrayList<>();
     for (UDFInformation udfInformation : resourcesInformationHolder.getUDFInformationList()) {
       if (udfInformation.isUsingURI()) {
-        // jar does not exist, add current udfInformation to list
+        // Jar does not exist, add current udfInformation to list
         if (!UDFExecutableManager.getInstance()
             .hasFileUnderInstallDir(udfInformation.getJarName())) {
           res.add(udfInformation);
         } else {
           try {
-            // local jar has conflicts with jar on config node, add current triggerInformation to
+            // Local jar has conflicts with jar on config node, add current triggerInformation to
             // list
             if (UDFManagementService.getInstance().isLocalJarConflicted(udfInformation)) {
               res.add(udfInformation);
@@ -737,7 +749,7 @@ public class DataNode implements DataNodeMBean {
       return;
     }
 
-    // get jars from config node
+    // Get jars from config node
     List<TriggerInformation> triggerNeedJarList = getJarListForTrigger();
     int index = 0;
     while (index < triggerNeedJarList.size()) {
@@ -752,7 +764,7 @@ public class DataNode implements DataNodeMBean {
       getJarOfTriggers(curList);
     }
 
-    // create instances of triggers and do registration
+    // Create instances of triggers and do registration
     try {
       for (TriggerInformation triggerInformation :
           resourcesInformationHolder.getTriggerInformationList()) {
@@ -773,7 +785,7 @@ public class DataNode implements DataNodeMBean {
             "get trigger executor: {}", triggerExecutor.getTriggerInformation().getTriggerName());
       }
     }
-    // start TriggerInformationUpdater
+    // Start TriggerInformationUpdater
     triggerInformationUpdater.startTriggerInformationUpdater();
   }
 
@@ -901,6 +913,8 @@ public class DataNode implements DataNodeMBean {
 
     private static final DataNode INSTANCE = new DataNode();
 
-    private DataNodeHolder() {}
+    private DataNodeHolder() {
+      // Empty constructor
+    }
   }
 }

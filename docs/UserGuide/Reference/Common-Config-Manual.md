@@ -1243,8 +1243,8 @@ Different configuration parameters take effect in the following three ways:
 |    Name     | compressor                                                             |
 |:-----------:|:-----------------------------------------------------------------------|
 | Description | Data compression method; Time compression method in aligned timeseries |
-|    Type     | Enum String : "UNCOMPRESSED", "SNAPPY", "LZ4", "ZSTD", "LZMA2"         |
-|   Default   | SNAPPY                                                                 |
+|    Type     | Enum String : "UNCOMPRESSED", "SNAPPY", "LZ4", "GZIP" ,"ZSTD", "LZMA2"        |
+|   Default   | LZ4                                                                    |
 |  Effective  | hot-load                                                               |
 
 * bloomFilterErrorRate

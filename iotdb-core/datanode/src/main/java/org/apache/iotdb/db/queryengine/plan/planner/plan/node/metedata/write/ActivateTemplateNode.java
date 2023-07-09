@@ -107,7 +107,9 @@ public class ActivateTemplateNode extends WritePlanNode implements IActivateTemp
   }
 
   @Override
-  public void addChild(PlanNode child) {}
+  public void addChild(PlanNode child) {
+    // Do nothing
+  }
 
   @Override
   public PlanNode clone() {
@@ -168,9 +170,15 @@ public class ActivateTemplateNode extends WritePlanNode implements IActivateTemp
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
     ActivateTemplateNode that = (ActivateTemplateNode) o;
     return templateSetLevel == that.templateSetLevel
         && templateId == that.templateId

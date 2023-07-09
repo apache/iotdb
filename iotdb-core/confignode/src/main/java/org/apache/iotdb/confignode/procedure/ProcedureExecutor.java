@@ -104,7 +104,7 @@ public class ProcedureExecutor<Env> {
     for (int i = 0; i < corePoolSize; i++) {
       workerThreads.add(new WorkerThread(threadGroup));
     }
-    // add worker Monitor
+    // Add worker monitor
     workerMonitorExecutor.add(new WorkerMonitor());
 
     scheduler.start();
@@ -118,7 +118,7 @@ public class ProcedureExecutor<Env> {
     int waitingCount = 0;
     int waitingTimeoutCount = 0;
     List<Procedure> procedureList = new ArrayList<>();
-    // load procedure wal file
+    // Load procedure wal file
     store.load(procedureList);
     for (Procedure<Env> proc : procedureList) {
       if (proc.isFinished()) {
@@ -710,7 +710,7 @@ public class ProcedureExecutor<Env> {
 
   private class WorkerThread extends StoppableThread {
     private final AtomicLong startTime = new AtomicLong(Long.MAX_VALUE);
-    private AtomicReference<Procedure<Env>> activeProcedure;
+    private final AtomicReference<Procedure<Env>> activeProcedure = new AtomicReference<>();
     protected long keepAliveTime = -1;
 
     public WorkerThread(ThreadGroup threadGroup) {
@@ -736,19 +736,19 @@ public class ProcedureExecutor<Env> {
           if (procedure == null) {
             continue;
           }
-          this.activeProcedure = new AtomicReference<>(procedure);
+          this.activeProcedure.set(procedure);
           int activeCount = activeExecutorCount.incrementAndGet();
           startTime.set(System.currentTimeMillis());
           executeProcedure(procedure);
           activeCount = activeExecutorCount.decrementAndGet();
           LOG.trace("Halt pid={}, activeCount={}", procedure.getProcId(), activeCount);
-          this.activeProcedure = null;
+          this.activeProcedure.set(null);
           lastUpdated = System.currentTimeMillis();
           startTime.set(lastUpdated);
         }
 
       } catch (Throwable throwable) {
-        if (this.activeProcedure != null) {
+        if (this.activeProcedure.get() != null) {
           LOG.warn("Worker terminated {}", this.activeProcedure.get(), throwable);
         }
       } finally {
@@ -804,7 +804,7 @@ public class ProcedureExecutor<Env> {
       // check if any of the worker is stuck
       int stuckCount = 0;
       for (WorkerThread worker : workerThreads) {
-        if (worker.activeProcedure == null
+        if (worker.activeProcedure.get() == null
             || worker.getCurrentRunTime() < DEFAULT_WORKER_STUCK_THRESHOLD) {
           continue;
         }

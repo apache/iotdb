@@ -87,32 +87,40 @@ public class QueryDataSetHandler {
         new org.apache.iotdb.db.protocol.rest.v1.model.QueryDataSet();
 
     DatasetHeader datasetHeader = queryExecution.getDatasetHeader();
-
+    int[] targetDataSetIndexToSourceDataSetIndex = new int[datasetHeader.getRespColumns().size()];
     for (int i = 0; i < datasetHeader.getRespColumns().size(); i++) {
       targetDataSet.addExpressionsItem(datasetHeader.getRespColumns().get(i));
       targetDataSet.addValuesItem(new ArrayList<>());
+      targetDataSetIndexToSourceDataSetIndex[i] =
+          datasetHeader.getColumnNameIndexMap().get(datasetHeader.getRespColumns().get(i));
     }
 
-    return fillQueryDataSetWithoutTimestamps(queryExecution, actualRowSizeLimit, targetDataSet);
+    return fillQueryDataSetWithoutTimestamps(
+        queryExecution, targetDataSetIndexToSourceDataSetIndex, actualRowSizeLimit, targetDataSet);
   }
 
   private static Response fillShowPlanDataSet(
       IQueryExecution queryExecution, final int actualRowSizeLimit) throws IoTDBException {
     org.apache.iotdb.db.protocol.rest.v1.model.QueryDataSet targetDataSet =
         new org.apache.iotdb.db.protocol.rest.v1.model.QueryDataSet();
+    int[] targetDataSetIndexToSourceDataSetIndex =
+        new int[queryExecution.getDatasetHeader().getRespColumns().size()];
     initTargetDatasetOrderByOrderWithSourceDataSet(
-        queryExecution.getDatasetHeader(), targetDataSet);
+        queryExecution.getDatasetHeader(), targetDataSetIndexToSourceDataSetIndex, targetDataSet);
 
-    return fillQueryDataSetWithoutTimestamps(queryExecution, actualRowSizeLimit, targetDataSet);
+    return fillQueryDataSetWithoutTimestamps(
+        queryExecution, targetDataSetIndexToSourceDataSetIndex, actualRowSizeLimit, targetDataSet);
   }
 
   private static void initTargetDatasetOrderByOrderWithSourceDataSet(
       DatasetHeader datasetHeader,
+      int[] targetDataSetIndexToSourceDataSetIndex,
       org.apache.iotdb.db.protocol.rest.v1.model.QueryDataSet targetDataSet) {
     if (datasetHeader.getRespColumns() != null) {
       for (int i = 0; i < datasetHeader.getRespColumns().size(); i++) {
         targetDataSet.addColumnNamesItem(datasetHeader.getRespColumns().get(i));
         targetDataSet.addValuesItem(new ArrayList<>());
+        targetDataSetIndexToSourceDataSetIndex[i] = i;
       }
     }
   }
@@ -147,7 +155,7 @@ public class QueryDataSetHandler {
             .build();
       }
       Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
-      if (!optionalTsBlock.isPresent()) {
+      if (!optionalTsBlock.isPresent() || optionalTsBlock.get().isEmpty()) {
         if (fetched == 0) {
           targetDataSet.setTimestamps(new ArrayList<>());
           targetDataSet.setValues(new ArrayList<>());
@@ -188,6 +196,7 @@ public class QueryDataSetHandler {
 
   private static Response fillQueryDataSetWithoutTimestamps(
       IQueryExecution queryExecution,
+      int[] targetDataSetIndexToSourceDataSetIndex,
       int actualRowSizeLimit,
       org.apache.iotdb.db.protocol.rest.v1.model.QueryDataSet targetDataSet)
       throws IoTDBException {
@@ -220,7 +229,7 @@ public class QueryDataSetHandler {
         return Response.ok().entity(targetDataSet).build();
       }
       for (int k = 0; k < columnNum; k++) {
-        Column column = tsBlock.getColumn(k);
+        Column column = tsBlock.getColumn(targetDataSetIndexToSourceDataSetIndex[k]);
         List<Object> targetDataSetColumn = targetDataSet.getValues().get(k);
         for (int i = 0; i < currentCount; i++) {
           fetched++;

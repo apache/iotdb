@@ -30,6 +30,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,6 +42,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class SessionConcurrentExample {
+  private static final Logger logger = LoggerFactory.getLogger(SessionConcurrentExample.class);
 
   private static final int SG_NUM = 20;
   private static final int DEVICE_NUM = 100;
@@ -52,7 +56,7 @@ public class SessionConcurrentExample {
       session.open(false);
       createTemplate(session);
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("create template with Session error", e);
     }
 
     CountDownLatch latch = new CountDownLatch(SG_NUM * PARALLEL_DEGREE_FOR_ONE_SG);
@@ -68,7 +72,7 @@ public class SessionConcurrentExample {
     try {
       latch.await();
     } catch (InterruptedException e) {
-      e.printStackTrace();
+      logger.warn("CountDownLatch interrupted", e);
       Thread.currentThread().interrupt();
     }
   }
@@ -79,7 +83,7 @@ public class SessionConcurrentExample {
     try {
       session.open(false);
     } catch (IoTDBConnectionException e) {
-      e.printStackTrace();
+      logger.error("Open Session error", e);
     }
 
     for (int j = 0; j < DEVICE_NUM; j++) {
@@ -88,14 +92,14 @@ public class SessionConcurrentExample {
             session,
             String.format("root.sg_%d.d_%d", currentIndex / PARALLEL_DEGREE_FOR_ONE_SG, j));
       } catch (IoTDBConnectionException | StatementExecutionException e) {
-        e.printStackTrace();
+        logger.error("Insert tablet error", e);
       }
     }
 
     try {
       session.close();
     } catch (IoTDBConnectionException e) {
-      e.printStackTrace();
+      logger.error("Close session error", e);
     }
 
     latch.countDown();

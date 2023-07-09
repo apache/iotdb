@@ -29,8 +29,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.BLANK;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MODS_SETTLE_FILE_SUFFIX;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.SETTLE_SUFFIX;
 
 /**
  * CompactionRecoverManager searches compaction log and call {@link CompactionRecoverTask} to
@@ -86,15 +94,48 @@ public class CompactionRecoverManager {
             || !Pattern.compile("\\d*").matcher(timePartitionDir.getName()).matches()) {
           continue;
         }
-        File[] compactionLogs =
-            CompactionLogger.findCompactionLogs(isInnerSpace, timePartitionDir.getPath());
-        for (File compactionLog : compactionLogs) {
-          logger.info("Calling compaction recover task.");
-          new CompactionRecoverTask(
-                  logicalStorageGroupName, dataRegionId, tsFileManager, compactionLog, isInnerSpace)
-              .doCompaction();
-        }
+        // recover temporary files generated during compacted
+        recoverCompaction(isInnerSpace, timePartitionDir);
+
+        // recover temporary files generated during .mods file settled
+        recoverModSettleFile(timePartitionDir.toPath());
       }
+    }
+  }
+
+  public void recoverModSettleFile(Path timePartitionDir) {
+    try (Stream<Path> settlesStream = Files.list(timePartitionDir)) {
+      settlesStream
+          .filter(path -> path.toString().endsWith(MODS_SETTLE_FILE_SUFFIX))
+          .forEach(
+              modsSettle -> {
+                Path originModFile =
+                    modsSettle.resolveSibling(
+                        modsSettle.getFileName().toString().replace(SETTLE_SUFFIX, BLANK));
+                try {
+                  if (Files.exists(originModFile)) {
+                    Files.deleteIfExists(modsSettle);
+                  } else {
+                    Files.move(modsSettle, originModFile);
+                  }
+                } catch (IOException e) {
+                  logger.error(
+                      "recover mods file error on delete origin file or rename mods settle,", e);
+                }
+              });
+    } catch (IOException e) {
+      logger.error("recover mods file error on list files:{}", timePartitionDir, e);
+    }
+  }
+
+  public void recoverCompaction(boolean isInnerSpace, File timePartitionDir) {
+    File[] compactionLogs =
+        CompactionLogger.findCompactionLogs(isInnerSpace, timePartitionDir.getPath());
+    for (File compactionLog : compactionLogs) {
+      logger.info("Calling compaction recover task.");
+      new CompactionRecoverTask(
+              logicalStorageGroupName, dataRegionId, tsFileManager, compactionLog, isInnerSpace)
+          .doCompaction();
     }
   }
 

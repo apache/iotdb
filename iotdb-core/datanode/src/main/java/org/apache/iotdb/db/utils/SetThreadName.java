@@ -26,7 +26,7 @@ public class SetThreadName implements Closeable {
   private final String originalThreadName;
 
   public SetThreadName(String suffix) {
-    requireNonNull(suffix, "suffix is null");
+    requireNonNull(suffix, "Suffix is null");
     originalThreadName = Thread.currentThread().getName();
     int index = originalThreadName.indexOf("$");
     if (index < 0) {

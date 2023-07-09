@@ -552,7 +552,7 @@ public class DateTimeUtils {
         temp *= 10;
         temp += (ch - '0');
       } else {
-        String unit = duration.charAt(i) + "";
+        String unit = String.valueOf(duration.charAt(i));
         // This is to identify units with two letters.
         if (i + 1 < duration.length() && !Character.isDigit(duration.charAt(i + 1))) {
           i++;
@@ -666,8 +666,12 @@ public class DateTimeUtils {
   }
 
   public static String convertLongToDate(long timestamp) {
-    String timePrecision = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
-    switch (timePrecision) {
+    return convertLongToDate(
+        timestamp, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+  }
+
+  public static String convertLongToDate(long timestamp, String sourcePrecision) {
+    switch (sourcePrecision) {
       case "ns":
         timestamp /= 1000_000;
         break;

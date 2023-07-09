@@ -195,8 +195,7 @@ public class SchemaEngine {
         ISchemaRegion schemaRegion = future.get();
         schemaRegionMap.put(schemaRegion.getSchemaRegionId(), schemaRegion);
       } catch (ExecutionException | InterruptedException | RuntimeException e) {
-        logger.error("Something wrong happened during SchemaRegion recovery: {}", e.getMessage());
-        e.printStackTrace();
+        logger.error("Something wrong happened during SchemaRegion recovery", e);
       }
     }
     schemaRegionRecoverPools.shutdown();

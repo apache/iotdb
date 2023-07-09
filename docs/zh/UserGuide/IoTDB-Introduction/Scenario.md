@@ -19,58 +19,77 @@
 
 -->
 
-## 应用场景
+# 应用场景
 
- * 场景 1
+## 应用1——车联网
 
-某公司采用表面贴装技术（SMT）生产芯片：需要首先在芯片上的焊接点处印刷（即涂抹）锡膏，然后将元器件放置在锡膏上，进而通过加热熔化锡膏并冷却，使得元器件被焊接在芯片上。上述流程采用自动化生产线。为了确保产品质量合格，在印刷锡膏后，需要通过光学设备对锡膏印刷的质量进行评估：采用三维锡膏印刷检测（SPI）设备对每个焊接点上的锡膏的体积（v）、高度（h）、面积（a）、水平偏移（px）、竖直偏移（py）进行度量。
+### 背景
 
-为了提升印刷质量，该公司有必要将各个芯片上焊接点的度量值进行存储，以便后续基于这些数据进行分析。
+> - 难点：设备多，序列多
 
-此时可以采用 IoTDB 套件中的 TsFile 组件、TsFileSync 工具和 Hadoop/Spark 集成组件对数据进行存储：每新印刷一个芯片，就在 SPI 设备上使用 SDK 写一条数据，这些数据最终形成一个 TsFile 文件。通过 TsFileSync 工具，生成的 TsFile 文件将按一定规则（如每天）被同步到 Hadoop 数据中心，并由数据分析人员对其进行分析。
+某车企业务体量庞大，需处理车辆多、数据量大，亿级数据测点，每秒超千万条新增数据点，毫秒级采集频率，对数据库的实时写入、存储与处理能力均要求较高。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/51579014-695ef980-1efa-11e9-8cbc-e9e7ee4fa0d8.png">
+原始架构中使用Hbase集群作为存储数据库，查询延迟高，系统维护难度和成本高。难以满足需求。而IoTDB支持百万级测点数高频数据写入和查询毫秒级响应，高效的数据处理方式可以让用户快速、准确地获取到所需数据，大幅提升了数据处理的效率。
 
-在场景 1 中，仅需要 TsFile、TsFileSync 部署在一台 PC 上，此外还需要部署 Hadoop/Spark 连接器用于数据中心端 Hadoop/Spark 集群的数据存储和分析。其示意图如上图所示。下图展示了此时的应用架构。
+因此选择以IoTDB为数据存储层，架构轻量，减轻运维成本，且支持弹性扩缩容和高可用，确保系统的稳定性和可用性。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/81768490-bf034f00-950d-11ea-9b56-fef3edca0958.png">
+### 架构
 
- * 场景 2
+该车企以IoTDB为时序数据存储引擎的数据管理架构如下图所示。
 
-某公司拥有多座风力发电机，公司在每个发电机上安装了上百种传感器，分别采集该发电机的工作状态、工作环境中的风速等信息。
 
-为了保证发电机的正常运转并对发电机及时监控和分析，公司需要收集这些传感器信息，在发电机工作环境中进行部分计算和分析，还需要将收集的原始信息上传到数据中心。
+![img](https://alioss.timecho.com/docs/img/1280X1280.PNG)
 
-此时可以采用 IoTDB 套件中的 IoTDB、TsFileSync 工具和 Hadoop/Spark 集成组件等。需要部署一个场控 PC 机，其上安装 IoTDB 和 TsFileSync 工具，用于支持读写数据、本地计算和分析以及上传数据到数据中心。此外还需要部署 Hadoop/Spark 连接器用于数据中心端 Hadoop/Spark 集群的数据存储和分析。如下图所示。
+车辆数据基于TCP和工业协议编码后发送至边缘网关，网关将数据发往消息队列Kafka集群，解耦生产和消费两端。Kafka将数据发送至Flink进行实时处理，处理后的数据写入IoTDB中，历史数据和最新数据均在IoTDB中进行查询，最后数据通过API流入可视化平台等进行应用。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/51579033-7ed42380-1efa-11e9-889f-fb4180291a9e.png">
+## 应用2——智能运维
 
-下图给出了此时的应用架构。
+### 背景
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/51579064-8f849980-1efa-11e9-8cd6-a7339cd0540f.jpg">
+某钢厂旨在搭建低成本、大规模接入能力的远程智能运维软硬件平台，接入数百条产线，百万以上设备，千万级时间序列，实现智能运维远程覆盖。
 
- * 场景 3
+此过程中面临诸多痛点：
 
-某工厂在厂区范围内拥有多种机械手设备，这些机械手设备的硬件配置有限，很难搭载复杂的应用程序。在每个机械手设备上工厂安装了很多种传感器，用以对机械手的工作状态、温度等信息进行监控。由于工厂的网络环境原因，在工厂内部的机械手均处于工厂内部局域网内，无法连接外部网络。同时，工厂中会有少量服务器能够直接连接外部公网。
+> - 设备种类繁多、协议众多、数据类型众多
+> - 时序数据特别是高频数据，数据量巨大
+> - 海量时序数据下的读写速度无法满足业务需求
+> - 现有时序数据管理组件无法满足各类高级应用需求
 
-为了保证机械手的监控数据能够及时监控和分析，公司需要收集这些机械手传感器信息，将其发送至可以连接外部网络的服务器上，而后将原始数据信息上传到数据中心进行复杂的计算和分析。
+而选取IoTDB作为智能运维平台的存储数据库后，能稳定写入多频及高频采集数据，覆盖钢铁全工序，并采用复合压缩算法使数据大小缩减10倍以上，节省成本。IoTDB 还有效支持超过10年的历史数据降采样查询，帮助企业挖掘数据趋势，助力企业长远战略分析。
 
-此时，可以采用 IoTDB 套件中的 IoTDB、IoTDB-Client 工具、TsFileSync 工具和 Hadoop/Spark 集成组件等。将 IoTDB 服务器安装在工厂连接外网的服务器上，用户接收机械手传输的数据并将数据上传到数据中心。将 IoTDB-Client 工具安装在每一个连接工厂内网的机械手上，用于将传感器产生的实时数据上传到工厂内部服务器。再使用 TsFileSync 工具将原始数据上传到数据中心。此外还需要部署 Hadoop/Spark 连接器用于数据中心端 Hadoop/Spark 集群的数据存储和分析。如下图中间场景所示。
+### 架构
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/51579080-96aba780-1efa-11e9-87ac-940c45b19dd7.jpg">
+下图为该钢厂的智能运维平台架构设计。                          
 
-下图给出了此时的应用架构。
+![img](https://alioss.timecho.com/docs/img/1280X1280%20(1).PNG)
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/81768477-b874d780-950d-11ea-80ca-8807b9bd0970.png">
+## 应用3——智能工厂
 
- * 场景 4
+### 背景
 
-某汽车公司在其下属的汽车上均安装了传感器采集车辆的行驶状态等监控信息。这些汽车设备的硬件配置有限，很难搭载复杂的应用程序。安装传感器的汽车可以通过窄带物联网相互连接，也可以通过窄带物联网将数据发送至外部网络。
+> - 难点/亮点：云边协同
 
-为了能够实时接收汽车传感器所采集的物联网数据，公司需要在车辆行驶的过程中将传感器数据通过窄带物联网实时发送至数据中心，而后在数据中心的服务器上进行复杂的计算和分析。
+某卷烟厂希望从“传统工厂”向“高端工厂”完成转型升级，利用物联网和设备监控技术，加强信息管理和服务实现数据在企业内部自由流动，数据和决策的上通下达，帮助企业提高生产力，降低运营成本。
 
-此时，可以采用 IoTDB 套件中的 IoTDB、IoTDB-Client 和 Hadoop/Spark 集成组件等。将 IoTDB-Client 工具安装在每一辆车联网内的车辆上，使用 IoTDB-JDBC 工具将数据直接传回数据中心的服务器。 
+### 架构
 
-此外还需要部署 Hadoop/Spark 集群用于数据中心端的数据存储和分析。如下图所示。
+下图为该工厂的物联网系统架构，IoTDB贯穿公司、工厂、车间三级物联网平台，实现设备统一联调联控。车间层面的数据通过边缘层的IoTDB进行实时采集、处理和存储，并实现了一系列的分析任务。经过预处理的数据被发送至平台层的IoTDB，进行业务层面的数据治理，如设备管理、连接管理、服务支持等。最终，数据会被集成到集团层面的IoTDB中，供整个组织进行综合分析和决策。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://alioss.timecho.com/docs/img/github/51579095-a4f9c380-1efa-11e9-9f95-17165ec55568.jpg">
+![img](https://alioss.timecho.com/docs/img/1280X1280%20(2).PNG)
+
+
+## 应用4——工况监控
+
+### 背景
+
+> - 难点/亮点：智慧供热，降本增效
+
+某电厂需要对风机锅炉设备、发电机、变电设备等主辅机数万测点进行监控。在以往的供暖供热过程中缺少对于下一阶段的供热量的预判，导致无效供热、过度供热、供热不足等情况。
+
+使用IoTDB作为存储与分析引擎后，结合气象数据、楼控数据、户控数据、换热站数据、官网数据、热源侧数据等总和评判供热量，所有数据在IoTDB中进行时间对齐，为智慧供热提供可靠的数据依据，实现智慧供热。同时也解决了按需计费、管网、热战等相关供热过程中各重要组成部分的工况监控，减少了人力投入。
+
+### 架构
+
+下图为该电厂的供热场景数据管理架构。
+
+![img](https://alioss.timecho.com/docs/img/7b7a22ae-6367-4084-a526-53c88190bc50.png)

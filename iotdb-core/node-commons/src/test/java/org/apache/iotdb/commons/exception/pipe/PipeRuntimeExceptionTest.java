@@ -27,8 +27,9 @@ import java.nio.ByteBuffer;
 public class PipeRuntimeExceptionTest {
   @Test
   public void testPipeRuntimeNonCriticalException() {
-    PipeRuntimeNonCriticalException e = new PipeRuntimeNonCriticalException("test");
-    Assert.assertEquals(new PipeRuntimeNonCriticalException("test"), e);
+    long currentTime = System.currentTimeMillis();
+    PipeRuntimeNonCriticalException e = new PipeRuntimeNonCriticalException("test", currentTime);
+    Assert.assertEquals(new PipeRuntimeNonCriticalException("test", currentTime), e);
     ByteBuffer buffer = ByteBuffer.allocate(32);
     e.serialize(buffer);
     buffer.position(0);
@@ -43,8 +44,9 @@ public class PipeRuntimeExceptionTest {
 
   @Test
   public void testPipeRuntimeCriticalException() {
-    PipeRuntimeCriticalException e = new PipeRuntimeCriticalException("test");
-    Assert.assertEquals(new PipeRuntimeCriticalException("test"), e);
+    long currentTime = System.currentTimeMillis();
+    PipeRuntimeCriticalException e = new PipeRuntimeCriticalException("test", currentTime);
+    Assert.assertEquals(new PipeRuntimeCriticalException("test", currentTime), e);
     ByteBuffer buffer = ByteBuffer.allocate(32);
     e.serialize(buffer);
     buffer.position(0);
@@ -59,8 +61,10 @@ public class PipeRuntimeExceptionTest {
 
   @Test
   public void testPipeRuntimeConnectorCriticalException() {
-    PipeRuntimeConnectorCriticalException e = new PipeRuntimeConnectorCriticalException("test");
-    Assert.assertEquals(new PipeRuntimeConnectorCriticalException("test"), e);
+    long currentTime = System.currentTimeMillis();
+    PipeRuntimeConnectorCriticalException e =
+        new PipeRuntimeConnectorCriticalException("test", currentTime);
+    Assert.assertEquals(new PipeRuntimeConnectorCriticalException("test", currentTime), e);
     ByteBuffer buffer = ByteBuffer.allocate(32);
     e.serialize(buffer);
     buffer.position(0);

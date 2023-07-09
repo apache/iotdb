@@ -52,13 +52,13 @@ public class PipeTaskExtractorStage extends PipeTaskStage {
             ? new IoTDBDataRegionExtractor()
             : PipeAgent.plugin().reflectExtractor(extractorParameters);
 
-    // validate and customize should be called before createSubtask. this allows extractor exposing
+    // Validate and customize should be called before createSubtask. this allows extractor exposing
     // exceptions in advance.
     try {
-      // 1. validate extractor parameters
+      // 1. Validate extractor parameters
       pipeExtractor.validate(new PipeParameterValidator(extractorParameters));
 
-      // 2. customize extractor
+      // 2. Customize extractor
       final PipeTaskRuntimeConfiguration runtimeConfiguration =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskExtractorRuntimeEnvironment(
@@ -71,7 +71,7 @@ public class PipeTaskExtractorStage extends PipeTaskStage {
 
   @Override
   public void createSubtask() throws PipeException {
-    // do nothing
+    // Do nothing
   }
 
   @Override
@@ -85,7 +85,7 @@ public class PipeTaskExtractorStage extends PipeTaskStage {
 
   @Override
   public void stopSubtask() throws PipeException {
-    // extractor continuously extracts data, so do nothing in stop
+    // Extractor continuously extracts data, so do nothing in stop
   }
 
   @Override
