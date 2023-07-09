@@ -42,7 +42,7 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 public class CpuUsageMetrics implements IMetricSet {
-  private static final Logger log = LoggerFactory.getLogger(CpuUsageMetrics.class);
+  private static final Logger logger = LoggerFactory.getLogger(CpuUsageMetrics.class);
   private static final String MODULE_CPU_USAGE = "module_cpu_usage";
   private static final String POOL_CPU_USAGE = "pool_cpu_usage";
   private static final String POOL = "pool";
@@ -219,9 +219,7 @@ public class CpuUsageMetrics implements IMetricSet {
     lastThreadUserTime.putAll(currentThreadUserTime);
     long timeCost = System.nanoTime() - startTime;
     updateCount.incrementAndGet();
-    if (updateCount.get() % 10 == 0) {
-      log.info("Time for update cpu usage is {} ns", timeCost);
-    }
+    logger.debug("Time for update cpu usage is {} ns", timeCost);
   }
 
   private boolean checkCpuMonitorEnable() {
