@@ -349,7 +349,7 @@ public class ConfigRegionStateMachine
 
     ScheduledExecutorService simpleConsensusThread =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-            ThreadName.CONFIG_NODE_SAMPLE_CONSENSUS_WAL_FLUSH.getName());
+            ThreadName.CONFIG_NODE_SIMPLE_CONSENSUS_WAL_FLUSH.getName());
     ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
         simpleConsensusThread,
         this::flushWALForSimpleConsensus,

@@ -79,7 +79,7 @@ public enum ThreadName {
   // -------------------------- ConfigNode-Query --------------------------
   CQ_SCHEDULER("CQ-Scheduler"),
   // -------------------------- ConfigNode-Write --------------------------
-  CONFIG_NODE_SAMPLE_CONSENSUS_WAL_FLUSH("ConfigNode-Simple-Consensus-WAL-Flush-Thread"),
+  CONFIG_NODE_SIMPLE_CONSENSUS_WAL_FLUSH("ConfigNode-Simple-Consensus-WAL-Flush-Thread"),
   // -------------------------- ConfigNode-Heartbeat --------------------------
   CONFIG_NODE_HEART_BEAT_SERVICE("Cluster-Heartbeat-Service"),
   ASYNC_CONFIGNODE_HEARTBEAT_CLIENT_POOL("AsyncConfigNodeHeartbeatServiceClientPool"),
@@ -91,6 +91,7 @@ public enum ThreadName {
   // -------------------------- ConfigNode-Recover --------------------------
   CONFIG_NODE_RECOVER("ConfigNode-Manager-Recovery"),
   // -------------------------- ConfigNode-Procedure ------------------------
+  // TODO: Use Thread Pool to manage the procedure thread @Potato
   CONFIG_NODE_PROCEDURE_WORKER("ProcedureWorkerGroup"),
   CONFIG_NODE_TIMEOUT_EXECUTOR("ProcedureTimeoutExecutor"),
   CONFIG_NODE_WORKER_THREAD_MONITOR("ProcedureWorkerThreadMonitor"),
@@ -290,7 +291,7 @@ public enum ThreadName {
       new HashSet<>(Arrays.asList(CQ_SCHEDULER));
 
   private static Set<ThreadName> configNodeWriteThreadNames =
-      new HashSet<>(Arrays.asList(CONFIG_NODE_SAMPLE_CONSENSUS_WAL_FLUSH));
+      new HashSet<>(Arrays.asList(CONFIG_NODE_SIMPLE_CONSENSUS_WAL_FLUSH));
 
   private static Set<ThreadName> configNodeHeartbeatThreadNames =
       new HashSet<>(
