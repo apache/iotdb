@@ -40,6 +40,7 @@ public enum ThreadModule {
   LOAD_BALANCE,
   REGION_MANAGEMENT,
   RECOVER,
+  PROCEDURE,
   OTHER,
   UNKNOWN
 }

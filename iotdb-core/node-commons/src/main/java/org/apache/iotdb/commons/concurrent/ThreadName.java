@@ -90,6 +90,11 @@ public enum ThreadName {
   CONFIG_NODE_REGION_MAINTAINER("IoTDB-Region-Maintainer"),
   // -------------------------- ConfigNode-Recover --------------------------
   CONFIG_NODE_RECOVER("ConfigNode-Manager-Recovery"),
+  // -------------------------- ConfigNode-Procedure ------------------------
+  CONFIG_NODE_PROCEDURE_WORKER("ProcedureWorkerGroup"),
+  CONFIG_NODE_TIMEOUT_EXECUTOR("ProcedureTimeoutExecutor"),
+  CONFIG_NODE_WORKER_THREAD_MONITOR("ProcedureWorkerThreadMonitor"),
+  CONFIG_NODE_RETRY_FAILED_TASK("Cluster-RetryFailedTasks-Service"),
 
   // -------------------------- IoTConsensus --------------------------
   IOT_CONSENSUS_RPC_SERVICE("IoTConsensusRPC-Service"),
@@ -303,6 +308,14 @@ public enum ThreadName {
   private static Set<ThreadName> configNodeRecoverThreadNames =
       new HashSet<>(Arrays.asList(CONFIG_NODE_RECOVER));
 
+  private static Set<ThreadName> configNodeProcedureThreadNames =
+      new HashSet(
+          Arrays.asList(
+              CONFIG_NODE_PROCEDURE_WORKER,
+              CONFIG_NODE_WORKER_THREAD_MONITOR,
+              CONFIG_NODE_TIMEOUT_EXECUTOR,
+              CONFIG_NODE_RETRY_FAILED_TASK));
+
   private static Set<ThreadName> metricsThreadNames =
       new HashSet<>(
           Arrays.asList(
@@ -347,6 +360,7 @@ public enum ThreadName {
         configNodeLoadBalanceThreadNames,
         configNodeRegionManagementThreadNames,
         configNodeRecoverThreadNames,
+        configNodeProcedureThreadNames,
         otherThreadNames
       };
 
@@ -371,6 +385,7 @@ public enum ThreadName {
         ThreadModule.LOAD_BALANCE,
         ThreadModule.REGION_MANAGEMENT,
         ThreadModule.RECOVER,
+        ThreadModule.PROCEDURE,
         ThreadModule.OTHER
       };
 

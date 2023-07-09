@@ -58,7 +58,7 @@ public class RetryFailedTasksThread {
   private final LoadManager loadManager;
   private final ScheduledExecutorService retryFailTasksExecutor =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-          ThreadName.CONFIG_NODE_HEART_BEAT_SERVICE.getName());
+          ThreadName.CONFIG_NODE_RETRY_FAILED_TASK.getName());
   private final Object scheduleMonitor = new Object();
   private Future<?> currentFailedTasksRetryThreadFuture;
 
