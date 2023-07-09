@@ -310,7 +310,7 @@ public enum ThreadName {
       new HashSet<>(Arrays.asList(CONFIG_NODE_RECOVER));
 
   private static final Set<ThreadName> configNodeProcedureThreadNames =
-      new HashSet(
+      new HashSet<>(
           Arrays.asList(
               CONFIG_NODE_PROCEDURE_WORKER,
               CONFIG_NODE_WORKER_THREAD_MONITOR,
