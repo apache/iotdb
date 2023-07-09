@@ -175,7 +175,7 @@ public class CpuUsageMetrics implements IMetricSet {
     if (!checkCpuMonitorEnable()) {
       return;
     }
-    long startTime = System.nanoTime();
+    final long startTime = System.nanoTime();
     // update
     long[] taskIds = threadMxBean.getAllThreadIds();
     ThreadInfo[] threadInfos = threadMxBean.getThreadInfo(taskIds);
