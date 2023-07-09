@@ -33,7 +33,6 @@ public enum ServiceType {
   JVM_MEM_CONTROL_SERVICE("Memory Controller", "JvmMemControlService"),
   AUTHORIZATION_SERVICE("Authorization ServerService", "AuthService"),
   FILE_READER_MANAGER_SERVICE("File reader manager ServerService", "FileReaderManagerService"),
-  UPGRADE_SERVICE("UPGRADE DataService", "UpgradeService"),
   SETTLE_SERVICE("SETTLE DataService", "SettleService"),
   SYNC_RPC_SERVICE("Sync RPC ServerService", ""),
   SYNC_SERVICE("Sync Service", "SyncService"),
