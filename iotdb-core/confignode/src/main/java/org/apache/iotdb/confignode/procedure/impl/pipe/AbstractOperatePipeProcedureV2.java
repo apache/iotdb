@@ -40,6 +40,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -115,16 +116,27 @@ public abstract class AbstractOperatePipeProcedureV2
               String.format("Unknown state during executing operatePipeProcedure, %s", state));
       }
     } catch (Exception e) {
-      if (isRollbackSupported(state)) {
-        LOGGER.error("Fail in OperatePipeProcedure", e);
-        setFailure(new ProcedureException(e.getMessage()));
+      // Retry before rollback
+      if (getCycles() < RETRY_THRESHOLD) {
+        LOGGER.warn(
+            "Encountered error when trying to {} at state [{}], retry [{}/{}]",
+            getOperation(),
+            state,
+            getCycles() + 1,
+            RETRY_THRESHOLD,
+            e);
+        // Wait 3s for next retry
+        TimeUnit.MILLISECONDS.sleep(3000L);
       } else {
-        LOGGER.error("Retrievable error trying to {} at state [{}]", getOperation(), state, e);
-        if (getCycles() > RETRY_THRESHOLD) {
-          setFailure(
-              new ProcedureException(
-                  String.format("Fail to %s because %s", getOperation().name(), e.getMessage())));
-        }
+        LOGGER.warn(
+            "All {} retries failed when trying to {} at state [{}], will rollback...",
+            RETRY_THRESHOLD,
+            getOperation(),
+            state,
+            e);
+        setFailure(
+            new ProcedureException(
+                String.format("Fail to %s because %s", getOperation().name(), e.getMessage())));
       }
     }
     return Flow.HAS_MORE_STATE;
