@@ -1135,10 +1135,10 @@ expression
     : LR_BRACKET unaryInBracket=expression RR_BRACKET
     | constant
     | time=(TIME | TIMESTAMP)
+    | caseWhenThenExpression
     | fullPathInExpression
     | scalarFunctionExpression
     | functionName LR_BRACKET expression (COMMA expression)* RR_BRACKET
-    | caseWhenThenExpression
     | (PLUS | MINUS | operator_not) expressionAfterUnaryOperator=expression
     | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
     | leftExpression=expression (PLUS | MINUS) rightExpression=expression
