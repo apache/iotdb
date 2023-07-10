@@ -1137,9 +1137,9 @@ expression
     | time=(TIME | TIMESTAMP)
     | caseWhenThenExpression
     | fullPathInExpression
+    | (PLUS | MINUS | operator_not) expressionAfterUnaryOperator=expression
     | scalarFunctionExpression
     | functionName LR_BRACKET expression (COMMA expression)* RR_BRACKET
-    | (PLUS | MINUS | operator_not) expressionAfterUnaryOperator=expression
     | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
     | leftExpression=expression (PLUS | MINUS) rightExpression=expression
     | leftExpression=expression (OPERATOR_GT | OPERATOR_GTE | OPERATOR_LT | OPERATOR_LTE | OPERATOR_SEQ | OPERATOR_DEQ | OPERATOR_NEQ) rightExpression=expression
