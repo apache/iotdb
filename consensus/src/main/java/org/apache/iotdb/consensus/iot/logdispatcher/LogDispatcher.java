@@ -103,7 +103,6 @@ public class LogDispatcher {
 
   public synchronized void stop() {
     if (!threads.isEmpty()) {
-      threads.forEach(LogDispatcherThread::stop);
       executorService.shutdownNow();
       int timeout = 10;
       try {
@@ -114,6 +113,7 @@ public class LogDispatcher {
         Thread.currentThread().interrupt();
         logger.error("Unexpected Interruption when closing LogDispatcher service ");
       }
+      threads.forEach(LogDispatcherThread::stop);
     }
     stopped = true;
   }
@@ -224,6 +224,7 @@ public class LogDispatcher {
       this.syncStatus = new SyncStatus(controller, config);
       this.walEntryIterator = reader.getReqIterator(START_INDEX);
       this.metrics = new LogDispatcherThreadMetrics(this);
+      MetricService.getInstance().addMetricSet(metrics);
     }
 
     public IndexController getController() {
@@ -303,10 +304,9 @@ public class LogDispatcher {
     @Override
     public void run() {
       logger.info("{}: Dispatcher for {} starts", impl.getThisNode(), peer);
-      MetricService.getInstance().addMetricSet(metrics);
       try {
         Batch batch;
-        while (!Thread.interrupted() && !stopped) {
+        while (!Thread.interrupted()) {
           long startTime = System.nanoTime();
           while ((batch = getBatch()).isEmpty()) {
             // we may block here if there is no requests in the queue
