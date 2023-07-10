@@ -50,9 +50,6 @@ public class AuthUtils {
   private static final Logger logger = LoggerFactory.getLogger(AuthUtils.class);
   private static final String ROOT_PREFIX = IoTDBConstant.PATH_ROOT;
   public static PartialPath ROOT_PATH_PRIVILEGE_PATH;
-  private static final int MIN_PASSWORD_LENGTH = 4;
-  private static final int MIN_USERNAME_LENGTH = 4;
-  private static final int MIN_ROLENAME_LENGTH = 4;
   private static final int MIN_LENGTH = 4;
   private static final int MAX_LENGTH = 32;
   private static final String REX_PATTERN = "^[a-zA-Z]\\w*$";
@@ -80,14 +77,7 @@ public class AuthUtils {
    * @throws AuthException contains message why password is invalid
    */
   public static void validatePassword(String password) throws AuthException {
-    if (password.length() < MIN_PASSWORD_LENGTH) {
-      throw new AuthException(
-          TSStatusCode.ILLEGAL_PARAMETER,
-          "Password's size must be greater than or equal to " + MIN_PASSWORD_LENGTH);
-    }
-    if (password.contains(" ")) {
-      throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, "Password cannot contain spaces");
-    }
+    validateNameOrPassword(password);
   }
 
   /**
@@ -110,14 +100,7 @@ public class AuthUtils {
    * @throws AuthException contains message why username is invalid
    */
   public static void validateUsername(String username) throws AuthException {
-    if (username.length() < MIN_USERNAME_LENGTH) {
-      throw new AuthException(
-          TSStatusCode.ILLEGAL_PARAMETER,
-          "Username's size must be greater than or equal to " + MIN_USERNAME_LENGTH);
-    }
-    if (username.contains(" ")) {
-      throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, "Username cannot contain spaces");
-    }
+    validateNameOrPassword(username);
   }
 
   /**
@@ -127,18 +110,10 @@ public class AuthUtils {
    * @throws AuthException contains message why rolename is invalid
    */
   public static void validateRolename(String rolename) throws AuthException {
-    if (rolename.length() < MIN_ROLENAME_LENGTH) {
-      throw new AuthException(
-          TSStatusCode.ILLEGAL_PARAMETER,
-          "Role name's size must be greater than or equal to " + MIN_ROLENAME_LENGTH);
-    }
-    if (rolename.contains(" ")) {
-      throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, "Role name cannot contain spaces");
-    }
+    validateNameOrPassword(rolename);
   }
 
   public static void validateNameOrPassword(String str) throws AuthException {
-    // TODO @Spricoder
     int length = str.length();
     if (length < MIN_LENGTH) {
       throw new AuthException(
@@ -148,6 +123,9 @@ public class AuthUtils {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PARAMETER,
           "The length of name or password must be less than or equal to " + MAX_LENGTH);
+    } else if (str.contains(" ")) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PARAMETER, "The name or password cannot contain spaces");
     } else if (str.matches(REX_PATTERN)) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PARAMETER,
