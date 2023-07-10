@@ -22,77 +22,77 @@
 # Apache IoTDB 1.2.0
 ## New Feature
 
-[IOTDB-5567] add SQL for querying seriesslotid and timeslotid
-[IOTDB-5631] Add a built-in aggregation functions named time_duration
-[IOTDB-5636] Add round as built-in scalar function
-[IOTDB-5637] Add substr as built-in scalar function
-[IOTDB-5638] Support case when syntax in IoTDB
-[IOTDB-5643] Add REPLACE as a built-in scalar function
-[IOTDB-5683] Support aggregation function Mode for query
-[IOTDB-5711] Python API should support connecting multiple nodes
-[IOTDB-5752] Python Client supports write redirection
-[IOTDB-5765] Support Order By Expression
-[IOTDB-5771] add SPRINTZ and RLBE encodor and LZMA2 compressor
-[IOTDB-5924] Add SessionPool deletion API
-[IOTDB-5950] Support Dynamic Schema Template
-[IOTDB-5951] Support show timeseries/device with specific string contained in path 
-[IOTDB-5955] Support create timeseries using schema template in Session API
+* [IOTDB-5567] add SQL for querying seriesslotid and timeslotid
+* [IOTDB-5631] Add a built-in aggregation functions named time_duration
+* [IOTDB-5636] Add round as built-in scalar function
+* [IOTDB-5637] Add substr as built-in scalar function
+* [IOTDB-5638] Support case when syntax in IoTDB
+* [IOTDB-5643] Add REPLACE as a built-in scalar function
+* [IOTDB-5683] Support aggregation function Mode for query
+* [IOTDB-5711] Python API should support connecting multiple nodes
+* [IOTDB-5752] Python Client supports write redirection
+* [IOTDB-5765] Support Order By Expression
+* [IOTDB-5771] add SPRINTZ and RLBE encodor and LZMA2 compressor
+* [IOTDB-5924] Add SessionPool deletion API
+* [IOTDB-5950] Support Dynamic Schema Template
+* [IOTDB-5951] Support show timeseries/device with specific string contained in path 
+* [IOTDB-5955] Support create timeseries using schema template in Session API
 
 ## Improvements
 
-[IOTDB-5630] Make function cast a built-in function
-[IOTDB-5689] Close Isink when ISourceHandle is closed
-[IOTDB-5715] Improve the performance of query order by time desc
-[IOTDB-5763] Optimize the memory estimate for INTO operations
-[IOTDB-5887] Optimize the construction performance of PathPatternTree without wildcards
-[IOTDB-5888] TTL logs didn' t consider timestamp precision
-[IOTDB-5896] Failed to execute delete statement
-[IOTDB-5908] Add more query metrics
-[IOTDB-5911] print-iotdb-data-dir tool cannot work
-[IOTDB-5914] Remove redundant debug log in Session
-[IOTDB-5919] show variables add a variable timestamp_precision 
-[IOTDB-5926] Optimize metric implementation
-[IOTDB-5929] Enable DataPartition inherit policy
-[IOTDB-5943] Avoid rpc invoking for SimpleQueryTerminator when endpoint is local address
-[IOTDB-5944] Follower doesn' t need to update last cache when using IoT_consensus
-[IOTDB-5945] Add a cache to avoid initialize duplicated device id object in write process
-[IOTDB-5946] Optimize the implement of tablet in Go client
-[IOTDB-5949] Support show timeseries with datatype filter
-[IOTDB-5952] Support FIFO strategy in DataNodeSchemaCache
-[IOTDB-6022] The WAL piles up when multi-replica iotconsensus is written at high concurrency
+* [IOTDB-5630] Make function cast a built-in function
+* [IOTDB-5689] Close Isink when ISourceHandle is closed
+* [IOTDB-5715] Improve the performance of query order by time desc
+* [IOTDB-5763] Optimize the memory estimate for INTO operations
+* [IOTDB-5887] Optimize the construction performance of PathPatternTree without wildcards
+* [IOTDB-5888] TTL logs didn' t consider timestamp precision
+* [IOTDB-5896] Failed to execute delete statement
+* [IOTDB-5908] Add more query metrics
+* [IOTDB-5911] print-iotdb-data-dir tool cannot work
+* [IOTDB-5914] Remove redundant debug log in Session
+* [IOTDB-5919] show variables add a variable timestamp_precision 
+* [IOTDB-5926] Optimize metric implementation
+* [IOTDB-5929] Enable DataPartition inherit policy
+* [IOTDB-5943] Avoid rpc invoking for SimpleQueryTerminator when endpoint is local address
+* [IOTDB-5944] Follower doesn' t need to update last cache when using IoT_consensus
+* [IOTDB-5945] Add a cache to avoid initialize duplicated device id object in write process
+* [IOTDB-5946] Optimize the implement of tablet in Go client
+* [IOTDB-5949] Support show timeseries with datatype filter
+* [IOTDB-5952] Support FIFO strategy in DataNodeSchemaCache
+* [IOTDB-6022] The WAL piles up when multi-replica iotconsensus is written at high concurrency
 
 
 ## Bug Fixes
 
-[IOTDB-5604] NPE when execute Agg + align by device query without assigned DataRegion
-[IOTDB-5619] group by tags query NPE
-[IOTDB-5644] Unexpected result when there are no select expressions after analyzed in query
-[IOTDB-5657] Limit does not take effect in last query
-[IOTDB-5700] UDF query did not clean temp file after the query is finished
-[IOTDB-5716] Wrong dependency when pipeline consumeOneByOneOperator
-[IOTDB-5717] Incorrect result when querying with limit push-downing & order by time desc
-[IOTDB-5722] Wrong default execution branch in PlanVisitor
-[IOTDB-5735] The result of adding the distinct function to the align by device is incorrect
-[IOTDB-5755] Fix the problem that 123w can not be used in Identifier
-[IOTDB-5756] NPE when where predicate is NotEqualExpression and one of subExpression is not exist
-[IOTDB-5757] Not Supported Exception when use like ' s3 || false' in where even Type of s3 is Boolean
-[IOTDB-5760] Query is blocked because of no memory
-[IOTDB-5764] Cannot specify alias successfully when the FROM clause contains multiple path suffixes 
-[IOTDB-5769] Offset doesn' t take effect in some special case
-[IOTDB-5774] The syntax that path nodes start or end with a wildcard to fuzzy match is not supported
-[IOTDB-5784] Incorrect result when querying with offset push-down and time filter
-[IOTDB-5815] NPE when using UDF to query
-[IOTDB-5837] Exceptions for select into using placeholders
-[IOTDB-5851] Using limit clause in show devices query will throw NPE
-[IOTDB-5858] Metric doesn' t display the schemaCache hit ratio
-[IOTDB-5861] Last quey is incomplete
-[IOTDB-5889] TTL Cannot delete expired tsfiles
-[IOTDB-5897] NullPointerException In compaction
-[IOTDB-5905] Some aligned timeseries data point lost after flush
-[IOTDB-5934] Optimize cluster partition policy
-[IOTDB-5953] LastCache memory control param does not take effect
-[IOTDB-5963] Sometimes we may get out-of-order query result
-[IOTDB-6016] Release file num cost after cross compaction task
+* [IOTDB-5604] NPE when execute Agg + align by device query without assigned DataRegion
+* [IOTDB-5619] group by tags query NPE
+* [IOTDB-5644] Unexpected result when there are no select expressions after analyzed in query
+* [IOTDB-5657] Limit does not take effect in last query
+* [IOTDB-5700] UDF query did not clean temp file after the query is finished
+* [IOTDB-5716] Wrong dependency when pipeline consumeOneByOneOperator
+* [IOTDB-5717] Incorrect result when querying with limit push-downing & order by time desc
+* [IOTDB-5722] Wrong default execution branch in PlanVisitor
+* [IOTDB-5735] The result of adding the distinct function to the align by device is incorrect
+* [IOTDB-5755] Fix the problem that 123w can not be used in Identifier
+* [IOTDB-5756] NPE when where predicate is NotEqualExpression and one of subExpression is not exist
+* [IOTDB-5757] Not Supported Exception when use like ' s3 || false' in where even Type of s3 is Boolean
+* [IOTDB-5760] Query is blocked because of no memory
+* [IOTDB-5764] Cannot specify alias successfully when the FROM clause contains multiple path suffixes 
+* [IOTDB-5769] Offset doesn' t take effect in some special case
+* [IOTDB-5774] The syntax that path nodes start or end with a wildcard to fuzzy match is not supported
+* [IOTDB-5784] Incorrect result when querying with offset push-down and time filter
+* [IOTDB-5815] NPE when using UDF to query
+* [IOTDB-5837] Exceptions for select into using placeholders
+* [IOTDB-5851] Using limit clause in show devices query will throw NPE
+* [IOTDB-5858] Metric doesn' t display the schemaCache hit ratio
+* [IOTDB-5861] Last quey is incomplete
+* [IOTDB-5889] TTL Cannot delete expired tsfiles
+* [IOTDB-5897] NullPointerException In compaction
+* [IOTDB-5905] Some aligned timeseries data point lost after flush
+* [IOTDB-5934] Optimize cluster partition policy
+* [IOTDB-5953] LastCache memory control param does not take effect
+* [IOTDB-5963] Sometimes we may get out-of-order query result
+* [IOTDB-6016] Release file num cost after cross compaction task
 
 # Apache IoTDB 1.1.0
 
