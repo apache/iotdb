@@ -107,12 +107,21 @@ public class PipeTaskAgent {
 
   public synchronized List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChanges(
       List<PipeMeta> pipeMetaListFromConfigNode) {
+    acquireWriteLock();
+    try {
+      return handlePipeMetaChangesWithoutLock(pipeMetaListFromConfigNode);
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  private List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChangesWithoutLock(
+      List<PipeMeta> pipeMetaListFromConfigNode) {
     // Do nothing if data node is removing or removed
     if (PipeAgent.runtime().isShutdown()) {
       return Collections.emptyList();
     }
 
-    acquireWriteLock();
     final List<TPushPipeMetaRespExceptionMessage> exceptionMessages = new ArrayList<>();
 
     // Iterate through pipe meta list from config node, check if pipe meta exists on data node
@@ -181,7 +190,6 @@ public class PipeTaskAgent {
       }
     }
 
-    releaseWriteLock();
     return exceptionMessages;
   }
 
@@ -285,6 +293,14 @@ public class PipeTaskAgent {
 
   public synchronized void dropAllPipeTasks() {
     acquireWriteLock();
+    try {
+      dropAllPipeTasksWithoutLock();
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  private void dropAllPipeTasksWithoutLock() {
     for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
       try {
         dropPipe(
@@ -297,7 +313,6 @@ public class PipeTaskAgent {
             e);
       }
     }
-    releaseWriteLock();
   }
 
   ////////////////////////// Manage by Pipe Name //////////////////////////
@@ -654,6 +669,16 @@ public class PipeTaskAgent {
 
   public synchronized void collectPipeMetaList(THeartbeatReq req, THeartbeatResp resp)
       throws TException {
+    acquireReadLock();
+    try {
+      collectPipeMetaListWithoutLock(req, resp);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  private void collectPipeMetaListWithoutLock(THeartbeatReq req, THeartbeatResp resp)
+      throws TException {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
     if (PipeAgent.runtime().isShutdown() || !req.isNeedPipeMetaList()) {
       return;
@@ -661,20 +686,27 @@ public class PipeTaskAgent {
 
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
     try {
-      acquireReadLock();
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
         LOGGER.info("Reporting pipe meta: {}", pipeMeta);
       }
     } catch (IOException e) {
       throw new TException(e);
-    } finally {
-      releaseReadLock();
     }
     resp.setPipeMetaList(pipeMetaBinaryList);
   }
 
   public synchronized void collectPipeMetaList(TPipeHeartbeatReq req, TPipeHeartbeatResp resp)
+      throws TException {
+    acquireReadLock();
+    try {
+      collectPipeMetaListWithoutLock(req, resp);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  private void collectPipeMetaListWithoutLock(TPipeHeartbeatReq req, TPipeHeartbeatResp resp)
       throws TException {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
     if (PipeAgent.runtime().isShutdown()) {
@@ -684,16 +716,12 @@ public class PipeTaskAgent {
 
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
     try {
-      acquireReadLock();
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         pipeMetaBinaryList.add(pipeMeta.serialize());
         LOGGER.info("Reporting pipe meta: {}", pipeMeta);
       }
     } catch (IOException e) {
       throw new TException(e);
-    } finally {
-      releaseReadLock();
     }
-    resp.setPipeMetaList(pipeMetaBinaryList);
   }
 }

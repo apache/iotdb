@@ -33,10 +33,11 @@ public class PipeMetaKeeper {
 
   protected final Map<String, PipeMeta> pipeNameToPipeMetaMap;
 
-  private final ReentrantReadWriteLock pipeMetaKeeperLock = new ReentrantReadWriteLock(true);
+  private final ReentrantReadWriteLock pipeMetaKeeperLock;
 
   public PipeMetaKeeper() {
     pipeNameToPipeMetaMap = new ConcurrentHashMap<>();
+    pipeMetaKeeperLock = new ReentrantReadWriteLock(true);
   }
 
   public void acquireReadLock() {

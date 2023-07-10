@@ -89,34 +89,32 @@ public class PipeTaskCoordinator {
   public TShowPipeResp showPipes(TShowPipeReq req) {
     // Should take read lock here to avoid writes between read() and convertTo...()
     pipeTaskInfo.acquireReadLock();
-    final TShowPipeResp resp =
-        ((PipeTableResp)
-                configManager.getConsensusManager().read(new ShowPipePlanV2()).getDataset())
-            .filter(req.whereClause, req.pipeName)
-            .convertToTShowPipeResp();
-    pipeTaskInfo.releaseReadLock();
-    return resp;
-  }
-
-  public TGetAllPipeInfoResp getAllPipeInfo() {
-    TGetAllPipeInfoResp resp;
-    // Should take read lock here to avoid writes between read() and convertTo...()
-    pipeTaskInfo.acquireReadLock();
     try {
-      resp =
-          ((PipeTableResp)
-                  configManager.getConsensusManager().read(new ShowPipePlanV2()).getDataset())
-              .convertToTGetAllPipeInfoResp();
-    } catch (IOException e) {
-      LOGGER.error("Fail to get AllPipeInfo", e);
-      resp =
-          new TGetAllPipeInfoResp(
-              new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-                  .setMessage(e.getMessage()),
-              Collections.emptyList());
+      return ((PipeTableResp)
+              configManager.getConsensusManager().read(new ShowPipePlanV2()).getDataset())
+          .filter(req.whereClause, req.pipeName)
+          .convertToTShowPipeResp();
+
     } finally {
       pipeTaskInfo.releaseReadLock();
     }
-    return resp;
+  }
+
+  public TGetAllPipeInfoResp getAllPipeInfo() {
+    // Should take read lock here to avoid writes between read() and convertTo...()
+    pipeTaskInfo.acquireReadLock();
+    try {
+      return ((PipeTableResp)
+              configManager.getConsensusManager().read(new ShowPipePlanV2()).getDataset())
+          .convertToTGetAllPipeInfoResp();
+    } catch (IOException e) {
+      LOGGER.error("Fail to get AllPipeInfo", e);
+      return new TGetAllPipeInfoResp(
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+              .setMessage(e.getMessage()),
+          Collections.emptyList());
+    } finally {
+      pipeTaskInfo.releaseReadLock();
+    }
   }
 }

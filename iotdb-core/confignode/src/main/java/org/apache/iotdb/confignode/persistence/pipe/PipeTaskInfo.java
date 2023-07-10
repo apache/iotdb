@@ -158,9 +158,11 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   public boolean isPipeExisted(String pipeName) {
     acquireReadLock();
-    final boolean isExisted = pipeMetaKeeper.containsPipeMeta(pipeName);
-    releaseReadLock();
-    return isExisted;
+    try {
+      return pipeMetaKeeper.containsPipeMeta(pipeName);
+    } finally {
+      releaseReadLock();
+    }
   }
 
   private PipeStatus getPipeStatus(String pipeName) {
@@ -171,54 +173,68 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   public TSStatus createPipe(CreatePipePlanV2 plan) {
     acquireWriteLock();
-    pipeMetaKeeper.addPipeMeta(
-        plan.getPipeStaticMeta().getPipeName(),
-        new PipeMeta(plan.getPipeStaticMeta(), plan.getPipeRuntimeMeta()));
-    releaseWriteLock();
+    try {
+      pipeMetaKeeper.addPipeMeta(
+          plan.getPipeStaticMeta().getPipeName(),
+          new PipeMeta(plan.getPipeStaticMeta(), plan.getPipeRuntimeMeta()));
+    } finally {
+      releaseWriteLock();
+    }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   public TSStatus setPipeStatus(SetPipeStatusPlanV2 plan) {
     acquireWriteLock();
-    pipeMetaKeeper
-        .getPipeMeta(plan.getPipeName())
-        .getRuntimeMeta()
-        .getStatus()
-        .set(plan.getPipeStatus());
-    releaseWriteLock();
+    try {
+      pipeMetaKeeper
+          .getPipeMeta(plan.getPipeName())
+          .getRuntimeMeta()
+          .getStatus()
+          .set(plan.getPipeStatus());
+    } finally {
+      releaseWriteLock();
+    }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   public TSStatus dropPipe(DropPipePlanV2 plan) {
     acquireWriteLock();
-    pipeMetaKeeper.removePipeMeta(plan.getPipeName());
-    releaseWriteLock();
+    try {
+      pipeMetaKeeper.removePipeMeta(plan.getPipeName());
+    } finally {
+      releaseWriteLock();
+    }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   public DataSet showPipes() {
     acquireReadLock();
-    final PipeTableResp resp =
-        new PipeTableResp(
-            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-            StreamSupport.stream(getPipeMetaList().spliterator(), false)
-                .collect(Collectors.toList()));
-    releaseReadLock();
-    return resp;
+    try {
+      return new PipeTableResp(
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+          StreamSupport.stream(getPipeMetaList().spliterator(), false)
+              .collect(Collectors.toList()));
+    } finally {
+      releaseReadLock();
+    }
   }
 
   public Iterable<PipeMeta> getPipeMetaList() {
     acquireReadLock();
-    final Iterable<PipeMeta> pipeMetaList = pipeMetaKeeper.getPipeMetaList();
-    releaseReadLock();
-    return pipeMetaList;
+    try {
+      return pipeMetaKeeper.getPipeMetaList();
+    } finally {
+      releaseReadLock();
+    }
   }
 
   public boolean isEmpty() {
     acquireReadLock();
-    final boolean isEmpty = pipeMetaKeeper.isEmpty();
-    releaseReadLock();
-    return isEmpty;
+    try {
+      return pipeMetaKeeper.isEmpty();
+    } finally {
+      releaseReadLock();
+    }
   }
 
   /////////////////////////////// Pipe Runtime Management ///////////////////////////////
@@ -272,40 +288,46 @@ public class PipeTaskInfo implements SnapshotProcessor {
    */
   public TSStatus handleMetaChanges(PipeHandleMetaChangePlan plan) {
     acquireWriteLock();
-    LOGGER.info("Handling pipe meta changes ...");
-    pipeMetaKeeper.clear();
-    plan.getPipeMetaList()
-        .forEach(
-            pipeMeta -> {
-              pipeMetaKeeper.addPipeMeta(pipeMeta.getStaticMeta().getPipeName(), pipeMeta);
-              LOGGER.info("Recording pipe meta: {}", pipeMeta);
-            });
-    releaseWriteLock();
+    try {
+      LOGGER.info("Handling pipe meta changes ...");
+      pipeMetaKeeper.clear();
+      plan.getPipeMetaList()
+          .forEach(
+              pipeMeta -> {
+                pipeMetaKeeper.addPipeMeta(pipeMeta.getStaticMeta().getPipeName(), pipeMeta);
+                LOGGER.info("Recording pipe meta: {}", pipeMeta);
+              });
+    } finally {
+      releaseWriteLock();
+    }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   public boolean hasExceptions(String pipeName) {
     acquireReadLock();
-    if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
-      return false;
+    try {
+      if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
+        return false;
+      }
+      PipeRuntimeMeta runtimeMeta = pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta();
+      Map<Integer, PipeRuntimeException> exceptionMap =
+          runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
+      if (!exceptionMap.isEmpty()) {
+        return true;
+      }
+      AtomicBoolean hasException = new AtomicBoolean(false);
+      runtimeMeta
+          .getConsensusGroupId2TaskMetaMap()
+          .values()
+          .forEach(
+              pipeTaskMeta -> {
+                if (pipeTaskMeta.getExceptionMessages().iterator().hasNext()) {
+                  hasException.set(true);
+                }
+              });
+    } finally {
+      releaseReadLock();
     }
-    PipeRuntimeMeta runtimeMeta = pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta();
-    Map<Integer, PipeRuntimeException> exceptionMap =
-        runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
-    if (!exceptionMap.isEmpty()) {
-      return true;
-    }
-    AtomicBoolean hasException = new AtomicBoolean(false);
-    runtimeMeta
-        .getConsensusGroupId2TaskMetaMap()
-        .values()
-        .forEach(
-            pipeTaskMeta -> {
-              if (pipeTaskMeta.getExceptionMessages().iterator().hasNext()) {
-                hasException.set(true);
-              }
-            });
-    releaseReadLock();
     return hasException.get();
   }
 
