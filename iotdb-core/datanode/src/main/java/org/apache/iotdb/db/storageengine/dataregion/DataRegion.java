@@ -1854,12 +1854,10 @@ public class DataRegion implements IDataRegionForQuery {
 
       deleteDataInFiles(
           unsealedTsFileResource, deletion, devicePaths, updatedModFiles, timePartitionFilter);
-      writeUnlock();
-      hasReleasedLock = true;
-
       deleteDataInFiles(
           sealedTsFileResource, deletion, devicePaths, updatedModFiles, timePartitionFilter);
-
+      writeUnlock();
+      hasReleasedLock = true;
     } catch (Exception e) {
       // roll back
       for (ModificationFile modFile : updatedModFiles) {

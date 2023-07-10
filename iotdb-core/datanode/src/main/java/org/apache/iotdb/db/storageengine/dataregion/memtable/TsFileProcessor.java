@@ -1179,8 +1179,13 @@ public class TsFileProcessor {
         Pair<Modification, IMemTable> entry = iterator.next();
         if (entry.right.equals(memTableToFlush)) {
           entry.left.setFileOffset(tsFileResource.getTsFileSize());
-          this.tsFileResource.getModFile().write(entry.left);
-          tsFileResource.getModFile().close();
+          try {
+            dataRegionInfo.getDataRegion().writeLock("migrate-deletions");
+            this.tsFileResource.getModFile().write(entry.left);
+            tsFileResource.getModFile().close();
+          } finally {
+            dataRegionInfo.getDataRegion().writeUnlock();
+          }
           iterator.remove();
           logger.info(
               "[Deletion] Deletion with path: {}, time:{}-{} written when flush memtable",
