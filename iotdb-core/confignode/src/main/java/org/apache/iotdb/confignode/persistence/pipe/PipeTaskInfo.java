@@ -67,25 +67,35 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   /////////////////////////////// Lock ///////////////////////////////
 
-  public void acquireReadLock() {
+  private void acquireReadLock() {
     pipeMetaKeeper.acquireReadLock();
   }
 
-  public void releaseReadLock() {
+  private void releaseReadLock() {
     pipeMetaKeeper.releaseReadLock();
   }
 
-  public void acquireWriteLock() {
+  private void acquireWriteLock() {
     pipeMetaKeeper.acquireWriteLock();
   }
 
-  public void releaseWriteLock() {
+  private void releaseWriteLock() {
     pipeMetaKeeper.releaseWriteLock();
   }
 
   /////////////////////////////// Validator ///////////////////////////////
 
   public void checkBeforeCreatePipe(TCreatePipeReq createPipeRequest) throws PipeException {
+    acquireReadLock();
+    try {
+      checkBeforeCreatePipeInternal(createPipeRequest);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  private void checkBeforeCreatePipeInternal(TCreatePipeReq createPipeRequest)
+      throws PipeException {
     if (!isPipeExisted(createPipeRequest.getPipeName())) {
       return;
     }
@@ -99,6 +109,15 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   public void checkBeforeStartPipe(String pipeName) throws PipeException {
+    acquireReadLock();
+    try {
+      checkBeforeStartPipeInternal(pipeName);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  private void checkBeforeStartPipeInternal(String pipeName) throws PipeException {
     if (!isPipeExisted(pipeName)) {
       final String exceptionMessage =
           String.format("Failed to start pipe %s, the pipe does not exist", pipeName);
@@ -122,6 +141,15 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   public void checkBeforeStopPipe(String pipeName) throws PipeException {
+    acquireReadLock();
+    try {
+      checkBeforeStopPipeInternal(pipeName);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  private void checkBeforeStopPipeInternal(String pipeName) throws PipeException {
     if (!isPipeExisted(pipeName)) {
       final String exceptionMessage =
           String.format("Failed to stop pipe %s, the pipe does not exist", pipeName);
@@ -145,6 +173,15 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   public void checkBeforeDropPipe(String pipeName) {
+    acquireReadLock();
+    try {
+      checkBeforeDropPipeInternal(pipeName);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  private void checkBeforeDropPipeInternal(String pipeName) {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
           "Check before drop pipe {}, pipe exists: {}.",
@@ -166,7 +203,12 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   private PipeStatus getPipeStatus(String pipeName) {
-    return pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta().getStatus().get();
+    acquireReadLock();
+    try {
+      return pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta().getStatus().get();
+    } finally {
+      releaseReadLock();
+    }
   }
 
   /////////////////////////////// Pipe Task Management ///////////////////////////////
@@ -177,10 +219,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
       pipeMetaKeeper.addPipeMeta(
           plan.getPipeStaticMeta().getPipeName(),
           new PipeMeta(plan.getPipeStaticMeta(), plan.getPipeRuntimeMeta()));
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       releaseWriteLock();
     }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   public TSStatus setPipeStatus(SetPipeStatusPlanV2 plan) {
@@ -191,20 +233,20 @@ public class PipeTaskInfo implements SnapshotProcessor {
           .getRuntimeMeta()
           .getStatus()
           .set(plan.getPipeStatus());
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       releaseWriteLock();
     }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   public TSStatus dropPipe(DropPipePlanV2 plan) {
     acquireWriteLock();
     try {
       pipeMetaKeeper.removePipeMeta(plan.getPipeName());
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       releaseWriteLock();
     }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   public DataSet showPipes() {
@@ -243,44 +285,48 @@ public class PipeTaskInfo implements SnapshotProcessor {
   public TSStatus handleLeaderChange(PipeHandleLeaderChangePlan plan) {
     acquireWriteLock();
     try {
-      plan.getConsensusGroupId2NewDataRegionLeaderIdMap()
-          .forEach(
-              (dataRegionGroupId, newDataRegionLeader) ->
-                  pipeMetaKeeper
-                      .getPipeMetaList()
-                      .forEach(
-                          pipeMeta -> {
-                            final Map<TConsensusGroupId, PipeTaskMeta>
-                                consensusGroupIdToTaskMetaMap =
-                                    pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
-
-                            if (consensusGroupIdToTaskMetaMap.containsKey(dataRegionGroupId)) {
-                              // If the data region leader is -1, it means the data region is
-                              // removed
-                              if (newDataRegionLeader != -1) {
-                                consensusGroupIdToTaskMetaMap
-                                    .get(dataRegionGroupId)
-                                    .setLeaderDataNodeId(newDataRegionLeader);
-                              } else {
-                                consensusGroupIdToTaskMetaMap.remove(dataRegionGroupId);
-                              }
-                            } else {
-                              // If CN does not contain the data region group, it means the data
-                              // region group is newly added.
-                              if (newDataRegionLeader != -1) {
-                                consensusGroupIdToTaskMetaMap.put(
-                                    dataRegionGroupId,
-                                    new PipeTaskMeta(
-                                        new MinimumProgressIndex(), newDataRegionLeader));
-                              }
-                              // else:
-                              // "The pipe task meta does not contain the data region group {} or
-                              // the data region group has already been removed"
-                            }
-                          }));
+      return handleLeaderChangeInternal(plan);
     } finally {
       releaseWriteLock();
     }
+  }
+
+  private TSStatus handleLeaderChangeInternal(PipeHandleLeaderChangePlan plan) {
+    plan.getConsensusGroupId2NewDataRegionLeaderIdMap()
+        .forEach(
+            (dataRegionGroupId, newDataRegionLeader) ->
+                pipeMetaKeeper
+                    .getPipeMetaList()
+                    .forEach(
+                        pipeMeta -> {
+                          final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMap =
+                              pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
+
+                          if (consensusGroupIdToTaskMetaMap.containsKey(dataRegionGroupId)) {
+                            // If the data region leader is -1, it means the data region is
+                            // removed
+                            if (newDataRegionLeader != -1) {
+                              consensusGroupIdToTaskMetaMap
+                                  .get(dataRegionGroupId)
+                                  .setLeaderDataNodeId(newDataRegionLeader);
+                            } else {
+                              consensusGroupIdToTaskMetaMap.remove(dataRegionGroupId);
+                            }
+                          } else {
+                            // If CN does not contain the data region group, it means the data
+                            // region group is newly added.
+                            if (newDataRegionLeader != -1) {
+                              consensusGroupIdToTaskMetaMap.put(
+                                  dataRegionGroupId,
+                                  new PipeTaskMeta(
+                                      new MinimumProgressIndex(), newDataRegionLeader));
+                            }
+                            // else:
+                            // "The pipe task meta does not contain the data region group {} or
+                            // the data region group has already been removed"
+                          }
+                        }));
+
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
@@ -293,46 +339,61 @@ public class PipeTaskInfo implements SnapshotProcessor {
   public TSStatus handleMetaChanges(PipeHandleMetaChangePlan plan) {
     acquireWriteLock();
     try {
-      LOGGER.info("Handling pipe meta changes ...");
-      pipeMetaKeeper.clear();
-      plan.getPipeMetaList()
-          .forEach(
-              pipeMeta -> {
-                pipeMetaKeeper.addPipeMeta(pipeMeta.getStaticMeta().getPipeName(), pipeMeta);
-                LOGGER.info("Recording pipe meta: {}", pipeMeta);
-              });
+      return handleMetaChangesInternal(plan);
     } finally {
       releaseWriteLock();
     }
+  }
+
+  private TSStatus handleMetaChangesInternal(PipeHandleMetaChangePlan plan) {
+    LOGGER.info("Handling pipe meta changes ...");
+
+    pipeMetaKeeper.clear();
+
+    plan.getPipeMetaList()
+        .forEach(
+            pipeMeta -> {
+              pipeMetaKeeper.addPipeMeta(pipeMeta.getStaticMeta().getPipeName(), pipeMeta);
+              LOGGER.info("Recording pipe meta: {}", pipeMeta);
+            });
+
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   public boolean hasExceptions(String pipeName) {
     acquireReadLock();
     try {
-      if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
-        return false;
-      }
-      PipeRuntimeMeta runtimeMeta = pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta();
-      Map<Integer, PipeRuntimeException> exceptionMap =
-          runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
-      if (!exceptionMap.isEmpty()) {
-        return true;
-      }
-      AtomicBoolean hasException = new AtomicBoolean(false);
-      runtimeMeta
-          .getConsensusGroupId2TaskMetaMap()
-          .values()
-          .forEach(
-              pipeTaskMeta -> {
-                if (pipeTaskMeta.getExceptionMessages().iterator().hasNext()) {
-                  hasException.set(true);
-                }
-              });
-      return hasException.get();
+      return hasExceptionsInternal(pipeName);
     } finally {
       releaseReadLock();
     }
+  }
+
+  private boolean hasExceptionsInternal(String pipeName) {
+    if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
+      return false;
+    }
+
+    final PipeRuntimeMeta runtimeMeta = pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta();
+
+    final Map<Integer, PipeRuntimeException> exceptionMap =
+        runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
+
+    if (!exceptionMap.isEmpty()) {
+      return true;
+    }
+
+    final AtomicBoolean hasException = new AtomicBoolean(false);
+    runtimeMeta
+        .getConsensusGroupId2TaskMetaMap()
+        .values()
+        .forEach(
+            pipeTaskMeta -> {
+              if (pipeTaskMeta.getExceptionMessages().iterator().hasNext()) {
+                hasException.set(true);
+              }
+            });
+    return hasException.get();
   }
 
   /**
@@ -345,28 +406,35 @@ public class PipeTaskInfo implements SnapshotProcessor {
   public void clearExceptions(String pipeName) {
     acquireWriteLock();
     try {
-      if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
-        return;
-      }
-      PipeRuntimeMeta runtimeMeta = pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta();
-      runtimeMeta.setExceptionsClearTime(System.currentTimeMillis());
-      Map<Integer, PipeRuntimeException> exceptionMap =
-          runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
-      if (!exceptionMap.isEmpty()) {
-        exceptionMap.clear();
-      }
-      runtimeMeta
-          .getConsensusGroupId2TaskMetaMap()
-          .values()
-          .forEach(
-              pipeTaskMeta -> {
-                if (pipeTaskMeta.getExceptionMessages().iterator().hasNext()) {
-                  pipeTaskMeta.clearExceptionMessages();
-                }
-              });
+      clearExceptionsInternal(pipeName);
     } finally {
       releaseWriteLock();
     }
+  }
+
+  private void clearExceptionsInternal(String pipeName) {
+    if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
+      return;
+    }
+
+    final PipeRuntimeMeta runtimeMeta = pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta();
+
+    runtimeMeta.setExceptionsClearTime(System.currentTimeMillis());
+
+    final Map<Integer, PipeRuntimeException> exceptionMap =
+        runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
+    if (!exceptionMap.isEmpty()) {
+      exceptionMap.clear();
+    }
+    runtimeMeta
+        .getConsensusGroupId2TaskMetaMap()
+        .values()
+        .forEach(
+            pipeTaskMeta -> {
+              if (pipeTaskMeta.getExceptionMessages().iterator().hasNext()) {
+                pipeTaskMeta.clearExceptionMessages();
+              }
+            });
   }
 
   /**
@@ -380,45 +448,52 @@ public class PipeTaskInfo implements SnapshotProcessor {
   public boolean recordPushPipeMetaExceptions(Map<Integer, TPushPipeMetaResp> respMap) {
     acquireWriteLock();
     try {
-      boolean hasException = false;
-      for (Map.Entry<Integer, TPushPipeMetaResp> respEntry : respMap.entrySet()) {
-        int dataNodeId = respEntry.getKey();
-        TPushPipeMetaResp resp = respEntry.getValue();
-
-        if (resp.getStatus().getCode() == TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()) {
-          hasException = true;
-          if (!resp.isSetExceptionMessages()) {
-            // The pushPipeMeta process on dataNode encountered internal errors
-            continue;
-          }
-
-          resp.getExceptionMessages()
-              .forEach(
-                  message -> {
-                    if (pipeMetaKeeper.containsPipeMeta(message.getPipeName())) {
-                      PipeRuntimeMeta runtimeMeta =
-                          pipeMetaKeeper.getPipeMeta(message.getPipeName()).getRuntimeMeta();
-
-                      // Mark the status of the pipe with exception as stopped
-                      runtimeMeta.getStatus().set(PipeStatus.STOPPED);
-
-                      Map<Integer, PipeRuntimeException> exceptionMap =
-                          runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
-                      if (!exceptionMap.containsKey(dataNodeId)
-                          || exceptionMap.get(dataNodeId).getTimeStamp() < message.getTimeStamp()) {
-                        exceptionMap.put(
-                            dataNodeId,
-                            new PipeRuntimeCriticalException(
-                                message.getMessage(), message.getTimeStamp()));
-                      }
-                    }
-                  });
-        }
-      }
-      return hasException;
+      return recordPushPipeMetaExceptionsInternal(respMap);
     } finally {
       releaseWriteLock();
     }
+  }
+
+  private boolean recordPushPipeMetaExceptionsInternal(Map<Integer, TPushPipeMetaResp> respMap) {
+    boolean hasException = false;
+
+    for (final Map.Entry<Integer, TPushPipeMetaResp> respEntry : respMap.entrySet()) {
+      final int dataNodeId = respEntry.getKey();
+      final TPushPipeMetaResp resp = respEntry.getValue();
+
+      if (resp.getStatus().getCode() == TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()) {
+        hasException = true;
+
+        if (!resp.isSetExceptionMessages()) {
+          // The pushPipeMeta process on dataNode encountered internal errors
+          continue;
+        }
+
+        resp.getExceptionMessages()
+            .forEach(
+                message -> {
+                  if (pipeMetaKeeper.containsPipeMeta(message.getPipeName())) {
+                    final PipeRuntimeMeta runtimeMeta =
+                        pipeMetaKeeper.getPipeMeta(message.getPipeName()).getRuntimeMeta();
+
+                    // Mark the status of the pipe with exception as stopped
+                    runtimeMeta.getStatus().set(PipeStatus.STOPPED);
+
+                    final Map<Integer, PipeRuntimeException> exceptionMap =
+                        runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
+                    if (!exceptionMap.containsKey(dataNodeId)
+                        || exceptionMap.get(dataNodeId).getTimeStamp() < message.getTimeStamp()) {
+                      exceptionMap.put(
+                          dataNodeId,
+                          new PipeRuntimeCriticalException(
+                              message.getMessage(), message.getTimeStamp()));
+                    }
+                  }
+                });
+      }
+    }
+
+    return hasException;
   }
 
   /////////////////////////////// Snapshot ///////////////////////////////
