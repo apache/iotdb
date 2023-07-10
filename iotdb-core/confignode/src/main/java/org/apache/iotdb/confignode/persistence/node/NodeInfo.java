@@ -63,8 +63,13 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_DATANODE_PROCESS;
 
 /**
- * The NodeInfo stores cluster node information. The cluster node information including: 1. DataNode
- * information 2. ConfigNode information
+ * The {@link NodeInfo} stores cluster node information.
+ *
+ * <p>The cluster node information including:
+ *
+ * <p>1. DataNode information
+ *
+ * <p>2. ConfigNode information
  */
 public class NodeInfo implements SnapshotProcessor {
 

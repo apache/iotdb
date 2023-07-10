@@ -43,8 +43,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * The {@link RetryFailedTasksThread} executed periodically to retry failed tasks in Trigger, Template and
- * CQ.
+ * The {@link RetryFailedTasksThread} executed periodically to retry failed tasks in Trigger,
+ * Template and CQ.
  */
 public class RetryFailedTasksThread {
 
