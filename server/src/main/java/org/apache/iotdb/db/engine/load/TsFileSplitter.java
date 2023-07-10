@@ -261,15 +261,20 @@ public class TsFileSplitter {
                 }
               }
               if (alignedChunkDataList.size() == 1) { // write entire page
-                alignedChunkDataList
-                    .get(0)
-                    .writeEntirePage(pageHeader, reader.readCompressedPage(pageHeader));
+                // write the entire page if it's not an empty page.
+                if (!isEmptyPage(pageHeader)) {
+                  alignedChunkDataList
+                      .get(0)
+                      .writeEntirePage(pageHeader, reader.readCompressedPage(pageHeader));
+                }
               } else { // decode page
                 long[] times = pageIndex2Times.get(pageIndex);
                 TsPrimitiveType[] values =
                     decodeValuePage(reader, header, pageHeader, times, valueDecoder);
                 for (AlignedChunkData alignedChunkData : alignedChunkDataList) {
-                  alignedChunkData.writeDecodeValuePage(times, values, header.getDataType());
+                  if (!isEmptyPage(pageHeader)) {
+                    alignedChunkData.writeDecodeValuePage(times, values, header.getDataType());
+                  }
                 }
               }
 
@@ -439,6 +444,19 @@ public class TsFileSplitter {
         }
       }
     }
+  }
+
+  /**
+   * handle empty page in aligned chunk, if uncompressedSize and compressedSize are both 0, and the
+   * statistics is null, then the page is empty.
+   *
+   * @param pageHeader page header
+   * @return true if the page is empty
+   */
+  private boolean isEmptyPage(PageHeader pageHeader) {
+    return pageHeader.getUncompressedSize() == 0
+        && pageHeader.getCompressedSize() == 0
+        && pageHeader.getStatistics() == null;
   }
 
   private TsPrimitiveType[] decodeValuePage(
