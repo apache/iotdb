@@ -67,6 +67,7 @@ public class SizeTieredCompactionSelector
   protected boolean sequence;
   protected TsFileManager tsFileManager;
   protected boolean hasNextTimePartition;
+  private static final long MODS_FILE_SIZE_THRESHOLD = 1024 * 1024 * 50L;
 
   public SizeTieredCompactionSelector(
       String storageGroupName,
@@ -91,28 +92,23 @@ public class SizeTieredCompactionSelector
    * longer search for higher layers), otherwise it will return true.
    *
    * @param level the level to be searched
-   * @param taskPriorityQueue it stores the batches of files to be compacted and the total size of
-   *     each batch
    * @return return whether to continue the search to higher levels
    * @throws IOException if the name of tsfile is incorrect
    */
   @SuppressWarnings({"squid:S3776", "squid:S135"})
-  private boolean selectLevelTask(
-      int level, PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue)
-      throws IOException {
-    boolean shouldContinueToSearch = true;
+  private List<Pair<List<TsFileResource>, Long>> selectSingleLevel(int level) throws IOException {
     List<TsFileResource> selectedFileList = new ArrayList<>();
     long selectedFileSize = 0L;
     long targetCompactionFileSize = config.getTargetCompactionFileSize();
 
+    List<Pair<List<TsFileResource>, Long>> taskList = new ArrayList<>();
     for (TsFileResource currentFile : tsFileResources) {
       TsFileNameGenerator.TsFileName currentName =
           TsFileNameGenerator.getTsFileName(currentFile.getTsFile().getName());
       if (currentName.getInnerCompactionCnt() != level) {
         // meet files of another level
         if (selectedFileList.size() > 1) {
-          taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
-          shouldContinueToSearch = false;
+          taskList.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
         }
         selectedFileList = new ArrayList<>();
         selectedFileSize = 0L;
@@ -136,8 +132,7 @@ public class SizeTieredCompactionSelector
           || selectedFileList.size() >= config.getFileLimitPerInnerTask()) {
         // submit the task
         if (selectedFileList.size() > 1) {
-          taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
-          shouldContinueToSearch = false;
+          taskList.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
         }
         selectedFileList = new ArrayList<>();
         selectedFileSize = 0L;
@@ -147,10 +142,9 @@ public class SizeTieredCompactionSelector
     // if next time partition exists
     // submit a merge task even it does not meet the requirement for file num or file size
     if (hasNextTimePartition && selectedFileList.size() > 1) {
-      taskPriorityQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
-      shouldContinueToSearch = false;
+      taskList.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
     }
-    return shouldContinueToSearch;
+    return taskList;
   }
 
   /**
@@ -170,15 +164,12 @@ public class SizeTieredCompactionSelector
     PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue =
         new PriorityQueue<>(new SizeTieredCompactionTaskComparator());
     try {
-      selectMaxModsFileTask(taskPriorityQueue);
+      // preferentially select files based on mods file size
+      taskPriorityQueue.addAll(selectMaxModsFileTask());
 
+      // if a suitable file is not selected in the first step, select the file at the tsfile level
       if (taskPriorityQueue.isEmpty()) {
-        int maxLevel = searchMaxFileLevel();
-        for (int currentLevel = 0; currentLevel <= maxLevel; currentLevel++) {
-          if (!selectLevelTask(currentLevel, taskPriorityQueue)) {
-            break;
-          }
-        }
+        taskPriorityQueue.addAll(selectLevelTask());
       }
 
       List<List<TsFileResource>> taskList = new LinkedList<>();
@@ -193,16 +184,30 @@ public class SizeTieredCompactionSelector
     return Collections.emptyList();
   }
 
-  private void selectMaxModsFileTask(
-      PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue) {
+  private List<Pair<List<TsFileResource>, Long>> selectLevelTask() throws IOException {
+    List<Pair<List<TsFileResource>, Long>> taskList = new ArrayList<>();
+    int maxLevel = searchMaxFileLevel();
+    for (int currentLevel = 0; currentLevel <= maxLevel; currentLevel++) {
+      List<Pair<List<TsFileResource>, Long>> singleLevelTask = selectSingleLevel(currentLevel);
+      if (!singleLevelTask.isEmpty()) {
+        taskList.addAll(singleLevelTask);
+        break;
+      }
+    }
+    return taskList;
+  }
+
+  private List<Pair<List<TsFileResource>, Long>> selectMaxModsFileTask() {
+    List<Pair<List<TsFileResource>, Long>> taskList = new ArrayList<>();
     for (TsFileResource tsFileResource : tsFileResources) {
       ModificationFile modFile = tsFileResource.getModFile();
-      if (!Objects.isNull(modFile) && modFile.getSize() > 1024 * 1024 * 50) {
-        taskPriorityQueue.add(
+      if (!Objects.isNull(modFile) && modFile.getSize() > MODS_FILE_SIZE_THRESHOLD) {
+        taskList.add(
             new Pair<>(Collections.singletonList(tsFileResource), tsFileResource.getTsFileSize()));
         LOGGER.debug("select tsfile {},the mod file size is {}", tsFileResource, modFile.getSize());
       }
     }
+    return taskList;
   }
 
   private int searchMaxFileLevel() throws IOException {
