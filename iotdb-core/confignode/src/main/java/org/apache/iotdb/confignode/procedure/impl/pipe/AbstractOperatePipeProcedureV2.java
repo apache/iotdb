@@ -94,11 +94,7 @@ public abstract class AbstractOperatePipeProcedureV2
     try {
       switch (state) {
         case VALIDATE_TASK:
-          env.getConfigManager()
-              .getPipeManager()
-              .getPipeTaskCoordinator()
-              .getPipeTaskInfo()
-              .acquireWriteLock();
+          env.getConfigManager().getPipeManager().getPipeTaskCoordinator().lock();
           executeFromValidateTask(env);
           setNextState(OperatePipeTaskState.CALCULATE_INFO_FOR_TASK);
           break;
@@ -112,11 +108,7 @@ public abstract class AbstractOperatePipeProcedureV2
           break;
         case OPERATE_ON_DATA_NODES:
           executeFromOperateOnDataNodes(env);
-          env.getConfigManager()
-              .getPipeManager()
-              .getPipeTaskCoordinator()
-              .getPipeTaskInfo()
-              .releaseWriteLock();
+          env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
           return Flow.NO_MORE_STATE;
         default:
           throw new UnsupportedOperationException(
@@ -151,11 +143,7 @@ public abstract class AbstractOperatePipeProcedureV2
         try {
           rollbackFromValidateTask(env);
         } finally {
-          env.getConfigManager()
-              .getPipeManager()
-              .getPipeTaskCoordinator()
-              .getPipeTaskInfo()
-              .releaseWriteLock();
+          env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
         }
         break;
       case CALCULATE_INFO_FOR_TASK:
