@@ -126,7 +126,7 @@ public class AuthUtils {
     } else if (str.contains(" ")) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PARAMETER, "The name or password cannot contain spaces");
-    } else if (str.matches(REX_PATTERN)) {
+    } else if (!str.matches(REX_PATTERN)) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PARAMETER,
           "The name or password must start with a letter and can only contain letters, numbers,"
