@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.it.env.cluster;
 
 import javax.annotation.Nullable;
@@ -28,14 +29,14 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Properties;
 
-/** this class stands for a config object of one single property file */
+/** This class stands for a config object of one single property file. */
 public abstract class MppBaseConfig {
 
   public static final String NULL_VALUE = "";
   private final Properties properties;
 
   /** Create an empty MppPersistentConfig. */
-  public MppBaseConfig() {
+  protected MppBaseConfig() {
     this.properties = new Properties();
   }
 
@@ -44,7 +45,7 @@ public abstract class MppBaseConfig {
    *
    * @param filePath the property file path.
    */
-  public MppBaseConfig(String filePath) throws IOException {
+  protected MppBaseConfig(String filePath) throws IOException {
     this();
     updateProperties(filePath);
   }
@@ -57,9 +58,7 @@ public abstract class MppBaseConfig {
    */
   public final void updateProperties(@NotNull Properties properties) {
     properties.forEach(
-        (k, v) -> {
-          this.setProperty((String) k, (String) v);
-        });
+        (k, v) -> this.setProperty((String) k, (String) v));
   }
 
   /**
