@@ -136,9 +136,9 @@ public class IoTConsensusServerImpl {
       persistConfiguration();
     }
     this.config = config;
-    this.logDispatcher = new LogDispatcher(this, clientManager);
     reader = (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
     this.searchIndex = new AtomicLong(reader.getCurrentSearchIndex());
+    this.logDispatcher = new LogDispatcher(this, clientManager);
     // Since the underlying wal does not persist safelyDeletedSearchIndex, IoTConsensus needs to
     // update wal with its syncIndex recovered from the consensus layer when initializing.
     // This prevents wal from being piled up if the safelyDeletedSearchIndex is not updated after
