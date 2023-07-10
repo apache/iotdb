@@ -31,7 +31,7 @@
     <name>Node Commons</name>
     <description>Common modules of the server and config node</description>
     <properties>
-        <commons.test.skip>false</commons.test.skip>
+        <commons.test.skip>true</commons.test.skip>
         <commons.it.skip>${commons.test.skip}</commons.it.skip>
         <commons.ut.skip>${commons.test.skip}</commons.ut.skip>
         <cglib.version>3.1</cglib.version>

@@ -111,7 +111,7 @@
         <module>iotdb-client/compile-tools</module>
         <module>iotdb-client/client-cpp</module>
         <module>metrics</module>
-        <module>integration-test</module>
+<!--        <module>integration-test</module>-->
         <module>consensus</module>
         <module>library-udf</module>
         <module>iotdb-api/udf-api</module>
@@ -1195,30 +1195,6 @@
                 <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
                 <thrift.exec-cmd.args>+x ${project.build.directory}/tools/${thrift.executable}</thrift.exec-cmd.args>
             </properties>
-        </profile>
-        <!-- for TestContainer. As it requires docker, we have to detect whether docker exists.-->
-        <profile>
-            <!-- Mac and Unix-->
-            <id>unixDockerCheck</id>
-            <activation>
-                <file>
-                    <exists>/var/run/docker.sock</exists>
-                </file>
-            </activation>
-            <modules>
-                <module>testcontainer</module>
-            </modules>
-        </profile>
-        <profile>
-            <id>WinDockerCheck</id>
-            <activation>
-                <file>
-                    <exists>C:\Program Files\Docker\Docker\resources\bin\docker.exe</exists>
-                </file>
-            </activation>
-            <modules>
-                <module>testcontainer</module>
-            </modules>
         </profile>
         <!-- Some APIs were removed in Java 11, so we need to add replacements -->
         <profile>

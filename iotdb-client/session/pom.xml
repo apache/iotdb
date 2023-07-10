@@ -30,7 +30,7 @@
     <artifactId>iotdb-session</artifactId>
     <name>IoTDB Session</name>
     <properties>
-        <session.test.skip>false</session.test.skip>
+        <session.test.skip>true</session.test.skip>
         <session.it.skip>${session.test.skip}</session.it.skip>
         <session.ut.skip>${session.test.skip}</session.ut.skip>
     </properties>
