@@ -331,14 +331,21 @@ public class PipeTaskInfo implements SnapshotProcessor {
    * PipeHandleMetaChangeProcedure.
    *
    * @param pipeName The name of the pipe to be clear exception
+   * @return true if the flag is true previously
    */
-  public void setIsAutoStoppedToFalse(String pipeName) {
+  public boolean setIsAutoStoppedToFalse(String pipeName) {
     if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
-      return;
+      return false;
     }
+    PipeRuntimeMeta runtimeMeta = pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta();
 
     // Clear the isAutoStopped flag to avoid unnecessary retry.
-    pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta().setIsAutoStopped(false);
+    if (runtimeMeta.getIsAutoStopped()) {
+      runtimeMeta.setIsAutoStopped(false);
+      return true;
+    }
+
+    return false;
   }
 
   /**
@@ -410,7 +417,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
               }
             });
     if (needRestart.get()) {
-      LOGGER.info("PipeMetaSyncer is trying to restart the pipes, pipeNames, {}", pipeToRestart);
+      LOGGER.info("PipeMetaSyncer is trying to restart the pipes: {}", pipeToRestart);
     }
     return needRestart.get();
   }

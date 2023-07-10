@@ -91,9 +91,13 @@ public class PipeTaskCoordinator {
     // Always set the isAutoStopped flag to false when user stops a pipe manually, regardless of its
     // result.
     try {
-      LOGGER.info(
-          "Pipe {} is manually stopped by user, set its isAutoStopped flag to false.", pipeName);
-      pipeTaskInfo.setIsAutoStoppedToFalse(pipeName);
+      if (pipeTaskInfo.setIsAutoStoppedToFalse(pipeName)) {
+        LOGGER.info(
+            "Pipe {} is manually stopped by user, set its isAutoStopped flag to false.", pipeName);
+        configManager.getProcedureManager().pipeHandleMetaChange(true, true);
+        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+            .setMessage(String.format("Pipe %s's auto restart process is stopped.", pipeName));
+      }
     } finally {
       unlock();
     }
