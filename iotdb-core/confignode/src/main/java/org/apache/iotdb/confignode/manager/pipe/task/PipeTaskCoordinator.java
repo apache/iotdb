@@ -88,8 +88,9 @@ public class PipeTaskCoordinator {
   public TSStatus stopPipe(String pipeName) {
     // To avoid concurrent read
     lock();
-    // Always set the isAutoStopped flag to false when user stops a pipe manually, regardless of its
-    // result.
+    // If the isAutoStopped flag is true when user executes the stop pipe statement, then the
+    // statement will be interpreted as "stop auto-restart process" instead of stop this pipe
+    // because the pipe is already stopped in this case.
     try {
       if (pipeTaskInfo.setIsAutoStoppedToFalse(pipeName)) {
         LOGGER.info(
