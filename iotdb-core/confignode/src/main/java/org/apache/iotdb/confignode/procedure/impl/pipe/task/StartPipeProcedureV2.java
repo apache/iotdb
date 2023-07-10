@@ -104,7 +104,7 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         .getPipeManager()
         .getPipeTaskCoordinator()
         .getPipeTaskInfo()
-        .clearExceptionsAndSetAutoStoppedToFalse(pipeName);
+        .clearExceptionsAndSetIsAutoStoppedToFalse(pipeName);
   }
 
   @Override

@@ -103,6 +103,14 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeMetaSyncerSyncIntervalMinutes();
   }
 
+  public long getPipeMetaSyncerAutoRestartPipeCheckIntervalRound() {
+    return COMMON_CONFIG.getPipeMetaSyncerAutoRestartPipeCheckIntervalRound();
+  }
+
+  public boolean getPipeAutoRestartEnabled() {
+    return COMMON_CONFIG.getPipeAutoRestartEnabled();
+  }
+
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfig.class);

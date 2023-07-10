@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ProcedureManager;
@@ -57,7 +56,7 @@ public class PipeMetaSyncer {
   private final AtomicInteger pipeAutoRestartRoundCounter = new AtomicInteger(0);
 
   private final boolean autoRestartPipeEnabled =
-      CommonDescriptor.getInstance().getConfig().getPipeExceptionStoppedAutoRestartEnabled();
+      PipeConfig.getInstance().getPipeAutoRestartEnabled();
 
   PipeMetaSyncer(ConfigManager configManager) {
     this.configManager = configManager;
@@ -90,27 +89,24 @@ public class PipeMetaSyncer {
     ProcedureManager procedureManager = configManager.getProcedureManager();
     PipeTaskInfo pipeTaskInfo =
         configManager.getPipeManager().getPipeTaskCoordinator().getPipeTaskInfo();
-    boolean needRestart = false;
+    boolean needBroadcastRestartSignal = false;
 
     if (autoRestartPipeEnabled
-        && pipeAutoRestartRoundCounter.get()
-            == CommonDescriptor.getInstance().getConfig().getPipeMetaSyncerAutoRestartPipeRound()) {
-      needRestart = pipeTaskInfo.autoRestart();
+        && pipeAutoRestartRoundCounter.incrementAndGet()
+            == PipeConfig.getInstance().getPipeMetaSyncerAutoRestartPipeCheckIntervalRound()) {
+      needBroadcastRestartSignal = pipeTaskInfo.autoRestart();
       pipeAutoRestartRoundCounter.set(0);
     }
 
     final TSStatus status = procedureManager.pipeMetaSync();
 
-    if (needRestart) {
+    if (needBroadcastRestartSignal) {
       pipeTaskInfo.handleSuccessfulRestart();
     }
 
-    if (needRestart || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (needBroadcastRestartSignal
+        || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       procedureManager.pipeHandleMetaChange(true, true);
-    }
-
-    if (autoRestartPipeEnabled) {
-      pipeAutoRestartRoundCounter.incrementAndGet();
     }
   }
 

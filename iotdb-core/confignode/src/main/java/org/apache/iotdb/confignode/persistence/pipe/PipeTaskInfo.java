@@ -258,13 +258,14 @@ public class PipeTaskInfo implements SnapshotProcessor {
   /**
    * Used to detect whether a pipe has exceptions or is automatically Stopped.
    *
-   * @param pipeName The name of the pipes to be clear exception
+   * @param pipeName The name of the pipe to be detect exceptions and flag
    */
   public boolean hasExceptionsOrIsAutoStopped(String pipeName) {
     if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
       return false;
     }
     PipeRuntimeMeta runtimeMeta = pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta();
+
     if (runtimeMeta.getIsAutoStopped()) {
       return true;
     }
@@ -293,17 +294,18 @@ public class PipeTaskInfo implements SnapshotProcessor {
    * starts successfully. If there are exceptions cleared or flag changed, the messages will then be
    * updated to all the nodes through PipeHandleMetaChangeProcedure.
    *
-   * @param pipeName The name of the pipes to be clear exception
+   * @param pipeName The name of the pipe to be clear exception
    */
-  public void clearExceptionsAndSetAutoStoppedToFalse(String pipeName) {
+  public void clearExceptionsAndSetIsAutoStoppedToFalse(String pipeName) {
     if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
       return;
     }
     PipeRuntimeMeta runtimeMeta = pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta();
-    runtimeMeta.setExceptionsClearTime(System.currentTimeMillis());
 
     // Clear the isAutoStopped flag as well, to avoid unnecessary retry.
     runtimeMeta.setIsAutoStopped(false);
+
+    runtimeMeta.setExceptionsClearTime(System.currentTimeMillis());
 
     Map<Integer, PipeRuntimeException> exceptionMap =
         runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
@@ -319,6 +321,22 @@ public class PipeTaskInfo implements SnapshotProcessor {
                 pipeTaskMeta.clearExceptionMessages();
               }
             });
+  }
+
+  /**
+   * Purely set the isAutoStopped flag to false for a pipe locally after it is stopped by user. If
+   * the flag is changed, the messages will then be updated to all the nodes through
+   * PipeHandleMetaChangeProcedure.
+   *
+   * @param pipeName The name of the pipe to be clear exception
+   */
+  public void setIsAutoStoppedToFalse(String pipeName) {
+    if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
+      return;
+    }
+
+    // Clear the isAutoStopped flag to avoid unnecessary retry.
+    pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta().setIsAutoStopped(false);
   }
 
   /**
@@ -399,7 +417,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
         .forEach(
             pipeMeta -> {
               if (pipeMeta.getRuntimeMeta().getStatus().get().equals(PipeStatus.RUNNING)) {
-                clearExceptionsAndSetAutoStoppedToFalse(pipeMeta.getStaticMeta().getPipeName());
+                clearExceptionsAndSetIsAutoStoppedToFalse(pipeMeta.getStaticMeta().getPipeName());
               }
             });
   }

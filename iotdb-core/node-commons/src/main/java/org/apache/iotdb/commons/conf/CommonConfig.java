@@ -163,8 +163,8 @@ public class CommonConfig {
   private int pipeHeartbeatIntervalSecondsForCollectingPipeMeta = 100;
   private long pipeMetaSyncerInitialSyncDelayMinutes = 3;
   private long pipeMetaSyncerSyncIntervalMinutes = 3;
-  private boolean pipeExceptionStoppedAutoRestartEnabled = true;
-  private long pipeMetaSyncerAutoRestartPipeRound = 5;
+  private long pipeMetaSyncerAutoRestartPipeCheckIntervalRound = 5;
+  private boolean pipeAutoRestartEnabled = true;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -537,21 +537,22 @@ public class CommonConfig {
     this.pipeMetaSyncerSyncIntervalMinutes = pipeMetaSyncerSyncIntervalMinutes;
   }
 
-  public boolean getPipeExceptionStoppedAutoRestartEnabled() {
-    return pipeExceptionStoppedAutoRestartEnabled;
+  public long getPipeMetaSyncerAutoRestartPipeCheckIntervalRound() {
+    return pipeMetaSyncerAutoRestartPipeCheckIntervalRound;
   }
 
-  public void setPipeExceptionStoppedAutoRestartEnabled(
-      boolean pipeExceptionStoppedAutoRestartEnabled) {
-    this.pipeExceptionStoppedAutoRestartEnabled = pipeExceptionStoppedAutoRestartEnabled;
+  public void setPipeMetaSyncerAutoRestartPipeCheckIntervalRound(
+      long pipeMetaSyncerAutoRestartPipeCheckIntervalRound) {
+    this.pipeMetaSyncerAutoRestartPipeCheckIntervalRound =
+        pipeMetaSyncerAutoRestartPipeCheckIntervalRound;
   }
 
-  public long getPipeMetaSyncerAutoRestartPipeRound() {
-    return pipeMetaSyncerAutoRestartPipeRound;
+  public boolean getPipeAutoRestartEnabled() {
+    return pipeAutoRestartEnabled;
   }
 
-  public void setPipeMetaSyncerAutoRestartPipeRound(long pipeMetaSyncerAutoRestartPipeRound) {
-    this.pipeMetaSyncerAutoRestartPipeRound = pipeMetaSyncerAutoRestartPipeRound;
+  public void setPipeAutoRestartEnabled(boolean pipeAutoRestartEnabled) {
+    this.pipeAutoRestartEnabled = pipeAutoRestartEnabled;
   }
 
   public long getPipeConnectorRetryIntervalMs() {

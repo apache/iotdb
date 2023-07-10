@@ -69,14 +69,14 @@ public class PipeTaskCoordinator {
     // To avoid concurrent read
     lock();
     // Whether there are exceptions to clear
-    boolean hasException;
+    boolean hasExceptionOrIsAutoStopped;
     try {
-      hasException = pipeTaskInfo.hasExceptionsOrIsAutoStopped(pipeName);
+      hasExceptionOrIsAutoStopped = pipeTaskInfo.hasExceptionsOrIsAutoStopped(pipeName);
     } finally {
       unlock();
     }
     TSStatus status = configManager.getProcedureManager().startPipe(pipeName);
-    if (status == RpcUtils.SUCCESS_STATUS && hasException) {
+    if (status == RpcUtils.SUCCESS_STATUS && hasExceptionOrIsAutoStopped) {
       LOGGER.info(
           "Pipe {} has started successfully, clear its exceptions set its autoStopped flag to false.",
           pipeName);
@@ -86,6 +86,17 @@ public class PipeTaskCoordinator {
   }
 
   public TSStatus stopPipe(String pipeName) {
+    // To avoid concurrent read
+    lock();
+    // Always set the isAutoStopped flag to false when user stops a pipe manually, regardless of its
+    // result.
+    try {
+      LOGGER.info(
+          "Pipe {} is manually stopped by user, set its isAutoStopped flag to false.", pipeName);
+      pipeTaskInfo.setIsAutoStoppedToFalse(pipeName);
+    } finally {
+      unlock();
+    }
     return configManager.getProcedureManager().stopPipe(pipeName);
   }
 
