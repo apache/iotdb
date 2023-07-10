@@ -883,7 +883,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitCreatePipePlugin(IoTDBSqlParser.CreatePipePluginContext ctx) {
     return new CreatePipePluginStatement(
-        parseIdentifier(ctx.pluginName.getText()),
+        ctx.pluginName.getText(),
         parseStringLiteral(ctx.className.getText()),
         parseAndValidateURI(ctx.uriClause()));
   }
@@ -891,7 +891,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // Drop PipePlugin =====================================================================
   @Override
   public Statement visitDropPipePlugin(IoTDBSqlParser.DropPipePluginContext ctx) {
-    return new DropPipePluginStatement(parseIdentifier(ctx.pluginName.getText()));
+    return new DropPipePluginStatement(ctx.pluginName.getText());
   }
 
   // Show PipePlugins =====================================================================
@@ -1698,7 +1698,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private Literal parseLiteral(ConstantContext constantContext) {
     String text = constantContext.getText();
-    if (constantContext.BOOLEAN_LITERAL() != null) {
+    if (constantContext.boolean_literal() != null) {
       return new BooleanLiteral(text);
     } else if (constantContext.STRING_LITERAL() != null) {
       return new StringLiteral(parseStringLiteral(text));
@@ -1889,7 +1889,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (ctx.SGLEVEL() != null) {
       loadTsFileStatement.setSgLevel(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
     } else if (ctx.VERIFY() != null) {
-      loadTsFileStatement.setVerifySchema(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
+      loadTsFileStatement.setVerifySchema(Boolean.parseBoolean(ctx.boolean_literal().getText()));
     } else {
       throw new SemanticException(
           String.format(
@@ -2111,9 +2111,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return src;
   }
 
-  // alias
+  // Alias
 
-  /** function for parsing Alias of ResultColumn . */
+  /** Function for parsing Alias of ResultColumn. */
   private String parseAlias(IoTDBSqlParser.AliasContext ctx) {
     String alias;
     if (ctx.constant() != null) {
@@ -2923,7 +2923,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private String parseConstant(ConstantContext constantContext) {
     String text = constantContext.getText();
-    if (constantContext.BOOLEAN_LITERAL() != null
+    if (constantContext.boolean_literal() != null
         || constantContext.INTEGER_LITERAL() != null
         || constantContext.realLiteral() != null) {
       return text;
@@ -2938,7 +2938,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private Expression parseConstantOperand(ConstantContext constantContext) {
     String text = constantContext.getText();
-    if (constantContext.BOOLEAN_LITERAL() != null) {
+    if (constantContext.boolean_literal() != null) {
       return new ConstantOperand(TSDataType.BOOLEAN, text);
     } else if (constantContext.STRING_LITERAL() != null) {
       return new ConstantOperand(TSDataType.TEXT, parseStringLiteral(text));
@@ -3092,8 +3092,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitFlush(IoTDBSqlParser.FlushContext ctx) {
     FlushStatement flushStatement = new FlushStatement(StatementType.FLUSH);
     List<PartialPath> storageGroups = null;
-    if (ctx.BOOLEAN_LITERAL() != null) {
-      flushStatement.setSeq(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
+    if (ctx.boolean_literal() != null) {
+      flushStatement.setSeq(Boolean.parseBoolean(ctx.boolean_literal().getText()));
     }
     if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
       throw new SemanticException("FLUSH ON CLUSTER is not supported in standalone mode");
@@ -3526,10 +3526,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         new CreatePipeStatement(StatementType.CREATE_PIPE);
 
     if (ctx.pipeName != null) {
-      createPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
+      createPipeStatement.setPipeName(ctx.pipeName.getText());
     } else {
       throw new SemanticException(
-          "Not support for this sql in CREATEPIPE, please enter pipename or pipesinkname.");
+          "Not support for this sql in CREATEPIPE, please enter pipe name.");
     }
     if (ctx.extractorAttributesClause() != null) {
       createPipeStatement.setExtractorAttributes(
@@ -3589,7 +3589,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     final DropPipeStatement dropPipeStatement = new DropPipeStatement(StatementType.DROP_PIPE);
 
     if (ctx.pipeName != null) {
-      dropPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
+      dropPipeStatement.setPipeName(ctx.pipeName.getText());
     } else {
       throw new SemanticException("Not support for this sql in DROP PIPE, please enter pipename.");
     }
@@ -3602,7 +3602,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     final StartPipeStatement startPipeStatement = new StartPipeStatement(StatementType.START_PIPE);
 
     if (ctx.pipeName != null) {
-      startPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
+      startPipeStatement.setPipeName(ctx.pipeName.getText());
     } else {
       throw new SemanticException("Not support for this sql in START PIPE, please enter pipename.");
     }
@@ -3615,7 +3615,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     final StopPipeStatement stopPipeStatement = new StopPipeStatement(StatementType.STOP_PIPE);
 
     if (ctx.pipeName != null) {
-      stopPipeStatement.setPipeName(parseIdentifier(ctx.pipeName.getText()));
+      stopPipeStatement.setPipeName(ctx.pipeName.getText());
     } else {
       throw new SemanticException("Not support for this sql in STOP PIPE, please enter pipename.");
     }

@@ -52,6 +52,7 @@ keyWords
     | BOUNDARY
     | BY
     | CACHE
+    | CASE
     | CAST
     | CHILD
     | CLEAR
@@ -60,10 +61,11 @@ keyWords
     | CONDITION
     | CONFIGNODES
     | CONFIGURATION
+    | CONNECTOR
+    | CONTAIN
     | CONTAINS
     | CONTINUOUS
     | COUNT
-    | CONTAIN
     | CQ
     | CQS
     | CREATE
@@ -77,10 +79,10 @@ keyWords
     | DELETE
     | DESC
     | DESCRIBE
+    | DETAILS
     | DEVICE
     | DEVICEID
     | DEVICES
-    | DETAILS
     | DISABLE
     | DISCARD
     | DROP
@@ -90,8 +92,11 @@ keyWords
     | ENDTIME
     | EVERY
     | EXPLAIN
+    | EXTRACTOR
+    | FALSE
     | FILL
     | FILE
+    | FIRST
     | FLUSH
     | FOR
     | FROM
@@ -121,13 +126,17 @@ keyWords
     | LOCK
     | MERGE
     | METADATA
+    | MIGRATE
     | MODEL
     | MODELS
+    | NAN
+    | NODEID
     | NODES
     | NONE
     | NOT
     | NOW
     | NULL
+    | NULLS
     | OF
     | OFF
     | OFFSET
@@ -151,6 +160,7 @@ keyWords
     | PRIVILEGES
     | PRIVILEGE_VALUE
     | PROCESSLIST
+    | PROCESSOR
     | PROPERTY
     | PRUNE
     | QUERIES
@@ -198,6 +208,7 @@ keyWords
     | THROTTLE
     | TIMEOUT
     | TIMESERIES
+    | TIMEPARTITION
     | TIMESLOTID
     | TO
     | TOLERANCE
@@ -206,6 +217,7 @@ keyWords
     | TRAILS
     | TRIGGER
     | TRIGGERS
+    | TRUE
     | TTL
     | UNLINK
     | UNLOAD
@@ -213,13 +225,16 @@ keyWords
     | UPDATE
     | UPSERT
     | URI
+    | USED
     | USER
     | USING
     | VALUES
+    | VARIABLES
     | VARIATION
     | VERIFY
     | VERSION
     | VIEW
+    | WATERMARK_EMBEDDING
     | WHEN
     | WHERE
     | WITH

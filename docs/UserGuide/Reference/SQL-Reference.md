@@ -91,7 +91,7 @@ propertyClause
     ;
 DataTypeValue: BOOLEAN | DOUBLE | FLOAT | INT32 | INT64 | TEXT
 EncodingValue: GORILLA | PLAIN | RLE | TS_2DIFF | REGULAR
-CompressorValue: UNCOMPRESSED | SNAPPY
+CompressorValue: UNCOMPRESSED | SNAPPY | LZ4 | GZIP | ZSTD | LZMA2
 AttributesType: SDT | COMPDEV | COMPMINTIME | COMPMAXTIME
 PropertyValue: ID | constant
 Eg: CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN

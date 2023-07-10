@@ -69,7 +69,7 @@
 > 在 basedir/data/sequence or unsequence/{DatabaseName}/{DataRegionId}/{TimePartitionId}/目录下
 1. {time}-{version}-{mergeCnt}.tsfile
     + 数据文件
-2. {TsFileName}.tsfile.mod
+2. {TsFileName}.tsfile.mods
     + 更新文件，主要记录删除操作
 
 ##### TsFileResource
