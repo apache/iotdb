@@ -618,10 +618,10 @@ public class IoTDBAuthIT {
       };
 
       for (int i = 0; i < members.length - 1; i++) {
-        adminStmt.execute("CREATE USER " + members[i] + " '666666'");
+        adminStmt.execute("CREATE USER " + members[i] + " 'a666666'");
         adminStmt.execute("GRANT dalao TO  " + members[i]);
       }
-      adminStmt.execute("CREATE USER RiverSky '2333333'");
+      adminStmt.execute("CREATE USER RiverSky 'a2333333'");
       adminStmt.execute("GRANT zhazha TO RiverSky");
 
       ResultSet resultSet = adminStmt.executeQuery("LIST USER OF ROLE dalao");
