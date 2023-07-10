@@ -128,7 +128,7 @@ public class PartitionManager {
 
   private SeriesPartitionExecutor executor;
 
-  /** Region cleaner */
+  /** Region cleaner. */
   // Monitor for leadership change
   private final Object scheduleMonitor = new Object();
   // Try to delete Regions in every 10s
@@ -145,7 +145,7 @@ public class PartitionManager {
     setSeriesPartitionExecutor();
   }
 
-  /** Construct SeriesPartitionExecutor by iotdb-confignode.properties */
+  /** Construct SeriesPartitionExecutor by iotdb-confignode{@literal .}properties. */
   private void setSeriesPartitionExecutor() {
     this.executor =
         SeriesPartitionExecutor.getSeriesPartitionExecutor(
@@ -157,7 +157,7 @@ public class PartitionManager {
   // ======================================================
 
   /**
-   * Thread-safely get SchemaPartition
+   * Thread-safely get SchemaPartition.
    *
    * @param req SchemaPartitionPlan with partitionSlotsMap
    * @return SchemaPartitionDataSet that contains only existing SchemaPartition
@@ -178,7 +178,7 @@ public class PartitionManager {
   }
 
   /**
-   * Get SchemaPartition and create a new one if it does not exist
+   * Get SchemaPartition and create a new one if it does not exist.
    *
    * @param req SchemaPartitionPlan with partitionSlotsMap
    * @return SchemaPartitionResp with DataPartition and TSStatus. SUCCESS_STATUS if all process
@@ -301,7 +301,7 @@ public class PartitionManager {
   }
 
   /**
-   * Get DataPartition and create a new one if it does not exist
+   * Get DataPartition and create a new one if it does not exist.
    *
    * @param req DataPartitionPlan with Map<StorageGroupName, Map<SeriesPartitionSlot,
    *     List<TimePartitionSlot>>>
@@ -608,11 +608,11 @@ public class PartitionManager {
   }
 
   /**
-   * Get the DataNodes who contain the specified Database's Schema or Data
+   * Get the DataNodes who contain the specified Database's Schema or Data.
    *
    * @param database The specific Database's name
    * @param type SchemaRegion or DataRegion
-   * @return Set<TDataNodeLocation>, the related DataNodes
+   * @return Set {@literal <}TDataNodeLocation{@literal >}, the related DataNodes
    */
   public Set<TDataNodeLocation> getDatabaseRelatedDataNodes(
       String database, TConsensusGroupType type) {
@@ -620,7 +620,7 @@ public class PartitionManager {
   }
 
   /**
-   * Only leader use this interface
+   * Only leader use this interface.
    *
    * @param type The specified TConsensusGroupType
    * @return Deep copy of all Regions' RegionReplicaSet and organized to Map
@@ -632,7 +632,7 @@ public class PartitionManager {
   }
 
   /**
-   * Only leader use this interface
+   * Only leader use this interface.
    *
    * @return Deep copy of all Regions' RegionReplicaSet
    */
@@ -661,7 +661,7 @@ public class PartitionManager {
   }
 
   /**
-   * Get all RegionGroups currently owned by the specified Database
+   * Get all RegionGroups currently owned by the specified Database.
    *
    * @param dataNodeId The specified dataNodeId
    * @return Deep copy of all RegionGroups' RegionReplicaSet with the specified dataNodeId
@@ -809,7 +809,7 @@ public class PartitionManager {
   }
 
   /**
-   * Only leader use this interface
+   * Only leader use this interface.
    *
    * @return the next RegionGroupId
    */
@@ -818,7 +818,7 @@ public class PartitionManager {
   }
 
   /**
-   * GetNodePathsPartition
+   * GetNodePathsPartition.
    *
    * @param physicalPlan GetNodesPathsPartitionReq
    * @return SchemaNodeManagementPartitionDataSet that contains only existing matched
@@ -843,7 +843,7 @@ public class PartitionManager {
   }
 
   /**
-   * Get TSeriesPartitionSlot
+   * Get TSeriesPartitionSlot.
    *
    * @param devicePath Full path ending with device name
    * @return SeriesPartitionSlot
@@ -889,7 +889,7 @@ public class PartitionManager {
   }
 
   /**
-   * update region location
+   * Update region location.
    *
    * @param req UpdateRegionLocationReq
    * @return TSStatus
@@ -965,7 +965,7 @@ public class PartitionManager {
   }
 
   /**
-   * get database for region
+   * Get database for region.
    *
    * @param regionId regionId
    * @return database name
@@ -975,12 +975,12 @@ public class PartitionManager {
   }
 
   /**
-   * Called by {@link PartitionManager#regionMaintainer}
+   * Called by {@link PartitionManager#regionMaintainer}.
    *
    * <p>Periodically maintain the RegionReplicas to be created or deleted
    */
   public void maintainRegionReplicas() {
-    // the consensusManager of configManager may not be fully initialized at this time
+    // The consensusManager of configManager may not be fully initialized at this time
     Optional.ofNullable(getConsensusManager())
         .ifPresent(
             consensusManager -> {
@@ -992,7 +992,7 @@ public class PartitionManager {
                   return;
                 }
 
-                // group tasks by region id
+                // Group tasks by region id
                 Map<TConsensusGroupId, Queue<RegionMaintainTask>> regionMaintainTaskMap =
                     new HashMap<>();
                 for (RegionMaintainTask regionMaintainTask : regionMaintainTaskList) {
@@ -1002,7 +1002,7 @@ public class PartitionManager {
                 }
 
                 while (!regionMaintainTaskMap.isEmpty()) {
-                  // select same type task from each region group
+                  // Select same type task from each region group
                   List<RegionMaintainTask> selectedRegionMaintainTask = new ArrayList<>();
                   RegionMaintainType currentType = null;
                   for (Map.Entry<TConsensusGroupId, Queue<RegionMaintainTask>> entry :
@@ -1025,7 +1025,7 @@ public class PartitionManager {
                               .getKey()
                               .getType()
                               .equals(selectedRegionMaintainTask.get(0).getRegionId().getType())) {
-                        // delete or same create task
+                        // Delete or same create task
                         selectedRegionMaintainTask.add(entry.getValue().peek());
                       }
                     }
@@ -1077,7 +1077,7 @@ public class PartitionManager {
                           }
                           break;
                         case DataRegion:
-                          // create DataRegion
+                          // Create DataRegion
                           AsyncClientHandler<TCreateDataRegionReq, TSStatus>
                               createDataRegionHandler =
                                   new AsyncClientHandler<>(DataNodeRequestType.CREATE_DATA_REGION);
@@ -1214,7 +1214,7 @@ public class PartitionManager {
   }
 
   /**
-   * Filter the RegionGroups in the specified Database through the RegionGroupStatus
+   * Filter the RegionGroups in the specified Database through the RegionGroupStatus.
    *
    * @param database The specified Database
    * @param status The specified RegionGroupStatus

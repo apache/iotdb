@@ -213,7 +213,7 @@ public class ProcedureManager {
         if (hasOverlappedTask) {
           return RpcUtils.getStatus(
               TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
-              "Some other task is deleting some target timeseries.");
+              "Some other task is deleting some target timeSeries.");
         }
         procedureId =
             this.executor.submitProcedure(new DeleteTimeSeriesProcedure(queryId, patternTree));
@@ -461,7 +461,10 @@ public class ProcedureManager {
     }
   }
 
-  /** Generate a AddConfigNodeProcedure, and serially execute all the AddConfigNodeProcedure */
+  /**
+   * Generate an {@link AddConfigNodeProcedure}, and serially execute all the {@link
+   * AddConfigNodeProcedure}s.
+   */
   public void addConfigNode(TConfigNodeRegisterReq req) {
     AddConfigNodeProcedure addConfigNodeProcedure =
         new AddConfigNodeProcedure(req.getConfigNodeLocation());
@@ -469,7 +472,8 @@ public class ProcedureManager {
   }
 
   /**
-   * Generate a RemoveConfigNodeProcedure, and serially execute all the RemoveConfigNodeProcedure
+   * Generate a {@link RemoveConfigNodeProcedure}, and serially execute all the {@link
+   * RemoveConfigNodeProcedure}s.
    */
   public void removeConfigNode(RemoveConfigNodePlan removeConfigNodePlan) {
     RemoveConfigNodeProcedure removeConfigNodeProcedure =
@@ -478,7 +482,10 @@ public class ProcedureManager {
     LOGGER.info("Submit RemoveConfigNodeProcedure successfully: {}", removeConfigNodePlan);
   }
 
-  /** Generate RemoveDataNodeProcedures, and serially execute all the RemoveDataNodeProcedure */
+  /**
+   * Generate {@link RemoveDataNodeProcedure}s, and serially execute all the {@link
+   * RemoveDataNodeProcedure}s.
+   */
   public boolean removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
     removeDataNodePlan
         .getDataNodeLocations()
@@ -618,7 +625,7 @@ public class ProcedureManager {
   }
 
   /**
-   * Generate CreateRegionGroupsProcedure and wait for it finished
+   * Generate CreateRegionGroupsProcedure and wait for it finished.
    *
    * @return SUCCESS_STATUS if all RegionGroups created successfully, CREATE_REGION_ERROR otherwise
    */
@@ -639,7 +646,7 @@ public class ProcedureManager {
   }
 
   /**
-   * Generate CreateTriggerProcedure and wait for it finished
+   * Generate CreateTriggerProcedure and wait for it finished.
    *
    * @return SUCCESS_STATUS if trigger created successfully, CREATE_TRIGGER_ERROR otherwise
    */
@@ -673,7 +680,7 @@ public class ProcedureManager {
   }
 
   /**
-   * Generate DropTriggerProcedure and wait for it finished
+   * Generate DropTriggerProcedure and wait for it finished.
    *
    * @return SUCCESS_STATUS if trigger dropped successfully, DROP_TRIGGER_ERROR otherwise
    */
@@ -878,7 +885,7 @@ public class ProcedureManager {
   }
 
   /**
-   * Waiting until the specific procedures finished
+   * Waiting until the specific procedures finished.
    *
    * @param procedureIds The specific procedures' index
    * @param statusList The corresponding running results of these procedures
