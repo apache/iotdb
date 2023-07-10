@@ -28,13 +28,16 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class PipeTransferFileSealReq extends TPipeTransferReq {
 
   private String fileName;
   private long fileLength;
 
-  private PipeTransferFileSealReq() {}
+  private PipeTransferFileSealReq() {
+    // Empty constructor
+  }
 
   public String getFileName() {
     return fileName;
@@ -75,5 +78,26 @@ public class PipeTransferFileSealReq extends TPipeTransferReq {
     fileSealReq.body = req.body;
 
     return fileSealReq;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    PipeTransferFileSealReq that = (PipeTransferFileSealReq) obj;
+    return fileName.equals(that.fileName)
+        && fileLength == that.fileLength
+        && version == that.version
+        && type == that.type
+        && body.equals(that.body);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(fileName, fileLength, version, type, body);
   }
 }

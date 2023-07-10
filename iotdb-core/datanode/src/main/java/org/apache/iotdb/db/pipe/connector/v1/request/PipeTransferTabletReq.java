@@ -121,7 +121,7 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
   }
 
   /**
-   * sort value list by index.
+   * Sort value list by index.
    *
    * @param valueList value list
    * @param dataType data type
@@ -180,7 +180,7 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
   }
 
   /**
-   * sort BitMap by index.
+   * Sort BitMap by index.
    *
    * @param bitMap BitMap to be sorted
    * @param index index

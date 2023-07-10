@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.manager.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -110,7 +111,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-/** The PartitionManager Manages cluster PartitionTable read and write requests. */
+/** The {@link PartitionManager} manages cluster PartitionTable read and write requests. */
 public class PartitionManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionManager.class);

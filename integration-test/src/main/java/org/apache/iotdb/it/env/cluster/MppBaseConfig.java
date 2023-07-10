@@ -44,6 +44,7 @@ public abstract class MppBaseConfig {
    * Create a MppPersistentConfig from the property file.
    *
    * @param filePath the property file path.
+   * @throws IOException if load properties failed.
    */
   protected MppBaseConfig(String filePath) throws IOException {
     this();
@@ -91,6 +92,7 @@ public abstract class MppBaseConfig {
    * Persistent the properties to the file.
    *
    * @param filePath the file path.
+   * @throws IOException if properties storage failed.
    */
   public final void persistent(String filePath) throws IOException {
     try (FileWriter confOutput = new FileWriter(filePath)) {

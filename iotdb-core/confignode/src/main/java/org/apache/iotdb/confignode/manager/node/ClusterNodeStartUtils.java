@@ -50,6 +50,10 @@ public class ClusterNodeStartUtils {
   public static final TSStatus ACCEPT_NODE_RESTART =
       new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()).setMessage("Accept Node restart.");
 
+  private ClusterNodeStartUtils() {
+    // Empty constructor
+  }
+
   public static TSStatus confirmNodeRegistration(
       NodeType nodeType, String clusterName, Object nodeLocation, ConfigManager configManager) {
 
