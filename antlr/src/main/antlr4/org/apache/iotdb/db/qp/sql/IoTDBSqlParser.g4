@@ -704,7 +704,7 @@ fullMerge
 
 // Flush
 flush
-    : FLUSH prefixPath? (COMMA prefixPath)* BOOLEAN_LITERAL? (ON (LOCAL | CLUSTER))?
+    : FLUSH prefixPath? (COMMA prefixPath)* boolean_literal? (ON (LOCAL | CLUSTER))?
     ;
 
 // Clear Cache
@@ -792,7 +792,7 @@ loadFileAttributeClauses
 
 loadFileAttributeClause
     : SGLEVEL operator_eq INTEGER_LITERAL
-    | VERIFY operator_eq BOOLEAN_LITERAL
+    | VERIFY operator_eq boolean_literal
     | ONSUCCESS operator_eq (DELETE|NONE)
     ;
 
@@ -916,9 +916,9 @@ constant
     | (MINUS|PLUS)? realLiteral
     | (MINUS|PLUS)? INTEGER_LITERAL
     | STRING_LITERAL
-    | BOOLEAN_LITERAL
+    | boolean_literal
     | null_literal
-    | NAN_LITERAL
+    | nan_literal
     ;
 
 datetimeLiteral
@@ -1001,6 +1001,15 @@ operator_contains
     
 null_literal
     : NULL
+    ;
+
+nan_literal
+    : NAN
+    ;
+
+boolean_literal
+    : TRUE
+    | FALSE
     ;
 
 // Attribute Clause

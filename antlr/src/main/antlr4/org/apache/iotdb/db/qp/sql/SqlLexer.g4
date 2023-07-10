@@ -262,6 +262,10 @@ EXPLAIN
     : E X P L A I N
     ;
 
+FALSE
+    : F A L S E
+    ;
+
 FILL
     : F I L L
     ;
@@ -390,6 +394,10 @@ MIGRATE
     : M I G R A T E
     ;
 
+NAN
+    : N A N
+    ;
+
 NODEID
     : N O D E I D
     ;
@@ -405,7 +413,6 @@ NONE
 NOT
     : N O T
     ;
-
 
 NOW
     : N O W
@@ -701,6 +708,10 @@ TRIGGER
 
 TRIGGERS
     : T R I G G E R S
+    ;
+
+TRUE
+    : T R U E
     ;
 
 TTL
@@ -1062,6 +1073,7 @@ BOOLEAN_LITERAL
 NAN_LITERAL
     : N A N
     ;
+
 
 /**
  * 6. ID
