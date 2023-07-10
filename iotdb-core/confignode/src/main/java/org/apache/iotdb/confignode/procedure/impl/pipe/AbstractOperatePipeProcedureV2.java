@@ -44,7 +44,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * This procedure manage 4 kinds of PIPE operations: {@link PipeTaskOperation#CREATE_PIPE}, {@link
+ * This procedure manages 4 kinds of PIPE operations: {@link PipeTaskOperation#CREATE_PIPE}, {@link
  * PipeTaskOperation#START_PIPE}, {@link PipeTaskOperation#STOP_PIPE} and {@link
  * PipeTaskOperation#DROP_PIPE}.
  *

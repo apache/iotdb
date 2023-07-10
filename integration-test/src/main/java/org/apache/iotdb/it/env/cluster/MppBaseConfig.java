@@ -57,8 +57,7 @@ public abstract class MppBaseConfig {
    * @param properties the properties to update with.
    */
   public final void updateProperties(@NotNull Properties properties) {
-    properties.forEach(
-        (k, v) -> this.setProperty((String) k, (String) v));
+    properties.forEach((k, v) -> this.setProperty((String) k, (String) v));
   }
 
   /**

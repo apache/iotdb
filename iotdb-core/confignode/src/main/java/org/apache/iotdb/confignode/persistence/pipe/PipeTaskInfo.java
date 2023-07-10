@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipeP
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
+import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleMetaChangeProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
@@ -241,7 +242,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
    * Replace the local pipeMetas by the pipeMetas from the leader ConfigNode.
    *
    * @param plan The plan containing all the pipeMetas from leader ConfigNode
-   * @return SUCCESS_STATUS
+   * @return {@link TSStatusCode#SUCCESS_STATUS}
    */
   public TSStatus handleMetaChanges(PipeHandleMetaChangePlan plan) {
     LOGGER.info("Handling pipe meta changes ...");
@@ -279,9 +280,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
   }
 
   /**
-   * Clear the exceptions of a pipe locally after it starts successfully. If there are exceptions
-   * cleared, the messages will then be updated to all the nodes through
-   * PipeHandleMetaChangeProcedure.
+   * Clear the exceptions of a pipe locally after it starts successfully.
+   *
+   * <p>If there are exceptions cleared, the messages will then be updated to all the nodes through
+   * {@link PipeHandleMetaChangeProcedure}.
    *
    * @param pipeName The name of the pipes to be clear exception
    */
@@ -309,8 +311,9 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   /**
    * Record the exceptions of all pipes locally if they encountered failure when pushing pipe meta.
-   * If there are exceptions recorded, the related pipes will be stopped, and the exception messages
-   * will then be updated to all the nodes through PipeHandleMetaChangeProcedure.
+   *
+   * <p>If there are exceptions recorded, the related pipes will be stopped, and the exception
+   * messages will then be updated to all the nodes through {@link PipeHandleMetaChangeProcedure}.
    *
    * @param respMap The responseMap after pushing pipe meta
    * @return true if there are exceptions encountered
