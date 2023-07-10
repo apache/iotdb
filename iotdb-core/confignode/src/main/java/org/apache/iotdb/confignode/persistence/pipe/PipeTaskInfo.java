@@ -49,7 +49,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -395,6 +397,8 @@ public class PipeTaskInfo implements SnapshotProcessor {
    */
   public boolean autoRestart() {
     AtomicBoolean needRestart = new AtomicBoolean(false);
+    List<String> pipeToRestart = new CopyOnWriteArrayList<>();
+
     pipeMetaKeeper
         .getPipeMetaList()
         .forEach(
@@ -402,8 +406,12 @@ public class PipeTaskInfo implements SnapshotProcessor {
               if (pipeMeta.getRuntimeMeta().getIsAutoStopped()) {
                 pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
                 needRestart.set(true);
+                pipeToRestart.add(pipeMeta.getStaticMeta().getPipeName());
               }
             });
+    if (needRestart.get()) {
+      LOGGER.info("PipeMetaSyncer is trying to restart the pipes, pipeNames, {}", pipeToRestart);
+    }
     return needRestart.get();
   }
 
