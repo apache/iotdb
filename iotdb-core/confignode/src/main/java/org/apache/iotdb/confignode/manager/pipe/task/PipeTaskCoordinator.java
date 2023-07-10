@@ -52,16 +52,16 @@ public class PipeTaskCoordinator {
     this.pipeTaskCoordinatorLock = new ReentrantLock(true);
   }
 
+  public PipeTaskInfo getPipeTaskInfo() {
+    return pipeTaskInfo;
+  }
+
   public void lock() {
     pipeTaskCoordinatorLock.lock();
   }
 
   public void unlock() {
     pipeTaskCoordinatorLock.unlock();
-  }
-
-  public PipeTaskInfo getPipeTaskInfo() {
-    return pipeTaskInfo;
   }
 
   public TSStatus createPipe(TCreatePipeReq req) {
