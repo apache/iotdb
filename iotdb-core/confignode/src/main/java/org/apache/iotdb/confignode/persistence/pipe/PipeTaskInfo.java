@@ -242,41 +242,45 @@ public class PipeTaskInfo implements SnapshotProcessor {
   /** Handle the data region leader change event and update the pipe task meta accordingly. */
   public TSStatus handleLeaderChange(PipeHandleLeaderChangePlan plan) {
     acquireWriteLock();
-    plan.getConsensusGroupId2NewDataRegionLeaderIdMap()
-        .forEach(
-            (dataRegionGroupId, newDataRegionLeader) ->
-                pipeMetaKeeper
-                    .getPipeMetaList()
-                    .forEach(
-                        pipeMeta -> {
-                          final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupIdToTaskMetaMap =
-                              pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
+    try {
+      plan.getConsensusGroupId2NewDataRegionLeaderIdMap()
+          .forEach(
+              (dataRegionGroupId, newDataRegionLeader) ->
+                  pipeMetaKeeper
+                      .getPipeMetaList()
+                      .forEach(
+                          pipeMeta -> {
+                            final Map<TConsensusGroupId, PipeTaskMeta>
+                                consensusGroupIdToTaskMetaMap =
+                                    pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
 
-                          if (consensusGroupIdToTaskMetaMap.containsKey(dataRegionGroupId)) {
-                            // If the data region leader is -1, it means the data region is
-                            // removed
-                            if (newDataRegionLeader != -1) {
-                              consensusGroupIdToTaskMetaMap
-                                  .get(dataRegionGroupId)
-                                  .setLeaderDataNodeId(newDataRegionLeader);
+                            if (consensusGroupIdToTaskMetaMap.containsKey(dataRegionGroupId)) {
+                              // If the data region leader is -1, it means the data region is
+                              // removed
+                              if (newDataRegionLeader != -1) {
+                                consensusGroupIdToTaskMetaMap
+                                    .get(dataRegionGroupId)
+                                    .setLeaderDataNodeId(newDataRegionLeader);
+                              } else {
+                                consensusGroupIdToTaskMetaMap.remove(dataRegionGroupId);
+                              }
                             } else {
-                              consensusGroupIdToTaskMetaMap.remove(dataRegionGroupId);
+                              // If CN does not contain the data region group, it means the data
+                              // region group is newly added.
+                              if (newDataRegionLeader != -1) {
+                                consensusGroupIdToTaskMetaMap.put(
+                                    dataRegionGroupId,
+                                    new PipeTaskMeta(
+                                        new MinimumProgressIndex(), newDataRegionLeader));
+                              }
+                              // else:
+                              // "The pipe task meta does not contain the data region group {} or
+                              // the data region group has already been removed"
                             }
-                          } else {
-                            // If CN does not contain the data region group, it means the data
-                            // region group is newly added.
-                            if (newDataRegionLeader != -1) {
-                              consensusGroupIdToTaskMetaMap.put(
-                                  dataRegionGroupId,
-                                  new PipeTaskMeta(
-                                      new MinimumProgressIndex(), newDataRegionLeader));
-                            }
-                            // else:
-                            // "The pipe task meta does not contain the data region group {} or
-                            // the data region group has already been removed"
-                          }
-                        }));
-    releaseWriteLock();
+                          }));
+    } finally {
+      releaseWriteLock();
+    }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

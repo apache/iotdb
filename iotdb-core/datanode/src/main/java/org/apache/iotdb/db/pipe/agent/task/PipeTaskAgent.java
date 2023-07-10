@@ -723,5 +723,6 @@ public class PipeTaskAgent {
     } catch (IOException e) {
       throw new TException(e);
     }
+    resp.setPipeMetaList(pipeMetaBinaryList);
   }
 }
