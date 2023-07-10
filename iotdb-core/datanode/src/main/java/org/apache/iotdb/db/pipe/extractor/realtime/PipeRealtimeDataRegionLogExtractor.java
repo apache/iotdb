@@ -53,7 +53,8 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
 
     if (!pendingQueue.offer(event)) {
       LOGGER.warn(
-          "extract: pending queue of PipeRealtimeDataRegionLogExtractor {} has reached capacity, discard tablet event {}, current state {}",
+          "extract: pending queue of PipeRealtimeDataRegionLogExtractor {} "
+              + "has reached capacity, discard tablet event {}, current state {}",
           this,
           event,
           event.getTsFileEpoch().getState(this));
@@ -74,7 +75,7 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
 
   @Override
   public Event supply() {
-    PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.poll();
+    PipeRealtimeEvent realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
 
     while (realtimeEvent != null) {
       Event suppliedEvent = null;
@@ -88,7 +89,8 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
         // and report the exception to PipeRuntimeAgent.
         final String errorMessage =
             String.format(
-                "Tablet Event %s can not be supplied because the reference count can not be increased, "
+                "Tablet Event %s can not be supplied because "
+                    + "the reference count can not be increased, "
                     + "the data represented by this event is lost",
                 realtimeEvent.getEvent());
         LOGGER.warn(errorMessage);
@@ -100,7 +102,7 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
         return suppliedEvent;
       }
 
-      realtimeEvent = (PipeRealtimeEvent) pendingQueue.poll();
+      realtimeEvent = (PipeRealtimeEvent) pendingQueue.directPoll();
     }
 
     // means the pending queue is empty.

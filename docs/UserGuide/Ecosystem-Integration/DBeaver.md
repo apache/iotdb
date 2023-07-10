@@ -54,7 +54,7 @@ DBeaver is a SQL client software application and a database administration tool.
 5. Download [Sources](https://iotdb.apache.org/Download/)，unzip it and compile jdbc driver by the following command
 
    ```shell
-   mvn clean package -pl jdbc -am -DskipTests -P get-jar-with-dependencies
+   mvn clean package -pl iotdb-client/jdbc -am -DskipTests -P get-jar-with-dependencies
    ```
 6. Find and add a lib named `apache-iotdb-jdbc-{version}-jar-with-dependencies.jar`, which should be under `jdbc/target/`, then select `Find Class`.
 

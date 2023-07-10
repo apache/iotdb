@@ -38,7 +38,11 @@ public class SyncStatus {
     this.config = config;
   }
 
-  /** we may block here if the synchronization pipeline is full. */
+  /**
+   * we may block here if the synchronization pipeline is full.
+   *
+   * @throws InterruptedException
+   */
   public void addNextBatch(Batch batch) throws InterruptedException {
     synchronized (this) {
       while (pendingBatches.size() >= config.getReplication().getMaxPendingBatchesNum()

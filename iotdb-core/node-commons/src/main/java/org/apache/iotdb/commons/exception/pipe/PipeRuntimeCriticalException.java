@@ -33,42 +33,56 @@ public class PipeRuntimeCriticalException extends PipeRuntimeException {
     super(message);
   }
 
+  public PipeRuntimeCriticalException(String message, long timeStamp) {
+    super(message, timeStamp);
+  }
+
   @Override
   public boolean equals(Object obj) {
     return obj instanceof PipeRuntimeCriticalException
-        && Objects.equals(getMessage(), ((PipeRuntimeCriticalException) obj).getMessage());
+        && Objects.equals(getMessage(), ((PipeRuntimeCriticalException) obj).getMessage())
+        && Objects.equals(getTimeStamp(), ((PipeRuntimeException) obj).getTimeStamp());
   }
 
   @Override
   public int hashCode() {
-    return getMessage().hashCode();
+    return Objects.hash(getMessage(), getTimeStamp());
   }
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {
     PipeRuntimeExceptionType.CRITICAL_EXCEPTION.serialize(byteBuffer);
     ReadWriteIOUtils.write(getMessage(), byteBuffer);
+    ReadWriteIOUtils.write(getTimeStamp(), byteBuffer);
   }
 
   @Override
   public void serialize(OutputStream stream) throws IOException {
     PipeRuntimeExceptionType.CRITICAL_EXCEPTION.serialize(stream);
     ReadWriteIOUtils.write(getMessage(), stream);
+    ReadWriteIOUtils.write(getTimeStamp(), stream);
   }
 
   public static PipeRuntimeCriticalException deserializeFrom(ByteBuffer byteBuffer) {
     final String message = ReadWriteIOUtils.readString(byteBuffer);
-    return new PipeRuntimeCriticalException(message);
+    final long timeStamp = ReadWriteIOUtils.readLong(byteBuffer);
+    return new PipeRuntimeCriticalException(message, timeStamp);
   }
 
   public static PipeRuntimeCriticalException deserializeFrom(InputStream stream)
       throws IOException {
     final String message = ReadWriteIOUtils.readString(stream);
-    return new PipeRuntimeCriticalException(message);
+    final long timeStamp = ReadWriteIOUtils.readLong(stream);
+    return new PipeRuntimeCriticalException(message, timeStamp);
   }
 
   @Override
   public String toString() {
-    return "PipeRuntimeCriticalException{ message: " + getMessage() + " }";
+    return "PipeRuntimeCriticalException{"
+        + "message='"
+        + getMessage()
+        + "', timeStamp="
+        + getTimeStamp()
+        + "}";
   }
 }

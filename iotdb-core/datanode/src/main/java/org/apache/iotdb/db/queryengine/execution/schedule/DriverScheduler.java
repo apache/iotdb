@@ -47,7 +47,6 @@ import org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaManager;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.SettableFuture;
@@ -69,7 +68,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.BLOCK_QUEUED_TIME;
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.READY_QUEUED_TIME;
 
-/** the manager of fragment instances scheduling. */
+/** The manager of fragment instances scheduling. */
 public class DriverScheduler implements IDriverScheduler, IService {
 
   private static final Logger logger = LoggerFactory.getLogger(DriverScheduler.class);
@@ -250,15 +249,13 @@ public class DriverScheduler implements IDriverScheduler, IService {
           .getThrottleQuotaLimit()
           .checkCpu(sessionInfo.getUserName(), usedCpu.get())) {
         throw new CpuNotEnoughException(
-            "There is not enough cpu to execute current fragment instance",
-            TSStatusCode.QUERY_CPU_QUERY_NOT_ENOUGH.ordinal());
+            "There is not enough cpu to execute current fragment instance");
       }
       if (!DataNodeThrottleQuotaManager.getInstance()
           .getThrottleQuotaLimit()
           .checkMemory(sessionInfo.getUserName(), estimatedMemory.get())) {
         throw new MemoryNotEnoughException(
-            "There is not enough memory to execute current fragment instance",
-            TSStatusCode.QUOTA_MEM_QUERY_NOT_ENOUGH.getStatusCode());
+            "There is not enough memory to execute current fragment instance");
       }
     }
 

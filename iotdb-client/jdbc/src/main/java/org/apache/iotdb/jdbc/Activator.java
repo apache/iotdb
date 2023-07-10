@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.iotdb.jdbc;
 
 import org.osgi.framework.BundleActivator;
@@ -28,7 +29,7 @@ public class Activator implements BundleActivator {
   @Override
   public void start(BundleContext context) {
     IoTDBDataSourceFactory dsf = new IoTDBDataSourceFactory();
-    Dictionary<String, String> props = new Hashtable<String, String>();
+    Dictionary<String, String> props = new Hashtable<>();
     props.put(DataSourceFactory.OSGI_JDBC_DRIVER_CLASS, IoTDBDriver.class.getName());
     props.put(DataSourceFactory.OSGI_JDBC_DRIVER_NAME, "iotdb");
     context.registerService(DataSourceFactory.class.getName(), dsf, props);

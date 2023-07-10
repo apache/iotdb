@@ -65,8 +65,7 @@ import java.util.NoSuchElementException;
  * @param <N> The node consisting the tree.
  * @param <R> The result extracted from the tree.
  */
-public abstract class AbstractTreeVisitor<N extends ITreeNode, R>
-    implements Iterator<R>, AutoCloseable {
+public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements SchemaIterator<R> {
   private static final Logger logger = LoggerFactory.getLogger(AbstractTreeVisitor.class);
 
   // command parameters

@@ -56,8 +56,12 @@ public class DeleteProcedurePlan extends ConfigPhysicalPlan {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     DeleteProcedurePlan that = (DeleteProcedurePlan) o;
     return procId == that.procId;
   }

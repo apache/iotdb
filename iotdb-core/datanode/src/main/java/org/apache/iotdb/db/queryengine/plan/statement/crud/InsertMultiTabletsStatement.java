@@ -48,36 +48,12 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
     this.insertTabletStatementList = insertTabletStatementList;
   }
 
-  public List<PartialPath> getDevicePaths() {
-    List<PartialPath> partialPaths = new ArrayList<>();
-    for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {
-      partialPaths.add(insertTabletStatement.devicePath);
-    }
-    return partialPaths;
-  }
-
   public List<String[]> getMeasurementsList() {
     List<String[]> measurementsList = new ArrayList<>();
     for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {
       measurementsList.add(insertTabletStatement.measurements);
     }
     return measurementsList;
-  }
-
-  public List<TSDataType[]> getDataTypesList() {
-    List<TSDataType[]> dataTypesList = new ArrayList<>();
-    for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {
-      dataTypesList.add(insertTabletStatement.dataTypes);
-    }
-    return dataTypesList;
-  }
-
-  public List<Boolean> getAlignedList() {
-    List<Boolean> alignedList = new ArrayList<>();
-    for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {
-      alignedList.add(insertTabletStatement.isAligned);
-    }
-    return alignedList;
   }
 
   @Override

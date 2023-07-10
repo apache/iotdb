@@ -54,6 +54,7 @@ public class WALRecoverManager {
   // true when the recover procedure has started
   private volatile boolean hasStarted = false;
   // start recovery after all data regions have submitted unsealed zero-level TsFiles
+  @SuppressWarnings("squid:S3077")
   private volatile CountDownLatch allDataRegionScannedLatch;
   // threads to recover wal nodes
   private ExecutorService recoverThreadPool;
@@ -138,7 +139,7 @@ public class WALRecoverManager {
     List<Future<Void>> futures = new ArrayList<>();
     ExecutorService recoverTsFilesThreadPool =
         IoTDBThreadPoolFactory.newFixedThreadPool(
-            Runtime.getRuntime().availableProcessors(), "TsFile-Recover");
+            Runtime.getRuntime().availableProcessors(), ThreadName.TSFILE_RECOVER.getName());
     // async recover
     for (UnsealedTsFileRecoverPerformer recoverPerformer : absolutePath2RecoverPerformer.values()) {
       Callable<Void> recoverTsFileTask =

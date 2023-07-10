@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.client.async.handlers;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -27,11 +28,13 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.CheckTimeSeriesExis
 import org.apache.iotdb.confignode.client.async.handlers.rpc.CountPathsUsingTemplateRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackListRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipeHeartbeatRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.PipePushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SchemaUpdateRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +43,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
 /**
- * Asynchronous Client handler
+ * Asynchronous Client handler.
  *
  * @param <Q> ClassName of RPC request
  * @param <R> ClassName of RPC response
@@ -51,14 +54,14 @@ public class AsyncClientHandler<Q, R> {
   protected final DataNodeRequestType requestType;
 
   /**
-   * Map key: The indices of asynchronous RPC requests
+   * Map key: The indices of asynchronous RPC requests.
    *
    * <p>Map value: The corresponding RPC request
    */
   private final Map<Integer, Q> requestMap;
 
   /**
-   * Map key: The indices of asynchronous RPC requests
+   * Map key: The indices of asynchronous RPC requests.
    *
    * <p>Map value: The target DataNodes of corresponding indices
    *
@@ -68,7 +71,7 @@ public class AsyncClientHandler<Q, R> {
   private final Map<Integer, TDataNodeLocation> dataNodeLocationMap;
 
   /**
-   * Map key: The indices(targetDataNode's ID) of asynchronous RPC requests
+   * Map key: The indices(targetDataNode's ID) of asynchronous RPC requests.
    *
    * <p>Map value: The response of corresponding indices
    *
@@ -79,7 +82,7 @@ public class AsyncClientHandler<Q, R> {
 
   private CountDownLatch countDownLatch;
 
-  /** Custom constructor */
+  /** Custom constructor. */
   public AsyncClientHandler(DataNodeRequestType requestType) {
     this.requestType = requestType;
     this.requestMap = new ConcurrentHashMap<>();
@@ -95,7 +98,7 @@ public class AsyncClientHandler<Q, R> {
     dataNodeLocationMap.put(requestId, dataNodeLocation);
   }
 
-  /** Constructor for null requests */
+  /** Constructor for null requests. */
   public AsyncClientHandler(
       DataNodeRequestType requestType, Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
     this.requestType = requestType;
@@ -105,7 +108,7 @@ public class AsyncClientHandler<Q, R> {
     this.responseMap = new ConcurrentHashMap<>();
   }
 
-  /** Constructor for unique request */
+  /** Constructor for unique request. */
   public AsyncClientHandler(
       DataNodeRequestType requestType,
       Q request,
@@ -145,7 +148,7 @@ public class AsyncClientHandler<Q, R> {
     return responseMap;
   }
 
-  /** Always reset CountDownLatch before retry */
+  /** Always reset CountDownLatch before retry. */
   public void resetCountDownLatch() {
     countDownLatch = new CountDownLatch(dataNodeLocationMap.size());
   }
@@ -207,6 +210,14 @@ public class AsyncClientHandler<Q, R> {
             dataNodeLocationMap,
             (Map<Integer, TPipeHeartbeatResp>) responseMap,
             countDownLatch);
+      case PUSH_PIPE_META:
+        return new PipePushMetaRPCHandler(
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TPushPipeMetaResp>) responseMap,
+            countDownLatch);
       case SET_TTL:
       case CREATE_DATA_REGION:
       case CREATE_SCHEMA_REGION:
@@ -229,7 +240,6 @@ public class AsyncClientHandler<Q, R> {
       case UPDATE_TEMPLATE:
       case CHANGE_REGION_LEADER:
       case KILL_QUERY_INSTANCE:
-      case PUSH_PIPE_META:
       default:
         return new AsyncTSStatusRPCHandler(
             requestType,

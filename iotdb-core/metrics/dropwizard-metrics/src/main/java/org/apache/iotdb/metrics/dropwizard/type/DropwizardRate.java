@@ -25,7 +25,7 @@ import com.codahale.metrics.Meter;
 
 public class DropwizardRate implements Rate {
   Meter meter;
-  /** read-only meter */
+  /** read-only meter. */
   com.codahale.metrics.Timer timer;
 
   public DropwizardRate(Meter meter) {

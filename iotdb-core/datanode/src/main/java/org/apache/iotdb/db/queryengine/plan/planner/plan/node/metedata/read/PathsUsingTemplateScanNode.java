@@ -33,13 +33,14 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class PathsUsingTemplateScanNode extends SchemaQueryScanNode {
 
   private List<PartialPath> pathPatternList;
 
-  private int templateId;
+  private final int templateId;
 
   public PathsUsingTemplateScanNode(
       PlanNodeId id, List<PartialPath> pathPatternList, int templateId) {
@@ -110,5 +111,19 @@ public class PathsUsingTemplateScanNode extends SchemaQueryScanNode {
     return String.format(
         "PathsUsingTemplateScanNode-%s:[DataRegion: %s]",
         this.getPlanNodeId(), this.getRegionReplicaSet());
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    PathsUsingTemplateScanNode that = (PathsUsingTemplateScanNode) o;
+    return templateId == that.templateId && Objects.equals(pathPatternList, that.pathPatternList);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), pathPatternList, templateId);
   }
 }

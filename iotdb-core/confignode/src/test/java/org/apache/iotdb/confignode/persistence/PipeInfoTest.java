@@ -24,9 +24,13 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.DropPipePluginPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.persistence.pipe.PipeInfo;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -50,6 +54,9 @@ public class PipeInfoTest {
   private static PipeInfo pipeInfo;
   private static final File snapshotDir = new File(BASE_OUTPUT_PATH, "snapshot");
 
+  private final String pipeName = "testPipe";
+  private final String pluginName = "testPlugin";
+
   @Before
   public void setup() throws IOException {
     pipeInfo = new PipeInfo();
@@ -67,6 +74,46 @@ public class PipeInfoTest {
 
   @Test
   public void testSnapshot() throws TException, IOException {
+    // Create pipe test pipe
+    Map<String, String> extractorAttributes = new HashMap<>();
+    Map<String, String> processorAttributes = new HashMap<>();
+    Map<String, String> connectorAttributes = new HashMap<>();
+
+    extractorAttributes.put("extractor", "iotdb-extractor");
+    processorAttributes.put("processor", "do-nothing-processor");
+    connectorAttributes.put("connector", "iotdb-thrift-connector");
+    connectorAttributes.put("host", "127.0.0.1");
+    connectorAttributes.put("port", "6667");
+
+    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(new MinimumProgressIndex(), 1);
+    Map<TConsensusGroupId, PipeTaskMeta> pipeTasks = new HashMap<>();
+    pipeTasks.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta);
+    PipeStaticMeta pipeStaticMeta =
+        new PipeStaticMeta(
+            pipeName, 121, extractorAttributes, processorAttributes, connectorAttributes);
+    PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
+    CreatePipePlanV2 createPipePlanV2 = new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta);
+    pipeInfo.getPipeTaskInfo().createPipe(createPipePlanV2);
+
+    // Create pipe plugin test plugin
+    CreatePipePluginPlan createPipePluginPlan =
+        new CreatePipePluginPlan(
+            new PipePluginMeta(pluginName, "org.apache.iotdb.TestJar", false, "test.jar", "???"),
+            new Binary("123"));
+    pipeInfo.getPipePluginInfo().createPipePlugin(createPipePluginPlan);
+
+    pipeInfo.processTakeSnapshot(snapshotDir);
+
+    PipeInfo pipeInfo1 = new PipeInfo();
+    pipeInfo1.processLoadSnapshot(snapshotDir);
+
+    Assert.assertEquals(pipeInfo.toString(), pipeInfo1.toString());
+    Assert.assertEquals(pipeInfo, pipeInfo1);
+  }
+
+  @Test
+  public void testManagement() {
+    // Create pipe test pipe
     Map<String, String> extractorAttributes = new HashMap<>();
     Map<String, String> processorAttributes = new HashMap<>();
     Map<String, String> connectorAttributes = new HashMap<>();
@@ -78,23 +125,34 @@ public class PipeInfoTest {
     pipeTasks.put(new TConsensusGroupId(DataRegion, 1), pipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
-            "testPipe", 121, extractorAttributes, processorAttributes, connectorAttributes);
+            pipeName, 121, extractorAttributes, processorAttributes, connectorAttributes);
     PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
     CreatePipePlanV2 createPipePlanV2 = new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta);
     pipeInfo.getPipeTaskInfo().createPipe(createPipePlanV2);
 
+    Assert.assertTrue(pipeInfo.getPipeTaskInfo().isPipeExisted("testPipe"));
+
+    // Start pipe test pipe
+    SetPipeStatusPlanV2 setPipeStatusPlanV2 = new SetPipeStatusPlanV2(pipeName, PipeStatus.RUNNING);
+    pipeInfo.getPipeTaskInfo().setPipeStatus(setPipeStatusPlanV2);
+
+    // Drop pipe test pipe
+    DropPipePlanV2 dropPipePlanV2 = new DropPipePlanV2(pipeName);
+    pipeInfo.getPipeTaskInfo().dropPipe(dropPipePlanV2);
+
+    Assert.assertFalse(pipeInfo.getPipeTaskInfo().isPipeExisted("testPipe"));
+    Assert.assertTrue(pipeInfo.getPipeTaskInfo().isEmpty());
+
+    // Create pipe plugin test plugin
     CreatePipePluginPlan createPipePluginPlan =
         new CreatePipePluginPlan(
-            new PipePluginMeta("testPlugin", "org.apache.iotdb.TestJar", false, "test.jar", "???"),
+            new PipePluginMeta(pluginName, "org.apache.iotdb.TestJar", false, "test.jar", "???"),
             new Binary("123"));
     pipeInfo.getPipePluginInfo().createPipePlugin(createPipePluginPlan);
 
-    pipeInfo.processTakeSnapshot(snapshotDir);
-
-    PipeInfo pipeInfo1 = new PipeInfo();
-    pipeInfo1.processLoadSnapshot(snapshotDir);
-
-    Assert.assertEquals(pipeInfo.toString(), pipeInfo1.toString());
-    Assert.assertEquals(pipeInfo, pipeInfo1);
+    // Drop pipe plugin test plugin
+    pipeInfo.getPipePluginInfo().validateBeforeDroppingPipePlugin(pluginName);
+    DropPipePluginPlan dropPipePluginPlan = new DropPipePluginPlan(pluginName);
+    pipeInfo.getPipePluginInfo().dropPipePlugin(dropPipePluginPlan);
   }
 }

@@ -41,6 +41,9 @@ public class CompactionExceptionHandler {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
+  private CompactionExceptionHandler() {}
+
+  @SuppressWarnings("squid:S107")
   public static void handleException(
       String fullStorageGroupName,
       File logFile,
@@ -60,7 +63,9 @@ public class CompactionExceptionHandler {
         return;
       }
       LOGGER.info(
-          "{} [Compaction][ExceptionHandler] {} space compaction start handling exception, source seqFiles is {}, source unseqFiles is {}.",
+          "{} [Compaction][ExceptionHandler] {} space compaction start handling exception, "
+              + "source seqFiles is {}, "
+              + "source unseqFiles is {}.",
           fullStorageGroupName,
           compactionType,
           seqResourceList,
@@ -96,21 +101,23 @@ public class CompactionExceptionHandler {
 
       if (!handleSuccess) {
         LOGGER.error(
-            "[Compaction][ExceptionHandler] Fail to handle {} space compaction exception, set allowCompaction to false in {}",
+            "[Compaction][ExceptionHandler] Fail to handle {} space compaction exception, "
+                + "set allowCompaction to false in {}",
             compactionType,
             fullStorageGroupName);
         tsFileManager.setAllowCompaction(false);
       } else {
         FileUtils.delete(logFile);
       }
-    } catch (Throwable throwable) {
+    } catch (IOException e) {
       // catch throwable when handling exception
       // set the allowCompaction to false
       LOGGER.error(
-          "[Compaction][ExceptionHandler] exception occurs when handling exception in {} space compaction. Set allowCompaction to false in {}",
+          "[Compaction][ExceptionHandler] exception occurs when handling exception in {} space compaction. "
+              + "Set allowCompaction to false in {}",
           compactionType,
           fullStorageGroupName,
-          throwable);
+          e);
       tsFileManager.setAllowCompaction(false);
     }
   }
@@ -129,7 +136,10 @@ public class CompactionExceptionHandler {
    * When all source files exists: (1) delete compaction mods files (2) delete target files, tmp
    * target files and its corresponding files (3) recover memory. To avoid triggering OOM again
    * under OOM errors, we do not check whether the target files are complete.
+   *
+   * @throws IOException if the deletion of compaction mods file failed or tsfile name is incorrect
    */
+  @SuppressWarnings("squid:S3776")
   private static boolean handleWhenAllSourceFilesExist(
       List<TsFileResource> targetResourceList,
       List<TsFileResource> sourceSeqResourceList,
@@ -200,6 +210,8 @@ public class CompactionExceptionHandler {
    * Some source files are lost, check if all target files are complete. If all target files are
    * complete, delete the remaining source files and compaction mods files. If some target files are
    * not complete, set the allowCompaction in tsFileManager to false and print some error logs.
+   *
+   * @throws IOException if the io operations on file fails
    */
   private static boolean handleWhenSomeSourceFilesLost(
       List<TsFileResource> targetResourceList,
@@ -244,7 +256,9 @@ public class CompactionExceptionHandler {
       }
       if (!TsFileUtils.isTsFileComplete(targetResource.getTsFile())) {
         LOGGER.error(
-            "{} [Compaction][ExceptionHandler] target file {} is not complete, and some source files {} is lost, do nothing. Set allowCompaction to false",
+            "{} [Compaction][ExceptionHandler] target file {} is not complete, "
+                + "and some source files {} is lost, do nothing. "
+                + "Set allowCompaction to false",
             fullStorageGroupName,
             targetResource,
             lostSourceResources);

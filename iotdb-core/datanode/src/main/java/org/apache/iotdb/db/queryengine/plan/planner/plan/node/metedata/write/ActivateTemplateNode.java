@@ -38,6 +38,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class ActivateTemplateNode extends WritePlanNode implements IActivateTemplateInClusterPlan {
 
@@ -106,7 +107,9 @@ public class ActivateTemplateNode extends WritePlanNode implements IActivateTemp
   }
 
   @Override
-  public void addChild(PlanNode child) {}
+  public void addChild(PlanNode child) {
+    // Do nothing
+  }
 
   @Override
   public PlanNode clone() {
@@ -163,5 +166,30 @@ public class ActivateTemplateNode extends WritePlanNode implements IActivateTemp
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitActivateTemplate(this, context);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    ActivateTemplateNode that = (ActivateTemplateNode) o;
+    return templateSetLevel == that.templateSetLevel
+        && templateId == that.templateId
+        && isAligned == that.isAligned
+        && Objects.equals(activatePath, that.activatePath)
+        && Objects.equals(regionReplicaSet, that.regionReplicaSet);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        super.hashCode(), activatePath, templateSetLevel, templateId, isAligned, regionReplicaSet);
   }
 }

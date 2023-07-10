@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -64,7 +65,7 @@ public class ConfigRegionStateMachine
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigRegionStateMachine.class);
 
   private static final ExecutorService threadPool =
-      IoTDBThreadPoolFactory.newCachedThreadPool("ConfigNode-Manager-Recovery");
+      IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.CONFIG_NODE_RECOVER.getName());
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private final ConfigPlanExecutor executor;
   private ConfigManager configManager;
@@ -225,7 +226,8 @@ public class ConfigRegionStateMachine
           () -> configManager.getPipeManager().getPipeRuntimeCoordinator().startPipeHeartbeat());
     } else {
       LOGGER.info(
-          "Current node [nodeId:{}, ip:port: {}] is not longer the leader, the new leader is [nodeId:{}]",
+          "Current node [nodeId:{}, ip:port: {}] is not longer the leader, "
+              + "the new leader is [nodeId:{}]",
           currentNodeId,
           currentNodeTEndPoint,
           newLeaderId);
@@ -275,7 +277,8 @@ public class ConfigRegionStateMachine
           simpleLogWriter.close();
         } catch (IOException e) {
           LOGGER.warn(
-              "Can't close StandAloneLog for ConfigNode SimpleConsensus mode, filePath: {}, retry: {}",
+              "Can't close StandAloneLog for ConfigNode SimpleConsensus mode, "
+                  + "filePath: {}, retry: {}",
               simpleLogFile.getAbsolutePath(),
               retry);
           try {
@@ -346,7 +349,7 @@ public class ConfigRegionStateMachine
 
     ScheduledExecutorService simpleConsensusThread =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-            "ConfigNode-Simple-Consensus-WAL-Flush-Thread");
+            ThreadName.CONFIG_NODE_SIMPLE_CONSENSUS_WAL_FLUSH.getName());
     ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
         simpleConsensusThread,
         this::flushWALForSimpleConsensus,

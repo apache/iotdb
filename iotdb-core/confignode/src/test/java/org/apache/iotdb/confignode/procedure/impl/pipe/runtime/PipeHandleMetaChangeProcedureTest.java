@@ -19,12 +19,6 @@
 
 package org.apache.iotdb.confignode.procedure.impl.pipe.runtime;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
-import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
-import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
@@ -33,7 +27,6 @@ import org.junit.Test;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -44,37 +37,6 @@ public class PipeHandleMetaChangeProcedureTest {
   public void serializeDeserializeTest() throws IOException {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
-
-    PipeStaticMeta pipeStaticMeta =
-        new PipeStaticMeta(
-            "pipeName",
-            123L,
-            new HashMap() {
-              {
-                put("extractor-key", "extractor-value");
-              }
-            },
-            new HashMap() {
-              {
-                put("processor-key-1", "processor-value-1");
-                put("processor-key-2", "processor-value-2");
-              }
-            },
-            new HashMap() {});
-    PipeRuntimeMeta pipeRuntimeMeta =
-        new PipeRuntimeMeta(
-            new HashMap() {
-              {
-                put(
-                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 456),
-                    new PipeTaskMeta(
-                        new MinimumProgressIndex(), 987)); // TODO: replace with IoTConsensus
-                put(
-                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 123),
-                    new PipeTaskMeta(
-                        new MinimumProgressIndex(), 789)); // TODO: replace with IoTConsensus
-              }
-            });
 
     PipeHandleMetaChangeProcedure proc = new PipeHandleMetaChangeProcedure(true, false);
 

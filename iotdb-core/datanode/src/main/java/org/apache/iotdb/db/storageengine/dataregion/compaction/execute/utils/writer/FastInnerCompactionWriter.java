@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -75,6 +76,8 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
    * successfully or not. Return false if there is unsealed chunk or current chunk is not large
    * enough, else return true. Notice: if sub-value measurement is null, then flush empty value
    * chunk.
+   *
+   * @throws IOException if io errors occurred
    */
   @Override
   public boolean flushAlignedChunk(
@@ -108,6 +111,9 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
    * successfully or not. Return false if the unsealed page is too small or the end time of page
    * exceeds the end time of file, else return true. Notice: if sub-value measurement is null, then
    * flush empty value page.
+   *
+   * @throws IOException if io errors occurred
+   * @throws PageException if errors occurred when write data page header
    */
   public boolean flushAlignedPage(
       ByteBuffer compressedTimePageData,
@@ -146,6 +152,8 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
    * Flush nonAligned page to tsfile directly. Return whether the page is flushed to tsfile
    * successfully or not. Return false if the unsealed page is too small or the end time of page
    * exceeds the end time of file, else return true.
+   *
+   * @throws PageException if errors occurred when write data page header
    */
   public boolean flushNonAlignedPage(
       ByteBuffer compressedPageData, PageHeader pageHeader, int subTaskId) throws PageException {

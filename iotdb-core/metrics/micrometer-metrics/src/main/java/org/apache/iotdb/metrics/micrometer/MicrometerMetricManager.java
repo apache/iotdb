@@ -40,6 +40,7 @@ import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.ToDoubleFunction;
 
@@ -128,5 +129,25 @@ public class MicrometerMetricManager extends AbstractMetricManager {
       default:
         return Meter.Type.OTHER;
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    MicrometerMetricManager that = (MicrometerMetricManager) o;
+    return Objects.equals(meterRegistry, that.meterRegistry);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), meterRegistry);
   }
 }

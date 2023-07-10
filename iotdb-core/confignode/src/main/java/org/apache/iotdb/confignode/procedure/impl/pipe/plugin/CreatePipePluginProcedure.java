@@ -48,6 +48,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 /**
  * This class extends {@link AbstractNodeProcedure} to make sure that when a {@link
@@ -91,6 +92,9 @@ public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipeP
           return executeFromCreateOnDataNodes(env);
         case UNLOCK:
           return executeFromUnlock(env);
+        default:
+          throw new UnsupportedOperationException(
+              String.format("Unknown state during executing createPipePluginProcedure, %s", state));
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
@@ -293,6 +297,11 @@ public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipeP
           && thatProcedure.pipePluginMeta.equals(pipePluginMeta);
     }
     return false;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(this.pipePluginMeta);
   }
 
   @TestOnly

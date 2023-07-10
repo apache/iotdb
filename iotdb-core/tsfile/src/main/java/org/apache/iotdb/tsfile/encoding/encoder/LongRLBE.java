@@ -23,16 +23,16 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 public class LongRLBE extends RLBE {
-  /** delta values */
-  private long[] DiffValue = new long[blockSize + 1];
+  // delta values
+  private long[] diffValue = new long[blockSize + 1];
 
-  /** repeat times on length code */
-  private long[] Lengrle = new long[blockSize + 1];
+  // repeat times on length code
+  private long[] lengRLE = new long[blockSize + 1];
 
-  /** previous value of original value */
-  private long previousvalue;
+  // previous value of original value
+  private long previousValue;
 
-  /** constructor of LongRLBE */
+  // constructor of LongRLBE
   public LongRLBE() {
     super();
     reset();
@@ -42,29 +42,33 @@ public class LongRLBE extends RLBE {
     writeIndex = -1;
     LengthCode = new int[blockSize + 1];
     for (int i = 0; i < blockSize; i++) {
-      DiffValue[i] = 0;
+      diffValue[i] = 0;
       LengthCode[i] = 0;
       byteBuffer = 0;
       numberLeftInBuffer = 0;
-      Lengrle[i] = 0;
+      lengRLE[i] = 0;
     }
   }
 
   /**
-   * calculate the binary code length of given long integer
+   * calculate the binary code length of given long integer.
    *
    * @param val the long integer to calculate length
    * @return the length of val's binary code
    */
   private int calBinarylength(long val) {
-    if (val == 0) return 1;
+    if (val == 0) {
+      return 1;
+    }
     int i = 64;
-    while ((((long) 1 << (i - 1)) & val) == 0 && i > 0) i--;
+    while ((((long) 1 << (i - 1)) & val) == 0 && i > 0) {
+      i--;
+    }
     return i;
   }
 
   /**
-   * encode one input long integer value
+   * encode one input long integer value.
    *
    * @param value the long integer to be encoded
    * @param out the output stream to flush in when buffer is full
@@ -72,16 +76,16 @@ public class LongRLBE extends RLBE {
   public void encodeValue(long value, ByteArrayOutputStream out) {
     if (writeIndex == -1) {
       // when the first value hasn't encoded yet
-      DiffValue[++writeIndex] = value;
+      diffValue[++writeIndex] = value;
       LengthCode[writeIndex] = calBinarylength(value);
-      previousvalue = value;
+      previousValue = value;
       return;
     }
     // calculate delta value
-    DiffValue[++writeIndex] = value - previousvalue;
+    diffValue[++writeIndex] = value - previousValue;
     // caldulate the length of delta value
-    LengthCode[writeIndex] = calBinarylength(DiffValue[writeIndex]);
-    previousvalue = value;
+    LengthCode[writeIndex] = calBinarylength(diffValue[writeIndex]);
+    previousValue = value;
     if (writeIndex == blockSize - 1) {
       // when encoded number reach to blocksize
       flush(out);
@@ -99,35 +103,37 @@ public class LongRLBE extends RLBE {
   }
 
   /**
-   * calculate fibonacci code of input long integer
+   * calculate fibonacci code of input long integer.
    *
    * @param val the long integer to be fibonacci-encoded
    * @return the reverse fibonacci code of val in binary code
    */
   protected long calcFibonacci(long val) {
     // fibonacci values are stored in Fib
-    long[] Fib = new long[blockSize * 2 + 1];
-    Fib[0] = 1;
-    Fib[1] = 1;
+    long[] fib = new long[blockSize * 2 + 1];
+    fib[0] = 1;
+    fib[1] = 1;
     int i;
     // generate fibonacci values from 1 to the first one larger than val
-    for (i = 2; Fib[i - 1] <= val; i++) {
-      Fib[i] = Fib[i - 1] + Fib[i - 2];
+    for (i = 2; fib[i - 1] <= val; i++) {
+      fib[i] = fib[i - 1] + fib[i - 2];
     }
 
     i--;
     long valfib = 0;
     // calculate fibonacci code
     while (val > 0) {
-      while (Fib[i] > val && i >= 1) i--;
+      while (fib[i] > val && i >= 1) {
+        i--;
+      }
       valfib |= (1 << (i - 1));
-      val -= Fib[i];
+      val -= fib[i];
     }
     return valfib;
   }
 
   /** run length on DiffValue then store length at the first index in Lengrle. */
-  private void rleonlengthcode() {
+  private void rleOnLengthCode() {
     int i = 0;
     while (i <= writeIndex) {
       int j = i;
@@ -137,13 +143,13 @@ public class LongRLBE extends RLBE {
         temprlecal++;
       }
       // store repeat time at the first repeating value's position
-      Lengrle[i] = temprlecal;
+      lengRLE[i] = temprlecal;
       i = j;
     }
   }
 
   /**
-   * flush all encoded values in a block to output stream
+   * flush all encoded values in a block to output stream.
    *
    * @param out the output stream to be flushed to
    */
@@ -154,38 +160,41 @@ public class LongRLBE extends RLBE {
     // store the number of values
     writewriteIndex(out);
     // calculate length code of delta binary length
-    rleonlengthcode();
+    rleOnLengthCode();
     for (int i = 0; i <= writeIndex; i++) {
-      if (Lengrle[i] > 0) // flush the adjacent same length delta values
-      try {
-          flushsegment(i, out);
-        } catch (IOException e) {
-          logger.error("flush data to stream failed!", e);
-        }
+      if (lengRLE[i] > 0) {
+        flushsegment(i, out);
+      }
     }
     clearBuffer(out);
     reset();
   }
 
   /**
-   * flush the adjacent same-length delta values
+   * flush the adjacent same-length delta values.
    *
    * @param i the position of the first delta value
    * @param out output stream
    * @throws IOException
    */
-  private void flushsegment(int i, ByteArrayOutputStream out) throws IOException {
+  private void flushsegment(int i, ByteArrayOutputStream out) {
     // write the first 7 bits: length code in binary words.
     for (int j = 6; j >= 0; j--) {
-      if ((LengthCode[i] & (1 << j)) > 0) writeBit(true, out);
-      else writeBit(false, out);
+      if ((LengthCode[i] & (1 << j)) > 0) {
+        writeBit(true, out);
+      } else {
+        writeBit(false, out);
+      }
     }
     // write the fibonacci code in normal direction
-    long fib = calcFibonacci(Lengrle[i]);
+    long fib = calcFibonacci(lengRLE[i]);
     int fiblen = calBinarylength(fib);
     for (int j = 0; j < fiblen; j++) {
-      if ((fib & (1 << j)) > 0) writeBit(true, out);
-      else writeBit(false, out);
+      if ((fib & (1 << j)) > 0) {
+        writeBit(true, out);
+      } else {
+        writeBit(false, out);
+      }
     }
     // write '1' to note the end of fibonacci code
     writeBit(true, out);
@@ -193,13 +202,16 @@ public class LongRLBE extends RLBE {
     // write Binary code words
     int j = i;
     do {
-      int tempDifflen = calBinarylength(DiffValue[j]);
+      int tempDifflen = calBinarylength(diffValue[j]);
       for (int k = tempDifflen - 1; k >= 0; k--) {
-        if ((DiffValue[j] & ((long) 1 << k)) > 0) writeBit(true, out);
-        else writeBit(false, out);
+        if ((diffValue[j] & ((long) 1 << k)) > 0) {
+          writeBit(true, out);
+        } else {
+          writeBit(false, out);
+        }
       }
       j++;
-    } while (Lengrle[j] == 0 && j <= writeIndex);
+    } while (lengRLE[j] == 0 && j <= writeIndex);
   }
 
   @Override
@@ -209,11 +221,11 @@ public class LongRLBE extends RLBE {
 
   @Override
   public long getMaxByteSize() {
-    return 5 * 4 * blockSize * 2;
+    return 5L * 4 * blockSize * 2;
   }
 
   /**
-   * write one bit to byteBuffer, when byteBuffer is full, flush byteBuffer to output stream
+   * write one bit to byteBuffer, when byteBuffer is full, flush byteBuffer to output stream.
    *
    * @param b the bit to be written
    * @param out output stream
@@ -231,27 +243,34 @@ public class LongRLBE extends RLBE {
   }
 
   /**
-   * flush bits left in byteBuffer to output stream
+   * flush bits left in byteBuffer to output stream.
    *
    * @param out output stream
    */
   protected void clearBuffer(ByteArrayOutputStream out) {
-    if (numberLeftInBuffer == 0) return;
-    if (numberLeftInBuffer > 0) byteBuffer <<= (8 - numberLeftInBuffer);
+    if (numberLeftInBuffer == 0) {
+      return;
+    }
+    if (numberLeftInBuffer > 0) {
+      byteBuffer <<= (8 - numberLeftInBuffer);
+    }
     out.write(byteBuffer);
     numberLeftInBuffer = 0;
     byteBuffer = 0;
   }
 
   /**
-   * write the number of encoded values to output stream
+   * write the number of encoded values to output stream.
    *
    * @param out output stream
    */
   private void writewriteIndex(ByteArrayOutputStream out) {
     for (int i = 31; i >= 0; i--) {
-      if ((writeIndex + 1 & (1 << i)) > 0) writeBit(true, out);
-      else writeBit(false, out);
+      if ((writeIndex + 1 & (1 << i)) > 0) {
+        writeBit(true, out);
+      } else {
+        writeBit(false, out);
+      }
     }
   }
 }

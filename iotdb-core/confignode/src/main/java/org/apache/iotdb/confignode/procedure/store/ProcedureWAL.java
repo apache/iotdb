@@ -90,7 +90,9 @@ public class ProcedureWAL {
       procedureList.add(procedure);
     } catch (IOException e) {
       LOG.error("Load {} failed, it will be deleted.", walFilePath, e);
-      walFilePath.toFile().delete();
+      if (!walFilePath.toFile().delete()) {
+        LOG.error("{} delete failed; take appropriate action.", walFilePath, e);
+      }
     }
   }
 

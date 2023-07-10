@@ -31,7 +31,7 @@ import org.apache.iotdb.db.pipe.processor.PipeDoNothingProcessor;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.connection.EventSupplier;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
-import org.apache.iotdb.db.pipe.task.subtask.PipeProcessorSubtask;
+import org.apache.iotdb.db.pipe.task.subtask.processor.PipeProcessorSubtask;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -53,6 +53,7 @@ public class PipeTaskProcessorStage extends PipeTaskStage {
    * @param dataRegionId data region id
    * @param pipeExtractorInputEventSupplier used to input events from pipe extractor
    * @param pipeConnectorOutputPendingQueue used to output events to pipe connector
+   * @throws PipeException if failed to validate or customize
    */
   public PipeTaskProcessorStage(
       String pipeName,

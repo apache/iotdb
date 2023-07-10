@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.schemaengine;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
@@ -71,6 +72,7 @@ public class SchemaEngine {
 
   private final SchemaRegionLoader schemaRegionLoader;
 
+  @SuppressWarnings("java:S3077")
   private volatile Map<SchemaRegionId, ISchemaRegion> schemaRegionMap;
 
   private ScheduledExecutorService timedForceMLogThread;
@@ -121,7 +123,7 @@ public class SchemaEngine {
         && config.getSyncMlogPeriodInMs() != 0) {
       timedForceMLogThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-              "SchemaEngine-TimedForceMLog-Thread");
+              ThreadName.SCHEMA_FORCE_MLOG.getName());
       ScheduledExecutorUtil.unsafelyScheduleAtFixedRate(
           timedForceMLogThread,
           this::forceMlog,
@@ -135,6 +137,7 @@ public class SchemaEngine {
    * Scan the database and schema region directories to recover schema regions and return the
    * collected local schema partition info for localSchemaPartitionTable recovery.
    */
+  @SuppressWarnings("java:S2142")
   private void initSchemaRegion() {
     File schemaDir = new File(config.getSchemaDir());
     File[] sgDirList = schemaDir.listFiles();
@@ -146,7 +149,8 @@ public class SchemaEngine {
     // recover SchemaRegion concurrently
     ExecutorService schemaRegionRecoverPools =
         IoTDBThreadPoolFactory.newFixedThreadPool(
-            Runtime.getRuntime().availableProcessors(), "SchemaRegion-recover-task");
+            Runtime.getRuntime().availableProcessors(),
+            ThreadName.SCHEMA_REGION_RECOVER_TASK.getName());
     List<Future<ISchemaRegion>> futures = new ArrayList<>();
 
     for (File file : sgDirList) {
@@ -191,8 +195,7 @@ public class SchemaEngine {
         ISchemaRegion schemaRegion = future.get();
         schemaRegionMap.put(schemaRegion.getSchemaRegionId(), schemaRegion);
       } catch (ExecutionException | InterruptedException | RuntimeException e) {
-        logger.error("Something wrong happened during SchemaRegion recovery: {}", e.getMessage());
-        e.printStackTrace();
+        logger.error("Something wrong happened during SchemaRegion recovery", e);
       }
     }
     schemaRegionRecoverPools.shutdown();

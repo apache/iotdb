@@ -134,7 +134,7 @@ public class DataNodeRemoveHandler {
   }
 
   /**
-   * Find dest data node
+   * Find dest data node.
    *
    * @param regionId region id
    * @return dest data node location

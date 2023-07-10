@@ -15,6 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.iotdb.db.protocol.mqtt;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -36,6 +37,9 @@ import java.util.ServiceLoader;
 
 /** PayloadFormatManager loads payload formatter from SPI services. */
 public class PayloadFormatManager {
+
+  private PayloadFormatManager() {}
+
   private static final Logger logger = LoggerFactory.getLogger(PayloadFormatManager.class);
 
   // The dir saving MQTT payload plugin .jar files

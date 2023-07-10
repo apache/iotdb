@@ -32,7 +32,7 @@ import java.util.Map;
 
 public class InternalCreateMultiTimeSeriesStatement extends Statement {
 
-  private Map<PartialPath, Pair<Boolean, MeasurementGroup>> deviceMap;
+  private final Map<PartialPath, Pair<Boolean, MeasurementGroup>> deviceMap;
 
   public InternalCreateMultiTimeSeriesStatement(
       Map<PartialPath, Pair<Boolean, MeasurementGroup>> deviceMap) {

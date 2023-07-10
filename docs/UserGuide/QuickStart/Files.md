@@ -37,7 +37,7 @@ In order to support users' storage requirements such as disk space expansion bet
 
 1. {time}-{version}-{inner_compaction_count}-{cross_compaction_count}.tsfile
     + normal data file
-2. {TsFileName}.tsfile.mod
+2. {TsFileName}.tsfile.mods
     + modification file
     + record delete operation
 

@@ -24,17 +24,17 @@ import java.util.Map;
 
 public enum ConfigPhysicalPlanType {
 
-  /** ConfigNode */
+  /** ConfigNode. */
   ApplyConfigNode((short) 0),
   RemoveConfigNode((short) 1),
 
-  /** DataNode */
+  /** DataNode. */
   RegisterDataNode((short) 100),
   GetDataNodeConfiguration((short) 101),
   RemoveDataNode((short) 102),
   UpdateDataNodeConfiguration((short) 103),
 
-  /** Database */
+  /** Database. */
   CreateDatabase((short) 200),
   SetTTL((short) 201),
   SetSchemaReplicationFactor((short) 202),
@@ -47,7 +47,7 @@ public enum ConfigPhysicalPlanType {
   CountDatabase((short) 209),
   AlterDatabase((short) 210),
 
-  /** Region */
+  /** Region. */
   CreateRegionGroups((short) 300),
   DeleteRegionGroups((short) 301),
   GetRegionInfoList((short) 302),
@@ -61,7 +61,7 @@ public enum ConfigPhysicalPlanType {
 
   CountTimeSlotList((short) 310),
 
-  /** Partition */
+  /** Partition. */
   GetSchemaPartition((short) 400),
   CreateSchemaPartition((short) 401),
   GetOrCreateSchemaPartition((short) 402),
@@ -70,11 +70,11 @@ public enum ConfigPhysicalPlanType {
   GetOrCreateDataPartition((short) 405),
   GetNodePathsPartition((short) 406),
 
-  /** Procedure */
+  /** Procedure. */
   UpdateProcedure((short) 500),
   DeleteProcedure((short) 501),
 
-  /** Authority */
+  /** Authority. */
   Author((short) 600),
   CreateUser((short) 601),
   CreateRole((short) 602),
@@ -96,13 +96,13 @@ public enum ConfigPhysicalPlanType {
   @Deprecated
   ListRoleUsers((short) 617),
 
-  /** Function */
+  /** Function. */
   CreateFunction((short) 700),
   DropFunction((short) 701),
   GetFunctionTable((short) 702),
   GetFunctionJar((short) 703),
 
-  /** Template */
+  /** Template. */
   CreateSchemaTemplate((short) 800),
   GetAllSchemaTemplate((short) 801),
   GetSchemaTemplate((short) 802),
@@ -119,7 +119,7 @@ public enum ConfigPhysicalPlanType {
   CommitSetSchemaTemplate((short) 813),
   ExtendSchemaTemplate((short) 814),
 
-  /** Deprecated types for sync, restored them for upgrade */
+  /** Deprecated types for sync, restored them for upgrade. */
   @Deprecated
   CreatePipeSinkV1((short) 900),
   @Deprecated
@@ -137,7 +137,7 @@ public enum ConfigPhysicalPlanType {
   @Deprecated
   RecordPipeMessageV1((short) 907),
 
-  /** Trigger */
+  /** Trigger. */
   AddTriggerInTable((short) 1000),
   DeleteTriggerInTable((short) 1001),
   GetTriggerTable((short) 1002),
@@ -148,14 +148,14 @@ public enum ConfigPhysicalPlanType {
   GetTransferringTriggers((short) 1007),
   GetTriggerLocation((short) 1008),
 
-  /** CQ */
+  /** CQ. */
   DROP_CQ((short) 1100),
   ACTIVE_CQ((short) 1101),
   ADD_CQ((short) 1102),
   UPDATE_CQ_LAST_EXEC_TIME((short) 1103),
   SHOW_CQ((short) 1104),
 
-  /** Ml model */
+  /** Ml model. */
   CreateModel((short) 1200),
   UpdateModelInfo((short) 1201),
   UpdateModelState((short) 1202),
@@ -164,24 +164,24 @@ public enum ConfigPhysicalPlanType {
   ShowTrail((short) 1205),
   GetModelInfo((short) 1206),
 
-  /** Pipe Plugin */
+  /** Pipe Plugin. */
   CreatePipePlugin((short) 1300),
   DropPipePlugin((short) 1301),
   GetPipePluginTable((short) 1302),
   GetPipePluginJar((short) 1303),
 
-  /** Quota */
+  /** Quota. */
   setSpaceQuota((short) 1400),
   setThrottleQuota((short) 1401),
 
-  /** Pipe Task */
+  /** Pipe Task. */
   CreatePipeV2((short) 1500),
-  /** START PIPE & STOP PIPE */
+  /** START PIPE & STOP PIPE. */
   SetPipeStatusV2((short) 1501),
   DropPipeV2((short) 1502),
   ShowPipeV2((short) 1503),
 
-  /** Pipe Runtime */
+  /** Pipe Runtime. */
   PipeHandleLeaderChange((short) 1600),
   PipeHandleMetaChange((short) 1601),
   ;
@@ -204,7 +204,7 @@ public enum ConfigPhysicalPlanType {
     return planType;
   }
 
-  /** Notice: the result might be null */
+  /** Notice: the result might be null. */
   public static ConfigPhysicalPlanType convertToConfigPhysicalPlanType(short planType) {
     return PLAN_TYPE_MAP.getOrDefault(planType, null);
   }

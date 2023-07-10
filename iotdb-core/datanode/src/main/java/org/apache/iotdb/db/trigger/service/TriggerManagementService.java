@@ -351,19 +351,25 @@ public class TriggerManagementService {
     return null;
   }
 
-  // region only for test
-
-  @TestOnly
+  // region for debug and test
   public List<TriggerInformation> getAllTriggerInformationInTriggerTable() {
     return triggerTable.getAllTriggerInformation();
   }
 
-  @TestOnly
   public List<TriggerExecutor> getAllTriggerExecutors() {
     return new ArrayList<>(executorMap.values());
   }
 
-  // end region
+  @TestOnly
+  public void fakeRegister(TriggerInformation triggerInformation, TriggerExecutor triggerExecutor) {
+    // register in trigger-table
+    triggerTable.addTriggerInformation(triggerInformation.getTriggerName(), triggerInformation);
+    // update PatternTreeMap
+    patternTreeMap.append(triggerInformation.getPathPattern(), triggerInformation.getTriggerName());
+    executorMap.put(triggerInformation.getTriggerName(), triggerExecutor);
+  }
+
+  // endregion
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // singleton instance holder

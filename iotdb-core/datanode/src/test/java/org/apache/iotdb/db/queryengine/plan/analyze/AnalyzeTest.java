@@ -29,10 +29,16 @@ import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.AdditionExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.binary.DivisionExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.binary.GreaterEqualExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.GreaterThanExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LessThanExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicAndExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicOrExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.binary.ModuloExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.binary.MultiplicationExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.binary.NonEqualExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.binary.SubtractionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
@@ -99,11 +105,75 @@ public class AnalyzeTest {
       expectedAnalysis.setRespDatasetHeader(
           new DatasetHeader(
               Arrays.asList(
-                  new ColumnHeader("root.sg.d1.s1", TSDataType.INT32, "root.sg.d1.s1"),
+                  new ColumnHeader("root.sg.d1.s1", TSDataType.INT32, null),
                   new ColumnHeader("root.sg.d1.s2", TSDataType.DOUBLE, "root.sg.d1.status"),
                   new ColumnHeader("root.sg.d1.s1 + 1", TSDataType.DOUBLE, "t")),
               false));
 
+      alignByTimeAnalysisEqualTest(actualAnalysis, expectedAnalysis);
+
+      // to test GreaterEqualExpression(>=), NotEqualExpression(!=)
+      // with ModuloExpression(%), SubtractionExpression(-),
+      // with MultiplicationExpression(*), DivisionExpression(/)
+      sql =
+          "select s1, s1/2, s1*3, s1%4, s1-5 from root.sg.d1 "
+              + "where time >= 100 and s2 >= 10 and s2 != 6;";
+      actualAnalysis = analyzeSQL(sql);
+      expectedAnalysis = new Analysis();
+      expectedAnalysis.setGlobalTimeFilter(TimeFilter.gtEq(100));
+      expectedAnalysis.setSelectExpressions(
+          Sets.newHashSet(
+              new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+              new DivisionExpression(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+                  new ConstantOperand(TSDataType.INT64, "2")),
+              new MultiplicationExpression(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+                  new ConstantOperand(TSDataType.INT64, "3")),
+              new ModuloExpression(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+                  new ConstantOperand(TSDataType.INT64, "4")),
+              new SubtractionExpression(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+                  new ConstantOperand(TSDataType.INT64, "5"))));
+      expectedAnalysis.setWhereExpression(
+          new LogicAndExpression(
+              new LogicAndExpression(
+                  new ConstantOperand(TSDataType.BOOLEAN, "true"),
+                  new GreaterEqualExpression(
+                      new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
+                      new ConstantOperand(TSDataType.INT64, "10"))),
+              new NonEqualExpression(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
+                  new ConstantOperand(TSDataType.INT64, "6"))));
+      expectedAnalysis.setSourceTransformExpressions(
+          Sets.newHashSet(
+              new DivisionExpression(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+                  new ConstantOperand(TSDataType.INT64, "2")),
+              new MultiplicationExpression(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+                  new ConstantOperand(TSDataType.INT64, "3")),
+              new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+              new ModuloExpression(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+                  new ConstantOperand(TSDataType.INT64, "4")),
+              new SubtractionExpression(
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+                  new ConstantOperand(TSDataType.INT64, "5"))));
+      expectedAnalysis.setSourceExpressions(
+          Sets.newHashSet(
+              new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
+              new TimeSeriesOperand(new PartialPath("root.sg.d1.s2"))));
+      expectedAnalysis.setRespDatasetHeader(
+          new DatasetHeader(
+              Arrays.asList(
+                  new ColumnHeader("root.sg.d1.s1", TSDataType.INT32, null),
+                  new ColumnHeader("root.sg.d1.s1 / 2", TSDataType.DOUBLE, null),
+                  new ColumnHeader("root.sg.d1.s1 * 3", TSDataType.DOUBLE, null),
+                  new ColumnHeader("root.sg.d1.s1 % 4", TSDataType.DOUBLE, null),
+                  new ColumnHeader("root.sg.d1.s1 - 5", TSDataType.DOUBLE, null)),
+              false));
       alignByTimeAnalysisEqualTest(actualAnalysis, expectedAnalysis);
     } catch (Exception e) {
       e.printStackTrace();
@@ -214,7 +284,7 @@ public class AnalyzeTest {
               new TimeSeriesOperand(
                   new MeasurementPath(new PartialPath(DEVICE, false), TSDataType.TEXT)),
               new TimeSeriesOperand(new PartialPath("s1")),
-              new TimeSeriesOperand(new PartialPath("s2")),
+              new TimeSeriesOperand(new PartialPath("status")),
               new AdditionExpression(
                   new TimeSeriesOperand(new PartialPath("s2")),
                   new ConstantOperand(TSDataType.INT64, "1"))));
@@ -223,14 +293,14 @@ public class AnalyzeTest {
               "root.sg.d1",
               Sets.newHashSet(
                   new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
-                  new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
+                  new TimeSeriesOperand(new PartialPath("root.sg.d1.status")),
                   new AdditionExpression(
                       new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")),
                       new ConstantOperand(TSDataType.INT64, "1"))),
               "root.sg.d2",
               Sets.newHashSet(
                   new TimeSeriesOperand(new PartialPath("root.sg.d2.s1")),
-                  new TimeSeriesOperand(new PartialPath("root.sg.d2.s2")),
+                  new TimeSeriesOperand(new PartialPath("root.sg.d2.status")),
                   new AdditionExpression(
                       new TimeSeriesOperand(new PartialPath("root.sg.d2.s2")),
                       new ConstantOperand(TSDataType.INT64, "1")))));
@@ -279,7 +349,7 @@ public class AnalyzeTest {
               new TimeSeriesOperand(
                   new MeasurementPath(new PartialPath(DEVICE, false), TSDataType.TEXT)),
               new TimeSeriesOperand(new PartialPath("s1")),
-              new TimeSeriesOperand(new PartialPath("s2")),
+              new TimeSeriesOperand(new PartialPath("status")),
               new AdditionExpression(
                   new TimeSeriesOperand(new PartialPath("s2")),
                   new ConstantOperand(TSDataType.INT64, "1"))));
@@ -287,9 +357,9 @@ public class AnalyzeTest {
           new DatasetHeader(
               Arrays.asList(
                   new ColumnHeader("Device", TSDataType.TEXT),
-                  new ColumnHeader("s1", TSDataType.INT32, "s1"),
-                  new ColumnHeader("s2", TSDataType.DOUBLE, "status"),
-                  new ColumnHeader("s2 + 1", TSDataType.DOUBLE, "s2 + 1")),
+                  new ColumnHeader("s1", TSDataType.INT32, null),
+                  new ColumnHeader("status", TSDataType.DOUBLE, null),
+                  new ColumnHeader("s2 + 1", TSDataType.DOUBLE, null)),
               false));
 
       alignByDeviceAnalysisEqualTest(actualAnalysis, expectedAnalysis);
@@ -477,7 +547,7 @@ public class AnalyzeTest {
           new DatasetHeader(
               Arrays.asList(
                   new ColumnHeader("Device", TSDataType.TEXT),
-                  new ColumnHeader("count(s1 + 1) + 1", TSDataType.DOUBLE, "count(s1 + 1) + 1")),
+                  new ColumnHeader("count(s1 + 1) + 1", TSDataType.DOUBLE, null)),
               false));
 
       alignByDeviceAnalysisEqualTest(actualAnalysis, expectedAnalysis);

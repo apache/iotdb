@@ -33,10 +33,10 @@ import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerLoca
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
+import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.confignode.consensus.response.trigger.TransferringTriggersResp;
 import org.apache.iotdb.confignode.consensus.response.trigger.TriggerLocationResp;
 import org.apache.iotdb.confignode.consensus.response.trigger.TriggerTableResp;
-import org.apache.iotdb.confignode.consensus.response.udf.JarResp;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
@@ -107,8 +107,8 @@ public class TriggerManager {
       }
     }
     final String triggerName = req.getTriggerName();
-    final boolean isUsingURI = req.isIsUsingURI(),
-        needToSaveJar = isUsingURI && triggerInfo.needToSaveJar(triggerName);
+    final boolean isUsingURI = req.isIsUsingURI();
+    final boolean needToSaveJar = isUsingURI && triggerInfo.needToSaveJar(triggerName);
     TriggerInformation triggerInformation =
         new TriggerInformation(
             (PartialPath) PathDeserializeUtil.deserialize(req.pathPattern),
@@ -159,20 +159,12 @@ public class TriggerManager {
   }
 
   public TGetJarInListResp getTriggerJar(TGetJarInListReq req) {
-    try {
-      return ((JarResp)
-              configManager
-                  .getConsensusManager()
-                  .read(new GetTriggerJarPlan(req.getJarNameList()))
-                  .getDataset())
-          .convertToThriftResponse();
-    } catch (IOException e) {
-      LOGGER.error("Fail to get TriggerJar", e);
-      return new TGetJarInListResp(
-          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-              .setMessage(e.getMessage()),
-          Collections.emptyList());
-    }
+    return ((JarResp)
+            configManager
+                .getConsensusManager()
+                .read(new GetTriggerJarPlan(req.getJarNameList()))
+                .getDataset())
+        .convertToThriftResponse();
   }
 
   /**

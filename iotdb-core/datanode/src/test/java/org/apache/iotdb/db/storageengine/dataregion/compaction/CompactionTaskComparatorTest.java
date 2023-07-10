@@ -304,7 +304,7 @@ public class CompactionTaskComparatorTest {
       for (int i = 0; i < 10; ++i) {
         AbstractCompactionTask task = compactionTaskQueue.take();
         String id =
-            CompactionTaskManager.getSGWithRegionId(
+            CompactionTaskManager.getSgWithRegionId(
                 task.getStorageGroupName(), task.getDataRegionId());
         taskCount.get(id).incrementAndGet();
       }

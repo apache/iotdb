@@ -31,21 +31,21 @@ import java.util.Vector;
 
 public class DoubleSprintzEncoder extends SprintzEncoder {
 
-  /** bit packer */
+  // bit packer
   LongPacker packer;
 
-  /** Long Fire Predictor * */
+  // Long Fire Predictor
   LongFire firePred;
 
-  /** we save all value in a list and calculate its bitwidth. */
+  // we save all value in a list and calculate its bitWidth
   protected Vector<Double> values;
 
-  /** convert to Long Buffer * */
+  // convert to Long Buffer
   long[] convertBuffer;
 
   public DoubleSprintzEncoder() {
     super();
-    values = new Vector<Double>();
+    values = new Vector<>();
     firePred = new LongFire(3);
     convertBuffer = new long[Block_size];
   }
@@ -68,25 +68,30 @@ public class DoubleSprintzEncoder extends SprintzEncoder {
 
   protected long predict(Double value, Double preVlaue) throws TsFileEncodingException {
     long pred;
-    if (PredictMethod.equals("delta")) {
+    if (predictMethod.equals("delta")) {
       pred = delta(value, preVlaue);
-    } else if (PredictMethod.equals("fire")) {
+    } else if (predictMethod.equals("fire")) {
       pred = fire(value, preVlaue);
     } else {
       throw new TsFileEncodingException(
           "Config: Predict Method {} of SprintzEncoder is not supported.");
     }
-    if (pred <= 0) pred = -2 * pred;
-    else pred = 2 * pred - 1; // TODO:overflow
+    if (pred <= 0) {
+      pred = -2 * pred;
+    } else {
+      pred = 2 * pred - 1; // TODO:overflow
+    }
     return pred;
   }
 
   @Override
   protected void bitPack() throws IOException {
-    double preValue = values.get(0);
+    final double preValue = values.get(0);
     values.remove(0);
     Vector<Long> convertBufferList = new Vector<>();
-    for (long itemBuffer : convertBuffer) convertBufferList.add(itemBuffer);
+    for (long itemBuffer : convertBuffer) {
+      convertBufferList.add(itemBuffer);
+    }
     this.bitWidth = ReadWriteForEncodingUtils.getLongMaxBitWidth(convertBufferList);
     packer = new LongPacker(this.bitWidth);
     byte[] bytes = new byte[bitWidth];

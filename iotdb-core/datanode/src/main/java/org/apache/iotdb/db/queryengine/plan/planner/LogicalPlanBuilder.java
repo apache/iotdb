@@ -1168,10 +1168,19 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planLevelTimeSeriesCountSource(
-      PartialPath partialPath, boolean prefixPath, int level, SchemaFilter schemaFilter) {
+      PartialPath partialPath,
+      boolean prefixPath,
+      int level,
+      SchemaFilter schemaFilter,
+      Map<Integer, Template> templateMap) {
     this.root =
         new LevelTimeSeriesCountNode(
-            context.getQueryId().genPlanNodeId(), partialPath, prefixPath, level, schemaFilter);
+            context.getQueryId().genPlanNodeId(),
+            partialPath,
+            prefixPath,
+            level,
+            schemaFilter,
+            templateMap);
     return this;
   }
 

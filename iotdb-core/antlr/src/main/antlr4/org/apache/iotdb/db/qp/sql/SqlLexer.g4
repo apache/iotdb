@@ -65,6 +65,10 @@ ALTER
     : A L T E R
     ;
 
+AND
+    : A N D
+    ;
+
 ANY
     : A N Y
     ;
@@ -145,12 +149,16 @@ CONNECTOR
     : C O N N E C T O R
     ;
 
-CONTINUOUS
-    : C O N T I N U O U S
-    ;
-
 CONTAIN
     : C O N T A I N
+    ;
+
+CONTAINS
+    : C O N T A I N S
+    ;
+
+CONTINUOUS
+    : C O N T I N U O U S
     ;
 
 COUNT
@@ -260,6 +268,10 @@ EXPLAIN
 
 EXTRACTOR
     : E X T R A C T O R
+    ;
+
+FALSE
+    : F A L S E
     ;
 
 FILL
@@ -406,6 +418,10 @@ MODELS
     : M O D E L S
     ;
 
+NAN
+    : N A N
+    ;
+
 NODEID
     : N O D E I D
     ;
@@ -418,8 +434,16 @@ NONE
     : N O N E
     ;
 
+NOT
+    : N O T
+    ;
+
 NOW
     : N O W
+    ;
+
+NULL
+    : N U L L
     ;
 
 NULLS
@@ -444,6 +468,10 @@ ON
 
 OPTIONS
     : O P T I O N S
+    ;
+
+OR
+    : O R
     ;
 
 ORDER
@@ -756,6 +784,10 @@ TRIGGER
 
 TRIGGERS
     : T R I G G E R S
+    ;
+
+TRUE
+    : T R U E
     ;
 
 TTL
@@ -1108,26 +1140,15 @@ OPERATOR_IS : I S;
 
 OPERATOR_IN : I N;
 
-OPERATOR_AND
-    : A N D
-    | '&'
-    | '&&'
-    ;
+OPERATOR_BITWISE_AND : '&';
 
-OPERATOR_OR
-    : O R
-    | '|'
-    | '||'
-    ;
+OPERATOR_LOGICAL_AND : '&&';
 
-OPERATOR_NOT
-    : N O T | '!'
-    ;
+OPERATOR_BITWISE_OR : '|';
 
-OPERATOR_CONTAINS
-    : C O N T A I N S
-    ;
+OPERATOR_LOGICAL_OR : '||';
 
+OPERATOR_NOT : '!';
 
 /**
  * 4. Constructors Symbols
@@ -1191,24 +1212,6 @@ fragment DEC_DIGIT
     : [0-9]
     ;
 
-
-// Boolean Literal
-
-BOOLEAN_LITERAL
-	: T R U E
-	| F A L S E
-	;
-
-
-// Other Literals
-
-NULL_LITERAL
-    : N U L L
-    ;
-
-NAN_LITERAL
-    : N A N
-    ;
 
 /**
  * 6. ID

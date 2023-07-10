@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -55,6 +56,9 @@ public class TsFileIdentifier {
   private static final int TIME_PARTITION_OFFSET_IN_LOG_FROM_OLD = 2;
   private static final int FILE_NAME_OFFSET_IN_LOG_FROM_OLD = 3;
   private static final int SEQUENCE_OFFSET_IN_LOG_FROM_OLD = 4;
+
+  private static final String SEQUENCE_STR = "sequence";
+  private static final String UNSEQUENCE_STR = "unsequence";
 
   private TsFileIdentifier(
       String logicalStorageGroupName,
@@ -115,7 +119,7 @@ public class TsFileIdentifier {
         splittedFileInfo[LOGICAL_SG_OFFSET_IN_LOG],
         splittedFileInfo[DATA_REGION_OFFSET_IN_LOG],
         splittedFileInfo[TIME_PARTITION_OFFSET_IN_LOG],
-        splittedFileInfo[SEQUENCE_OFFSET_IN_LOG].equals("sequence"),
+        splittedFileInfo[SEQUENCE_OFFSET_IN_LOG].equals(SEQUENCE_STR),
         splittedFileInfo[FILE_NAME_OFFSET_IN_LOG]);
   }
 
@@ -139,7 +143,7 @@ public class TsFileIdentifier {
         splittedFileInfo[DATA_REGION_OFFSET_IN_LOG_FROM_OLD],
         splittedFileInfo[TIME_PARTITION_OFFSET_IN_LOG_FROM_OLD],
         splittedFileInfo[SEQUENCE_OFFSET_IN_LOG_FROM_OLD].equals("true")
-            || splittedFileInfo[SEQUENCE_OFFSET_IN_LOG_FROM_OLD].equals("sequence"),
+            || splittedFileInfo[SEQUENCE_OFFSET_IN_LOG_FROM_OLD].equals(SEQUENCE_STR),
         splittedFileInfo[FILE_NAME_OFFSET_IN_LOG_FROM_OLD]);
   }
 
@@ -147,7 +151,7 @@ public class TsFileIdentifier {
   public String toString() {
     return String.format(
         "%s%s%s%s%s%s%s%s%s",
-        sequence ? "sequence" : "unsequence",
+        sequence ? SEQUENCE_STR : UNSEQUENCE_STR,
         INFO_SEPARATOR,
         logicalStorageGroupName,
         INFO_SEPARATOR,

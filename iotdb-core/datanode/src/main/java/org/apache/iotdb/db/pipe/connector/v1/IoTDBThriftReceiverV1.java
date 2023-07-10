@@ -100,7 +100,8 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
         .equals(req.getTimestampPrecision())) {
       String msg =
           String.format(
-              "IoTDB receiver's timestamp precision %s, connector's timestamp precision %s. validation fails.",
+              "IoTDB receiver's timestamp precision %s, "
+                  + "connector's timestamp precision %s. validation fails.",
               CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
               req.getTimestampPrecision());
       LOGGER.warn(msg);

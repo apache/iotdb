@@ -38,10 +38,10 @@ import org.apache.iotdb.confignode.consensus.request.write.trigger.DeleteTrigger
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggerStateInTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
+import org.apache.iotdb.confignode.consensus.response.JarResp;
 import org.apache.iotdb.confignode.consensus.response.trigger.TransferringTriggersResp;
 import org.apache.iotdb.confignode.consensus.response.trigger.TriggerLocationResp;
 import org.apache.iotdb.confignode.consensus.response.trigger.TriggerTableResp;
-import org.apache.iotdb.confignode.consensus.response.udf.JarResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -63,7 +63,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class TriggerInfo implements SnapshotProcessor {
@@ -74,7 +73,6 @@ public class TriggerInfo implements SnapshotProcessor {
 
   private final TriggerTable triggerTable;
   private final Map<String, String> existedJarToMD5;
-  // private final Map<String, AtomicInteger> jarReferenceTable;
 
   private final TriggerExecutableManager triggerExecutableManager;
 
@@ -85,7 +83,6 @@ public class TriggerInfo implements SnapshotProcessor {
   public TriggerInfo() throws IOException {
     triggerTable = new TriggerTable();
     existedJarToMD5 = new HashMap<>();
-    // jarReferenceTable = new ConcurrentHashMap<>();
     triggerExecutableManager =
         TriggerExecutableManager.setupAndGetInstance(
             CONFIG_NODE_CONF.getTriggerTemporaryLibDir(), CONFIG_NODE_CONF.getTriggerDir());
@@ -101,8 +98,9 @@ public class TriggerInfo implements SnapshotProcessor {
     triggerTableLock.unlock();
   }
 
-  /** Validate whether the trigger can be created */
-  public void validate(String triggerName, String jarName, String jarMD5) {
+  /** Validate whether the trigger can be created. */
+  public void validate(String triggerName, String jarName, String jarMD5)
+      throws TriggerManagementException {
     if (triggerTable.containsTrigger(triggerName)) {
       throw new TriggerManagementException(
           String.format(
@@ -118,8 +116,8 @@ public class TriggerInfo implements SnapshotProcessor {
     }
   }
 
-  /** Validate whether the trigger can be dropped */
-  public void validate(String triggerName) {
+  /** Validate whether the trigger can be dropped. */
+  public void validate(String triggerName) throws TriggerManagementException {
     if (triggerTable.containsTrigger(triggerName)) {
       return;
     }
@@ -248,29 +246,17 @@ public class TriggerInfo implements SnapshotProcessor {
           snapshotFile.getAbsolutePath());
       return false;
     }
-    File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
 
     acquireTriggerTableLock();
-    try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile)) {
+    try (FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
 
       serializeExistedJarToMD5(fileOutputStream);
 
       triggerTable.serializeTriggerTable(fileOutputStream);
 
-      fileOutputStream.flush();
-      fileOutputStream.close();
-
-      return tmpFile.renameTo(snapshotFile);
+      return true;
     } finally {
       releaseTriggerTableLock();
-      for (int retry = 0; retry < 5; retry++) {
-        if (!tmpFile.exists() || tmpFile.delete()) {
-          break;
-        } else {
-          LOGGER.warn(
-              "Can't delete temporary snapshot file: {}, retrying...", tmpFile.getAbsolutePath());
-        }
-      }
     }
   }
 

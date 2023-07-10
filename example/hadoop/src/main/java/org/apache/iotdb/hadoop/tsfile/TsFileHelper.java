@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.hadoop.tsfile;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -120,7 +121,7 @@ public class TsFileHelper {
       }
 
     } catch (Throwable e) {
-      e.printStackTrace();
+      logger.error("Write tsfile error", e);
       System.out.println(e.getMessage());
     }
   }

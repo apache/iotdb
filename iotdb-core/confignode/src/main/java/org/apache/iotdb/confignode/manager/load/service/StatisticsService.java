@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
@@ -36,7 +37,6 @@ import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.confignode.manager.load.cache.LoadCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeStatistics;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupStatistics;
-import org.apache.iotdb.confignode.manager.load.cache.region.RegionStatistics;
 import org.apache.iotdb.confignode.manager.load.subscriber.IClusterStatusSubscriber;
 import org.apache.iotdb.confignode.manager.load.subscriber.RouteChangeEvent;
 import org.apache.iotdb.confignode.manager.load.subscriber.StatisticsChangeEvent;
@@ -48,7 +48,9 @@ import com.google.common.eventbus.EventBus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -80,7 +82,8 @@ public class StatisticsService implements IClusterStatusSubscriber {
 
   private Future<?> currentLoadStatisticsFuture;
   private final ScheduledExecutorService loadStatisticsExecutor =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Cluster-LoadStatistics-Service");
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+          ThreadName.CONFIG_NODE_LOAD_STATISTIC.getName());
 
   /** Start the load statistics service. */
   public void startLoadStatisticsService() {
@@ -180,10 +183,14 @@ public class StatisticsService implements IClusterStatusSubscriber {
     LOGGER.info("[NodeStatistics] NodeStatisticsMap: ");
     for (Map.Entry<Integer, Pair<NodeStatistics, NodeStatistics>> nodeCacheEntry :
         differentNodeStatisticsMap.entrySet()) {
-      LOGGER.info(
-          "[NodeStatistics]\t {}={}",
-          "nodeId{" + nodeCacheEntry.getKey() + "}",
-          nodeCacheEntry.getValue().getRight());
+      if (!Objects.equals(
+          nodeCacheEntry.getValue().getRight(), nodeCacheEntry.getValue().getLeft())) {
+        LOGGER.info(
+            "[NodeStatistics]\t {}: {}->{}",
+            "nodeId{" + nodeCacheEntry.getKey() + "}",
+            nodeCacheEntry.getValue().getLeft(),
+            nodeCacheEntry.getValue().getRight());
+      }
     }
   }
 
@@ -193,14 +200,39 @@ public class StatisticsService implements IClusterStatusSubscriber {
     LOGGER.info("[RegionGroupStatistics] RegionGroupStatisticsMap: ");
     for (Map.Entry<TConsensusGroupId, Pair<RegionGroupStatistics, RegionGroupStatistics>>
         regionGroupStatisticsEntry : differentRegionGroupStatisticsMap.entrySet()) {
-      LOGGER.info("[RegionGroupStatistics]\t RegionGroup: {}", regionGroupStatisticsEntry.getKey());
-      LOGGER.info("[RegionGroupStatistics]\t {}", regionGroupStatisticsEntry.getValue());
-      for (Map.Entry<Integer, RegionStatistics> regionStatisticsEntry :
-          regionGroupStatisticsEntry.getValue().getRight().getRegionStatisticsMap().entrySet()) {
+      if (!Objects.equals(
+          regionGroupStatisticsEntry.getValue().getRight(),
+          regionGroupStatisticsEntry.getValue().getLeft())) {
         LOGGER.info(
-            "[RegionGroupStatistics]\t dataNodeId{}={}",
-            regionStatisticsEntry.getKey(),
-            regionStatisticsEntry.getValue());
+            "[RegionGroupStatistics]\t RegionGroup {}: {} -> {}",
+            regionGroupStatisticsEntry.getKey(),
+            regionGroupStatisticsEntry.getValue().getLeft().getRegionGroupStatus(),
+            regionGroupStatisticsEntry.getValue().getRight().getRegionGroupStatus());
+
+        List<Integer> leftIds = regionGroupStatisticsEntry.getValue().getLeft().getRegionIds();
+        List<Integer> rightIds = regionGroupStatisticsEntry.getValue().getRight().getRegionIds();
+        for (Integer leftId : leftIds) {
+          if (!rightIds.contains(leftId)) {
+            LOGGER.info(
+                "[RegionGroupStatistics]\t Region in DataNode {}: {} -> null",
+                leftId,
+                regionGroupStatisticsEntry.getValue().getLeft().getRegionStatus(leftId));
+          } else {
+            LOGGER.info(
+                "[RegionGroupStatistics]\t Region in DataNode {}: {} -> {}",
+                leftId,
+                regionGroupStatisticsEntry.getValue().getLeft().getRegionStatus(leftId),
+                regionGroupStatisticsEntry.getValue().getRight().getRegionStatus(leftId));
+          }
+        }
+        for (Integer rightId : rightIds) {
+          if (!leftIds.contains(rightId)) {
+            LOGGER.info(
+                "[RegionGroupStatistics]\t Region in DataNode {}: null -> {}",
+                rightId,
+                regionGroupStatisticsEntry.getValue().getRight().getRegionStatus(rightId));
+          }
+        }
       }
     }
   }
@@ -215,11 +247,14 @@ public class StatisticsService implements IClusterStatusSubscriber {
     LOGGER.info("[RegionLeader] RegionLeaderMap: ");
     for (Map.Entry<TConsensusGroupId, Pair<Integer, Integer>> regionLeaderEntry :
         leaderMap.entrySet()) {
-      LOGGER.info(
-          "[RegionLeader]\t {}: {}->{}",
-          regionLeaderEntry.getKey(),
-          regionLeaderEntry.getValue().getLeft(),
-          regionLeaderEntry.getValue().getRight());
+      if (!Objects.equals(
+          regionLeaderEntry.getValue().getRight(), regionLeaderEntry.getValue().getLeft())) {
+        LOGGER.info(
+            "[RegionLeader]\t {}: {}->{}",
+            regionLeaderEntry.getKey(),
+            regionLeaderEntry.getValue().getLeft(),
+            regionLeaderEntry.getValue().getRight());
+      }
     }
   }
 
@@ -228,12 +263,20 @@ public class StatisticsService implements IClusterStatusSubscriber {
     LOGGER.info("[RegionPriority] RegionPriorityMap: ");
     for (Map.Entry<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>>
         regionPriorityEntry : priorityMap.entrySet()) {
-      LOGGER.info(
-          "[RegionPriority]\t {}={}",
-          regionPriorityEntry.getKey(),
-          regionPriorityEntry.getValue().getRight().getDataNodeLocations().stream()
-              .map(TDataNodeLocation::getDataNodeId)
-              .collect(Collectors.toList()));
+      if (!Objects.equals(
+          regionPriorityEntry.getValue().getRight(), regionPriorityEntry.getValue().getLeft())) {
+        LOGGER.info(
+            "[RegionPriority]\t {}: {}->{}",
+            regionPriorityEntry.getKey(),
+            regionPriorityEntry.getValue().getLeft() == null
+                ? "null"
+                : regionPriorityEntry.getValue().getLeft().getDataNodeLocations().stream()
+                    .map(TDataNodeLocation::getDataNodeId)
+                    .collect(Collectors.toList()),
+            regionPriorityEntry.getValue().getRight().getDataNodeLocations().stream()
+                .map(TDataNodeLocation::getDataNodeId)
+                .collect(Collectors.toList()));
+      }
     }
   }
 

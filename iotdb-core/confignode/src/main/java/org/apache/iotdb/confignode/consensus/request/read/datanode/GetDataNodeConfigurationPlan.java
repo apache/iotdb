@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.consensus.request.read.datanode;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -57,8 +58,12 @@ public class GetDataNodeConfigurationPlan extends ConfigPhysicalPlan {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     GetDataNodeConfigurationPlan that = (GetDataNodeConfigurationPlan) o;
     return dataNodeId == that.dataNodeId;
   }

@@ -22,6 +22,7 @@ package org.apache.iotdb.consensus.common.request;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class DeserializedBatchIndexedConsensusRequest
     implements IConsensusRequest, Comparable<DeserializedBatchIndexedConsensusRequest> {
@@ -56,6 +57,25 @@ public class DeserializedBatchIndexedConsensusRequest
   @Override
   public int compareTo(DeserializedBatchIndexedConsensusRequest o) {
     return Long.compare(startSyncIndex, o.startSyncIndex);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    DeserializedBatchIndexedConsensusRequest request = (DeserializedBatchIndexedConsensusRequest) o;
+    return startSyncIndex == request.startSyncIndex
+        && endSyncIndex == request.endSyncIndex
+        && Objects.equals(insertNodes, request.insertNodes);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(startSyncIndex, endSyncIndex, insertNodes);
   }
 
   @Override

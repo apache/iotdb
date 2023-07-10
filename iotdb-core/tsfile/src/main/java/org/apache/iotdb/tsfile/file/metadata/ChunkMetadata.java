@@ -64,8 +64,6 @@ public class ChunkMetadata implements IChunkMetadata {
 
   private Statistics<? extends Serializable> statistics;
 
-  private boolean isFromOldTsFile = false;
-
   private long ramSize;
 
   private static final int CHUNK_METADATA_FIXED_RAM_SIZE = 93;
@@ -112,7 +110,6 @@ public class ChunkMetadata implements IChunkMetadata {
     this.version = other.version;
     this.chunkLoader = other.chunkLoader;
     this.statistics = other.statistics;
-    this.isFromOldTsFile = other.isFromOldTsFile;
     this.ramSize = other.ramSize;
     this.isSeq = other.isSeq;
     this.isClosed = other.isClosed;
@@ -300,14 +297,6 @@ public class ChunkMetadata implements IChunkMetadata {
   @Override
   public void setModified(boolean modified) {
     this.modified = modified;
-  }
-
-  public boolean isFromOldTsFile() {
-    return isFromOldTsFile;
-  }
-
-  public void setFromOldTsFile(boolean isFromOldTsFile) {
-    this.isFromOldTsFile = isFromOldTsFile;
   }
 
   public long calculateRamSize() {

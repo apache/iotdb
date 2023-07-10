@@ -40,6 +40,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Abstract class of all procedures.
@@ -63,7 +64,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   private volatile long timeout = NO_TIMEOUT;
   private volatile long lastUpdate;
 
-  private volatile byte[] result = null;
+  private final AtomicReference<byte[]> result = new AtomicReference<>();
   private volatile boolean locked = false;
   private boolean lockedWhenLoading = false;
 
@@ -172,9 +173,9 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     }
 
     // result
-    if (result != null) {
-      stream.writeInt(result.length);
-      stream.write(result);
+    if (result.get() != null) {
+      stream.writeInt(result.get().length);
+      stream.write(result.get());
     } else {
       stream.writeInt(-1);
     }
@@ -642,7 +643,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
 
   /** @return the serialized result if any, otherwise null */
   public byte[] getResult() {
-    return result;
+    return result.get();
   }
 
   /**
@@ -651,7 +652,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    * @param result the serialized result that will be passed to the client
    */
   protected void setResult(byte[] result) {
-    this.result = result;
+    this.result.set(result);
   }
 
   /**

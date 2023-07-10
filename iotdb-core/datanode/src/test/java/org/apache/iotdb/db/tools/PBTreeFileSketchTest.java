@@ -106,7 +106,8 @@ public class PBTreeFileSketchTest {
                 + SchemaConstant.PBTREE_FILE_NAME);
     File sketchFile = new File("sketch_schemafile.txt");
 
-    PBTreeFileSketchTool.sketchFile(file.getAbsolutePath(), sketchFile.getAbsolutePath());
+    PBTreeFileSketchTool.main(
+        new String[] {"-f", file.getAbsolutePath(), "-o", sketchFile.getAbsolutePath()});
     ISchemaFile sf = SchemaFile.loadSchemaFile(file);
     try {
       StringWriter sw = new StringWriter();

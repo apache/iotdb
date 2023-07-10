@@ -25,6 +25,8 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -35,6 +37,7 @@ public class NodeStatisticsTest {
   public void NodeStatisticsSerDeTest() throws IOException {
     NodeStatistics statistics0 = new NodeStatistics(20000331, NodeStatus.ReadOnly, "DiskFull");
 
+    // Deserialization from buffer
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       statistics0.serialize(outputStream);
@@ -43,6 +46,20 @@ public class NodeStatisticsTest {
 
       NodeStatistics statistics1 = new NodeStatistics();
       statistics1.deserialize(buffer);
+      Assert.assertEquals(statistics0, statistics1);
+    }
+
+    // Deserialization from inputStream
+    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      statistics0.serialize(outputStream);
+
+      ByteArrayInputStream byteArrayInputStream =
+          new ByteArrayInputStream(byteArrayOutputStream.toByteArray());
+      DataInputStream inputStream = new DataInputStream(byteArrayInputStream);
+
+      NodeStatistics statistics1 = new NodeStatistics();
+      statistics1.deserialize(inputStream);
       Assert.assertEquals(statistics0, statistics1);
     }
   }

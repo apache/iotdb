@@ -46,12 +46,13 @@ import java.util.function.ToDoubleFunction;
 public abstract class AbstractMetricManager {
   protected static final MetricConfig METRIC_CONFIG =
       MetricConfigDescriptor.getInstance().getMetricConfig();
+  private static final String ALREADY_EXISTS = " is already used for a different type of name";
   /** The map from metric name to metric metaInfo. */
   protected Map<String, MetricInfo.MetaInfo> nameToMetaInfo;
   /** The map from metricInfo to metric. */
   protected Map<MetricInfo, IMetric> metrics;
 
-  public AbstractMetricManager() {
+  protected AbstractMetricManager() {
     nameToMetaInfo = new ConcurrentHashMap<>();
     metrics = new ConcurrentHashMap<>();
   }
@@ -80,8 +81,7 @@ public abstract class AbstractMetricManager {
     if (metric instanceof Counter) {
       return (Counter) metric;
     }
-    throw new IllegalArgumentException(
-        metricInfo + " is already used for a different type of name");
+    throw new IllegalArgumentException(metricInfo + ALREADY_EXISTS);
   }
 
   protected abstract Counter createCounter(MetricInfo metricInfo);
@@ -138,8 +138,7 @@ public abstract class AbstractMetricManager {
     } else if (metric instanceof AutoGauge) {
       return (AutoGauge) metric;
     }
-    throw new IllegalArgumentException(
-        metricInfo + " is already used for a different type of name");
+    throw new IllegalArgumentException(metricInfo + ALREADY_EXISTS);
   }
 
   /**
@@ -166,8 +165,7 @@ public abstract class AbstractMetricManager {
     if (metric instanceof Gauge) {
       return (Gauge) metric;
     }
-    throw new IllegalArgumentException(
-        metricInfo + " is already used for a different type of name");
+    throw new IllegalArgumentException(metricInfo + ALREADY_EXISTS);
   }
 
   /**
@@ -201,8 +199,7 @@ public abstract class AbstractMetricManager {
     if (metric instanceof Rate) {
       return (Rate) metric;
     }
-    throw new IllegalArgumentException(
-        metricInfo + " is already used for a different type of name");
+    throw new IllegalArgumentException(metricInfo + ALREADY_EXISTS);
   }
 
   /**
@@ -236,8 +233,7 @@ public abstract class AbstractMetricManager {
     if (metric instanceof Histogram) {
       return (Histogram) metric;
     }
-    throw new IllegalArgumentException(
-        metricInfo + " is already used for a different type of name");
+    throw new IllegalArgumentException(metricInfo + ALREADY_EXISTS);
   }
 
   /**
@@ -271,8 +267,7 @@ public abstract class AbstractMetricManager {
     if (metric instanceof Timer) {
       return (Timer) metric;
     }
-    throw new IllegalArgumentException(
-        metricInfo + " is already used for a different type of name");
+    throw new IllegalArgumentException(metricInfo + ALREADY_EXISTS);
   }
 
   /**
@@ -446,10 +441,10 @@ public abstract class AbstractMetricManager {
     if (!isEnableMetricInGivenLevel(metricLevel)) {
       return true;
     }
-    if (!nameToMetaInfo.containsKey(name)) {
+    MetricInfo.MetaInfo metaInfo = nameToMetaInfo.get(name);
+    if (metaInfo == null) {
       return false;
     }
-    MetricInfo.MetaInfo metaInfo = nameToMetaInfo.get(name);
     return !metaInfo.hasSameKey(tags);
   }
 

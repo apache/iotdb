@@ -28,7 +28,6 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
-import org.apache.iotdb.consensus.iot.IoTConsensusServerMetrics;
 import org.apache.iotdb.consensus.iot.client.AsyncIoTConsensusServiceClient;
 import org.apache.iotdb.consensus.iot.client.DispatchLogHandler;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
@@ -52,7 +51,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
-/** Manage all asynchronous replication threads and corresponding async clients */
+/** Manage all asynchronous replication threads and corresponding async clients. */
 public class LogDispatcher {
 
   private static final Logger logger = LoggerFactory.getLogger(LogDispatcher.class);
@@ -67,12 +66,10 @@ public class LogDispatcher {
 
   private final AtomicLong logEntriesFromWAL = new AtomicLong(0);
   private final AtomicLong logEntriesFromQueue = new AtomicLong(0);
-  private final IoTConsensusServerMetrics ioTConsensusServerMetrics;
 
   public LogDispatcher(
       IoTConsensusServerImpl impl,
-      IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager,
-      IoTConsensusServerMetrics ioTConsensusServerMetrics) {
+      IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager) {
     this.impl = impl;
     this.selfPeerId = impl.getThisNode().getNodeId();
     this.clientManager = clientManager;
@@ -84,7 +81,6 @@ public class LogDispatcher {
     if (!threads.isEmpty()) {
       initLogSyncThreadPool();
     }
-    this.ioTConsensusServerMetrics = ioTConsensusServerMetrics;
   }
 
   private void initLogSyncThreadPool() {
@@ -105,7 +101,6 @@ public class LogDispatcher {
 
   public synchronized void stop() {
     if (!threads.isEmpty()) {
-      threads.forEach(LogDispatcherThread::stop);
       executorService.shutdownNow();
       int timeout = 10;
       try {
@@ -116,6 +111,7 @@ public class LogDispatcher {
         Thread.currentThread().interrupt();
         logger.error("Unexpected Interruption when closing LogDispatcher service ");
       }
+      threads.forEach(LogDispatcherThread::stop);
     }
     stopped = true;
   }
@@ -226,6 +222,7 @@ public class LogDispatcher {
       this.syncStatus = new SyncStatus(controller, config);
       this.walEntryIterator = reader.getReqIterator(START_INDEX);
       this.logDispatcherThreadMetrics = new LogDispatcherThreadMetrics(this);
+      MetricService.getInstance().addMetricSet(logDispatcherThreadMetrics);
     }
 
     public IndexController getController() {
@@ -305,10 +302,9 @@ public class LogDispatcher {
     @Override
     public void run() {
       logger.info("{}: Dispatcher for {} starts", impl.getThisNode(), peer);
-      MetricService.getInstance().addMetricSet(logDispatcherThreadMetrics);
       try {
         Batch batch;
-        while (!Thread.interrupted() && !stopped) {
+        while (!Thread.interrupted()) {
           long startTime = System.nanoTime();
           while ((batch = getBatch()).isEmpty()) {
             // we may block here if there is no requests in the queue
@@ -316,6 +312,11 @@ public class LogDispatcher {
                 pendingEntries.poll(PENDING_REQUEST_TAKING_TIME_OUT_IN_SEC, TimeUnit.SECONDS);
             if (request != null) {
               bufferedEntries.add(request);
+              // If write pressure is low, we simply sleep a little to reduce the number of RPC
+              if (pendingEntries.size() <= config.getReplication().getMaxLogEntriesNumPerBatch()
+                  && bufferedEntries.isEmpty()) {
+                Thread.sleep(config.getReplication().getMaxWaitingTimeForAccumulatingBatchInMs());
+              }
             }
           }
           logDispatcherThreadMetrics.recordConstructBatchTime(
@@ -469,9 +470,11 @@ public class LogDispatcher {
 
     private void constructBatchFromWAL(long currentIndex, long maxIndex, Batch logBatches) {
       logger.debug(
-          String.format(
-              "DataRegion[%s]->%s: currentIndex: %d, maxIndex: %d",
-              peer.getGroupId().getId(), peer.getEndpoint().getIp(), currentIndex, maxIndex));
+          "DataRegion[{}]->{}: currentIndex: {}, maxIndex: {}",
+          peer.getGroupId().getId(),
+          peer.getEndpoint().getIp(),
+          currentIndex,
+          maxIndex);
       // targetIndex is the index of request that we need to find
       long targetIndex = currentIndex;
       // Even if there is no WAL files, these code won't produce error.

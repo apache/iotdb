@@ -72,7 +72,7 @@ public class IoTDBMetricsUtils {
     stringBuilder
         .append(METRIC_CONFIG.getInternalDatabase())
         .append(".")
-        .append(METRIC_CONFIG.getIotdbReporterConfig().getLocation())
+        .append(METRIC_CONFIG.getIoTDBReporterConfig().getLocation())
         .append(".`")
         .append(METRIC_CONFIG.getClusterName())
         .append("`.")

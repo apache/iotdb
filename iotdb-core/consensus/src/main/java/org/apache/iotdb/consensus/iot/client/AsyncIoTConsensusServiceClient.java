@@ -48,12 +48,12 @@ public class AsyncIoTConsensusServiceClient extends IoTConsensusIService.AsyncCl
   public AsyncIoTConsensusServiceClient(
       ThriftClientProperty property,
       TEndPoint endpoint,
-      TAsyncClientManager tClientManager,
+      TAsyncClientManager tAsyncClientManager,
       ClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager)
       throws IOException {
     super(
         property.getProtocolFactory(),
-        tClientManager,
+        tAsyncClientManager,
         TNonblockingSocketWrapper.wrap(
             endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();

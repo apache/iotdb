@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class UpdateTriggerStateInTablePlan extends ConfigPhysicalPlan {
 
@@ -71,5 +72,25 @@ public class UpdateTriggerStateInTablePlan extends ConfigPhysicalPlan {
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     triggerName = ReadWriteIOUtils.readString(buffer);
     triggerState = TTriggerState.findByValue(ReadWriteIOUtils.readInt(buffer));
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    UpdateTriggerStateInTablePlan that = (UpdateTriggerStateInTablePlan) o;
+    return Objects.equals(triggerName, that.triggerName) && triggerState == that.triggerState;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), triggerName, triggerState);
   }
 }

@@ -230,7 +230,8 @@ public class TsFileSplitter {
             chunkMetadata = offset2ChunkMetadata.get(chunkOffset - Byte.BYTES);
             header = reader.readChunkHeader(marker);
             if (header.getDataSize() == 0) {
-              handleEmptyValueChunk(header, pageIndex2ChunkData, chunkMetadata);
+              handleEmptyValueChunk(
+                  header, pageIndex2ChunkData, chunkMetadata, isTimeChunkNeedDecode);
               break;
             }
 
@@ -252,7 +253,6 @@ public class TsFileSplitter {
                   reader.readPageHeader(
                       header.getDataType(),
                       (header.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
-              long pageDataSize = pageHeader.getSerializedPageSize();
               List<AlignedChunkData> alignedChunkDataList = pageIndex2ChunkData.get(pageIndex);
               for (AlignedChunkData alignedChunkData : alignedChunkDataList) {
                 if (!allChunkData.contains(alignedChunkData)) {
@@ -261,18 +261,23 @@ public class TsFileSplitter {
                 }
               }
               if (alignedChunkDataList.size() == 1) { // write entire page
-                alignedChunkDataList
-                    .get(0)
-                    .writeEntirePage(pageHeader, reader.readCompressedPage(pageHeader));
+                // write the entire page if it's not an empty page.
+                if (!isEmptyPage(pageHeader)) {
+                  alignedChunkDataList
+                      .get(0)
+                      .writeEntirePage(pageHeader, reader.readCompressedPage(pageHeader));
+                }
               } else { // decode page
                 long[] times = pageIndex2Times.get(pageIndex);
                 TsPrimitiveType[] values =
                     decodeValuePage(reader, header, pageHeader, times, valueDecoder);
                 for (AlignedChunkData alignedChunkData : alignedChunkDataList) {
-                  alignedChunkData.writeDecodeValuePage(times, values, header.getDataType());
+                  if (!isEmptyPage(pageHeader)) {
+                    alignedChunkData.writeDecodeValuePage(times, values, header.getDataType());
+                  }
                 }
               }
-
+              long pageDataSize = pageHeader.getSerializedPageSize();
               pageIndex += 1;
               dataSize -= pageDataSize;
             }
@@ -424,18 +429,34 @@ public class TsFileSplitter {
   private void handleEmptyValueChunk(
       ChunkHeader header,
       Map<Integer, List<AlignedChunkData>> pageIndex2ChunkData,
-      IChunkMetadata chunkMetadata)
+      IChunkMetadata chunkMetadata,
+      boolean isTimeChunkNeedDecode)
       throws IOException {
     Set<ChunkData> allChunkData = new HashSet<>();
     for (Map.Entry<Integer, List<AlignedChunkData>> entry : pageIndex2ChunkData.entrySet()) {
       for (AlignedChunkData alignedChunkData : entry.getValue()) {
         if (!allChunkData.contains(alignedChunkData)) {
           alignedChunkData.addValueChunk(header);
-          alignedChunkData.writeEntireChunk(ByteBuffer.allocate(0), chunkMetadata);
+          if (!isTimeChunkNeedDecode) {
+            alignedChunkData.writeEntireChunk(ByteBuffer.allocate(0), chunkMetadata);
+          }
           allChunkData.add(alignedChunkData);
         }
       }
     }
+  }
+
+  /**
+   * handle empty page in aligned chunk, if uncompressedSize and compressedSize are both 0, and the
+   * statistics is null, then the page is empty.
+   *
+   * @param pageHeader page header
+   * @return true if the page is empty
+   */
+  private boolean isEmptyPage(PageHeader pageHeader) {
+    return pageHeader.getUncompressedSize() == 0
+        && pageHeader.getCompressedSize() == 0
+        && pageHeader.getStatistics() == null;
   }
 
   private TsPrimitiveType[] decodeValuePage(

@@ -647,9 +647,6 @@ public class IoTDBConfig {
   /** TEXT encoding when creating schema automatically is enabled */
   private TSEncoding defaultTextEncoding = TSEncoding.PLAIN;
 
-  /** How many threads will be set up to perform upgrade tasks. */
-  private int upgradeThreadCount = 1;
-
   /** How many threads will be set up to perform settle tasks. */
   private int settleThreadNum = 1;
 
@@ -2345,16 +2342,8 @@ public class IoTDBConfig {
     this.hdfsPort = hdfsPort;
   }
 
-  public int getUpgradeThreadCount() {
-    return upgradeThreadCount;
-  }
-
   public int getSettleThreadNum() {
     return settleThreadNum;
-  }
-
-  void setUpgradeThreadCount(int upgradeThreadCount) {
-    this.upgradeThreadCount = upgradeThreadCount;
   }
 
   String getDfsNameServices() {

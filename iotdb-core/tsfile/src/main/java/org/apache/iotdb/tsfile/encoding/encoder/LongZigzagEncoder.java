@@ -36,7 +36,7 @@ import java.util.List;
  * https://gist.github.com/mfuerstenau/ba870a29e16536fdbaba
  */
 public class LongZigzagEncoder extends Encoder {
-  private static final Logger logger = LoggerFactory.getLogger(DictionaryEncoder.class);
+  private static final Logger logger = LoggerFactory.getLogger(LongZigzagEncoder.class);
   private List<Long> values;
   byte[] buf = new byte[10];
 
@@ -46,7 +46,7 @@ public class LongZigzagEncoder extends Encoder {
     logger.debug("tsfile-encoding LongZigzagEncoder: long zigzag encoder");
   }
 
-  /** encoding and bit packing */
+  /** encoding and bit packing. */
   private byte[] encodeLong(long n) {
     n = (n << 1) ^ (n >> 63);
     int idx = 0;
@@ -72,6 +72,7 @@ public class LongZigzagEncoder extends Encoder {
     return sb.toString();
   }
 
+  @Override
   public void encode(long value, ByteArrayOutputStream out) {
     values.add(value);
   }
@@ -80,7 +81,7 @@ public class LongZigzagEncoder extends Encoder {
   public void flush(ByteArrayOutputStream out) throws IOException {
     // byteCache stores all <encoded-data> and we know its size
     ByteArrayOutputStream byteCache = new ByteArrayOutputStream();
-    int len = values.size();
+    final int len = values.size();
     if (values.size() == 0) {
       return;
     }

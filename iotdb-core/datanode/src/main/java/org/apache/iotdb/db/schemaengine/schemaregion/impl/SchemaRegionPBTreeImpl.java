@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.schemaregion.impl;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
@@ -66,6 +67,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.INodeSchemaI
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 import org.apache.iotdb.db.schemaengine.schemaregion.tag.TagManager;
+import org.apache.iotdb.db.schemaengine.schemaregion.utils.filter.FilterContainsVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IChangeAliasPlan;
@@ -1262,8 +1264,8 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   public ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(
       IShowTimeSeriesPlan showTimeSeriesPlan) throws MetadataException {
     if (showTimeSeriesPlan.getSchemaFilter() != null
-        && SchemaFilterType.TAGS_FILTER.equals(
-            showTimeSeriesPlan.getSchemaFilter().getSchemaFilterType())) {
+        && new FilterContainsVisitor()
+            .process(showTimeSeriesPlan.getSchemaFilter(), SchemaFilterType.TAGS_FILTER)) {
       return tagManager.getTimeSeriesReaderWithIndex(showTimeSeriesPlan);
     } else {
       return mtree.getTimeSeriesReader(

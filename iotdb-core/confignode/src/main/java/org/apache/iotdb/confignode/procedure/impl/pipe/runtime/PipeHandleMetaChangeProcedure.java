@@ -66,14 +66,14 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
   protected void executeFromValidateTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleMetaChangeProcedure: executeFromValidateTask");
 
-    // do nothing
+    // Do nothing
   }
 
   @Override
   protected void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleMetaChangeProcedure: executeFromCalculateInfoForTask");
 
-    // do nothing
+    // Do nothing
   }
 
   @Override
@@ -118,28 +118,28 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
   protected void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleMetaChangeProcedure: rollbackFromValidateTask");
 
-    // do nothing
+    // Do nothing
   }
 
   @Override
   protected void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleMetaChangeProcedure: rollbackFromCalculateInfoForTask");
 
-    // do nothing
+    // Do nothing
   }
 
   @Override
   protected void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleMetaChangeProcedure: rollbackFromWriteConfigNodeConsensus");
 
-    // do nothing
+    // Do nothing
   }
 
   @Override
   protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleMetaChangeProcedure: rollbackFromOperateOnDataNodes");
 
-    // do nothing
+    // Do nothing
   }
 
   @Override

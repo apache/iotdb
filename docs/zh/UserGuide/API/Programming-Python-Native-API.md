@@ -604,7 +604,7 @@ pip install -r requirements_dev.txt
 
 #### 编译 thrift 库并调试
 
-在 IoTDB 源代码文件夹的根目录下，运行`mvn clean generate-sources -pl client-py -am`，
+在 IoTDB 源代码文件夹的根目录下，运行`mvn clean generate-sources -pl iotdb-client/client-py -am`，
 
 这个指令将自动删除`iotdb/thrift`中的文件，并使用新生成的 thrift 文件重新填充该文件夹。
 

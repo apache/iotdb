@@ -53,11 +53,11 @@ public abstract class PipeTaskStage {
       if (hasBeenExternallyStopped) {
         throw new PipeException(MESSAGE_PIPE_TASK_STAGE_HAS_BEEN_STOPPED);
       }
-      // otherwise, do nothing to allow retry strategy
+      // Otherwise, do nothing to allow retry strategy
       return;
     }
 
-    // status == null, register the subtask
+    // Status == null, register the subtask
     createSubtask();
 
     status = PipeStatus.STOPPED;
@@ -75,7 +75,7 @@ public abstract class PipeTaskStage {
       throw new PipeException(MESSAGE_PIPE_TASK_STAGE_HAS_NOT_BEEN_CREATED);
     }
     if (status == PipeStatus.RUNNING) {
-      // do nothing to allow retry strategy
+      // Do nothing to allow retry strategy
       return;
     }
     if (status == PipeStatus.DROPPED) {

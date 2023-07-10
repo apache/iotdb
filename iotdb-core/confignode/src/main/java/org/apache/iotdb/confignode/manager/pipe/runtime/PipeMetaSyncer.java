@@ -57,11 +57,11 @@ public class PipeMetaSyncer {
   public synchronized void start() {
     while (configManager.getConsensusManager() == null) {
       try {
-        LOGGER.info("consensus layer is not ready, sleep 1s...");
+        LOGGER.info("Consensus layer is not ready, sleep 1s...");
         TimeUnit.SECONDS.sleep(1);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        LOGGER.warn("unexpected interruption during waiting for consensus layer ready.");
+        LOGGER.warn("Unexpected interruption during waiting for consensus layer ready.");
       }
     }
 
@@ -80,10 +80,7 @@ public class PipeMetaSyncer {
   private synchronized void sync() {
     final TSStatus status = configManager.getProcedureManager().pipeMetaSync();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn(
-          "PipeMetaSyncer meets error in syncing pipe meta, code: {}, message: {}",
-          status.getCode(),
-          status.getMessage());
+      configManager.getProcedureManager().pipeHandleMetaChange(true, true);
     }
   }
 

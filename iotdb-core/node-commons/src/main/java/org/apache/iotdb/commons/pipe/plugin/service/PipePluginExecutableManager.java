@@ -49,7 +49,7 @@ public class PipePluginExecutableManager extends ExecutableManager {
       try {
         return readTextFromFileUnderTemporaryRoot(md5FilePath).equals(pipePluginMeta.getJarMD5());
       } catch (IOException e) {
-        // if meet error when reading md5 from txt, we need to compute it again
+        // If meet error when reading md5 from txt, we need to compute it again
         LOGGER.error("Failed to read md5 from txt file for pipe plugin {}", pluginName, e);
       }
     }
@@ -59,14 +59,14 @@ public class PipePluginExecutableManager extends ExecutableManager {
           DigestUtils.md5Hex(
               Files.newInputStream(
                   Paths.get(getInstallDir() + File.separator + pipePluginMeta.getJarName())));
-      // save the md5 in a txt under trigger temporary lib
+      // Save the md5 in a txt under trigger temporary lib
       saveTextAsFileUnderTemporaryRoot(md5, md5FilePath);
       return md5.equals(pipePluginMeta.getJarMD5());
     } catch (IOException e) {
       String errorMessage =
           String.format(
-              "Failed to registered function %s, "
-                  + "because error occurred when trying to compute md5 of jar file for function %s ",
+              "Failed to registered function %s, because "
+                  + "error occurred when trying to compute md5 of jar file for function %s ",
               pluginName, pluginName);
       LOGGER.warn(errorMessage, e);
       throw new PipeException(errorMessage);
@@ -75,20 +75,20 @@ public class PipePluginExecutableManager extends ExecutableManager {
 
   /////////////////////////////// Singleton Instance ///////////////////////////////
 
-  private static PipePluginExecutableManager INSTANCE = null;
+  private static PipePluginExecutableManager instance = null;
 
   public static synchronized PipePluginExecutableManager setupAndGetInstance(
       String temporaryLibRoot, String libRoot) throws IOException {
-    if (INSTANCE == null) {
+    if (instance == null) {
       SystemFileFactory.INSTANCE.makeDirIfNecessary(temporaryLibRoot);
       SystemFileFactory.INSTANCE.makeDirIfNecessary(libRoot);
       SystemFileFactory.INSTANCE.makeDirIfNecessary(libRoot + File.separator + INSTALL_DIR);
-      INSTANCE = new PipePluginExecutableManager(temporaryLibRoot, libRoot);
+      instance = new PipePluginExecutableManager(temporaryLibRoot, libRoot);
     }
-    return INSTANCE;
+    return instance;
   }
 
   public static PipePluginExecutableManager getInstance() {
-    return INSTANCE;
+    return instance;
   }
 }

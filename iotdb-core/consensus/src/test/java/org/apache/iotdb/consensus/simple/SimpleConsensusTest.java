@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.consensus.simple;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
@@ -136,6 +137,7 @@ public class SimpleConsensusTest {
                     .setThisNodeId(1)
                     .setThisNode(new TEndPoint("0.0.0.0", 6667))
                     .setStorageDir("target" + java.io.File.separator + "standalone")
+                    .setConsensusGroupType(TConsensusGroupType.DataRegion)
                     .build(),
                 gid -> {
                   switch (gid.getType()) {
@@ -143,8 +145,9 @@ public class SimpleConsensusTest {
                       return new TestStateMachine(true);
                     case DataRegion:
                       return new TestStateMachine(false);
+                    default:
+                      return new EmptyStateMachine();
                   }
-                  return new EmptyStateMachine();
                 })
             .orElseThrow(
                 () ->

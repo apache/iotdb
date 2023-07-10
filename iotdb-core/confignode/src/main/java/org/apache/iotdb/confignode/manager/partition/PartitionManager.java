@@ -27,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -139,7 +140,8 @@ public class PartitionManager {
     this.configManager = configManager;
     this.partitionInfo = partitionInfo;
     this.regionMaintainer =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("IoTDB-Region-Maintainer");
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+            ThreadName.CONFIG_NODE_REGION_MAINTAINER.getName());
     setSeriesPartitionExecutor();
   }
 

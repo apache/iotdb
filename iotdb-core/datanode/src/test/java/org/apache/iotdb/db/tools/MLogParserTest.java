@@ -165,8 +165,10 @@ public class MLogParserTest {
     File file = new File("target" + File.separator + "tmp" + File.separator + "text.mlog");
     file.delete();
 
-    MLogParser.parseFromFile(
-        path, "target" + File.separator + "tmp" + File.separator + "text.mlog");
+    MLogParser.main(
+        new String[] {
+          "-f", path, "-o", "target" + File.separator + "tmp" + File.separator + "text.mlog"
+        });
 
     try (BufferedReader reader =
         new BufferedReader(

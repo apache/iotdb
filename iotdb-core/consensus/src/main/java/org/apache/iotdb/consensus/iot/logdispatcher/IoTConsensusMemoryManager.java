@@ -42,7 +42,7 @@ public class IoTConsensusMemoryManager {
   public boolean reserve(long size, boolean fromQueue) {
     AtomicBoolean result = new AtomicBoolean(false);
     memorySizeInByte.updateAndGet(
-        (memorySize) -> {
+        memorySize -> {
           long remainSize =
               (fromQueue ? maxMemorySizeForQueueInByte : maxMemorySizeInByte) - memorySize;
           if (size > remainSize) {
