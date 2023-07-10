@@ -51,6 +51,11 @@ class MissingOptionError(_BaseError):
         self.message = "Missing task option: {}".format(config_name)
 
 
+class RedundantOptionError(_BaseError):
+    def __init__(self, option_name: str):
+        self.message = "Redundant task option: {}".format(option_name)
+
+
 class WrongTypeConfigError(_BaseError):
     def __init__(self, config_name: str, expected_type: str):
         self.message = "Wrong type for config: {0}, expected: {1}".format(config_name, expected_type)
@@ -59,8 +64,3 @@ class WrongTypeConfigError(_BaseError):
 class UnsupportedError(_BaseError):
     def __init__(self, msg: str):
         self.message = "{0} is not supported in current version".format(msg)
-
-
-class ValidateError(_BaseError):
-    def __init__(self, msg: str):
-        self.message = msg

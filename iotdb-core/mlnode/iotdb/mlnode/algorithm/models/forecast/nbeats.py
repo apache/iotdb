@@ -130,15 +130,3 @@ class NBeats(nn.Module):
             dec_out = self.model(x[:, :, i])
             res.append(dec_out)
         return torch.stack(res, dim=-1)  # to [Batch, Output length, Channel]
-
-
-nbeats_structure_hyperparameter_map = {
-    HyperparameterName.KERNEL_SIZE: IntHyperparameter(name=HyperparameterName.KERNEL_SIZE.name(),
-                                                      log=True,
-                                                      default_value=25,
-                                                      value_validators=[NumberRangeValidator(1, 1e10)],
-                                                      default_low=5,
-                                                      low_validators=[],
-                                                      default_high=50,
-                                                      high_validators=[])
-}

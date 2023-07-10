@@ -21,8 +21,6 @@ from typing import Optional, List, Dict, Tuple
 
 import optuna
 
-from iotdb.mlnode.algorithm.models.forecast.dlinear import dlinear_structure_hyperparameter_map
-from iotdb.mlnode.algorithm.models.forecast.nbeats import nbeats_structure_hyperparameter_map
 from iotdb.mlnode.exception import BadConfigValueError
 
 from iotdb.mlnode.algorithm.enums import ForecastModelType
@@ -199,6 +197,28 @@ training_hyperparameter_map = {
                                                                  default_high=1e-1,
                                                                  high_validators=[],
                                                                  tuning=True),
+}
+
+dlinear_structure_hyperparameter_map = {
+    HyperparameterName.KERNEL_SIZE.value: IntHyperparameter(name=HyperparameterName.KERNEL_SIZE.name(),
+                                                            log=True,
+                                                            default_value=25,
+                                                            value_validators=[NumberRangeValidator(1, 1e10)],
+                                                            default_low=5,
+                                                            low_validators=[],
+                                                            default_high=50,
+                                                            high_validators=[])
+}
+
+nbeats_structure_hyperparameter_map = {
+    HyperparameterName.KERNEL_SIZE.value: IntHyperparameter(name=HyperparameterName.KERNEL_SIZE.name(),
+                                                            log=True,
+                                                            default_value=25,
+                                                            value_validators=[NumberRangeValidator(1, 1e10)],
+                                                            default_low=5,
+                                                            low_validators=[],
+                                                            default_high=50,
+                                                            high_validators=[])
 }
 
 

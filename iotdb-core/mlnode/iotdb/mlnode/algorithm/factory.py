@@ -59,21 +59,21 @@ def create_forecast_model(
     Factory method for all support forecasting models
     the given arguments is common configs shared by all forecasting models
     """
-    if task_options.model_type not in ForecastModelType.values():
+    if task_options.model_type.value not in ForecastModelType.values():
         raise BadConfigValueError('model_name', f'It should be one of {ForecastModelType.values()}')
 
-    if task_options.model_type == ForecastModelType.DLINEAR.value:
+    if task_options.model_type == ForecastModelType.DLINEAR:
         return DLinear(kernel_size=model_configs[HyperparameterName.KERNEL_SIZE.value],
                        input_len=task_options.input_length,
                        pred_len=task_options.predict_length,
                        input_vars=model_configs[HyperparameterName.INPUT_VARS.value])
-    elif task_options.model_type == ForecastModelType.DLINEAR_INDIVIDUAL.value:
+    elif task_options.model_type == ForecastModelType.DLINEAR_INDIVIDUAL:
         return DLinearIndividual(kernel_size=model_configs[HyperparameterName.KERNEL_SIZE.value],
                                  input_len=task_options.input_length,
                                  pred_len=task_options.predict_length,
                                  input_vars=model_configs[HyperparameterName.INPUT_VARS.value]
                                  )
-    elif task_options.model_type == ForecastModelType.NBEATS.value:
+    elif task_options.model_type == ForecastModelType.NBEATS:
         return NBeats(
             block_type=model_configs[HyperparameterName.BLOCK_TYPE.value],
             d_model=model_configs[HyperparameterName.D_MODEL.value],

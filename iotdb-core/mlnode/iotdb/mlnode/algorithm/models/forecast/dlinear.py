@@ -21,9 +21,6 @@ import math
 import torch
 import torch.nn as nn
 
-from iotdb.mlnode.algorithm.hyperparameter import HyperparameterName, IntHyperparameter
-from iotdb.mlnode.algorithm.validator import NumberRangeValidator
-
 
 class MovingAverageBlock(nn.Module):
     """ Moving average block to highlight the trend of time series """
@@ -133,13 +130,4 @@ class DLinearIndividual(nn.Module):
         return x.permute(0, 2, 1)  # to [Batch, Output length, Channel]
 
 
-dlinear_structure_hyperparameter_map = {
-    HyperparameterName.KERNEL_SIZE: IntHyperparameter(name=HyperparameterName.KERNEL_SIZE.name(),
-                                                      log=True,
-                                                      default_value=25,
-                                                      value_validators=[NumberRangeValidator(1, 1e10)],
-                                                      default_low=5,
-                                                      low_validators=[],
-                                                      default_high=50,
-                                                      high_validators=[])
-}
+
