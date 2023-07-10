@@ -211,7 +211,7 @@ public class NodeManager {
   private TRuntimeConfiguration getRuntimeConfiguration() {
     // getPipeTaskCoordinator.lock() should be called outside the getPipePluginCoordinator().lock()
     // to avoid deadlock
-    getPipeManager().getPipeTaskCoordinator().getPipeTaskInfo().acquireReadLock();
+    getPipeManager().getPipeTaskCoordinator().lock();
     getPipeManager().getPipePluginCoordinator().lock();
     getTriggerManager().getTriggerInfo().acquireTriggerTableLock();
     getUDFManager().getUdfInfo().acquireUDFTableLock();
@@ -235,7 +235,7 @@ public class NodeManager {
       // getPipeTaskCoordinator.unlock() should be called outside the
       // getPipePluginCoordinator().unlock()
       // to avoid deadlock
-      getPipeManager().getPipeTaskCoordinator().getPipeTaskInfo().releaseReadLock();
+      getPipeManager().getPipeTaskCoordinator().unlock();
     }
   }
 
