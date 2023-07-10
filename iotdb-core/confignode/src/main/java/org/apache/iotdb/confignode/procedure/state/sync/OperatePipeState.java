@@ -17,28 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.procedure.exception;
+package org.apache.iotdb.confignode.procedure.state.sync;
 
-public class ProcedureException extends Exception {
-  /** Default constructor. */
-  public ProcedureException() {
-    super();
-  }
-
-  /**
-   * Constructor.
-   *
-   * @param s message
-   */
-  public ProcedureException(String s) {
-    super(s);
-  }
-
-  public ProcedureException(Throwable t) {
-    super(t);
-  }
-
-  public ProcedureException(String source, Throwable cause) {
-    super(source, cause);
-  }
+@Deprecated
+public enum OperatePipeState {
+  OPERATE_CHECK,
+  PRE_OPERATE_PIPE_CONFIGNODE,
+  OPERATE_PIPE_DATANODE,
+  OPERATE_PIPE_CONFIGNODE
 }
