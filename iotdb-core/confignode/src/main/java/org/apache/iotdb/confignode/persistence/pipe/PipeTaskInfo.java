@@ -329,10 +329,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
                   hasException.set(true);
                 }
               });
+      return hasException.get();
     } finally {
       releaseReadLock();
     }
-    return hasException.get();
   }
 
   /**
