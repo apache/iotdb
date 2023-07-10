@@ -40,6 +40,8 @@ public class PipeMetaKeeper {
     pipeMetaKeeperLock = new ReentrantReadWriteLock(true);
   }
 
+  /////////////////////////////////  Lock  /////////////////////////////////
+
   public void acquireReadLock() {
     pipeMetaKeeperLock.readLock().lock();
   }
@@ -55,6 +57,8 @@ public class PipeMetaKeeper {
   public void releaseWriteLock() {
     pipeMetaKeeperLock.writeLock().unlock();
   }
+
+  /////////////////////////////////  PipeMeta  /////////////////////////////////
 
   public void addPipeMeta(String pipeName, PipeMeta pipeMeta) {
     pipeNameToPipeMetaMap.put(pipeName, pipeMeta);
@@ -84,6 +88,8 @@ public class PipeMetaKeeper {
     return pipeNameToPipeMetaMap.isEmpty();
   }
 
+  /////////////////////////////////  Snapshot  /////////////////////////////////
+
   public void processTakeSnapshot(FileOutputStream fileOutputStream) throws IOException {
     ReadWriteIOUtils.write(pipeNameToPipeMetaMap.size(), fileOutputStream);
     for (Map.Entry<String, PipeMeta> entry : pipeNameToPipeMetaMap.entrySet()) {
@@ -101,6 +107,8 @@ public class PipeMetaKeeper {
       pipeNameToPipeMetaMap.put(pipeName, PipeMeta.deserialize(fileInputStream));
     }
   }
+
+  /////////////////////////////////  Override  /////////////////////////////////
 
   @Override
   public boolean equals(Object o) {
