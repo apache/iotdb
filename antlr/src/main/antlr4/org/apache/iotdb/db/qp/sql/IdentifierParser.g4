@@ -58,10 +58,11 @@ keyWords
     | CONDITION
     | CONFIGNODES
     | CONFIGURATION
+    | CONNECTOR
+    | CONTAIN
     | CONTAINS
     | CONTINUOUS
     | COUNT
-    | CONTAIN
     | CQ
     | CQS
     | CREATE
@@ -75,10 +76,10 @@ keyWords
     | DELETE
     | DESC
     | DESCRIBE
+    | DETAILS
     | DEVICE
     | DEVICEID
     | DEVICES
-    | DETAILS
     | DISABLE
     | DISCARD
     | DROP
@@ -87,8 +88,11 @@ keyWords
     | ENDTIME
     | EVERY
     | EXPLAIN
+    | EXTRACTOR
+    | FALSE
     | FILL
     | FILE
+    | FIRST
     | FLUSH
     | FOR
     | FROM
@@ -118,11 +122,15 @@ keyWords
     | LOCK
     | MERGE
     | METADATA
+    | MIGRATE
+    | NAN
+    | NODEID
     | NODES
     | NONE
     | NOT
     | NOW
     | NULL
+    | NULLS
     | OF
     | OFF
     | OFFSET
@@ -143,6 +151,7 @@ keyWords
     | PREVIOUSUNTILLAST
     | PRIVILEGES
     | PROCESSLIST
+    | PROCESSOR
     | PROPERTY
     | PRUNE
     | QUERIES
@@ -183,6 +192,7 @@ keyWords
     | TEMPLATE
     | TIMEOUT
     | TIMESERIES
+    | TIMEPARTITION
     | TIMESLOTID
     | TO
     | TOLERANCE
@@ -190,6 +200,7 @@ keyWords
     | TRACING
     | TRIGGER
     | TRIGGERS
+    | TRUE
     | TTL
     | UNLINK
     | UNLOAD
@@ -197,12 +208,15 @@ keyWords
     | UPDATE
     | UPSERT
     | URI
+    | USED
     | USER
     | USING
     | VALUES
+    | VARIABLES
     | VARIATION
     | VERIFY
     | VERSION
+    | WATERMARK_EMBEDDING
     | WHERE
     | WITH
     | WITHOUT
