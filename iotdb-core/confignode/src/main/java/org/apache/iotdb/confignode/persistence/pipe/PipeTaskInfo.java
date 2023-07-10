@@ -343,25 +343,30 @@ public class PipeTaskInfo implements SnapshotProcessor {
    * @param pipeName The name of the pipes to be clear exception
    */
   public void clearExceptions(String pipeName) {
-    if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
-      return;
+    acquireWriteLock();
+    try {
+      if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
+        return;
+      }
+      PipeRuntimeMeta runtimeMeta = pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta();
+      runtimeMeta.setExceptionsClearTime(System.currentTimeMillis());
+      Map<Integer, PipeRuntimeException> exceptionMap =
+          runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
+      if (!exceptionMap.isEmpty()) {
+        exceptionMap.clear();
+      }
+      runtimeMeta
+          .getConsensusGroupId2TaskMetaMap()
+          .values()
+          .forEach(
+              pipeTaskMeta -> {
+                if (pipeTaskMeta.getExceptionMessages().iterator().hasNext()) {
+                  pipeTaskMeta.clearExceptionMessages();
+                }
+              });
+    } finally {
+      releaseWriteLock();
     }
-    PipeRuntimeMeta runtimeMeta = pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta();
-    runtimeMeta.setExceptionsClearTime(System.currentTimeMillis());
-    Map<Integer, PipeRuntimeException> exceptionMap =
-        runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
-    if (!exceptionMap.isEmpty()) {
-      exceptionMap.clear();
-    }
-    runtimeMeta
-        .getConsensusGroupId2TaskMetaMap()
-        .values()
-        .forEach(
-            pipeTaskMeta -> {
-              if (pipeTaskMeta.getExceptionMessages().iterator().hasNext()) {
-                pipeTaskMeta.clearExceptionMessages();
-              }
-            });
   }
 
   /**
@@ -373,43 +378,47 @@ public class PipeTaskInfo implements SnapshotProcessor {
    * @return true if there are exceptions encountered
    */
   public boolean recordPushPipeMetaExceptions(Map<Integer, TPushPipeMetaResp> respMap) {
-    boolean hasException = false;
+    acquireWriteLock();
+    try {
+      boolean hasException = false;
+      for (Map.Entry<Integer, TPushPipeMetaResp> respEntry : respMap.entrySet()) {
+        int dataNodeId = respEntry.getKey();
+        TPushPipeMetaResp resp = respEntry.getValue();
 
-    for (Map.Entry<Integer, TPushPipeMetaResp> respEntry : respMap.entrySet()) {
-      int dataNodeId = respEntry.getKey();
-      TPushPipeMetaResp resp = respEntry.getValue();
+        if (resp.getStatus().getCode() == TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()) {
+          hasException = true;
+          if (!resp.isSetExceptionMessages()) {
+            // The pushPipeMeta process on dataNode encountered internal errors
+            continue;
+          }
 
-      if (resp.getStatus().getCode() == TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()) {
-        hasException = true;
-        if (!resp.isSetExceptionMessages()) {
-          // The pushPipeMeta process on dataNode encountered internal errors
-          continue;
-        }
+          resp.getExceptionMessages()
+              .forEach(
+                  message -> {
+                    if (pipeMetaKeeper.containsPipeMeta(message.getPipeName())) {
+                      PipeRuntimeMeta runtimeMeta =
+                          pipeMetaKeeper.getPipeMeta(message.getPipeName()).getRuntimeMeta();
 
-        resp.getExceptionMessages()
-            .forEach(
-                message -> {
-                  if (pipeMetaKeeper.containsPipeMeta(message.getPipeName())) {
-                    PipeRuntimeMeta runtimeMeta =
-                        pipeMetaKeeper.getPipeMeta(message.getPipeName()).getRuntimeMeta();
+                      // Mark the status of the pipe with exception as stopped
+                      runtimeMeta.getStatus().set(PipeStatus.STOPPED);
 
-                    // Mark the status of the pipe with exception as stopped
-                    runtimeMeta.getStatus().set(PipeStatus.STOPPED);
-
-                    Map<Integer, PipeRuntimeException> exceptionMap =
-                        runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
-                    if (!exceptionMap.containsKey(dataNodeId)
-                        || exceptionMap.get(dataNodeId).getTimeStamp() < message.getTimeStamp()) {
-                      exceptionMap.put(
-                          dataNodeId,
-                          new PipeRuntimeCriticalException(
-                              message.getMessage(), message.getTimeStamp()));
+                      Map<Integer, PipeRuntimeException> exceptionMap =
+                          runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
+                      if (!exceptionMap.containsKey(dataNodeId)
+                          || exceptionMap.get(dataNodeId).getTimeStamp() < message.getTimeStamp()) {
+                        exceptionMap.put(
+                            dataNodeId,
+                            new PipeRuntimeCriticalException(
+                                message.getMessage(), message.getTimeStamp()));
+                      }
                     }
-                  }
-                });
+                  });
+        }
       }
+      return hasException;
+    } finally {
+      releaseWriteLock();
     }
-    return hasException;
   }
 
   /////////////////////////////// Snapshot ///////////////////////////////
