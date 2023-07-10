@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
@@ -81,7 +82,8 @@ public class StatisticsService implements IClusterStatusSubscriber {
 
   private Future<?> currentLoadStatisticsFuture;
   private final ScheduledExecutorService loadStatisticsExecutor =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Cluster-LoadStatistics-Service");
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+          ThreadName.CONFIG_NODE_LOAD_STATISTIC.getName());
 
   /** Start the load statistics service. */
   public void startLoadStatisticsService() {

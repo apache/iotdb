@@ -2305,6 +2305,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
+
     analysis.setStatement(realInsertStatement);
 
     if (realInsertStatement instanceof InsertRowStatement) {

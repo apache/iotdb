@@ -24,7 +24,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 
 public class AuthorizationHandler {
@@ -45,7 +44,7 @@ public class AuthorizationHandler {
           .entity(
               new ExecutionStatus()
                   .message(e.getMessage())
-                  .code(Status.BAD_REQUEST.getStatusCode()))
+                  .code(Response.Status.BAD_REQUEST.getStatusCode()))
           .build();
     }
     return null;

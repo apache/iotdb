@@ -66,7 +66,21 @@ public class PipeTaskCoordinator {
   }
 
   public TSStatus startPipe(String pipeName) {
-    return configManager.getProcedureManager().startPipe(pipeName);
+    // To avoid concurrent read
+    lock();
+    // Whether there are exceptions to clear
+    boolean hasException;
+    try {
+      hasException = pipeTaskInfo.hasExceptions(pipeName);
+    } finally {
+      unlock();
+    }
+    TSStatus status = configManager.getProcedureManager().startPipe(pipeName);
+    if (status == RpcUtils.SUCCESS_STATUS && hasException) {
+      LOGGER.info("Pipe {} has started successfully, clear its exceptions.", pipeName);
+      configManager.getProcedureManager().pipeHandleMetaChange(true, true);
+    }
+    return status;
   }
 
   public TSStatus stopPipe(String pipeName) {

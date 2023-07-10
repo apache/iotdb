@@ -270,6 +270,10 @@ EXTRACTOR
     : E X T R A C T O R
     ;
 
+FALSE
+    : F A L S E
+    ;
+
 FILL
     : F I L L
     ;
@@ -410,6 +414,10 @@ MODELS
     : M O D E L S
     ;
 
+NAN
+    : N A N
+    ;
+
 NODEID
     : N O D E I D
     ;
@@ -425,7 +433,6 @@ NONE
 NOT
     : N O T
     ;
-
 
 NOW
     : N O W
@@ -771,6 +778,10 @@ TRIGGERS
     : T R I G G E R S
     ;
 
+TRUE
+    : T R U E
+    ;
+
 TTL
     : T T L
     ;
@@ -1055,24 +1066,6 @@ fragment DEC_DIGIT
     : [0-9]
     ;
 
-
-// Boolean Literal
-
-BOOLEAN_LITERAL
-	: T R U E
-	| F A L S E
-	;
-
-
-// Other Literals
-
-NULL_LITERAL
-    : NULL
-    ;
-
-NAN_LITERAL
-    : N A N
-    ;
 
 /**
  * 6. ID

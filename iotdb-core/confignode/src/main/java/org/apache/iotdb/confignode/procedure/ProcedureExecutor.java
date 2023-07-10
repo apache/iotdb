@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure;
 
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
@@ -94,17 +95,19 @@ public class ProcedureExecutor<Env> {
   public void init(int numThreads) {
     this.corePoolSize = numThreads;
     this.maxPoolSize = 10 * numThreads;
-    this.threadGroup = new ThreadGroup("ProcedureWorkerGroup");
+    this.threadGroup = new ThreadGroup(ThreadName.CONFIG_NODE_PROCEDURE_WORKER.getName());
     this.timeoutExecutor =
-        new TimeoutExecutorThread<>(this, threadGroup, "ProcedureTimeoutExecutor");
+        new TimeoutExecutorThread<>(
+            this, threadGroup, ThreadName.CONFIG_NODE_TIMEOUT_EXECUTOR.getName());
     this.workerMonitorExecutor =
-        new TimeoutExecutorThread<>(this, threadGroup, "ProcedureWorkerThreadMonitor");
+        new TimeoutExecutorThread<>(
+            this, threadGroup, ThreadName.CONFIG_NODE_WORKER_THREAD_MONITOR.getName());
     workId.set(0);
     workerThreads = new CopyOnWriteArrayList<>();
     for (int i = 0; i < corePoolSize; i++) {
       workerThreads.add(new WorkerThread(threadGroup));
     }
-    // add worker Monitor
+    // Add worker monitor
     workerMonitorExecutor.add(new WorkerMonitor());
 
     scheduler.start();
@@ -118,7 +121,7 @@ public class ProcedureExecutor<Env> {
     int waitingCount = 0;
     int waitingTimeoutCount = 0;
     List<Procedure> procedureList = new ArrayList<>();
-    // load procedure wal file
+    // Load procedure wal file
     store.load(procedureList);
     for (Procedure<Env> proc : procedureList) {
       if (proc.isFinished()) {

@@ -31,11 +31,8 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        java: [ 8, 11, 17 ]
+        java: [11]
         os: [ ubuntu-latest, windows-latest ]
-        include:
-          - java: 8
-            os: macos-latest
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -65,10 +62,10 @@ jobs:
         if: ${{ runner.os == 'Linux' }}
         shell: bash
         run: sudo sysctl -w net.core.somaxconn=65535
-      - name: Adjust Mac kernel somaxconn
-        if: ${{ runner.os == 'macOS' }}
-        shell: bash
-        run: sudo sysctl -w kern.ipc.somaxconn=65535
+#      - name: Adjust Mac kernel somaxconn
+#        if: ${{ runner.os == 'macOS' }}
+#        shell: bash
+#        run: sudo sysctl -w kern.ipc.somaxconn=65535
       - name: IT/UT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml

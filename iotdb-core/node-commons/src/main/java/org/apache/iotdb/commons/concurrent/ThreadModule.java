@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.concurrent;
 
-public enum DataNodeThreadModule {
+public enum ThreadModule {
   QUERY,
   MPP,
   COMPACTION,
@@ -34,6 +34,13 @@ public enum DataNodeThreadModule {
   JVM,
   LOG_BACK,
   METRICS,
+  RPC,
+  WRITE,
+  HEARTBEAT,
+  LOAD_BALANCE,
+  REGION_MANAGEMENT,
+  RECOVER,
+  PROCEDURE,
   OTHER,
   UNKNOWN
 }

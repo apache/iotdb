@@ -175,12 +175,6 @@ public class PartialPathTest {
     }
 
     try {
-      new PartialPath("root.sg.watermark_embedding");
-      fail();
-    } catch (IllegalPathException ignored) {
-    }
-
-    try {
       new PartialPath("root.sg.time");
       fail();
     } catch (IllegalPathException ignored) {
@@ -337,12 +331,6 @@ public class PartialPathTest {
 
     try {
       new PartialPath("root.sg.d1", "device`");
-      fail();
-    } catch (IllegalPathException ignored) {
-    }
-
-    try {
-      new PartialPath("root.sg", "watermark_embedding");
       fail();
     } catch (IllegalPathException ignored) {
     }
