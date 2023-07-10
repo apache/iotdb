@@ -22,6 +22,8 @@ package org.apache.iotdb.confignode.service;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.concurrent.ThreadModule;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
@@ -44,6 +46,7 @@ import org.apache.iotdb.db.service.metrics.ProcessMetrics;
 import org.apache.iotdb.db.service.metrics.SystemMetrics;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.UpTimeMetrics;
+import org.apache.iotdb.metrics.metricsets.cpu.CpuUsageMetrics;
 import org.apache.iotdb.metrics.metricsets.disk.DiskMetrics;
 import org.apache.iotdb.metrics.metricsets.jvm.JvmMetrics;
 import org.apache.iotdb.metrics.metricsets.logback.LogbackMetrics;
@@ -56,6 +59,9 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class ConfigNode implements ConfigNodeMBean {
@@ -238,6 +244,21 @@ public class ConfigNode implements ConfigNodeMBean {
     MetricService.getInstance().addMetricSet(new SystemMetrics(false));
     MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.CN_ROLE));
     MetricService.getInstance().addMetricSet(new NetMetrics(IoTDBConstant.CN_ROLE));
+    initCpuMetrics();
+  }
+
+  private void initCpuMetrics() {
+    List<String> threadModules = new ArrayList<>();
+    Arrays.stream(ThreadModule.values()).forEach(x -> threadModules.add(x.toString()));
+    List<String> pools = new ArrayList<>();
+    Arrays.stream(ThreadName.values()).forEach(x -> pools.add(x.name()));
+    MetricService.getInstance()
+        .addMetricSet(
+            new CpuUsageMetrics(
+                threadModules,
+                pools,
+                x -> ThreadName.getModuleTheThreadBelongs(x).toString(),
+                x -> ThreadName.getThreadPoolTheThreadBelongs(x).name()));
   }
 
   private void initConfigManager() {
