@@ -55,7 +55,7 @@ def test_load_model():
     trial_id = 'tid_0'
     model_id = 'mid_test_model_load'
     model_storage.save_model(model, model_config, model_id=model_id, trial_id=trial_id)
-    model_loaded, model_config_loaded = model_storage.load_model(model_id=model_id, trial_id=trial_id)
+    _, model_config_loaded = model_storage.load_model(model_id=model_id, trial_id=trial_id)
     assert model_config == model_config_loaded
 
 

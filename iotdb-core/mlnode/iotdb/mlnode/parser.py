@@ -16,7 +16,6 @@
 # under the License.
 #
 
-
 from abc import abstractmethod
 from typing import Dict
 
@@ -33,10 +32,10 @@ class TaskOptions(object):
 
         if OptionsKey.MODEL_TYPE not in self._raw_options:
             raise MissingOptionError(OptionsKey.MODEL_TYPE.value)
-
-        self.model_type = getattr(ForecastModelType, self._raw_options.pop(OptionsKey.MODEL_TYPE).upper(), None)
+        model_name = self._raw_options.pop(OptionsKey.MODEL_TYPE)
+        self.model_type = getattr(ForecastModelType, model_name.upper(), None)
         if not self.model_type:
-            raise UnsupportedError(f"model_type {self.model_type}")
+            raise UnsupportedError(f"model_type {model_name}")
 
         # training with auto-tuning as default
         self.auto_tuning = self._raw_options.pop(OptionsKey.AUTO_TUNING, True)
@@ -63,10 +62,11 @@ class ForecastTaskOptions(TaskOptions):
 
 def parse_task_type(options: Dict) -> TaskType:
     if OptionsKey.TASK_TYPE not in options:
-        raise MissingOptionError(OptionsKey.TASK_TYPE.name())
-    task_type = getattr(TaskType, options.pop(OptionsKey.TASK_TYPE).upper(), None)
+        raise MissingOptionError(OptionsKey.TASK_TYPE.value)
+    task_name = options.pop(OptionsKey.TASK_TYPE)
+    task_type = getattr(TaskType, task_name.upper(), None)
     if not task_type:
-        raise UnsupportedError(f"task_type {task_type}")
+        raise UnsupportedError(f"task_type {task_name}")
     return task_type
 
 

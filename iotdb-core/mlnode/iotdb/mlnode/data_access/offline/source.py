@@ -15,7 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from typing import List
 
 import numpy as np
 import pandas as pd
@@ -28,8 +27,8 @@ class DataSource(object):
     Pre-fetched in multi-variate time series in memory
 
     Methods:
-        get_data: returns self.data, the time series value (Numpy.2DArray)
-        get_timestamp: returns self.timestamp, the aligned timestamp value
+        get_data: returns time series value (Numpy.2DArray)
+        get_timestamp: returns aligned timestamp value
     """
 
     def __init__(self):
@@ -78,4 +77,4 @@ class ThriftDataSource(DataSource):
         cols_data = raw_data.columns[1:]
         self.data = raw_data[cols_data].values
         self.timestamp = pd.to_datetime(raw_data[raw_data.columns[0]].values, unit='ms', utc=True) \
-            .tz_convert('Asia/Shanghai')  # for iotdb
+            .tz_convert('Asia/Shanghai')
