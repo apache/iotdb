@@ -34,8 +34,8 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
+import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -46,6 +46,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TFetchTimeseriesResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchWindowBatchReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchWindowBatchResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRecordModelMetricsReq;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -85,8 +86,15 @@ public class MLNodeRPCServiceImpl implements IMLNodeRPCServiceWithHandler {
     TFetchTimeseriesResp resp = new TFetchTimeseriesResp();
     Throwable t = null;
     try {
-      QueryStatement s =
-          (QueryStatement) StatementGenerator.createStatement(req, session.getZoneId());
+
+      Statement s = StatementGenerator.createStatement(req, session.getZoneId());
+
+      if (s == null) {
+        resp.setStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
+        return resp;
+      }
 
       long queryId =
           SESSION_MANAGER.requestQueryId(session, SESSION_MANAGER.requestStatementId(session));
