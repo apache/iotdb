@@ -510,7 +510,8 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
           new String[] {
             "COUNT TIMESERIES root.** group by level=1",
             "COUNT TIMESERIES root.** group by level=3",
-            "COUNT TIMESERIES root.**.status group by level=2"
+            "COUNT TIMESERIES root.**.status group by level=2",
+            "COUNT TIMESERIES root.** group by level=5"
           };
       Set<String>[] standards =
           new Set[] {
@@ -522,6 +523,7 @@ public class IoTDBMetadataFetchIT extends AbstractSchemaIT {
                     "root.ln1.wf01.wt01,2,",
                     "root.ln2.wf01.wt01,2,")),
             new HashSet<>(Arrays.asList("root.ln.wf01,1,", "root.ln1.wf01,1,", "root.ln2.wf01,1,")),
+            Collections.emptySet()
           };
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
