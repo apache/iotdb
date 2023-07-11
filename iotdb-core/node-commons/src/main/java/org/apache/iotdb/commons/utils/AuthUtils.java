@@ -52,7 +52,7 @@ public class AuthUtils {
   public static PartialPath ROOT_PATH_PRIVILEGE_PATH;
   private static final int MIN_LENGTH = 4;
   private static final int MAX_LENGTH = 64;
-  private static final String REX_PATTERN = "^[a-zA-Z][-\\w]*$";
+  private static final String REX_PATTERN = "^[-\\w]*$";
 
   static {
     try {
