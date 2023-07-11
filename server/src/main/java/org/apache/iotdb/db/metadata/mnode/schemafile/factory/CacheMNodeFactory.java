@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.metadata.mnode.schemafile.factory;
 
 import org.apache.iotdb.commons.schema.node.info.IMeasurementInfo;
@@ -32,19 +33,8 @@ import org.apache.iotdb.db.metadata.mnode.schemafile.impl.CachedDeviceMNode;
 import org.apache.iotdb.db.metadata.mnode.schemafile.impl.CachedMeasurementMNode;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
+@MNodeFactory
 public class CacheMNodeFactory implements IMNodeFactory<ICachedMNode> {
-
-  private CacheMNodeFactory() {}
-
-  private static class CacheMNodeFactoryHolder {
-    private static final CacheMNodeFactory INSTANCE = new CacheMNodeFactory();
-
-    private CacheMNodeFactoryHolder() {}
-  }
-
-  public static CacheMNodeFactory getInstance() {
-    return CacheMNodeFactory.CacheMNodeFactoryHolder.INSTANCE;
-  }
 
   @Override
   public IMeasurementMNode<ICachedMNode> createMeasurementMNode(
@@ -86,6 +76,6 @@ public class CacheMNodeFactory implements IMNodeFactory<ICachedMNode> {
   @Override
   public IMeasurementMNode<ICachedMNode> createLogicalViewMNode(
       IDeviceMNode<ICachedMNode> parent, String name, IMeasurementInfo measurementInfo) {
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException("View is not supported.");
   }
 }

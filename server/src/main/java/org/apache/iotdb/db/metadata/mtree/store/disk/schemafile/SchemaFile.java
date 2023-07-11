@@ -29,7 +29,7 @@ import org.apache.iotdb.db.exception.metadata.schemafile.SchemaFileNotExists;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
 import org.apache.iotdb.db.metadata.mnode.schemafile.container.ICachedMNodeContainer;
-import org.apache.iotdb.db.metadata.mnode.schemafile.factory.CacheMNodeFactory;
+import org.apache.iotdb.db.metadata.mnode.utils.MNodeFactoryLoader;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.BTreePageManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.IPageManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.pagemgr.PageManager;
@@ -77,7 +77,8 @@ public class SchemaFile implements ISchemaFile {
   private File pmtFile;
   private FileChannel channel;
 
-  private final IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
+  private final IMNodeFactory<ICachedMNode> nodeFactory =
+      MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
 
   // todo refactor constructor for schema file in Jan.
   private SchemaFile(

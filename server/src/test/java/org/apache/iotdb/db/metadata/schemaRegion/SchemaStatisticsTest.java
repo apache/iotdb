@@ -23,8 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
-import org.apache.iotdb.db.metadata.mnode.mem.factory.MemMNodeFactory;
-import org.apache.iotdb.db.metadata.mnode.schemafile.factory.CacheMNodeFactory;
+import org.apache.iotdb.db.metadata.mnode.utils.MNodeFactoryLoader;
 import org.apache.iotdb.db.metadata.plan.schemaregion.impl.write.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaEngineStatistics;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
@@ -77,7 +76,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
     if (testParams.getTestModeName().equals("SchemaFile-PartialMemory")
         || testParams.getTestModeName().equals("SchemaFile-NonMemory")) {
 
-      IMNodeFactory<?> nodeFactory = CacheMNodeFactory.getInstance();
+      IMNodeFactory<?> nodeFactory = MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
       // wait release and flush task
       Thread.sleep(1000);
       // schemaRegion1
@@ -98,8 +97,8 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
     } else {
       IMNodeFactory nodeFactory =
           testParams.getSchemaEngineMode().equals("Memory")
-              ? MemMNodeFactory.getInstance()
-              : CacheMNodeFactory.getInstance();
+              ? MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory()
+              : MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
       // schemaRegion1
       IMNode<?> sg1 =
           nodeFactory.createDatabaseDeviceMNode(

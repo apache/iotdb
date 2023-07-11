@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.db.metadata.mnode.mem.IMemMNode;
-import org.apache.iotdb.db.metadata.mnode.mem.factory.MemMNodeFactory;
+import org.apache.iotdb.db.metadata.mnode.utils.MNodeFactoryLoader;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 
 import org.junit.Test;
@@ -35,7 +35,8 @@ import static org.junit.Assert.assertSame;
 
 public class MNodeTest {
 
-  private final IMNodeFactory<IMemMNode> nodeFactory = MemMNodeFactory.getInstance();
+  private final IMNodeFactory<IMemMNode> nodeFactory =
+      MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory();;
 
   @Test
   public void testReplaceChild() {

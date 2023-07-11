@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -26,7 +27,7 @@ import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
 import org.apache.iotdb.db.metadata.mnode.schemafile.container.CachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.schemafile.container.ICachedMNodeContainer;
-import org.apache.iotdb.db.metadata.mnode.schemafile.factory.CacheMNodeFactory;
+import org.apache.iotdb.db.metadata.mnode.utils.MNodeFactoryLoader;
 
 import java.io.File;
 import java.io.IOException;
@@ -42,7 +43,8 @@ public class MockSchemaFile implements ISchemaFile {
 
   private PartialPath storageGroupPath;
   private IDatabaseMNode<ICachedMNode> storageGroupMNode;
-  private static final IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
+  private static final IMNodeFactory<ICachedMNode> nodeFactory =
+      MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
 
   private long fileTail = 0;
   private final Map<Long, Map<String, ICachedMNode>> mockFile = new HashMap<>();
