@@ -227,8 +227,6 @@
         <!-- codegen -->
         <drill.freemarker.maven.plugin.version>1.17.0</drill.freemarker.maven.plugin.version>
         <codegen.phase>generate-sources</codegen.phase>
-        <!-- metrics -->
-        <reactor-netty-http.version>1.0.24</reactor-netty-http.version>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
