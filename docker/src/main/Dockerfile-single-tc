@@ -1,4 +1,3 @@
-#!/bin/bash
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -17,6 +16,30 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-nohup /iotdb/sbin/start-confignode.sh > /dev/null 2>&1 &
-sleep 10
-/iotdb/sbin/start-datanode.sh
+
+# docker build context is the root path of the repository
+
+FROM openjdk:11-jre-slim
+
+ADD distribution/target/apache-iotdb-*-datanode-bin.zip /
+
+RUN apt update \
+  && apt install lsof dos2unix procps unzip iproute2 iputils-ping -y \
+  && unzip /apache-iotdb-*-bin.zip -d / \
+  && rm /apache-iotdb-*-bin.zip \
+  && mv /apache-iotdb-* /iotdb \
+  && apt remove unzip -y \
+  && apt autoremove -y \
+  && apt purge --auto-remove -y \
+  && apt clean -y
+RUN dos2unix /iotdb/sbin/start-server.sh
+RUN dos2unix /iotdb/sbin/../conf/datanode-env.sh
+EXPOSE 6667
+EXPOSE 31999
+EXPOSE 5555
+EXPOSE 8086
+EXPOSE 8181
+VOLUME /iotdb/data
+VOLUME /iotdb/logs
+ENV PATH="/iotdb/sbin/:/iotdb/tools/:${PATH}"
+ENTRYPOINT ["/iotdb/sbin/start-server.sh"]
