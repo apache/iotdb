@@ -34,18 +34,6 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 public class CacheMNodeFactory implements IMNodeFactory<ICachedMNode> {
 
-  private CacheMNodeFactory() {}
-
-  private static class CacheMNodeFactoryHolder {
-    private static final CacheMNodeFactory INSTANCE = new CacheMNodeFactory();
-
-    private CacheMNodeFactoryHolder() {}
-  }
-
-  public static CacheMNodeFactory getInstance() {
-    return CacheMNodeFactory.CacheMNodeFactoryHolder.INSTANCE;
-  }
-
   @Override
   public IMeasurementMNode<ICachedMNode> createMeasurementMNode(
       IDeviceMNode<ICachedMNode> parent, String name, IMeasurementSchema schema, String alias) {
@@ -86,6 +74,6 @@ public class CacheMNodeFactory implements IMNodeFactory<ICachedMNode> {
   @Override
   public IMeasurementMNode<ICachedMNode> createLogicalViewMNode(
       IDeviceMNode<ICachedMNode> parent, String name, IMeasurementInfo measurementInfo) {
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException("View is not supported.");
   }
 }

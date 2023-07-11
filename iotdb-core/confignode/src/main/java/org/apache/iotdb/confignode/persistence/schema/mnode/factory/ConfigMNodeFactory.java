@@ -83,6 +83,6 @@ public class ConfigMNodeFactory implements IMNodeFactory<IConfigMNode> {
   @Override
   public IMeasurementMNode<IConfigMNode> createLogicalViewMNode(
       IDeviceMNode<IConfigMNode> parent, String name, IMeasurementInfo measurementInfo) {
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException("View is not supported.");
   }
 }
