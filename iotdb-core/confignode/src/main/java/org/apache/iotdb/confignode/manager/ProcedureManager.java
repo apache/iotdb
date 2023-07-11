@@ -213,7 +213,7 @@ public class ProcedureManager {
         if (hasOverlappedTask) {
           return RpcUtils.getStatus(
               TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
-              "Some other task is deleting some target timeSeries.");
+              "Some other task is deleting some target timeseries.");
         }
         procedureId =
             this.executor.submitProcedure(new DeleteTimeSeriesProcedure(queryId, patternTree));

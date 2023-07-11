@@ -1732,7 +1732,7 @@ public class ConfigManager implements IManager {
   }
 
   /**
-   * Get all related schemaRegion which may contains the timeSeries matched by given patternTree.
+   * Get all related schemaRegion which may contains the timeseries matched by given patternTree.
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup(
       PathPatternTree patternTree) {

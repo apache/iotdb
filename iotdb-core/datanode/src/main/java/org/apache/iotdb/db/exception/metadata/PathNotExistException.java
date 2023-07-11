@@ -31,10 +31,10 @@ public class PathNotExistException extends MetadataException {
       "The source path [%s] of view [%s] does not exist.";
 
   private static final String NORMAL_TIMESERIES_NOT_EXIST_WRONG_MESSAGE =
-      "TimeSeries [%s] does not exist or is represented by schema template";
+      "Timeseries [%s] does not exist or is represented by schema template";
 
   private static final String TEMPLATE_TIMESERIES_NOT_EXIST_WRONG_MESSAGE =
-      "TimeSeries [%s] does not exist or is not represented by schema template";
+      "Timeseries [%s] does not exist or is not represented by schema template";
 
   public PathNotExistException(String sourcePath, String viewPath) {
     super(

@@ -547,7 +547,7 @@ public interface IManager {
 
   TSStatus alterSchemaTemplate(TAlterSchemaTemplateReq req);
 
-  /** Delete timeSeries. */
+  /** Delete timeseries. */
   TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req);
 
   TSStatus deleteLogicalView(TDeleteLogicalViewReq req);

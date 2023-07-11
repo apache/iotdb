@@ -21,8 +21,6 @@ package org.apache.iotdb.db.protocol.basic;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 
-import java.util.Objects;
-
 public class BasicOpenSessionResp extends TSStatus {
   private long sessionId;
 
@@ -33,22 +31,5 @@ public class BasicOpenSessionResp extends TSStatus {
   public BasicOpenSessionResp sessionId(long sessionId) {
     this.sessionId = sessionId;
     return this;
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null || getClass() != obj.getClass()) {
-      return false;
-    }
-    BasicOpenSessionResp that = (BasicOpenSessionResp) obj;
-    return sessionId == that.sessionId;
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(sessionId);
   }
 }
