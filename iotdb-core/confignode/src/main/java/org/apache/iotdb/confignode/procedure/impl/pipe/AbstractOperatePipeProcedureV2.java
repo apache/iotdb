@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe;
 
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
+import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -42,6 +43,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * This procedure manage 4 kinds of PIPE operations: CREATE, START, STOP and DROP.
@@ -59,6 +61,10 @@ public abstract class AbstractOperatePipeProcedureV2
 
   // Only used in rollback to reduce the number of network calls
   protected boolean isRollbackFromOperateOnDataNodesSuccessful = false;
+
+  // This variable should not be serialized into procedure store,
+  // putting it here is just for convenience
+  protected AtomicReference<PipeTaskInfo> pipeTaskInfo;
 
   protected abstract PipeTaskOperation getOperation();
 
@@ -95,7 +101,7 @@ public abstract class AbstractOperatePipeProcedureV2
     try {
       switch (state) {
         case VALIDATE_TASK:
-          env.getConfigManager().getPipeManager().getPipeTaskCoordinator().lock();
+          pipeTaskInfo = env.getConfigManager().getPipeManager().getPipeTaskCoordinator().lock();
           executeFromValidateTask(env);
           setNextState(OperatePipeTaskState.CALCULATE_INFO_FOR_TASK);
           break;
@@ -218,12 +224,7 @@ public abstract class AbstractOperatePipeProcedureV2
   protected Map<Integer, TPushPipeMetaResp> pushPipeMetaToDataNodes(ConfigNodeProcedureEnv env)
       throws IOException {
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
-    for (PipeMeta pipeMeta :
-        env.getConfigManager()
-            .getPipeManager()
-            .getPipeTaskCoordinator()
-            .getPipeTaskInfo()
-            .getPipeMetaList()) {
+    for (PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
       pipeMetaBinaryList.add(pipeMeta.serialize());
     }
 

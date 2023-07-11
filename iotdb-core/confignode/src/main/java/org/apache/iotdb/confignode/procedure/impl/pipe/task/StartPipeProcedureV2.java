@@ -60,11 +60,7 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   protected void executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("StartPipeProcedureV2: executeFromValidateTask({})", pipeName);
 
-    env.getConfigManager()
-        .getPipeManager()
-        .getPipeTaskCoordinator()
-        .getPipeTaskInfo()
-        .checkBeforeStartPipe(pipeName);
+    pipeTaskInfo.get().checkBeforeStartPipe(pipeName);
   }
 
   @Override
@@ -100,11 +96,7 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     }
 
     // Clear exception messages if succeeded
-    env.getConfigManager()
-        .getPipeManager()
-        .getPipeTaskCoordinator()
-        .getPipeTaskInfo()
-        .clearExceptions(pipeName);
+    pipeTaskInfo.get().clearExceptions(pipeName);
   }
 
   @Override

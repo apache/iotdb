@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +41,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeHeartbeatParser {
 
@@ -97,39 +99,44 @@ public class PipeHeartbeatParser {
         .getProcedureSubmitter()
         .submit(
             () -> {
-              if (!pipeMetaByteBufferListFromDataNode.isEmpty()) {
-                parseHeartbeatAndSaveMetaChangeLocally(
-                    dataNodeId, pipeMetaByteBufferListFromDataNode);
-              }
+              final AtomicReference<PipeTaskInfo> pipeTaskInfo =
+                  configManager.getPipeManager().getPipeTaskCoordinator().lock();
 
-              if (canSubmitHandleMetaChangeProcedure.get()
-                  && (needWriteConsensusOnConfigNodes.get() || needPushPipeMetaToDataNodes.get())) {
-                configManager
-                    .getProcedureManager()
-                    .pipeHandleMetaChange(
-                        needWriteConsensusOnConfigNodes.get(), needPushPipeMetaToDataNodes.get());
+              try {
+                if (!pipeMetaByteBufferListFromDataNode.isEmpty()) {
+                  parseHeartbeatAndSaveMetaChangeLocally(
+                      pipeTaskInfo, dataNodeId, pipeMetaByteBufferListFromDataNode);
+                }
 
-                // Reset flags after procedure is submitted
-                needWriteConsensusOnConfigNodes.set(false);
-                needPushPipeMetaToDataNodes.set(false);
+                if (canSubmitHandleMetaChangeProcedure.get()
+                    && (needWriteConsensusOnConfigNodes.get()
+                        || needPushPipeMetaToDataNodes.get())) {
+                  configManager
+                      .getProcedureManager()
+                      .pipeHandleMetaChange(
+                          needWriteConsensusOnConfigNodes.get(), needPushPipeMetaToDataNodes.get());
+
+                  // Reset flags after procedure is submitted
+                  needWriteConsensusOnConfigNodes.set(false);
+                  needPushPipeMetaToDataNodes.set(false);
+                }
+              } finally {
+                configManager.getPipeManager().getPipeTaskCoordinator().unlock();
               }
             });
   }
 
   private void parseHeartbeatAndSaveMetaChangeLocally(
-      int dataNodeId, @NotNull List<ByteBuffer> pipeMetaByteBufferListFromDataNode) {
+      final AtomicReference<PipeTaskInfo> pipeTaskInfo,
+      final int dataNodeId,
+      @NotNull final List<ByteBuffer> pipeMetaByteBufferListFromDataNode) {
     final Map<PipeStaticMeta, PipeMeta> pipeMetaMapFromDataNode = new HashMap<>();
     for (ByteBuffer byteBuffer : pipeMetaByteBufferListFromDataNode) {
       final PipeMeta pipeMeta = PipeMeta.deserialize(byteBuffer);
       pipeMetaMapFromDataNode.put(pipeMeta.getStaticMeta(), pipeMeta);
     }
 
-    for (final PipeMeta pipeMetaOnConfigNode :
-        configManager
-            .getPipeManager()
-            .getPipeTaskCoordinator()
-            .getPipeTaskInfo()
-            .getPipeMetaList()) {
+    for (final PipeMeta pipeMetaOnConfigNode : pipeTaskInfo.get().getPipeMetaList()) {
       final PipeMeta pipeMetaFromDataNode =
           pipeMetaMapFromDataNode.get(pipeMetaOnConfigNode.getStaticMeta());
       if (pipeMetaFromDataNode == null) {
@@ -216,12 +223,7 @@ public class PipeHeartbeatParser {
             }
 
             if (exception instanceof PipeRuntimeConnectorCriticalException) {
-              ((PipeTableResp)
-                      configManager
-                          .getPipeManager()
-                          .getPipeTaskCoordinator()
-                          .getPipeTaskInfo()
-                          .showPipes())
+              ((PipeTableResp) pipeTaskInfo.get().showPipes())
                   .filter(true, pipeName).getAllPipeMeta().stream()
                       .filter(pipeMeta -> !pipeMeta.getStaticMeta().getPipeName().equals(pipeName))
                       .map(PipeMeta::getRuntimeMeta)
