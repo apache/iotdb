@@ -30,6 +30,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Queue;
@@ -72,19 +73,19 @@ public class PipeTaskMeta {
     this.leaderDataNodeId.set(leaderDataNodeId);
   }
 
-  public Iterable<PipeRuntimeException> getExceptionMessages() {
-    return exceptionMessages;
+  public synchronized Iterable<PipeRuntimeException> getExceptionMessages() {
+    return new ArrayList<>(exceptionMessages);
   }
 
-  public void trackExceptionMessage(PipeRuntimeException exceptionMessage) {
+  public synchronized void trackExceptionMessage(PipeRuntimeException exceptionMessage) {
     exceptionMessages.add(exceptionMessage);
   }
 
-  public void clearExceptionMessages() {
+  public synchronized void clearExceptionMessages() {
     exceptionMessages.clear();
   }
 
-  public void serialize(DataOutputStream outputStream) throws IOException {
+  public synchronized void serialize(DataOutputStream outputStream) throws IOException {
     progressIndex.get().serialize(outputStream);
     ReadWriteIOUtils.write(leaderDataNodeId.get(), outputStream);
     ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
@@ -93,7 +94,7 @@ public class PipeTaskMeta {
     }
   }
 
-  public void serialize(FileOutputStream outputStream) throws IOException {
+  public synchronized void serialize(FileOutputStream outputStream) throws IOException {
     progressIndex.get().serialize(outputStream);
     ReadWriteIOUtils.write(leaderDataNodeId.get(), outputStream);
     ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
