@@ -167,6 +167,46 @@ class FloatHyperparameter(Hyperparameter):
         return float(string_value)
 
 
+class StringHyperparameter(Hyperparameter):
+    def __init__(self, name: str,
+                 default_value: str,
+                 value_validators: List[Validator],
+                 value_list: List[str],
+                 tuning: bool = False):
+        super(StringHyperparameter, self).__init__(name)
+        self.__default_value = default_value
+        self.__value_validators = value_validators
+        self.__value_list = value_list
+        self.__tuning = tuning
+
+    def get_default_value(self):
+        return self.__default_value
+
+    def __validate(self, value, validators: List[Validator] = None):
+        try:
+            for validator in validators:
+                validator.validate(float(value))
+        except Exception as e:
+            raise BadConfigValueError(self._name, value, str(e))
+
+    def validate_value(self, value):
+        pass
+
+    def validate_range(self, min_value: float, max_value: float):
+        pass
+
+    def suggest_parameter(self, optuna_suggest: optuna.Trial):
+        if not self.__tuning:
+            return self.__default_value
+        return optuna_suggest.suggest_categorical(
+            name=self._name,
+            choices=self.__value_list
+        )
+
+    def parse(self, string_value: str):
+        return float(string_value)
+
+
 class HyperparameterName(Enum):
     # Training hyperparameter
     LEARNING_RATE = "learning_rate"
@@ -188,53 +228,69 @@ class HyperparameterName(Enum):
 
 
 training_hyperparameter_map = {
-    HyperparameterName.LEARNING_RATE.name(): FloatHyperparameter(name=HyperparameterName.LEARNING_RATE.name(),
-                                                                 log=True,
-                                                                 default_value=1e-3,
-                                                                 value_validators=[NumberRangeValidator(1e-8, 10)],
-                                                                 default_low=1e-5,
-                                                                 low_validators=[],
-                                                                 default_high=1e-1,
-                                                                 high_validators=[],
-                                                                 tuning=True),
+    HyperparameterName.LEARNING_RATE.name(): FloatHyperparameter(
+        name=HyperparameterName.LEARNING_RATE.name(),
+        log=True,
+        default_value=1e-3,
+        value_validators=[NumberRangeValidator(1e-8, 10)],
+        default_low=1e-5,
+        low_validators=[],
+        default_high=1e-1,
+        high_validators=[],
+        tuning=True
+    ),
 }
 
 dlinear_structure_hyperparameter_map = {
-    HyperparameterName.KERNEL_SIZE.value: IntHyperparameter(name=HyperparameterName.KERNEL_SIZE.name(),
-                                                            log=True,
-                                                            default_value=25,
-                                                            value_validators=[NumberRangeValidator(1, 1e10)],
-                                                            default_low=5,
-                                                            low_validators=[],
-                                                            default_high=50,
-                                                            high_validators=[])
+    HyperparameterName.KERNEL_SIZE.value: IntHyperparameter(
+        name=HyperparameterName.KERNEL_SIZE.name(),
+        log=True,
+        default_value=25,
+        value_validators=[NumberRangeValidator(1, 1e10)],
+        default_low=5,
+        low_validators=[],
+        default_high=50,
+        high_validators=[]
+    )
 }
 
 nbeats_structure_hyperparameter_map = {
-    HyperparameterName.D_MODEL.value: IntHyperparameter(name=HyperparameterName.D_MODEL.name(),
-                                                        log=True,
-                                                        default_value=512,
-                                                        value_validators=[NumberRangeValidator(4, 8192)],
-                                                        default_low=2,
-                                                        low_validators=[],
-                                                        default_high=2048,
-                                                        high_validators=[]),
-    HyperparameterName.INNER_LAYERS.value: IntHyperparameter(name=HyperparameterName.INNER_LAYERS.name(),
-                                                             log=False,
-                                                             default_value=4,
-                                                             value_validators=[NumberRangeValidator(1, 128)],
-                                                             default_low=1,
-                                                             low_validators=[],
-                                                             default_high=128,
-                                                             high_validators=[]),
-    HyperparameterName.OUTER_LAYERS.value: IntHyperparameter(name=HyperparameterName.OUTER_LAYERS.name(),
-                                                             log=False,
-                                                             default_value=4,
-                                                             value_validators=[NumberRangeValidator(1, 128)],
-                                                             default_low=1,
-                                                             low_validators=[],
-                                                             default_high=128,
-                                                             high_validators=[])
+    HyperparameterName.BLOCK_TYPE.value: StringHyperparameter(
+        name=HyperparameterName.BLOCK_TYPE.name(),
+        default_value='generic',
+        value_validators=[],
+        value_list=['generic'],
+        tuning=False
+    ),
+    HyperparameterName.D_MODEL.value: IntHyperparameter(
+        name=HyperparameterName.D_MODEL.name(),
+        log=True,
+        default_value=512,
+        value_validators=[NumberRangeValidator(4, 8192)],
+        default_low=2,
+        low_validators=[],
+        default_high=2048,
+        high_validators=[]
+    ),
+    HyperparameterName.INNER_LAYERS.value: IntHyperparameter(
+        name=HyperparameterName.INNER_LAYERS.name(),
+        log=False,
+        default_value=4,
+        value_validators=[NumberRangeValidator(1, 128)],
+        default_low=1,
+        low_validators=[],
+        default_high=128,
+        high_validators=[]
+    ),
+    HyperparameterName.OUTER_LAYERS.value: IntHyperparameter(
+        name=HyperparameterName.OUTER_LAYERS.name(),
+        log=False,
+        default_value=4,
+        value_validators=[NumberRangeValidator(1, 128)],
+        default_low=1,
+        low_validators=[],
+        default_high=128,
+        high_validators=[])
 }
 
 
