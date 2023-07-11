@@ -44,8 +44,8 @@ import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.schemaengine.SchemaConstant;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.factory.MemMNodeFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.LogicalViewInfo;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.MeasurementCollector;
@@ -121,7 +121,8 @@ public class MTreeBelowSGMemoryImpl {
 
   private final IMemMNode rootNode;
   private final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter;
-  private final IMNodeFactory<IMemMNode> nodeFactory = MemMNodeFactory.getInstance();
+  private final IMNodeFactory<IMemMNode> nodeFactory =
+      MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory();
   private final int levelOfSG;
   private final MemSchemaRegionStatistics regionStatistics;
 
@@ -1077,9 +1078,11 @@ public class MTreeBelowSGMemoryImpl {
     IMemMNode deviceParent = checkAndAutoCreateInternalPath(devicePath);
 
     synchronized (this) {
-      IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
-
       String leafName = path.getMeasurement();
+      IMeasurementMNode<IMemMNode> measurementMNode =
+          nodeFactory.createLogicalViewMNode(
+              null, leafName, new LogicalViewInfo(new LogicalViewSchema(leafName, viewExpression)));
+      IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
 
       // no need to check alias, because logical view has no alias
 
@@ -1110,12 +1113,7 @@ public class MTreeBelowSGMemoryImpl {
         entityMNode.setAligned(null);
       }
 
-      IMeasurementMNode<IMemMNode> measurementMNode =
-          nodeFactory.createLogicalViewMNode(
-              entityMNode,
-              leafName,
-              new LogicalViewInfo(new LogicalViewSchema(leafName, viewExpression)));
-
+      measurementMNode.setParent(entityMNode.getAsMNode());
       store.addChild(entityMNode.getAsMNode(), leafName, measurementMNode.getAsMNode());
 
       return measurementMNode;
