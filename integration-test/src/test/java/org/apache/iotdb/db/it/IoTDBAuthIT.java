@@ -94,6 +94,19 @@ public class IoTDBAuthIT {
 
         adminStmt.execute("REVOKE USER tempuser PRIVILEGES ALL on root.**");
         adminStmt.execute("REVOKE USER tempuser PRIVILEGES WRITE_SCHEMA ON root.b.b");
+        adminStmt.execute("GRANT USER tempuser PRIVILEGES WRITE on root.**");
+
+        userStmt.execute("CREATE DATABASE root.c");
+        userStmt.execute("CREATE TIMESERIES root.c.d WITH DATATYPE=INT32,ENCODING=PLAIN");
+        userStmt.execute("INSERT INTO root.c(timestamp, d) VALUES (100, 100)");
+        userStmt.execute("SELECT * from root.c");
+
+        adminStmt.execute("REVOKE USER tempuser PRIVILEGES WRITE on root.**");
+        adminStmt.execute("GRANT USER tempuser PRIVILEGES READ on root.**");
+
+        userStmt.execute("SELECT * from root.c");
+
+        adminStmt.execute("REVOKE USER tempuser PRIVILEGES READ on root.**");
 
         Assert.assertThrows(SQLException.class, () -> userStmt.execute("CREATE DATABASE root.b"));
         Assert.assertThrows(

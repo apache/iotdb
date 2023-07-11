@@ -19,6 +19,7 @@
 package org.apache.iotdb.commons.auth.user;
 
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.concurrent.HashLock;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -196,7 +197,7 @@ public abstract class BasicUserManager implements IUserManager {
         throw new AuthException(
             TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_ERROR, username));
       }
-      if (!user.hasPrivilege(path, privilegeId)) {
+      if (PrivilegeType.isStorable(privilegeId) && !user.hasPrivilege(path, privilegeId)) {
         return false;
       }
       user.removePrivilege(path, privilegeId);

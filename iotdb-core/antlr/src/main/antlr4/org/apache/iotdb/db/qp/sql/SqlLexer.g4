@@ -61,6 +61,14 @@ ALL
     : A L L
     ;
 
+READ
+    : R E A D
+    ;
+
+WRITE
+    : W R I T E
+    ;
+
 ALTER
     : A L T E R
     ;

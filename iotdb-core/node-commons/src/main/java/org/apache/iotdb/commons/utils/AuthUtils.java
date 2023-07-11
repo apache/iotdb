@@ -315,12 +315,8 @@ public class AuthUtils {
       privilegeList.add(targetPathPrivilege);
     }
     // add privilegeId into targetPathPrivilege
-    if (privilegeId != PrivilegeType.ALL.ordinal()) {
-      targetPathPrivilege.getPrivileges().add(privilegeId);
-    } else {
-      for (PrivilegeType privilegeType : PrivilegeType.values()) {
-        targetPathPrivilege.getPrivileges().add(privilegeType.ordinal());
-      }
+    for (PrivilegeType privilegeType : PrivilegeType.getStorablePrivilege(privilegeId)) {
+      targetPathPrivilege.getPrivileges().add(privilegeType.ordinal());
     }
   }
 
@@ -341,15 +337,8 @@ public class AuthUtils {
       }
     }
     if (targetPathPrivilege != null) {
-      if (privilegeId == PrivilegeType.ALL.ordinal()) {
-        // remove all privileges on target path
-        privilegeList.remove(targetPathPrivilege);
-      } else {
-        // remove privilege on target path
-        targetPathPrivilege.getPrivileges().remove(privilegeId);
-        if (targetPathPrivilege.getPrivileges().isEmpty()) {
-          privilegeList.remove(targetPathPrivilege);
-        }
+      for (PrivilegeType privilegeType : PrivilegeType.getStorablePrivilege(privilegeId)) {
+        targetPathPrivilege.getPrivileges().remove(privilegeType.ordinal());
       }
     }
   }
