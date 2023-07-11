@@ -1892,6 +1892,7 @@ public class IoTDBConfig {
     this.allocateMemoryForCoordinator = allocateMemoryForRead * 50 / 1001;
     this.allocateMemoryForOperators = allocateMemoryForRead * 200 / 1001;
     this.allocateMemoryForDataExchange = allocateMemoryForRead * 200 / 1001;
+    this.maxBytesPerFragmentInstance = this.allocateMemoryForDataExchange / queryThreadCount;
     this.allocateMemoryForTimeIndex = allocateMemoryForRead * 200 / 1001;
   }
 
