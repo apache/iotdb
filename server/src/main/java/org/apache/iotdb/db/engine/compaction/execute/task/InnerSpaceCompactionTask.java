@@ -46,6 +46,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class InnerSpaceCompactionTask extends AbstractCompactionTask {
@@ -65,6 +66,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   protected List<TsFileResource> targetTsFileList;
   protected boolean[] isHoldingReadLock;
   protected boolean[] isHoldingWriteLock;
+
+  protected long maxModsFileSize;
 
   public InnerSpaceCompactionTask(
       long timePartition,
@@ -339,6 +342,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     sumOfCompactionCount = 0;
     maxFileVersion = -1L;
     maxCompactionCount = -1;
+    maxModsFileSize = 0;
     if (selectedTsFileResourceList == null) {
       return;
     }
@@ -353,6 +357,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         }
         if (fileName.getVersion() > maxFileVersion) {
           maxFileVersion = fileName.getVersion();
+        }
+        if (!Objects.isNull(resource.getModFile())) {
+          long modsFileSize = resource.getModFile().getSize();
+          maxModsFileSize = Math.max(maxModsFileSize, modsFileSize);
         }
       } catch (IOException e) {
         LOGGER.warn("Fail to get the tsfile name of {}", resource.getTsFile(), e);
@@ -378,6 +386,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
   public long getMaxFileVersion() {
     return maxFileVersion;
+  }
+
+  public long getMaxModsFileSize() {
+    return maxModsFileSize;
   }
 
   @Override
