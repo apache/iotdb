@@ -86,6 +86,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
 
   @Override
   public Response variables(SQL sql, SecurityContext securityContext) {
+    Long queryId = null;
     try {
       RequestValidationHandler.validateSQL(sql);
 
@@ -105,7 +106,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
         return response;
       }
 
-      final long queryId = SESSION_MANAGER.requestQueryId();
+      queryId = SESSION_MANAGER.requestQueryId();
       // create and cache dataset
       ExecutionResult result =
           COORDINATOR.execute(
@@ -131,11 +132,16 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
       }
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+    } finally {
+      if (queryId != null) {
+        COORDINATOR.cleanupQueryExecution(queryId);
+      }
     }
   }
 
   @Override
   public Response expression(ExpressionRequest expressionRequest, SecurityContext securityContext) {
+    Long queryId = null;
     try {
       RequestValidationHandler.validateExpressionRequest(expressionRequest);
 
@@ -167,7 +173,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
         return response;
       }
 
-      final long queryId = SESSION_MANAGER.requestQueryId();
+      queryId = SESSION_MANAGER.requestQueryId();
       // create and cache dataset
       ExecutionResult result =
           COORDINATOR.execute(
@@ -197,6 +203,10 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
       }
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+    } finally {
+      if (queryId != null) {
+        COORDINATOR.cleanupQueryExecution(queryId);
+      }
     }
   }
 
@@ -212,6 +222,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
 
   @Override
   public Response node(List<String> requestBody, SecurityContext securityContext) {
+    Long queryId = null;
     try {
       if (requestBody != null && !requestBody.isEmpty()) {
         PartialPath path = new PartialPath(Joiner.on(".").join(requestBody));
@@ -223,7 +234,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
           return response;
         }
 
-        final long queryId = SESSION_MANAGER.requestQueryId();
+        queryId = SESSION_MANAGER.requestQueryId();
         // create and cache dataset
         ExecutionResult result =
             COORDINATOR.execute(
@@ -253,6 +264,10 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
       }
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+    } finally {
+      if (queryId != null) {
+        COORDINATOR.cleanupQueryExecution(queryId);
+      }
     }
   }
 }
