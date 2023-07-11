@@ -69,9 +69,9 @@ import org.apache.thrift.transport.TIOStreamTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -783,7 +783,9 @@ public class PartitionInfo implements SnapshotProcessor {
       return;
     }
 
-    try (FileInputStream fileInputStream = new FileInputStream(snapshotFile);
+    try (BufferedInputStream fileInputStream =
+            new BufferedInputStream(
+                Files.newInputStream(snapshotFile.toPath()), PARTITION_TABLE_BUFFER_SIZE);
         TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileInputStream)) {
       TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
       // before restoring a snapshot, clear all old data
