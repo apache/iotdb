@@ -1486,6 +1486,7 @@ public class OperatorMemoryTest {
         Collections.emptyMap(),
         Collections.emptyMap(),
         Collections.emptyList(),
+        Collections.emptyList(),
         Collections.emptyMap(),
         null,
         statementSizePerLine);

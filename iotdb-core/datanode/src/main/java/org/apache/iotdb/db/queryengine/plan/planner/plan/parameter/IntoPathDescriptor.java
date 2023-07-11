@@ -47,6 +47,9 @@ public class IntoPathDescriptor {
   // List<(sourceColumn, targetPath)>
   private List<Pair<String, PartialPath>> sourceTargetPathPairList;
 
+  // sourceColumn -> viewPath, if the viewPath is not empty
+  private List<Pair<String, String>> sourceColumnToViewList;
+
   // targetDevice -> isAlignedDevice
   private final Map<String, Boolean> targetDeviceToAlignedMap;
 
@@ -55,6 +58,7 @@ public class IntoPathDescriptor {
 
   public IntoPathDescriptor() {
     this.sourceTargetPathPairList = new ArrayList<>();
+    this.sourceColumnToViewList = new ArrayList<>();
     this.targetDeviceToAlignedMap = new HashMap<>();
     this.sourceToDataTypeMap = new HashMap<>();
   }
@@ -66,8 +70,11 @@ public class IntoPathDescriptor {
     this.targetDeviceToAlignedMap = targetDeviceToAlignedMap;
   }
 
-  public void specifyTargetPath(String sourceColumn, PartialPath targetPath) {
+  public void specifyTargetPath(
+      String sourceColumn, String sourceViewPath, PartialPath targetPath) {
     sourceTargetPathPairList.add(new Pair<>(sourceColumn, targetPath));
+    sourceColumnToViewList.add(
+        new Pair<>(sourceColumn, sourceViewPath == null ? "" : sourceViewPath));
   }
 
   public void specifyDeviceAlignment(String targetDevice, boolean isAligned) {
@@ -98,6 +105,10 @@ public class IntoPathDescriptor {
 
   public List<Pair<String, PartialPath>> getSourceTargetPathPairList() {
     return sourceTargetPathPairList;
+  }
+
+  public List<Pair<String, String>> getSourceColumnToViewList() {
+    return sourceColumnToViewList;
   }
 
   public Map<String, Boolean> getTargetDeviceToAlignedMap() {

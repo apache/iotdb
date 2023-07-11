@@ -33,6 +33,8 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.commons.lang.StringUtils;
+
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -41,6 +43,8 @@ import java.util.stream.Collectors;
 public class IntoOperator extends AbstractIntoOperator {
 
   private final List<Pair<String, PartialPath>> sourceTargetPathPairList;
+
+  private final List<Pair<String, String>> sourceColumnToViewList;
 
   @SuppressWarnings("squid:S107")
   public IntoOperator(
@@ -51,6 +55,7 @@ public class IntoOperator extends AbstractIntoOperator {
       Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap,
       Map<String, Boolean> targetDeviceToAlignedMap,
       List<Pair<String, PartialPath>> sourceTargetPathPairList,
+      List<Pair<String, String>> sourceColumnToViewList,
       Map<String, InputLocation> sourceColumnToInputLocationMap,
       ExecutorService intoOperationExecutor,
       long statementSizePerLine) {
@@ -62,6 +67,7 @@ public class IntoOperator extends AbstractIntoOperator {
         intoOperationExecutor,
         statementSizePerLine);
     this.sourceTargetPathPairList = sourceTargetPathPairList;
+    this.sourceColumnToViewList = sourceColumnToViewList;
     insertTabletStatementGenerators =
         constructInsertTabletStatementGenerators(
             targetPathToSourceInputLocationMap,
@@ -110,9 +116,14 @@ public class IntoOperator extends AbstractIntoOperator {
     TsBlockBuilder resultTsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
     ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
-    for (Pair<String, PartialPath> sourceTargetPathPair : sourceTargetPathPairList) {
+    for (int i = 0; i < sourceTargetPathPairList.size(); i++) {
+      Pair<String, PartialPath> sourceTargetPathPair = sourceTargetPathPairList.get(i);
+      String sourceColumn = sourceTargetPathPair.left;
+      if (StringUtils.isNotEmpty(sourceColumnToViewList.get(i).right)) {
+        sourceColumn = sourceColumnToViewList.get(i).right;
+      }
       timeColumnBuilder.writeLong(0);
-      columnBuilders[0].writeBinary(new Binary(sourceTargetPathPair.left));
+      columnBuilders[0].writeBinary(new Binary(sourceColumn));
       columnBuilders[1].writeBinary(new Binary(sourceTargetPathPair.right.toString()));
       columnBuilders[2].writeInt(
           findWritten(
