@@ -63,7 +63,7 @@ public class PipeTaskCoordinator {
    * @return the pipe task info holder, which can be used to get the pipe task info. The holder is
    *     null if the lock is not acquired.
    */
-  public synchronized AtomicReference<PipeTaskInfo> lock() {
+  public AtomicReference<PipeTaskInfo> lock() {
     pipeTaskCoordinatorLock.lock();
 
     pipeTaskInfoHolder = new AtomicReference<>(pipeTaskInfo);
@@ -74,7 +74,7 @@ public class PipeTaskCoordinator {
    * Unlock the pipe task coordinator. Calling this method will clear the pipe task info holder,
    * which means that the holder will be null after calling this method.
    */
-  public synchronized void unlock() {
+  public void unlock() {
     if (pipeTaskInfoHolder != null) {
       pipeTaskInfoHolder.set(null);
       pipeTaskInfoHolder = null;
