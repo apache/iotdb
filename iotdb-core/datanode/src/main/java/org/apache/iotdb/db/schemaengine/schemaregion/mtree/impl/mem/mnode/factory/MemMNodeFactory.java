@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
+import org.apache.iotdb.commons.schema.node.utils.MNodeFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl.AboveDatabaseMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl.BasicInternalMNode;
@@ -32,6 +33,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl.D
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl.MeasurementMNode;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
+@MNodeFactory
 public class MemMNodeFactory implements IMNodeFactory<IMemMNode> {
 
   @Override

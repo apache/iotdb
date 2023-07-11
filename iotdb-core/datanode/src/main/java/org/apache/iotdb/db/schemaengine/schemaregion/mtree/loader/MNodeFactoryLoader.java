@@ -21,34 +21,60 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader;
 
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
+import org.apache.iotdb.commons.schema.node.utils.MNodeFactory;
+import org.apache.iotdb.db.schemaengine.SchemaConstant;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
+import org.reflections.Reflections;
+import org.reflections.util.ConfigurationBuilder;
+
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.ServiceLoader;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 
 @SuppressWarnings({"squid:S6548", "squid:3077"})
 public class MNodeFactoryLoader {
+
+  private final List<String> scanPackages = new ArrayList<>();
+  private String env;
   private volatile IMNodeFactory<ICachedMNode> cachedMNodeIMNodeFactory;
   private volatile IMNodeFactory<IMemMNode> memMNodeIMNodeFactory;
 
+  private MNodeFactoryLoader() {
+    addScanPackage("org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.factory");
+    addScanPackage("org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.factory");
+    setEnv(SchemaConstant.DEFAULT_MNODE_FACTORY_ENV);
+  }
+
+  public void addScanPackage(String scanPackage) {
+    scanPackages.add(scanPackage);
+  }
+
+  public void setEnv(String env) {
+    this.env = env;
+  }
+
+  @SuppressWarnings("squid:S3740")
   public IMNodeFactory<ICachedMNode> getCachedMNodeIMNodeFactory() {
     if (cachedMNodeIMNodeFactory == null) {
       synchronized (this) {
         if (cachedMNodeIMNodeFactory == null) {
-          loadCachedMNodeFactory();
+          cachedMNodeIMNodeFactory = loadMNodeFactory(ICachedMNode.class);
         }
       }
     }
     return cachedMNodeIMNodeFactory;
   }
 
+  @SuppressWarnings("squid:S3740")
   public IMNodeFactory<IMemMNode> getMemMNodeIMNodeFactory() {
     if (memMNodeIMNodeFactory == null) {
       synchronized (this) {
         if (memMNodeIMNodeFactory == null) {
-          loadMemMNodeFactory();
+          memMNodeIMNodeFactory = loadMNodeFactory(IMemMNode.class);
         }
       }
     }
@@ -56,31 +82,36 @@ public class MNodeFactoryLoader {
   }
 
   @SuppressWarnings("squid:S3740")
-  private void loadCachedMNodeFactory() {
-    ServiceLoader<IMNodeFactory> loader = ServiceLoader.load(IMNodeFactory.class);
-    for (IMNodeFactory factory : loader) {
-      if (isImplemented(factory, ICachedMNode.class)) {
-        cachedMNodeIMNodeFactory = factory;
-        return;
+  private IMNodeFactory loadMNodeFactory(Class<?> nodeType) {
+    Reflections reflections =
+        new Reflections(
+            new ConfigurationBuilder().forPackages(scanPackages.toArray(new String[0])));
+    Set<Class<?>> nodeFactorySet = reflections.getTypesAnnotatedWith(MNodeFactory.class);
+    for (Class<?> nodeFactory : nodeFactorySet) {
+      if (isGenericMatch(nodeFactory, nodeType) && isEnvMatch(nodeFactory, env)) {
+        try {
+          return (IMNodeFactory) nodeFactory.getDeclaredConstructor().newInstance();
+        } catch (Exception e) {
+          throw new SchemaExecutionException(e);
+        }
       }
     }
-    throw new SchemaExecutionException("No implementation found for IMNodeFactory<ICacheMNode>");
-  }
-
-  @SuppressWarnings("squid:S3740")
-  private void loadMemMNodeFactory() {
-    ServiceLoader<IMNodeFactory> loader = ServiceLoader.load(IMNodeFactory.class);
-    for (IMNodeFactory factory : loader) {
-      if (isImplemented(factory, IMemMNode.class)) {
-        memMNodeIMNodeFactory = factory;
-        return;
+    // if no satisfied MNodeFactory in customer env found, use default env
+    for (Class<?> nodeFactory : nodeFactorySet) {
+      if (isGenericMatch(nodeFactory, nodeType)
+          && isEnvMatch(nodeFactory, SchemaConstant.DEFAULT_MNODE_FACTORY_ENV)) {
+        try {
+          return (IMNodeFactory) nodeFactory.getDeclaredConstructor().newInstance();
+        } catch (Exception e) {
+          throw new SchemaExecutionException(e);
+        }
       }
     }
-    throw new SchemaExecutionException("No implementation found for IMNodeFactory<IMemMNode>");
+    throw new SchemaExecutionException("No satisfied MNodeFactory found");
   }
 
-  public static boolean isImplemented(IMNodeFactory<?> factory, Class<?> targetType) {
-    Type[] interfaces = factory.getClass().getGenericInterfaces();
+  public boolean isGenericMatch(Class<?> factory, Class<?> targetType) {
+    Type[] interfaces = factory.getGenericInterfaces();
     for (Type type : interfaces) {
       if (type instanceof ParameterizedType) {
         ParameterizedType parameterizedType = (ParameterizedType) type;
@@ -96,7 +127,10 @@ public class MNodeFactoryLoader {
     return false;
   }
 
-  private MNodeFactoryLoader() {}
+  private boolean isEnvMatch(Class<?> factory, String env) {
+    MNodeFactory annotationInfo = factory.getAnnotation(MNodeFactory.class);
+    return annotationInfo.env().equals(env);
+  }
 
   private static class MNodeFactoryLoaderHolder {
     private static final MNodeFactoryLoader INSTANCE = new MNodeFactoryLoader();
