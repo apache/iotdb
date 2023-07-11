@@ -108,7 +108,7 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
     while (schemaReader.hasNext()) {
       schemaInfo = schemaReader.next();
       path = schemaInfo.getPartialPath();
-      if (path.getNodeLength() < level) {
+      if (path.getNodeLength() <= level) {
         continue;
       }
       levelPath = new PartialPath(Arrays.copyOf(path.getNodes(), level + 1));
