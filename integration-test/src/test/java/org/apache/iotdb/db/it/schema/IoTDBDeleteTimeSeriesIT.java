@@ -42,9 +42,9 @@ import static org.apache.iotdb.itbase.constant.TestConstant.count;
 import static org.junit.Assert.fail;
 
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBDeleteTimeseriesIT extends AbstractSchemaIT {
+public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
 
-  public IoTDBDeleteTimeseriesIT(SchemaTestMode schemaTestMode) {
+  public IoTDBDeleteTimeSeriesIT(SchemaTestMode schemaTestMode) {
     super(schemaTestMode);
   }
 
@@ -66,15 +66,15 @@ public class IoTDBDeleteTimeseriesIT extends AbstractSchemaIT {
   }
 
   @Test
-  public void deleteTimeseriesAndCreateDifferentTypeTest() throws Exception {
+  public void deleteTimeSeriesAndCreateDifferentTypeTest() throws Exception {
     String[] retArray = new String[] {"1,1,", "2,1.1,"};
     int cnt = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create timeseries root.turbine1.d1.s1 with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
+          "create timeSeries root.turbine1.d1.s1 with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
       statement.execute(
-          "create timeseries root.turbine1.d1.s2 with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
+          "create timeSeries root.turbine1.d1.s2 with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
       statement.execute("INSERT INTO root.turbine1.d1(timestamp,s1,s2) VALUES(1,1,2)");
 
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.turbine1.d1")) {
@@ -88,9 +88,9 @@ public class IoTDBDeleteTimeseriesIT extends AbstractSchemaIT {
           cnt++;
         }
       }
-      statement.execute("DELETE timeseries root.turbine1.d1.s1");
+      statement.execute("DELETE timeSeries root.turbine1.d1.s1");
       statement.execute(
-          "create timeseries root.turbine1.d1.s1 with datatype=DOUBLE, encoding=PLAIN, compression=SNAPPY");
+          "create timeSeries root.turbine1.d1.s1 with datatype=DOUBLE, encoding=PLAIN, compression=SNAPPY");
       statement.execute("INSERT INTO root.turbine1.d1(timestamp,s1) VALUES(2,1.1)");
       statement.execute("FLUSH");
 
@@ -118,15 +118,15 @@ public class IoTDBDeleteTimeseriesIT extends AbstractSchemaIT {
   }
 
   @Test
-  public void deleteTimeseriesAndCreateSameTypeTest() throws Exception {
+  public void deleteTimeSeriesAndCreateSameTypeTest() throws Exception {
     String[] retArray = new String[] {"1,1,", "2,5,"};
     int cnt = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create timeseries root.turbine1.d1.s1 with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
+          "create timeSeries root.turbine1.d1.s1 with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
       statement.execute(
-          "create timeseries root.turbine1.d1.s2 with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
+          "create timeSeries root.turbine1.d1.s2 with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
       statement.execute("INSERT INTO root.turbine1.d1(timestamp,s1,s2) VALUES(1,1,2)");
 
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.turbine1.d1")) {
@@ -140,9 +140,9 @@ public class IoTDBDeleteTimeseriesIT extends AbstractSchemaIT {
           cnt++;
         }
       }
-      statement.execute("DELETE timeseries root.turbine1.d1.s1");
+      statement.execute("DELETE timeSeries root.turbine1.d1.s1");
       statement.execute(
-          "create timeseries root.turbine1.d1.s1 with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
+          "create timeSeries root.turbine1.d1.s1 with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
       statement.execute("INSERT INTO root.turbine1.d1(timestamp,s1) VALUES(2,5)");
       statement.execute("FLUSH");
 
@@ -229,12 +229,12 @@ public class IoTDBDeleteTimeseriesIT extends AbstractSchemaIT {
         Assert.assertEquals(retArray1.length, cnt);
       }
 
-      statement.execute("delete timeseries root.sg.d1.*");
+      statement.execute("delete timeSeries root.sg.d1.*");
       try (ResultSet resultSet = statement.executeQuery("select * from root.sg.d1")) {
         Assert.assertFalse(resultSet.next());
       }
 
-      try (ResultSet resultSet = statement.executeQuery("show timeseries root.sg.d1.*")) {
+      try (ResultSet resultSet = statement.executeQuery("show timeSeries root.sg.d1.*")) {
         Assert.assertFalse(resultSet.next());
       }
 
@@ -270,12 +270,12 @@ public class IoTDBDeleteTimeseriesIT extends AbstractSchemaIT {
         Assert.assertEquals(retArray1.length, cnt);
       }
 
-      statement.execute("delete timeseries root.sg.*.s1");
+      statement.execute("delete timeSeries root.sg.*.s1");
       try (ResultSet resultSet = statement.executeQuery("select s1 from root.sg.*")) {
         Assert.assertFalse(resultSet.next());
       }
 
-      try (ResultSet resultSet = statement.executeQuery("show timeseries root.sg.*.s1")) {
+      try (ResultSet resultSet = statement.executeQuery("show timeSeries root.sg.*.s1")) {
         Assert.assertFalse(resultSet.next());
       }
 
@@ -320,12 +320,12 @@ public class IoTDBDeleteTimeseriesIT extends AbstractSchemaIT {
         Assert.assertEquals(retArray1.length, cnt);
       }
 
-      statement.execute("delete timeseries root.*.d1.s1");
+      statement.execute("delete timeSeries root.*.d1.s1");
       try (ResultSet resultSet = statement.executeQuery("select s1 from root.*.*")) {
         Assert.assertFalse(resultSet.next());
       }
 
-      try (ResultSet resultSet = statement.executeQuery("show timeseries root.*.*.s1")) {
+      try (ResultSet resultSet = statement.executeQuery("show timeSeries root.*.*.s1")) {
         Assert.assertFalse(resultSet.next());
       }
 
@@ -342,12 +342,12 @@ public class IoTDBDeleteTimeseriesIT extends AbstractSchemaIT {
         Assert.assertEquals(retArray1.length, cnt);
       }
 
-      statement.execute("delete timeseries root.sg1.d1.s2, root.sg2.**");
+      statement.execute("delete timeSeries root.sg1.d1.s2, root.sg2.**");
       try (ResultSet resultSet = statement.executeQuery("select s2 from root.sg1.*")) {
         Assert.assertFalse(resultSet.next());
       }
 
-      try (ResultSet resultSet = statement.executeQuery("show timeseries root.sg2.*.s2")) {
+      try (ResultSet resultSet = statement.executeQuery("show timeSeries root.sg2.*.s2")) {
         Assert.assertFalse(resultSet.next());
       }
 
@@ -393,12 +393,12 @@ public class IoTDBDeleteTimeseriesIT extends AbstractSchemaIT {
         Assert.assertEquals(retArray1.length, cnt);
       }
 
-      statement.execute("delete timeseries root.*.d1.s1, root.*.d1.s2");
+      statement.execute("delete timeSeries root.*.d1.s1, root.*.d1.s2");
       try (ResultSet resultSet = statement.executeQuery("select * from root.*.*")) {
         Assert.assertFalse(resultSet.next());
       }
 
-      try (ResultSet resultSet = statement.executeQuery("show timeseries root.*.*.*")) {
+      try (ResultSet resultSet = statement.executeQuery("show timeSeries root.*.*.*")) {
         Assert.assertFalse(resultSet.next());
       }
     }
@@ -409,13 +409,13 @@ public class IoTDBDeleteTimeseriesIT extends AbstractSchemaIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try {
-        statement.execute("delete timeseries root.**");
+        statement.execute("delete timeSeries root.**");
       } catch (SQLException e) {
         Assert.assertTrue(
             e.getMessage()
                 .contains(
                     TSStatusCode.PATH_NOT_EXIST.getStatusCode()
-                        + ": Timeseries [root.**] does not exist or is represented by schema template"));
+                        + ": TimeSeries [root.**] does not exist or is represented by schema template"));
       }
 
       String[] retArray1 = new String[] {"0,4,4,4,4"};
@@ -441,27 +441,27 @@ public class IoTDBDeleteTimeseriesIT extends AbstractSchemaIT {
       }
 
       try {
-        statement.execute("delete timeseries root.*.d1.s3");
+        statement.execute("delete timeSeries root.*.d1.s3");
       } catch (SQLException e) {
         Assert.assertTrue(
             e.getMessage()
                 .contains(
                     TSStatusCode.PATH_NOT_EXIST.getStatusCode()
-                        + ": Timeseries [root.*.d1.s3] does not exist or is represented by schema template"));
+                        + ": TimeSeries [root.*.d1.s3] does not exist or is represented by schema template"));
       }
     }
   }
 
   @Test
-  public void dropTimeseriesTest() throws Exception {
+  public void dropTimeSeriesTest() throws Exception {
     String[] retArray = new String[] {"1,1,", "2,1.1,"};
     int cnt = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create timeseries root.turbine1.d1.s1 with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
+          "create timeSeries root.turbine1.d1.s1 with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
       statement.execute(
-          "create timeseries root.turbine1.d1.s2 with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
+          "create timeSeries root.turbine1.d1.s2 with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
       statement.execute("INSERT INTO root.turbine1.d1(timestamp,s1,s2) VALUES(1,1,2)");
 
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.turbine1.d1")) {
@@ -475,10 +475,10 @@ public class IoTDBDeleteTimeseriesIT extends AbstractSchemaIT {
           cnt++;
         }
       }
-      statement.execute("DROP timeseries root.turbine1.d1.s1");
+      statement.execute("DROP timeSeries root.turbine1.d1.s1");
       statement.execute("FLUSH");
 
-      try (ResultSet resultSet = statement.executeQuery("show timeseries root.turbine1.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("show timeSeries root.turbine1.d1")) {
         Assert.assertFalse(resultSet.next());
       }
     }

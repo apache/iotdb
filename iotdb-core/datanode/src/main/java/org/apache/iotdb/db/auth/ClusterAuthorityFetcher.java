@@ -250,7 +250,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     }
   }
 
-  /** cache user */
+  /** Cache user. */
   public User cacheUser(TPermissionInfoResp tPermissionInfoResp) {
     User user = new User();
     List<String> privilegeList = tPermissionInfoResp.getUserInfo().getPrivilegeList();
@@ -275,7 +275,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     return user;
   }
 
-  /** cache role */
+  /** Cache role. */
   public Role cacheRole(String roleName, TPermissionInfoResp tPermissionInfoResp) {
     Role role = new Role();
     List<String> privilegeList = tPermissionInfoResp.getRoleInfo().get(roleName).getPrivilegeList();
@@ -295,7 +295,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   }
 
   /**
-   * Convert user privilege information obtained from confignode to PathPrivilege
+   * Convert user privilege information obtained from confignode to {@link PathPrivilege}.
    *
    * @param path permission path
    * @param privilege privilegeIds

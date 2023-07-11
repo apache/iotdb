@@ -42,8 +42,6 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -60,8 +58,6 @@ import static com.google.common.util.concurrent.Futures.successfulAsList;
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 public abstract class AbstractIntoOperator implements ProcessOperator {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractIntoOperator.class);
 
   protected final OperatorContext operatorContext;
   protected final Operator child;
