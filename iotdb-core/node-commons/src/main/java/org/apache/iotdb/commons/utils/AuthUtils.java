@@ -129,8 +129,7 @@ public class AuthUtils {
     } else if (!str.matches(REX_PATTERN)) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PARAMETER,
-          "The name or password can only contain letters, numbers, and underscores, "
-              + "and cannot start with numbers");
+          "The name or password can only contain letters, numbers, and underscores");
     }
   }
 
