@@ -631,4 +631,34 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       Assert.assertTrue(expectedResult.isEmpty());
     }
   }
+
+  @Test
+  public void testLevelCountWithTemplate() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE SCHEMA TEMPLATE t3 (s1 INT64)");
+      statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d1");
+      statement.execute("SET SCHEMA TEMPLATE t2 TO root.sg1.d2");
+      statement.execute("SET SCHEMA TEMPLATE t3 TO root.sg1.d3");
+      // create timeseries of schema template
+      statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.d1");
+      statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.d2");
+      statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.d3");
+      // count
+      Set<String> expectedResult =
+          new HashSet<>(Arrays.asList("root.sg1.d1,2", "root.sg1.d2,2", "root.sg1.d3,1"));
+      try (ResultSet resultSet =
+          statement.executeQuery("COUNT TIMESERIES root.sg1.** group by level=2")) {
+        while (resultSet.next()) {
+          String actualResult =
+              resultSet.getString(ColumnHeaderConstant.COLUMN)
+                  + ","
+                  + resultSet.getString(ColumnHeaderConstant.COUNT_TIMESERIES);
+          Assert.assertTrue(expectedResult.contains(actualResult));
+          expectedResult.remove(actualResult);
+        }
+      }
+      Assert.assertTrue(expectedResult.isEmpty());
+    }
+  }
 }

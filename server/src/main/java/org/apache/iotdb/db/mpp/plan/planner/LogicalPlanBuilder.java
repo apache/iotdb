@@ -1092,7 +1092,8 @@ public class LogicalPlanBuilder {
       int level,
       String key,
       String value,
-      boolean isContains) {
+      boolean isContains,
+      Map<Integer, Template> templateMap) {
     this.root =
         new LevelTimeSeriesCountNode(
             context.getQueryId().genPlanNodeId(),
@@ -1101,7 +1102,8 @@ public class LogicalPlanBuilder {
             level,
             key,
             value,
-            isContains);
+            isContains,
+            templateMap);
     return this;
   }
 

@@ -2489,6 +2489,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     SchemaPartition schemaPartitionInfo = partitionFetcher.getSchemaPartition(patternTree);
 
     analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+    Map<Integer, Template> templateMap =
+        schemaFetcher.checkAllRelatedTemplate(countLevelTimeSeriesStatement.getPathPattern());
+    analysis.setRelatedTemplateInfo(templateMap);
     analysis.setRespDatasetHeader(DatasetHeaderFactory.getCountLevelTimeSeriesHeader());
     return analysis;
   }
@@ -2818,7 +2821,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     analysis.setSpecifiedTemplateRelatedPathPatternList(specifiedPatternList);
 
-    SchemaPartition partition = partitionFetcher.getOrCreateSchemaPartition(patternTree);
+    SchemaPartition partition = partitionFetcher.getSchemaPartition(patternTree);
     analysis.setSchemaPartitionInfo(partition);
     if (partition.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze(true);
