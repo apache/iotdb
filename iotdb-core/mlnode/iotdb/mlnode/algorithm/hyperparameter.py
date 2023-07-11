@@ -211,14 +211,30 @@ dlinear_structure_hyperparameter_map = {
 }
 
 nbeats_structure_hyperparameter_map = {
-    HyperparameterName.KERNEL_SIZE.value: IntHyperparameter(name=HyperparameterName.KERNEL_SIZE.name(),
-                                                            log=True,
-                                                            default_value=25,
-                                                            value_validators=[NumberRangeValidator(1, 1e10)],
-                                                            default_low=5,
-                                                            low_validators=[],
-                                                            default_high=50,
-                                                            high_validators=[])
+    HyperparameterName.D_MODEL.value: IntHyperparameter(name=HyperparameterName.D_MODEL.name(),
+                                                        log=True,
+                                                        default_value=512,
+                                                        value_validators=[NumberRangeValidator(4, 8192)],
+                                                        default_low=2,
+                                                        low_validators=[],
+                                                        default_high=2048,
+                                                        high_validators=[]),
+    HyperparameterName.INNER_LAYERS.value: IntHyperparameter(name=HyperparameterName.INNER_LAYERS.name(),
+                                                             log=False,
+                                                             default_value=4,
+                                                             value_validators=[NumberRangeValidator(1, 128)],
+                                                             default_low=1,
+                                                             low_validators=[],
+                                                             default_high=128,
+                                                             high_validators=[]),
+    HyperparameterName.OUTER_LAYERS.value: IntHyperparameter(name=HyperparameterName.OUTER_LAYERS.name(),
+                                                             log=False,
+                                                             default_value=4,
+                                                             value_validators=[NumberRangeValidator(1, 128)],
+                                                             default_low=1,
+                                                             low_validators=[],
+                                                             default_high=128,
+                                                             high_validators=[])
 }
 
 
