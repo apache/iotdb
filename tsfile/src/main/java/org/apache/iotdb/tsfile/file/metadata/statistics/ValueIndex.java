@@ -1,8 +1,8 @@
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
-import org.apache.iotdb.tsfile.encoding.encoder.DeltaBinaryEncoder.IntDeltaEncoder;
-import org.apache.iotdb.tsfile.encoding.encoder.DoublePrecisionEncoderV2;
+import org.apache.iotdb.tsfile.encoding.encoder.PlainEncoder;
 import org.apache.iotdb.tsfile.encoding.encoder.SDTEncoder;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.ValuePoint;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
@@ -17,8 +17,10 @@ public class ValueIndex {
   private DoubleArrayList values = new DoubleArrayList();
   public SDTEncoder sdtEncoder = new SDTEncoder();
   public double errorBound = 0; // =std*2 =2*std.compDeviation
-  public IntDeltaEncoder idxEncoder = new IntDeltaEncoder();
-  public DoublePrecisionEncoderV2 valueEncoder = new DoublePrecisionEncoderV2();
+  //  public IntDeltaEncoder idxEncoder = new IntDeltaEncoder();
+  public PlainEncoder idxEncoder = new PlainEncoder(TSDataType.INT32, 0);
+  //  public DoublePrecisionEncoderV2 valueEncoder = new DoublePrecisionEncoderV2();
+  public PlainEncoder valueEncoder = new PlainEncoder(TSDataType.DOUBLE, 0);
   public PublicBAOS idxOut = new PublicBAOS();
   public PublicBAOS valueOut = new PublicBAOS();
   public IntArrayList modelPointIdx_list = new IntArrayList();

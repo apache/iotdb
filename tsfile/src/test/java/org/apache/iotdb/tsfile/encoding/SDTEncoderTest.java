@@ -73,9 +73,9 @@ public class SDTEncoderTest {
   public void mytest1() throws Exception {
     String csvData = "D:\\full-game\\BallSpeed.csv";
     //    String csvData = "D:\\desktop\\tmp2.csv";
-    int start = 200000; // counting from 1
+    int start = 200100; // counting from 1
     //    int start = 1; // counting from 1
-    int range = 200;
+    int range = 100;
     //    int range = 10000;
     int end = start + range;
     SDTEncoder encoder = new SDTEncoder();

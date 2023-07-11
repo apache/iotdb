@@ -19,8 +19,7 @@
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
-import org.apache.iotdb.tsfile.encoding.decoder.DeltaBinaryDecoder.IntDeltaDecoder;
-import org.apache.iotdb.tsfile.encoding.decoder.DoublePrecisionDecoderV2;
+import org.apache.iotdb.tsfile.encoding.decoder.PlainDecoder;
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.exception.write.UnknownColumnTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -641,7 +640,8 @@ public abstract class Statistics<T> {
     if (idxSize > 0) {
       ByteBuffer idxBuffer = buffer.slice();
       idxBuffer.limit(idxSize);
-      Decoder idxDecoder = new IntDeltaDecoder();
+      //      Decoder idxDecoder = new IntDeltaDecoder();
+      Decoder idxDecoder = new PlainDecoder();
       while (idxDecoder.hasNext(idxBuffer)) {
         int idx = idxDecoder.readInt(idxBuffer);
         valueIndex.modelPointIdx_list.add(idx);
@@ -655,7 +655,8 @@ public abstract class Statistics<T> {
     if (valueSize > 0) {
       ByteBuffer valueBuffer = buffer.slice();
       valueBuffer.limit(valueSize);
-      Decoder valueDecoder = new DoublePrecisionDecoderV2();
+      //      Decoder valueDecoder = new DoublePrecisionDecoderV2();
+      Decoder valueDecoder = new PlainDecoder();
       int n = 0;
       while (valueDecoder.hasNext(valueBuffer)) {
         double value = valueDecoder.readDouble(valueBuffer);
