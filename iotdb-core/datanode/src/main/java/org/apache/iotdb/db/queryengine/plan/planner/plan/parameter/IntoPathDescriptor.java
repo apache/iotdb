@@ -28,6 +28,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.apache.commons.lang3.StringUtils;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -65,8 +67,10 @@ public class IntoPathDescriptor {
 
   public IntoPathDescriptor(
       List<Pair<String, PartialPath>> sourceTargetPathPairList,
+      List<Pair<String, String>> sourceColumnToViewList,
       Map<String, Boolean> targetDeviceToAlignedMap) {
     this.sourceTargetPathPairList = sourceTargetPathPairList;
+    this.sourceColumnToViewList = sourceColumnToViewList;
     this.targetDeviceToAlignedMap = targetDeviceToAlignedMap;
   }
 
@@ -157,6 +161,11 @@ public class IntoPathDescriptor {
       sourceTargetPathPair.right.serialize(stream);
     }
 
+    for (Pair<String, String> sourceColumnToView : sourceColumnToViewList) {
+      ReadWriteIOUtils.write(sourceColumnToView.left, stream);
+      ReadWriteIOUtils.write(sourceColumnToView.right, stream);
+    }
+
     ReadWriteIOUtils.write(targetDeviceToAlignedMap.size(), stream);
     for (Map.Entry<String, Boolean> entry : targetDeviceToAlignedMap.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), stream);
@@ -173,13 +182,24 @@ public class IntoPathDescriptor {
       sourceTargetPathPairList.add(new Pair<>(sourceColumn, targetPath));
     }
 
+    List<Pair<String, String>> sourceColumnToViewList = new ArrayList<>();
+    for (int i = 0; i < listSize; i++) {
+      String sourceColumn = ReadWriteIOUtils.readString(byteBuffer);
+      String viewPath = ReadWriteIOUtils.readString(byteBuffer);
+      if (StringUtils.isEmpty(viewPath)) {
+        viewPath = "";
+      }
+      sourceColumnToViewList.add(new Pair<>(sourceColumn, viewPath));
+    }
+
     int mapSize = ReadWriteIOUtils.readInt(byteBuffer);
     Map<String, Boolean> targetDeviceToAlignedMap = new HashMap<>(mapSize);
     for (int i = 0; i < mapSize; i++) {
       targetDeviceToAlignedMap.put(
           ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readBool(byteBuffer));
     }
-    return new IntoPathDescriptor(sourceTargetPathPairList, targetDeviceToAlignedMap);
+    return new IntoPathDescriptor(
+        sourceTargetPathPairList, sourceColumnToViewList, targetDeviceToAlignedMap);
   }
 
   @Override

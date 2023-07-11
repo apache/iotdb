@@ -46,7 +46,6 @@ public class IoTDBSelectIntoWithViewIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setQueryThreadCount(1);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareData(SELECT_INTO_SQL_LIST);
     prepareData(VIEW_SQL_LIST);
