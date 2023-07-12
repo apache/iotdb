@@ -73,14 +73,22 @@ public class PipeTaskCoordinator {
   /**
    * Unlock the pipe task coordinator. Calling this method will clear the pipe task info holder,
    * which means that the holder will be null after calling this method.
+   *
+   * @return true if successfully unlocked, false if current thread is not holding the lock.
    */
-  public void unlock() {
+  public boolean unlock() {
     if (pipeTaskInfoHolder != null) {
       pipeTaskInfoHolder.set(null);
       pipeTaskInfoHolder = null;
     }
 
-    pipeTaskCoordinatorLock.unlock();
+    try {
+      pipeTaskCoordinatorLock.unlock();
+    } catch (IllegalMonitorStateException ignored) {
+      // This is thrown if unlock() is called without lock() called first.
+      return false;
+    }
+    return true;
   }
 
   /* Caller should ensure that the method is called in the lock {@link #lock()}. */

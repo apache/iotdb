@@ -347,6 +347,10 @@ public class ProcedureExecutor<Env> {
           switch (executeRootStackRollback(rootProcId, rootProcStack)) {
             case LOCK_ACQUIRED:
               break;
+            case LOCK_EVENT_WAIT:
+              LOG.info("LOCK_EVENT_WAIT rollback " + proc);
+              rootProcStack.unsetRollback();
+              break;
             case LOCK_YIELD_WAIT:
               rootProcStack.unsetRollback();
               scheduler.yield(proc);
