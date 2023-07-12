@@ -23,7 +23,8 @@ MLNODE_LOG_CONF_FILE_NAME = "logging_config.ini"
 
 MLNODE_MODEL_STORAGE_DIRECTORY_NAME = "models"
 
-DEFAULT_TRIAL_ID = "__trial_0"
+TRIAL_ID_PREFIX = "__trial_"
+DEFAULT_TRIAL_ID = TRIAL_ID_PREFIX + "0"
 
 
 class TSStatusCode(Enum):
@@ -44,10 +45,13 @@ class OptionsKey(Enum):
     TASK_TYPE = "task_type"
     MODEL_TYPE = "model_type"
     AUTO_TUNING = "auto_tuning"
+    INPUT_VARS = "input_vars"
 
     # forecast
     INPUT_LENGTH = "input_length"
     PREDICT_LENGTH = "predict_length"
+    PREDICT_INDEX_LIST = "predict_index_list"
+    INPUT_TYPE_LIST = "input_type_list"
 
     def name(self) -> str:
         return self.value

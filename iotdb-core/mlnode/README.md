@@ -26,11 +26,11 @@ For developers, you can start an ML Node through the following steps.
 - Step 1: build project
 
 ```shell
-mvn clean package -DskipUTs -pl mlnode -am
+mvn clean package -DskipUTs -pl iotdb-core/mlnode -am
 ```
 
 ```shell
-cd mlnode
+cd iotde-core/mlnode
 poetry build
 ```
 

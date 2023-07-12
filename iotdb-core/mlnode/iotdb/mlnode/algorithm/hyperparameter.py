@@ -26,7 +26,7 @@ from iotdb.mlnode.exception import BadConfigValueError, UnsupportedError
 
 from iotdb.mlnode.algorithm.enums import ForecastModelType
 from iotdb.mlnode.algorithm.validator import Validator, NumberRangeValidator
-from iotdb.mlnode.parser import TaskOptions
+from iotdb.mlnode.parser import TaskOptions, ForecastTaskOptions
 
 
 class Hyperparameter(object):
@@ -290,7 +290,7 @@ training_hyperparameter_map = {
         tuning=False
     ),
     HyperparameterName.BATCH_SIZE.name(): IntHyperparameter(
-        name=HyperparameterName.EPOCHS.name(),
+        name=HyperparameterName.BATCH_SIZE.name(),
         log=True,
         default_value=32,
         value_validators=[NumberRangeValidator(1, 8196)],
@@ -301,7 +301,7 @@ training_hyperparameter_map = {
         tuning=False
     ),
     HyperparameterName.USE_GPU.name(): BooleanHyperparameter(
-        name=HyperparameterName.EPOCHS.name(),
+        name=HyperparameterName.USE_GPU.name(),
         default_value=False,
         value_validators=[],
         tuning=False
@@ -388,7 +388,7 @@ def get_structure_hyperparameter_map(model_type: ForecastModelType) -> Dict[str,
 
 
 def parse_fixed_hyperparameters(
-        task_options: TaskOptions,
+        task_options: ForecastTaskOptions,
         input_hyperparameters: Dict[str, str]
 ) -> Tuple[Dict, Dict]:
     """

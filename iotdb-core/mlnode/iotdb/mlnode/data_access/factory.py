@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+from typing import cast
 
 from torch.utils.data import Dataset
 
@@ -32,7 +33,8 @@ def create_dataset(query_body: str, task_options: TaskOptions) -> Dataset:
     """
     task_type = task_options.get_task_type()
     if task_type == TaskType.FORECAST:
-        return create_forecast_dataset(query_body, type(ForecastTaskOptions)(task_options))
+        task_options = cast(ForecastTaskOptions, task_options)
+        return create_forecast_dataset(query_body, task_options)
     else:
         raise UnsupportedError(f"task type {task_type}")
 
