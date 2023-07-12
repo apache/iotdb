@@ -20,13 +20,13 @@
 package org.apache.iotdb.confignode.procedure.exception;
 
 public class ProcedureYieldException extends ProcedureException {
-  /** default constructor */
+  /** Default constructor. */
   public ProcedureYieldException() {
     super();
   }
 
   /**
-   * Constructor
+   * Constructor.
    *
    * @param s message
    */

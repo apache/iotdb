@@ -42,9 +42,9 @@ import static org.apache.iotdb.itbase.constant.TestConstant.count;
 import static org.junit.Assert.fail;
 
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBDeleteTimeseriesIT extends AbstractSchemaIT {
+public class IoTDBDeleteTimeSeriesIT extends AbstractSchemaIT {
 
-  public IoTDBDeleteTimeseriesIT(SchemaTestMode schemaTestMode) {
+  public IoTDBDeleteTimeSeriesIT(SchemaTestMode schemaTestMode) {
     super(schemaTestMode);
   }
 
@@ -66,7 +66,7 @@ public class IoTDBDeleteTimeseriesIT extends AbstractSchemaIT {
   }
 
   @Test
-  public void deleteTimeseriesAndCreateDifferentTypeTest() throws Exception {
+  public void deleteTimeSeriesAndCreateDifferentTypeTest() throws Exception {
     String[] retArray = new String[] {"1,1,", "2,1.1,"};
     int cnt = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -118,7 +118,7 @@ public class IoTDBDeleteTimeseriesIT extends AbstractSchemaIT {
   }
 
   @Test
-  public void deleteTimeseriesAndCreateSameTypeTest() throws Exception {
+  public void deleteTimeSeriesAndCreateSameTypeTest() throws Exception {
     String[] retArray = new String[] {"1,1,", "2,5,"};
     int cnt = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -453,7 +453,7 @@ public class IoTDBDeleteTimeseriesIT extends AbstractSchemaIT {
   }
 
   @Test
-  public void dropTimeseriesTest() throws Exception {
+  public void dropTimeSeriesTest() throws Exception {
     String[] retArray = new String[] {"1,1,", "2,1.1,"};
     int cnt = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();

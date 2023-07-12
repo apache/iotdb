@@ -54,11 +54,11 @@ public class AuthorityChecker {
       PerformanceOverviewMetrics.getInstance();
 
   private AuthorityChecker() {
-    // empty constructor
+    // Empty constructor
   }
 
   /**
-   * check permission(datanode to confignode).
+   * Check permission(datanode to confignode).
    *
    * @param username username
    * @param paths paths in List structure
@@ -134,7 +134,7 @@ public class AuthorityChecker {
   /**
    * Check whether specific user has the authorization to given plan.
    *
-   * @throws AuthException if encountered authentification failure
+   * @throws AuthException if encountered authentication failure
    * @return true if the authority permission has passed
    */
   public static boolean checkAuthorization(Statement statement, String username)

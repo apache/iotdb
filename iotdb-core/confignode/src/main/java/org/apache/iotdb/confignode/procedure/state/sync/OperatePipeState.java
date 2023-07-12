@@ -17,20 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.it.env.cluster;
+package org.apache.iotdb.confignode.procedure.state.sync;
 
-import org.apache.iotdb.tsfile.utils.Pair;
-
-public class Cluster1Env extends AbstractEnv {
-
-  @Override
-  public void initClusterEnvironment() {
-    Pair<Integer, Integer> nodeNum = EnvUtils.getNodeNum();
-    super.initEnvironment(nodeNum.getLeft(), nodeNum.getRight());
-  }
-
-  @Override
-  public void initClusterEnvironment(int configNodesNum, int dataNodesNum) {
-    super.initEnvironment(configNodesNum, dataNodesNum);
-  }
+@Deprecated
+public enum OperatePipeState {
+  OPERATE_CHECK,
+  PRE_OPERATE_PIPE_CONFIGNODE,
+  OPERATE_PIPE_DATANODE,
+  OPERATE_PIPE_CONFIGNODE
 }

@@ -21,6 +21,8 @@ package org.apache.iotdb.commons.pipe.task.meta;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeExceptionType;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -45,10 +47,15 @@ public class PipeRuntimeMeta {
   private final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupId2TaskMetaMap;
 
   /**
-   * Stores the newest exceptions encountered group by dataNodes. The exceptions are all instances
-   * of 1. PipeRuntimeCriticalException, to record the failure of pushing pipeMeta, and will result
-   * in the halt of pipe execution. 2. PipeRuntimeConnectorCriticalException, to record the
-   * exception reported by other pipes sharing the same connector, and will stop the pipe likewise.
+   * Stores the newest exceptions encountered group by dataNodes.
+   *
+   * <p>The exceptions are all instances of:
+   *
+   * <p>1. {@link PipeRuntimeCriticalException}, to record the failure of pushing pipeMeta, and will
+   * result in the halt of pipe execution.
+   *
+   * <p>2. {@link PipeRuntimeConnectorCriticalException}, to record the exception reported by other
+   * pipes sharing the same connector, and will stop the pipe likewise.
    */
   private final Map<Integer, PipeRuntimeException> dataNodeId2PipeRuntimeExceptionMap =
       new ConcurrentHashMap<>();

@@ -69,7 +69,7 @@ public class ConfigNodeInfo {
 
   /** Update ConfigNodeList both in memory and system.properties file */
   public void updateConfigNodeList(List<TEndPoint> latestConfigNodes) {
-    // check whether the config nodes are latest or not
+    // Check whether the config nodes are latest or not
     configNodeInfoReadWriteLock.readLock().lock();
     try {
       if (onlineConfigNodes.containsAll(latestConfigNodes)
@@ -80,7 +80,7 @@ public class ConfigNodeInfo {
       configNodeInfoReadWriteLock.readLock().unlock();
     }
 
-    // update config nodes
+    // Update config nodes
     configNodeInfoReadWriteLock.writeLock().lock();
     try {
       onlineConfigNodes.clear();
@@ -95,7 +95,11 @@ public class ConfigNodeInfo {
     }
   }
 
-  /** call this method to store config node list */
+  /**
+   * Call this method to store config node list.
+   *
+   * @throws IOException if properties deserialization or configNode list serialization failed.
+   */
   private void storeConfigNode() throws IOException {
     Properties properties = new Properties();
     try (FileInputStream inputStream = new FileInputStream(propertiesFile)) {
@@ -146,7 +150,7 @@ public class ConfigNodeInfo {
     private static final ConfigNodeInfo INSTANCE = new ConfigNodeInfo();
 
     private ConfigNodeInfoHolder() {
-      // empty constructor
+      // Empty constructor
     }
   }
 

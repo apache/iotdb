@@ -29,6 +29,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Objects;
 
 public class PipeTransferFilePieceReq extends TPipeTransferReq {
 
@@ -36,7 +38,9 @@ public class PipeTransferFilePieceReq extends TPipeTransferReq {
   private long startWritingOffset;
   private byte[] filePiece;
 
-  private PipeTransferFilePieceReq() {}
+  private PipeTransferFilePieceReq() {
+    // Empty constructor
+  }
 
   public String getFileName() {
     return fileName;
@@ -84,5 +88,28 @@ public class PipeTransferFilePieceReq extends TPipeTransferReq {
     filePieceReq.body = transferReq.body;
 
     return filePieceReq;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    PipeTransferFilePieceReq that = (PipeTransferFilePieceReq) obj;
+    return fileName.equals(that.fileName)
+        && startWritingOffset == that.startWritingOffset
+        && Arrays.equals(filePiece, that.filePiece)
+        && version == that.version
+        && type == that.type
+        && body.equals(that.body);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        fileName, startWritingOffset, Arrays.hashCode(filePiece), version, type, body);
   }
 }

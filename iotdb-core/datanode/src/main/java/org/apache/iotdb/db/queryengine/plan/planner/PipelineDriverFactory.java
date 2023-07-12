@@ -36,7 +36,7 @@ public class PipelineDriverFactory {
   private final DriverContext driverContext;
   // TODO Use OperatorFactory to replace operator to generate multiple drivers for on pipeline
   private final Operator operation;
-  private long estimatedMemorySize;
+  private final long estimatedMemorySize;
 
   public PipelineDriverFactory(
       Operator operation, DriverContext driverContext, long estimatedMemorySize) {
