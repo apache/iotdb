@@ -910,6 +910,8 @@ privileges
 
 privilegeValue
     : ALL
+    | READ
+    | WRITE
     | PRIVILEGE_VALUE
     ;
 

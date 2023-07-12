@@ -120,13 +120,13 @@ public class IoTDBClusterAuthorityIT {
     TCheckUserPrivilegesReq checkUserPrivilegesReq;
 
     Set<Integer> privilegeList = new HashSet<>();
-    privilegeList.add(PrivilegeType.USER_PRIVILEGE.ordinal());
+    privilegeList.add(PrivilegeType.MANAGE_USER.ordinal());
 
     Set<Integer> revokePrivilege = new HashSet<>();
-    revokePrivilege.add(PrivilegeType.USER_PRIVILEGE.ordinal());
+    revokePrivilege.add(PrivilegeType.MANAGE_USER.ordinal());
 
     List<String> privilege = new ArrayList<>();
-    privilege.add("root.** : USER_PRIVILEGE");
+    privilege.add("root.** : MANAGE_USER");
 
     List<PartialPath> paths = new ArrayList<>();
     paths.add(new PartialPath("root.ln.**"));
@@ -156,7 +156,7 @@ public class IoTDBClusterAuthorityIT {
           new TCheckUserPrivilegesReq(
               "tempuser0",
               AuthUtils.serializePartialPathList(paths),
-              PrivilegeType.USER_PRIVILEGE.ordinal());
+              PrivilegeType.MANAGE_USER.ordinal());
       status = client.checkUserPrivileges(checkUserPrivilegesReq).getStatus();
       assertEquals(TSStatusCode.NO_PERMISSION.getStatusCode(), status.getCode());
 
@@ -267,7 +267,7 @@ public class IoTDBClusterAuthorityIT {
           new TCheckUserPrivilegesReq(
               "tempuser0",
               AuthUtils.serializePartialPathList(paths),
-              PrivilegeType.USER_PRIVILEGE.ordinal());
+              PrivilegeType.MANAGE_USER.ordinal());
       status = client.checkUserPrivileges(checkUserPrivilegesReq).getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -481,10 +481,12 @@ public class IoTDBClusterAuthorityIT {
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      for (int i = 0; i < PrivilegeType.values().length; i++) {
-        assertEquals(
-            PrivilegeType.values()[i].toString(),
-            authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE).get(i));
+      Set<PrivilegeType> allPrivilegeTypes = PrivilegeType.ALL.getStorablePrivilege();
+      List<String> resultPrivilegeTypes =
+          authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE);
+      Assert.assertEquals(allPrivilegeTypes.size(), resultPrivilegeTypes.size());
+      for (int i = 0; i < allPrivilegeTypes.size(); i++) {
+        Assert.assertTrue(resultPrivilegeTypes.contains(PrivilegeType.values()[i].toString()));
       }
     } catch (Exception e) {
       e.printStackTrace();
