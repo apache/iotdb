@@ -131,8 +131,21 @@ public class FunctionViewExpression extends ViewExpression {
   public String toString(boolean isRoot) {
     StringBuilder result = new StringBuilder(this.functionName);
     int keyValueSize = this.functionAttributesKeyValueList.size();
+
+    result.append("(");
+    for (int i = 0; i < this.expressions.size(); i++) {
+      result.append(this.expressions.get(i).toString());
+      if (i + 1 >= this.expressions.size()) {
+        break;
+      }
+      result.append(", ");
+    }
+
     if (this.functionAttributesKeyValueList.size() > 1) {
-      result.append("(");
+      if (this.expressions.size() > 0) {
+        result.append(", ");
+      }
+
       for (int i = 0; i + 1 < keyValueSize; i += 2) {
         result
             .append(this.functionAttributesKeyValueList.get(i))
@@ -143,16 +156,8 @@ public class FunctionViewExpression extends ViewExpression {
         }
         result.append(", ");
       }
-      result.append(")");
     }
-    result.append("(");
-    for (int i = 0; i < this.expressions.size(); i++) {
-      result.append(this.expressions.get(i).toString());
-      if (i + 1 >= this.expressions.size()) {
-        break;
-      }
-      result.append(", ");
-    }
+
     result.append(")");
     return result.toString();
   }
