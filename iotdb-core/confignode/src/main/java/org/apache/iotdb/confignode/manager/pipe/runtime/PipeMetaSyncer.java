@@ -56,7 +56,7 @@ public class PipeMetaSyncer {
 
   private final AtomicInteger pipeAutoRestartRoundCounter = new AtomicInteger(0);
 
-  private final boolean autoRestartPipeEnabled =
+  private final boolean pipeAutoRestartEnabled =
       PipeConfig.getInstance().getPipeAutoRestartEnabled();
 
   PipeMetaSyncer(ConfigManager configManager) {
@@ -94,7 +94,7 @@ public class PipeMetaSyncer {
     try {
       boolean needBroadcastRestartSignal = false;
 
-      if (autoRestartPipeEnabled
+      if (pipeAutoRestartEnabled
           && pipeAutoRestartRoundCounter.incrementAndGet()
               == PipeConfig.getInstance().getPipeMetaSyncerAutoRestartPipeCheckIntervalRound()) {
         needBroadcastRestartSignal = pipeTaskInfo.get().autoRestart();
