@@ -66,9 +66,9 @@ public class SessionManager implements SessionManagerMBean {
 
   private final ThreadLocal<Long> currSessionIdleTime = new ThreadLocal<>();
 
-  // sessions does not contain MqttSessions..
+  // Sessions does not contain MqttSessions..
   private final Map<IClientSession, Object> sessions = new ConcurrentHashMap<>();
-  // used for sessions.
+  // Used for sessions.
   private final Object placeHolder = new Object();
 
   private final AtomicLong sessionIdGenerator = new AtomicLong();

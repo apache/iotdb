@@ -16,8 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.it.env.remote;
 
 import org.apache.iotdb.itbase.env.DataNodeConfig;
 
-public class RemoteDataNodeConfig implements DataNodeConfig {}
+public class RemoteDataNodeConfig implements DataNodeConfig {
+  // Empty implementation
+}

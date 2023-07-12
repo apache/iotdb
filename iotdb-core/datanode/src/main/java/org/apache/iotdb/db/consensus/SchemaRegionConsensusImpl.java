@@ -46,9 +46,11 @@ public class SchemaRegionConsensusImpl {
 
   private static IConsensus INSTANCE = null;
 
-  private SchemaRegionConsensusImpl() {}
+  private SchemaRegionConsensusImpl() {
+    // Empty constructor
+  }
 
-  // need to create instance before calling this method
+  // Need to create instance before calling this method
   public static IConsensus getInstance() {
     return INSTANCE;
   }

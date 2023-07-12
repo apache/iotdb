@@ -20,4 +20,6 @@
 package org.apache.iotdb.itbase.env;
 
 /** This interface is used to handle properties in iotdb-datanode.properties. */
-public interface DataNodeConfig {}
+public interface DataNodeConfig {
+  // Empty interface
+}

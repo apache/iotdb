@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.tools.schema;
 
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
@@ -38,7 +39,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-/** parse the binary mlog or snapshot to text */
+/** Parse the binary mlog or snapshot to text. */
 public class MLogParser {
 
   private static final Logger logger = LoggerFactory.getLogger(MLogParser.class);

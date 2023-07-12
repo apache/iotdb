@@ -20,4 +20,6 @@
 package org.apache.iotdb.itbase.env;
 
 /** This interface is used to handle properties in iotdb-confignode.properties. */
-public interface ConfigNodeConfig {}
+public interface ConfigNodeConfig {
+  // Empty interface
+}

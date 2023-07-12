@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.tools.validate;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;

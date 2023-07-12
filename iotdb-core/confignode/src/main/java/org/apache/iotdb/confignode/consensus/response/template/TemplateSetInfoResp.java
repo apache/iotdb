@@ -34,7 +34,7 @@ public class TemplateSetInfoResp implements DataSet {
   private Map<PartialPath, List<Template>> patternTemplateMap;
 
   public TemplateSetInfoResp() {
-    // empty constructor
+    // Empty constructor
   }
 
   public TSStatus getStatus() {

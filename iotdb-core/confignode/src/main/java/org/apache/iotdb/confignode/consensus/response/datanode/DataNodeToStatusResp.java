@@ -33,7 +33,7 @@ public class DataNodeToStatusResp implements DataSet {
   private Map<TDataNodeLocation, TSStatus> dataNodeLocationToStatus;
 
   public DataNodeToStatusResp() {
-    // empty constructor
+    // Empty constructor
   }
 
   public TDataNodeRemoveResp convertToRpCDataNodeRemoveResp() {

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -42,7 +43,9 @@ import java.util.List;
 @SuppressWarnings("java:S106") // for console outputs
 public class CommonUtils {
 
-  private CommonUtils() {}
+  private CommonUtils() {
+    // Empty constructor
+  }
 
   public static Object parseValue(TSDataType dataType, String value) throws QueryProcessException {
     try {

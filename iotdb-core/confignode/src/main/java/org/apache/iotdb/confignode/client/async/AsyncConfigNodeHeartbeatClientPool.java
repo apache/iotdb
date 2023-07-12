@@ -37,7 +37,7 @@ public class AsyncConfigNodeHeartbeatClientPool {
   }
 
   /**
-   * Only used in LoadManager
+   * Only used in LoadManager.
    *
    * @param endPoint The specific ConfigNode
    */

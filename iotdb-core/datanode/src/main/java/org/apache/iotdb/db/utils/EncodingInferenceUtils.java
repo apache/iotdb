@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -27,10 +28,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 public class EncodingInferenceUtils {
 
   private EncodingInferenceUtils() {
-    // util class
+    // Util class
   }
 
-  /** Get default encoding by dataType */
+  /** Get default encoding by dataType. */
   public static TSEncoding getDefaultEncoding(TSDataType dataType) {
     IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
     switch (dataType) {

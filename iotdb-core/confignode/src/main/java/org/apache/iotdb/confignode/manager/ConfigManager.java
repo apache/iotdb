@@ -213,7 +213,7 @@ public class ConfigManager implements IManager {
   /** Manage cluster node. */
   private final NodeManager nodeManager;
 
-  /** Manage cluster schemaengine. */
+  /** Manage cluster schemaEngine. */
   private final ClusterSchemaManager clusterSchemaManager;
 
   /** Manage cluster regions and partitions. */
@@ -239,10 +239,10 @@ public class ConfigManager implements IManager {
   /** ML Model. */
   private final ModelManager modelManager;
 
-  /** Pipe */
+  /** Pipe. */
   private final PipeManager pipeManager;
 
-  /** Manage quotas */
+  /** Manage quotas. */
   private final ClusterQuotaManager clusterQuotaManager;
 
   private final ConfigRegionStateMachine stateMachine;
@@ -602,7 +602,7 @@ public class ConfigManager implements IManager {
       return new ArrayList<>();
     }
     List<PartialPath> innerPathList = path.alterPrefixPath(database);
-    if (innerPathList.size() == 0) {
+    if (innerPathList.isEmpty()) {
       return new ArrayList<>();
     }
     PartialPath innerPath = innerPathList.get(0);

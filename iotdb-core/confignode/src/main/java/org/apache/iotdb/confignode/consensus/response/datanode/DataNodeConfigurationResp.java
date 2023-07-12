@@ -33,7 +33,7 @@ public class DataNodeConfigurationResp implements DataSet {
   private Map<Integer, TDataNodeConfiguration> dataNodeConfigurationMap;
 
   public DataNodeConfigurationResp() {
-    // empty constructor
+    // Empty constructor
   }
 
   public void setStatus(TSStatus status) {

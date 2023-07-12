@@ -40,6 +40,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -231,7 +232,7 @@ public class QuotaInfo implements SnapshotProcessor {
     while (size > 0) {
       String userName = ReadWriteIOUtils.readString(fileInputStream);
       int quotaSize = ReadWriteIOUtils.readInt(fileInputStream);
-      Map<ThrottleType, TTimedQuota> quotaLimit = new HashMap<>();
+      Map<ThrottleType, TTimedQuota> quotaLimit = new EnumMap<>(ThrottleType.class);
       TThrottleQuota throttleQuota = new TThrottleQuota();
       while (quotaSize > 0) {
         ThrottleType throttleType =

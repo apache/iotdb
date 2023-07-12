@@ -59,7 +59,9 @@ public class TsFileAndModSettleTool {
 
   private static final TsFileAndModSettleTool tsFileAndModSettleTool = new TsFileAndModSettleTool();
 
-  private TsFileAndModSettleTool() {}
+  private TsFileAndModSettleTool() {
+    // Empty constructor
+  }
 
   public static TsFileAndModSettleTool getInstance() {
     return tsFileAndModSettleTool;

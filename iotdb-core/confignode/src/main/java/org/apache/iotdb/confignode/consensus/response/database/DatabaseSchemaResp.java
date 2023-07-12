@@ -35,7 +35,7 @@ public class DatabaseSchemaResp implements DataSet {
   private Map<String, TDatabaseSchema> schemaMap;
 
   public DatabaseSchemaResp() {
-    // empty constructor
+    // Empty constructor
   }
 
   public TSStatus getStatus() {

@@ -44,7 +44,7 @@ public class SchemaNodeManagementResp implements DataSet {
   private Set<TSchemaNode> matchedNode;
 
   public SchemaNodeManagementResp() {
-    // empty constructor
+    // Empty constructor
   }
 
   public TSStatus getStatus() {

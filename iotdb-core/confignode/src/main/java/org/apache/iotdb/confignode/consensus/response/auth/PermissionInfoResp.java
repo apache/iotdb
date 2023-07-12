@@ -31,7 +31,9 @@ public class PermissionInfoResp implements DataSet {
 
   private Map<String, List<String>> permissionInfo;
 
-  public PermissionInfoResp() {}
+  public PermissionInfoResp() {
+    // Empty constructor
+  }
 
   public PermissionInfoResp(TSStatus status, Map<String, List<String>> permissionInfo) {
     this.status = status;

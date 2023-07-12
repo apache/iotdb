@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.writelog.io;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -30,9 +31,9 @@ import java.util.Iterator;
 import java.util.List;
 
 public class BatchLogReader implements ILogReader {
-  private static Logger logger = LoggerFactory.getLogger(BatchLogReader.class);
+  private static final Logger logger = LoggerFactory.getLogger(BatchLogReader.class);
 
-  private Iterator<ConfigPhysicalPlan> planIterator;
+  private final Iterator<ConfigPhysicalPlan> planIterator;
 
   private boolean fileCorrupted = false;
 

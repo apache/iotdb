@@ -16,11 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.exception;
 
 import org.apache.iotdb.rpc.TSStatusCode;
 
-/** the exception when writing to a read-only system */
+/** The exception when writing to a read-only system. */
 public class StorageEngineReadonlyException extends StorageEngineException {
 
   public static final String ERROR_MESSAGE =

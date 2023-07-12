@@ -60,7 +60,7 @@ public class TriggerFireTimesCounter implements Trigger {
     try {
       Files.createFile(path);
     } catch (FileAlreadyExistsException ignore) {
-      // do nothing
+      // Do nothing
     }
     Files.write(Paths.get(TXT_PATH), String.valueOf(0).getBytes());
   }

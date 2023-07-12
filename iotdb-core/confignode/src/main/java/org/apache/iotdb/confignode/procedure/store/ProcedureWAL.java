@@ -43,8 +43,8 @@ public class ProcedureWAL {
 
   private static final String TMP_SUFFIX = ".tmp";
   private static final int PROCEDURE_WAL_BUFFER_SIZE = 8 * 1024 * 1024;
-  private IProcedureFactory procedureFactory;
-  private Path walFilePath;
+  private final IProcedureFactory procedureFactory;
+  private final Path walFilePath;
 
   public ProcedureWAL(Path walFilePath, IProcedureFactory procedureFactory) {
     this.walFilePath = walFilePath;
@@ -52,7 +52,7 @@ public class ProcedureWAL {
   }
 
   /**
-   * Create a wal file
+   * Create a wal file.
    *
    * @throws IOException ioe
    */

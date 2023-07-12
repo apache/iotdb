@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.persistence.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -136,8 +137,12 @@ public class RegionGroup {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     RegionGroup that = (RegionGroup) o;
     for (Map.Entry<TSeriesPartitionSlot, AtomicLong> slotCountEntry : slotCountMap.entrySet()) {
       if (!that.slotCountMap.containsKey(slotCountEntry.getKey())) {
