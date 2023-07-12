@@ -163,7 +163,7 @@ public class CommonConfig {
   private int pipeHeartbeatIntervalSecondsForCollectingPipeMeta = 100;
   private long pipeMetaSyncerInitialSyncDelayMinutes = 3;
   private long pipeMetaSyncerSyncIntervalMinutes = 3;
-  private long pipeMetaSyncerAutoRestartPipeCheckIntervalRound = 5;
+  private long pipeMetaSyncerAutoRestartPipeCheckIntervalRound = 1;
   private boolean pipeAutoRestartEnabled = true;
 
   /** Whether to use persistent schema mode. */

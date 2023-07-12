@@ -411,8 +411,10 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
   /**
    * Clear the exceptions of, and set the isAutoStopped flag to false for a pipe locally after it
-   * starts successfully. If there are exceptions cleared or flag changed, the messages will then be
-   * updated to all the nodes through PipeHandleMetaChangeProcedure.
+   * starts successfully.
+   *
+   * <p>If there are exceptions cleared or flag changed, the messages will then be updated to all
+   * the nodes through {@link PipeHandleMetaChangeProcedure}.
    *
    * @param pipeName The name of the pipe to be clear exception
    */
