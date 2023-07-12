@@ -182,7 +182,6 @@ keyWords
     | REPLACE
     | REVOKE
     | ROLE
-    | ROOT
     | ROUND
     | RUNNING
     | SCHEMA
@@ -211,12 +210,10 @@ keyWords
     | TEMPLATES
     | THEN
     | THROTTLE
-    | TIME
     | TIMEOUT
     | TIMESERIES
     | TIMEPARTITION
     | TIMESLOTID
-    | TIMESTAMP
     | TO
     | TOLERANCE
     | TOP
