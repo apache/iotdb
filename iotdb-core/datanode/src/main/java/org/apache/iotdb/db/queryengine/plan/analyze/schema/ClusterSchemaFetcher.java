@@ -23,13 +23,11 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
-import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.ITemplateManager;
@@ -56,22 +54,9 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   private final Coordinator coordinator = Coordinator.getInstance();
   private final DataNodeSchemaCache schemaCache = DataNodeSchemaCache.getInstance();
   private final ITemplateManager templateManager = ClusterTemplateManager.getInstance();
-  MPPQueryContext context = null;
 
   private final AutoCreateSchemaExecutor autoCreateSchemaExecutor =
-      new AutoCreateSchemaExecutor(
-          templateManager,
-          statement -> {
-            long queryId = SessionManager.getInstance().requestQueryId();
-            return coordinator.execute(
-                statement,
-                queryId,
-                null,
-                "",
-                ClusterPartitionFetcher.getInstance(),
-                this,
-                context != null ? context.getTimeOut() : config.getQueryTimeoutThreshold());
-          });
+      new AutoCreateSchemaExecutor(coordinator, templateManager, this);
   private final ClusterSchemaFetchExecutor clusterSchemaFetchExecutor =
       new ClusterSchemaFetchExecutor(coordinator, templateManager, this, schemaCache::put);
 
@@ -94,7 +79,6 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   @Override
   public ClusterSchemaTree fetchSchema(PathPatternTree patternTree, MPPQueryContext context) {
-    this.context = context;
     patternTree.constructTree();
     List<PartialPath> pathPatternList = patternTree.getAllPathPatterns();
     List<PartialPath> explicitPathList = new ArrayList<>();

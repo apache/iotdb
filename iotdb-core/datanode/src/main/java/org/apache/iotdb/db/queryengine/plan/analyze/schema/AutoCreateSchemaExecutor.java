@@ -24,8 +24,13 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
+import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.MeasurementGroup;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -54,21 +59,33 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
 class AutoCreateSchemaExecutor {
-
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private final Coordinator coordinator;
   private final ITemplateManager templateManager;
-  private final Function<Statement, ExecutionResult> statementExecutor;
+  private final ISchemaFetcher schemaFetcher;
 
   AutoCreateSchemaExecutor(
-      ITemplateManager templateManager, Function<Statement, ExecutionResult> statementExecutor) {
+      Coordinator coordinator, ITemplateManager templateManager, ISchemaFetcher schemaFetcher) {
+    this.coordinator = coordinator;
     this.templateManager = templateManager;
-    this.statementExecutor = statementExecutor;
+    this.schemaFetcher = schemaFetcher;
+  }
+
+  private ExecutionResult executeStatement(Statement statement) {
+    return coordinator.execute(
+        statement,
+        SessionManager.getInstance().requestQueryId(),
+        null,
+        "",
+        ClusterPartitionFetcher.getInstance(),
+        schemaFetcher,
+        config.getQueryTimeoutThreshold());
   }
 
   // Auto create the missing measurements and merge them into given schemaTree
@@ -447,7 +464,7 @@ class AutoCreateSchemaExecutor {
   // Auto create timeseries and return the existing timeseries info
   private List<MeasurementPath> executeInternalCreateTimeseriesStatement(Statement statement) {
 
-    ExecutionResult executionResult = statementExecutor.apply(statement);
+    ExecutionResult executionResult = executeStatement(statement);
 
     int statusCode = executionResult.status.getCode();
     if (statusCode == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -478,8 +495,7 @@ class AutoCreateSchemaExecutor {
   }
 
   private void internalActivateTemplate(PartialPath devicePath) {
-    ExecutionResult executionResult =
-        statementExecutor.apply(new ActivateTemplateStatement(devicePath));
+    ExecutionResult executionResult = executeStatement(new ActivateTemplateStatement(devicePath));
     TSStatus status = executionResult.status;
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && status.getCode() != TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
@@ -490,8 +506,7 @@ class AutoCreateSchemaExecutor {
   private void internalActivateTemplate(
       Map<PartialPath, Pair<Template, PartialPath>> devicesNeedActivateTemplate) {
     ExecutionResult executionResult =
-        statementExecutor.apply(
-            new InternalBatchActivateTemplateStatement(devicesNeedActivateTemplate));
+        executeStatement(new InternalBatchActivateTemplateStatement(devicesNeedActivateTemplate));
     TSStatus status = executionResult.status;
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         || status.getCode() == TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
@@ -562,7 +577,7 @@ class AutoCreateSchemaExecutor {
       List<CompressionType> compressionTypeList) {
 
     ExecutionResult executionResult =
-        statementExecutor.apply(
+        executeStatement(
             new AlterSchemaTemplateStatement(
                 templateName,
                 measurementList,

@@ -59,7 +59,7 @@ class ClusterSchemaFetchExecutor {
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private final Coordinator coordinator;
   private final ITemplateManager templateManager;
-  private ISchemaFetcher schemaFetcher;
+  private final ISchemaFetcher schemaFetcher;
   private final Consumer<ClusterSchemaTree> schemaCacheUpdater;
 
   ClusterSchemaFetchExecutor(
@@ -78,11 +78,11 @@ class ClusterSchemaFetchExecutor {
     return coordinator.execute(
         statement,
         queryId,
-        context.getSession(),
+        context == null ? null : context.getSession(),
         "",
         ClusterPartitionFetcher.getInstance(),
         schemaFetcher,
-        context.getQueryType().equals(QueryType.WRITE)
+        context == null || context.getQueryType().equals(QueryType.WRITE)
             ? config.getQueryTimeoutThreshold()
             : context.getTimeOut());
   }
