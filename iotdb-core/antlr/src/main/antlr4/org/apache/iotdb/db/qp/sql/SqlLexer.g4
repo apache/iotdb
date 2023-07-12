@@ -270,6 +270,10 @@ EXTRACTOR
     : E X T R A C T O R
     ;
 
+FALSE
+    : F A L S E
+    ;
+
 FILL
     : F I L L
     ;
@@ -410,6 +414,10 @@ MODELS
     : M O D E L S
     ;
 
+NAN
+    : N A N
+    ;
+
 NODEID
     : N O D E I D
     ;
@@ -425,7 +433,6 @@ NONE
 NOT
     : N O T
     ;
-
 
 NOW
     : N O W
@@ -771,6 +778,10 @@ TRIGGERS
     : T R I G G E R S
     ;
 
+TRUE
+    : T R U E
+    ;
+
 TTL
     : T T L
     ;
@@ -874,140 +885,65 @@ ELSE
 // Privileges Keywords
 
 PRIVILEGE_VALUE
-    : SET_STORAGE_GROUP | DELETE_STORAGE_GROUP | CREATE_DATABASE | DELETE_DATABASE
-    | CREATE_TIMESERIES | INSERT_TIMESERIES | READ_TIMESERIES | DELETE_TIMESERIES | ALTER_TIMESERIES
-    | CREATE_USER | DELETE_USER | MODIFY_PASSWORD | LIST_USER
-    | GRANT_USER_PRIVILEGE | REVOKE_USER_PRIVILEGE | GRANT_USER_ROLE | REVOKE_USER_ROLE
-    | CREATE_ROLE | DELETE_ROLE | LIST_ROLE | GRANT_ROLE_PRIVILEGE | REVOKE_ROLE_PRIVILEGE
-    | CREATE_FUNCTION | DROP_FUNCTION | CREATE_TRIGGER | DROP_TRIGGER | START_TRIGGER | STOP_TRIGGER
-    | CREATE_CONTINUOUS_QUERY | DROP_CONTINUOUS_QUERY | SHOW_CONTINUOUS_QUERIES
-    | APPLY_TEMPLATE | UPDATE_TEMPLATE | READ_TEMPLATE | READ_TEMPLATE_APPLICATION
-    | CREATE_PIPEPLUGIN | DROP_PIPEPLUGIN | SHOW_PIPEPLUGINS | CREATE_PIPE | START_PIPE | STOP_PIPE | DROP_PIPE | SHOW_PIPES
-    | CREATE_VIEW | ALTER_VIEW | RENAME_VIEW | DELETE_VIEW
+    : READ_DATA
+    | WRITE_DATA
+    | READ_SCHEMA
+    | WRITE_SCHEMA
+    | USER_PRIVILEGE
+    | ROLE_PRIVILEGE
+    | GRANT_PRIVILEGE
+    | ALTER_PASSWORD
+    | TRIGGER_PRIVILEGE
+    | CONTINUOUS_QUERY_PRIVILEGE
+    | PIPE_PRIVILEGE
+    ;
+
+READ_DATA
+    : R E A D '_' D A T A
+    ;
+
+WRITE_DATA
+    : W R I T E '_' D A T A
+    ;
+
+READ_SCHEMA
+    : R E A D '_' S C H E M A
+    ;
+
+WRITE_SCHEMA
+    : W R I T E '_' S C H E M A
+    ;
+
+USER_PRIVILEGE
+    : U S E R '_' P R I V I L E G E
+    ;
+
+ROLE_PRIVILEGE
+    : R O L E '_' P R I V I L E G E
+    ;
+
+GRANT_PRIVILEGE
+    : G R A N T '_' P R I V I L E G E
+    ;
+
+ALTER_PASSWORD
+    : A L T E R '_' P A S S W O R D
+    ;
+
+TRIGGER_PRIVILEGE
+    : T R I G G E R '_' P R I V I L E G E
+    ;
+
+CONTINUOUS_QUERY_PRIVILEGE
+    : C O N T I N U O U S '_' Q U E R Y '_' P R I V I L E G E
+    ;
+
+PIPE_PRIVILEGE
+    : P I P E '_' P R I V I L E G E
     ;
 
 SET_STORAGE_GROUP
     : S E T '_' S T O R A G E '_' G R O U P
-    ;
-
-DELETE_STORAGE_GROUP
-    : D E L E T E '_' S T O R A G E '_' G R O U P
-    ;
-
-CREATE_DATABASE
-    : C R E A T E '_' D A T A B A S E
-    ;
-
-DELETE_DATABASE
-    : D E L E T E '_' D A T A B A S E
-    ;
-
-CREATE_TIMESERIES
-    : C R E A T E '_' T I M E S E R I E S
-    ;
-
-INSERT_TIMESERIES
-    : I N S E R T '_' T I M E S E R I E S
-    ;
-
-READ_TIMESERIES
-    : R E A D '_' T I M E S E R I E S
-    ;
-
-DELETE_TIMESERIES
-    : D E L E T E '_' T I M E S E R I E S
-    ;
-
-ALTER_TIMESERIES
-    : A L T E R '_' T I M E S E R I E S
-    ;
-
-CREATE_USER
-    : C R E A T E '_' U S E R
-    ;
-
-DELETE_USER
-    : D E L E T E '_' U S E R
-    ;
-
-MODIFY_PASSWORD
-    : M O D I F Y '_' P A S S W O R D
-    ;
-
-LIST_USER
-    : L I S T '_' U S E R
-    ;
-
-GRANT_USER_PRIVILEGE
-    : G R A N T '_' U S E R '_' P R I V I L E G E
-    ;
-
-REVOKE_USER_PRIVILEGE
-    : R E V O K E '_' U S E R '_' P R I V I L E G E
-    ;
-
-GRANT_USER_ROLE
-    : G R A N T '_' U S E R '_' R O L E
-    ;
-
-REVOKE_USER_ROLE
-    : R E V O K E '_' U S E R '_' R O L E
-    ;
-
-CREATE_ROLE
-    : C R E A T E '_' R O L E
-    ;
-
-DELETE_ROLE
-    : D E L E T E '_' R O L E
-    ;
-
-LIST_ROLE
-    : L I S T '_' R O L E
-    ;
-
-GRANT_ROLE_PRIVILEGE
-    : G R A N T '_' R O L E '_' P R I V I L E G E
-    ;
-
-REVOKE_ROLE_PRIVILEGE
-    : R E V O K E '_' R O L E '_' P R I V I L E G E
-    ;
-
-CREATE_FUNCTION
-    : C R E A T E '_' F U N C T I O N
-    ;
-
-DROP_FUNCTION
-    : D R O P '_' F U N C T I O N
-    ;
-
-CREATE_TRIGGER
-    : C R E A T E '_' T R I G G E R
-    ;
-
-DROP_TRIGGER
-    : D R O P '_' T R I G G E R
-    ;
-
-START_TRIGGER
-    : S T A R T '_' T R I G G E R
-    ;
-
-STOP_TRIGGER
-    : S T O P '_' T R I G G E R
-    ;
-
-CREATE_CONTINUOUS_QUERY
-    : C R E A T E '_' C O N T I N U O U S '_' Q U E R Y
-    ;
-
-DROP_CONTINUOUS_QUERY
-    : D R O P '_' C O N T I N U O U S '_' Q U E R Y
-    ;
-
-SHOW_CONTINUOUS_QUERIES
-    : S H O W '_' C O N T I N U O U S '_' Q U E R I E S
     ;
 
 SCHEMA_REPLICATION_FACTOR
@@ -1028,69 +964,6 @@ SCHEMA_REGION_GROUP_NUM
 
 DATA_REGION_GROUP_NUM
     : D A T A '_' R E G I O N '_' G R O U P '_' N U M
-    ;
-
-APPLY_TEMPLATE
-    : A P P L Y '_' T E M P L A T E
-    ;
-
-UPDATE_TEMPLATE
-    : U P D A T E '_' T E M P L A T E
-    ;
-
-READ_TEMPLATE
-    : R E A D '_' T E M P L A T E
-    ;
-
-READ_TEMPLATE_APPLICATION
-    : R E A D '_' T E M P L A T E '_' A P P L I C A T I O N
-    ;
-
-CREATE_PIPEPLUGIN
-    : C R E A T E '_' P I P E P L U G I N
-    ;
-
-DROP_PIPEPLUGIN
-    : D R O P '_' P I P E P L U G I N
-    ;
-
-SHOW_PIPEPLUGINS
-    : S H O W '_' P I P E P L U G I N S
-    ;
-CREATE_PIPE
-    : C R E A T E '_' P I P E
-    ;
-
-START_PIPE
-    : S T A R T '_' P I P E
-    ;
-
-STOP_PIPE
-    : S T O P '_' P I P E
-    ;
-
-DROP_PIPE
-    : D R O P '_' P I P E
-    ;
-
-SHOW_PIPES
-    : S H O W '_' P I P E S
-    ;
-
-CREATE_VIEW
-    : C R E A T E '_' V I E W
-    ;
-
-ALTER_VIEW
-    : A L T E R '_' V I E W
-    ;
-
-RENAME_VIEW
-    : R E N A M E '_' V I E W
-    ;
-
-DELETE_VIEW
-    : D E L E T E '_' V I E W
     ;
 
 /**
@@ -1193,24 +1066,6 @@ fragment DEC_DIGIT
     : [0-9]
     ;
 
-
-// Boolean Literal
-
-BOOLEAN_LITERAL
-	: T R U E
-	| F A L S E
-	;
-
-
-// Other Literals
-
-NULL_LITERAL
-    : NULL
-    ;
-
-NAN_LITERAL
-    : N A N
-    ;
 
 /**
  * 6. ID

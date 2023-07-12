@@ -40,7 +40,7 @@ import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.schemaengine.SchemaConstant;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.factory.CacheMNodeFactory;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.MeasurementCollector;
@@ -117,7 +117,8 @@ public class MTreeBelowSGCachedImpl {
 
   private final ICachedMNode rootNode;
   private final Function<IMeasurementMNode<ICachedMNode>, Map<String, String>> tagGetter;
-  private final IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
+  private final IMNodeFactory<ICachedMNode> nodeFactory =
+      MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
   private final int levelOfSG;
   private final CachedSchemaRegionStatistics regionStatistics;
 

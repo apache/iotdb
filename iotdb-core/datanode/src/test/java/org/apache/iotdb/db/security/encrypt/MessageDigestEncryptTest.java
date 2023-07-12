@@ -80,7 +80,7 @@ public class MessageDigestEncryptTest {
     User user = manager.getUser(users[0].getName());
     assertNull(user);
     for (User user1 : users) {
-      assertTrue(manager.createUser(user1.getName(), user1.getPassword()));
+      assertTrue(manager.createUser(user1.getName(), user1.getPassword(), false));
     }
     for (User user1 : users) {
       user = manager.getUser(user1.getName());

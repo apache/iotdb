@@ -92,6 +92,9 @@ public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipeP
           return executeFromCreateOnDataNodes(env);
         case UNLOCK:
           return executeFromUnlock(env);
+        default:
+          throw new UnsupportedOperationException(
+              String.format("Unknown state during executing createPipePluginProcedure, %s", state));
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {

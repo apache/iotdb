@@ -36,7 +36,7 @@ IoTDB 需要存储的数据分为三类，分别为数据文件、系统文件�
 > 在 basedir/data/sequence or unsequence/{DatabaseName}/{DataRegionId}/{TimePartitionId}/目录下
 1. {time}-{version}-{inner_compaction_count}-{cross_compaction_count}.tsfile
     + 数据文件
-2. {TsFileName}.tsfile.mod
+2. {TsFileName}.tsfile.mods
     + 更新文件，主要记录删除操作
 
 #### TsFileResource

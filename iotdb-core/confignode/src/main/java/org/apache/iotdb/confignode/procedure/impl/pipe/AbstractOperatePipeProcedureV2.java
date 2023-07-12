@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe;
 
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
+import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
@@ -40,7 +41,9 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * This procedure manage 4 kinds of PIPE operations: CREATE, START, STOP and DROP.
@@ -58,6 +61,10 @@ public abstract class AbstractOperatePipeProcedureV2
 
   // Only used in rollback to reduce the number of network calls
   protected boolean isRollbackFromOperateOnDataNodesSuccessful = false;
+
+  // This variable should not be serialized into procedure store,
+  // putting it here is just for convenience
+  protected AtomicReference<PipeTaskInfo> pipeTaskInfo;
 
   protected abstract PipeTaskOperation getOperation();
 
@@ -94,7 +101,7 @@ public abstract class AbstractOperatePipeProcedureV2
     try {
       switch (state) {
         case VALIDATE_TASK:
-          env.getConfigManager().getPipeManager().getPipeTaskCoordinator().lock();
+          pipeTaskInfo = env.getConfigManager().getPipeManager().getPipeTaskCoordinator().lock();
           executeFromValidateTask(env);
           setNextState(OperatePipeTaskState.CALCULATE_INFO_FOR_TASK);
           break;
@@ -115,16 +122,27 @@ public abstract class AbstractOperatePipeProcedureV2
               String.format("Unknown state during executing operatePipeProcedure, %s", state));
       }
     } catch (Exception e) {
-      if (isRollbackSupported(state)) {
-        LOGGER.error("Fail in OperatePipeProcedure", e);
-        setFailure(new ProcedureException(e.getMessage()));
+      // Retry before rollback
+      if (getCycles() < RETRY_THRESHOLD) {
+        LOGGER.warn(
+            "Encountered error when trying to {} at state [{}], retry [{}/{}]",
+            getOperation(),
+            state,
+            getCycles() + 1,
+            RETRY_THRESHOLD,
+            e);
+        // Wait 3s for next retry
+        TimeUnit.MILLISECONDS.sleep(3000L);
       } else {
-        LOGGER.error("Retrievable error trying to {} at state [{}]", getOperation(), state, e);
-        if (getCycles() > RETRY_THRESHOLD) {
-          setFailure(
-              new ProcedureException(
-                  String.format("Fail to %s because %s", getOperation().name(), e.getMessage())));
-        }
+        LOGGER.warn(
+            "All {} retries failed when trying to {} at state [{}], will rollback...",
+            RETRY_THRESHOLD,
+            getOperation(),
+            state,
+            e);
+        setFailure(
+            new ProcedureException(
+                String.format("Fail to %s because %s", getOperation().name(), e.getMessage())));
       }
     }
     return Flow.HAS_MORE_STATE;
@@ -206,12 +224,7 @@ public abstract class AbstractOperatePipeProcedureV2
   protected Map<Integer, TPushPipeMetaResp> pushPipeMetaToDataNodes(ConfigNodeProcedureEnv env)
       throws IOException {
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
-    for (PipeMeta pipeMeta :
-        env.getConfigManager()
-            .getPipeManager()
-            .getPipeTaskCoordinator()
-            .getPipeTaskInfo()
-            .getPipeMetaList()) {
+    for (PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
       pipeMetaBinaryList.add(pipeMeta.serialize());
     }
 
@@ -252,12 +265,12 @@ public abstract class AbstractOperatePipeProcedureV2
                     hasException.set(true);
                     exceptionMessageBuilder.append(
                         String.format(
-                            "PipeName: %s, Message: %s ",
+                            "PipeName: %s, Message: %s",
                             message.getPipeName(), message.getMessage()));
                   } else if (pipeName.equals(message.getPipeName())) {
                     hasException.set(true);
                     exceptionMessageBuilder.append(
-                        String.format("Message: %s ", message.getMessage()));
+                        String.format("Message: %s", message.getMessage()));
                   }
                 });
 

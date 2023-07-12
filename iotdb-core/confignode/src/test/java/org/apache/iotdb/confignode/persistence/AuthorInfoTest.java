@@ -89,16 +89,13 @@ public class AuthorInfoTest {
     TCheckUserPrivilegesReq checkUserPrivilegesReq;
 
     Set<Integer> privilegeList = new HashSet<>();
-    privilegeList.add(PrivilegeType.DELETE_USER.ordinal());
-    privilegeList.add(PrivilegeType.CREATE_USER.ordinal());
+    privilegeList.add(PrivilegeType.USER_PRIVILEGE.ordinal());
 
     Set<Integer> revokePrivilege = new HashSet<>();
-    revokePrivilege.add(PrivilegeType.DELETE_USER.ordinal());
+    revokePrivilege.add(PrivilegeType.USER_PRIVILEGE.ordinal());
 
-    Map<String, List<String>> permissionInfo;
     List<String> privilege = new ArrayList<>();
-    privilege.add("root.** : CREATE_USER");
-    privilege.add("root.** : CREATE_USER");
+    privilege.add("root.** : USER_PRIVILEGE");
 
     List<PartialPath> paths = new ArrayList<>();
     paths.add(new PartialPath("root.ln"));
@@ -125,7 +122,7 @@ public class AuthorInfoTest {
     // check user privileges
     status =
         authorInfo
-            .checkUserPrivileges("user0", paths, PrivilegeType.DELETE_USER.ordinal())
+            .checkUserPrivileges("user0", paths, PrivilegeType.USER_PRIVILEGE.ordinal())
             .getStatus();
     Assert.assertEquals(TSStatusCode.NO_PERMISSION.getStatusCode(), status.getCode());
 
@@ -218,7 +215,7 @@ public class AuthorInfoTest {
     // check user privileges
     status =
         authorInfo
-            .checkUserPrivileges("user0", paths, PrivilegeType.DELETE_USER.ordinal())
+            .checkUserPrivileges("user0", paths, PrivilegeType.USER_PRIVILEGE.ordinal())
             .getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -285,6 +282,7 @@ public class AuthorInfoTest {
     permissionInfoResp = authorInfo.executeListUserPrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    privilege.remove(0);
     Assert.assertEquals(
         privilege, permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_PRIVILEGE));
 
@@ -317,7 +315,6 @@ public class AuthorInfoTest {
     permissionInfoResp = authorInfo.executeListRolePrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    privilege.remove(0);
     Assert.assertEquals(
         0, permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_PRIVILEGE).size());
 
@@ -513,18 +510,18 @@ public class AuthorInfoTest {
     AuthorPlan authorPlan;
 
     Set<Integer> privilegeList = new HashSet<>();
-    privilegeList.add(PrivilegeType.INSERT_TIMESERIES.ordinal());
-    privilegeList.add(PrivilegeType.READ_TIMESERIES.ordinal());
+    privilegeList.add(PrivilegeType.WRITE_DATA.ordinal());
+    privilegeList.add(PrivilegeType.READ_DATA.ordinal());
 
     Map<String, List<String>> permissionInfo;
     List<String> userPrivilege = new ArrayList<>();
-    userPrivilege.add("root.sg.** : INSERT_TIMESERIES READ_TIMESERIES");
-    userPrivilege.add("root.ln.** : INSERT_TIMESERIES READ_TIMESERIES");
+    userPrivilege.add("root.sg.** : READ_DATA WRITE_DATA");
+    userPrivilege.add("root.ln.** : READ_DATA WRITE_DATA");
     Collections.sort(userPrivilege);
 
     List<String> rolePrivilege = new ArrayList<>();
-    rolePrivilege.add("root.abc.** : INSERT_TIMESERIES READ_TIMESERIES");
-    rolePrivilege.add("root.role_1.** : INSERT_TIMESERIES READ_TIMESERIES");
+    rolePrivilege.add("root.abc.** : READ_DATA WRITE_DATA");
+    rolePrivilege.add("root.role_1.** : READ_DATA WRITE_DATA");
     Collections.sort(rolePrivilege);
 
     List<String> allPrivilege = new ArrayList<>();
@@ -579,7 +576,7 @@ public class AuthorInfoTest {
     // check user privileges
     status =
         authorInfo
-            .checkUserPrivileges("user0", userPaths, PrivilegeType.INSERT_TIMESERIES.ordinal())
+            .checkUserPrivileges("user0", userPaths, PrivilegeType.WRITE_DATA.ordinal())
             .getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 

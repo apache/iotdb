@@ -97,7 +97,7 @@ public class LocalFileAuthorizerTest {
     try {
       authorizer.grantPrivilegeToUser(user.getName(), nodeName, 1);
     } catch (AuthException e) {
-      assertEquals("User user already has INSERT_TIMESERIES on root.laptop.d1", e.getMessage());
+      assertEquals("User user already has WRITE_DATA on root.laptop.d1", e.getMessage());
     }
     try {
       authorizer.grantPrivilegeToUser("error", nodeName, 1);
@@ -122,7 +122,7 @@ public class LocalFileAuthorizerTest {
     try {
       authorizer.revokePrivilegeFromUser(user.getName(), nodeName, 1);
     } catch (AuthException e) {
-      assertEquals("User user does not have INSERT_TIMESERIES on root.laptop.d1", e.getMessage());
+      assertEquals("User user does not have WRITE_DATA on root.laptop.d1", e.getMessage());
     }
 
     try {
@@ -169,13 +169,13 @@ public class LocalFileAuthorizerTest {
     try {
       authorizer.grantPrivilegeToRole(roleName, nodeName, 1);
     } catch (AuthException e) {
-      assertEquals("Role role already has INSERT_TIMESERIES on root.laptop.d1", e.getMessage());
+      assertEquals("Role role already has WRITE_DATA on root.laptop.d1", e.getMessage());
     }
     authorizer.revokePrivilegeFromRole(roleName, nodeName, 1);
     try {
       authorizer.revokePrivilegeFromRole(roleName, nodeName, 1);
     } catch (AuthException e) {
-      assertEquals("Role role does not have INSERT_TIMESERIES on root.laptop.d1", e.getMessage());
+      assertEquals("Role role does not have WRITE_DATA on root.laptop.d1", e.getMessage());
     }
     authorizer.deleteRole(roleName);
     try {

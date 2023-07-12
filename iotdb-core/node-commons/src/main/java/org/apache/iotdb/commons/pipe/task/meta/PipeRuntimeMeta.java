@@ -31,6 +31,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -41,7 +42,9 @@ import java.util.concurrent.atomic.AtomicReference;
 public class PipeRuntimeMeta {
 
   private final AtomicReference<PipeStatus> status = new AtomicReference<>(PipeStatus.STOPPED);
+
   private final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupId2TaskMetaMap;
+
   /**
    * Stores the newest exceptions encountered group by dataNodes. The exceptions are all instances
    * of 1. PipeRuntimeCriticalException, to record the failure of pushing pipeMeta, and will result
@@ -103,16 +106,22 @@ public class PipeRuntimeMeta {
   public void serialize(DataOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(status.get().getType(), outputStream);
 
-    ReadWriteIOUtils.write(consensusGroupId2TaskMetaMap.size(), outputStream);
+    // Avoid concurrent modification
+    final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupId2TaskMetaMapView =
+        new HashMap<>(consensusGroupId2TaskMetaMap);
+    ReadWriteIOUtils.write(consensusGroupId2TaskMetaMapView.size(), outputStream);
     for (Map.Entry<TConsensusGroupId, PipeTaskMeta> entry :
-        consensusGroupId2TaskMetaMap.entrySet()) {
+        consensusGroupId2TaskMetaMapView.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey().getId(), outputStream);
       entry.getValue().serialize(outputStream);
     }
 
-    ReadWriteIOUtils.write(dataNodeId2PipeRuntimeExceptionMap.size(), outputStream);
+    // Avoid concurrent modification
+    final Map<Integer, PipeRuntimeException> dataNodeId2PipeRuntimeExceptionMapView =
+        new HashMap<>(dataNodeId2PipeRuntimeExceptionMap);
+    ReadWriteIOUtils.write(dataNodeId2PipeRuntimeExceptionMapView.size(), outputStream);
     for (Map.Entry<Integer, PipeRuntimeException> entry :
-        dataNodeId2PipeRuntimeExceptionMap.entrySet()) {
+        dataNodeId2PipeRuntimeExceptionMapView.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       entry.getValue().serialize(outputStream);
     }
@@ -124,16 +133,22 @@ public class PipeRuntimeMeta {
   public void serialize(FileOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(status.get().getType(), outputStream);
 
-    ReadWriteIOUtils.write(consensusGroupId2TaskMetaMap.size(), outputStream);
+    // Avoid concurrent modification
+    final Map<TConsensusGroupId, PipeTaskMeta> consensusGroupId2TaskMetaMapView =
+        new HashMap<>(consensusGroupId2TaskMetaMap);
+    ReadWriteIOUtils.write(consensusGroupId2TaskMetaMapView.size(), outputStream);
     for (Map.Entry<TConsensusGroupId, PipeTaskMeta> entry :
-        consensusGroupId2TaskMetaMap.entrySet()) {
+        consensusGroupId2TaskMetaMapView.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey().getId(), outputStream);
       entry.getValue().serialize(outputStream);
     }
 
-    ReadWriteIOUtils.write(dataNodeId2PipeRuntimeExceptionMap.size(), outputStream);
+    // Avoid concurrent modification
+    final Map<Integer, PipeRuntimeException> dataNodeId2PipeRuntimeExceptionMapView =
+        new HashMap<>(dataNodeId2PipeRuntimeExceptionMap);
+    ReadWriteIOUtils.write(dataNodeId2PipeRuntimeExceptionMapView.size(), outputStream);
     for (Map.Entry<Integer, PipeRuntimeException> entry :
-        dataNodeId2PipeRuntimeExceptionMap.entrySet()) {
+        dataNodeId2PipeRuntimeExceptionMapView.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), outputStream);
       entry.getValue().serialize(outputStream);
     }

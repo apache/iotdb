@@ -71,7 +71,7 @@
 
 1. {time}-{version}-{mergeCnt}.tsfile
     + normal data file
-2. {TsFileName}.tsfile.mod
+2. {TsFileName}.tsfile.mods
     + modification file
     + record delete operation
 
