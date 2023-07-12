@@ -182,7 +182,9 @@ public abstract class AbstractMeasurementMNode<N extends IMNode<N>, BasicNode ex
   }
 
   @Override
-  public void replaceChild(String oldChildName, N newChildNode) {}
+  public void replaceChild(String oldChildName, N newChildNode) {
+    // Do nothing
+  }
 
   @Override
   public void moveDataToNewMNode(N newMNode) {
