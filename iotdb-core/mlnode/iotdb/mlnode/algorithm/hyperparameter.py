@@ -204,7 +204,45 @@ class StringHyperparameter(Hyperparameter):
         )
 
     def parse(self, string_value: str):
-        return float(string_value)
+        return string_value
+
+
+class BooleanHyperparameter(Hyperparameter):
+    def __init__(self, name: str,
+                 default_value: bool,
+                 value_validators: List[Validator],
+                 tuning: bool = False):
+        super(BooleanHyperparameter, self).__init__(name)
+        self.__default_value = default_value
+        self.__value_validators = value_validators
+        self.__tuning = tuning
+
+    def get_default_value(self):
+        return self.__default_value
+
+    def __validate(self, value, validators: List[Validator] = None):
+        try:
+            for validator in validators:
+                validator.validate(float(value))
+        except Exception as e:
+            raise BadConfigValueError(self._name, value, str(e))
+
+    def validate_value(self, value):
+        pass
+
+    def validate_range(self, min_value: float, max_value: float):
+        pass
+
+    def suggest_parameter(self, optuna_suggest: optuna.Trial):
+        if not self.__tuning:
+            return self.__default_value
+        return optuna_suggest.suggest_categorical(
+            self._name,
+            [True, False]
+        )
+
+    def parse(self, string_value: str):
+        return bool(string_value)
 
 
 class HyperparameterName(Enum):
@@ -239,6 +277,45 @@ training_hyperparameter_map = {
         high_validators=[],
         tuning=True
     ),
+    HyperparameterName.EPOCHS.name(): IntHyperparameter(
+        name=HyperparameterName.EPOCHS.name(),
+        log=True,
+        default_value=10,
+        value_validators=[NumberRangeValidator(1, 10000)],
+        default_low=1,
+        low_validators=[],
+        default_high=100,
+        high_validators=[],
+        tuning=False
+    ),
+    HyperparameterName.BATCH_SIZE.name(): IntHyperparameter(
+        name=HyperparameterName.EPOCHS.name(),
+        log=True,
+        default_value=32,
+        value_validators=[NumberRangeValidator(1, 8196)],
+        default_low=1,
+        low_validators=[],
+        default_high=8196,
+        high_validators=[],
+        tuning=False
+    ),
+    HyperparameterName.USE_GPU.name(): BooleanHyperparameter(
+        name=HyperparameterName.EPOCHS.name(),
+        default_value=False,
+        value_validators=[],
+        tuning=False
+    ),
+    HyperparameterName.NUM_WORKERS.name(): IntHyperparameter(
+        name=HyperparameterName.NUM_WORKERS.name(),
+        log=False,
+        default_value=0,
+        value_validators=[NumberRangeValidator(0, 8)],
+        default_low=0,
+        low_validators=[],
+        default_high=8,
+        high_validators=[],
+        tuning=False
+    )
 }
 
 dlinear_structure_hyperparameter_map = {
