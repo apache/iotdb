@@ -43,8 +43,8 @@ public class MNodeFactoryLoader {
   private volatile IMNodeFactory<IMemMNode> memMNodeIMNodeFactory;
 
   private MNodeFactoryLoader() {
-    addScanPackage("org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.factory");
-    addScanPackage("org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.factory");
+    addScanPackage("org.apache.iotdb.db.metadata.mnode.mem.factory");
+    addScanPackage("org.apache.iotdb.db.metadata.mnode.schemafile.factory");
     setEnv(MetadataConstant.DEFAULT_MNODE_FACTORY_ENV);
   }
 
