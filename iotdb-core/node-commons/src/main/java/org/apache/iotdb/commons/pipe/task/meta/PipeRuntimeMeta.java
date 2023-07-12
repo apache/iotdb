@@ -100,6 +100,8 @@ public class PipeRuntimeMeta {
   }
 
   public void serialize(DataOutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(PipeRuntimeMetaVersion.VERSION_2.getVersion(), outputStream);
+
     ReadWriteIOUtils.write(status.get().getType(), outputStream);
 
     // Avoid concurrent modification
@@ -126,6 +128,8 @@ public class PipeRuntimeMeta {
   }
 
   public void serialize(FileOutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(PipeRuntimeMetaVersion.VERSION_2.getVersion(), outputStream);
+
     ReadWriteIOUtils.write(status.get().getType(), outputStream);
 
     // Avoid concurrent modification
@@ -152,6 +156,38 @@ public class PipeRuntimeMeta {
   }
 
   public static PipeRuntimeMeta deserialize(InputStream inputStream) throws IOException {
+    final byte pipeRuntimeVersionByte = ReadWriteIOUtils.readByte(inputStream);
+    final PipeRuntimeMetaVersion pipeRuntimeMetaVersion =
+        PipeRuntimeMetaVersion.getVersion(pipeRuntimeVersionByte);
+    switch (pipeRuntimeMetaVersion) {
+      case VERSION_1:
+        return deserializeVersion1(inputStream, pipeRuntimeVersionByte);
+      case VERSION_2:
+        return deserializeVersion2(inputStream);
+      default:
+        throw new IOException(
+            "Unknown pipe runtime meta version: " + pipeRuntimeMetaVersion.getVersion());
+    }
+  }
+
+  private static PipeRuntimeMeta deserializeVersion1(InputStream inputStream, byte pipeStatusByte)
+      throws IOException {
+    final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta();
+
+    pipeRuntimeMeta.status.set(PipeStatus.getPipeStatus(pipeStatusByte));
+
+    final int size = ReadWriteIOUtils.readInt(inputStream);
+    for (int i = 0; i < size; ++i) {
+      pipeRuntimeMeta.consensusGroupId2TaskMetaMap.put(
+          new TConsensusGroupId(
+              TConsensusGroupType.DataRegion, ReadWriteIOUtils.readInt(inputStream)),
+          PipeTaskMeta.deserialize(PipeRuntimeMetaVersion.VERSION_1, inputStream));
+    }
+
+    return pipeRuntimeMeta;
+  }
+
+  private static PipeRuntimeMeta deserializeVersion2(InputStream inputStream) throws IOException {
     final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta();
 
     pipeRuntimeMeta.status.set(PipeStatus.getPipeStatus(ReadWriteIOUtils.readByte(inputStream)));
@@ -161,14 +197,14 @@ public class PipeRuntimeMeta {
       pipeRuntimeMeta.consensusGroupId2TaskMetaMap.put(
           new TConsensusGroupId(
               TConsensusGroupType.DataRegion, ReadWriteIOUtils.readInt(inputStream)),
-          PipeTaskMeta.deserialize(inputStream));
+          PipeTaskMeta.deserialize(PipeRuntimeMetaVersion.VERSION_2, inputStream));
     }
 
     size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
       pipeRuntimeMeta.dataNodeId2PipeRuntimeExceptionMap.put(
           ReadWriteIOUtils.readInt(inputStream),
-          PipeRuntimeExceptionType.deserializeFrom(inputStream));
+          PipeRuntimeExceptionType.deserializeFrom(version, inputStream));
     }
 
     pipeRuntimeMeta.exceptionsClearTime.set(ReadWriteIOUtils.readLong(inputStream));
@@ -176,7 +212,39 @@ public class PipeRuntimeMeta {
     return pipeRuntimeMeta;
   }
 
-  public static PipeRuntimeMeta deserialize(ByteBuffer byteBuffer) {
+  public static PipeRuntimeMeta deserialize(ByteBuffer byteBuffer) throws IOException {
+    final byte pipeRuntimeVersionByte = ReadWriteIOUtils.readByte(byteBuffer);
+    final PipeRuntimeMetaVersion pipeRuntimeMetaVersion =
+        PipeRuntimeMetaVersion.getVersion(pipeRuntimeVersionByte);
+    switch (pipeRuntimeMetaVersion) {
+      case VERSION_1:
+        return deserializeVersion1(byteBuffer, pipeRuntimeVersionByte);
+      case VERSION_2:
+        return deserializeVersion2(byteBuffer);
+      default:
+        throw new IOException(
+            "Unknown pipe runtime meta version: " + pipeRuntimeMetaVersion.getVersion());
+    }
+  }
+
+  private static PipeRuntimeMeta deserializeVersion1(
+      ByteBuffer byteBuffer, byte pipeRuntimeVersionByte) {
+    final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta();
+
+    pipeRuntimeMeta.status.set(PipeStatus.getPipeStatus(pipeRuntimeVersionByte));
+
+    final int size = ReadWriteIOUtils.readInt(byteBuffer);
+    for (int i = 0; i < size; ++i) {
+      pipeRuntimeMeta.consensusGroupId2TaskMetaMap.put(
+          new TConsensusGroupId(
+              TConsensusGroupType.DataRegion, ReadWriteIOUtils.readInt(byteBuffer)),
+          PipeTaskMeta.deserialize(PipeRuntimeMetaVersion.VERSION_1, byteBuffer));
+    }
+
+    return pipeRuntimeMeta;
+  }
+
+  public static PipeRuntimeMeta deserializeVersion2(ByteBuffer byteBuffer) {
     final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta();
 
     pipeRuntimeMeta.status.set(PipeStatus.getPipeStatus(ReadWriteIOUtils.readByte(byteBuffer)));
@@ -186,7 +254,7 @@ public class PipeRuntimeMeta {
       pipeRuntimeMeta.consensusGroupId2TaskMetaMap.put(
           new TConsensusGroupId(
               TConsensusGroupType.DataRegion, ReadWriteIOUtils.readInt(byteBuffer)),
-          PipeTaskMeta.deserialize(byteBuffer));
+          PipeTaskMeta.deserialize(PipeRuntimeMetaVersion.VERSION_2, byteBuffer));
     }
 
     size = ReadWriteIOUtils.readInt(byteBuffer);
