@@ -51,11 +51,13 @@ public class ReplicateTest {
 
   private final ConsensusGroupId gid = new DataRegionId(1);
 
-  private final List<Peer> peers =
+  private int basePort = 9000 + 3;
+
+  private List<Peer> peers =
       Arrays.asList(
-          new Peer(gid, 1, new TEndPoint("127.0.0.1", 6000)),
-          new Peer(gid, 2, new TEndPoint("127.0.0.1", 6001)),
-          new Peer(gid, 3, new TEndPoint("127.0.0.1", 6002)));
+          new Peer(gid, 1, new TEndPoint("127.0.0.1", basePort - 3)),
+          new Peer(gid, 2, new TEndPoint("127.0.0.1", basePort - 2)),
+          new Peer(gid, 3, new TEndPoint("127.0.0.1", basePort - 1)));
 
   private final List<File> peersStorage =
       Arrays.asList(
@@ -85,10 +87,8 @@ public class ReplicateTest {
   }
 
   private void initServer() throws IOException {
-    for (Peer peer : peers) {
-      waitPortAvailable(peer.getEndpoint().port);
-    }
     for (int i = 0; i < peers.size(); i++) {
+      waitPortAvailable(i);
       int finalI = i;
       servers.add(
           (IoTConsensus)
@@ -251,20 +251,23 @@ public class ReplicateTest {
     Assert.assertEquals(stateMachines.get(2).getData(), stateMachines.get(1).getData());
   }
 
-  private static void waitPortAvailable(int port) {
+  private void waitPortAvailable(int i) {
     long start = System.currentTimeMillis();
     while (System.currentTimeMillis() - start < 60 * 1000) {
-      try (ServerSocket ignored = new ServerSocket(port)) {
+      try (ServerSocket ignored = new ServerSocket(this.peers.get(i).getEndpoint().port)) {
         return;
       } catch (IOException e) {
         // Port is already in use, wait and retry
+        this.peers.set(i, new Peer(gid, i + 1, new TEndPoint("127.0.0.1", this.basePort)));
+        logger.info("try port {} for node {}.", this.basePort, i + 1);
+        this.basePort++;
         try {
-          Thread.sleep(1000); // Wait for 1 second before retrying
+          Thread.sleep(60); // Wait for 60 ms before retrying
         } catch (InterruptedException ex) {
           // Handle the interruption if needed
         }
       }
     }
-    Assert.fail(String.format("can not bind port %d after 60s", port));
+    Assert.fail(String.format("can not find port for node %d after 60s", i + 1));
   }
 }
