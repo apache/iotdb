@@ -158,14 +158,14 @@ public class PipeRuntimeMeta {
   public static PipeRuntimeMeta deserialize(InputStream inputStream) throws IOException {
     final byte pipeRuntimeVersionByte = ReadWriteIOUtils.readByte(inputStream);
     final PipeRuntimeMetaVersion pipeRuntimeMetaVersion =
-        PipeRuntimeMetaVersion.getVersion(pipeRuntimeVersionByte);
+        PipeRuntimeMetaVersion.deserialize(pipeRuntimeVersionByte);
     switch (pipeRuntimeMetaVersion) {
       case VERSION_1:
         return deserializeVersion1(inputStream, pipeRuntimeVersionByte);
       case VERSION_2:
         return deserializeVersion2(inputStream);
       default:
-        throw new IOException(
+        throw new UnsupportedOperationException(
             "Unknown pipe runtime meta version: " + pipeRuntimeMetaVersion.getVersion());
     }
   }
@@ -212,17 +212,17 @@ public class PipeRuntimeMeta {
     return pipeRuntimeMeta;
   }
 
-  public static PipeRuntimeMeta deserialize(ByteBuffer byteBuffer) throws IOException {
+  public static PipeRuntimeMeta deserialize(ByteBuffer byteBuffer) {
     final byte pipeRuntimeVersionByte = ReadWriteIOUtils.readByte(byteBuffer);
     final PipeRuntimeMetaVersion pipeRuntimeMetaVersion =
-        PipeRuntimeMetaVersion.getVersion(pipeRuntimeVersionByte);
+        PipeRuntimeMetaVersion.deserialize(pipeRuntimeVersionByte);
     switch (pipeRuntimeMetaVersion) {
       case VERSION_1:
         return deserializeVersion1(byteBuffer, pipeRuntimeVersionByte);
       case VERSION_2:
         return deserializeVersion2(byteBuffer);
       default:
-        throw new IOException(
+        throw new UnsupportedOperationException(
             "Unknown pipe runtime meta version: " + pipeRuntimeMetaVersion.getVersion());
     }
   }

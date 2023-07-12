@@ -60,10 +60,6 @@ public enum PipeRuntimeMetaVersion {
     return version;
   }
 
-  public static PipeRuntimeMetaVersion getVersion(byte version) {
-    return VERSION_MAP.get(version);
-  }
-
   public void serialize(FileOutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(version, outputStream);
   }
@@ -73,10 +69,14 @@ public enum PipeRuntimeMetaVersion {
   }
 
   public static PipeRuntimeMetaVersion deserialize(InputStream inputStream) throws IOException {
-    return getVersion(ReadWriteIOUtils.readByte(inputStream));
+    return deserialize(ReadWriteIOUtils.readByte(inputStream));
   }
 
   public static PipeRuntimeMetaVersion deserialize(ByteBuffer byteBuffer) {
-    return getVersion(ReadWriteIOUtils.readByte(byteBuffer));
+    return deserialize(ReadWriteIOUtils.readByte(byteBuffer));
+  }
+
+  public static PipeRuntimeMetaVersion deserialize(byte version) {
+    return VERSION_MAP.get(version);
   }
 }
