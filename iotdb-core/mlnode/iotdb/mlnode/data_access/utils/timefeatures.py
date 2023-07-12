@@ -24,11 +24,8 @@ from pandas.tseries.frequencies import to_offset
 
 
 class TimeFeature:
-    def __init__(self):
-        pass
-
     def __call__(self, index: pd.DatetimeIndex) -> np.ndarray:
-        pass
+        raise NotImplementedError
 
     def __repr__(self):
         return self.__class__.__name__ + '()'
@@ -150,22 +147,3 @@ def time_features_from_frequency_str(freq_str: str) -> List[TimeFeature]:
 
 def time_features(dates, time_embed='h'):
     return np.vstack([feat(dates) for feat in time_features_from_frequency_str(time_embed)])
-
-
-def data_transform(data_raw: pd.DataFrame, freq='h'):
-    """
-    data: dataframe, column 0 is the time stamp
-    """
-    columns = data_raw.columns
-    data = data_raw[columns[1:]]
-    data_stamp = data_raw[columns[0]]
-    return data.values, data_stamp
-
-
-def timestamp_transform(timestamp_raw: pd.DataFrame, freq='h'):
-    """
-    """
-    timestamp = pd.to_datetime(timestamp_raw.values.squeeze(), unit='ms', utc=True).tz_convert('Asia/Shanghai')
-    timestamp = time_features(timestamp, freq=freq)
-    timestamp = timestamp.transpose(1, 0)
-    return timestamp

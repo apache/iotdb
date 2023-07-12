@@ -15,13 +15,14 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 from enum import Enum
 from abc import abstractmethod
 from typing import Optional, List, Dict, Tuple
 
 import optuna
 
-from iotdb.mlnode.exception import BadConfigValueError
+from iotdb.mlnode.exception import BadConfigValueError, UnsupportedError
 
 from iotdb.mlnode.algorithm.enums import ForecastModelType
 from iotdb.mlnode.algorithm.validator import Validator, NumberRangeValidator
@@ -190,10 +191,10 @@ class StringHyperparameter(Hyperparameter):
             raise BadConfigValueError(self._name, value, str(e))
 
     def validate_value(self, value):
-        pass
+        self.__validate(value, self.__value_validators)
 
     def validate_range(self, min_value: float, max_value: float):
-        pass
+        raise UnsupportedError("validate range in string hyperparameter")
 
     def suggest_parameter(self, optuna_suggest: optuna.Trial):
         if not self.__tuning:

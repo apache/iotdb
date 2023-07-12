@@ -38,7 +38,7 @@ class ModelNotExistError(_BaseError):
 
 class BadConfigValueError(_BaseError):
     def __init__(self, config_name: str, config_value, hint: str = ''):
-        self.message = "Bad value ({0}) for config ({1}). {2}".format(config_value, config_name, hint)
+        self.message = "Bad value [{0}] for config {1}. {2}".format(config_value, config_name, hint)
 
 
 class MissingConfigError(_BaseError):
