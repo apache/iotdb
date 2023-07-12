@@ -89,13 +89,13 @@ public class AuthorInfoTest {
     TCheckUserPrivilegesReq checkUserPrivilegesReq;
 
     Set<Integer> privilegeList = new HashSet<>();
-    privilegeList.add(PrivilegeType.USER_PRIVILEGE.ordinal());
+    privilegeList.add(PrivilegeType.MANAGE_USER.ordinal());
 
     Set<Integer> revokePrivilege = new HashSet<>();
-    revokePrivilege.add(PrivilegeType.USER_PRIVILEGE.ordinal());
+    revokePrivilege.add(PrivilegeType.MANAGE_USER.ordinal());
 
     List<String> privilege = new ArrayList<>();
-    privilege.add("root.** : USER_PRIVILEGE");
+    privilege.add("root.** : MANAGE_USER");
 
     List<PartialPath> paths = new ArrayList<>();
     paths.add(new PartialPath("root.ln"));
@@ -122,7 +122,7 @@ public class AuthorInfoTest {
     // check user privileges
     status =
         authorInfo
-            .checkUserPrivileges("user0", paths, PrivilegeType.USER_PRIVILEGE.ordinal())
+            .checkUserPrivileges("user0", paths, PrivilegeType.MANAGE_USER.ordinal())
             .getStatus();
     Assert.assertEquals(TSStatusCode.NO_PERMISSION.getStatusCode(), status.getCode());
 
@@ -215,7 +215,7 @@ public class AuthorInfoTest {
     // check user privileges
     status =
         authorInfo
-            .checkUserPrivileges("user0", paths, PrivilegeType.USER_PRIVILEGE.ordinal())
+            .checkUserPrivileges("user0", paths, PrivilegeType.MANAGE_USER.ordinal())
             .getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 

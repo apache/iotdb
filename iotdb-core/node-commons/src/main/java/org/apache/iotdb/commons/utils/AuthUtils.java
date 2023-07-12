@@ -179,7 +179,7 @@ public class AuthUtils {
         case WRITE_SCHEMA:
         case READ_DATA:
         case WRITE_DATA:
-        case TRIGGER_PRIVILEGE:
+        case USE_TRIGGER:
           return;
         default:
           throw new AuthException(
@@ -340,9 +340,9 @@ public class AuthUtils {
       for (PrivilegeType privilegeType : PrivilegeType.getStorablePrivilege(privilegeId)) {
         targetPathPrivilege.getPrivileges().remove(privilegeType.ordinal());
       }
-    }
-    if (targetPathPrivilege.getPrivileges().isEmpty()) {
-      privilegeList.remove(targetPathPrivilege);
+      if (targetPathPrivilege.getPrivileges().isEmpty()) {
+        privilegeList.remove(targetPathPrivilege);
+      }
     }
   }
 

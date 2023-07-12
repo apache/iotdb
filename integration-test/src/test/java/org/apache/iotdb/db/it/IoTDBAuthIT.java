@@ -205,11 +205,11 @@ public class IoTDBAuthIT {
         Assert.assertThrows(
             SQLException.class,
             () -> adminStmt.execute("GRANT USER tempuser PRIVILEGES NOT_A_PRIVILEGE on root.a"));
-        adminStmt.execute("GRANT USER tempuser PRIVILEGES USER_PRIVILEGE on root.**");
+        adminStmt.execute("GRANT USER tempuser PRIVILEGES MANAGE_USER on root.**");
         // duplicate grant
         Assert.assertThrows(
             SQLException.class,
-            () -> adminStmt.execute("GRANT USER tempuser PRIVILEGES USER_PRIVILEGE on root.**"));
+            () -> adminStmt.execute("GRANT USER tempuser PRIVILEGES MANAGE_USER on root.**"));
         // grant on an illegal seriesPath
         Assert.assertThrows(
             SQLException.class,
@@ -223,14 +223,14 @@ public class IoTDBAuthIT {
             SQLException.class,
             () -> userStmt.execute("GRANT USER tempuser PRIVILEGES WRITE_SCHEMA on root.a.b"));
         // revoke a non-existing privilege
-        adminStmt.execute("REVOKE USER tempuser PRIVILEGES USER_PRIVILEGE on root.**");
+        adminStmt.execute("REVOKE USER tempuser PRIVILEGES MANAGE_USER on root.**");
         Assert.assertThrows(
             SQLException.class,
-            () -> adminStmt.execute("REVOKE USER tempuser PRIVILEGES USER_PRIVILEGE on root.**"));
+            () -> adminStmt.execute("REVOKE USER tempuser PRIVILEGES MANAGE_USER on root.**"));
         // revoke a non-existing user
         Assert.assertThrows(
             SQLException.class,
-            () -> adminStmt.execute("REVOKE USER tempuser1 PRIVILEGES USER_PRIVILEGE on root.**"));
+            () -> adminStmt.execute("REVOKE USER tempuser1 PRIVILEGES MANAGE_USER on root.**"));
         // revoke on an illegal seriesPath
         Assert.assertThrows(
             SQLException.class,
@@ -716,7 +716,7 @@ public class IoTDBAuthIT {
       try {
         Assert.assertThrows(SQLException.class, () -> userStmt.execute("LIST USER"));
         // with list user privilege
-        adminStmt.execute("GRANT USER tempuser PRIVILEGES USER_PRIVILEGE on root.**");
+        adminStmt.execute("GRANT USER tempuser PRIVILEGES MANAGE_USER on root.**");
         ResultSet resultSet = userStmt.executeQuery("LIST USER");
         String ans =
             "root,\n"

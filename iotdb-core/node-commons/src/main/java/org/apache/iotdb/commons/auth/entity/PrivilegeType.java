@@ -32,13 +32,13 @@ public enum PrivilegeType {
   WRITE_DATA(true, true, READ_DATA),
   READ_SCHEMA(true),
   WRITE_SCHEMA(true, true, READ_SCHEMA),
-  USER_PRIVILEGE,
-  ROLE_PRIVILEGE,
+  MANAGE_USER,
+  MANAGE_ROLE,
   GRANT_PRIVILEGE,
   ALTER_PASSWORD,
-  TRIGGER_PRIVILEGE(true),
-  CONTINUOUS_QUERY_PRIVILEGE,
-  PIPE_PRIVILEGE,
+  USE_TRIGGER(true),
+  USE_CQ,
+  USE_PIPE,
   READ(true, false, READ_DATA, READ_SCHEMA),
   WRITE(true, false, WRITE_DATA, WRITE_SCHEMA),
   ALL(
@@ -46,13 +46,13 @@ public enum PrivilegeType {
       false,
       READ,
       WRITE,
-      USER_PRIVILEGE,
-      ROLE_PRIVILEGE,
+      MANAGE_USER,
+      MANAGE_ROLE,
       GRANT_PRIVILEGE,
       ALTER_PASSWORD,
-      TRIGGER_PRIVILEGE,
-      CONTINUOUS_QUERY_PRIVILEGE,
-      PIPE_PRIVILEGE);
+      USE_TRIGGER,
+      USE_CQ,
+      USE_PIPE);
 
   private static final int PRIVILEGE_COUNT = values().length;
 

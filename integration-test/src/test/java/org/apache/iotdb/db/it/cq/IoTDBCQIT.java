@@ -541,7 +541,7 @@ public class IoTDBCQIT {
         } catch (Exception e) {
           assertEquals(
               TSStatusCode.NO_PERMISSION.getStatusCode()
-                  + ": No permissions for this operation, please add privilege CONTINUOUS_QUERY_PRIVILEGE",
+                  + ": No permissions for this operation, please add privilege USE_CQ",
               e.getMessage());
         }
 

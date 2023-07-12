@@ -546,7 +546,7 @@ public class IoTDBTriggerManagementIT {
         } catch (Exception e) {
           assertEquals(
               TSStatusCode.NO_PERMISSION.getStatusCode()
-                  + ": No permissions for this operation, please add privilege TRIGGER_PRIVILEGE",
+                  + ": No permissions for this operation, please add privilege USE_TRIGGER",
               e.getMessage());
         }
 
@@ -577,7 +577,7 @@ public class IoTDBTriggerManagementIT {
         } catch (Exception e) {
           assertEquals(
               TSStatusCode.NO_PERMISSION.getStatusCode()
-                  + ": No permissions for this operation, please add privilege TRIGGER_PRIVILEGE",
+                  + ": No permissions for this operation, please add privilege USE_TRIGGER",
               e.getMessage());
         }
       }
@@ -609,7 +609,7 @@ public class IoTDBTriggerManagementIT {
         } catch (Exception e) {
           assertEquals(
               TSStatusCode.NO_PERMISSION.getStatusCode()
-                  + ": No permissions for this operation, please add privilege TRIGGER_PRIVILEGE",
+                  + ": No permissions for this operation, please add privilege USE_TRIGGER",
               e.getMessage());
         }
 
@@ -622,7 +622,7 @@ public class IoTDBTriggerManagementIT {
         } catch (Exception e) {
           assertEquals(
               TSStatusCode.NO_PERMISSION.getStatusCode()
-                  + ": No permissions for this operation, please add privilege TRIGGER_PRIVILEGE",
+                  + ": No permissions for this operation, please add privilege USE_TRIGGER",
               e.getMessage());
         }
 
