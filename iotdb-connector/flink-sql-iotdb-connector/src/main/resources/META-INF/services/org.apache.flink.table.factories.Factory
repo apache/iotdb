@@ -17,4 +17,4 @@
 # under the License.
 #
 
-org.apache.iotdb.flink.sql.factory.IoTDBDynamicTableFactor
+org.apache.iotdb.flink.sql.factory.IoTDBDynamicTableFactory

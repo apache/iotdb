@@ -44,7 +44,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class IoTDBDynamicTableFactor implements DynamicTableSourceFactory, DynamicTableSinkFactory {
+public class IoTDBDynamicTableFactory implements DynamicTableSourceFactory, DynamicTableSinkFactory {
   private final HashSet<DataType> supportedDataTypes =
       new HashSet<DataType>() {
         {
