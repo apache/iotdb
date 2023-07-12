@@ -39,6 +39,7 @@ import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.LoadEmptyFileException;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.VerifyMetadataException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIncompatibleException;
@@ -79,6 +80,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimePa
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByVariationParameter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadChecker;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -2481,10 +2483,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         if (logger.isWarnEnabled()) {
           logger.warn(String.format("TsFile %s is empty.", tsFile.getPath()));
         }
-        throw new SemanticException(
-            String.format(
-                "TsFile %s is empty, please check it be flushed to disk correctly.",
-                tsFile.getPath()));
+        LoadChecker.getInstance()
+            .addException(tsFile.getPath(), new LoadEmptyFileException(tsFile.getPath()));
+        continue;
       }
       try {
         TsFileResource resource =
@@ -2495,12 +2496,19 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             String.format(
                 "Parse file %s to resource error, this TsFile maybe empty.", tsFile.getPath()),
             e);
-        throw new SemanticException(
-            String.format("TsFile %s is empty or incomplete.", tsFile.getPath()));
+        LoadChecker.getInstance()
+            .addException(
+                tsFile.getPath(),
+                new LoadFileException(
+                    String.format("TsFile %s is empty or incomplete.", tsFile.getPath())));
+        continue;
       } catch (Exception e) {
         logger.warn(String.format("Parse file %s to resource error.", tsFile.getPath()), e);
-        throw new SemanticException(
-            String.format("Parse file %s to resource error", tsFile.getPath()));
+        LoadChecker.getInstance()
+            .addException(
+                tsFile.getPath(),
+                new LoadFileException(
+                    String.format("Parse file %s to resource error", tsFile.getPath())));
       }
       if (device2Schemas.size() > CONFIG.getMaxLoadingDeviceNumber()) {
         autoCreateAndVerifySchema(loadTsFileStatement, device2Schemas, device2IsAligned);

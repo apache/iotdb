@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.StorageExecutor;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -132,12 +133,15 @@ public class LoadTsFileScheduler implements IScheduler {
 
     for (int i = 0; i < tsFileNodeListSize; ++i) {
       LoadSingleTsFileNode node = tsFileNodeList.get(i);
+      String tsFilePath = node.getTsFileResource().getTsFilePath();
       boolean isLoadSingleTsFileSuccess = true;
       try {
         if (node.isTsFileEmpty()) {
-          logger.info(
-              "Load skip TsFile {}, because it has no data.",
-              node.getTsFileResource().getTsFilePath());
+          LoadChecker.getInstance()
+              .addException(
+                  tsFilePath,
+                  new LoadFileException(
+                      String.format("Load skip TsFile %s, because it has no data.", tsFilePath)));
 
         } else if (!node.needDecodeTsFile(
             partitionFetcher::queryDataPartition)) { // do not decode, load locally
@@ -171,6 +175,10 @@ public class LoadTsFileScheduler implements IScheduler {
               node.getTsFileResource().getTsFilePath(),
               i + 1,
               tsFileNodeListSize);
+          LoadChecker.getInstance()
+              .addException(
+                  tsFilePath,
+                  new LoadFileException(String.format("Can not Load TsFile %s", tsFilePath)));
         }
       } catch (Exception e) {
         isLoadSuccess = false;
@@ -180,10 +188,30 @@ public class LoadTsFileScheduler implements IScheduler {
                 "LoadTsFileScheduler loads TsFile %s error",
                 node.getTsFileResource().getTsFilePath()),
             e);
+        LoadChecker.getInstance()
+            .addException(
+                tsFilePath,
+                new LoadFileException(
+                    String.format("LoadTsFileScheduler loads TsFile %s error", tsFilePath)));
       }
     }
+
+    handleExceptions(LoadChecker.getInstance().getExceptionsMap());
+
     if (isLoadSuccess) {
       stateMachine.transitionToFinished();
+    }
+
+    LoadChecker.getInstance().clean();
+  }
+
+  private void handleExceptions(Map<String, List<LoadFileException>> fileToExceptionMap) {
+    for (Map.Entry<String, List<LoadFileException>> entry : fileToExceptionMap.entrySet()) {
+      String tsfilePath = entry.getKey();
+      List<LoadFileException> exceptions = entry.getValue();
+      for (LoadFileException exception : exceptions) {
+        logger.warn("TsFile {} had the following error: {}", tsfilePath, exception.getMessage());
+      }
     }
   }
 
