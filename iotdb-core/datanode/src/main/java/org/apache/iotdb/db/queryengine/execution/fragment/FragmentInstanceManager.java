@@ -205,10 +205,8 @@ public class FragmentInstanceManager {
   }
 
   private DataNodeQueryContext getOrCreateDataNodeQueryContext(QueryId queryId, int dataNodeFINum) {
-    synchronized (dataNodeQueryContextMap) {
-      return dataNodeQueryContextMap.computeIfAbsent(
-          queryId, queryId1 -> new DataNodeQueryContext(dataNodeFINum));
-    }
+    return dataNodeQueryContextMap.computeIfAbsent(
+        queryId, queryId1 -> new DataNodeQueryContext(dataNodeFINum));
   }
 
   @SuppressWarnings("squid:S1181")

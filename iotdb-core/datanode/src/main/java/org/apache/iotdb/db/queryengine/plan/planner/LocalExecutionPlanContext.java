@@ -111,7 +111,7 @@ public class LocalExecutionPlanContext {
     this.cachedDataTypes = parentContext.cachedDataTypes;
     this.driverContext =
         parentContext.getDriverContext().createSubDriverContext(getNextPipelineId());
-    this.dataNodeQueryContext = null;
+    this.dataNodeQueryContext = parentContext.dataNodeQueryContext;
   }
 
   // for schema region

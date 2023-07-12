@@ -42,7 +42,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -81,6 +80,7 @@ public class FragmentInstanceContext extends QueryContext {
   private SessionInfo sessionInfo;
 
   private final Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap;
+  private DataNodeQueryContext dataNodeQueryContext;
 
   //    private final GcMonitor gcMonitor;
   //    private final AtomicLong startNanos = new AtomicLong();
@@ -143,6 +143,7 @@ public class FragmentInstanceContext extends QueryContext {
     this.dataRegion = dataRegion;
     this.timeFilter = timeFilter;
     this.dataNodeQueryContextMap = dataNodeQueryContextMap;
+    this.dataNodeQueryContext = dataNodeQueryContextMap.get(id.getQueryId());
   }
 
   private FragmentInstanceContext(
@@ -151,7 +152,8 @@ public class FragmentInstanceContext extends QueryContext {
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
     this.sessionInfo = sessionInfo;
-    this.dataNodeQueryContextMap = new ConcurrentHashMap<>();
+    this.dataNodeQueryContextMap = null;
+    this.dataNodeQueryContext = null;
   }
 
   @TestOnly
@@ -164,7 +166,8 @@ public class FragmentInstanceContext extends QueryContext {
     this.queryId = queryId;
     this.id = null;
     this.stateMachine = null;
-    this.dataNodeQueryContextMap = new ConcurrentHashMap<>();
+    this.dataNodeQueryContextMap = null;
+    this.dataNodeQueryContext = null;
   }
 
   public void start() {
@@ -413,15 +416,14 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   private void releaseDataNodeQueryContext() {
-    QueryId queryId = id.getQueryId();
-    if (dataNodeQueryContextMap.isEmpty()) {
-      // this map empty means this process is in fetch schema, nothing need to release
+    if (dataNodeQueryContextMap == null) {
+      // this process is in fetch schema, nothing need to release
       return;
     }
-    synchronized (dataNodeQueryContextMap.get(queryId)) {
-      if (dataNodeQueryContextMap.get(queryId).decreaseDataNodeFINum() <= 0) {
-        dataNodeQueryContextMap.remove(queryId);
-      }
+
+    if (dataNodeQueryContext.decreaseDataNodeFINum() <= 0) {
+      dataNodeQueryContext = null;
+      dataNodeQueryContextMap.remove(id.getQueryId());
     }
   }
 
