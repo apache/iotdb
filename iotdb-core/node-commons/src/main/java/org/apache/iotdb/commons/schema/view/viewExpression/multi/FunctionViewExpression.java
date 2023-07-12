@@ -34,7 +34,7 @@ import java.util.List;
 
 public class FunctionViewExpression extends ViewExpression {
 
-  // region member variables and init functions
+  /** region member variables and init functions */
   private final String functionName;
 
   /**
@@ -70,8 +70,7 @@ public class FunctionViewExpression extends ViewExpression {
       }
     } else {
       String errorMsg =
-          String.format(
-              "Illegal parameters during FunctionExpression construction. Array length mismatch.");
+          "Illegal parameters during FunctionExpression construction. Array length mismatch.";
       throw new RuntimeException(errorMsg);
     }
     this.expressions = expressions;
@@ -116,10 +115,7 @@ public class FunctionViewExpression extends ViewExpression {
   @Override
   protected boolean isLeafOperandInternal() {
     // if this expression has no children, return true; else return false.
-    if (this.expressions.size() == 0) {
-      return true;
-    }
-    return false;
+    return this.expressions.isEmpty();
   }
 
   @Override
@@ -142,7 +138,7 @@ public class FunctionViewExpression extends ViewExpression {
     }
 
     if (this.functionAttributesKeyValueList.size() > 1) {
-      if (this.expressions.size() > 0) {
+      if (!this.expressions.isEmpty()) {
         result.append(", ");
       }
 
