@@ -46,7 +46,7 @@ public enum PipeRuntimeMetaVersion {
     }
 
     for (final PipeRuntimeMetaVersion version : PipeRuntimeMetaVersion.values()) {
-      VERSION_MAP.put(version.version, version);
+      VERSION_MAP.put(version.getVersion(), version);
     }
   }
 

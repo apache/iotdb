@@ -100,7 +100,7 @@ public class PipeRuntimeMeta {
   }
 
   public void serialize(DataOutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(PipeRuntimeMetaVersion.VERSION_2.getVersion(), outputStream);
+    PipeRuntimeMetaVersion.VERSION_2.serialize(outputStream);
 
     ReadWriteIOUtils.write(status.get().getType(), outputStream);
 
@@ -128,7 +128,7 @@ public class PipeRuntimeMeta {
   }
 
   public void serialize(FileOutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(PipeRuntimeMetaVersion.VERSION_2.getVersion(), outputStream);
+    PipeRuntimeMetaVersion.VERSION_2.serialize(outputStream);
 
     ReadWriteIOUtils.write(status.get().getType(), outputStream);
 
