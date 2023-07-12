@@ -1143,27 +1143,4 @@ public class TsFileResource {
   public boolean isFileInList() {
     return prev != null || next != null;
   }
-
-  public void updateProgressIndex(ProgressIndex progressIndex) {
-    if (progressIndex == null) {
-      return;
-    }
-
-    maxProgressIndex =
-        (maxProgressIndex == null
-            ? progressIndex
-            : maxProgressIndex.updateToMinimumIsAfterProgressIndex(progressIndex));
-  }
-
-  public ProgressIndex getMaxProgressIndexAfterClose() throws IllegalStateException {
-    if (getStatus().equals(TsFileResourceStatus.UNCLOSED)) {
-      throw new IllegalStateException(
-          "Should not get progress index from a unclosing TsFileResource.");
-    }
-    return getMaxProgressIndex();
-  }
-
-  public ProgressIndex getMaxProgressIndex() {
-    return maxProgressIndex == null ? new MinimumProgressIndex() : maxProgressIndex;
-  }
 }
