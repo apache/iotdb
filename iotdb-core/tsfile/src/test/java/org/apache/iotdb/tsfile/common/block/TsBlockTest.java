@@ -46,27 +46,6 @@ public class TsBlockTest {
   private static final double DELTA = 0.000001;
 
   @Test
-  public void testSe() {
-    long[] timeArray = {1L, 2L, 3L, 4L, 5L};
-    boolean[] valueArray = {true, false, false, false, false};
-    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.BOOLEAN));
-    for (int i = 0; i < timeArray.length; i++) {
-      builder.getTimeColumnBuilder().writeLong(timeArray[i]);
-      builder.getColumnBuilder(0).writeBoolean(valueArray[i]);
-      builder.declarePosition();
-    }
-    TsBlock tsBlock = builder.build();
-    assertEquals(timeArray.length, tsBlock.getPositionCount());
-    assertEquals(1, tsBlock.getValueColumnCount());
-    assertTrue(tsBlock.getColumn(0) instanceof BooleanColumn);
-    for (int i = 0; i < timeArray.length; i++) {
-      assertEquals(timeArray[i], tsBlock.getTimeByIndex(i));
-      assertFalse(tsBlock.getColumn(0).isNull(i));
-      assertEquals(valueArray[i], tsBlock.getColumn(0).getBoolean(i));
-    }
-  }
-
-  @Test
   public void testBooleanTsBlock() {
     long[] timeArray = {1L, 2L, 3L, 4L, 5L};
     boolean[] valueArray = {true, false, false, false, false};
