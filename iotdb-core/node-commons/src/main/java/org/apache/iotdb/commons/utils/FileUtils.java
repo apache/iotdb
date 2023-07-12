@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -40,7 +41,9 @@ public class FileUtils {
 
   private static final int BUFFER_SIZE = 1024;
 
-  private FileUtils() {}
+  private FileUtils() {
+    // Empty constructor
+  }
 
   public static void deleteDirectory(File folder) {
     if (folder.isDirectory()) {

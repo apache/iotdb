@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
@@ -53,7 +54,9 @@ public class DataPartitionQueryParam {
     this.needRightAll = needRightAll;
   }
 
-  public DataPartitionQueryParam() {}
+  public DataPartitionQueryParam() {
+    // Empty constructor
+  }
 
   public String getDevicePath() {
     return devicePath;

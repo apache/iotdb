@@ -27,7 +27,7 @@ public interface IClientPoolFactory<K, V> {
    * We can implement this interface in other modules and then set the corresponding expected
    * parameters and client factory classes.
    *
-   * @param manager the reference to the clientManager
+   * @param manager the reference to the {@link ClientManager}
    * @return A concurrency safe object pool
    */
   KeyedObjectPool<K, V> createClientPool(ClientManager<K, V> manager);

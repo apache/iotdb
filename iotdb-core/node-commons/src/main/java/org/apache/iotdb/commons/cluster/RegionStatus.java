@@ -19,18 +19,18 @@
 
 package org.apache.iotdb.commons.cluster;
 
-/** Region status for showing regions */
+/** Region status for showing regions. */
 public enum RegionStatus {
-  /** Region running properly */
+  /** Region running properly. */
   Running("Running"),
 
-  /** Region connection failure */
+  /** Region connection failure. */
   Unknown("Unknown"),
 
-  /** Region is in removing */
+  /** Region is in removing. */
   Removing("Removing"),
 
-  /** Only query statements are permitted */
+  /** Only query statements are permitted. */
   ReadOnly("ReadOnly");
 
   private final String status;

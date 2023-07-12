@@ -37,7 +37,9 @@ public class CommonDescriptor {
 
   private final CommonConfig config = new CommonConfig();
 
-  private CommonDescriptor() {}
+  private CommonDescriptor() {
+    // Empty constructor
+  }
 
   public static CommonDescriptor getInstance() {
     return CommonDescriptorHolder.INSTANCE;

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -42,7 +43,7 @@ import java.nio.ByteBuffer;
 
 import static org.apache.iotdb.rpc.TConfigurationConst.defaultTConfiguration;
 
-/** Utils for serialize and deserialize all the data struct defined by thrift-commons */
+/** Utils for serialize and deserialize all the data struct defined by thrift-commons. */
 public class ThriftCommonsSerDeUtils {
 
   private ThriftCommonsSerDeUtils() {

@@ -26,7 +26,9 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCAR
 
 public class PathPatternUtil {
 
-  private PathPatternUtil() {}
+  private PathPatternUtil() {
+    // Empty constructor
+  }
 
   /**
    * The input string is a single node of a path pattern. Return true if the node may be a

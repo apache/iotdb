@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.trigger;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -48,7 +49,8 @@ public class TriggerTable {
   public TriggerTable(Map<String, TriggerInformation> triggerTable) {
     this.triggerTable = triggerTable;
   }
-  // for createTrigger
+
+  // For createTrigger
   public void addTriggerInformation(String triggerName, TriggerInformation triggerInformation) {
     triggerTable.put(triggerName, triggerInformation);
   }

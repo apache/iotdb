@@ -27,7 +27,9 @@ import java.util.Arrays;
 import java.util.Map;
 
 public class StatusUtils {
-  private StatusUtils() {}
+  private StatusUtils() {
+    // Empty constructor
+  }
 
   public static final TSStatus OK = getStatus(TSStatusCode.SUCCESS_STATUS);
   public static final TSStatus INTERNAL_ERROR = getStatus(TSStatusCode.INTERNAL_SERVER_ERROR);

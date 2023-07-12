@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -55,7 +56,9 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   protected String[] nodes;
 
-  public PartialPath() {}
+  public PartialPath() {
+    // Empty constructor
+  }
 
   /**
    * Construct the PartialPath using a String, will split the given String into String[] E.g., path

@@ -26,7 +26,7 @@ public class IoTDBException extends Exception {
   protected int errorCode;
   /**
    * This kind of exception is caused by users' wrong sql, and there is no need for server to print
-   * the full stack of the exception
+   * the full stack of the exception.
    */
   protected boolean isUserException = false;
 

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
@@ -30,7 +31,9 @@ import java.nio.ByteBuffer;
 
 public class IOUtils {
 
-  private IOUtils() {}
+  private IOUtils() {
+    // Empty constructor
+  }
 
   /**
    * Write a string into the given stream.

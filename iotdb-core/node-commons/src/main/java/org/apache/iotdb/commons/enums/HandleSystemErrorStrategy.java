@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.enums;
 
 import org.apache.iotdb.commons.cluster.NodeStatus;
@@ -25,9 +26,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public enum HandleSystemErrorStrategy {
-  /** set system status to read-only and the system only accepts query operations */
+  /** set system status to read-only and the system only accepts query operations. */
   CHANGE_TO_READ_ONLY,
-  /** the system will be shutdown */
+  /** the system will be shutdown. */
   SHUTDOWN;
 
   private static final Logger logger = LoggerFactory.getLogger(HandleSystemErrorStrategy.class);

@@ -31,7 +31,9 @@ public class BasicStructureSerDeUtil {
   public static final int INT_LEN = 4;
   public static final int LONG_LEN = 8;
 
-  private BasicStructureSerDeUtil() {}
+  private BasicStructureSerDeUtil() {
+    // Empty constructor
+  }
 
   /** read string from byteBuffer. */
   public static String readString(ByteBuffer buffer) {

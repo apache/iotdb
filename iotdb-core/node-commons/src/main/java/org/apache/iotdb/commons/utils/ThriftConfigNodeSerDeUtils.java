@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
@@ -35,7 +36,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
-/** Utils for serialize and deserialize all the data struct defined by thrift-confignode */
+/** Utils for serialize and deserialize all the data struct defined by thrift-confignode. */
 public class ThriftConfigNodeSerDeUtils {
 
   private ThriftConfigNodeSerDeUtils() {

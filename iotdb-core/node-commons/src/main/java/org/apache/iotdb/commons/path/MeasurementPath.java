@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -51,10 +52,12 @@ public class MeasurementPath extends PartialPath {
 
   private Boolean isUnderAlignedEntity = false;
 
-  // alias of measurement, null pointer cannot be serialized in thrift so empty string is instead
+  // Alias of measurement, null pointer cannot be serialized in thrift so empty string is instead
   private String measurementAlias = "";
 
-  public MeasurementPath() {}
+  public MeasurementPath() {
+    // Empty constructor
+  }
 
   public MeasurementPath(String measurementPath) throws IllegalPathException {
     super(measurementPath);

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.conf;
 
 import java.io.File;
@@ -27,7 +28,9 @@ import java.util.regex.Pattern;
 
 public class IoTDBConstant {
 
-  private IoTDBConstant() {}
+  private IoTDBConstant() {
+    // Empty constructor
+  }
 
   static {
     Properties prop = new Properties();

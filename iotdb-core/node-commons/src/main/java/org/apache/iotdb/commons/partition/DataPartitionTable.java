@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -59,7 +60,7 @@ public class DataPartitionTable {
   }
 
   /**
-   * Thread-safely get DataPartition within the specific StorageGroup
+   * Thread-safely get DataPartition within the specific StorageGroup.
    *
    * @param partitionSlots SeriesPartitionSlots and TimePartitionSlots
    * @param dataPartitionTable Store the matched Partitions
@@ -100,7 +101,7 @@ public class DataPartitionTable {
 
   /**
    * Checks whether the specified DataPartition has a predecessor or successor and returns if it
-   * does
+   * does.
    *
    * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
    * @param timePartitionSlot Corresponding TimePartitionSlot
@@ -121,7 +122,7 @@ public class DataPartitionTable {
   }
 
   /**
-   * Create DataPartition within the specific StorageGroup
+   * Create DataPartition within the specific StorageGroup.
    *
    * @param assignedDataPartition Assigned result
    * @return Map<TConsensusGroupId, Map<TSeriesPartitionSlot, Delta TTimePartitionSlot Count>>
@@ -170,7 +171,7 @@ public class DataPartitionTable {
   }
 
   /**
-   * Query a timePartition's corresponding dataRegionIds
+   * Query a timePartition's corresponding dataRegionIds.
    *
    * @param seriesSlotId SeriesPartitionSlot
    * @param timeSlotId TimePartitionSlot
@@ -195,7 +196,7 @@ public class DataPartitionTable {
   }
 
   /**
-   * Query timePartition
+   * Query timePartition.
    *
    * @param seriesSlotId SeriesPartitionSlot
    * @param regionId TConsensusGroupId
@@ -238,7 +239,7 @@ public class DataPartitionTable {
     }
   }
 
-  /** Only for ConsensusRequest */
+  /** Only for ConsensusRequest. */
   public void deserialize(ByteBuffer buffer) {
     int length = buffer.getInt();
     for (int i = 0; i < length; i++) {
@@ -250,7 +251,7 @@ public class DataPartitionTable {
     }
   }
 
-  /** Only for Snapshot */
+  /** Only for Snapshot. */
   public void deserialize(InputStream inputStream, TProtocol protocol)
       throws IOException, TException {
     int length = ReadWriteIOUtils.readInt(inputStream);
@@ -265,8 +266,12 @@ public class DataPartitionTable {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     DataPartitionTable that = (DataPartitionTable) o;
     return dataPartitionMap.equals(that.dataPartitionMap);
   }

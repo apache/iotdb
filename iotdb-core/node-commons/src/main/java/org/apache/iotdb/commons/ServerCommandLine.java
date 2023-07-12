@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons;
 
 import org.slf4j.Logger;
@@ -25,14 +26,14 @@ public abstract class ServerCommandLine {
   private static final Logger LOG = LoggerFactory.getLogger(ServerCommandLine.class);
 
   /**
-   * Implementing subclasses should return a usage string to print out
+   * Implementing subclasses should return a usage string to print out.
    *
    * @return usage
    */
   protected abstract String getUsage();
 
   /**
-   * run command
+   * Run command.
    *
    * @param args system args
    * @return return 0 if exec success

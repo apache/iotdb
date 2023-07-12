@@ -26,7 +26,7 @@ import javax.annotation.Nonnull;
 
 import java.util.Objects;
 
-/** StorageExecutor indicates execution of this query need data from StorageEngine */
+/** {@link StorageExecutor} indicates execution of this query need data from StorageEngine. */
 public class StorageExecutor implements ExecutorType {
   private final TRegionReplicaSet regionReplicaSet;
 
@@ -51,8 +51,12 @@ public class StorageExecutor implements ExecutorType {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     StorageExecutor that = (StorageExecutor) o;
     return Objects.equals(regionReplicaSet, that.regionReplicaSet);
   }

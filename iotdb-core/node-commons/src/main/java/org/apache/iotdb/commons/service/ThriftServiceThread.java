@@ -28,7 +28,7 @@ import org.apache.thrift.transport.TTransportFactory;
 
 public class ThriftServiceThread extends AbstractThriftServiceThread {
 
-  /** for asynced ThriftService. */
+  /** For async ThriftService. */
   @SuppressWarnings("squid:S107")
   public ThriftServiceThread(
       TBaseAsyncProcessor<?> processor,

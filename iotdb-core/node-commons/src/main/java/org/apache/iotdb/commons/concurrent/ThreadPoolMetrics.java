@@ -37,14 +37,16 @@ public class ThreadPoolMetrics implements IMetricSet {
   private static final String THREAD_POOL_LARGEST_POOL_SIZE = "thread_pool_largest_pool_size";
   private static final String POOL_NAME = "pool_name";
   private AbstractMetricService metricService;
-  private Map<String, IThreadPoolMBean> notRegisteredPoolMap = new HashMap<>();
-  private Map<String, IThreadPoolMBean> registeredPoolMap = new HashMap<>();
+  private final Map<String, IThreadPoolMBean> notRegisteredPoolMap = new HashMap<>();
+  private final Map<String, IThreadPoolMBean> registeredPoolMap = new HashMap<>();
 
   public static ThreadPoolMetrics getInstance() {
     return ThreadPoolMetricsHolder.INSTANCE;
   }
 
-  private ThreadPoolMetrics() {}
+  private ThreadPoolMetrics() {
+    // Empty constructor
+  }
 
   public void registerThreadPool(IThreadPoolMBean pool, String name) {
     synchronized (this) {

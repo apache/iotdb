@@ -36,9 +36,9 @@ public class NodeUrlUtils {
   private static final Logger logger = LoggerFactory.getLogger(NodeUrlUtils.class);
 
   /**
-   * Convert TEndPoint to TEndPointUrl
+   * Convert {@link TEndPoint} to TEndPointUrl.
    *
-   * @param endPoint TEndPoint
+   * @param endPoint {@link TEndPoint}
    * @return TEndPointUrl with format ip:port
    */
   public static String convertTEndPointUrl(TEndPoint endPoint) {

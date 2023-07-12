@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.enums;
 
 public enum RegionMigrateState {
@@ -37,7 +38,7 @@ public enum RegionMigrateState {
   }
 
   /**
-   * get RegionMigrateState by code
+   * Get RegionMigrateState by code.
    *
    * @param code code
    * @return RegionMigrateState

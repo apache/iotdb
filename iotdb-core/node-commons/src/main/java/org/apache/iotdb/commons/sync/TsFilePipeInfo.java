@@ -33,8 +33,10 @@ public class TsFilePipeInfo extends PipeInfo {
   private boolean syncDelOp;
   private long dataStartTimestamp;
 
-  // only used for serialization
-  public TsFilePipeInfo() {}
+  // Only used for serialization
+  public TsFilePipeInfo() {
+    // Empty constructor
+  }
 
   @TestOnly
   public TsFilePipeInfo(

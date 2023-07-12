@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.trigger;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -51,16 +52,18 @@ public class TriggerInformation {
 
   private TTriggerState triggerState;
 
-  /** indicate this Trigger is Stateful or Stateless */
+  /** indicate this Trigger is Stateful or Stateless. */
   private boolean isStateful;
-  /** only used for Stateful Trigger */
+  /** only used for Stateful Trigger. */
   private TDataNodeLocation dataNodeLocation;
 
   private FailureStrategy failureStrategy;
   /** MD5 of the Jar File */
   private String jarFileMD5;
 
-  public TriggerInformation() {}
+  public TriggerInformation() {
+    // Empty constructor
+  }
 
   public TriggerInformation(
       PartialPath pathPattern,
@@ -148,8 +151,12 @@ public class TriggerInformation {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     TriggerInformation that = (TriggerInformation) o;
     return Objects.equals(triggerName, that.triggerName)
         && Objects.equals(pathPattern, that.pathPattern)

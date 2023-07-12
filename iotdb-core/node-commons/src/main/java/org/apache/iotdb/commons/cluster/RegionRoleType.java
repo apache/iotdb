@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.cluster;
 
-/** Region Role for showing regions */
+/** Region Role for showing regions. */
 public enum RegionRoleType {
   // Region role type : Leader
   Leader("Leader"),

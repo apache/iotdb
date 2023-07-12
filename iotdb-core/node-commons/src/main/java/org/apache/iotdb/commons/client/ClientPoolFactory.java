@@ -40,7 +40,9 @@ public class ClientPoolFactory {
 
   private static final CommonConfig conf = CommonDescriptor.getInstance().getConfig();
 
-  private ClientPoolFactory() {}
+  private ClientPoolFactory() {
+    // Empty constructor
+  }
 
   public static class SyncConfigNodeIServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, SyncConfigNodeIServiceClient> {
