@@ -341,6 +341,9 @@ public class AuthUtils {
         targetPathPrivilege.getPrivileges().remove(privilegeType.ordinal());
       }
     }
+    if (targetPathPrivilege.getPrivileges().isEmpty()) {
+      privilegeList.remove(targetPathPrivilege);
+    }
   }
 
   /** Generate empty permission response when failed */

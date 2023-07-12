@@ -411,10 +411,12 @@ public class AuthorInfoTest {
     permissionInfoResp = authorInfo.executeListUserPrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    for (int i = 0; i < PrivilegeType.values().length; i++) {
-      Assert.assertEquals(
-          PrivilegeType.values()[i].toString(),
-          permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_PRIVILEGE).get(i));
+    Set<PrivilegeType> allPrivilegeTypes = PrivilegeType.ALL.getStorablePrivilege();
+    List<String> resultPrivilegeTypes =
+        permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_PRIVILEGE);
+    Assert.assertEquals(allPrivilegeTypes.size(), resultPrivilegeTypes.size());
+    for (int i = 0; i < allPrivilegeTypes.size(); i++) {
+      Assert.assertTrue(resultPrivilegeTypes.contains(PrivilegeType.values()[i].toString()));
     }
   }
 
