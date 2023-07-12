@@ -204,7 +204,7 @@ public class PipeRuntimeMeta {
     for (int i = 0; i < size; ++i) {
       pipeRuntimeMeta.dataNodeId2PipeRuntimeExceptionMap.put(
           ReadWriteIOUtils.readInt(inputStream),
-          PipeRuntimeExceptionType.deserializeFrom(version, inputStream));
+          PipeRuntimeExceptionType.deserializeFrom(PipeRuntimeMetaVersion.VERSION_2, inputStream));
     }
 
     pipeRuntimeMeta.exceptionsClearTime.set(ReadWriteIOUtils.readLong(inputStream));
@@ -261,7 +261,7 @@ public class PipeRuntimeMeta {
     for (int i = 0; i < size; ++i) {
       pipeRuntimeMeta.dataNodeId2PipeRuntimeExceptionMap.put(
           ReadWriteIOUtils.readInt(byteBuffer),
-          PipeRuntimeExceptionType.deserializeFrom(byteBuffer));
+          PipeRuntimeExceptionType.deserializeFrom(PipeRuntimeMetaVersion.VERSION_2, byteBuffer));
     }
 
     pipeRuntimeMeta.exceptionsClearTime.set(ReadWriteIOUtils.readLong(byteBuffer));
