@@ -101,6 +101,10 @@ BEGIN
     : B E G I N
     ;
 
+BETWEEN
+    : B E T W E E N
+    ;
+
 BLOCKED
     : B L O C K E D
     ;
@@ -326,6 +330,10 @@ HAVING
     : H A V I N G
     ;
 
+IN
+    : I N
+    ;
+
 INDEX
     : I N D E X
     ;
@@ -340,6 +348,10 @@ INSERT
 
 INTO
     : I N T O
+    ;
+
+IS
+    : I S
     ;
 
 KILL
@@ -1125,12 +1137,6 @@ OPERATOR_GTE : '>=';
 OPERATOR_LT : '<';
 OPERATOR_LTE : '<=';
 OPERATOR_NEQ : '!=' | '<>';
-
-OPERATOR_BETWEEN : B E T W E E N;
-
-OPERATOR_IS : I S;
-
-OPERATOR_IN : I N;
 
 OPERATOR_BITWISE_AND : '&';
 

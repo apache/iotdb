@@ -48,6 +48,7 @@ keyWords
     | AUTO
     | BEFORE
     | BEGIN
+    | BETWEEN
     | BLOCKED
     | BOUNDARY
     | BY
@@ -107,10 +108,12 @@ keyWords
     | GRANT
     | GROUP
     | HAVING
+    | IN
     | INDEX
     | INFO
     | INSERT
     | INTO
+    | IS
     | KILL
     | LABEL
     | LAST
@@ -179,6 +182,7 @@ keyWords
     | REPLACE
     | REVOKE
     | ROLE
+    | ROOT
     | ROUND
     | RUNNING
     | SCHEMA
@@ -204,12 +208,15 @@ keyWords
     | TAGS
     | TASK
     | TEMPLATE
+    | TEMPLATES
     | THEN
     | THROTTLE
+    | TIME
     | TIMEOUT
     | TIMESERIES
     | TIMEPARTITION
     | TIMESLOTID
+    | TIMESTAMP
     | TO
     | TOLERANCE
     | TOP

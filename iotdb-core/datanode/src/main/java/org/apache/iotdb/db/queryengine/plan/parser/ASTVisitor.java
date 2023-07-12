@@ -2654,7 +2654,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       Expression secondExpression = parseExpression(context.secondExpression, canUseFullPath);
       Expression thirdExpression = parseExpression(context.thirdExpression, canUseFullPath);
 
-      if (context.OPERATOR_BETWEEN() != null) {
+      if (context.operator_between() != null) {
         return new BetweenExpression(
             firstExpression, secondExpression, thirdExpression, context.operator_not() != null);
       }

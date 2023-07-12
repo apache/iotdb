@@ -145,6 +145,9 @@ public class IoTDBSyntaxConventionIdentifierIT {
     String[] createNodeNames = {
       "a_1",
       "aaa",
+      "in",
+      "between",
+      "is",
       "`select`",
       "`a.b`",
       "`111`",
@@ -172,6 +175,9 @@ public class IoTDBSyntaxConventionIdentifierIT {
     String[] resultTimeseries = {
       "root.sg1.d1.a_1",
       "root.sg1.d1.aaa",
+      "root.sg1.d1.in",
+      "root.sg1.d1.between",
+      "root.sg1.d1.is",
       "root.sg1.d1.select",
       "root.sg1.d1.`a.b`",
       "root.sg1.d1.`111`",
@@ -199,6 +205,9 @@ public class IoTDBSyntaxConventionIdentifierIT {
     String[] selectNodeNames = {
       "a_1",
       "aaa",
+      "in",
+      "between",
+      "is",
       "`select`",
       "`a.b`",
       "`111`",
@@ -226,6 +235,9 @@ public class IoTDBSyntaxConventionIdentifierIT {
     String[] suffixInResultColumns = {
       "a_1",
       "aaa",
+      "in",
+      "between",
+      "is",
       "select",
       "`a.b`",
       "`111`",
