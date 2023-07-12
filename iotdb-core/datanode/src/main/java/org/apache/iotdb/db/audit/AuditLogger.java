@@ -69,7 +69,7 @@ public class AuditLogger {
       DataNodeDevicePathCache.getInstance();
 
   private AuditLogger() {
-    // empty constructor
+    // Empty constructor
   }
 
   @NotNull

@@ -46,7 +46,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * This procedure manage 4 kinds of PIPE operations: CREATE, START, STOP and DROP.
+ * This procedure manages 4 kinds of PIPE operations: {@link PipeTaskOperation#CREATE_PIPE}, {@link
+ * PipeTaskOperation#START_PIPE}, {@link PipeTaskOperation#STOP_PIPE} and {@link
+ * PipeTaskOperation#DROP_PIPE}.
  *
  * <p>This class extends {@link AbstractNodeProcedure} to make sure that pipe task procedures can be
  * executed in sequence and node procedures can be locked when a pipe task procedure is running.
@@ -69,17 +71,17 @@ public abstract class AbstractOperatePipeProcedureV2
   protected abstract PipeTaskOperation getOperation();
 
   /**
-   * Execute at state VALIDATE_TASK.
+   * Execute at state {@link OperatePipeTaskState#VALIDATE_TASK}.
    *
    * @throws PipeException if validation for pipe parameters failed
    */
   protected abstract void executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException;
 
-  /** Execute at state CALCULATE_INFO_FOR_TASK. */
+  /** Execute at state {@link OperatePipeTaskState#CALCULATE_INFO_FOR_TASK}. */
   protected abstract void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env);
 
   /**
-   * Execute at state WRITE_CONFIG_NODE_CONSENSUS.
+   * Execute at state {@link OperatePipeTaskState#WRITE_CONFIG_NODE_CONSENSUS}.
    *
    * @throws PipeException if configNode consensus write failed
    */
@@ -87,7 +89,7 @@ public abstract class AbstractOperatePipeProcedureV2
       throws PipeException;
 
   /**
-   * Execute at state OPERATE_ON_DATA_NODES.
+   * Execute at state {@link OperatePipeTaskState#OPERATE_ON_DATA_NODES}.
    *
    * @throws PipeException if push pipe metas to dataNodes failed
    * @throws IOException Exception when Serializing to byte buffer

@@ -26,7 +26,7 @@ import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Node procedure */
+/** Node procedure. */
 public abstract class AbstractNodeProcedure<TState>
     extends StateMachineProcedure<ConfigNodeProcedureEnv, TState> {
   private static final Logger LOG = LoggerFactory.getLogger(AbstractNodeProcedure.class);

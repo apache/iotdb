@@ -144,6 +144,7 @@ public class TsFileInputFormat<T> extends FileInputFormat<T> implements ResultTy
     return parser.parse(rowRecord, t);
   }
 
+  @Deprecated
   @Override
   public boolean supportsMultiPaths() {
     return true;

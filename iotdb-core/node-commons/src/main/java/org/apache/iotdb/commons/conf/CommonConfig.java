@@ -77,16 +77,16 @@ public class CommonConfig {
           + File.separator
           + "procedure";
 
-  /** Sync directory, including the log and hardlink tsfiles */
+  /** Sync directory, including the log and hardlink tsFiles. */
   private String syncDir =
       IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
 
-  /** WAL directories */
+  /** WAL directories. */
   private String[] walDirs = {
     IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.WAL_FOLDER_NAME
   };
 
-  /** Default system file storage is in local file system (unsupported) */
+  /** Default system file storage is in local file system (unsupported). */
   private FSType systemFileStorageFs = FSType.LOCAL;
 
   /**
@@ -131,7 +131,7 @@ public class CommonConfig {
   /** Ip and port of target ML node. */
   private TEndPoint targetMLNodeEndPoint = new TEndPoint("127.0.0.1", 10810);
 
-  /** Time partition interval in milliseconds */
+  /** Time partition interval in milliseconds. */
   private long timePartitionInterval = 604_800_000;
 
   /** This variable set timestamp precision as millisecond, microsecond or nanosecond. */

@@ -43,16 +43,16 @@ import static com.google.common.util.concurrent.Futures.successfulAsList;
 
 public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
 
-  /** start index for each input TsBlocks and size of it is equal to inputTsBlocks. */
+  /** Start index for each input TsBlocks and size of it is equal to inputTsBlocks. */
   private final int[] inputIndex;
 
-  /** used to record current index for input TsBlocks after merging. */
+  /** Used to record current index for input TsBlocks after merging. */
   private final int[] shadowInputIndex;
 
   /**
-   * Represent whether there are more tsBlocks from ith child operator. If all elements in
-   * noMoreTsBlocks[] are true and inputTsBlocks[] are consumed completely, this operator is
-   * finished.
+   * Represent whether there are more tsBlocks from ith child operator. If all elements in {@code
+   * noMoreTsBlocks[]} are true and {@code inputTsBlocks[]} are consumed completely, this operator
+   * is finished.
    */
   private final boolean[] noMoreTsBlocks;
 
@@ -61,7 +61,7 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
   private final int outputColumnCount;
 
   /**
-   * this field indicates each data type for output columns(not including time column) of
+   * This field indicates each data type for output columns(not including time column) of
    * TimeJoinOperator its size should be equal to outputColumnCount.
    */
   private final List<TSDataType> dataTypes;
@@ -130,16 +130,16 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
       return null;
     }
 
-    // end time for returned TsBlock this time, it's the min/max end time among all the children
+    // End time for returned TsBlock this time, it's the min/max end time among all the children
     // TsBlocks order by asc/desc
     long currentEndTime = 0;
     boolean init = false;
 
-    // get TsBlock for each input, put their time stamp into TimeSelector and then use the min Time
+    // Get TsBlock for each input, put their time stamp into TimeSelector and then use the min Time
     // among all the input TsBlock as the current output TsBlock's endTime.
     for (int i = 0; i < inputOperatorsCount; i++) {
       if (!noMoreTsBlocks[i]) {
-        // update the currentEndTime if the TsBlock is not empty
+        // Update the currentEndTime if the TsBlock is not empty
         currentEndTime =
             init
                 ? comparator.getCurrentEndTime(currentEndTime, inputTsBlocks[i].getEndTime())
@@ -149,7 +149,7 @@ public class RowBasedTimeJoinOperator extends AbstractConsumeAllOperator {
     }
 
     if (timeSelector.isEmpty()) {
-      // return empty TsBlock
+      // Return empty TsBlock
       TsBlockBuilder emptyTsBlockBuilder = new TsBlockBuilder(0, dataTypes);
       return emptyTsBlockBuilder.build();
     }

@@ -41,7 +41,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.VerifyMetadataException;
-import org.apache.iotdb.db.exception.metadata.template.TemplateImcompatibeException;
+import org.apache.iotdb.db.exception.metadata.template.TemplateIncompatibleException;
 import org.apache.iotdb.db.exception.metadata.view.UnsupportedViewException;
 import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -2089,7 +2089,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         schemaFetcher.checkTemplateSetAndPreSetInfo(timeseriesPath, alias);
     if (templateInfo != null) {
       throw new SemanticException(
-          new TemplateImcompatibeException(
+          new TemplateIncompatibleException(
               timeseriesPath.getFullPath(), templateInfo.left.getName(), templateInfo.right));
     }
   }
@@ -2103,7 +2103,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               aliasList == null ? null : aliasList.get(i));
       if (templateInfo != null) {
         throw new SemanticException(
-            new TemplateImcompatibeException(
+            new TemplateIncompatibleException(
                 devicePath.getFullPath() + measurements,
                 templateInfo.left.getName(),
                 templateInfo.right));
@@ -2254,7 +2254,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             alterTimeSeriesStatement.getPath(), alterTimeSeriesStatement.getAlias());
     if (templateInfo != null) {
       throw new RuntimeException(
-          new TemplateImcompatibeException(
+          new TemplateIncompatibleException(
               String.format(
                   "Cannot alter template timeseries [%s] since schema template [%s] already set on path [%s].",
                   alterTimeSeriesStatement.getPath().getFullPath(),

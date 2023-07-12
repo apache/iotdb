@@ -36,7 +36,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.List;
 
-/** manager permission read and operation */
+/** Manager permission read and operation. */
 public class PermissionManager {
 
   private final ConfigManager configManager;
@@ -48,7 +48,7 @@ public class PermissionManager {
   }
 
   /**
-   * write permission
+   * Write permission.
    *
    * @param authorPlan AuthorReq
    * @return TSStatus
@@ -69,7 +69,7 @@ public class PermissionManager {
   }
 
   /**
-   * Query for permissions
+   * Query for permissions.
    *
    * @param authorPlan AuthorReq
    * @return PermissionInfoResp
@@ -93,7 +93,7 @@ public class PermissionManager {
 
   /**
    * When the permission information of a user or role is changed will clear all datanode
-   * permissions related to the user or role
+   * permissions related to the user or role.
    */
   public TSStatus invalidateCache(String username, String roleName) {
     List<TDataNodeConfiguration> allDataNodes =
