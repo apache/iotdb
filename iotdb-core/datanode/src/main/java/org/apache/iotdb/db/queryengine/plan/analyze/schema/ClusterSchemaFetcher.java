@@ -70,7 +70,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
                 "",
                 ClusterPartitionFetcher.getInstance(),
                 this,
-                config.getQueryTimeoutThreshold());
+                context != null ? context.getTimeOut() : config.getQueryTimeoutThreshold());
           });
   private final ClusterSchemaFetchExecutor clusterSchemaFetchExecutor =
       new ClusterSchemaFetchExecutor(
@@ -85,7 +85,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
                   "",
                   ClusterPartitionFetcher.getInstance(),
                   this,
-                  config.getQueryTimeoutThreshold()),
+                  context != null ? context.getTimeOut() : config.getQueryTimeoutThreshold()),
           schemaCache::put);
 
   private final NormalSchemaFetcher normalSchemaFetcher =
