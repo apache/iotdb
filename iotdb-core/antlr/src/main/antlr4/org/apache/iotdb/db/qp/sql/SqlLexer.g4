@@ -904,6 +904,7 @@ PRIVILEGE_VALUE
     | USE_TIGGER
     | USE_CQ
     | USE_PIPE
+    | MANAGE_DATABASE
     ;
 
 READ_DATA
@@ -948,6 +949,10 @@ USE_CQ
 
 USE_PIPE
     : U S E '_' P I P E
+    ;
+
+MANAGE_DATABASE
+    : M A N A G E '_' D A T A B A S E
     ;
 
 SET_STORAGE_GROUP

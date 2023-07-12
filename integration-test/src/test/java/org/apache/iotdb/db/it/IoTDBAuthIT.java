@@ -94,14 +94,14 @@ public class IoTDBAuthIT {
 
         adminStmt.execute("REVOKE USER tempuser PRIVILEGES ALL on root.**");
         adminStmt.execute("REVOKE USER tempuser PRIVILEGES WRITE_SCHEMA ON root.b.b");
-        adminStmt.execute("GRANT USER tempuser PRIVILEGES WRITE on root.**");
+        adminStmt.execute("GRANT USER tempuser PRIVILEGES WRITE, MANAGE_DATABASE on root.**");
 
         userStmt.execute("CREATE DATABASE root.c");
         userStmt.execute("CREATE TIMESERIES root.c.d WITH DATATYPE=INT32,ENCODING=PLAIN");
         userStmt.execute("INSERT INTO root.c(timestamp, d) VALUES (100, 100)");
         userStmt.execute("SELECT * from root.c");
 
-        adminStmt.execute("REVOKE USER tempuser PRIVILEGES WRITE on root.**");
+        adminStmt.execute("REVOKE USER tempuser PRIVILEGES WRITE, MANAGE_DATABASE on root.**");
         adminStmt.execute("GRANT USER tempuser PRIVILEGES READ on root.**");
 
         userStmt.execute("SELECT * from root.c");
@@ -136,7 +136,7 @@ public class IoTDBAuthIT {
         Assert.assertThrows(
             SQLException.class, () -> userStmt.execute("CREATE DATABASE root.sgtest"));
 
-        adminStmt.execute("GRANT USER sgtest PRIVILEGES WRITE_SCHEMA ON root.*");
+        adminStmt.execute("GRANT USER sgtest PRIVILEGES MANAGE_DATABASE ON root.*");
 
         try {
           userStmt.execute("CREATE DATABASE root.sgtest");
@@ -268,7 +268,7 @@ public class IoTDBAuthIT {
         // grant and revoke the user the privilege to create time series
         Assert.assertThrows(SQLException.class, () -> userStmt.execute("CREATE DATABASE root.a"));
 
-        adminStmt.execute("GRANT USER tempuser PRIVILEGES WRITE_SCHEMA ON root.a");
+        adminStmt.execute("GRANT USER tempuser PRIVILEGES MANAGE_DATABASE,WRITE_SCHEMA ON root.a");
         userStmt.execute("CREATE DATABASE root.a");
         adminStmt.execute("GRANT USER tempuser PRIVILEGES WRITE_SCHEMA ON root.a.b");
         userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
@@ -277,13 +277,15 @@ public class IoTDBAuthIT {
         // privilege already exists
         Assert.assertThrows(
             SQLException.class,
-            () -> adminStmt.execute("GRANT USER tempuser PRIVILEGES WRITE_SCHEMA ON root.a"));
+            () ->
+                adminStmt.execute(
+                    "GRANT USER tempuser PRIVILEGES MANAGE_DATABASE,WRITE_SCHEMA ON root.a"));
         // no privilege to create this one anymore
         Assert.assertThrows(SQLException.class, () -> userStmt.execute("CREATE DATABASE root.a"));
         // no privilege to create timeseries
         Assert.assertThrows(SQLException.class, () -> userStmt.execute("CREATE DATABASE root.a"));
 
-        adminStmt.execute("REVOKE USER tempuser PRIVILEGES WRITE_SCHEMA ON root.a");
+        adminStmt.execute("REVOKE USER tempuser PRIVILEGES MANAGE_DATABASE,WRITE_SCHEMA ON root.a");
         // no privilege to create this one anymore
         Assert.assertThrows(
             SQLException.class,
@@ -313,7 +315,7 @@ public class IoTDBAuthIT {
       try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser", "temppw");
           Statement userStmt = userCon.createStatement()) {
 
-        adminStmt.execute("GRANT USER tempuser PRIVILEGES WRITE_SCHEMA ON root.a");
+        adminStmt.execute("GRANT USER tempuser PRIVILEGES MANAGE_DATABASE ON root.a");
         userStmt.execute("CREATE DATABASE root.a");
         adminStmt.execute("GRANT USER tempuser PRIVILEGES WRITE_SCHEMA ON root.a.b");
         userStmt.execute("CREATE TIMESERIES root.a.b WITH DATATYPE=INT32,ENCODING=PLAIN");
@@ -360,7 +362,7 @@ public class IoTDBAuthIT {
 
         adminStmt.execute("CREATE ROLE admin");
         adminStmt.execute(
-            "GRANT ROLE admin PRIVILEGES WRITE_SCHEMA,READ_DATA,WRITE_DATA on root.**");
+            "GRANT ROLE admin PRIVILEGES MANAGE_DATABASE,WRITE_SCHEMA,READ_DATA,WRITE_DATA on root.**");
         adminStmt.execute("GRANT admin TO tempuser");
 
         userStmt.execute("CREATE DATABASE root.a");
@@ -371,7 +373,7 @@ public class IoTDBAuthIT {
         ResultSet resultSet = userStmt.executeQuery("SELECT * FROM root.**");
         resultSet.close();
 
-        adminStmt.execute("REVOKE ROLE admin PRIVILEGES WRITE_SCHEMA on root.**");
+        adminStmt.execute("REVOKE ROLE admin PRIVILEGES MANAGE_DATABASE,WRITE_SCHEMA on root.**");
         adminStmt.execute("GRANT USER tempuser PRIVILEGES READ_DATA on root.**");
         adminStmt.execute("REVOKE admin FROM tempuser");
         resultSet = userStmt.executeQuery("SELECT * FROM root.**");

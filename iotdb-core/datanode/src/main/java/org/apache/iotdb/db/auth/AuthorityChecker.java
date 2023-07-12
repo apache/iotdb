@@ -157,9 +157,10 @@ public class AuthorityChecker {
       case SHOW_PATH_SET_SCHEMA_TEMPLATE:
       case SHOW_PATH_USING_SCHEMA_TEMPLATE:
         return PrivilegeType.READ_SCHEMA.ordinal();
-      case TTL:
       case STORAGE_GROUP_SCHEMA:
       case DELETE_STORAGE_GROUP:
+        return PrivilegeType.MANAGE_DATABASE.ordinal();
+      case TTL:
       case CREATE_TIMESERIES:
       case CREATE_ALIGNED_TIMESERIES:
       case CREATE_MULTI_TIMESERIES:

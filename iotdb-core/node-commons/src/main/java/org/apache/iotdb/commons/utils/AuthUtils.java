@@ -180,6 +180,7 @@ public class AuthUtils {
         case READ_DATA:
         case WRITE_DATA:
         case USE_TRIGGER:
+        case MANAGE_DATABASE:
           return;
         default:
           throw new AuthException(
@@ -190,6 +191,7 @@ public class AuthUtils {
       switch (type) {
         case READ_SCHEMA:
         case WRITE_SCHEMA:
+        case MANAGE_DATABASE:
         case READ_DATA:
         case WRITE_DATA:
           validatePath(path);
