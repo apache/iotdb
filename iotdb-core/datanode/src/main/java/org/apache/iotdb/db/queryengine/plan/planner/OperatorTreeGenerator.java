@@ -1986,7 +1986,19 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitLastQueryScan(LastQueryScanNode node, LocalExecutionPlanContext context) {
     PartialPath seriesPath = node.getSeriesPath().transformToPartialPath();
-    TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(seriesPath);
+    TimeValuePair timeValuePair = null;
+    try {
+      context.dataNodeQueryContext.needQueryAllRegionsForLastSetLock.lock();
+      if (!context.dataNodeQueryContext.needQueryAllRegionsForLast(seriesPath)) {
+        timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(seriesPath);
+        if (timeValuePair == null) {
+          context.dataNodeQueryContext.addNeedQueryAllRegionsForLast(seriesPath);
+        }
+      }
+    } finally {
+      context.dataNodeQueryContext.needQueryAllRegionsForLastSetLock.unlock();
+    }
+
     if (timeValuePair == null) { // last value is not cached
       return createUpdateLastCacheOperator(node, context, node.getSeriesPath());
     } else if (!LastQueryUtil.satisfyFilter(
@@ -2178,7 +2190,19 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<String> measurementList = alignedPath.getMeasurementList();
     for (int i = 0; i < measurementList.size(); i++) {
       PartialPath measurementPath = devicePath.concatNode(measurementList.get(i));
-      TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(measurementPath);
+      TimeValuePair timeValuePair = null;
+      try {
+        context.dataNodeQueryContext.needQueryAllRegionsForLastSetLock.lock();
+        if (!context.dataNodeQueryContext.needQueryAllRegionsForLast(measurementPath)) {
+          timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(measurementPath);
+          if (timeValuePair == null) {
+            context.dataNodeQueryContext.addNeedQueryAllRegionsForLast(measurementPath);
+          }
+        }
+      } finally {
+        context.dataNodeQueryContext.needQueryAllRegionsForLastSetLock.unlock();
+      }
+
       if (timeValuePair == null) { // last value is not cached
         unCachedMeasurementIndexes.add(i);
       } else if (!LastQueryUtil.satisfyFilter(

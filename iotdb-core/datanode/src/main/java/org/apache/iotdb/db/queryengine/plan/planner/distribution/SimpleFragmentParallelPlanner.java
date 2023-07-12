@@ -67,6 +67,9 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
   Map<PlanNodeId, Pair<PlanFragmentId, PlanNode>> planNodeMap;
   List<FragmentInstance> fragmentInstanceList;
 
+  // Record num of FragmentInstances dispatched to same DataNode
+  Map<TDataNodeLocation, Integer> dataNodeFINumMap;
+
   public SimpleFragmentParallelPlanner(
       SubPlan subPlan, Analysis analysis, MPPQueryContext context) {
     this.subPlan = subPlan;
@@ -75,6 +78,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     this.instanceMap = new HashMap<>();
     this.planNodeMap = new HashMap<>();
     this.fragmentInstanceList = new ArrayList<>();
+    this.dataNodeFINumMap = new HashMap<>();
   }
 
   @Override
@@ -90,6 +94,10 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
       recordPlanNodeRelation(fragment.getPlanNodeTree(), fragment.getId());
       produceFragmentInstance(fragment);
     }
+    fragmentInstanceList.forEach(
+        fragmentInstance ->
+            fragmentInstance.setDataNodeFINum(
+                dataNodeFINumMap.get(fragmentInstance.getHostDataNode())));
   }
 
   private void produceFragmentInstance(PlanFragment fragment) {
@@ -130,6 +138,16 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
       fragmentInstance.setExecutorAndHost(new StorageExecutor(regionReplicaSet));
       fragmentInstance.setHostDataNode(selectTargetDataNode(regionReplicaSet));
     }
+
+    dataNodeFINumMap.compute(
+        fragmentInstance.getHostDataNode(),
+        (k, v) -> {
+          if (v == null) {
+            return 1;
+          } else {
+            return v + 1;
+          }
+        });
 
     if (analysis.getStatement() instanceof QueryStatement
         || analysis.getStatement() instanceof ShowQueriesStatement) {

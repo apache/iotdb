@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
+import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -38,8 +39,10 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -77,6 +80,16 @@ public class FragmentInstanceContext extends QueryContext {
   // session info
   private SessionInfo sessionInfo;
 
+  private final Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap;
+
+  //    private final GcMonitor gcMonitor;
+  //    private final AtomicLong startNanos = new AtomicLong();
+  //    private final AtomicLong startFullGcCount = new AtomicLong(-1);
+  //    private final AtomicLong startFullGcTimeNanos = new AtomicLong(-1);
+  //    private final AtomicLong endNanos = new AtomicLong();
+  //    private final AtomicLong endFullGcCount = new AtomicLong(-1);
+  //    private final AtomicLong endFullGcTimeNanos = new AtomicLong(-1);
+
   public static FragmentInstanceContext createFragmentInstanceContext(
       FragmentInstanceId id, FragmentInstanceStateMachine stateMachine, SessionInfo sessionInfo) {
     FragmentInstanceContext instanceContext =
@@ -91,9 +104,11 @@ public class FragmentInstanceContext extends QueryContext {
       FragmentInstanceStateMachine stateMachine,
       SessionInfo sessionInfo,
       IDataRegionForQuery dataRegion,
-      Filter timeFilter) {
+      Filter timeFilter,
+      Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap) {
     FragmentInstanceContext instanceContext =
-        new FragmentInstanceContext(id, stateMachine, sessionInfo, dataRegion, timeFilter);
+        new FragmentInstanceContext(
+            id, stateMachine, sessionInfo, dataRegion, timeFilter, dataNodeQueryContextMap);
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
@@ -119,13 +134,15 @@ public class FragmentInstanceContext extends QueryContext {
       FragmentInstanceStateMachine stateMachine,
       SessionInfo sessionInfo,
       IDataRegionForQuery dataRegion,
-      Filter timeFilter) {
+      Filter timeFilter,
+      Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap) {
     this.id = id;
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
     this.sessionInfo = sessionInfo;
     this.dataRegion = dataRegion;
     this.timeFilter = timeFilter;
+    this.dataNodeQueryContextMap = dataNodeQueryContextMap;
   }
 
   private FragmentInstanceContext(
@@ -134,6 +151,7 @@ public class FragmentInstanceContext extends QueryContext {
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
     this.sessionInfo = sessionInfo;
+    this.dataNodeQueryContextMap = new ConcurrentHashMap<>();
   }
 
   @TestOnly
@@ -146,6 +164,7 @@ public class FragmentInstanceContext extends QueryContext {
     this.queryId = queryId;
     this.id = null;
     this.stateMachine = null;
+    this.dataNodeQueryContextMap = new ConcurrentHashMap<>();
   }
 
   public void start() {
@@ -390,6 +409,20 @@ public class FragmentInstanceContext extends QueryContext {
     timeFilter = null;
     sourcePaths = null;
     sharedQueryDataSource = null;
+    releaseDataNodeQueryContext();
+  }
+
+  private void releaseDataNodeQueryContext() {
+    QueryId queryId = id.getQueryId();
+    if (dataNodeQueryContextMap.isEmpty()) {
+      // this map empty means this process is in fetch schema, nothing need to release
+      return;
+    }
+    synchronized (dataNodeQueryContextMap.get(queryId)) {
+      if (dataNodeQueryContextMap.get(queryId).decreaseDataNodeFINum() <= 0) {
+        dataNodeQueryContextMap.remove(queryId);
+      }
+    }
   }
 
   public void setMayHaveTmpFile(boolean mayHaveTmpFile) {

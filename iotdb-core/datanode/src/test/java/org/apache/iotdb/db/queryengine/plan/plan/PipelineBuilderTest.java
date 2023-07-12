@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
@@ -811,7 +812,8 @@ public class PipelineBuilderTest {
         createFragmentInstanceContext(instanceId, stateMachine);
     fragmentInstanceContext.setDataRegion(dataRegion);
 
-    return new LocalExecutionPlanContext(typeProvider, fragmentInstanceContext);
+    return new LocalExecutionPlanContext(
+        typeProvider, fragmentInstanceContext, new DataNodeQueryContext(0));
   }
 
   /**
