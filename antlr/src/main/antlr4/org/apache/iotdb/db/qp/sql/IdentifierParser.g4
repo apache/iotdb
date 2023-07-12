@@ -172,7 +172,6 @@ keyWords
     | RESOURCE
     | REVOKE
     | ROLE
-    | ROOT
     | RUNNING
     | SCHEMA
     | SELECT
@@ -196,12 +195,10 @@ keyWords
     | TASK
     | TEMPLATE
     | TEMPLATES
-    | TIME
     | TIMEOUT
     | TIMESERIES
     | TIMEPARTITION
     | TIMESLOTID
-    | TIMESTAMP
     | TO
     | TOLERANCE
     | TOP
