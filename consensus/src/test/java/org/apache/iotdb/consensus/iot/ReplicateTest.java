@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.ServerSocket;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -67,8 +68,8 @@ public class ReplicateTest {
 
   @Before
   public void setUp() throws Exception {
-    for (int i = 0; i < 3; i++) {
-      peersStorage.get(i).mkdirs();
+    for (File file : peersStorage) {
+      file.mkdirs();
       stateMachines.add(new TestStateMachine());
     }
     initServer();
@@ -83,7 +84,10 @@ public class ReplicateTest {
   }
 
   private void initServer() throws IOException {
-    for (int i = 0; i < 3; i++) {
+    for (Peer peer : peers) {
+      waitPortAvailable(peer.getEndpoint().port);
+    }
+    for (int i = 0; i < peers.size(); i++) {
       int finalI = i;
       servers.add(
           (IoTConsensus)
@@ -243,5 +247,22 @@ public class ReplicateTest {
 
     Assert.assertEquals(stateMachines.get(0).getData(), stateMachines.get(1).getData());
     Assert.assertEquals(stateMachines.get(2).getData(), stateMachines.get(1).getData());
+  }
+
+  private static void waitPortAvailable(int port) {
+    long start = System.currentTimeMillis();
+    while (System.currentTimeMillis() - start < 60 * 1000) {
+      try (ServerSocket ignored = new ServerSocket(port)) {
+        return;
+      } catch (IOException e) {
+        // Port is already in use, wait and retry
+        try {
+          Thread.sleep(1000); // Wait for 1 second before retrying
+        } catch (InterruptedException ex) {
+          // Handle the interruption if needed
+        }
+      }
+    }
+    Assert.fail(String.format("can not bind port %d after 60s", port));
   }
 }
