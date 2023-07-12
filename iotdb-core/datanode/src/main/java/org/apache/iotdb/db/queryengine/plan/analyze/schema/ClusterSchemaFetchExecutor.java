@@ -24,8 +24,13 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
+import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.SchemaFetchStatement;
@@ -46,42 +51,52 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 class ClusterSchemaFetchExecutor {
 
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private final Coordinator coordinator;
   private final ITemplateManager templateManager;
-  private final Supplier<Long> queryIdProvider;
-  private final BiFunction<Long, Statement, ExecutionResult> statementExecutor;
+  private ISchemaFetcher schemaFetcher;
   private final Consumer<ClusterSchemaTree> schemaCacheUpdater;
 
   ClusterSchemaFetchExecutor(
       Coordinator coordinator,
       ITemplateManager templateManager,
-      Supplier<Long> queryIdProvider,
-      BiFunction<Long, Statement, ExecutionResult> statementExecutor,
+      ISchemaFetcher schemaFetcher,
       Consumer<ClusterSchemaTree> schemaCacheUpdater) {
     this.coordinator = coordinator;
     this.templateManager = templateManager;
-    this.queryIdProvider = queryIdProvider;
-    this.statementExecutor = statementExecutor;
+    this.schemaFetcher = schemaFetcher;
     this.schemaCacheUpdater = schemaCacheUpdater;
+  }
+
+  private ExecutionResult executionStatement(
+      Long queryId, Statement statement, MPPQueryContext context) {
+    return coordinator.execute(
+        statement,
+        queryId,
+        context == null ? null : context.getSession(),
+        "",
+        ClusterPartitionFetcher.getInstance(),
+        schemaFetcher,
+        context != null ? context.getTimeOut() : config.getQueryTimeoutThreshold());
   }
 
   /**
    * This method is used for scenarios that patternTree may have wildcard or there's no need to
    * cache the result.
    */
-  ClusterSchemaTree fetchSchemaOfFuzzyMatch(PathPatternTree patternTree, boolean withTags) {
+  ClusterSchemaTree fetchSchemaOfFuzzyMatch(
+      PathPatternTree patternTree, boolean withTags, MPPQueryContext context) {
     Map<Integer, Template> templateMap = new HashMap<>();
     List<PartialPath> pathPatternList = patternTree.getAllPathPatterns();
     for (PartialPath pattern : pathPatternList) {
       templateMap.putAll(templateManager.checkAllRelatedTemplate(pattern));
     }
-    return executeSchemaFetchQuery(new SchemaFetchStatement(patternTree, templateMap, withTags));
+    return executeSchemaFetchQuery(
+        new SchemaFetchStatement(patternTree, templateMap, withTags), context);
   }
 
   /**
@@ -93,10 +108,11 @@ class ClusterSchemaFetchExecutor {
    * @return fetched schema
    */
   ClusterSchemaTree fetchSchemaOfPreciseMatchOrPreciseDeviceUsingTemplate(
-      List<PartialPath> fullPathList, PathPatternTree rawPatternTree) {
+      List<PartialPath> fullPathList, PathPatternTree rawPatternTree, MPPQueryContext context) {
     ClusterSchemaTree schemaTree =
         executeSchemaFetchQuery(
-            new SchemaFetchStatement(rawPatternTree, analyzeTemplate(fullPathList), false));
+            new SchemaFetchStatement(rawPatternTree, analyzeTemplate(fullPathList), false),
+            context);
     if (!schemaTree.isEmpty()) {
       schemaCacheUpdater.accept(schemaTree);
     }
@@ -104,20 +120,24 @@ class ClusterSchemaFetchExecutor {
   }
 
   ClusterSchemaTree fetchSchemaOfOneDevice(
-      PartialPath devicePath, String[] measurements, List<Integer> indexOfTargetMeasurements) {
+      PartialPath devicePath,
+      String[] measurements,
+      List<Integer> indexOfTargetMeasurements,
+      MPPQueryContext context) {
     PathPatternTree patternTree = new PathPatternTree();
     for (int index : indexOfTargetMeasurements) {
       patternTree.appendFullPath(devicePath, measurements[index]);
     }
     patternTree.constructTree();
-    return fetchSchemaAndCacheResult(patternTree);
+    return fetchSchemaAndCacheResult(patternTree, context);
   }
 
   ClusterSchemaTree fetchSchemaOfMultiDevices(
       List<PartialPath> devicePathList,
       List<String[]> measurementsList,
       List<Integer> indexOfTargetDevices,
-      List<List<Integer>> indexOfTargetMeasurementsList) {
+      List<List<Integer>> indexOfTargetMeasurementsList,
+      MPPQueryContext context) {
     PathPatternTree patternTree = new PathPatternTree();
     int deviceIndex;
     for (int i = 0, size = indexOfTargetDevices.size(); i < size; i++) {
@@ -128,10 +148,10 @@ class ClusterSchemaFetchExecutor {
       }
     }
     patternTree.constructTree();
-    return fetchSchemaAndCacheResult(patternTree);
+    return fetchSchemaAndCacheResult(patternTree, context);
   }
 
-  ClusterSchemaTree fetchSchemaWithFullPaths(List<String> fullPathList) {
+  ClusterSchemaTree fetchSchemaWithFullPaths(List<String> fullPathList, MPPQueryContext context) {
     PathPatternTree patternTree = new PathPatternTree();
     for (String fullPath : fullPathList) {
       try {
@@ -141,19 +161,22 @@ class ClusterSchemaFetchExecutor {
       }
     }
     patternTree.constructTree();
-    return fetchSchemaAndCacheResult(patternTree);
+    return fetchSchemaAndCacheResult(patternTree, context);
   }
 
-  ClusterSchemaTree fetchSchemaWithPatternTreeAndCache(PathPatternTree patternTree) {
+  ClusterSchemaTree fetchSchemaWithPatternTreeAndCache(
+      PathPatternTree patternTree, MPPQueryContext context) {
     patternTree.constructTree();
-    return fetchSchemaAndCacheResult(patternTree);
+    return fetchSchemaAndCacheResult(patternTree, context);
   }
 
-  private ClusterSchemaTree fetchSchemaAndCacheResult(PathPatternTree patternTree) {
+  private ClusterSchemaTree fetchSchemaAndCacheResult(
+      PathPatternTree patternTree, MPPQueryContext context) {
     ClusterSchemaTree schemaTree =
         executeSchemaFetchQuery(
             new SchemaFetchStatement(
-                patternTree, analyzeTemplate(patternTree.getAllPathPatterns()), false));
+                patternTree, analyzeTemplate(patternTree.getAllPathPatterns()), false),
+            context);
     if (!schemaTree.isEmpty()) {
       schemaCacheUpdater.accept(schemaTree);
     }
@@ -168,11 +191,12 @@ class ClusterSchemaFetchExecutor {
     return templateMap;
   }
 
-  private ClusterSchemaTree executeSchemaFetchQuery(SchemaFetchStatement schemaFetchStatement) {
-    long queryId = queryIdProvider.get();
+  private ClusterSchemaTree executeSchemaFetchQuery(
+      SchemaFetchStatement schemaFetchStatement, MPPQueryContext context) {
+    long queryId = SessionManager.getInstance().requestQueryId();
     Throwable t = null;
     try {
-      ExecutionResult executionResult = statementExecutor.apply(queryId, schemaFetchStatement);
+      ExecutionResult executionResult = executionStatement(queryId, schemaFetchStatement, context);
       if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new RuntimeException(
             String.format(
