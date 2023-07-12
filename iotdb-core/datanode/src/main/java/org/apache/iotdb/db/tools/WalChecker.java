@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -50,7 +51,7 @@ public class WalChecker {
   }
 
   /**
-   * check the root wal dir and find the damaged files
+   * Check the root wal dir and find the damaged files.
    *
    * @return a list of damaged files.
    * @throws WALException if the root wal dir does not exist.

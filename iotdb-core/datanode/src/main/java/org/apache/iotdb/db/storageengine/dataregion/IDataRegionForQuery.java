@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion;
 
 import org.apache.iotdb.commons.path.PartialPath;
@@ -26,22 +27,22 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.List;
 
-/** It's an interface that storage engine must provide for query engine */
+/** It's an interface that storage engine must provide for query engine. */
 public interface IDataRegionForQuery {
 
-  /** lock the read lock for thread-safe */
+  /** lock the read lock for thread-safe. */
   void readLock();
 
   void readUnlock();
 
-  /** Get satisfied QueryDataSource from DataRegion */
+  /** Get satisfied QueryDataSource from DataRegion. */
   QueryDataSource query(
       List<PartialPath> pathList, String singleDeviceId, QueryContext context, Filter timeFilter)
       throws QueryProcessException;
 
-  /** Get TTL of this DataRegion */
+  /** Get TTL of this DataRegion. */
   long getDataTTL();
 
-  /** Get database name of this DataRegion */
+  /** Get database name of this DataRegion. */
   String getDatabaseName();
 }

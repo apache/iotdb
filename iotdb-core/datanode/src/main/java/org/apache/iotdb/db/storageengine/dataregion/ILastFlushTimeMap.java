@@ -21,7 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion;
 
 import java.util.Map;
 
-/** This interface manages last time and flush time for sequence and unsequence determination */
+/** This interface manages last time and flush time for sequence and unsequence determination. */
 public interface ILastFlushTimeMap {
 
   // region set

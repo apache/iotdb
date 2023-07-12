@@ -68,7 +68,7 @@ public class TsFileSplitTool {
 
   /**
    * If the chunk point num is lower than this threshold, it will be deserialized into points,
-   * default is 100
+   * default is 100.
    */
   private final long chunkPointNumLowerBoundInCompaction =
       IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();

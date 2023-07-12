@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -65,16 +66,18 @@ public class RegionMigrateService implements IService {
 
   private RegionMigratePool regionMigratePool;
 
-  private RegionMigrateService() {}
+  private RegionMigrateService() {
+    // Empty constructor
+  }
 
   public static RegionMigrateService getInstance() {
     return Holder.INSTANCE;
   }
 
   /**
-   * Submit AddRegionPeerTask
+   * Submit {@link AddRegionPeerTask}.
    *
-   * @param req TMaintainPeerReq
+   * @param req {@link TMaintainPeerReq}
    * @return if the submit task succeed
    */
   public synchronized boolean submitAddRegionPeerTask(TMaintainPeerReq req) {
@@ -94,9 +97,9 @@ public class RegionMigrateService implements IService {
   }
 
   /**
-   * Submit RemoveRegionPeerTask
+   * Submit {@link RemoveRegionPeerTask}.
    *
-   * @param req TMaintainPeerReq
+   * @param req {@link TMaintainPeerReq}
    * @return if the submit task succeed
    */
   public synchronized boolean submitRemoveRegionPeerTask(TMaintainPeerReq req) {
@@ -116,10 +119,10 @@ public class RegionMigrateService implements IService {
   }
 
   /**
-   * Submit DeleteOldRegionPeerTask
+   * Submit {@link DeleteOldRegionPeerTask}.
    *
-   * @param req TMigrateRegionReq
-   * @return if the submit task succeed
+   * @param req {@link TMaintainPeerReq}
+   * @return if the submit task succeed.
    */
   public synchronized boolean submitDeleteOldRegionPeerTask(TMaintainPeerReq req) {
 
@@ -466,7 +469,9 @@ public class RegionMigrateService implements IService {
 
     private static final RegionMigrateService INSTANCE = new RegionMigrateService();
 
-    private Holder() {}
+    private Holder() {
+      // Empty constructor
+    }
   }
 
   private static void reportSucceed(TConsensusGroupId tRegionId, String migrateState) {

@@ -31,10 +31,8 @@ import java.util.Map;
 
 public class HashLastFlushTimeMap implements ILastFlushTimeMap {
 
-  private static final Logger logger = LoggerFactory.getLogger(HashLastFlushTimeMap.class);
-
   /**
-   * String basic total, 40B
+   * String basic total, 40B.
    *
    * <ul>
    *   <li>Object header: Mark Word + Classic Pointer, 12B

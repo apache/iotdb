@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.commons.exception.StartupException;

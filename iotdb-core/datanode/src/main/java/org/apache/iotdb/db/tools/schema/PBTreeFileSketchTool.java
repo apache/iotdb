@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.tools.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -37,7 +38,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 
-/** parse the {@linkplain SchemaFile} to text */
+/** Parse the {@linkplain SchemaFile} to text. */
 public class PBTreeFileSketchTool {
 
   private static final Logger logger = LoggerFactory.getLogger(PBTreeFileSketchTool.class);

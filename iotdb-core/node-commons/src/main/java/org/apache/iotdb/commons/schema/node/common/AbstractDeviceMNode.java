@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.schema.node.common;
 
 import org.apache.iotdb.commons.path.PartialPath;
@@ -36,7 +37,7 @@ public abstract class AbstractDeviceMNode<N extends IMNode<N>, BasicNode extends
   private final IDeviceInfo<N> deviceInfo;
   protected final BasicNode basicMNode;
 
-  public AbstractDeviceMNode(BasicNode basicMNode, IDeviceInfo<N> deviceInfo) {
+  protected AbstractDeviceMNode(BasicNode basicMNode, IDeviceInfo<N> deviceInfo) {
     this.basicMNode = basicMNode;
     this.deviceInfo = deviceInfo;
   }

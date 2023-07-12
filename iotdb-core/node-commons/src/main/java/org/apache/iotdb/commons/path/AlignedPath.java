@@ -57,7 +57,9 @@ public class AlignedPath extends PartialPath {
   private List<String> measurementList;
   private List<IMeasurementSchema> schemaList;
 
-  public AlignedPath() {}
+  public AlignedPath() {
+    // Empty constructor
+  }
 
   public AlignedPath(String vectorPath, List<String> subSensorsList) throws IllegalPathException {
     super(vectorPath);

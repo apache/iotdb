@@ -25,7 +25,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 /**
- * this class can just guarantee some behavior in a concurrent thread safety mode:
+ * This class can just guarantee some behavior in a concurrent thread safety mode:
  *
  * @param <T>
  */

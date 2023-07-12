@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine.dataregion;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -34,11 +35,11 @@ public class DataRegionInfo {
 
   /**
    * The total database memory cost, including unsealed TsFileResource, ChunkMetadata, WAL,
-   * primitive arrays and TEXT values
+   * primitive arrays and TEXT values.
    */
   private final AtomicLong memoryCost;
 
-  /** The threshold of reporting it's size to SystemInfo */
+  /** The threshold of reporting it's size to SystemInfo. */
   private final long storageGroupSizeReportThreshold =
       (long)
           (IoTDBDescriptor.getInstance().getConfig().getWriteMemoryVariationReportProportion()
@@ -47,10 +48,10 @@ public class DataRegionInfo {
 
   private final AtomicLong lastReportedSize = new AtomicLong();
 
-  /** Must report to the system when this value is true */
+  /** Must report to the system when this value is true. */
   private final AtomicBoolean needToReportToSystem = new AtomicBoolean();
 
-  /** A set of all unclosed TsFileProcessors in this SG */
+  /** A set of all unclosed TsFileProcessors in this SG. */
   private final List<TsFileProcessor> reportedTsps = new CopyOnWriteArrayList<>();
 
   public DataRegionInfo(DataRegion dataRegion) {
@@ -62,7 +63,7 @@ public class DataRegionInfo {
     return dataRegion;
   }
 
-  /** When create a new TsFileProcessor, call this method */
+  /** When create a new TsFileProcessor, call this method. */
   public void initTsFileProcessorInfo(TsFileProcessor tsFileProcessor) {
     reportedTsps.add(tsFileProcessor);
   }

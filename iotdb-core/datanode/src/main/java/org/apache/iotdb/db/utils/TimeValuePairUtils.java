@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -41,10 +42,12 @@ import java.util.ArrayList;
 
 public class TimeValuePairUtils {
 
-  private TimeValuePairUtils() {}
+  private TimeValuePairUtils() {
+    // Empty constructor
+  }
 
   /**
-   * get given data's current (time,value) pair.
+   * Get given data's current (time,value) pair.
    *
    * @param data -batch data
    * @return -given data's (time,value) pair

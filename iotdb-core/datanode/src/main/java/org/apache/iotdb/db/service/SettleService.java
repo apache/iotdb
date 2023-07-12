@@ -58,7 +58,9 @@ public class SettleService implements IService {
   public static class InstanceHolder {
     private static final SettleService INSTANCE = new SettleService();
 
-    private InstanceHolder() {}
+    private InstanceHolder() {
+      // Empty constructor
+    }
   }
 
   @Override

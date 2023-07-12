@@ -37,7 +37,9 @@ public class DataNodeInternalRPCService extends ThriftService
 
   private DataNodeInternalRPCServiceImpl impl;
 
-  private DataNodeInternalRPCService() {}
+  private DataNodeInternalRPCService() {
+    // Empty constructor
+  }
 
   @Override
   public ServiceType getID() {

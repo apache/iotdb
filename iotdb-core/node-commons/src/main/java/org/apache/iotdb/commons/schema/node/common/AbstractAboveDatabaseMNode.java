@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.schema.node.common;
 
 import org.apache.iotdb.commons.path.PartialPath;
@@ -32,7 +33,7 @@ public abstract class AbstractAboveDatabaseMNode<N extends IMNode<N>, BasicNode 
 
   protected final BasicNode basicMNode;
 
-  public AbstractAboveDatabaseMNode(BasicNode basicMNode) {
+  protected AbstractAboveDatabaseMNode(BasicNode basicMNode) {
     this.basicMNode = basicMNode;
   }
 
@@ -173,7 +174,7 @@ public abstract class AbstractAboveDatabaseMNode<N extends IMNode<N>, BasicNode 
   }
 
   /**
-   * The basic memory occupied by any AbstractDatabaseDeviceMNode object
+   * The basic memory occupied by any AbstractDatabaseDeviceMNode object.
    *
    * <ol>
    *   <li>object header, 8B

@@ -43,7 +43,7 @@ public class PathPatternTree {
 
   private List<PartialPath> pathPatternList;
 
-  // set the default value to TRUE to ensure correctness
+  // Set the default value to TRUE to ensure correctness
   private boolean useWildcard = true;
 
   public PathPatternTree(boolean useWildcard) {

@@ -36,7 +36,9 @@ public class MLNodeRPCService extends ThriftService implements MLNodeRPCServiceM
 
   private MLNodeRPCServiceImpl impl;
 
-  private MLNodeRPCService() {}
+  private MLNodeRPCService() {
+    // Empty constructor
+  }
 
   @Override
   public ServiceType getID() {

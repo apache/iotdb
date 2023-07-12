@@ -57,7 +57,9 @@ public class TypeInferenceUtils {
   private static final TSDataType nanStringInferType =
       IoTDBDescriptor.getInstance().getConfig().getNanStringInferType();
 
-  private TypeInferenceUtils() {}
+  private TypeInferenceUtils() {
+    // Empty constructor
+  }
 
   static boolean isNumber(String s) {
     if (s == null || s.equals("NaN")) {

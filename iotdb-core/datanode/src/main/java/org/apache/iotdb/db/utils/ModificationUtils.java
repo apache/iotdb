@@ -30,7 +30,7 @@ import java.util.List;
 public class ModificationUtils {
 
   private ModificationUtils() {
-    // util class
+    // Util class
   }
 
   /**

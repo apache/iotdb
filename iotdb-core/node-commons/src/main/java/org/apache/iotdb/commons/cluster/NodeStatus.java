@@ -19,18 +19,18 @@
 
 package org.apache.iotdb.commons.cluster;
 
-/** Node status for showing cluster */
+/** Node status for showing cluster. */
 public enum NodeStatus {
-  /** Node running properly */
+  /** Node running properly. */
   Running("Running"),
 
-  /** Node connection failure */
+  /** Node connection failure. */
   Unknown("Unknown"),
 
-  /** Node is in removing */
+  /** Node is in removing. */
   Removing("Removing"),
 
-  /** Only query statements are permitted */
+  /** Only query statements are permitted. */
   ReadOnly("ReadOnly");
   public static final String DISK_FULL = "DiskFull";
 

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.schema.node.common;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -42,7 +43,7 @@ public abstract class AbstractMeasurementMNode<N extends IMNode<N>, BasicNode ex
   private final IMeasurementInfo measurementInfo;
   protected final BasicNode basicMNode;
 
-  public AbstractMeasurementMNode(BasicNode basicMNode, IMeasurementInfo measurementInfo) {
+  protected AbstractMeasurementMNode(BasicNode basicMNode, IMeasurementInfo measurementInfo) {
     this.basicMNode = basicMNode;
     this.measurementInfo = measurementInfo;
   }

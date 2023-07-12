@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.storageengine;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
@@ -112,18 +113,18 @@ public class StorageEngine implements IService {
   private final String systemDir =
       FilePathUtils.regularizePath(config.getSystemDir()) + "databases";
 
-  /** DataRegionId -> DataRegion */
+  /** DataRegionId -> DataRegion. */
   private final ConcurrentHashMap<DataRegionId, DataRegion> dataRegionMap =
       new ConcurrentHashMap<>();
 
-  /** DataRegionId -> DataRegion which is being deleted */
+  /** DataRegionId -> DataRegion which is being deleted. */
   private final ConcurrentHashMap<DataRegionId, DataRegion> deletingDataRegionMap =
       new ConcurrentHashMap<>();
 
-  /** Database name -> ttl, for region recovery only */
+  /** Database name -> ttl, for region recovery only. */
   private final Map<String, Long> ttlMapForRecover = new ConcurrentHashMap<>();
 
-  /** number of ready data region */
+  /** number of ready data region. */
   private AtomicInteger readyDataRegionNum;
 
   private AtomicBoolean isAllSgReady = new AtomicBoolean(false);
@@ -133,7 +134,7 @@ public class StorageEngine implements IService {
   private ScheduledExecutorService unseqMemtableTimedFlushCheckThread;
 
   private TsFileFlushPolicy fileFlushPolicy = new DirectFlushPolicy();
-  /** used to do short-lived asynchronous tasks */
+  /** used to do short-lived asynchronous tasks. */
   private ExecutorService cachedThreadPool;
   // add customized listeners here for flush and close events
   private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
@@ -142,7 +143,9 @@ public class StorageEngine implements IService {
 
   private LoadTsFileManager loadTsFileManager = new LoadTsFileManager();
 
-  private StorageEngine() {}
+  private StorageEngine() {
+    // Empty constructor
+  }
 
   public static StorageEngine getInstance() {
     return InstanceHolder.INSTANCE;
@@ -166,7 +169,7 @@ public class StorageEngine implements IService {
     return time / timePartitionInterval;
   }
 
-  /** block insertion if the insertion is rejected by memory control */
+  /** block insertion if the insertion is rejected by memory control. */
   public static void blockInsertionIfReject(TsFileProcessor tsFileProcessor)
       throws WriteProcessRejectException {
     long startTime = System.currentTimeMillis();
@@ -438,7 +441,7 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * build a new data region
+   * Build a new data region.
    *
    * @param dataRegionId data region id e.g. 1
    * @param logicalStorageGroupName database name e.g. root.sg1
@@ -696,7 +699,7 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * run the runnable if the region is absent. if the region is present, do nothing.
+   * Run the runnable if the region is absent. if the region is present, do nothing.
    *
    * <p>we don't use computeIfAbsent because we don't want to create a new region if the region is
    * absent, we just want to run the runnable in a synchronized way.
@@ -716,7 +719,7 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * run the consumer if the region is present. if the region is absent, do nothing.
+   * Run the consumer if the region is present. if the region is absent, do nothing.
    *
    * <p>we don't use computeIfPresent because we don't want to remove the region if the consumer
    * returns null, we just want to run the consumer in a synchronized way.
@@ -836,11 +839,11 @@ public class StorageEngine implements IService {
     return status;
   }
 
-  /** reboot timed flush sequence/unsequence memetable thread */
+  /** Reboot timed flush sequence/unsequence memetable thread. */
   public void rebootTimedService() throws ShutdownException {
     logger.info("Start rebooting all timed service.");
 
-    // exclude ttl check thread
+    // Exclude ttl check thread
     stopTimedServiceAndThrow(seqMemtableTimedFlushCheckThread, "SeqMemtableTimedFlushCheckThread");
     stopTimedServiceAndThrow(
         unseqMemtableTimedFlushCheckThread, "UnseqMemtableTimedFlushCheckThread");
@@ -880,7 +883,7 @@ public class StorageEngine implements IService {
     private static final StorageEngine INSTANCE = new StorageEngine();
 
     private InstanceHolder() {
-      // forbidding instantiation
+      // Forbidding instantiation
     }
   }
 }

@@ -38,7 +38,7 @@ public enum DataNodeRemoveState {
   }
 
   /**
-   * get DataNodeRemoveState by code
+   * Get DataNodeRemoveState by code.
    *
    * @param code code
    * @return DataNodeRemoveState

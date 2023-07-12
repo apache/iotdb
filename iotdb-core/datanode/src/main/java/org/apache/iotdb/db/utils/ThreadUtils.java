@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -27,7 +28,7 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
-/** the utils for managing thread or thread pool */
+/** The utils for managing thread or thread pool. */
 public class ThreadUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(ThreadUtils.class);
