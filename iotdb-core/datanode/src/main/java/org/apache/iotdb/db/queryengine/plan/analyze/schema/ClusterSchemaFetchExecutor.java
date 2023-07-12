@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.SchemaFetchStatement;
@@ -77,11 +78,13 @@ class ClusterSchemaFetchExecutor {
     return coordinator.execute(
         statement,
         queryId,
-        context == null ? null : context.getSession(),
+        context.getSession(),
         "",
         ClusterPartitionFetcher.getInstance(),
         schemaFetcher,
-        context != null ? context.getTimeOut() : config.getQueryTimeoutThreshold());
+        context.getQueryType().equals(QueryType.WRITE)
+            ? config.getQueryTimeoutThreshold()
+            : context.getTimeOut());
   }
 
   /**
