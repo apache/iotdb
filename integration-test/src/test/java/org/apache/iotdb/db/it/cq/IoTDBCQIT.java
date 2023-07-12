@@ -545,7 +545,7 @@ public class IoTDBCQIT {
               e.getMessage());
         }
 
-        statement.execute("GRANT USER `zmty` PRIVILEGES CONTINUOUS_QUERY_PRIVILEGE");
+        statement.execute("GRANT USER `zmty` PRIVILEGES USE_CQ");
 
         try (ResultSet resultSet = statement2.executeQuery("show CQS")) {
 

@@ -901,7 +901,7 @@ PRIVILEGE_VALUE
     | MANAGE_ROLE
     | GRANT_PRIVILEGE
     | ALTER_PASSWORD
-    | USE_TIGGER
+    | USE_TRIGGER
     | USE_CQ
     | USE_PIPE
     | MANAGE_DATABASE
@@ -939,8 +939,8 @@ ALTER_PASSWORD
     : A L T E R '_' P A S S W O R D
     ;
 
-USE_TIGGER
-    : U S E '_' T I G G E R
+USE_TRIGGER
+    : U S E '_' T R I G G E R
     ;
 
 USE_CQ

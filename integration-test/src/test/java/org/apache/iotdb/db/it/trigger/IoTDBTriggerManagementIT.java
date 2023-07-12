@@ -550,8 +550,7 @@ public class IoTDBTriggerManagementIT {
               e.getMessage());
         }
 
-        statement.execute(
-            "GRANT USER `zmty` PRIVILEGES TRIGGER_PRIVILEGE on root.test.stateless.a");
+        statement.execute("GRANT USER `zmty` PRIVILEGES USE_TRIGGER on root.test.stateless.a");
 
         try {
           statement2.execute(
@@ -613,8 +612,7 @@ public class IoTDBTriggerManagementIT {
               e.getMessage());
         }
 
-        statement.execute(
-            "GRANT USER `zmty` PRIVILEGES TRIGGER_PRIVILEGE on root.test.stateless.b");
+        statement.execute("GRANT USER `zmty` PRIVILEGES USE_TRIGGER on root.test.stateless.b");
 
         try {
           statement2.execute("drop trigger " + STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a");
@@ -626,8 +624,7 @@ public class IoTDBTriggerManagementIT {
               e.getMessage());
         }
 
-        statement.execute(
-            "GRANT USER `zmty` PRIVILEGES TRIGGER_PRIVILEGE on root.test.stateless.a");
+        statement.execute("GRANT USER `zmty` PRIVILEGES USE_TRIGGER on root.test.stateless.a");
 
         try {
           statement2.execute("drop trigger " + STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a");
