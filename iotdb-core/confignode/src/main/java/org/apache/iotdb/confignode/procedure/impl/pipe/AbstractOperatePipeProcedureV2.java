@@ -98,10 +98,12 @@ public abstract class AbstractOperatePipeProcedureV2
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, OperatePipeTaskState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+    if (pipeTaskInfo == null) {
+      pipeTaskInfo = env.getConfigManager().getPipeManager().getPipeTaskCoordinator().lock();
+    }
     try {
       switch (state) {
         case VALIDATE_TASK:
-          pipeTaskInfo = env.getConfigManager().getPipeManager().getPipeTaskCoordinator().lock();
           executeFromValidateTask(env);
           setNextState(OperatePipeTaskState.CALCULATE_INFO_FOR_TASK);
           break;
