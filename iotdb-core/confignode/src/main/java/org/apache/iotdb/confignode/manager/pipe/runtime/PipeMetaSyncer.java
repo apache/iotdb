@@ -95,7 +95,7 @@ public class PipeMetaSyncer {
       boolean needBroadcastRestartSignal = false;
 
       if (autoRestartPipeEnabled
-              && pipeAutoRestartRoundCounter.incrementAndGet()
+          && pipeAutoRestartRoundCounter.incrementAndGet()
               == PipeConfig.getInstance().getPipeMetaSyncerAutoRestartPipeCheckIntervalRound()) {
         needBroadcastRestartSignal = pipeTaskInfo.get().autoRestart();
         pipeAutoRestartRoundCounter.set(0);
@@ -108,7 +108,7 @@ public class PipeMetaSyncer {
       }
 
       if (needBroadcastRestartSignal
-              || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         procedureManager.pipeHandleMetaChange(true, true);
       }
     } finally {

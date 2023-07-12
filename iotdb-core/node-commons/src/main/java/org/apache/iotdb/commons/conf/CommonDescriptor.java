@@ -327,13 +327,12 @@ public class CommonDescriptor {
     config.setPipeMetaSyncerAutoRestartPipeCheckIntervalRound(
         Long.parseLong(
             properties.getProperty(
-                "pipe_meta_syncer_auto_restart_pipe_round",
+                "pipe_meta_syncer_auto_restart_pipe_check_interval_round",
                 String.valueOf(config.getPipeMetaSyncerAutoRestartPipeCheckIntervalRound()))));
     config.setPipeAutoRestartEnabled(
         Boolean.parseBoolean(
             properties.getProperty(
-                "pipe_exception_stopped_auto_restart_enabled",
-                String.valueOf(config.getPipeAutoRestartEnabled()))));
+                "pipe_auto_restart_enabled", String.valueOf(config.getPipeAutoRestartEnabled()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

@@ -377,7 +377,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
    *
    * @param pipeName The name of the pipe to be detect exceptions and flag
    */
-  public boolean hasExceptionsOrIsAutoStoppedInternal(String pipeName) {
+  private boolean hasExceptionsOrIsAutoStoppedInternal(String pipeName) {
     if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
       return false;
     }
@@ -425,7 +425,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
   }
 
-  public void clearExceptionsAndSetIsAutoStoppedToFalseInternal(String pipeName) {
+  private void clearExceptionsAndSetIsAutoStoppedToFalseInternal(String pipeName) {
     if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
       return;
     }
@@ -472,7 +472,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
    * @param pipeName The name of the pipe to be clear exception
    * @return true if the flag is true previously
    */
-  public boolean setIsAutoStoppedToFalseInternal(String pipeName) {
+  private boolean setIsAutoStoppedToFalseInternal(String pipeName) {
     if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
       return false;
     }
@@ -561,7 +561,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
    *
    * @return true if there are pipes need restarting
    */
-  public boolean autoRestartInternal() {
+  private boolean autoRestartInternal() {
     AtomicBoolean needRestart = new AtomicBoolean(false);
     List<String> pipeToRestart = new CopyOnWriteArrayList<>();
 
@@ -581,14 +581,20 @@ public class PipeTaskInfo implements SnapshotProcessor {
     return needRestart.get();
   }
 
+  public void handleSuccessfulRestart() {
+    acquireWriteLock();
+    try {
+      handleSuccessfulRestartInternal();
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
   /**
    * Clear the exceptions of, and set the isAutoStopped flag to false for the successfully restarted
    * pipe.
-   *
-   * <p>Cannot be locked since its callee {@link #clearExceptionsAndSetIsAutoStoppedToFalse} is
-   * already locked.
    */
-  public void handleSuccessfulRestart() {
+  private void handleSuccessfulRestartInternal() {
     pipeMetaKeeper
         .getPipeMetaList()
         .forEach(
