@@ -116,7 +116,7 @@ public abstract class InnerCompactionTest {
                           + 0
                           + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
-      tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
+      tsFileResource.setStatusForTest(TsFileResourceStatus.NORMAL);
       tsFileResource.updatePlanIndexes((long) i);
       seqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum, 0);
@@ -135,7 +135,7 @@ public abstract class InnerCompactionTest {
                           + 0
                           + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
-      tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
+      tsFileResource.setStatusForTest(TsFileResourceStatus.NORMAL);
       tsFileResource.updatePlanIndexes(i + seqFileNum);
       unseqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);

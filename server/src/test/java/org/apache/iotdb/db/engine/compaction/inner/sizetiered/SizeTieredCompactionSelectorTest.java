@@ -85,6 +85,8 @@ public class SizeTieredCompactionSelectorTest {
     try {
       for (int i = 1; i < 91; ++i) {
         TsFileResource resource = Mockito.mock(TsFileResource.class);
+        Mockito.when(resource.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE))
+            .thenReturn(true);
         Mockito.when(resource.getTimePartition()).thenReturn(0L);
         Mockito.when(resource.getTsFileSize()).thenReturn(100L);
         Mockito.when(resource.getTsFile())

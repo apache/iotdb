@@ -305,7 +305,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             isSequence());
       }
     } finally {
-      releaseFileLocksAndResetMergingStatus();
+      releaseAllLocksAndResetStatus();
       return isSuccess;
     }
   }
@@ -321,8 +321,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   @Override
-  public void setSourceFilesToCompactionCandidate() {
-    selectedTsFileResourceList.forEach(x -> x.setStatus(TsFileResourceStatus.COMPACTION_CANDIDATE));
+  protected List<TsFileResource> getAllSourceTsFiles() {
+    return this.selectedTsFileResourceList;
   }
 
   private void collectSelectedFilesInfo() {
@@ -401,6 +401,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
   @Override
   public void resetCompactionCandidateStatusForAllSourceFiles() {
+    // Only reset status of the resources whose status is COMPACTING and COMPACTING_CANDIDATE
     selectedTsFileResourceList.forEach(x -> x.setStatus(TsFileResourceStatus.NORMAL));
   }
 
@@ -408,7 +409,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
    * release the read lock and write lock of files if it is held, and set the merging status of
    * selected files to false
    */
-  protected void releaseFileLocksAndResetMergingStatus() {
+  private void releaseAllLocksAndResetStatus() {
+    resetCompactionCandidateStatusForAllSourceFiles();
     for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
       TsFileResource resource = selectedTsFileResourceList.get(i);
       if (isHoldingReadLock[i]) {
@@ -416,13 +418,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       }
       if (isHoldingWriteLock[i]) {
         resource.writeUnlock();
-      }
-      try {
-        if (!resource.isDeleted()) {
-          selectedTsFileResourceList.get(i).setStatus(TsFileResourceStatus.NORMAL);
-        }
-      } catch (Throwable e) {
-        LOGGER.error("Exception occurs when resetting resource status", e);
       }
     }
   }
@@ -437,22 +432,13 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         TsFileResource resource = selectedTsFileResourceList.get(i);
         resource.readLock();
         isHoldingReadLock[i] = true;
-        if (resource.isCompacting()
-            || !resource.isClosed()
-            || !resource.getTsFile().exists()
-            || resource.isDeleted()) {
-          // this source file cannot be compacted
-          // release the lock of locked files, and return
-          releaseFileLocksAndResetMergingStatus();
+        if (!resource.setStatus(TsFileResourceStatus.COMPACTING)) {
+          releaseAllLocksAndResetStatus();
           return false;
         }
       }
-
-      for (TsFileResource resource : selectedTsFileResourceList) {
-        resource.setStatus(TsFileResourceStatus.COMPACTING);
-      }
     } catch (Throwable e) {
-      releaseFileLocksAndResetMergingStatus();
+      releaseAllLocksAndResetStatus();
       throw e;
     }
     return true;

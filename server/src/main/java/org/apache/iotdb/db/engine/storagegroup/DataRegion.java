@@ -279,6 +279,7 @@ public class DataRegion implements IDataRegionForQuery {
 
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
+
   /**
    * construct a database processor.
    *
@@ -1567,7 +1568,11 @@ public class DataRegion implements IDataRegionForQuery {
     if (!resource.isClosed() || !resource.isDeleted() && resource.stillLives(ttlLowerBound)) {
       return;
     }
-
+    // Try to set the resource to DELETED status and return if it failed
+    if (!resource.setStatus(TsFileResourceStatus.DELETED)) {
+      return;
+    }
+    tsFileManager.remove(resource, isSeq);
     // ensure that the file is not used by any queries
     if (resource.tryWriteLock()) {
       try {

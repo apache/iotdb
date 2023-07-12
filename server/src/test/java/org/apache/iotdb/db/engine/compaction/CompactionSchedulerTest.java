@@ -1805,9 +1805,14 @@ public class CompactionSchedulerTest {
 
   public void stopCompactionTaskManager() {
     CompactionTaskManager.getInstance().clearCandidateQueue();
+    long sleepTime = 0;
     while (CompactionTaskManager.getInstance().getRunningCompactionTaskList().size() > 0) {
       try {
         Thread.sleep(10);
+        sleepTime += 10;
+        if (sleepTime >= 20_000) {
+          fail();
+        }
       } catch (Exception e) {
 
       }
