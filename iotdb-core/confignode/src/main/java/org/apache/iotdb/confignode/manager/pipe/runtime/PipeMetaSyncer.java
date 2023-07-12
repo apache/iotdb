@@ -36,6 +36,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeMetaSyncer {
 
@@ -87,26 +88,31 @@ public class PipeMetaSyncer {
 
   private synchronized void sync() {
     ProcedureManager procedureManager = configManager.getProcedureManager();
-    PipeTaskInfo pipeTaskInfo =
-        configManager.getPipeManager().getPipeTaskCoordinator().getPipeTaskInfo();
-    boolean needBroadcastRestartSignal = false;
+    final AtomicReference<PipeTaskInfo> pipeTaskInfo =
+        configManager.getPipeManager().getPipeTaskCoordinator().lock();
 
-    if (autoRestartPipeEnabled
-        && pipeAutoRestartRoundCounter.incrementAndGet()
-            == PipeConfig.getInstance().getPipeMetaSyncerAutoRestartPipeCheckIntervalRound()) {
-      needBroadcastRestartSignal = pipeTaskInfo.autoRestart();
-      pipeAutoRestartRoundCounter.set(0);
-    }
+    try {
+      boolean needBroadcastRestartSignal = false;
 
-    final TSStatus status = procedureManager.pipeMetaSync();
+      if (autoRestartPipeEnabled
+              && pipeAutoRestartRoundCounter.incrementAndGet()
+              == PipeConfig.getInstance().getPipeMetaSyncerAutoRestartPipeCheckIntervalRound()) {
+        needBroadcastRestartSignal = pipeTaskInfo.get().autoRestart();
+        pipeAutoRestartRoundCounter.set(0);
+      }
 
-    if (needBroadcastRestartSignal) {
-      pipeTaskInfo.handleSuccessfulRestart();
-    }
+      final TSStatus status = procedureManager.pipeMetaSync();
 
-    if (needBroadcastRestartSignal
-        || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      procedureManager.pipeHandleMetaChange(true, true);
+      if (needBroadcastRestartSignal) {
+        pipeTaskInfo.get().handleSuccessfulRestart();
+      }
+
+      if (needBroadcastRestartSignal
+              || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        procedureManager.pipeHandleMetaChange(true, true);
+      }
+    } finally {
+      configManager.getPipeManager().getPipeTaskCoordinator().unlock();
     }
   }
 

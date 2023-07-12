@@ -83,56 +83,42 @@ public class PipeTaskCoordinator {
     pipeTaskCoordinatorLock.unlock();
   }
 
-  /* Caller should ensure that the method is called in the lock {@link #lock()}. */
+  /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus createPipe(TCreatePipeReq req) {
     return configManager.getProcedureManager().createPipe(req);
   }
 
-  /* Caller should ensure that the method is called in the lock {@link #lock()}. */
+  /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus startPipe(String pipeName) {
     // Whether there are exceptions to clear
-    final boolean hasException = pipeTaskInfo.hasExceptions(pipeName);
+    final boolean hasExceptionsOrIsAutoStopped =
+        pipeTaskInfo.hasExceptionsOrIsAutoStopped(pipeName);
     final TSStatus status = configManager.getProcedureManager().startPipe(pipeName);
-    if (status == RpcUtils.SUCCESS_STATUS && hasException) {
-      LOGGER.info("Pipe {} has started successfully, clear its exceptions.", pipeName);
-    boolean hasExceptionOrIsAutoStopped;
-    try {
-      hasExceptionOrIsAutoStopped = pipeTaskInfo.hasExceptionsOrIsAutoStopped(pipeName);
-    } finally {
-      unlock();
-    }
-    TSStatus status = configManager.getProcedureManager().startPipe(pipeName);
-    if (status == RpcUtils.SUCCESS_STATUS && hasExceptionOrIsAutoStopped) {
+    if (status == RpcUtils.SUCCESS_STATUS && hasExceptionsOrIsAutoStopped) {
       LOGGER.info(
-          "Pipe {} has started successfully, clear its exceptions set its autoStopped flag to false.",
+          "Pipe {} has started successfully, clear its exceptions and set its autoStopped flag to false..",
           pipeName);
       configManager.getProcedureManager().pipeHandleMetaChange(true, true);
     }
     return status;
   }
 
-  /* Caller should ensure that the method is called in the lock {@link #lock()}. */
+  /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus stopPipe(String pipeName) {
-    // To avoid concurrent read
-    lock();
     // If the isAutoStopped flag is true when user executes the stop pipe statement, then the
     // statement will be interpreted as "stop auto-restart process" instead of stop this pipe
     // because the pipe is already stopped in this case.
-    try {
-      if (pipeTaskInfo.setIsAutoStoppedToFalse(pipeName)) {
-        LOGGER.info(
-            "Pipe {} is manually stopped by user, set its isAutoStopped flag to false.", pipeName);
-        configManager.getProcedureManager().pipeHandleMetaChange(true, true);
-        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-            .setMessage(String.format("Pipe %s's auto restart process is stopped.", pipeName));
-      }
-    } finally {
-      unlock();
+    if (pipeTaskInfo.setIsAutoStoppedToFalse(pipeName)) {
+      LOGGER.info(
+          "Pipe {} is manually stopped by user, set its isAutoStopped flag to false.", pipeName);
+      configManager.getProcedureManager().pipeHandleMetaChange(true, true);
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+          .setMessage(String.format("Pipe %s's auto restart process is stopped.", pipeName));
     }
     return configManager.getProcedureManager().stopPipe(pipeName);
   }
 
-  /* Caller should ensure that the method is called in the lock {@link #lock()}. */
+  /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus dropPipe(String pipeName) {
     final boolean isPipeExistedBeforeDrop = pipeTaskInfo.isPipeExisted(pipeName);
     final TSStatus status = configManager.getProcedureManager().dropPipe(pipeName);

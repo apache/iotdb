@@ -60,11 +60,7 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   protected void executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("StartPipeProcedureV2: executeFromValidateTask({})", pipeName);
 
-    env.getConfigManager()
-        .getPipeManager()
-        .getPipeTaskCoordinator()
-        .getPipeTaskInfo()
-        .checkBeforeStartPipe(pipeName);
+    pipeTaskInfo.get().checkBeforeStartPipe(pipeName);
   }
 
   @Override
@@ -99,14 +95,8 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
           String.format("Failed to start pipe %s, details: %s", pipeName, exceptionMessage));
     }
 
-    // Clear exception messages if succeeded
-    pipeTaskInfo.get().clearExceptions(pipeName);
     // Clear exception messages and set isAutoStopped flag to false if succeeded
-    env.getConfigManager()
-        .getPipeManager()
-        .getPipeTaskCoordinator()
-        .getPipeTaskInfo()
-        .clearExceptionsAndSetIsAutoStoppedToFalse(pipeName);
+    pipeTaskInfo.get().clearExceptionsAndSetIsAutoStoppedToFalse(pipeName);
   }
 
   @Override
