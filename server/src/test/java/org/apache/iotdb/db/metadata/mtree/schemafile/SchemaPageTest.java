@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata.mtree.schemafile;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
-import org.apache.iotdb.db.metadata.mnode.schemafile.factory.CacheMNodeFactory;
+import org.apache.iotdb.db.metadata.mnode.utils.MNodeFactoryLoader;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFileConfig;
@@ -41,7 +41,8 @@ import java.nio.ByteBuffer;
 
 public class SchemaPageTest {
 
-  private final IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
+  private final IMNodeFactory<ICachedMNode> nodeFactory =
+      MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
 
   @Before
   public void setUp() {

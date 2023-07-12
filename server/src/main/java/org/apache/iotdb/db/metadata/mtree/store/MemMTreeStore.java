@@ -28,13 +28,12 @@ import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.mem.IMemMNode;
 import org.apache.iotdb.db.metadata.mnode.mem.estimator.MNodeSizeEstimator;
-import org.apache.iotdb.db.metadata.mnode.mem.factory.MemMNodeFactory;
 import org.apache.iotdb.db.metadata.mnode.mem.iterator.AbstractTraverserIterator;
 import org.apache.iotdb.db.metadata.mnode.mem.iterator.MNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.mem.iterator.MemoryTraverserIterator;
+import org.apache.iotdb.db.metadata.mnode.utils.MNodeFactoryLoader;
 import org.apache.iotdb.db.metadata.mnode.utils.MNodeUtils;
 import org.apache.iotdb.db.metadata.mtree.snapshot.MemMTreeSnapshotUtil;
-import org.apache.iotdb.db.metadata.rescon.DataNodeSchemaQuotaManager;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.metadata.template.Template;
 
@@ -47,10 +46,8 @@ import java.util.function.Consumer;
 public class MemMTreeStore implements IMTreeStore<IMemMNode> {
 
   private final MemSchemaRegionStatistics regionStatistics;
-  private final IMNodeFactory<IMemMNode> nodeFactory = MemMNodeFactory.getInstance();
-
-  private final DataNodeSchemaQuotaManager schemaQuotaManager =
-      DataNodeSchemaQuotaManager.getInstance();
+  private final IMNodeFactory<IMemMNode> nodeFactory =
+      MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory();;
 
   private IMemMNode root;
 

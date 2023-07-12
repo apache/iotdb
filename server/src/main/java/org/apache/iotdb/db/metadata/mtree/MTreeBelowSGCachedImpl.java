@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.metadata.mtree;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -39,7 +40,7 @@ import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateExceptio
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
-import org.apache.iotdb.db.metadata.mnode.schemafile.factory.CacheMNodeFactory;
+import org.apache.iotdb.db.metadata.mnode.utils.MNodeFactoryLoader;
 import org.apache.iotdb.db.metadata.mtree.store.CachedMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
@@ -115,7 +116,8 @@ public class MTreeBelowSGCachedImpl {
   private volatile ICachedMNode storageGroupMNode;
   private final ICachedMNode rootNode;
   private final Function<IMeasurementMNode<ICachedMNode>, Map<String, String>> tagGetter;
-  private final IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
+  private final IMNodeFactory<ICachedMNode> nodeFactory =
+      MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
   private final int levelOfSG;
   private final CachedSchemaRegionStatistics regionStatistics;
 

@@ -33,8 +33,8 @@ import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.mem.IMemMNode;
-import org.apache.iotdb.db.metadata.mnode.mem.factory.MemMNodeFactory;
 import org.apache.iotdb.db.metadata.mnode.mem.info.LogicalViewInfo;
+import org.apache.iotdb.db.metadata.mnode.utils.MNodeFactoryLoader;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
 import org.apache.iotdb.db.metadata.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -71,7 +71,8 @@ public class MemMTreeSnapshotUtil {
       "Error occurred during deserializing MemMTree.";
 
   private static final byte VERSION = 0;
-  private static final IMNodeFactory<IMemMNode> nodeFactory = MemMNodeFactory.getInstance();
+  private static final IMNodeFactory<IMemMNode> nodeFactory =
+      MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory();;
 
   public static boolean createSnapshot(File snapshotDir, MemMTreeStore store) {
     File snapshotTmp =

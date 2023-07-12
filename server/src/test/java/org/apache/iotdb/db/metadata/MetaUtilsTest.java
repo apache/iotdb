@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.db.metadata.mnode.mem.IMemMNode;
-import org.apache.iotdb.db.metadata.mnode.mem.factory.MemMNodeFactory;
+import org.apache.iotdb.db.metadata.mnode.utils.MNodeFactoryLoader;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -43,7 +43,8 @@ import static org.junit.Assert.fail;
 
 public class MetaUtilsTest {
 
-  private final IMNodeFactory<IMemMNode> nodeFactory = MemMNodeFactory.getInstance();
+  private final IMNodeFactory<IMemMNode> nodeFactory =
+      MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory();;
 
   @Test
   public void testGetMultiFullPaths() {

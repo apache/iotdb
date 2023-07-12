@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpressionType;
 import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
-import org.apache.iotdb.db.metadata.mnode.mem.impl.LogicalViewMNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -151,12 +150,9 @@ public class LogicalViewInfo implements IMeasurementInfo {
 
   @Override
   public void moveDataToNewMNode(IMeasurementMNode<?> newMNode) {
-    // TODO: CRTODO: is this ok for a logical view?
-    if (newMNode instanceof LogicalViewMNode) {
-      LogicalViewMNode logicalViewMNode = (LogicalViewMNode) newMNode;
-      logicalViewMNode.setSchema(this.schema);
-      logicalViewMNode.setPreDeleted(preDeleted);
-      logicalViewMNode.setExpression(this.getExpression());
+    if (newMNode.isLogicalView()) {
+      newMNode.setSchema(this.schema);
+      newMNode.setPreDeleted(preDeleted);
     }
     throw new RuntimeException(
         new IllegalArgumentException(

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.metadata.mtree.store;
 
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -30,8 +31,8 @@ import org.apache.iotdb.db.metadata.mnode.mem.estimator.MNodeSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.mem.iterator.AbstractTraverserIterator;
 import org.apache.iotdb.db.metadata.mnode.schemafile.ICachedMNode;
 import org.apache.iotdb.db.metadata.mnode.schemafile.container.ICachedMNodeContainer;
-import org.apache.iotdb.db.metadata.mnode.schemafile.factory.CacheMNodeFactory;
 import org.apache.iotdb.db.metadata.mnode.schemafile.iterator.CachedTraverserIterator;
+import org.apache.iotdb.db.metadata.mnode.utils.MNodeFactoryLoader;
 import org.apache.iotdb.db.metadata.mnode.utils.MNodeUtils;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheMemoryManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.ICacheManager;
@@ -39,7 +40,6 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.memcontrol.MemManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.rescon.CachedSchemaRegionStatistics;
-import org.apache.iotdb.db.metadata.rescon.DataNodeSchemaQuotaManager;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import org.slf4j.Logger;
@@ -63,9 +63,9 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   private ISchemaFile file;
   private ICachedMNode root;
   private final Runnable flushCallback;
-  private final IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
+  private final IMNodeFactory<ICachedMNode> nodeFactory =
+      MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
   private final CachedSchemaRegionStatistics regionStatistics;
-  private final DataNodeSchemaQuotaManager quotaManager = DataNodeSchemaQuotaManager.getInstance();
   private final StampedWriterPreferredLock lock = new StampedWriterPreferredLock();
 
   public CachedMTreeStore(

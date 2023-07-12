@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.metadata.mtree;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -43,8 +44,8 @@ import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.mem.IMemMNode;
-import org.apache.iotdb.db.metadata.mnode.mem.factory.MemMNodeFactory;
 import org.apache.iotdb.db.metadata.mnode.mem.info.LogicalViewInfo;
+import org.apache.iotdb.db.metadata.mnode.utils.MNodeFactoryLoader;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
@@ -119,7 +120,8 @@ public class MTreeBelowSGMemoryImpl {
   private volatile IMemMNode storageGroupMNode;
   private final IMemMNode rootNode;
   private final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter;
-  private final IMNodeFactory<IMemMNode> nodeFactory = MemMNodeFactory.getInstance();
+  private final IMNodeFactory<IMemMNode> nodeFactory =
+      MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory();
   private final int levelOfSG;
   private final MemSchemaRegionStatistics regionStatistics;
 
@@ -1073,9 +1075,11 @@ public class MTreeBelowSGMemoryImpl {
     IMemMNode deviceParent = checkAndAutoCreateInternalPath(devicePath);
 
     synchronized (this) {
-      IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
-
       String leafName = path.getMeasurement();
+      IMeasurementMNode<IMemMNode> measurementMNode =
+          nodeFactory.createLogicalViewMNode(
+              null, leafName, new LogicalViewInfo(new LogicalViewSchema(leafName, viewExpression)));
+      IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
 
       // no need to check alias, because logical view has no alias
 
@@ -1106,12 +1110,7 @@ public class MTreeBelowSGMemoryImpl {
         entityMNode.setAligned(null);
       }
 
-      IMeasurementMNode<IMemMNode> measurementMNode =
-          nodeFactory.createLogicalViewMNode(
-              entityMNode,
-              leafName,
-              new LogicalViewInfo(new LogicalViewSchema(leafName, viewExpression)));
-
+      measurementMNode.setParent(entityMNode.getAsMNode());
       store.addChild(entityMNode.getAsMNode(), leafName, measurementMNode.getAsMNode());
 
       return measurementMNode;
