@@ -47,6 +47,7 @@ keyWords
     | ATTRIBUTES
     | BEFORE
     | BEGIN
+    | BETWEEN
     | BLOCKED
     | BOUNDARY
     | BY
@@ -103,10 +104,12 @@ keyWords
     | GRANT
     | GROUP
     | HAVING
+    | IN
     | INDEX
     | INFO
     | INSERT
     | INTO
+    | IS
     | KILL
     | LABEL
     | LAST
@@ -160,6 +163,7 @@ keyWords
     | RANGE
     | READONLY
     | REGEXP
+    | REGION
     | REGIONID
     | REGIONS
     | REMOVE
@@ -168,6 +172,7 @@ keyWords
     | RESOURCE
     | REVOKE
     | ROLE
+    | ROOT
     | RUNNING
     | SCHEMA
     | SELECT
@@ -190,10 +195,13 @@ keyWords
     | TAGS
     | TASK
     | TEMPLATE
+    | TEMPLATES
+    | TIME
     | TIMEOUT
     | TIMESERIES
     | TIMEPARTITION
     | TIMESLOTID
+    | TIMESTAMP
     | TO
     | TOLERANCE
     | TOP
