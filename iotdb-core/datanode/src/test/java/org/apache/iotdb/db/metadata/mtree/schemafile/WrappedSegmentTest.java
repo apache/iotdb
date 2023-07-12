@@ -23,11 +23,11 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.db.schemaengine.SchemaEngineMode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.factory.CacheMNodeFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISegment;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.RecordUtils;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.SchemaFileConfig;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.WrappedSegment;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -42,7 +42,8 @@ import java.nio.ByteBuffer;
 
 public class WrappedSegmentTest {
 
-  private static final IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
+  private static final IMNodeFactory<ICachedMNode> nodeFactory =
+      MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
 
   @Before
   public void setUp() {

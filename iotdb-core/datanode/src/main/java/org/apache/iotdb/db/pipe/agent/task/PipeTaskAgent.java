@@ -85,9 +85,37 @@ public class PipeTaskAgent {
     pipeTaskManager = new PipeTaskManager();
   }
 
+  ////////////////////////// PipeMeta Lock Control //////////////////////////
+
+  private void acquireReadLock() {
+    pipeMetaKeeper.acquireReadLock();
+  }
+
+  private void releaseReadLock() {
+    pipeMetaKeeper.releaseReadLock();
+  }
+
+  private void acquireWriteLock() {
+    pipeMetaKeeper.acquireWriteLock();
+  }
+
+  private void releaseWriteLock() {
+    pipeMetaKeeper.releaseWriteLock();
+  }
+
   ////////////////////////// Pipe Task Management Entry //////////////////////////
 
   public synchronized List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChanges(
+      List<PipeMeta> pipeMetaListFromConfigNode) {
+    acquireWriteLock();
+    try {
+      return handlePipeMetaChangesWithoutLock(pipeMetaListFromConfigNode);
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  private List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChangesWithoutLock(
       List<PipeMeta> pipeMetaListFromConfigNode) {
     // Do nothing if data node is removing or removed
     if (PipeAgent.runtime().isShutdown()) {
@@ -264,6 +292,15 @@ public class PipeTaskAgent {
   }
 
   public synchronized void dropAllPipeTasks() {
+    acquireWriteLock();
+    try {
+      dropAllPipeTasksWithoutLock();
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  private void dropAllPipeTasksWithoutLock() {
     for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
       try {
         dropPipe(
@@ -632,6 +669,16 @@ public class PipeTaskAgent {
 
   public synchronized void collectPipeMetaList(THeartbeatReq req, THeartbeatResp resp)
       throws TException {
+    acquireReadLock();
+    try {
+      collectPipeMetaListWithoutLock(req, resp);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  private void collectPipeMetaListWithoutLock(THeartbeatReq req, THeartbeatResp resp)
+      throws TException {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
     if (PipeAgent.runtime().isShutdown() || !req.isNeedPipeMetaList()) {
       return;
@@ -650,6 +697,16 @@ public class PipeTaskAgent {
   }
 
   public synchronized void collectPipeMetaList(TPipeHeartbeatReq req, TPipeHeartbeatResp resp)
+      throws TException {
+    acquireReadLock();
+    try {
+      collectPipeMetaListWithoutLock(req, resp);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  private void collectPipeMetaListWithoutLock(TPipeHeartbeatReq req, TPipeHeartbeatResp resp)
       throws TException {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
     if (PipeAgent.runtime().isShutdown()) {

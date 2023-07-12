@@ -28,12 +28,12 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.schemaengine.SchemaEngineMode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.ICachedMNodeContainer;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.factory.CacheMNodeFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISchemaFile;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.RecordUtils;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.SchemaFile;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.SchemaFileConfig;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.WrappedSegment;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MNodeUtils;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -62,7 +62,8 @@ import java.util.stream.Collectors;
 public class SchemaFileTest {
 
   private static final int TEST_SCHEMA_REGION_ID = 0;
-  private static final IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
+  private static final IMNodeFactory<ICachedMNode> nodeFactory =
+      MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
 
   @Before
   public void setUp() {

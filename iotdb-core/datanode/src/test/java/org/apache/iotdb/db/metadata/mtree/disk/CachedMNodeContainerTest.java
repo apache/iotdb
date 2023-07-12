@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata.mtree.disk;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.container.CachedMNodeContainer;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.factory.CacheMNodeFactory;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 
 import org.junit.Test;
 
@@ -31,7 +31,8 @@ import java.util.Map;
 
 public class CachedMNodeContainerTest {
 
-  private final IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
+  private final IMNodeFactory<ICachedMNode> nodeFactory =
+      MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
 
   @Test
   public void testIterator() {
