@@ -49,8 +49,9 @@ public class IntoPathDescriptor {
   // List<(sourceColumn, targetPath)>
   private List<Pair<String, PartialPath>> sourceTargetPathPairList;
 
-  // sourceColumn -> viewPath, if the viewPath is not empty
-  private List<Pair<String, String>> sourceColumnToViewList;
+  // if the sourceColumn is transformed from a viewPath, then store the viewPath in
+  // sourceColumnToViewList
+  private final List<String> sourceColumnToViewList;
 
   // targetDevice -> isAlignedDevice
   private final Map<String, Boolean> targetDeviceToAlignedMap;
@@ -67,7 +68,7 @@ public class IntoPathDescriptor {
 
   public IntoPathDescriptor(
       List<Pair<String, PartialPath>> sourceTargetPathPairList,
-      List<Pair<String, String>> sourceColumnToViewList,
+      List<String> sourceColumnToViewList,
       Map<String, Boolean> targetDeviceToAlignedMap) {
     this.sourceTargetPathPairList = sourceTargetPathPairList;
     this.sourceColumnToViewList = sourceColumnToViewList;
@@ -77,8 +78,7 @@ public class IntoPathDescriptor {
   public void specifyTargetPath(
       String sourceColumn, String sourceViewPath, PartialPath targetPath) {
     sourceTargetPathPairList.add(new Pair<>(sourceColumn, targetPath));
-    sourceColumnToViewList.add(
-        new Pair<>(sourceColumn, sourceViewPath == null ? "" : sourceViewPath));
+    sourceColumnToViewList.add(sourceViewPath == null ? "" : sourceViewPath);
   }
 
   public void specifyDeviceAlignment(String targetDevice, boolean isAligned) {
@@ -111,7 +111,7 @@ public class IntoPathDescriptor {
     return sourceTargetPathPairList;
   }
 
-  public List<Pair<String, String>> getSourceColumnToViewList() {
+  public List<String> getSourceColumnToViewList() {
     return sourceColumnToViewList;
   }
 
@@ -161,9 +161,8 @@ public class IntoPathDescriptor {
       sourceTargetPathPair.right.serialize(stream);
     }
 
-    for (Pair<String, String> sourceColumnToView : sourceColumnToViewList) {
-      ReadWriteIOUtils.write(sourceColumnToView.left, stream);
-      ReadWriteIOUtils.write(sourceColumnToView.right, stream);
+    for (String sourceColumnToView : sourceColumnToViewList) {
+      ReadWriteIOUtils.write(sourceColumnToView, stream);
     }
 
     ReadWriteIOUtils.write(targetDeviceToAlignedMap.size(), stream);
@@ -182,14 +181,10 @@ public class IntoPathDescriptor {
       sourceTargetPathPairList.add(new Pair<>(sourceColumn, targetPath));
     }
 
-    List<Pair<String, String>> sourceColumnToViewList = new ArrayList<>();
+    List<String> sourceColumnToViewList = new ArrayList<>();
     for (int i = 0; i < listSize; i++) {
-      String sourceColumn = ReadWriteIOUtils.readString(byteBuffer);
       String viewPath = ReadWriteIOUtils.readString(byteBuffer);
-      if (StringUtils.isEmpty(viewPath)) {
-        viewPath = "";
-      }
-      sourceColumnToViewList.add(new Pair<>(sourceColumn, viewPath));
+      sourceColumnToViewList.add(StringUtils.isEmpty(viewPath) ? "" : viewPath);
     }
 
     int mapSize = ReadWriteIOUtils.readInt(byteBuffer);
