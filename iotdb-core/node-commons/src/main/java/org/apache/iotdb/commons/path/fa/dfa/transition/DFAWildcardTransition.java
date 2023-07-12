@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.path.fa.dfa.transition;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;

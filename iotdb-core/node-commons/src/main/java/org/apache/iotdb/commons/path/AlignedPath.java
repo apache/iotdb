@@ -43,7 +43,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * VectorPartialPath represents many fullPaths of aligned timeseries. In the AlignedPath, the nodes
+ * VectorPartialPath represents many fullPaths of aligned timeSeries. In the AlignedPath, the nodes
  * in PartialPath is deviceId e.g. VectorPartialPath nodes=root.sg1.alignedD1 measurementList=[s1,
  * s2]
  */

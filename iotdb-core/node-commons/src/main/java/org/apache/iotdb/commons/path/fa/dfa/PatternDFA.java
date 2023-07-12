@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.path.fa.dfa;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -44,12 +45,12 @@ public class PatternDFA implements IPatternFA {
   private final Map<String, IFATransition> transitionMap = new HashMap<>();
   private final DFAGraph dfaGraph;
 
-  // cached
+  // Cached
   private final Map<String, IFATransition>[] preciseMatchTransitionCached;
   private final List<IFATransition>[] batchMatchTransitionCached;
 
   public PatternDFA(PartialPath pathPattern, boolean isPrefix) {
-    // 1. build transition
+    // 1. Build transition
     boolean wildcard = false;
     AtomicInteger transitionIndex = new AtomicInteger();
     for (String node : pathPattern.getNodes()) {

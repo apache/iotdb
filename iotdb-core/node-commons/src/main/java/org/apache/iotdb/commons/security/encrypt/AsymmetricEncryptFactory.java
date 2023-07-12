@@ -27,7 +27,9 @@ public class AsymmetricEncryptFactory {
   private static final AtomicReference<AsymmetricEncrypt> asymmetricEncrypt =
       new AtomicReference<>();
 
-  private AsymmetricEncryptFactory() {}
+  private AsymmetricEncryptFactory() {
+    // Empty constructor
+  }
 
   /**
    * load encrypt provider class for encrypt or decrypt password.

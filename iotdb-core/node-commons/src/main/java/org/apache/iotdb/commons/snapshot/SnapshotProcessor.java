@@ -32,7 +32,7 @@ import java.io.IOException;
 public interface SnapshotProcessor {
 
   /**
-   * Take snapshot
+   * Take snapshot.
    *
    * @param snapshotDir Where snapshot files are stored.
    * @return Whether the snapshot is successfully executed
@@ -42,7 +42,7 @@ public interface SnapshotProcessor {
   boolean processTakeSnapshot(File snapshotDir) throws TException, IOException;
 
   /**
-   * Load snapshot
+   * Load snapshot.
    *
    * @param snapshotDir Load snapshot from here
    * @throws TException Exception occurred during the thrift deserialize struct

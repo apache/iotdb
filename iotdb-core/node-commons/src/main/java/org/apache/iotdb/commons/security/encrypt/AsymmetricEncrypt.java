@@ -22,14 +22,14 @@ package org.apache.iotdb.commons.security.encrypt;
 public interface AsymmetricEncrypt {
 
   /**
-   * init some providerParameter
+   * Init some providerParameter.
    *
    * @param providerParameters encrypt need some parameters
    */
   void init(String providerParameters);
 
   /**
-   * encrypt a password
+   * Encrypt a password.
    *
    * @param originPassword password to be crypt
    * @return encrypt password
@@ -37,7 +37,7 @@ public interface AsymmetricEncrypt {
   String encrypt(String originPassword);
 
   /**
-   * validate originPassword and encryptPassword
+   * Validate originPassword and encryptPassword.
    *
    * @param originPassword origin password
    * @param encryptPassword encrypt password

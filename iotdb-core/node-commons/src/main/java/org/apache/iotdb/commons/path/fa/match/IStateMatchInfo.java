@@ -26,7 +26,7 @@ import java.util.Iterator;
 
 /**
  * This interface defines the behaviour of a state match info, which helps make decision during FA
- * Graph traversing
+ * Graph traversing.
  */
 public interface IStateMatchInfo {
 

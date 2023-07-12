@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.path.fa.dfa.transition;
 
 import org.apache.iotdb.commons.path.fa.IFATransition;
@@ -41,8 +42,12 @@ abstract class AbstractDFATransition implements IFATransition {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     AbstractDFATransition that = (AbstractDFATransition) o;
     return Objects.equals(id, that.id);
   }
