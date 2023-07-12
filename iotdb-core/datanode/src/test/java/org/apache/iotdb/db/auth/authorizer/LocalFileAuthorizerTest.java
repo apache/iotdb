@@ -200,10 +200,12 @@ public class LocalFileAuthorizerTest {
 
     // a user can get all role permissions.
     Set<Integer> permissions = authorizer.getPrivileges(user.getName(), nodeName);
-    assertEquals(2, permissions.size());
+    assertEquals(4, permissions.size());
+    assertTrue(permissions.contains(0));
     assertTrue(permissions.contains(1));
+    assertTrue(permissions.contains(2));
     assertTrue(permissions.contains(3));
-    assertFalse(permissions.contains(2));
+    assertFalse(permissions.contains(4));
 
     try {
       authorizer.grantRoleToUser(roleName, user.getName());
@@ -213,7 +215,7 @@ public class LocalFileAuthorizerTest {
     // revoke a role from a user, the user will lose all role's permission
     authorizer.revokeRoleFromUser(roleName, user.getName());
     Set<Integer> revokeRolePermissions = authorizer.getPrivileges(user.getName(), nodeName);
-    assertEquals(1, revokeRolePermissions.size());
+    assertEquals(2, revokeRolePermissions.size());
     assertTrue(revokeRolePermissions.contains(1));
     assertFalse(revokeRolePermissions.contains(2));
 
