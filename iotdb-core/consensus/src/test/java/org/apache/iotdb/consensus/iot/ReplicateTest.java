@@ -271,6 +271,6 @@ public class ReplicateTest {
         }
       }
     }
-    Assert.fail(String.format("can not find port for node %d after 60s", i + 1));
+    Assert.fail(String.format("can not find port for node %d after 240s", i + 1));
   }
 }
