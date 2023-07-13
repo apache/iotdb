@@ -20,54 +20,56 @@
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import javax.annotation.concurrent.GuardedBy;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class DataNodeQueryContext {
   @GuardedBy("lock")
-  private final Map<PartialPath, AtomicInteger> uncachedPathToSeriesScanNum;
+  private final Map<PartialPath, Pair<AtomicInteger, TimeValuePair>> uncachedPathToSeriesScanInfo;
 
   private final AtomicInteger dataNodeFINum;
 
-  private final ReadWriteLock lock = new ReentrantReadWriteLock();
+  private final ReentrantLock lock = new ReentrantLock();
 
   public DataNodeQueryContext(int dataNodeFINum) {
-    this.uncachedPathToSeriesScanNum = new HashMap<>();
+    this.uncachedPathToSeriesScanInfo = new HashMap<>();
     this.dataNodeFINum = new AtomicInteger(dataNodeFINum);
   }
 
+  @GuardedBy("lock")
   public boolean unCached(PartialPath path) {
-    return uncachedPathToSeriesScanNum.containsKey(path);
+    return uncachedPathToSeriesScanInfo.containsKey(path);
+  }
+
+  @GuardedBy("lock")
+  public void addUnCachePath(PartialPath path, AtomicInteger dataNodeSeriesScanNum) {
+    uncachedPathToSeriesScanInfo.put(path, new Pair<>(dataNodeSeriesScanNum, null));
   }
 
   public AtomicInteger getDataNodeSeriesScanNum(PartialPath path) {
-    try {
-      lock.readLock().lock();
-      return uncachedPathToSeriesScanNum.get(path);
-    } finally {
-      lock.readLock().unlock();
-    }
+    return uncachedPathToSeriesScanInfo.get(path).left;
   }
 
-  public void addUnCachePath(PartialPath path, AtomicInteger dataNodeSeriesScanNum) {
-    uncachedPathToSeriesScanNum.put(path, dataNodeSeriesScanNum);
+  public Pair<AtomicInteger, TimeValuePair> getSeriesScanInfo(PartialPath path) {
+    return uncachedPathToSeriesScanInfo.get(path);
   }
 
   public int decreaseDataNodeFINum() {
     return dataNodeFINum.decrementAndGet();
   }
 
-  public void writeLock() {
-    lock.writeLock().lock();
+  public void lock() {
+    lock.lock();
   }
 
-  public void writeUnLock() {
-    lock.writeLock().unlock();
+  public void unLock() {
+    lock.unlock();
   }
 }

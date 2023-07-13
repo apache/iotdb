@@ -30,12 +30,15 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import javax.annotation.Nullable;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator {
   protected static final TsBlock LAST_QUERY_EMPTY_TSBLOCK =
@@ -92,10 +95,23 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
 
   protected void mayUpdateLastCache(
       long time, @Nullable TsPrimitiveType value, MeasurementPath fullPath) {
-    if (needUpdateCache
-        && dataNodeQueryContext.getDataNodeSeriesScanNum(fullPath).decrementAndGet() == 0) {
-      TimeValuePair timeValuePair = new TimeValuePair(time, value);
-      lastCache.updateLastCache(getDatabaseName(), fullPath, timeValuePair, false, Long.MIN_VALUE);
+    try {
+      dataNodeQueryContext.lock();
+      Pair<AtomicInteger, TimeValuePair> seriesScanInfo =
+          dataNodeQueryContext.getSeriesScanInfo(fullPath);
+
+      // update cache in DataNodeQueryContext
+      if (seriesScanInfo.right == null || time > seriesScanInfo.right.getTimestamp()) {
+        seriesScanInfo.right = new TimeValuePair(time, value);
+      }
+
+      if (needUpdateCache
+          && dataNodeQueryContext.getDataNodeSeriesScanNum(fullPath).decrementAndGet() == 0) {
+        lastCache.updateLastCache(
+            getDatabaseName(), fullPath, seriesScanInfo.right, false, Long.MIN_VALUE);
+      }
+    } finally {
+      dataNodeQueryContext.unLock();
     }
   }
 
