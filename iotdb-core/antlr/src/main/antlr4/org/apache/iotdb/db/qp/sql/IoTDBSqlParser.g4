@@ -621,7 +621,7 @@ showModels
 
 // ---- Show Trails
 showTrails
-    : SHOW TRAILS modelId=identifier
+    : SHOW TRIALS modelId=identifier
     ;
 
 // Create Logical View

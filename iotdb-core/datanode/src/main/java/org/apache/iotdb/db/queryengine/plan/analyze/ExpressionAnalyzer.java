@@ -48,9 +48,8 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.CollectAggregatio
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.CollectSourceExpressionsVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionNormalizeVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.GetMeasurementExpressionVisitor;
-import org.apache.iotdb.db.queryengine.plan.expression.visitor.RemoveAliasFromExpressionVisitor;
-import org.apache.iotdb.db.queryengine.plan.expression.visitor.RemoveRootPrefixVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.LowercaseNormalizeVisitor;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.RemoveRootPrefixVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ReplaceRawPathWithGroupedPathVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForPredicateVisitor;

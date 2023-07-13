@@ -150,16 +150,16 @@ public class StatementGeneratorTest {
             new FunctionExpression(
                 "AVG",
                 new LinkedHashMap<>(),
-                Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")))),
-            ResultColumn.ColumnType.AGGREGATION),
+                Collections.singletonList(
+                    new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))))),
         queryStatement.getSelectComponent().getResultColumns().get(0));
     assertEquals(
         new ResultColumn(
             new FunctionExpression(
                 "COUNT",
                 new LinkedHashMap<>(),
-                Collections.singletonList(new TimeSeriesOperand(new PartialPath("root.sg.d1.s2")))),
-            ResultColumn.ColumnType.AGGREGATION),
+                Collections.singletonList(
+                    new TimeSeriesOperand(new PartialPath("root.sg.d1.s2"))))),
         queryStatement.getSelectComponent().getResultColumns().get(1));
   }
 
@@ -404,10 +404,9 @@ public class StatementGeneratorTest {
 
   @Test
   public void testFetchTimeseries() throws IllegalPathException {
-    TFetchTimeseriesReq req = new TFetchTimeseriesReq(Collections.singletonList("root.sg.d1.s1"));
-    QueryStatement statement =
-        (QueryStatement) StatementGenerator.createStatement(req, ZonedDateTime.now().getOffset());
-    assertEquals(Collections.singletonList(new PartialPath("root.sg.d1.s1")), statement.getPaths());
+    TFetchTimeseriesReq req = new TFetchTimeseriesReq("select * from root.sg.d1.s1");
+    Statement statement = StatementGenerator.createStatement(req, ZonedDateTime.now().getOffset());
+    assertEquals("root.sg.d1.s1.*", statement.getPaths().get(0).getFullPath());
   }
 
   @Test

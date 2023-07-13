@@ -774,8 +774,8 @@ TRACING
     : T R A C I N G
     ;
 
-TRAILS
-    : T R A I L S
+TRIALS
+    : T R I A L S
     ;
 
 TRIGGER

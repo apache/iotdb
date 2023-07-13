@@ -201,6 +201,7 @@ import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.SCHEMA_FETCHER;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer.analyzeExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils.constructTargetDevice;
 import static org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils.constructTargetMeasurement;
 import static org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils.constructTargetPath;
@@ -348,7 +349,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
     return analysis;
   }
-
 
   private void analyzeModelInference(Analysis analysis, QueryStatement queryStatement) {
     FunctionExpression modelInferenceExpression =
@@ -1499,7 +1499,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   // For last query
   private void analyzeLastOrderBy(Analysis analysis, QueryStatement queryStatement) {
-    if (!queryStatement.hasOrderBy()) return;
+    if (!queryStatement.hasOrderBy()) {
+      return;
+    }
 
     if (queryStatement.onlyOrderByTimeseries()) {
       analysis.setTimeseriesOrderingForLastQuery(
@@ -1518,7 +1520,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private void analyzeOrderBy(
       Analysis analysis, QueryStatement queryStatement, ISchemaTree schemaTree) {
-    if (!queryStatement.hasOrderByExpression()) return;
+    if (!queryStatement.hasOrderByExpression()) {
+      return;
+    }
 
     Set<Expression> orderByExpressions = new LinkedHashSet<>();
     for (Expression expressionForItem : queryStatement.getExpressionSortItemList()) {
@@ -1549,7 +1553,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private TSDataType analyzeExpressionType(Analysis analysis, Expression expression) {
-    return ExpressionTypeAnalyzer.analyzeExpression(analysis, expression);
+    return analyzeExpression(analysis, expression);
   }
 
   private void analyzeDeviceToGroupBy(

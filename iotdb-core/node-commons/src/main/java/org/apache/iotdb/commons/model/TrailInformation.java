@@ -71,10 +71,12 @@ public class TrailInformation {
     ReadWriteIOUtils.write(trailId, stream);
     ReadWriteIOUtils.write(modelPath, stream);
     List<String> modelHyperparameterList = modelHyperparameter.toStringList();
-    ReadWriteIOUtils.write(modelHyperparameterList.size(), stream);
+    ReadWriteIOUtils.write(modelHyperparameterList.size() + 1, stream);
     for (String hyperparameter : modelHyperparameterList) {
       ReadWriteIOUtils.write(hyperparameter, stream);
     }
+    // add a line break to make the result more readable.
+    ReadWriteIOUtils.write(" ", stream);
     return ByteBuffer.wrap(buffer.getBuf(), 0, buffer.size());
   }
 

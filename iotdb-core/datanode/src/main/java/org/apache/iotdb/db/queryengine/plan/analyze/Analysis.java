@@ -729,7 +729,6 @@ public class Analysis {
 
   public void setModelInferenceDescriptor(ModelInferenceDescriptor modelInferenceDescriptor) {
     this.modelInferenceDescriptor = modelInferenceDescriptor;
-    }
   }
 
   public Map<String, List<String>> getOutputDeviceToQueriedDevicesMap() {

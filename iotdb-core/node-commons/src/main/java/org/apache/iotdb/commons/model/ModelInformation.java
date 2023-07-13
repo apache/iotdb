@@ -245,16 +245,13 @@ public abstract class ModelInformation {
 
     if (bestTrailId != null) {
       TrailInformation bestTrail = trailMap.get(bestTrailId);
-      ReadWriteIOUtils.write(bestTrail.getModelPath(), stream);
-
       List<String> modelHyperparameterList = bestTrail.getModelHyperparameter().toStringList();
-      ReadWriteIOUtils.write(modelHyperparameterList.size(), stream);
+      ReadWriteIOUtils.write(modelHyperparameterList.size() + 1, stream);
       for (String hyperparameter : modelHyperparameterList) {
         ReadWriteIOUtils.write(hyperparameter, stream);
       }
+      ReadWriteIOUtils.write(" ", stream);
     } else {
-      ReadWriteIOUtils.write("UNKNOWN", stream);
-
       ReadWriteIOUtils.write(1, stream);
       ReadWriteIOUtils.write("UNKNOWN", stream);
     }

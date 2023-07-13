@@ -90,7 +90,7 @@ public class ModelManager {
       List<TSDataType> inputTypeList =
           Arrays.stream(inputTypeListStr.substring(1, inputTypeListStr.length() - 1).split(","))
               .sequential()
-              .map(s -> TSDataType.valueOf(s.toUpperCase()))
+              .map(s -> TSDataType.valueOf(s.toUpperCase().trim()))
               .collect(Collectors.toList());
 
       String predictIndexListStr = options.get(PREDICT_INDEX_LIST);
@@ -98,14 +98,14 @@ public class ModelManager {
           Arrays.stream(
                   predictIndexListStr.substring(1, predictIndexListStr.length() - 1).split(","))
               .sequential()
-              .map(Integer::valueOf)
+              .map(s -> Integer.valueOf(s.trim()))
               .collect(Collectors.toList());
 
       modelInformation =
           new ForecastModeInformation(
               req.getModelId(),
               req.getOptions(),
-              req.getDatasetFetchSQL(),
+              req.getDatasetFetchSQL().replace("\n", "").replace("\t", " "),
               inputTypeList,
               predictIndexList,
               Integer.parseInt(options.getOrDefault(INPUT_LENGTH, DEFAULT_INPUT_LENGTH)),

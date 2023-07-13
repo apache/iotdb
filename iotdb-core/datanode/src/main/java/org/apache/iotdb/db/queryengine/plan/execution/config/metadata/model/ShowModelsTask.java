@@ -65,7 +65,6 @@ public class ShowModelsTask implements IConfigTask {
       String modelType = ReadWriteIOUtils.readString(modelInfo);
       String queryBody = ReadWriteIOUtils.readString(modelInfo);
       String trainingState = ReadWriteIOUtils.readString(modelInfo);
-      String modelPath = ReadWriteIOUtils.readString(modelInfo);
 
       int listSize = ReadWriteIOUtils.readInt(modelInfo);
       List<String> modelHyperparameter = new ArrayList<>();
@@ -79,16 +78,15 @@ public class ShowModelsTask implements IConfigTask {
       builder.getColumnBuilder(2).writeBinary(Binary.valueOf(modelType));
       builder.getColumnBuilder(3).writeBinary(Binary.valueOf(queryBody));
       builder.getColumnBuilder(4).writeBinary(Binary.valueOf(trainingState));
-      builder.getColumnBuilder(5).writeBinary(Binary.valueOf(modelPath));
-      builder.getColumnBuilder(6).writeBinary(Binary.valueOf(modelHyperparameter.get(0)));
+      builder.getColumnBuilder(5).writeBinary(Binary.valueOf(modelHyperparameter.get(0)));
       builder.declarePosition();
 
       for (int i = 1; i < listSize; i++) {
         builder.getTimeColumnBuilder().writeLong(0L);
-        for (int columnIndex = 0; columnIndex <= 5; columnIndex++) {
+        for (int columnIndex = 0; columnIndex <= 4; columnIndex++) {
           builder.getColumnBuilder(columnIndex).writeBinary(Binary.valueOf(""));
         }
-        builder.getColumnBuilder(6).writeBinary(Binary.valueOf(modelHyperparameter.get(i)));
+        builder.getColumnBuilder(5).writeBinary(Binary.valueOf(modelHyperparameter.get(i)));
         builder.declarePosition();
       }
     }
