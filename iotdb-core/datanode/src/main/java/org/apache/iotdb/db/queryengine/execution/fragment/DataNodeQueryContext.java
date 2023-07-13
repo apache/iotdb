@@ -26,7 +26,8 @@ import javax.annotation.concurrent.GuardedBy;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class DataNodeQueryContext {
   @GuardedBy("lock")
@@ -34,7 +35,7 @@ public class DataNodeQueryContext {
 
   private final AtomicInteger dataNodeFINum;
 
-  private final ReentrantLock lock = new ReentrantLock();
+  private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
   public DataNodeQueryContext(int dataNodeFINum) {
     this.uncachedPathToSeriesScanNum = new HashMap<>();
@@ -45,6 +46,15 @@ public class DataNodeQueryContext {
     return uncachedPathToSeriesScanNum.containsKey(path);
   }
 
+  public AtomicInteger getDataNodeSeriesScanNum(PartialPath path) {
+    try {
+      lock.readLock().lock();
+      return uncachedPathToSeriesScanNum.get(path);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
   public void addUnCachePath(PartialPath path, AtomicInteger dataNodeSeriesScanNum) {
     uncachedPathToSeriesScanNum.put(path, dataNodeSeriesScanNum);
   }
@@ -53,11 +63,11 @@ public class DataNodeQueryContext {
     return dataNodeFINum.decrementAndGet();
   }
 
-  public void lock() {
-    lock.lock();
+  public void writeLock() {
+    lock.writeLock().lock();
   }
 
-  public void unlock() {
-    lock.unlock();
+  public void writeUnLock() {
+    lock.writeLock().unlock();
   }
 }

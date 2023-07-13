@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.last;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
+import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
@@ -42,6 +44,8 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
 
   protected OperatorContext operatorContext;
 
+  protected final DataNodeQueryContext dataNodeQueryContext;
+
   protected Operator child;
 
   protected DataNodeSchemaCache lastCache;
@@ -62,6 +66,8 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
     this.lastCache = dataNodeSchemaCache;
     this.needUpdateCache = needUpdateCache;
     this.tsBlockBuilder = LastQueryUtil.createTsBlockBuilder(1);
+    this.dataNodeQueryContext =
+        operatorContext.getDriverContext().getFragmentInstanceContext().getDataNodeQueryContext();
   }
 
   @Override
@@ -84,9 +90,10 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
     return databaseName;
   }
 
-  protected void updateLastCache(
+  protected void mayUpdateLastCache(
       long time, @Nullable TsPrimitiveType value, MeasurementPath fullPath) {
-    if (needUpdateCache) {
+    if (needUpdateCache
+        && dataNodeQueryContext.getDataNodeSeriesScanNum(fullPath).decrementAndGet() == 0) {
       TimeValuePair timeValuePair = new TimeValuePair(time, value);
       lastCache.updateLastCache(getDatabaseName(), fullPath, timeValuePair, false, Long.MIN_VALUE);
     }

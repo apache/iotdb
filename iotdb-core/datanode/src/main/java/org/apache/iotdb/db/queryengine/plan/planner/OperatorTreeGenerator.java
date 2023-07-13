@@ -1988,7 +1988,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     PartialPath seriesPath = node.getSeriesPath().transformToPartialPath();
     TimeValuePair timeValuePair = null;
     try {
-      context.dataNodeQueryContext.lock();
+      context.dataNodeQueryContext.writeLock();
       if (!context.dataNodeQueryContext.unCached(seriesPath)) {
         timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(seriesPath);
         if (timeValuePair == null) {
@@ -1996,7 +1996,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         }
       }
     } finally {
-      context.dataNodeQueryContext.unlock();
+      context.dataNodeQueryContext.writeUnLock();
     }
 
     if (timeValuePair == null) { // last value is not cached
@@ -2194,7 +2194,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       PartialPath measurementPath = devicePath.concatNode(measurementList.get(i));
       TimeValuePair timeValuePair = null;
       try {
-        context.dataNodeQueryContext.lock();
+        context.dataNodeQueryContext.writeLock();
         if (!context.dataNodeQueryContext.unCached(measurementPath)) {
           timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(measurementPath);
           if (timeValuePair == null) {
@@ -2203,7 +2203,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           }
         }
       } finally {
-        context.dataNodeQueryContext.unlock();
+        context.dataNodeQueryContext.writeUnLock();
       }
 
       if (timeValuePair == null) { // last value is not cached

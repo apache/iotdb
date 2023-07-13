@@ -252,6 +252,14 @@ public class FragmentInstanceContext extends QueryContext {
     return executionStartTime.get();
   }
 
+  public DataNodeQueryContext getDataNodeQueryContext() {
+    return dataNodeQueryContext;
+  }
+
+  public void setDataNodeQueryContext(DataNodeQueryContext dataNodeQueryContext) {
+    this.dataNodeQueryContext = dataNodeQueryContext;
+  }
+
   public FragmentInstanceInfo getInstanceInfo() {
     return new FragmentInstanceInfo(
         stateMachine.getState(), getEndTime(), getFailedCause(), getFailureInfoList());

@@ -67,14 +67,14 @@ public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
     if (res.getColumn(0).isNull(0)) {
       // we still need to update last cache if there is no data for this time series to avoid
       // scanning all files each time
-      updateLastCache(Long.MIN_VALUE, null, fullPath);
+      mayUpdateLastCache(Long.MIN_VALUE, null, fullPath);
       return LAST_QUERY_EMPTY_TSBLOCK;
     }
 
     long lastTime = res.getColumn(0).getLong(0);
     TsPrimitiveType lastValue = res.getColumn(1).getTsPrimitiveType(0);
 
-    updateLastCache(lastTime, lastValue, fullPath);
+    mayUpdateLastCache(lastTime, lastValue, fullPath);
 
     tsBlockBuilder.reset();
     appendLastValueToTsBlockBuilder(lastTime, lastValue);

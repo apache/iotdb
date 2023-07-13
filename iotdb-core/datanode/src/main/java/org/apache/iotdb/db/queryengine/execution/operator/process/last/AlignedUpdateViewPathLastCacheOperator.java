@@ -46,12 +46,8 @@ public class AlignedUpdateViewPathLastCacheOperator extends AlignedUpdateLastCac
 
   @Override
   protected void appendLastValueToTsBlockBuilder(
-      long lastTime, TsPrimitiveType lastValue, MeasurementPath measurementPath) {
+      long lastTime, TsPrimitiveType lastValue, MeasurementPath measurementPath, String type) {
     LastQueryUtil.appendLastValue(
-        tsBlockBuilder,
-        lastTime,
-        outputViewPath,
-        lastValue.getStringValue(),
-        measurementPath.getSeriesType().name());
+        tsBlockBuilder, lastTime, outputViewPath, lastValue.getStringValue(), type);
   }
 }
