@@ -735,6 +735,26 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
+   * Only leader use this interface.
+   *
+   * <p>Get the assigned TimePartitionSlots count in the specified Database
+   *
+   * @param database The specified Database
+   * @return The assigned TimePartitionSlots count
+   */
+  public long getAssignedTimePartitionSlotsCount(String database) {
+    return databasePartitionTables.get(database)
+        .getTimeSlotList(
+            new TSeriesPartitionSlot(-1),
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, -1),
+            -9223372036854775808L,
+            9223372036854775807L)
+        .stream()
+        .distinct()
+        .count();
+  }
+
+  /**
    * Get the DataNodes who contain the specific StorageGroup's Schema or Data.
    *
    * @param database The specific StorageGroup's name
