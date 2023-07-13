@@ -29,9 +29,9 @@ import java.util.Set;
 /** This enum class contains all available privileges in IoTDB. */
 public enum PrivilegeType {
   READ_DATA(true),
-  WRITE_DATA(true, true, READ_DATA),
+  WRITE_DATA(true),
   READ_SCHEMA(true),
-  WRITE_SCHEMA(true, true, READ_SCHEMA),
+  WRITE_SCHEMA(true),
   MANAGE_USER,
   MANAGE_ROLE,
   GRANT_PRIVILEGE,
