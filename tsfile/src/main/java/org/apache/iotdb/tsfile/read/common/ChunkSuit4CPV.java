@@ -29,7 +29,6 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.LongStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.MinMaxInfo;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.StepRegress;
-import org.apache.iotdb.tsfile.read.common.IOMonitor2.Operation;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 
 import java.io.IOException;
@@ -251,7 +250,7 @@ public class ChunkSuit4CPV {
    * @return the position of the point, starting from 0
    */
   public int updateFPwithTheClosetPointEqualOrAfter(long targetTimestamp) throws IOException {
-    long start = System.nanoTime();
+    //    long start = System.nanoTime();
     int estimatedPos;
     if (TSFileDescriptor.getInstance().getConfig().isUseTimeIndex()) {
       StepRegress stepRegress = chunkMetadata.getStatistics().getStepRegress();
@@ -358,7 +357,7 @@ public class ChunkSuit4CPV {
           throw new IOException("Unsupported data type!");
       }
     }
-    IOMonitor2.addMeasure(Operation.SEARCH_ARRAY_b_genFP, System.nanoTime() - start);
+    //    IOMonitor2.addMeasure(Operation.SEARCH_ARRAY_b_genFP, System.nanoTime() - start);
     return estimatedPos;
   }
 
@@ -370,7 +369,7 @@ public class ChunkSuit4CPV {
    * @return the position of the point, starting from 0
    */
   public int updateLPwithTheClosetPointEqualOrBefore(long targetTimestamp) throws IOException {
-    long start = System.nanoTime();
+    //    long start = System.nanoTime();
     int estimatedPos;
     if (TSFileDescriptor.getInstance().getConfig().isUseTimeIndex()) {
       StepRegress stepRegress = chunkMetadata.getStatistics().getStepRegress();
@@ -484,7 +483,7 @@ public class ChunkSuit4CPV {
           throw new IOException("Unsupported data type!");
       }
     }
-    IOMonitor2.addMeasure(Operation.SEARCH_ARRAY_b_genLP, System.nanoTime() - start);
+    //    IOMonitor2.addMeasure(Operation.SEARCH_ARRAY_b_genLP, System.nanoTime() - start);
     return estimatedPos;
   }
 
@@ -495,7 +494,7 @@ public class ChunkSuit4CPV {
    * @return true if exists; false not exist
    */
   public boolean checkIfExist(long targetTimestamp) throws IOException {
-    long start = System.nanoTime();
+    //    long start = System.nanoTime();
     boolean exist;
     if (TSFileDescriptor.getInstance().getConfig().isUseTimeIndex()) {
       StepRegress stepRegress = chunkMetadata.getStatistics().getStepRegress();
@@ -554,7 +553,7 @@ public class ChunkSuit4CPV {
       // estimatedPos will not be out of range.
       exist = pageReader.timeBuffer.getLong(estimatedPos * 8) == targetTimestamp;
     }
-    IOMonitor2.addMeasure(Operation.SEARCH_ARRAY_a_verifBPTP, System.nanoTime() - start);
+    //    IOMonitor2.addMeasure(Operation.SEARCH_ARRAY_a_verifBPTP, System.nanoTime() - start);
     return exist;
   }
 

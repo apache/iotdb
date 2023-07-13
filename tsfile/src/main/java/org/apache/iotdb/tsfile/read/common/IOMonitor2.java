@@ -41,17 +41,17 @@ public class IOMonitor2 {
     DCP_B_READ_MEM_CHUNK("DCP_B_READ_MEM_CHUNK"),
     DCP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA(
         "DCP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA"),
-    DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS("DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS"),
-    SEARCH_ARRAY_a_verifBPTP("SEARCH_ARRAY_a_verifBPTP"),
-    SEARCH_ARRAY_b_genFP("SEARCH_ARRAY_b_genFP"),
-    SEARCH_ARRAY_b_genLP("SEARCH_ARRAY_b_genLP"),
-    SEARCH_ARRAY_c_genBPTP("SEARCH_ARRAY_c_genBPTP"),
-    M4_LSM_INIT_LOAD_ALL_CHUNKMETADATAS("M4_LSM_INIT_LOAD_ALL_CHUNKMETADATAS"),
-    M4_LSM_MERGE_M4_TIME_SPAN("M4_LSM_MERGE_M4_TIME_SPAN"),
-    M4_LSM_FP("M4_LSM_FP"),
-    M4_LSM_LP("M4_LSM_LP"),
-    M4_LSM_BP("M4_LSM_BP"),
-    M4_LSM_TP("M4_LSM_TP");
+    DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS("DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS");
+    //    SEARCH_ARRAY_a_verifBPTP("SEARCH_ARRAY_a_verifBPTP"),
+    //    SEARCH_ARRAY_b_genFP("SEARCH_ARRAY_b_genFP"),
+    //    SEARCH_ARRAY_b_genLP("SEARCH_ARRAY_b_genLP"),
+    //    SEARCH_ARRAY_c_genBPTP("SEARCH_ARRAY_c_genBPTP"),
+    //    M4_LSM_INIT_LOAD_ALL_CHUNKMETADATAS("M4_LSM_INIT_LOAD_ALL_CHUNKMETADATAS"),
+    //    M4_LSM_MERGE_M4_TIME_SPAN("M4_LSM_MERGE_M4_TIME_SPAN"),
+    //    M4_LSM_FP("M4_LSM_FP"),
+    //    M4_LSM_LP("M4_LSM_LP"),
+    //    M4_LSM_BP("M4_LSM_BP"),
+    //    M4_LSM_TP("M4_LSM_TP");
 
     public String getName() {
       return name;
@@ -72,23 +72,23 @@ public class IOMonitor2 {
 
   public static DataSetType dataSetType = DataSetType.NONE; // level 3
 
-  public static int M4_LSM_init_loadAllChunkMetadatas_count = 0; // level 3
-  public static long M4_LSM_init_loadAllChunkMetadatas_ns = 0; // level 3
+  //  public static int M4_LSM_init_loadAllChunkMetadatas_count = 0; // level 3
+  //  public static long M4_LSM_init_loadAllChunkMetadatas_ns = 0; // level 3
 
-  public static int M4_LSM_merge_M4_time_span_count = 0; // level 3
-  public static long M4_LSM_merge_M4_time_span_ns = 0; // level 3
+  //  public static int M4_LSM_merge_M4_time_span_count = 0; // level 3
+  //  public static long M4_LSM_merge_M4_time_span_ns = 0; // level 3
 
-  public static int M4_LSM_FP_count = 0; // level 3
-  public static long M4_LSM_FP_ns = 0; // level 3
+  //  public static int M4_LSM_FP_count = 0; // level 3
+  //  public static long M4_LSM_FP_ns = 0; // level 3
 
-  public static int M4_LSM_LP_count = 0; // level 3
-  public static long M4_LSM_LP_ns = 0; // level 3
+  //  public static int M4_LSM_LP_count = 0; // level 3
+  //  public static long M4_LSM_LP_ns = 0; // level 3
 
-  public static int M4_LSM_BP_count = 0; // level 3
-  public static long M4_LSM_BP_ns = 0; // level 3
+  //  public static int M4_LSM_BP_count = 0; // level 3
+  //  public static long M4_LSM_BP_ns = 0; // level 3
 
-  public static int M4_LSM_TP_count = 0; // level 3
-  public static long M4_LSM_TP_ns = 0; // level 3
+  //  public static int M4_LSM_TP_count = 0; // level 3
+  //  public static long M4_LSM_TP_ns = 0; // level 3
 
   public static int DCP_A_GET_CHUNK_METADATAS_count = 0; // level 4
   public static long DCP_A_GET_CHUNK_METADATAS_ns = 0; // level 4
@@ -100,61 +100,63 @@ public class IOMonitor2 {
   public static long DCP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_ns = 0; // level 4
   public static int DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS_count = 0; // level 4
   public static long DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS_ns = 0; // level 4
-  public static int SEARCH_ARRAY_a_verifBPTP_count = 0; // level 4
-  public static long SEARCH_ARRAY_a_verifBPTP_ns = 0; // level 4
+  //  public static int SEARCH_ARRAY_a_verifBPTP_count = 0; // level 4
+  //  public static long SEARCH_ARRAY_a_verifBPTP_ns = 0; // level 4
 
-  public static int SEARCH_ARRAY_b_genFP_count = 0; // level 4
-  public static long SEARCH_ARRAY_b_genFP_ns = 0; // level 4
+  //  public static int SEARCH_ARRAY_b_genFP_count = 0; // level 4
+  //  public static long SEARCH_ARRAY_b_genFP_ns = 0; // level 4
 
-  public static int SEARCH_ARRAY_b_genLP_count = 0; // level 4
-  public static long SEARCH_ARRAY_b_genLP_ns = 0; // level 4
+  //  public static int SEARCH_ARRAY_b_genLP_count = 0; // level 4
+  //  public static long SEARCH_ARRAY_b_genLP_ns = 0; // level 4
 
-  public static int SEARCH_ARRAY_c_genBPTP_count = 0; // level 4
-  public static long SEARCH_ARRAY_c_genBPTP_ns = 0; // level 4
+  //  public static int SEARCH_ARRAY_c_genBPTP_count = 0; // level 4
+  //  public static long SEARCH_ARRAY_c_genBPTP_ns = 0; // level 4
 
   public static long DCP_D_getAllSatisfiedPageData_traversedPointNum = 0; // level 5
   public static long DCP_D_timeIndex_traversedPointNum = 0; // level 5
   public static long DCP_D_valueIndex_traversedPointNum = 0; // level 5
 
-  public static Operation M4_LSM_status =
-      null; // for counting the number of calling BCD by each step of M4-LSM
-  public static int M4_LSM_merge_M4_time_span_B_READ_MEM_CHUNK_cnt = 0; // map from level 3 to 4
-  public static int M4_LSM_merge_M4_time_span_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt =
-      0; // map from level 3 to 4
-  public static int M4_LSM_merge_M4_time_span_SEARCH_ARRAY_a_verifBPTP_cnt =
-      0; // map from level 3 to 4
-  public static int M4_LSM_merge_M4_time_span_SEARCH_ARRAY_b_genFP_cnt = 0; // map from level 3 to 4
-  public static int M4_LSM_merge_M4_time_span_SEARCH_ARRAY_b_genLP_cnt = 0; // map from level 3 to 4
-  public static int M4_LSM_merge_M4_time_span_SEARCH_ARRAY_c_genBPTP_cnt =
-      0; // map from level 3 to 4
-  public static int M4_LSM_FP_B_READ_MEM_CHUNK_cnt = 0; // map from level 3 to 4
-  public static int M4_LSM_FP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt =
-      0; // map from level 3 to 4
-  public static int M4_LSM_FP_SEARCH_ARRAY_a_verifBPTP_cnt = 0; // map from level 3 to 4
-  public static int M4_LSM_FP_SEARCH_ARRAY_b_genFP_cnt = 0; // map from level 3 to 4
-  public static int M4_LSM_FP_SEARCH_ARRAY_b_genLP_cnt = 0; // map from level 3 to 4
-  public static int M4_LSM_FP_SEARCH_ARRAY_c_genBPTP_cnt = 0; // map from level 3 to 4
-  public static int M4_LSM_LP_B_READ_MEM_CHUNK_cnt = 0; // map from level 3 to 4
-  public static int M4_LSM_LP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt =
-      0; // map from level 3 to 4
-  public static int M4_LSM_LP_SEARCH_ARRAY_a_verifBPTP_cnt = 0; // map from level 3 to 4
-  public static int M4_LSM_LP_SEARCH_ARRAY_b_genFP_cnt = 0; // map from level 3 to 4
-  public static int M4_LSM_LP_SEARCH_ARRAY_b_genLP_cnt = 0; // map from level 3 to 4
-  public static int M4_LSM_LP_SEARCH_ARRAY_c_genBPTP_cnt = 0; // map from level 3 to 4
-  public static int M4_LSM_BP_B_READ_MEM_CHUNK_cnt = 0; // map from level 3 to 4
-  public static int M4_LSM_BP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt =
-      0; // map from level 3 to 4
-  public static int M4_LSM_BP_SEARCH_ARRAY_a_verifBPTP_cnt = 0; // map from level 3 to 4
-  public static int M4_LSM_BP_SEARCH_ARRAY_b_genFP_cnt = 0; // map from level 3 to 4
-  public static int M4_LSM_BP_SEARCH_ARRAY_b_genLP_cnt = 0; // map from level 3 to 4
-  public static int M4_LSM_BP_SEARCH_ARRAY_c_genBPTP_cnt = 0; // map from level 3 to 4
-  public static int M4_LSM_TP_B_READ_MEM_CHUNK_cnt = 0; // map from level 3 to 4
-  public static int M4_LSM_TP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt =
-      0; // map from level 3 to 4
-  public static int M4_LSM_TP_SEARCH_ARRAY_a_verifBPTP_cnt = 0; // map from level 3 to 4
-  public static int M4_LSM_TP_SEARCH_ARRAY_b_genFP_cnt = 0; // map from level 3 to 4
-  public static int M4_LSM_TP_SEARCH_ARRAY_b_genLP_cnt = 0; // map from level 3 to 4
-  public static int M4_LSM_TP_SEARCH_ARRAY_c_genBPTP_cnt = 0; // map from level 3 to 4
+  //  public static Operation M4_LSM_status =
+  //      null; // for counting the number of calling BCD by each step of M4-LSM
+  //  public static int M4_LSM_merge_M4_time_span_B_READ_MEM_CHUNK_cnt = 0; // map from level 3 to 4
+  //  public static int M4_LSM_merge_M4_time_span_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt =
+  //      0; // map from level 3 to 4
+  //  public static int M4_LSM_merge_M4_time_span_SEARCH_ARRAY_a_verifBPTP_cnt =
+  //      0; // map from level 3 to 4
+  //  public static int M4_LSM_merge_M4_time_span_SEARCH_ARRAY_b_genFP_cnt = 0; // map from level 3
+  // to 4
+  //  public static int M4_LSM_merge_M4_time_span_SEARCH_ARRAY_b_genLP_cnt = 0; // map from level 3
+  // to 4
+  //  public static int M4_LSM_merge_M4_time_span_SEARCH_ARRAY_c_genBPTP_cnt =
+  //      0; // map from level 3 to 4
+  //  public static int M4_LSM_FP_B_READ_MEM_CHUNK_cnt = 0; // map from level 3 to 4
+  //  public static int M4_LSM_FP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt =
+  //      0; // map from level 3 to 4
+  //  public static int M4_LSM_FP_SEARCH_ARRAY_a_verifBPTP_cnt = 0; // map from level 3 to 4
+  //  public static int M4_LSM_FP_SEARCH_ARRAY_b_genFP_cnt = 0; // map from level 3 to 4
+  //  public static int M4_LSM_FP_SEARCH_ARRAY_b_genLP_cnt = 0; // map from level 3 to 4
+  //  public static int M4_LSM_FP_SEARCH_ARRAY_c_genBPTP_cnt = 0; // map from level 3 to 4
+  //  public static int M4_LSM_LP_B_READ_MEM_CHUNK_cnt = 0; // map from level 3 to 4
+  //  public static int M4_LSM_LP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt =
+  //      0; // map from level 3 to 4
+  //  public static int M4_LSM_LP_SEARCH_ARRAY_a_verifBPTP_cnt = 0; // map from level 3 to 4
+  //  public static int M4_LSM_LP_SEARCH_ARRAY_b_genFP_cnt = 0; // map from level 3 to 4
+  //  public static int M4_LSM_LP_SEARCH_ARRAY_b_genLP_cnt = 0; // map from level 3 to 4
+  //  public static int M4_LSM_LP_SEARCH_ARRAY_c_genBPTP_cnt = 0; // map from level 3 to 4
+  //  public static int M4_LSM_BP_B_READ_MEM_CHUNK_cnt = 0; // map from level 3 to 4
+  //  public static int M4_LSM_BP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt =
+  //      0; // map from level 3 to 4
+  //  public static int M4_LSM_BP_SEARCH_ARRAY_a_verifBPTP_cnt = 0; // map from level 3 to 4
+  //  public static int M4_LSM_BP_SEARCH_ARRAY_b_genFP_cnt = 0; // map from level 3 to 4
+  //  public static int M4_LSM_BP_SEARCH_ARRAY_b_genLP_cnt = 0; // map from level 3 to 4
+  //  public static int M4_LSM_BP_SEARCH_ARRAY_c_genBPTP_cnt = 0; // map from level 3 to 4
+  //  public static int M4_LSM_TP_B_READ_MEM_CHUNK_cnt = 0; // map from level 3 to 4
+  //  public static int M4_LSM_TP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt =
+  //      0; // map from level 3 to 4
+  //  public static int M4_LSM_TP_SEARCH_ARRAY_a_verifBPTP_cnt = 0; // map from level 3 to 4
+  //  public static int M4_LSM_TP_SEARCH_ARRAY_b_genFP_cnt = 0; // map from level 3 to 4
+  //  public static int M4_LSM_TP_SEARCH_ARRAY_b_genLP_cnt = 0; // map from level 3 to 4
+  //  public static int M4_LSM_TP_SEARCH_ARRAY_c_genBPTP_cnt = 0; // map from level 3 to 4
 
   private static void reset() {
     // level 1 is client elapsed time, not measured by the server side
@@ -168,23 +170,23 @@ public class IOMonitor2 {
     /** level 3 */
     dataSetType = DataSetType.NONE;
 
-    M4_LSM_init_loadAllChunkMetadatas_count = 0;
-    M4_LSM_init_loadAllChunkMetadatas_ns = 0;
-
-    M4_LSM_merge_M4_time_span_count = 0;
-    M4_LSM_merge_M4_time_span_ns = 0;
-
-    M4_LSM_FP_count = 0;
-    M4_LSM_FP_ns = 0;
-
-    M4_LSM_LP_count = 0;
-    M4_LSM_LP_ns = 0;
-
-    M4_LSM_BP_count = 0;
-    M4_LSM_BP_ns = 0;
-
-    M4_LSM_TP_count = 0;
-    M4_LSM_TP_ns = 0;
+    //    M4_LSM_init_loadAllChunkMetadatas_count = 0;
+    //    M4_LSM_init_loadAllChunkMetadatas_ns = 0;
+    //
+    //    M4_LSM_merge_M4_time_span_count = 0;
+    //    M4_LSM_merge_M4_time_span_ns = 0;
+    //
+    //    M4_LSM_FP_count = 0;
+    //    M4_LSM_FP_ns = 0;
+    //
+    //    M4_LSM_LP_count = 0;
+    //    M4_LSM_LP_ns = 0;
+    //
+    //    M4_LSM_BP_count = 0;
+    //    M4_LSM_BP_ns = 0;
+    //
+    //    M4_LSM_TP_count = 0;
+    //    M4_LSM_TP_ns = 0;
 
     /** level 4 */
     DCP_A_GET_CHUNK_METADATAS_count = 0;
@@ -199,57 +201,57 @@ public class IOMonitor2 {
     DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS_count = 0;
     DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS_ns = 0;
 
-    SEARCH_ARRAY_a_verifBPTP_count = 0;
-    SEARCH_ARRAY_a_verifBPTP_ns = 0;
-    SEARCH_ARRAY_b_genFP_count = 0;
-    SEARCH_ARRAY_b_genFP_ns = 0;
-    SEARCH_ARRAY_b_genLP_count = 0;
-    SEARCH_ARRAY_b_genLP_ns = 0;
-    SEARCH_ARRAY_c_genBPTP_count = 0;
-    SEARCH_ARRAY_c_genBPTP_ns = 0;
+    //    SEARCH_ARRAY_a_verifBPTP_count = 0;
+    //    SEARCH_ARRAY_a_verifBPTP_ns = 0;
+    //    SEARCH_ARRAY_b_genFP_count = 0;
+    //    SEARCH_ARRAY_b_genFP_ns = 0;
+    //    SEARCH_ARRAY_b_genLP_count = 0;
+    //    SEARCH_ARRAY_b_genLP_ns = 0;
+    //    SEARCH_ARRAY_c_genBPTP_count = 0;
+    //    SEARCH_ARRAY_c_genBPTP_ns = 0;
 
     /** level 5 */
     DCP_D_getAllSatisfiedPageData_traversedPointNum = 0;
     DCP_D_timeIndex_traversedPointNum = 0;
     DCP_D_valueIndex_traversedPointNum = 0;
 
-    /** map from level 3 to level 4 */
-    M4_LSM_status = null;
-    M4_LSM_merge_M4_time_span_B_READ_MEM_CHUNK_cnt =
-        0; // for counting the number of calling BCD by each step of M4-LSM
-    M4_LSM_merge_M4_time_span_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt = 0;
-    M4_LSM_merge_M4_time_span_SEARCH_ARRAY_a_verifBPTP_cnt = 0;
-    M4_LSM_merge_M4_time_span_SEARCH_ARRAY_b_genFP_cnt = 0;
-    M4_LSM_merge_M4_time_span_SEARCH_ARRAY_b_genLP_cnt = 0;
-    M4_LSM_merge_M4_time_span_SEARCH_ARRAY_c_genBPTP_cnt = 0;
-    M4_LSM_FP_B_READ_MEM_CHUNK_cnt =
-        0; // for counting the number of calling BCD by each step of M4-LSM
-    M4_LSM_FP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt = 0;
-    M4_LSM_FP_SEARCH_ARRAY_a_verifBPTP_cnt = 0;
-    M4_LSM_FP_SEARCH_ARRAY_b_genFP_cnt = 0;
-    M4_LSM_FP_SEARCH_ARRAY_b_genLP_cnt = 0;
-    M4_LSM_FP_SEARCH_ARRAY_c_genBPTP_cnt = 0;
-    M4_LSM_LP_B_READ_MEM_CHUNK_cnt =
-        0; // for counting the number of calling BCD by each step of M4-LSM
-    M4_LSM_LP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt = 0;
-    M4_LSM_LP_SEARCH_ARRAY_a_verifBPTP_cnt = 0;
-    M4_LSM_LP_SEARCH_ARRAY_b_genFP_cnt = 0;
-    M4_LSM_LP_SEARCH_ARRAY_b_genLP_cnt = 0;
-    M4_LSM_LP_SEARCH_ARRAY_c_genBPTP_cnt = 0;
-    M4_LSM_BP_B_READ_MEM_CHUNK_cnt =
-        0; // for counting the number of calling BCD by each step of M4-LSM
-    M4_LSM_BP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt = 0;
-    M4_LSM_BP_SEARCH_ARRAY_a_verifBPTP_cnt = 0;
-    M4_LSM_BP_SEARCH_ARRAY_b_genFP_cnt = 0;
-    M4_LSM_BP_SEARCH_ARRAY_b_genLP_cnt = 0;
-    M4_LSM_BP_SEARCH_ARRAY_c_genBPTP_cnt = 0;
-    M4_LSM_TP_B_READ_MEM_CHUNK_cnt =
-        0; // for counting the number of calling BCD by each step of M4-LSM
-    M4_LSM_TP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt = 0;
-    M4_LSM_TP_SEARCH_ARRAY_a_verifBPTP_cnt = 0;
-    M4_LSM_TP_SEARCH_ARRAY_b_genFP_cnt = 0;
-    M4_LSM_TP_SEARCH_ARRAY_b_genLP_cnt = 0;
-    M4_LSM_TP_SEARCH_ARRAY_c_genBPTP_cnt = 0;
+    //    /** map from level 3 to level 4 */
+    //    M4_LSM_status = null;
+    //    M4_LSM_merge_M4_time_span_B_READ_MEM_CHUNK_cnt =
+    //        0; // for counting the number of calling BCD by each step of M4-LSM
+    //    M4_LSM_merge_M4_time_span_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt = 0;
+    //    M4_LSM_merge_M4_time_span_SEARCH_ARRAY_a_verifBPTP_cnt = 0;
+    //    M4_LSM_merge_M4_time_span_SEARCH_ARRAY_b_genFP_cnt = 0;
+    //    M4_LSM_merge_M4_time_span_SEARCH_ARRAY_b_genLP_cnt = 0;
+    //    M4_LSM_merge_M4_time_span_SEARCH_ARRAY_c_genBPTP_cnt = 0;
+    //    M4_LSM_FP_B_READ_MEM_CHUNK_cnt =
+    //        0; // for counting the number of calling BCD by each step of M4-LSM
+    //    M4_LSM_FP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt = 0;
+    //    M4_LSM_FP_SEARCH_ARRAY_a_verifBPTP_cnt = 0;
+    //    M4_LSM_FP_SEARCH_ARRAY_b_genFP_cnt = 0;
+    //    M4_LSM_FP_SEARCH_ARRAY_b_genLP_cnt = 0;
+    //    M4_LSM_FP_SEARCH_ARRAY_c_genBPTP_cnt = 0;
+    //    M4_LSM_LP_B_READ_MEM_CHUNK_cnt =
+    //        0; // for counting the number of calling BCD by each step of M4-LSM
+    //    M4_LSM_LP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt = 0;
+    //    M4_LSM_LP_SEARCH_ARRAY_a_verifBPTP_cnt = 0;
+    //    M4_LSM_LP_SEARCH_ARRAY_b_genFP_cnt = 0;
+    //    M4_LSM_LP_SEARCH_ARRAY_b_genLP_cnt = 0;
+    //    M4_LSM_LP_SEARCH_ARRAY_c_genBPTP_cnt = 0;
+    //    M4_LSM_BP_B_READ_MEM_CHUNK_cnt =
+    //        0; // for counting the number of calling BCD by each step of M4-LSM
+    //    M4_LSM_BP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt = 0;
+    //    M4_LSM_BP_SEARCH_ARRAY_a_verifBPTP_cnt = 0;
+    //    M4_LSM_BP_SEARCH_ARRAY_b_genFP_cnt = 0;
+    //    M4_LSM_BP_SEARCH_ARRAY_b_genLP_cnt = 0;
+    //    M4_LSM_BP_SEARCH_ARRAY_c_genBPTP_cnt = 0;
+    //    M4_LSM_TP_B_READ_MEM_CHUNK_cnt =
+    //        0; // for counting the number of calling BCD by each step of M4-LSM
+    //    M4_LSM_TP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt = 0;
+    //    M4_LSM_TP_SEARCH_ARRAY_a_verifBPTP_cnt = 0;
+    //    M4_LSM_TP_SEARCH_ARRAY_b_genFP_cnt = 0;
+    //    M4_LSM_TP_SEARCH_ARRAY_b_genLP_cnt = 0;
+    //    M4_LSM_TP_SEARCH_ARRAY_c_genBPTP_cnt = 0;
   }
 
   public static void addMeasure(Operation operation, long elapsedTimeInNanosecond) {
@@ -262,30 +264,30 @@ public class IOMonitor2 {
         DCP_Server_Query_Fetch_count++;
         DCP_Server_Query_Fetch_ns += elapsedTimeInNanosecond;
         break;
-      case M4_LSM_INIT_LOAD_ALL_CHUNKMETADATAS:
-        M4_LSM_init_loadAllChunkMetadatas_count++;
-        M4_LSM_init_loadAllChunkMetadatas_ns += elapsedTimeInNanosecond;
-        break;
-      case M4_LSM_MERGE_M4_TIME_SPAN:
-        M4_LSM_merge_M4_time_span_count++;
-        M4_LSM_merge_M4_time_span_ns += elapsedTimeInNanosecond;
-        break;
-      case M4_LSM_FP:
-        M4_LSM_FP_count++;
-        M4_LSM_FP_ns += elapsedTimeInNanosecond;
-        break;
-      case M4_LSM_LP:
-        M4_LSM_LP_count++;
-        M4_LSM_LP_ns += elapsedTimeInNanosecond;
-        break;
-      case M4_LSM_BP:
-        M4_LSM_BP_count++;
-        M4_LSM_BP_ns += elapsedTimeInNanosecond;
-        break;
-      case M4_LSM_TP:
-        M4_LSM_TP_count++;
-        M4_LSM_TP_ns += elapsedTimeInNanosecond;
-        break;
+        //      case M4_LSM_INIT_LOAD_ALL_CHUNKMETADATAS:
+        //        M4_LSM_init_loadAllChunkMetadatas_count++;
+        //        M4_LSM_init_loadAllChunkMetadatas_ns += elapsedTimeInNanosecond;
+        //        break;
+        //      case M4_LSM_MERGE_M4_TIME_SPAN:
+        //        M4_LSM_merge_M4_time_span_count++;
+        //        M4_LSM_merge_M4_time_span_ns += elapsedTimeInNanosecond;
+        //        break;
+        //      case M4_LSM_FP:
+        //        M4_LSM_FP_count++;
+        //        M4_LSM_FP_ns += elapsedTimeInNanosecond;
+        //        break;
+        //      case M4_LSM_LP:
+        //        M4_LSM_LP_count++;
+        //        M4_LSM_LP_ns += elapsedTimeInNanosecond;
+        //        break;
+        //      case M4_LSM_BP:
+        //        M4_LSM_BP_count++;
+        //        M4_LSM_BP_ns += elapsedTimeInNanosecond;
+        //        break;
+        //      case M4_LSM_TP:
+        //        M4_LSM_TP_count++;
+        //        M4_LSM_TP_ns += elapsedTimeInNanosecond;
+        //        break;
       case DCP_A_GET_CHUNK_METADATAS:
         DCP_A_GET_CHUNK_METADATAS_count++;
         DCP_A_GET_CHUNK_METADATAS_ns += elapsedTimeInNanosecond;
@@ -293,166 +295,168 @@ public class IOMonitor2 {
       case DCP_B_READ_MEM_CHUNK:
         DCP_B_READ_MEM_CHUNK_count++;
         DCP_B_READ_MEM_CHUNK_ns += elapsedTimeInNanosecond;
-        if (M4_LSM_status != null) {
-          switch (M4_LSM_status) {
-            case M4_LSM_MERGE_M4_TIME_SPAN:
-              M4_LSM_merge_M4_time_span_B_READ_MEM_CHUNK_cnt++;
-              break;
-            case M4_LSM_FP:
-              M4_LSM_FP_B_READ_MEM_CHUNK_cnt++;
-              break;
-            case M4_LSM_LP:
-              M4_LSM_LP_B_READ_MEM_CHUNK_cnt++;
-              break;
-            case M4_LSM_BP:
-              M4_LSM_BP_B_READ_MEM_CHUNK_cnt++;
-              break;
-            case M4_LSM_TP:
-              M4_LSM_TP_B_READ_MEM_CHUNK_cnt++;
-              break;
-            default:
-              System.out.println("unsupported M4_LSM_status!");
-              break;
-          }
-        }
+        //        if (M4_LSM_status != null) {
+        //          switch (M4_LSM_status) {
+        //            case M4_LSM_MERGE_M4_TIME_SPAN:
+        //              M4_LSM_merge_M4_time_span_B_READ_MEM_CHUNK_cnt++;
+        //              break;
+        //            case M4_LSM_FP:
+        //              M4_LSM_FP_B_READ_MEM_CHUNK_cnt++;
+        //              break;
+        //            case M4_LSM_LP:
+        //              M4_LSM_LP_B_READ_MEM_CHUNK_cnt++;
+        //              break;
+        //            case M4_LSM_BP:
+        //              M4_LSM_BP_B_READ_MEM_CHUNK_cnt++;
+        //              break;
+        //            case M4_LSM_TP:
+        //              M4_LSM_TP_B_READ_MEM_CHUNK_cnt++;
+        //              break;
+        //            default:
+        //              System.out.println("unsupported M4_LSM_status!");
+        //              break;
+        //          }
+        //        }
         break;
       case DCP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA:
         DCP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_count++;
         DCP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_ns += elapsedTimeInNanosecond;
-        if (M4_LSM_status != null) {
-          // this actually can be omitted because the number is equal to B as chunk = page in this
-          // case
-          switch (M4_LSM_status) {
-            case M4_LSM_MERGE_M4_TIME_SPAN:
-              M4_LSM_merge_M4_time_span_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt++;
-              break;
-            case M4_LSM_FP:
-              M4_LSM_FP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt++;
-              break;
-            case M4_LSM_LP:
-              M4_LSM_LP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt++;
-              break;
-            case M4_LSM_BP:
-              M4_LSM_BP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt++;
-              break;
-            case M4_LSM_TP:
-              M4_LSM_TP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt++;
-              break;
-            default:
-              System.out.println("unsupported M4_LSM_status!");
-              break;
-          }
-        }
+        //        if (M4_LSM_status != null) {
+        //          // this actually can be omitted because the number is equal to B as chunk = page
+        // in this
+        //          // case
+        //          switch (M4_LSM_status) {
+        //            case M4_LSM_MERGE_M4_TIME_SPAN:
+        //
+        // M4_LSM_merge_M4_time_span_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt++;
+        //              break;
+        //            case M4_LSM_FP:
+        //              M4_LSM_FP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt++;
+        //              break;
+        //            case M4_LSM_LP:
+        //              M4_LSM_LP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt++;
+        //              break;
+        //            case M4_LSM_BP:
+        //              M4_LSM_BP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt++;
+        //              break;
+        //            case M4_LSM_TP:
+        //              M4_LSM_TP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt++;
+        //              break;
+        //            default:
+        //              System.out.println("unsupported M4_LSM_status!");
+        //              break;
+        //          }
+        //        }
         break;
       case DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS:
         DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS_count++;
         DCP_D_DECODE_PAGEDATA_TRAVERSE_POINTS_ns += elapsedTimeInNanosecond;
         // M4-LSM will not use this op
         break;
-      case SEARCH_ARRAY_a_verifBPTP:
-        SEARCH_ARRAY_a_verifBPTP_count++;
-        SEARCH_ARRAY_a_verifBPTP_ns += elapsedTimeInNanosecond;
-        if (M4_LSM_status != null) {
-          switch (M4_LSM_status) {
-            case M4_LSM_MERGE_M4_TIME_SPAN:
-              M4_LSM_merge_M4_time_span_SEARCH_ARRAY_a_verifBPTP_cnt++;
-              break;
-            case M4_LSM_FP:
-              M4_LSM_FP_SEARCH_ARRAY_a_verifBPTP_cnt++;
-              break;
-            case M4_LSM_LP:
-              M4_LSM_LP_SEARCH_ARRAY_a_verifBPTP_cnt++;
-              break;
-            case M4_LSM_BP:
-              M4_LSM_BP_SEARCH_ARRAY_a_verifBPTP_cnt++;
-              break;
-            case M4_LSM_TP:
-              M4_LSM_TP_SEARCH_ARRAY_a_verifBPTP_cnt++;
-              break;
-            default:
-              System.out.println("unsupported M4_LSM_status!");
-              break;
-          }
-        }
-        break;
-      case SEARCH_ARRAY_b_genFP:
-        SEARCH_ARRAY_b_genFP_count++;
-        SEARCH_ARRAY_b_genFP_ns += elapsedTimeInNanosecond;
-        if (M4_LSM_status != null) {
-          switch (M4_LSM_status) {
-            case M4_LSM_MERGE_M4_TIME_SPAN:
-              M4_LSM_merge_M4_time_span_SEARCH_ARRAY_b_genFP_cnt++;
-              break;
-            case M4_LSM_FP:
-              M4_LSM_FP_SEARCH_ARRAY_b_genFP_cnt++;
-              break;
-            case M4_LSM_LP:
-              M4_LSM_LP_SEARCH_ARRAY_b_genFP_cnt++;
-              break;
-            case M4_LSM_BP:
-              M4_LSM_BP_SEARCH_ARRAY_b_genFP_cnt++;
-              break;
-            case M4_LSM_TP:
-              M4_LSM_TP_SEARCH_ARRAY_b_genFP_cnt++;
-              break;
-            default:
-              System.out.println("unsupported M4_LSM_status!");
-              break;
-          }
-        }
-        break;
-      case SEARCH_ARRAY_b_genLP:
-        SEARCH_ARRAY_b_genLP_count++;
-        SEARCH_ARRAY_b_genLP_ns += elapsedTimeInNanosecond;
-        if (M4_LSM_status != null) {
-          switch (M4_LSM_status) {
-            case M4_LSM_MERGE_M4_TIME_SPAN:
-              M4_LSM_merge_M4_time_span_SEARCH_ARRAY_b_genLP_cnt++;
-              break;
-            case M4_LSM_FP:
-              M4_LSM_FP_SEARCH_ARRAY_b_genLP_cnt++;
-              break;
-            case M4_LSM_LP:
-              M4_LSM_LP_SEARCH_ARRAY_b_genLP_cnt++;
-              break;
-            case M4_LSM_BP:
-              M4_LSM_BP_SEARCH_ARRAY_b_genLP_cnt++;
-              break;
-            case M4_LSM_TP:
-              M4_LSM_TP_SEARCH_ARRAY_b_genLP_cnt++;
-              break;
-            default:
-              System.out.println("unsupported M4_LSM_status!");
-              break;
-          }
-        }
-        break;
-      case SEARCH_ARRAY_c_genBPTP:
-        SEARCH_ARRAY_c_genBPTP_count++;
-        SEARCH_ARRAY_c_genBPTP_ns += elapsedTimeInNanosecond;
-        if (M4_LSM_status != null) {
-          switch (M4_LSM_status) {
-            case M4_LSM_MERGE_M4_TIME_SPAN:
-              M4_LSM_merge_M4_time_span_SEARCH_ARRAY_c_genBPTP_cnt++;
-              break;
-            case M4_LSM_FP:
-              M4_LSM_FP_SEARCH_ARRAY_c_genBPTP_cnt++;
-              break;
-            case M4_LSM_LP:
-              M4_LSM_LP_SEARCH_ARRAY_c_genBPTP_cnt++;
-              break;
-            case M4_LSM_BP:
-              M4_LSM_BP_SEARCH_ARRAY_c_genBPTP_cnt++;
-              break;
-            case M4_LSM_TP:
-              M4_LSM_TP_SEARCH_ARRAY_c_genBPTP_cnt++;
-              break;
-            default:
-              System.out.println("unsupported M4_LSM_status!");
-              break;
-          }
-        }
-        break;
+        //      case SEARCH_ARRAY_a_verifBPTP:
+        //        SEARCH_ARRAY_a_verifBPTP_count++;
+        //        SEARCH_ARRAY_a_verifBPTP_ns += elapsedTimeInNanosecond;
+        //        if (M4_LSM_status != null) {
+        //          switch (M4_LSM_status) {
+        //            case M4_LSM_MERGE_M4_TIME_SPAN:
+        //              M4_LSM_merge_M4_time_span_SEARCH_ARRAY_a_verifBPTP_cnt++;
+        //              break;
+        //            case M4_LSM_FP:
+        //              M4_LSM_FP_SEARCH_ARRAY_a_verifBPTP_cnt++;
+        //              break;
+        //            case M4_LSM_LP:
+        //              M4_LSM_LP_SEARCH_ARRAY_a_verifBPTP_cnt++;
+        //              break;
+        //            case M4_LSM_BP:
+        //              M4_LSM_BP_SEARCH_ARRAY_a_verifBPTP_cnt++;
+        //              break;
+        //            case M4_LSM_TP:
+        //              M4_LSM_TP_SEARCH_ARRAY_a_verifBPTP_cnt++;
+        //              break;
+        //            default:
+        //              System.out.println("unsupported M4_LSM_status!");
+        //              break;
+        //          }
+        //        }
+        //        break;
+        //      case SEARCH_ARRAY_b_genFP:
+        //        SEARCH_ARRAY_b_genFP_count++;
+        //        SEARCH_ARRAY_b_genFP_ns += elapsedTimeInNanosecond;
+        //        if (M4_LSM_status != null) {
+        //          switch (M4_LSM_status) {
+        //            case M4_LSM_MERGE_M4_TIME_SPAN:
+        //              M4_LSM_merge_M4_time_span_SEARCH_ARRAY_b_genFP_cnt++;
+        //              break;
+        //            case M4_LSM_FP:
+        //              M4_LSM_FP_SEARCH_ARRAY_b_genFP_cnt++;
+        //              break;
+        //            case M4_LSM_LP:
+        //              M4_LSM_LP_SEARCH_ARRAY_b_genFP_cnt++;
+        //              break;
+        //            case M4_LSM_BP:
+        //              M4_LSM_BP_SEARCH_ARRAY_b_genFP_cnt++;
+        //              break;
+        //            case M4_LSM_TP:
+        //              M4_LSM_TP_SEARCH_ARRAY_b_genFP_cnt++;
+        //              break;
+        //            default:
+        //              System.out.println("unsupported M4_LSM_status!");
+        //              break;
+        //          }
+        //        }
+        //        break;
+        //      case SEARCH_ARRAY_b_genLP:
+        //        SEARCH_ARRAY_b_genLP_count++;
+        //        SEARCH_ARRAY_b_genLP_ns += elapsedTimeInNanosecond;
+        //        if (M4_LSM_status != null) {
+        //          switch (M4_LSM_status) {
+        //            case M4_LSM_MERGE_M4_TIME_SPAN:
+        //              M4_LSM_merge_M4_time_span_SEARCH_ARRAY_b_genLP_cnt++;
+        //              break;
+        //            case M4_LSM_FP:
+        //              M4_LSM_FP_SEARCH_ARRAY_b_genLP_cnt++;
+        //              break;
+        //            case M4_LSM_LP:
+        //              M4_LSM_LP_SEARCH_ARRAY_b_genLP_cnt++;
+        //              break;
+        //            case M4_LSM_BP:
+        //              M4_LSM_BP_SEARCH_ARRAY_b_genLP_cnt++;
+        //              break;
+        //            case M4_LSM_TP:
+        //              M4_LSM_TP_SEARCH_ARRAY_b_genLP_cnt++;
+        //              break;
+        //            default:
+        //              System.out.println("unsupported M4_LSM_status!");
+        //              break;
+        //          }
+        //        }
+        //        break;
+        //      case SEARCH_ARRAY_c_genBPTP:
+        //        SEARCH_ARRAY_c_genBPTP_count++;
+        //        SEARCH_ARRAY_c_genBPTP_ns += elapsedTimeInNanosecond;
+        //        if (M4_LSM_status != null) {
+        //          switch (M4_LSM_status) {
+        //            case M4_LSM_MERGE_M4_TIME_SPAN:
+        //              M4_LSM_merge_M4_time_span_SEARCH_ARRAY_c_genBPTP_cnt++;
+        //              break;
+        //            case M4_LSM_FP:
+        //              M4_LSM_FP_SEARCH_ARRAY_c_genBPTP_cnt++;
+        //              break;
+        //            case M4_LSM_LP:
+        //              M4_LSM_LP_SEARCH_ARRAY_c_genBPTP_cnt++;
+        //              break;
+        //            case M4_LSM_BP:
+        //              M4_LSM_BP_SEARCH_ARRAY_c_genBPTP_cnt++;
+        //              break;
+        //            case M4_LSM_TP:
+        //              M4_LSM_TP_SEARCH_ARRAY_c_genBPTP_cnt++;
+        //              break;
+        //            default:
+        //              System.out.println("unsupported M4_LSM_status!");
+        //              break;
+        //          }
+        //        }
+        //        break;
       default:
         System.out.println("not supported operation type"); // this will not happen
         break;
@@ -476,18 +480,34 @@ public class IOMonitor2 {
     stringBuilder.append("[3]dataSetType").append(",").append(dataSetType).append("\n");
     stringBuilder
         .append("[3-ns]M4_LSM_init_loadAllChunkMetadatas")
-        .append(",")
-        .append(M4_LSM_init_loadAllChunkMetadatas_ns)
+        .append(",0")
+        //        .append(M4_LSM_init_loadAllChunkMetadatas_ns)
         .append("\n");
     stringBuilder
         .append("[3-ns]M4_LSM_merge_M4_time_span")
-        .append(",")
-        .append(M4_LSM_merge_M4_time_span_ns)
+        .append(",0")
+        //        .append(M4_LSM_merge_M4_time_span_ns)
         .append("\n");
-    stringBuilder.append("[3-ns]M4_LSM_FP").append(",").append(M4_LSM_FP_ns).append("\n");
-    stringBuilder.append("[3-ns]M4_LSM_LP").append(",").append(M4_LSM_LP_ns).append("\n");
-    stringBuilder.append("[3-ns]M4_LSM_BP").append(",").append(M4_LSM_BP_ns).append("\n");
-    stringBuilder.append("[3-ns]M4_LSM_TP").append(",").append(M4_LSM_TP_ns).append("\n");
+    stringBuilder
+        .append("[3-ns]M4_LSM_FP")
+        .append(",0")
+        //        .append(M4_LSM_FP_ns)
+        .append("\n");
+    stringBuilder
+        .append("[3-ns]M4_LSM_LP")
+        .append(",0")
+        //        .append(M4_LSM_LP_ns)
+        .append("\n");
+    stringBuilder
+        .append("[3-ns]M4_LSM_BP")
+        .append(",0")
+        //        .append(M4_LSM_BP_ns)
+        .append("\n");
+    stringBuilder
+        .append("[3-ns]M4_LSM_TP")
+        .append(",0")
+        //        .append(M4_LSM_TP_ns)
+        .append("\n");
 
     stringBuilder
         .append("[4-ns]DCP_A_GET_CHUNK_METADATAS")
@@ -511,23 +531,23 @@ public class IOMonitor2 {
         .append("\n");
     stringBuilder
         .append("[4-ns]SEARCH_ARRAY_a_verifBPTP")
-        .append(",")
-        .append(SEARCH_ARRAY_a_verifBPTP_ns)
+        .append(",0")
+        //        .append(SEARCH_ARRAY_a_verifBPTP_ns)
         .append("\n");
     stringBuilder
         .append("[4-ns]SEARCH_ARRAY_b_genFP")
-        .append(",")
-        .append(SEARCH_ARRAY_b_genFP_ns)
+        .append(",0")
+        //        .append(SEARCH_ARRAY_b_genFP_ns)
         .append("\n");
     stringBuilder
         .append("[4-ns]SEARCH_ARRAY_b_genLP")
-        .append(",")
-        .append(SEARCH_ARRAY_b_genLP_ns)
+        .append(",0")
+        //        .append(SEARCH_ARRAY_b_genLP_ns)
         .append("\n");
     stringBuilder
         .append("[4-ns]SEARCH_ARRAY_c_genBPTP")
-        .append(",")
-        .append(SEARCH_ARRAY_c_genBPTP_ns)
+        .append(",0")
+        //        .append(SEARCH_ARRAY_c_genBPTP_ns)
         .append("\n");
 
     stringBuilder
@@ -543,18 +563,34 @@ public class IOMonitor2 {
 
     stringBuilder
         .append("[3-cnt]M4_LSM_init_loadAllChunkMetadatas")
-        .append(",")
-        .append(M4_LSM_init_loadAllChunkMetadatas_count)
+        .append(",0")
+        //        .append(M4_LSM_init_loadAllChunkMetadatas_count)
         .append("\n");
     stringBuilder
         .append("[3-cnt]M4_LSM_merge_M4_time_span")
-        .append(",")
-        .append(M4_LSM_merge_M4_time_span_count)
+        .append(",0")
+        //        .append(M4_LSM_merge_M4_time_span_count)
         .append("\n");
-    stringBuilder.append("[3-cnt]M4_LSM_FP").append(",").append(M4_LSM_FP_count).append("\n");
-    stringBuilder.append("[3-cnt]M4_LSM_LP").append(",").append(M4_LSM_LP_count).append("\n");
-    stringBuilder.append("[3-cnt]M4_LSM_BP").append(",").append(M4_LSM_BP_count).append("\n");
-    stringBuilder.append("[3-cnt]M4_LSM_TP").append(",").append(M4_LSM_TP_count).append("\n");
+    stringBuilder
+        .append("[3-cnt]M4_LSM_FP")
+        .append(",0")
+        //        .append(M4_LSM_FP_count)
+        .append("\n");
+    stringBuilder
+        .append("[3-cnt]M4_LSM_LP")
+        .append(",0")
+        //        .append(M4_LSM_LP_count)
+        .append("\n");
+    stringBuilder
+        .append("[3-cnt]M4_LSM_BP")
+        .append(",0")
+        //        .append(M4_LSM_BP_count)
+        .append("\n");
+    stringBuilder
+        .append("[3-cnt]M4_LSM_TP")
+        .append(",0")
+        //        .append(M4_LSM_TP_count)
+        .append("\n");
 
     stringBuilder
         .append("[4-cnt]DCP_A_GET_CHUNK_METADATAS")
@@ -578,23 +614,23 @@ public class IOMonitor2 {
         .append("\n");
     stringBuilder
         .append("[4-cnt]SEARCH_ARRAY_a_verifBPTP")
-        .append(",")
-        .append(SEARCH_ARRAY_a_verifBPTP_count)
+        .append(",0")
+        //        .append(SEARCH_ARRAY_a_verifBPTP_count)
         .append("\n");
     stringBuilder
         .append("[4-cnt]SEARCH_ARRAY_b_genFP")
-        .append(",")
-        .append(SEARCH_ARRAY_b_genFP_count)
+        .append(",0")
+        //        .append(SEARCH_ARRAY_b_genFP_count)
         .append("\n");
     stringBuilder
         .append("[4-cnt]SEARCH_ARRAY_b_genLP")
-        .append(",")
-        .append(SEARCH_ARRAY_b_genLP_count)
+        .append(",0")
+        //        .append(SEARCH_ARRAY_b_genLP_count)
         .append("\n");
     stringBuilder
         .append("[4-cnt]SEARCH_ARRAY_c_genBPTP")
-        .append(",")
-        .append(SEARCH_ARRAY_c_genBPTP_count)
+        .append(",0")
+        //        .append(SEARCH_ARRAY_c_genBPTP_count)
         .append("\n");
     stringBuilder
         .append("[5-cnt]DCP_D_getAllSatisfiedPageData_traversedPointNum")
@@ -614,157 +650,158 @@ public class IOMonitor2 {
 
     stringBuilder
         .append("[3-4]M4_LSM_merge_M4_time_span_B_READ_MEM_CHUNK_cnt")
-        .append(",")
-        .append(M4_LSM_merge_M4_time_span_B_READ_MEM_CHUNK_cnt)
+        .append(",0")
+        //        .append(M4_LSM_merge_M4_time_span_B_READ_MEM_CHUNK_cnt)
         .append("\n"); // 5*6
     stringBuilder
         .append("[3-4]M4_LSM_merge_M4_time_span_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt")
-        .append(",")
-        .append(M4_LSM_merge_M4_time_span_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt)
+        .append(",0")
+        //
+        // .append(M4_LSM_merge_M4_time_span_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt)
         .append("\n");
     stringBuilder
         .append("[3-4]M4_LSM_merge_M4_time_span_SEARCH_ARRAY_a_verifBPTP_cnt")
-        .append(",")
-        .append(M4_LSM_merge_M4_time_span_SEARCH_ARRAY_a_verifBPTP_cnt)
+        .append(",0")
+        //        .append(M4_LSM_merge_M4_time_span_SEARCH_ARRAY_a_verifBPTP_cnt)
         .append("\n");
     stringBuilder
         .append("[3-4]M4_LSM_merge_M4_time_span_SEARCH_ARRAY_b_genFP_cnt")
-        .append(",")
-        .append(M4_LSM_merge_M4_time_span_SEARCH_ARRAY_b_genFP_cnt)
+        .append(",0")
+        //        .append(M4_LSM_merge_M4_time_span_SEARCH_ARRAY_b_genFP_cnt)
         .append("\n");
     stringBuilder
         .append("[3-4]M4_LSM_merge_M4_time_span_SEARCH_ARRAY_b_genLP_cnt")
-        .append(",")
-        .append(M4_LSM_merge_M4_time_span_SEARCH_ARRAY_b_genLP_cnt)
+        .append(",0")
+        //        .append(M4_LSM_merge_M4_time_span_SEARCH_ARRAY_b_genLP_cnt)
         .append("\n");
     stringBuilder
         .append("[3-4]M4_LSM_merge_M4_time_span_SEARCH_ARRAY_c_genBPTP_cnt")
-        .append(",")
-        .append(M4_LSM_merge_M4_time_span_SEARCH_ARRAY_c_genBPTP_cnt)
+        .append(",0")
+        //        .append(M4_LSM_merge_M4_time_span_SEARCH_ARRAY_c_genBPTP_cnt)
         .append("\n");
 
     stringBuilder
         .append("[3-4]M4_LSM_FP_B_READ_MEM_CHUNK_cnt")
-        .append(",")
-        .append(M4_LSM_FP_B_READ_MEM_CHUNK_cnt)
+        .append(",0")
+        //        .append(M4_LSM_FP_B_READ_MEM_CHUNK_cnt)
         .append("\n"); // 5*6
     stringBuilder
         .append("[3-4]M4_LSM_FP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt")
-        .append(",")
-        .append(M4_LSM_FP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt)
+        .append(",0")
+        //        .append(M4_LSM_FP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt)
         .append("\n");
     stringBuilder
         .append("[3-4]M4_LSM_FP_SEARCH_ARRAY_a_verifBPTP_cnt")
-        .append(",")
-        .append(M4_LSM_FP_SEARCH_ARRAY_a_verifBPTP_cnt)
+        .append(",0")
+        //        .append(M4_LSM_FP_SEARCH_ARRAY_a_verifBPTP_cnt)
         .append("\n");
     stringBuilder
         .append("[3-4]M4_LSM_FP_SEARCH_ARRAY_b_genFP_cnt")
-        .append(",")
-        .append(M4_LSM_FP_SEARCH_ARRAY_b_genFP_cnt)
+        .append(",0")
+        //        .append(M4_LSM_FP_SEARCH_ARRAY_b_genFP_cnt)
         .append("\n");
     stringBuilder
         .append("[3-4]M4_LSM_FP_SEARCH_ARRAY_b_genLP_cnt")
-        .append(",")
-        .append(M4_LSM_FP_SEARCH_ARRAY_b_genLP_cnt)
+        .append(",0")
+        //        .append(M4_LSM_FP_SEARCH_ARRAY_b_genLP_cnt)
         .append("\n");
     stringBuilder
         .append("[3-4]M4_LSM_FP_SEARCH_ARRAY_c_genBPTP_cnt")
-        .append(",")
-        .append(M4_LSM_FP_SEARCH_ARRAY_c_genBPTP_cnt)
+        .append(",0")
+        //        .append(M4_LSM_FP_SEARCH_ARRAY_c_genBPTP_cnt)
         .append("\n");
 
     stringBuilder
         .append("[3-4]M4_LSM_LP_B_READ_MEM_CHUNK_cnt")
-        .append(",")
-        .append(M4_LSM_LP_B_READ_MEM_CHUNK_cnt)
+        .append(",0")
+        //        .append(M4_LSM_LP_B_READ_MEM_CHUNK_cnt)
         .append("\n"); // 5*6
     stringBuilder
         .append("[3-4]M4_LSM_LP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt")
-        .append(",")
-        .append(M4_LSM_LP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt)
+        .append(",0")
+        //        .append(M4_LSM_LP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt)
         .append("\n");
     stringBuilder
         .append("[3-4]M4_LSM_LP_SEARCH_ARRAY_a_verifBPTP_cnt")
-        .append(",")
-        .append(M4_LSM_LP_SEARCH_ARRAY_a_verifBPTP_cnt)
+        .append(",0")
+        //        .append(M4_LSM_LP_SEARCH_ARRAY_a_verifBPTP_cnt)
         .append("\n");
     stringBuilder
         .append("[3-4]M4_LSM_LP_SEARCH_ARRAY_b_genFP_cnt")
-        .append(",")
-        .append(M4_LSM_LP_SEARCH_ARRAY_b_genFP_cnt)
+        .append(",0")
+        //        .append(M4_LSM_LP_SEARCH_ARRAY_b_genFP_cnt)
         .append("\n");
     stringBuilder
         .append("[3-4]M4_LSM_LP_SEARCH_ARRAY_b_genLP_cnt")
-        .append(",")
-        .append(M4_LSM_LP_SEARCH_ARRAY_b_genLP_cnt)
+        .append(",0")
+        //        .append(M4_LSM_LP_SEARCH_ARRAY_b_genLP_cnt)
         .append("\n");
     stringBuilder
         .append("[3-4]M4_LSM_LP_SEARCH_ARRAY_c_genBPTP_cnt")
-        .append(",")
-        .append(M4_LSM_LP_SEARCH_ARRAY_c_genBPTP_cnt)
+        .append(",0")
+        //        .append(M4_LSM_LP_SEARCH_ARRAY_c_genBPTP_cnt)
         .append("\n");
 
     stringBuilder
         .append("[3-4]M4_LSM_BP_B_READ_MEM_CHUNK_cnt")
-        .append(",")
-        .append(M4_LSM_BP_B_READ_MEM_CHUNK_cnt)
+        .append(",0")
+        //        .append(M4_LSM_BP_B_READ_MEM_CHUNK_cnt)
         .append("\n"); // 5*6
     stringBuilder
         .append("[3-4]M4_LSM_BP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt")
-        .append(",")
-        .append(M4_LSM_BP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt)
+        .append(",0")
+        //        .append(M4_LSM_BP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt)
         .append("\n");
     stringBuilder
         .append("[3-4]M4_LSM_BP_SEARCH_ARRAY_a_verifBPTP_cnt")
-        .append(",")
-        .append(M4_LSM_BP_SEARCH_ARRAY_a_verifBPTP_cnt)
+        .append(",0")
+        //        .append(M4_LSM_BP_SEARCH_ARRAY_a_verifBPTP_cnt)
         .append("\n");
     stringBuilder
         .append("[3-4]M4_LSM_BP_SEARCH_ARRAY_b_genFP_cnt")
-        .append(",")
-        .append(M4_LSM_BP_SEARCH_ARRAY_b_genFP_cnt)
+        .append(",0")
+        //        .append(M4_LSM_BP_SEARCH_ARRAY_b_genFP_cnt)
         .append("\n");
     stringBuilder
         .append("[3-4]M4_LSM_BP_SEARCH_ARRAY_b_genLP_cnt")
-        .append(",")
-        .append(M4_LSM_BP_SEARCH_ARRAY_b_genLP_cnt)
+        .append(",0")
+        //        .append(M4_LSM_BP_SEARCH_ARRAY_b_genLP_cnt)
         .append("\n");
     stringBuilder
         .append("[3-4]M4_LSM_BP_SEARCH_ARRAY_c_genBPTP_cnt")
-        .append(",")
-        .append(M4_LSM_BP_SEARCH_ARRAY_c_genBPTP_cnt)
+        .append(",0")
+        //        .append(M4_LSM_BP_SEARCH_ARRAY_c_genBPTP_cnt)
         .append("\n");
 
     stringBuilder
         .append("[3-4]M4_LSM_TP_B_READ_MEM_CHUNK_cnt")
-        .append(",")
-        .append(M4_LSM_TP_B_READ_MEM_CHUNK_cnt)
+        .append(",0")
+        //        .append(M4_LSM_TP_B_READ_MEM_CHUNK_cnt)
         .append("\n"); // 5*6
     stringBuilder
         .append("[3-4]M4_LSM_TP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt")
-        .append(",")
-        .append(M4_LSM_TP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt)
+        .append(",0")
+        //        .append(M4_LSM_TP_C_DESERIALIZE_PAGEHEADER_DECOMPRESS_PAGEDATA_cnt)
         .append("\n");
     stringBuilder
         .append("[3-4]M4_LSM_TP_SEARCH_ARRAY_a_verifBPTP_cnt")
-        .append(",")
-        .append(M4_LSM_TP_SEARCH_ARRAY_a_verifBPTP_cnt)
+        .append(",0")
+        //        .append(M4_LSM_TP_SEARCH_ARRAY_a_verifBPTP_cnt)
         .append("\n");
     stringBuilder
         .append("[3-4]M4_LSM_TP_SEARCH_ARRAY_b_genFP_cnt")
-        .append(",")
-        .append(M4_LSM_TP_SEARCH_ARRAY_b_genFP_cnt)
+        .append(",0")
+        //        .append(M4_LSM_TP_SEARCH_ARRAY_b_genFP_cnt)
         .append("\n");
     stringBuilder
         .append("[3-4]M4_LSM_TP_SEARCH_ARRAY_b_genLP_cnt")
-        .append(",")
-        .append(M4_LSM_TP_SEARCH_ARRAY_b_genLP_cnt)
+        .append(",0")
+        //        .append(M4_LSM_TP_SEARCH_ARRAY_b_genLP_cnt)
         .append("\n");
     stringBuilder
         .append("[3-4]M4_LSM_TP_SEARCH_ARRAY_c_genBPTP_cnt")
-        .append(",")
-        .append(M4_LSM_TP_SEARCH_ARRAY_c_genBPTP_cnt)
+        .append(",0")
+        //        .append(M4_LSM_TP_SEARCH_ARRAY_c_genBPTP_cnt)
         .append("\n");
 
     reset(); // whenever print() is called, reset the metrics, to clean warm up information.

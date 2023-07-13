@@ -19,6 +19,12 @@
 
 package org.apache.iotdb.tsfile.common.conf;
 
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.utils.Loader;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -27,14 +33,8 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.Properties;
 import java.util.Set;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.utils.Loader;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-/**
- * TSFileDescriptor is used to load TSFileConfig and provide configure information.
- */
+/** TSFileDescriptor is used to load TSFileConfig and provide configure information. */
 public class TSFileDescriptor {
 
   private static final Logger logger = LoggerFactory.getLogger(TSFileDescriptor.class);
@@ -70,9 +70,7 @@ public class TSFileDescriptor {
     return Loader.getResource(filename, classLoader);
   }
 
-  /**
-   * load an .properties file and set TSFileConfig variables
-   */
+  /** load an .properties file and set TSFileConfig variables */
   private void loadProps() {
     InputStream inputStream;
     String url = System.getProperty(TsFileConstant.TSFILE_CONF, null);

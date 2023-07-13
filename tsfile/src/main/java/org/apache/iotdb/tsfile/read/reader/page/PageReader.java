@@ -169,7 +169,7 @@ public class PageReader implements IPageReader {
 
   public void updateTP_withValueIndex(ChunkSuit4CPV chunkSuit4CPV) {
     if (TSFileDescriptor.getInstance().getConfig().isUseValueIndex()) {
-      long start = System.nanoTime();
+      //      long start = System.nanoTime();
       // NOTE: get valueIndex from chunkSuit4CPV.getChunkMetadata().getStatistics(), not
       // chunkSuit4CPV.getStatistics()!
       ValueIndex valueIndex = chunkSuit4CPV.getChunkMetadata().getStatistics().valueIndex;
@@ -199,7 +199,8 @@ public class PageReader implements IPageReader {
         // which is handled by updateBPTP
         updateBPTP_withoutTimeMeasure(chunkSuit4CPV); // then fall back to baseline method
         // time measured here, avoid counting twice
-        IOMonitor2.addMeasure(Operation.SEARCH_ARRAY_c_genBPTP, System.nanoTime() - start);
+        //        IOMonitor2.addMeasure(Operation.SEARCH_ARRAY_c_genBPTP, System.nanoTime() -
+        // start);
         return;
       }
       double threshold_LB = foundValue - valueIndex.errorBound; // near max LB
@@ -342,7 +343,7 @@ public class PageReader implements IPageReader {
       } else {
         throw new UnSupportedDataTypeException(String.valueOf(dataType));
       }
-      IOMonitor2.addMeasure(Operation.SEARCH_ARRAY_c_genBPTP, System.nanoTime() - start);
+      //      IOMonitor2.addMeasure(Operation.SEARCH_ARRAY_c_genBPTP, System.nanoTime() - start);
     } else { // not use value index
       updateBPTP(chunkSuit4CPV);
     }
@@ -380,7 +381,8 @@ public class PageReader implements IPageReader {
         // which is handled by updateBPTP
         updateBPTP_withoutTimeMeasure(chunkSuit4CPV); // then fall back to baseline method
         // time measured here, avoid counting twice
-        IOMonitor2.addMeasure(Operation.SEARCH_ARRAY_c_genBPTP, System.nanoTime() - start);
+        //        IOMonitor2.addMeasure(Operation.SEARCH_ARRAY_c_genBPTP, System.nanoTime() -
+        // start);
         return; // note here
       }
       double threshold_UB = foundValue + valueIndex.errorBound; // near min UB
@@ -524,7 +526,7 @@ public class PageReader implements IPageReader {
       } else {
         throw new UnSupportedDataTypeException(String.valueOf(dataType));
       }
-      IOMonitor2.addMeasure(Operation.SEARCH_ARRAY_c_genBPTP, System.nanoTime() - start);
+      //      IOMonitor2.addMeasure(Operation.SEARCH_ARRAY_c_genBPTP, System.nanoTime() - start);
     } else { // not use value index
       updateBPTP(chunkSuit4CPV);
     }
@@ -598,9 +600,9 @@ public class PageReader implements IPageReader {
   }
 
   public void updateBPTP(ChunkSuit4CPV chunkSuit4CPV) {
-    long start = System.nanoTime();
+    //    long start = System.nanoTime();
     updateBPTP_withoutTimeMeasure(chunkSuit4CPV);
-    IOMonitor2.addMeasure(Operation.SEARCH_ARRAY_c_genBPTP, System.nanoTime() - start);
+    //    IOMonitor2.addMeasure(Operation.SEARCH_ARRAY_c_genBPTP, System.nanoTime() - start);
   }
 
   /** @return the returned BatchData may be empty, but never be null */
