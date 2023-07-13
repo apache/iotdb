@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 
 public class StatementExecutionException extends Exception {
 
-
   private int statusCode;
 
   public StatementExecutionException(TSStatus status) {
