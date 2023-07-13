@@ -44,6 +44,7 @@ import java.net.ServerSocket;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class ReplicateTest {
   private static final long CHECK_POINT_GAP = 500;
@@ -51,7 +52,9 @@ public class ReplicateTest {
 
   private final ConsensusGroupId gid = new DataRegionId(1);
 
-  private int basePort = 9000 + 3;
+  private int basePort = 6000 + 3;
+
+  private final long timeout = TimeUnit.SECONDS.toMillis(240);
 
   private List<Peer> peers =
       Arrays.asList(
@@ -88,7 +91,7 @@ public class ReplicateTest {
 
   private void initServer() throws IOException {
     for (int i = 0; i < peers.size(); i++) {
-      waitPortAvailable(i);
+      findPortAvailable(i);
       int finalI = i;
       servers.add(
           (IoTConsensus)
@@ -251,10 +254,10 @@ public class ReplicateTest {
     Assert.assertEquals(stateMachines.get(2).getData(), stateMachines.get(1).getData());
   }
 
-  private void waitPortAvailable(int i) {
+  private void findPortAvailable(int i) {
     long start = System.currentTimeMillis();
-    while (System.currentTimeMillis() - start < 60 * 1000) {
-      try (ServerSocket ignored = new ServerSocket(this.peers.get(i).getEndpoint().port)) {
+    while (System.currentTimeMillis() - start < timeout) {
+      try (ServerSocket ignored = new ServerSocket(peers.get(i).getEndpoint().port)) {
         return;
       } catch (IOException e) {
         // Port is already in use, wait and retry
