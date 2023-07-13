@@ -96,13 +96,12 @@ public abstract class AbstractOperatePipeProcedureV2
     configNodeProcedureEnv.getSchedulerLock().lock();
     try {
       LOGGER.info("procedureId {} release lock.", getProcId());
-      if (pipeTaskInfo != null
-          && !configNodeProcedureEnv
-              .getConfigManager()
-              .getPipeManager()
-              .getPipeTaskCoordinator()
-              .unlock()) {
-        LOGGER.warn("unlock() is called without lock() called first.");
+      if (pipeTaskInfo != null) {
+        configNodeProcedureEnv
+            .getConfigManager()
+            .getPipeManager()
+            .getPipeTaskCoordinator()
+            .unlock();
       }
       if (configNodeProcedureEnv.getNodeLock().releaseLock(this)) {
         configNodeProcedureEnv
