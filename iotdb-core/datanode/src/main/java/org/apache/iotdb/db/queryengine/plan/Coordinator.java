@@ -134,7 +134,7 @@ public class Coordinator {
     QueryId globalQueryId = queryIdGenerator.createNextQueryId();
     try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
       if (sql != null && sql.length() > 0) {
-        LOGGER.debug("[QueryStart] sql: {}", sql);
+        LOGGER.debug("[QueryStart-1] sql: {}", sql);
       }
       MPPQueryContext queryContext =
           new MPPQueryContext(
