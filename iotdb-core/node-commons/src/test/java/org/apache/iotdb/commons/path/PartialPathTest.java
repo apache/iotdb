@@ -128,6 +128,11 @@ public class PartialPathTest {
     Assert.assertEquals("root.sg.abc", t.getFullPath());
     nodes = new String[] {"root", "sg", "abc"};
     checkNodes(nodes, t.getNodes());
+
+    PartialPath u = new PartialPath("root.sg.set_storage_group");
+    Assert.assertEquals("root.sg.set_storage_group", u.getFullPath());
+    nodes = new String[] {"root", "sg", "set_storage_group"};
+    checkNodes(nodes, u.getNodes());
   }
 
   @Test
