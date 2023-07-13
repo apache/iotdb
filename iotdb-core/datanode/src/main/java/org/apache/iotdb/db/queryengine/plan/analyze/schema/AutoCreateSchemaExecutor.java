@@ -101,7 +101,7 @@ class AutoCreateSchemaExecutor {
       IntFunction<TSDataType> getDataType,
       boolean isAligned,
       MPPQueryContext context) {
-    // Auto create the rest missing timeSeries
+    // Auto create the rest missing timeseries
     List<String> missingMeasurements = new ArrayList<>(indexOfTargetMeasurements.size());
     List<TSDataType> dataTypesOfMissingMeasurement =
         new ArrayList<>(indexOfTargetMeasurements.size());

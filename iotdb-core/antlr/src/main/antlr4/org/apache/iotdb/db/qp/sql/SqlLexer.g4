@@ -61,6 +61,14 @@ ALL
     : A L L
     ;
 
+READ
+    : R E A D
+    ;
+
+WRITE
+    : W R I T E
+    ;
+
 ALTER
     : A L T E R
     ;
@@ -99,6 +107,10 @@ BEFORE
 
 BEGIN
     : B E G I N
+    ;
+
+BETWEEN
+    : B E T W E E N
     ;
 
 BLOCKED
@@ -326,6 +338,10 @@ HAVING
     : H A V I N G
     ;
 
+IN
+    : I N
+    ;
+
 INDEX
     : I N D E X
     ;
@@ -340,6 +356,10 @@ INSERT
 
 INTO
     : I N T O
+    ;
+
+IS
+    : I S
     ;
 
 KILL
@@ -889,13 +909,14 @@ PRIVILEGE_VALUE
     | WRITE_DATA
     | READ_SCHEMA
     | WRITE_SCHEMA
-    | USER_PRIVILEGE
-    | ROLE_PRIVILEGE
+    | MANAGE_USER
+    | MANAGE_ROLE
     | GRANT_PRIVILEGE
     | ALTER_PASSWORD
-    | TRIGGER_PRIVILEGE
-    | CONTINUOUS_QUERY_PRIVILEGE
-    | PIPE_PRIVILEGE
+    | USE_TRIGGER
+    | USE_CQ
+    | USE_PIPE
+    | MANAGE_DATABASE
     ;
 
 READ_DATA
@@ -914,12 +935,12 @@ WRITE_SCHEMA
     : W R I T E '_' S C H E M A
     ;
 
-USER_PRIVILEGE
-    : U S E R '_' P R I V I L E G E
+MANAGE_USER
+    : M A N A G E '_' U S E R
     ;
 
-ROLE_PRIVILEGE
-    : R O L E '_' P R I V I L E G E
+MANAGE_ROLE
+    : M A N A G E '_' R O L E
     ;
 
 GRANT_PRIVILEGE
@@ -930,16 +951,20 @@ ALTER_PASSWORD
     : A L T E R '_' P A S S W O R D
     ;
 
-TRIGGER_PRIVILEGE
-    : T R I G G E R '_' P R I V I L E G E
+USE_TRIGGER
+    : U S E '_' T R I G G E R
     ;
 
-CONTINUOUS_QUERY_PRIVILEGE
-    : C O N T I N U O U S '_' Q U E R Y '_' P R I V I L E G E
+USE_CQ
+    : U S E '_' C Q
     ;
 
-PIPE_PRIVILEGE
-    : P I P E '_' P R I V I L E G E
+USE_PIPE
+    : U S E '_' P I P E
+    ;
+
+MANAGE_DATABASE
+    : M A N A G E '_' D A T A B A S E
     ;
 
 SET_STORAGE_GROUP
@@ -987,12 +1012,6 @@ OPERATOR_GTE : '>=';
 OPERATOR_LT : '<';
 OPERATOR_LTE : '<=';
 OPERATOR_NEQ : '!=' | '<>';
-
-OPERATOR_BETWEEN : B E T W E E N;
-
-OPERATOR_IS : I S;
-
-OPERATOR_IN : I N;
 
 OPERATOR_BITWISE_AND : '&';
 

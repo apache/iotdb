@@ -472,7 +472,7 @@ public class MTreeBelowSGMemoryImpl {
           failingMeasurementMap.put(
               i,
               new ExceedQuotaException(
-                  "The number of timeSeries has reached the upper limit",
+                  "The number of timeseries has reached the upper limit",
                   TSStatusCode.SPACE_QUOTA_EXCEEDED.getStatusCode()));
         }
       }

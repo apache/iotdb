@@ -21,8 +21,11 @@ package org.apache.iotdb.commons.pipe.task.meta;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeExceptionType;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -44,10 +47,13 @@ public class PipeTaskMeta {
   private final AtomicInteger leaderDataNodeId = new AtomicInteger(0);
 
   /**
-   * Stores the exceptions encountered during run time of each pipe task. The exceptions are
-   * instances of PipeRuntimeCriticalException, PipeRuntimeConnectorCriticalException and
-   * PipeRuntimeNonCriticalException. The failure of them, respectively, will lead to the stop of
-   * the pipe, the stop of the pipes sharing the same connector, and nothing.
+   * Stores the exceptions encountered during run time of each pipe task.
+   *
+   * <p>The exceptions are instances of {@link PipeRuntimeCriticalException}, {@link
+   * PipeRuntimeConnectorCriticalException} and {@link PipeRuntimeNonCriticalException}.
+   *
+   * <p>The failure of them, respectively, will lead to the stop of the pipe, the stop of the pipes
+   * sharing the same connector, and nothing.
    */
   private final Queue<PipeRuntimeException> exceptionMessages = new ConcurrentLinkedQueue<>();
 
@@ -87,7 +93,9 @@ public class PipeTaskMeta {
 
   public synchronized void serialize(DataOutputStream outputStream) throws IOException {
     progressIndex.get().serialize(outputStream);
+
     ReadWriteIOUtils.write(leaderDataNodeId.get(), outputStream);
+
     ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
     for (final PipeRuntimeException pipeRuntimeException : exceptionMessages) {
       pipeRuntimeException.serialize(outputStream);
@@ -96,34 +104,41 @@ public class PipeTaskMeta {
 
   public synchronized void serialize(FileOutputStream outputStream) throws IOException {
     progressIndex.get().serialize(outputStream);
+
     ReadWriteIOUtils.write(leaderDataNodeId.get(), outputStream);
+
     ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
     for (final PipeRuntimeException pipeRuntimeException : exceptionMessages) {
       pipeRuntimeException.serialize(outputStream);
     }
   }
 
-  public static PipeTaskMeta deserialize(ByteBuffer byteBuffer) {
+  public static PipeTaskMeta deserialize(PipeRuntimeMetaVersion version, ByteBuffer byteBuffer) {
     final ProgressIndex progressIndex = ProgressIndexType.deserializeFrom(byteBuffer);
+
     final int leaderDataNodeId = ReadWriteIOUtils.readInt(byteBuffer);
+
     final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(progressIndex, leaderDataNodeId);
     final int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       final PipeRuntimeException pipeRuntimeException =
-          PipeRuntimeExceptionType.deserializeFrom(byteBuffer);
+          PipeRuntimeExceptionType.deserializeFrom(version, byteBuffer);
       pipeTaskMeta.exceptionMessages.add(pipeRuntimeException);
     }
     return pipeTaskMeta;
   }
 
-  public static PipeTaskMeta deserialize(InputStream inputStream) throws IOException {
+  public static PipeTaskMeta deserialize(PipeRuntimeMetaVersion version, InputStream inputStream)
+      throws IOException {
     final ProgressIndex progressIndex = ProgressIndexType.deserializeFrom(inputStream);
+
     final int leaderDataNodeId = ReadWriteIOUtils.readInt(inputStream);
+
     final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(progressIndex, leaderDataNodeId);
     final int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
       final PipeRuntimeException pipeRuntimeException =
-          PipeRuntimeExceptionType.deserializeFrom(inputStream);
+          PipeRuntimeExceptionType.deserializeFrom(version, inputStream);
       pipeTaskMeta.exceptionMessages.add(pipeRuntimeException);
     }
     return pipeTaskMeta;

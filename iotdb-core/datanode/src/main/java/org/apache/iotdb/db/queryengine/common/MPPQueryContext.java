@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.common;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -27,7 +28,7 @@ import java.util.List;
 
 /**
  * This class is used to record the context of a query including QueryId, query statement, session
- * info and so on
+ * info and so on.
  */
 public class MPPQueryContext {
   private String sql;
