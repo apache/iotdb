@@ -49,7 +49,7 @@ public class StabilityTest {
 
   private IConsensus consensusImpl;
 
-  private final int basePort = 6320;
+  private final int basePort = 9000;
 
   public void constructConsensus() throws IOException {
     consensusImpl =
