@@ -59,11 +59,11 @@ public class IoTDBDynamicTableSink implements DynamicTableSink {
 
   @Override
   public DynamicTableSink copy() {
-    return null;
+    return new IoTDBDynamicTableSink(options, schema);
   }
 
   @Override
   public String asSummaryString() {
-    return null;
+    return "IoTDB Dynamic Table Sink";
   }
 }
