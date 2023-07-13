@@ -34,7 +34,9 @@ public class DataNodeClientPoolFactory {
 
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
-  private DataNodeClientPoolFactory() {}
+  private DataNodeClientPoolFactory() {
+    // Empty constructor
+  }
 
   public static class ConfigNodeClientPoolFactory
       implements IClientPoolFactory<ConfigRegionId, ConfigNodeClient> {

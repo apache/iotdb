@@ -25,7 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 public class DataNodeEndPoints {
 
   private DataNodeEndPoints() {
-    // forbidding instantiation
+    // Forbidding instantiation
   }
 
   public static final TEndPoint LOCAL_HOST_DATA_BLOCK_ENDPOINT =

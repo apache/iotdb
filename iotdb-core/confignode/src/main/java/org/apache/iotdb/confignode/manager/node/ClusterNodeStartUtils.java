@@ -36,7 +36,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/** Startup check utils before register/restart a ConfigNode/DataNode */
+/** Startup check utils before register/restart a ConfigNode/DataNode. */
 public class ClusterNodeStartUtils {
 
   private static final String CLUSTER_NAME =
@@ -49,6 +49,10 @@ public class ClusterNodeStartUtils {
           .setMessage("Accept Node registration.");
   public static final TSStatus ACCEPT_NODE_RESTART =
       new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()).setMessage("Accept Node restart.");
+
+  private ClusterNodeStartUtils() {
+    // Empty constructor
+  }
 
   public static TSStatus confirmNodeRegistration(
       NodeType nodeType, String clusterName, Object nodeLocation, ConfigManager configManager) {
@@ -249,7 +253,7 @@ public class ClusterNodeStartUtils {
   }
 
   /**
-   * Check if there exist conflict TEndPoints on the ConfigNode to be registered
+   * Check if there exist conflict TEndPoints on the ConfigNode to be registered.
    *
    * @param newConfigNodeLocation The TConfigNode of the ConfigNode to be registered
    * @param registeredConfigNodes All registered ConfigNodes
@@ -275,7 +279,7 @@ public class ClusterNodeStartUtils {
   }
 
   /**
-   * Check if there exist conflict TEndPoints on the DataNode to be registered
+   * Check if there exist conflict TEndPoints on the DataNode to be registered.
    *
    * @param newDataNodeLocation The TDataNodeLocation of the DataNode to be registered
    * @param registeredDataNodes All registered DataNodes

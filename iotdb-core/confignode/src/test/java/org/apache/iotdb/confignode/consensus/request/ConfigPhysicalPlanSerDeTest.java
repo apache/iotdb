@@ -539,8 +539,7 @@ public class ConfigPhysicalPlanSerDeTest {
     AuthorPlan req0;
     AuthorPlan req1;
     Set<Integer> permissions = new HashSet<>();
-    permissions.add(PrivilegeType.GRANT_USER_PRIVILEGE.ordinal());
-    permissions.add(PrivilegeType.REVOKE_USER_ROLE.ordinal());
+    permissions.add(PrivilegeType.GRANT_PRIVILEGE.ordinal());
 
     // create user
     req0 =

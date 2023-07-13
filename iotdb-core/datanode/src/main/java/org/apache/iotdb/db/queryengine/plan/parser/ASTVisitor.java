@@ -2267,12 +2267,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     boolean pathRelevant = true;
     String errorPrivilegeName = "";
     for (String privilege : privileges) {
-      if ("SET_STORAGE_GROUP".equalsIgnoreCase(privilege)) {
-        privilege = PrivilegeType.CREATE_DATABASE.name();
-      }
-      if ("DELETE_STORAGE_GROUP".equalsIgnoreCase(privilege)) {
-        privilege = PrivilegeType.DELETE_DATABASE.name();
-      }
       if (!PrivilegeType.valueOf(privilege.toUpperCase()).isPathRelevant()) {
         pathRelevant = false;
         errorPrivilegeName = privilege.toUpperCase();
@@ -2654,7 +2648,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       Expression secondExpression = parseExpression(context.secondExpression, canUseFullPath);
       Expression thirdExpression = parseExpression(context.thirdExpression, canUseFullPath);
 
-      if (context.OPERATOR_BETWEEN() != null) {
+      if (context.operator_between() != null) {
         return new BetweenExpression(
             firstExpression, secondExpression, thirdExpression, context.operator_not() != null);
       }

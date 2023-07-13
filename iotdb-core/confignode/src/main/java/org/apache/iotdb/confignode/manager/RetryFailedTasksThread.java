@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -42,8 +43,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * The RetryFailedTasksThread executed periodically to retry failed tasks in Trigger, Template and
- * CQ
+ * The {@link RetryFailedTasksThread} executed periodically to retry failed tasks in Trigger,
+ * Template and CQ.
  */
 public class RetryFailedTasksThread {
 

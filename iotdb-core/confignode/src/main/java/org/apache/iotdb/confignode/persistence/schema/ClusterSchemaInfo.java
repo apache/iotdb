@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.persistence.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
@@ -87,7 +88,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCAR
 import static org.apache.iotdb.db.schemaengine.SchemaConstant.ALL_TEMPLATE;
 
 /**
- * The ClusterSchemaInfo stores cluster schemaengine. The cluster schemaengine including: 1.
+ * The {@link ClusterSchemaInfo} stores cluster schemaEngine. The cluster schemaEngine including: 1.
  * StorageGroupSchema 2. Template (Not implement yet)
  */
 public class ClusterSchemaInfo implements SnapshotProcessor {
@@ -124,7 +125,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   // ======================================================
 
   /**
-   * Cache DatabaseSchema
+   * Cache DatabaseSchema.
    *
    * @param plan DatabaseSchemaPlan
    * @return SUCCESS_STATUS if the Database is set successfully.
@@ -155,7 +156,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   /**
-   * Alter DatabaseSchema
+   * Alter DatabaseSchema.
    *
    * @param plan DatabaseSchemaPlan
    * @return SUCCESS_STATUS if the DatabaseSchema is altered successfully.
@@ -216,7 +217,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   /**
-   * Delete Database
+   * Delete Database.
    *
    * @param plan DeleteDatabasePlan
    * @return SUCCESS_STATUS
@@ -384,7 +385,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   /**
-   * Adjust the maximum RegionGroup count of each Database
+   * Adjust the maximum RegionGroup count of each Database.
    *
    * @param plan AdjustMaxRegionGroupCountPlan
    * @return SUCCESS_STATUS
@@ -418,7 +419,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   /**
    * Only leader use this interface.
    *
-   * @return List<DatabaseName>, all Databases' name
+   * @return List {@literal <}DatabaseName{@literal >}, all Databases' name.
    */
   public List<String> getDatabaseNames() {
     List<String> databases = new ArrayList<>();

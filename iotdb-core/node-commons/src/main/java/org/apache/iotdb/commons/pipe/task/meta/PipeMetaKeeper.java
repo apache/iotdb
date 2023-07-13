@@ -27,14 +27,38 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class PipeMetaKeeper {
 
   protected final Map<String, PipeMeta> pipeNameToPipeMetaMap;
 
+  private final ReentrantReadWriteLock pipeMetaKeeperLock;
+
   public PipeMetaKeeper() {
     pipeNameToPipeMetaMap = new ConcurrentHashMap<>();
+    pipeMetaKeeperLock = new ReentrantReadWriteLock(true);
   }
+
+  /////////////////////////////////  Lock  /////////////////////////////////
+
+  public void acquireReadLock() {
+    pipeMetaKeeperLock.readLock().lock();
+  }
+
+  public void releaseReadLock() {
+    pipeMetaKeeperLock.readLock().unlock();
+  }
+
+  public void acquireWriteLock() {
+    pipeMetaKeeperLock.writeLock().lock();
+  }
+
+  public void releaseWriteLock() {
+    pipeMetaKeeperLock.writeLock().unlock();
+  }
+
+  /////////////////////////////////  PipeMeta  /////////////////////////////////
 
   public void addPipeMeta(String pipeName, PipeMeta pipeMeta) {
     pipeNameToPipeMetaMap.put(pipeName, pipeMeta);
@@ -64,6 +88,8 @@ public class PipeMetaKeeper {
     return pipeNameToPipeMetaMap.isEmpty();
   }
 
+  /////////////////////////////////  Snapshot  /////////////////////////////////
+
   public void processTakeSnapshot(FileOutputStream fileOutputStream) throws IOException {
     ReadWriteIOUtils.write(pipeNameToPipeMetaMap.size(), fileOutputStream);
     for (Map.Entry<String, PipeMeta> entry : pipeNameToPipeMetaMap.entrySet()) {
@@ -81,6 +107,8 @@ public class PipeMetaKeeper {
       pipeNameToPipeMetaMap.put(pipeName, PipeMeta.deserialize(fileInputStream));
     }
   }
+
+  /////////////////////////////////  Override  /////////////////////////////////
 
   @Override
   public boolean equals(Object o) {

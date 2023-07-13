@@ -41,7 +41,7 @@ public class ViewExpressionToStringTest {
 
   @Test
   public void testTimseriesOperand() {
-    String fullPath = new String("root.db.device.s01");
+    String fullPath = "root.db.device.s01";
     TimeSeriesViewOperand timeSeriesViewOperand = new TimeSeriesViewOperand(fullPath);
     Assert.assertEquals(fullPath, timeSeriesViewOperand.toString());
     Assert.assertEquals(fullPath, timeSeriesViewOperand.toString(true));
@@ -55,8 +55,8 @@ public class ViewExpressionToStringTest {
     AdditionViewExpression add =
         new AdditionViewExpression(timeSeriesViewOperand, constantViewOperand);
 
-    String expectedRoot = new String("root.db.device.s01 + 2");
-    String expectedNotRoot = new String("(root.db.device.s01 + 2)");
+    String expectedRoot = "root.db.device.s01 + 2";
+    String expectedNotRoot = "(root.db.device.s01 + 2)";
     Assert.assertEquals(expectedRoot, add.toString());
     Assert.assertEquals(expectedRoot, add.toString(true));
     Assert.assertEquals(expectedNotRoot, add.toString(false));
@@ -70,8 +70,8 @@ public class ViewExpressionToStringTest {
     TimeSeriesViewOperand ts2 = new TimeSeriesViewOperand("root.ln.d.s01");
     MultiplicationViewExpression multiplication = new MultiplicationViewExpression(add, ts2);
 
-    String expectedRoot = new String("(root.db.device.s01 + 2) * root.ln.d.s01");
-    String expectedNotRoot = new String("((root.db.device.s01 + 2) * root.ln.d.s01)");
+    String expectedRoot = "(root.db.device.s01 + 2) * root.ln.d.s01";
+    String expectedNotRoot = "((root.db.device.s01 + 2) * root.ln.d.s01)";
     Assert.assertEquals(expectedRoot, multiplication.toString());
     Assert.assertEquals(expectedRoot, multiplication.toString(true));
     Assert.assertEquals(expectedNotRoot, multiplication.toString(false));
@@ -82,8 +82,8 @@ public class ViewExpressionToStringTest {
     String functionName = "func";
     FunctionViewExpression func = new FunctionViewExpression(functionName);
 
-    String expectedRoot = new String("func()");
-    String expectedNotRoot = new String("func()");
+    String expectedRoot = "func()";
+    String expectedNotRoot = "func()";
     Assert.assertEquals(expectedRoot, func.toString());
     Assert.assertEquals(expectedRoot, func.toString(true));
     Assert.assertEquals(expectedNotRoot, func.toString(false));
@@ -103,8 +103,8 @@ public class ViewExpressionToStringTest {
 
     FunctionViewExpression func = new FunctionViewExpression(functionName, keys, values, exps);
 
-    String expectedRoot = new String("MAX(root.db.device.s01 + 2, root.ln.d.s01)");
-    String expectedNotRoot = new String("MAX(root.db.device.s01 + 2, root.ln.d.s01)");
+    String expectedRoot = "MAX(root.db.device.s01 + 2, root.ln.d.s01)";
+    String expectedNotRoot = "MAX(root.db.device.s01 + 2, root.ln.d.s01)";
     Assert.assertEquals(expectedRoot, func.toString());
     Assert.assertEquals(expectedRoot, func.toString(true));
     Assert.assertEquals(expectedNotRoot, func.toString(false));
@@ -121,8 +121,8 @@ public class ViewExpressionToStringTest {
 
     FunctionViewExpression func = new FunctionViewExpression(functionName, keys, values, exps);
 
-    String expectedRoot = new String("CAST(type=INT32)(root.ln.d.s01)");
-    String expectedNotRoot = new String("CAST(type=INT32)(root.ln.d.s01)");
+    String expectedRoot = "CAST(root.ln.d.s01, type=INT32)";
+    String expectedNotRoot = "CAST(root.ln.d.s01, type=INT32)";
     Assert.assertEquals(expectedRoot, func.toString());
     Assert.assertEquals(expectedRoot, func.toString(true));
     Assert.assertEquals(expectedNotRoot, func.toString(false));
@@ -139,8 +139,8 @@ public class ViewExpressionToStringTest {
 
     FunctionViewExpression func = new FunctionViewExpression(functionName, keys, values, exps);
 
-    String expectedRoot = new String("CAST(type=INT32)(root.ln.d.s01)");
-    String expectedNotRoot = new String("CAST(type=INT32)(root.ln.d.s01)");
+    String expectedRoot = "CAST(root.ln.d.s01, type=INT32)";
+    String expectedNotRoot = "CAST(root.ln.d.s01, type=INT32)";
     Assert.assertEquals(expectedRoot, func.toString());
     Assert.assertEquals(expectedRoot, func.toString(true));
     Assert.assertEquals(expectedNotRoot, func.toString(false));
@@ -158,10 +158,8 @@ public class ViewExpressionToStringTest {
 
     FunctionViewExpression func = new FunctionViewExpression(functionName, keys, values, exps);
 
-    String expectedRoot =
-        new String("FUNC(type=INT32, key=value)(root.db.device.s01, root.ln.d.s01)");
-    String expectedNotRoot =
-        new String("FUNC(type=INT32, key=value)(root.db.device.s01, root.ln.d.s01)");
+    String expectedRoot = "FUNC(root.db.device.s01, root.ln.d.s01, type=INT32, key=value)";
+    String expectedNotRoot = "FUNC(root.db.device.s01, root.ln.d.s01, type=INT32, key=value)";
     Assert.assertEquals(expectedRoot, func.toString());
     Assert.assertEquals(expectedRoot, func.toString(true));
     Assert.assertEquals(expectedNotRoot, func.toString(false));
@@ -174,8 +172,8 @@ public class ViewExpressionToStringTest {
     TimeSeriesViewOperand ts1 = new TimeSeriesViewOperand("root.db.device.s01");
     BetweenViewExpression exp = new BetweenViewExpression(ts1, timestamp01, timestamp02);
 
-    String expectedRoot = new String("root.db.device.s01 BETWEEN TIMESTAMP AND TIMESTAMP");
-    String expectedNotRoot = new String("(root.db.device.s01 BETWEEN TIMESTAMP AND TIMESTAMP)");
+    String expectedRoot = "root.db.device.s01 BETWEEN TIMESTAMP AND TIMESTAMP";
+    String expectedNotRoot = "(root.db.device.s01 BETWEEN TIMESTAMP AND TIMESTAMP)";
     Assert.assertEquals(expectedRoot, exp.toString());
     Assert.assertEquals(expectedRoot, exp.toString(true));
     Assert.assertEquals(expectedNotRoot, exp.toString(false));
