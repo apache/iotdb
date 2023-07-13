@@ -106,11 +106,13 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
    */
   public static int estimateSize(SchemaCacheEntry schemaCacheEntry) {
     // each char takes 2B in Java
-    int sz =
+    int lastCacheContainerSize =
         schemaCacheEntry.getLastCacheContainer() == null
             ? 0
             : schemaCacheEntry.getLastCacheContainer().estimateSize();
-    return 100 + 2 * schemaCacheEntry.getIMeasurementSchema().getMeasurementId().length() + sz;
+    return 100
+        + 2 * schemaCacheEntry.getIMeasurementSchema().getMeasurementId().length()
+        + lastCacheContainerSize;
   }
 
   @Override
