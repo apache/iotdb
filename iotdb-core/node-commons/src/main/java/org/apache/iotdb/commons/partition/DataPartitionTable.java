@@ -226,7 +226,7 @@ public class DataPartitionTable {
     AtomicLong sum = new AtomicLong();
     dataPartitionMap.forEach(
         (seriesPartitionSlot, seriesPartitionTable) ->
-            sum.addAndGet(seriesPartitionTable.getTimeSlotCount()));
+            sum.addAndGet(seriesPartitionTable.getSeriesPartitionMap().size()));
     return sum.get();
   }
 

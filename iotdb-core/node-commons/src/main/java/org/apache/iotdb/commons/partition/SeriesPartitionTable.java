@@ -178,10 +178,6 @@ public class SeriesPartitionTable {
     }
   }
 
-  long getTimeSlotCount() {
-    return seriesPartitionMap.keySet().size();
-  }
-
   /**
    * Create DataPartition within the specific SeriesPartitionSlot
    *
