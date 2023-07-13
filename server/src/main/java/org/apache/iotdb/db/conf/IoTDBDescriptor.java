@@ -18,20 +18,7 @@
  */
 package org.apache.iotdb.db.conf;
 
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.fileSystem.FSType;
-import org.apache.iotdb.tsfile.utils.FilePathUtils;
-
 import com.google.common.net.InetAddresses;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -41,6 +28,17 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.Properties;
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.fileSystem.FSType;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class IoTDBDescriptor {
 
@@ -107,7 +105,9 @@ public class IoTDBDescriptor {
     }
   }
 
-  /** load an property file and set TsfileDBConfig variables. */
+  /**
+   * load an property file and set TsfileDBConfig variables.
+   */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
     URL url = getPropsUrl();
@@ -921,6 +921,13 @@ public class IoTDBDescriptor {
                     Boolean.toString(TSFileDescriptor.getInstance().getConfig().isUseMad()))));
     TSFileDescriptor.getInstance()
         .getConfig()
+        .setErrorParam(
+            Integer.parseInt(
+                properties.getProperty(
+                    "error_Param",
+                    Integer.toString(TSFileDescriptor.getInstance().getConfig().getErrorParam()))));
+    TSFileDescriptor.getInstance()
+        .getConfig()
         .setUseValueIndex(
             Boolean.parseBoolean(
                 properties.getProperty(
@@ -1315,7 +1322,9 @@ public class IoTDBDescriptor {
     }
   }
 
-  /** Get default encode algorithm by data type */
+  /**
+   * Get default encode algorithm by data type
+   */
   public TSEncoding getDefaultEncodingByType(TSDataType dataType) {
     switch (dataType) {
       case BOOLEAN:

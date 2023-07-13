@@ -81,6 +81,8 @@ public class MyTest5 {
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     config.setTimestampPrecision("ms");
+
+    TSFileDescriptor.getInstance().getConfig().setErrorParam(10);
   }
 
   @After

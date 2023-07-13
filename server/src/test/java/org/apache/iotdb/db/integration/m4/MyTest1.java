@@ -72,11 +72,13 @@ public class MyTest1 {
     originalEnableCPV = config.isEnableCPV();
     config.setEnableCPV(true); // CPV
 
-    originalUseChunkIndex = TSFileDescriptor.getInstance().getConfig().isUseTimeIndex();
-    TSFileDescriptor.getInstance().getConfig().setUseTimeIndex(false);
+//    originalUseChunkIndex = TSFileDescriptor.getInstance().getConfig().isUseTimeIndex();
+//    TSFileDescriptor.getInstance().getConfig().setUseTimeIndex(false);
 
     originalUseMad = TSFileDescriptor.getInstance().getConfig().isUseMad();
     TSFileDescriptor.getInstance().getConfig().setUseMad(true);
+
+    TSFileDescriptor.getInstance().getConfig().setErrorParam(10);
 
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -88,7 +90,7 @@ public class MyTest1 {
     EnvironmentUtils.cleanEnv();
     config.setCompactionStrategy(originalCompactionStrategy);
     config.setEnableCPV(originalEnableCPV);
-    TSFileDescriptor.getInstance().getConfig().setUseTimeIndex(originalUseChunkIndex);
+//    TSFileDescriptor.getInstance().getConfig().setUseTimeIndex(originalUseChunkIndex);
     TSFileDescriptor.getInstance().getConfig().setUseMad(originalUseMad);
   }
 

@@ -86,6 +86,8 @@ public class MyTest2 {
         true); // this test cannot be false, as the expected answer for bottomTime and topTime can
     // be different
     config.setTimestampPrecision("ms");
+
+    TSFileDescriptor.getInstance().getConfig().setErrorParam(10);
   }
 
   @After

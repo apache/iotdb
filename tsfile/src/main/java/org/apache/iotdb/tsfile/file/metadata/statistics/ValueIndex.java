@@ -1,19 +1,19 @@
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.encoder.PlainEncoder;
 import org.apache.iotdb.tsfile.encoding.encoder.SDTEncoder;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.ValuePoint;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
-
 import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
 import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class ValueIndex {
 
+  int errorParam = TSFileDescriptor.getInstance().getConfig().getErrorParam();
   private DoubleArrayList values = new DoubleArrayList();
   public SDTEncoder sdtEncoder = new SDTEncoder();
   public double errorBound = 0; // =std*2 =2*std.compDeviation
@@ -76,7 +76,7 @@ public class ValueIndex {
   private void initForLearn() {
     this.stdDev = getStdDev();
     this.errorBound = 2 * stdDev;
-    this.sdtEncoder.setCompDeviation(errorBound / 2); // equals stdDev is best
+    this.sdtEncoder.setCompDeviation(errorBound / 2 * errorParam); // equals stdDev is best
   }
 
   public void learn() {
