@@ -44,7 +44,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.VerifyMetadataException;
-import org.apache.iotdb.db.exception.metadata.template.TemplateImcompatibeException;
+import org.apache.iotdb.db.exception.metadata.template.TemplateIncompatibleException;
 import org.apache.iotdb.db.exception.metadata.view.UnsupportedViewException;
 import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -1271,6 +1271,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             ExpressionAnalyzer.normalizeExpression(
                 analyzeWhereSplitByDevice(queryStatement, devicePath, schemaTree));
       } catch (MeasurementNotExistException e) {
+        logger.warn(
+            "Meets MeasurementNotExistException in analyzeDeviceToWhere when executing align by device, "
+                + "error msg: {}",
+            e.getMessage());
         deviceIterator.remove();
         continue;
       }
@@ -2037,25 +2041,39 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     IntoPathDescriptor intoPathDescriptor = new IntoPathDescriptor();
     PathPatternTree targetPathTree = new PathPatternTree();
     IntoComponent.IntoPathIterator intoPathIterator = intoComponent.getIntoPathIterator();
-    for (Expression sourceColumn : sourceColumns) {
+    for (Pair<Expression, String> pair : outputExpressions) {
+      Expression sourceExpression = pair.left;
+      String viewPath = pair.right;
       PartialPath deviceTemplate = intoPathIterator.getDeviceTemplate();
       String measurementTemplate = intoPathIterator.getMeasurementTemplate();
       boolean isAlignedDevice = intoPathIterator.isAlignedDevice();
 
+      PartialPath sourcePath;
+      String sourceColumn = sourceExpression.getExpressionString();
       PartialPath targetPath;
-      if (sourceColumn instanceof TimeSeriesOperand) {
-        PartialPath sourcePath = ((TimeSeriesOperand) sourceColumn).getPath();
+      if (sourceExpression instanceof TimeSeriesOperand) {
+        if (viewPath != null) {
+          try {
+            sourcePath = new PartialPath(viewPath);
+          } catch (IllegalPathException e) {
+            throw new SemanticException(
+                String.format(
+                    "View path %s of source column %s is illegal path", viewPath, sourceColumn));
+          }
+        } else {
+          sourcePath = ((TimeSeriesOperand) sourceExpression).getPath();
+        }
         targetPath = constructTargetPath(sourcePath, deviceTemplate, measurementTemplate);
       } else {
         targetPath = deviceTemplate.concatNode(measurementTemplate);
       }
-      intoPathDescriptor.specifyTargetPath(sourceColumn.getExpressionString(), targetPath);
+      intoPathDescriptor.specifyTargetPath(sourceColumn, viewPath, targetPath);
       intoPathDescriptor.specifyDeviceAlignment(
           targetPath.getDevicePath().toString(), isAlignedDevice);
 
       targetPathTree.appendFullPath(targetPath);
       intoPathDescriptor.recordSourceColumnDataType(
-          sourceColumn.getExpressionString(), analysis.getType(sourceColumn));
+          sourceColumn, analysis.getType(sourceExpression));
 
       intoPathIterator.next();
     }
@@ -2193,7 +2211,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         schemaFetcher.checkTemplateSetAndPreSetInfo(timeseriesPath, alias);
     if (templateInfo != null) {
       throw new SemanticException(
-          new TemplateImcompatibeException(
+          new TemplateIncompatibleException(
               timeseriesPath.getFullPath(), templateInfo.left.getName(), templateInfo.right));
     }
   }
@@ -2207,7 +2225,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               aliasList == null ? null : aliasList.get(i));
       if (templateInfo != null) {
         throw new SemanticException(
-            new TemplateImcompatibeException(
+            new TemplateIncompatibleException(
                 devicePath.getFullPath() + measurements,
                 templateInfo.left.getName(),
                 templateInfo.right));
@@ -2358,7 +2376,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             alterTimeSeriesStatement.getPath(), alterTimeSeriesStatement.getAlias());
     if (templateInfo != null) {
       throw new RuntimeException(
-          new TemplateImcompatibeException(
+          new TemplateIncompatibleException(
               String.format(
                   "Cannot alter template timeseries [%s] since schema template [%s] already set on path [%s].",
                   alterTimeSeriesStatement.getPath().getFullPath(),
@@ -2409,7 +2427,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
     }
-
     analysis.setStatement(realInsertStatement);
 
     if (realInsertStatement instanceof InsertRowStatement) {

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
@@ -117,118 +118,118 @@ import org.apache.iotdb.consensus.common.DataSet;
 import java.util.List;
 
 /**
- * a subset of services provided by {@ConfigManager}. For use internally only, passed to Managers,
- * services.
+ * A subset of services provided by {@link ConfigManager}. For use internally only, passed to
+ * Managers, services.
  */
 public interface IManager {
 
   /**
-   * Get DataManager
+   * Get DataManager.
    *
    * @return DataNodeManager instance
    */
   NodeManager getNodeManager();
 
   /**
-   * Get ConsensusManager
+   * Get ConsensusManager.
    *
    * @return ConsensusManager instance
    */
   ConsensusManager getConsensusManager();
 
   /**
-   * Get ClusterSchemaManager
+   * Get ClusterSchemaManager.
    *
    * @return ClusterSchemaManager instance
    */
   ClusterSchemaManager getClusterSchemaManager();
 
   /**
-   * Get PartitionManager
+   * Get PartitionManager.
    *
    * @return PartitionManager instance
    */
   PartitionManager getPartitionManager();
 
   /**
-   * Get LoadManager
+   * Get LoadManager.
    *
    * @return LoadManager instance
    */
   LoadManager getLoadManager();
 
   /**
-   * Get UDFManager
+   * Get UDFManager.
    *
    * @return UDFManager instance
    */
   UDFManager getUDFManager();
 
   /**
-   * Get TriggerManager
+   * Get TriggerManager.
    *
    * @return TriggerManager instance
    */
   TriggerManager getTriggerManager();
 
   /**
-   * Get ProcedureManager
+   * Get ProcedureManager.
    *
    * @return ProcedureManager instance
    */
   ProcedureManager getProcedureManager();
 
   /**
-   * Get CQManager
+   * Get CQManager.
    *
    * @return CQManager instance
    */
   CQManager getCQManager();
 
   /**
-   * Get ModelManager
+   * Get ModelManager.
    *
    * @return ModelManager instance
    */
   ModelManager getModelManager();
 
   /**
-   * Get PipeManager
+   * Get PipeManager.
    *
    * @return PipeManager instance
    */
   PipeManager getPipeManager();
 
   /**
-   * Get ClusterQuotaManager
+   * Get ClusterQuotaManager.
    *
    * @return ClusterQuotaManager instance
    */
   ClusterQuotaManager getClusterQuotaManager();
 
   /**
-   * Get RetryFailedTasksThread
+   * Get RetryFailedTasksThread.
    *
    * @return RetryFailedTasksThread instance
    */
   RetryFailedTasksThread getRetryFailedTasksThread();
 
   /**
-   * Get system configurations that is not associated with the DataNodeId
+   * Get system configurations that is not associated with the DataNodeId.
    *
    * @return SystemConfigurationResp
    */
   DataSet getSystemConfiguration();
 
   /**
-   * Register DataNode
+   * Register DataNode.
    *
    * @return DataNodeConfigurationDataSet
    */
   DataSet registerDataNode(TDataNodeRegisterReq req);
 
   /**
-   * Restart DataNode
+   * Restart DataNode.
    *
    * @param req TDataNodeRestartReq
    * @return SUCCESS_STATUS if allow DataNode to restart, REJECT_START otherwise
@@ -236,7 +237,7 @@ public interface IManager {
   TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req);
 
   /**
-   * Remove DataNode
+   * Remove DataNode.
    *
    * @param removeDataNodePlan RemoveDataNodePlan
    * @return DataNodeToStatusResp
@@ -253,7 +254,7 @@ public interface IManager {
   TSStatus reportDataNodeShutdown(TDataNodeLocation dataNodeLocation);
 
   /**
-   * DataNode report region migrate result to ConfigNode when remove DataNode
+   * DataNode report region migrate result to ConfigNode when remove DataNode.
    *
    * @param req TRegionMigrateResultReportReq
    * @return TSStatus
@@ -261,21 +262,21 @@ public interface IManager {
   TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req);
 
   /**
-   * Get DataNode info
+   * Get DataNode info.
    *
    * @return DataNodesConfigurationDataSet
    */
   DataSet getDataNodeConfiguration(GetDataNodeConfigurationPlan getDataNodeConfigurationPlan);
 
   /**
-   * Get Cluster Nodes' information
+   * Get Cluster Nodes' information.
    *
    * @return TShowClusterResp
    */
   TShowClusterResp showCluster();
 
   /**
-   * Get variables
+   * Get variables.
    *
    * @return TShowVariablesResp
    */
@@ -290,71 +291,71 @@ public interface IManager {
   TSStatus setTimePartitionInterval(SetTimePartitionIntervalPlan configPhysicalPlan);
 
   /**
-   * Count StorageGroups
+   * Count StorageGroups.
    *
    * @return The number of matched StorageGroups
    */
   DataSet countMatchedDatabases(CountDatabasePlan countDatabasePlan);
 
   /**
-   * Get StorageGroupSchemas
+   * Get StorageGroupSchemas.
    *
    * @return StorageGroupSchemaDataSet
    */
   DataSet getMatchedDatabaseSchemas(GetDatabasePlan getOrCountStorageGroupPlan);
 
   /**
-   * Set Database
+   * Set Database.
    *
    * @return TSStatus
    */
   TSStatus setDatabase(DatabaseSchemaPlan databaseSchemaPlan);
 
   /**
-   * Alter Database
+   * Alter Database.
    *
    * @return TSStatus
    */
   TSStatus alterDatabase(DatabaseSchemaPlan databaseSchemaPlan);
 
   /**
-   * Delete StorageGroups
+   * Delete StorageGroups.
    *
-   * @param deletedPaths List<StringPattern>
+   * @param deletedPaths List{@literal <}String{@literal >}
    * @return status
    */
   TSStatus deleteDatabases(List<String> deletedPaths);
 
   /**
-   * Get SchemaPartition
+   * Get SchemaPartition.
    *
    * @return TSchemaPartitionResp
    */
   TSchemaPartitionTableResp getSchemaPartition(PathPatternTree patternTree);
 
   /**
-   * Get or create SchemaPartition
+   * Get or create SchemaPartition.
    *
    * @return TSchemaPartitionResp
    */
   TSchemaPartitionTableResp getOrCreateSchemaPartition(PathPatternTree patternTree);
 
   /**
-   * create SchemaNodeManagementPartition for child paths node management
+   * Create SchemaNodeManagementPartition for child paths node management.
    *
    * @return TSchemaNodeManagementResp
    */
   TSchemaNodeManagementResp getNodePathsPartition(PartialPath partialPath, Integer level);
 
   /**
-   * Get DataPartition
+   * Get DataPartition.
    *
    * @return TDataPartitionResp
    */
   TDataPartitionTableResp getDataPartition(GetDataPartitionPlan getDataPartitionPlan);
 
   /**
-   * Get or create DataPartition
+   * Get or create DataPartition.
    *
    * @return TDataPartitionResp
    */
@@ -362,27 +363,27 @@ public interface IManager {
       GetOrCreateDataPartitionPlan getOrCreateDataPartitionPlan);
 
   /**
-   * Operate Permission
+   * Operate Permission.
    *
    * @return status
    */
   TSStatus operatePermission(AuthorPlan authorPlan);
 
   /**
-   * Query Permission
+   * Query Permission.
    *
    * @return PermissionInfoDataSet
    */
   DataSet queryPermission(AuthorPlan authorPlan);
 
-  /** login */
+  /** login. */
   TPermissionInfoResp login(String username, String password);
 
-  /** Check User Privileges */
+  /** Check User Privileges. */
   TPermissionInfoResp checkUserPrivileges(String username, List<PartialPath> paths, int permission);
 
   /**
-   * Register ConfigNode when it is first startup
+   * Register ConfigNode when it is first startup.
    *
    * @return TConfigNodeRegisterResp
    */
@@ -398,7 +399,7 @@ public interface IManager {
   TSStatus createPeerForConsensusGroup(List<TConfigNodeLocation> configNodeLocations);
 
   /**
-   * Remove ConfigNode
+   * Remove ConfigNode.
    *
    * @return status
    */
@@ -420,49 +421,49 @@ public interface IManager {
 
   TGetJarInListResp getUDFJar(TGetJarInListReq req);
 
-  /** Create trigger */
+  /** Create trigger. */
   TSStatus createTrigger(TCreateTriggerReq req);
 
-  /** Drop trigger */
+  /** Drop trigger. */
   TSStatus dropTrigger(TDropTriggerReq req);
 
-  /** Show trigger & DataNode start */
+  /** Show trigger & DataNode start. */
   TGetTriggerTableResp getTriggerTable();
 
-  /** DataNode refresh stateful trigger cache */
+  /** DataNode refresh stateful trigger cache. */
   TGetTriggerTableResp getStatefulTriggerTable();
 
-  /** Get DataNodeLocation of stateful trigger */
+  /** Get DataNodeLocation of stateful trigger. */
   TGetLocationForTriggerResp getLocationOfStatefulTrigger(String triggerName);
 
-  /** Get Trigger jar */
+  /** Get Trigger jar. */
   TGetJarInListResp getTriggerJar(TGetJarInListReq req);
 
-  /** Create pipe plugin */
+  /** Create pipe plugin. */
   TSStatus createPipePlugin(TCreatePipePluginReq req);
 
-  /** Drop pipe plugin */
+  /** Drop pipe plugin. */
   TSStatus dropPipePlugin(String pluginName);
 
-  /** Show pipe plugins */
+  /** Show pipe plugins. */
   TGetPipePluginTableResp getPipePluginTable();
 
-  /** Get pipe plugin jar */
+  /** Get pipe plugin jar. */
   TGetJarInListResp getPipePluginJar(TGetJarInListReq req);
 
-  /** Merge on all DataNodes */
+  /** Merge on all DataNodes. */
   TSStatus merge();
 
-  /** Flush on all DataNodes */
+  /** Flush on all DataNodes. */
   TSStatus flush(TFlushReq req);
 
-  /** Clear cache on all DataNodes */
+  /** Clear cache on all DataNodes. */
   TSStatus clearCache();
 
-  /** Load configuration on all DataNodes */
+  /** Load configuration on all DataNodes. */
   TSStatus loadConfiguration();
 
-  /** Set system status on all DataNodes */
+  /** Set system status on all DataNodes. */
   TSStatus setSystemStatus(String status);
 
   /** TestOnly. Set the target DataNode to the specified status */
@@ -473,7 +474,7 @@ public interface IManager {
   TGetDataNodeLocationsResp getRunningDataNodeLocations();
 
   /**
-   * Get the latest RegionRouteMap
+   * Get the latest RegionRouteMap.
    *
    * @return TRegionRouteMapResp
    */
@@ -481,17 +482,17 @@ public interface IManager {
 
   void addMetrics();
 
-  /** Show (data/schemaengine) regions */
+  /** Show (data/schemaengine) regions. */
   DataSet showRegion(GetRegionInfoListPlan getRegionInfoListPlan);
 
-  /** Show DataNodes */
+  /** Show DataNodes. */
   TShowDataNodesResp showDataNodes();
 
-  /** Show ConfigNodes */
+  /** Show ConfigNodes. */
   TShowConfigNodesResp showConfigNodes();
 
   /**
-   * Show StorageGroup
+   * Show StorageGroup.
    *
    * @param getStorageGroupPlan GetStorageGroupPlan, including path patterns about StorageGroups
    * @return TShowStorageGroupResp
@@ -499,7 +500,7 @@ public interface IManager {
   TShowDatabaseResp showDatabase(GetDatabasePlan getStorageGroupPlan);
 
   /**
-   * create schemaengine template
+   * Create schemaengine template.
    *
    * @param req TCreateSchemaTemplateReq
    * @return TSStatus
@@ -507,14 +508,14 @@ public interface IManager {
   TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req);
 
   /**
-   * show schemaengine templates
+   * Show schemaengine templates.
    *
    * @return TGetAllTemplatesResp
    */
   TGetAllTemplatesResp getAllTemplates();
 
   /**
-   * show nodes in schemaengine template
+   * Show nodes in schemaengine template.
    *
    * @param req String
    * @return TGetTemplateResp
@@ -522,7 +523,7 @@ public interface IManager {
   TGetTemplateResp getTemplate(String req);
 
   /**
-   * set schemaengine template xx to xx-path
+   * Set schemaengine template xx to xx-path.
    *
    * @param req TSetSchemaTemplateReq
    * @return TSStatus
@@ -530,28 +531,25 @@ public interface IManager {
   TSStatus setSchemaTemplate(TSetSchemaTemplateReq req);
 
   /**
-   * show paths set schemaengine template xx
+   * show paths set schemaengine template xx.
    *
    * @param req String
    * @return TGetPathsSetTemplatesResp
    */
   TGetPathsSetTemplatesResp getPathsSetTemplate(String req);
 
-  /** deactivate schemaengine template */
+  /** Deactivate schemaengine template. */
   TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req);
 
-  /** unset schemaengine template */
+  /** Unset schemaengine template. */
   TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req);
 
-  /** Drop schemaengine template */
+  /** Drop schemaengine template. */
   TSStatus dropSchemaTemplate(String templateName);
 
   TSStatus alterSchemaTemplate(TAlterSchemaTemplateReq req);
 
-  /*
-   * delete timeseries
-   *
-   */
+  /** Delete timeseries. */
   TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req);
 
   TSStatus deleteLogicalView(TDeleteLogicalViewReq req);
@@ -559,7 +557,7 @@ public interface IManager {
   TSStatus alterLogicalView(TAlterLogicalViewReq req);
 
   /**
-   * Create Pipe
+   * Create Pipe.
    *
    * @param req Info about Pipe
    * @return TSStatus
@@ -567,7 +565,7 @@ public interface IManager {
   TSStatus createPipe(TCreatePipeReq req);
 
   /**
-   * Start Pipe
+   * Start Pipe.
    *
    * @param pipeName name of Pipe
    * @return TSStatus
@@ -575,7 +573,7 @@ public interface IManager {
   TSStatus startPipe(String pipeName);
 
   /**
-   * Stop Pipe
+   * Stop Pipe.
    *
    * @param pipeName name of Pipe
    * @return TSStatus
@@ -583,7 +581,7 @@ public interface IManager {
   TSStatus stopPipe(String pipeName);
 
   /**
-   * Drop Pipe
+   * Drop Pipe.
    *
    * @param pipeName name of Pipe
    * @return TSStatus
@@ -620,6 +618,7 @@ public interface IManager {
    * @return TGetTimeSlotListResp.
    */
   TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req);
+
   /**
    * Count timeSlot(timePartition)。used for Show cluster slots information in
    * docs/zh/UserGuide/Cluster/Cluster-Maintenance.md.
@@ -648,27 +647,27 @@ public interface IManager {
 
   TSStatus transfer(List<TDataNodeLocation> newUnknownDataList);
 
-  /** Create a model */
+  /** Create a model. */
   TSStatus createModel(TCreateModelReq req);
 
-  /** Drop a model */
+  /** Drop a model. */
   TSStatus dropModel(TDropModelReq req);
 
-  /** Return the model table */
+  /** Return the model table. */
   TShowModelResp showModel(TShowModelReq req);
 
-  /** Return the trail table */
+  /** Return the trail table. */
   TShowTrailResp showTrail(TShowTrailReq req);
 
-  /** Update the model info */
+  /** Update the model info. */
   TSStatus updateModelInfo(TUpdateModelInfoReq req);
 
-  /** Update the model state */
+  /** Update the model state. */
   TSStatus updateModelState(TUpdateModelStateReq req);
 
   /** Update the model state */
   TGetModelInfoResp getModelInfo(TGetModelInfoReq req);
 
-  /** Set space quota */
+  /** Set space quota. */
   TSStatus setSpaceQuota(TSetSpaceQuotaReq req);
 }

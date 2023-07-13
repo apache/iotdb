@@ -41,13 +41,13 @@ public class ConfigNodeConfig {
   /** ConfigNodeId, the default value -1 will be changed after join cluster. */
   private volatile int configNodeId = -1;
 
-  /** could set ip or hostname. */
+  /** Could set ip or hostname. */
   private String internalAddress = "127.0.0.1";
 
-  /** used for communication between data node and config node. */
+  /** Used for communication between data node and config node. */
   private int internalPort = 10710;
 
-  /** used for communication between config node and config node. */
+  /** Used for communication between config node and config node. */
   private int consensusPort = 10720;
 
   /** Used for connecting to the ConfigNodeGroup. */

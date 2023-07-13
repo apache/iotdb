@@ -59,7 +59,7 @@ public class ConfigNodeDescriptor {
   }
 
   /**
-   * get props url location.
+   * Get props url location.
    *
    * @return url object if location exit, otherwise null.
    */

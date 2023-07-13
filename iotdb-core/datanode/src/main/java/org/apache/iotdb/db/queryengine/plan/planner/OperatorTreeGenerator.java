@@ -226,6 +226,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
 
 import java.io.File;
@@ -1679,6 +1680,18 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
 
+    List<Pair<String, PartialPath>> sourceTargetPathPairList =
+        intoPathDescriptor.getSourceTargetPathPairList();
+    List<String> sourceColumnToViewList = intoPathDescriptor.getSourceColumnToViewList();
+    List<Pair<String, PartialPath>> sourceTargetPathPairWithViewList =
+        new ArrayList<>(sourceTargetPathPairList);
+    for (int i = 0; i < sourceColumnToViewList.size(); i++) {
+      String viewPath = sourceColumnToViewList.get(i);
+      if (StringUtils.isNotEmpty(viewPath)) {
+        sourceTargetPathPairWithViewList.get(i).setLeft(viewPath);
+      }
+    }
+
     return new IntoOperator(
         operatorContext,
         child,
@@ -1686,7 +1699,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         targetPathToSourceInputLocationMap,
         targetPathToDataTypeMap,
         intoPathDescriptor.getTargetDeviceToAlignedMap(),
-        intoPathDescriptor.getSourceTargetPathPairList(),
+        sourceTargetPathPairWithViewList,
         sourceColumnToInputLocationMap,
         FragmentInstanceManager.getInstance().getIntoOperationExecutor(),
         statementSizePerLine);

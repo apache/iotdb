@@ -1547,6 +1547,7 @@ public class IoTDBConfig {
 
   public void setQueryThreadCount(int queryThreadCount) {
     this.queryThreadCount = queryThreadCount;
+    this.maxBytesPerFragmentInstance = allocateMemoryForDataExchange / queryThreadCount;
   }
 
   public void setDegreeOfParallelism(int degreeOfParallelism) {
@@ -1880,6 +1881,7 @@ public class IoTDBConfig {
     this.allocateMemoryForCoordinator = allocateMemoryForRead * 50 / 1001;
     this.allocateMemoryForOperators = allocateMemoryForRead * 200 / 1001;
     this.allocateMemoryForDataExchange = allocateMemoryForRead * 200 / 1001;
+    this.maxBytesPerFragmentInstance = allocateMemoryForDataExchange / queryThreadCount;
     this.allocateMemoryForTimeIndex = allocateMemoryForRead * 200 / 1001;
   }
 
@@ -2121,6 +2123,7 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForDataExchange(long allocateMemoryForDataExchange) {
     this.allocateMemoryForDataExchange = allocateMemoryForDataExchange;
+    this.maxBytesPerFragmentInstance = allocateMemoryForDataExchange / queryThreadCount;
   }
 
   public long getAllocateMemoryForTimeIndex() {

@@ -28,12 +28,15 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class PipeTransferHandshakeReq extends TPipeTransferReq {
 
   private String timestampPrecision;
 
-  private PipeTransferHandshakeReq() {}
+  private PipeTransferHandshakeReq() {
+    // Empty constructor
+  }
 
   public String getTimestampPrecision() {
     return timestampPrecision;
@@ -67,5 +70,25 @@ public class PipeTransferHandshakeReq extends TPipeTransferReq {
     handshakeReq.body = transferReq.body;
 
     return handshakeReq;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    PipeTransferHandshakeReq that = (PipeTransferHandshakeReq) obj;
+    return timestampPrecision.equals(that.timestampPrecision)
+        && version == that.version
+        && type == that.type
+        && body.equals(that.body);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(timestampPrecision, version, type, body);
   }
 }

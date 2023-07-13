@@ -34,7 +34,7 @@ import java.util.List;
 
 public class FunctionViewExpression extends ViewExpression {
 
-  // region member variables and init functions
+  /** region member variables and init functions */
   private final String functionName;
 
   /**
@@ -70,8 +70,7 @@ public class FunctionViewExpression extends ViewExpression {
       }
     } else {
       String errorMsg =
-          String.format(
-              "Illegal parameters during FunctionExpression construction. Array length mismatch.");
+          "Illegal parameters during FunctionExpression construction. Array length mismatch.";
       throw new RuntimeException(errorMsg);
     }
     this.expressions = expressions;
@@ -116,10 +115,7 @@ public class FunctionViewExpression extends ViewExpression {
   @Override
   protected boolean isLeafOperandInternal() {
     // if this expression has no children, return true; else return false.
-    if (this.expressions.size() == 0) {
-      return true;
-    }
-    return false;
+    return this.expressions.isEmpty();
   }
 
   @Override
@@ -131,8 +127,21 @@ public class FunctionViewExpression extends ViewExpression {
   public String toString(boolean isRoot) {
     StringBuilder result = new StringBuilder(this.functionName);
     int keyValueSize = this.functionAttributesKeyValueList.size();
+
+    result.append("(");
+    for (int i = 0; i < this.expressions.size(); i++) {
+      result.append(this.expressions.get(i).toString());
+      if (i + 1 >= this.expressions.size()) {
+        break;
+      }
+      result.append(", ");
+    }
+
     if (this.functionAttributesKeyValueList.size() > 1) {
-      result.append("(");
+      if (!this.expressions.isEmpty()) {
+        result.append(", ");
+      }
+
       for (int i = 0; i + 1 < keyValueSize; i += 2) {
         result
             .append(this.functionAttributesKeyValueList.get(i))
@@ -143,16 +152,8 @@ public class FunctionViewExpression extends ViewExpression {
         }
         result.append(", ");
       }
-      result.append(")");
     }
-    result.append("(");
-    for (int i = 0; i < this.expressions.size(); i++) {
-      result.append(this.expressions.get(i).toString());
-      if (i + 1 >= this.expressions.size()) {
-        break;
-      }
-      result.append(", ");
-    }
+
     result.append(")");
     return result.toString();
   }

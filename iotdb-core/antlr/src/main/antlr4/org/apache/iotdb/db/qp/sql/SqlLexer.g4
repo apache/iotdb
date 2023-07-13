@@ -61,6 +61,14 @@ ALL
     : A L L
     ;
 
+READ
+    : R E A D
+    ;
+
+WRITE
+    : W R I T E
+    ;
+
 ALTER
     : A L T E R
     ;
@@ -95,6 +103,10 @@ BEFORE
 
 BEGIN
     : B E G I N
+    ;
+
+BETWEEN
+    : B E T W E E N
     ;
 
 BLOCKED
@@ -330,6 +342,10 @@ HYPERPARAMETERS
     : H Y P E R P A R A M E T E R S
     ;
 
+IN
+    : I N
+    ;
+
 INDEX
     : I N D E X
     ;
@@ -344,6 +360,10 @@ INSERT
 
 INTO
     : I N T O
+    ;
+
+IS
+    : I S
     ;
 
 KILL
@@ -893,140 +913,66 @@ ELSE
 // Privileges Keywords
 
 PRIVILEGE_VALUE
-    : SET_STORAGE_GROUP | DELETE_STORAGE_GROUP | CREATE_DATABASE | DELETE_DATABASE
-    | CREATE_TIMESERIES | INSERT_TIMESERIES | READ_TIMESERIES | DELETE_TIMESERIES | ALTER_TIMESERIES
-    | CREATE_USER | DELETE_USER | MODIFY_PASSWORD | LIST_USER
-    | GRANT_USER_PRIVILEGE | REVOKE_USER_PRIVILEGE | GRANT_USER_ROLE | REVOKE_USER_ROLE
-    | CREATE_ROLE | DELETE_ROLE | LIST_ROLE | GRANT_ROLE_PRIVILEGE | REVOKE_ROLE_PRIVILEGE
-    | CREATE_FUNCTION | DROP_FUNCTION | CREATE_TRIGGER | DROP_TRIGGER | START_TRIGGER | STOP_TRIGGER
-    | CREATE_CONTINUOUS_QUERY | DROP_CONTINUOUS_QUERY | SHOW_CONTINUOUS_QUERIES
-    | APPLY_TEMPLATE | UPDATE_TEMPLATE | READ_TEMPLATE | READ_TEMPLATE_APPLICATION
-    | CREATE_PIPEPLUGIN | DROP_PIPEPLUGIN | SHOW_PIPEPLUGINS | CREATE_PIPE | START_PIPE | STOP_PIPE | DROP_PIPE | SHOW_PIPES
-    | CREATE_VIEW | ALTER_VIEW | RENAME_VIEW | DELETE_VIEW
+    : READ_DATA
+    | WRITE_DATA
+    | READ_SCHEMA
+    | WRITE_SCHEMA
+    | MANAGE_USER
+    | MANAGE_ROLE
+    | GRANT_PRIVILEGE
+    | ALTER_PASSWORD
+    | USE_TRIGGER
+    | USE_CQ
+    | USE_PIPE
+    | MANAGE_DATABASE
     ;
 
-SET_STORAGE_GROUP
-    : S E T '_' S T O R A G E '_' G R O U P
+READ_DATA
+    : R E A D '_' D A T A
     ;
 
-DELETE_STORAGE_GROUP
-    : D E L E T E '_' S T O R A G E '_' G R O U P
+WRITE_DATA
+    : W R I T E '_' D A T A
     ;
 
-CREATE_DATABASE
-    : C R E A T E '_' D A T A B A S E
+READ_SCHEMA
+    : R E A D '_' S C H E M A
     ;
 
-DELETE_DATABASE
-    : D E L E T E '_' D A T A B A S E
+WRITE_SCHEMA
+    : W R I T E '_' S C H E M A
     ;
 
-CREATE_TIMESERIES
-    : C R E A T E '_' T I M E S E R I E S
+MANAGE_USER
+    : M A N A G E '_' U S E R
     ;
 
-INSERT_TIMESERIES
-    : I N S E R T '_' T I M E S E R I E S
+MANAGE_ROLE
+    : M A N A G E '_' R O L E
     ;
 
-READ_TIMESERIES
-    : R E A D '_' T I M E S E R I E S
+GRANT_PRIVILEGE
+    : G R A N T '_' P R I V I L E G E
     ;
 
-DELETE_TIMESERIES
-    : D E L E T E '_' T I M E S E R I E S
+ALTER_PASSWORD
+    : A L T E R '_' P A S S W O R D
     ;
 
-ALTER_TIMESERIES
-    : A L T E R '_' T I M E S E R I E S
+USE_TRIGGER
+    : U S E '_' T R I G G E R
     ;
 
-CREATE_USER
-    : C R E A T E '_' U S E R
+USE_CQ
+    : U S E '_' C Q
     ;
 
-DELETE_USER
-    : D E L E T E '_' U S E R
+USE_PIPE
+    : U S E '_' P I P E
     ;
 
-MODIFY_PASSWORD
-    : M O D I F Y '_' P A S S W O R D
-    ;
-
-LIST_USER
-    : L I S T '_' U S E R
-    ;
-
-GRANT_USER_PRIVILEGE
-    : G R A N T '_' U S E R '_' P R I V I L E G E
-    ;
-
-REVOKE_USER_PRIVILEGE
-    : R E V O K E '_' U S E R '_' P R I V I L E G E
-    ;
-
-GRANT_USER_ROLE
-    : G R A N T '_' U S E R '_' R O L E
-    ;
-
-REVOKE_USER_ROLE
-    : R E V O K E '_' U S E R '_' R O L E
-    ;
-
-CREATE_ROLE
-    : C R E A T E '_' R O L E
-    ;
-
-DELETE_ROLE
-    : D E L E T E '_' R O L E
-    ;
-
-LIST_ROLE
-    : L I S T '_' R O L E
-    ;
-
-GRANT_ROLE_PRIVILEGE
-    : G R A N T '_' R O L E '_' P R I V I L E G E
-    ;
-
-REVOKE_ROLE_PRIVILEGE
-    : R E V O K E '_' R O L E '_' P R I V I L E G E
-    ;
-
-CREATE_FUNCTION
-    : C R E A T E '_' F U N C T I O N
-    ;
-
-DROP_FUNCTION
-    : D R O P '_' F U N C T I O N
-    ;
-
-CREATE_TRIGGER
-    : C R E A T E '_' T R I G G E R
-    ;
-
-DROP_TRIGGER
-    : D R O P '_' T R I G G E R
-    ;
-
-START_TRIGGER
-    : S T A R T '_' T R I G G E R
-    ;
-
-STOP_TRIGGER
-    : S T O P '_' T R I G G E R
-    ;
-
-CREATE_CONTINUOUS_QUERY
-    : C R E A T E '_' C O N T I N U O U S '_' Q U E R Y
-    ;
-
-DROP_CONTINUOUS_QUERY
-    : D R O P '_' C O N T I N U O U S '_' Q U E R Y
-    ;
-
-SHOW_CONTINUOUS_QUERIES
-    : S H O W '_' C O N T I N U O U S '_' Q U E R I E S
+MANAGE_DATABASE
+    : M A N A G E '_' D A T A B A S E
     ;
 
 SCHEMA_REPLICATION_FACTOR
@@ -1047,69 +993,6 @@ SCHEMA_REGION_GROUP_NUM
 
 DATA_REGION_GROUP_NUM
     : D A T A '_' R E G I O N '_' G R O U P '_' N U M
-    ;
-
-APPLY_TEMPLATE
-    : A P P L Y '_' T E M P L A T E
-    ;
-
-UPDATE_TEMPLATE
-    : U P D A T E '_' T E M P L A T E
-    ;
-
-READ_TEMPLATE
-    : R E A D '_' T E M P L A T E
-    ;
-
-READ_TEMPLATE_APPLICATION
-    : R E A D '_' T E M P L A T E '_' A P P L I C A T I O N
-    ;
-
-CREATE_PIPEPLUGIN
-    : C R E A T E '_' P I P E P L U G I N
-    ;
-
-DROP_PIPEPLUGIN
-    : D R O P '_' P I P E P L U G I N
-    ;
-
-SHOW_PIPEPLUGINS
-    : S H O W '_' P I P E P L U G I N S
-    ;
-CREATE_PIPE
-    : C R E A T E '_' P I P E
-    ;
-
-START_PIPE
-    : S T A R T '_' P I P E
-    ;
-
-STOP_PIPE
-    : S T O P '_' P I P E
-    ;
-
-DROP_PIPE
-    : D R O P '_' P I P E
-    ;
-
-SHOW_PIPES
-    : S H O W '_' P I P E S
-    ;
-
-CREATE_VIEW
-    : C R E A T E '_' V I E W
-    ;
-
-ALTER_VIEW
-    : A L T E R '_' V I E W
-    ;
-
-RENAME_VIEW
-    : R E N A M E '_' V I E W
-    ;
-
-DELETE_VIEW
-    : D E L E T E '_' V I E W
     ;
 
 /**
@@ -1133,12 +1016,6 @@ OPERATOR_GTE : '>=';
 OPERATOR_LT : '<';
 OPERATOR_LTE : '<=';
 OPERATOR_NEQ : '!=' | '<>';
-
-OPERATOR_BETWEEN : B E T W E E N;
-
-OPERATOR_IS : I S;
-
-OPERATOR_IN : I N;
 
 OPERATOR_BITWISE_AND : '&';
 

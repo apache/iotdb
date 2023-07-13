@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.persistence.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -141,7 +142,7 @@ public class ConfigPlanExecutor {
 
   /**
    * Every Info class that implement SnapshotProcessor in ConfigNode should be registered in
-   * snapshotProcessorList
+   * snapshotProcessorList.
    */
   private final List<SnapshotProcessor> snapshotProcessorList;
 

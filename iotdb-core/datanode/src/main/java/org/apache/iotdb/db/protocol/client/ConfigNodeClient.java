@@ -224,7 +224,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   private void waitAndReconnect() throws TException {
     try {
-      // wait to start the next try
+      // Wait to start the next try
       Thread.sleep(RETRY_INTERVAL_MS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -235,7 +235,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
     try {
       tryToConnect();
     } catch (TException e) {
-      // can not connect to each config node
+      // Can not connect to each config node
       syncLatestConfigNodeList();
       tryToConnect();
     }

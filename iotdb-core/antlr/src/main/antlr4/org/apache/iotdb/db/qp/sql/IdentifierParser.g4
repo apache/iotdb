@@ -47,6 +47,7 @@ keyWords
     | ATTRIBUTES
     | BEFORE
     | BEGIN
+    | BETWEEN
     | BLOCKED
     | BOUNDARY
     | BY
@@ -69,6 +70,8 @@ keyWords
     | CQS
     | CREATE
     | DATA
+    | DATA_REPLICATION_FACTOR
+    | DATA_REGION_GROUP_NUM
     | DATABASE
     | DATABASES
     | DATANODEID
@@ -107,10 +110,12 @@ keyWords
     | GROUP
     | HAVING
     | HYPERPARAMETERS
+    | IN
     | INDEX
     | INFO
     | INSERT
     | INTO
+    | IS
     | KILL
     | LABEL
     | LAST
@@ -183,6 +188,8 @@ keyWords
     | ROUND
     | RUNNING
     | SCHEMA
+    | SCHEMA_REPLICATION_FACTOR
+    | SCHEMA_REGION_GROUP_NUM
     | SELECT
     | SERIESSLOTID
     | SESSION
@@ -205,8 +212,10 @@ keyWords
     | TAGS
     | TASK
     | TEMPLATE
+    | TEMPLATES
     | THEN
     | THROTTLE
+    | TIME_PARTITION_INTERVAL
     | TIMEOUT
     | TIMESERIES
     | TIMEPARTITION

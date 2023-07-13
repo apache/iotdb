@@ -31,7 +31,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Map;
 
 public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
@@ -73,11 +72,7 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
     LOGGER.info("PipeMetaSyncProcedure: executeFromOperateOnDataNodes");
 
     Map<Integer, TPushPipeMetaResp> respMap = pushPipeMetaToDataNodes(env);
-    if (env.getConfigManager()
-        .getPipeManager()
-        .getPipeTaskCoordinator()
-        .getPipeTaskInfo()
-        .recordPushPipeMetaExceptions(respMap)) {
+    if (pipeTaskInfo.get().recordPushPipeMetaExceptions(respMap)) {
       throw new PipeException(
           String.format(
               "Failed to push pipe meta to dataNodes, details: %s",
@@ -117,11 +112,6 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeShort(ProcedureType.PIPE_META_SYNC_PROCEDURE.getTypeCode());
     super.serialize(stream);
-  }
-
-  @Override
-  public void deserialize(ByteBuffer byteBuffer) {
-    super.deserialize(byteBuffer);
   }
 
   @Override

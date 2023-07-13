@@ -24,7 +24,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TLoadSample;
 
 import java.util.concurrent.atomic.AtomicReference;
 
-/** DataNodeHeartbeatCache caches and maintains all the heartbeat data. */
+/** {@link DataNodeHeartbeatCache} caches and maintains all the heartbeat data. */
 public class DataNodeHeartbeatCache extends BaseNodeCache {
 
   private final AtomicReference<TLoadSample> latestLoadSample;

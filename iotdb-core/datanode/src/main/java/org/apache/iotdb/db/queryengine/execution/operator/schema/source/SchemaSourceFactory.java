@@ -31,7 +31,9 @@ import java.util.Map;
 
 public class SchemaSourceFactory {
 
-  private SchemaSourceFactory() {}
+  private SchemaSourceFactory() {
+    // Empty constructor
+  }
 
   public static ISchemaSource<ITimeSeriesSchemaInfo> getTimeSeriesSchemaCountSource(
       PartialPath pathPattern,

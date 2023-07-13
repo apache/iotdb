@@ -28,10 +28,9 @@ import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaEngineStatistics;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.rescon.ISchemaEngineStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.factory.MemMNodeFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache.CacheMemoryManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.factory.CacheMNodeFactory;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -75,7 +74,8 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
 
     if (testParams.getTestModeName().equals("PBTree-PartialMemory")
         || testParams.getTestModeName().equals("PBTree-NonMemory")) {
-      IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
+      IMNodeFactory<ICachedMNode> nodeFactory =
+          MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
       // wait release and flush task
       Thread.sleep(1000);
       // schemaRegion1
@@ -124,7 +124,7 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
     if (testParams.getTestModeName().equals("PBTree-PartialMemory")
         || testParams.getTestModeName().equals("PBTree-NonMemory")) {
 
-      IMNodeFactory<?> nodeFactory = CacheMNodeFactory.getInstance();
+      IMNodeFactory<?> nodeFactory = MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
       // wait release and flush task
       Thread.sleep(1000);
       // schemaRegion1
@@ -145,8 +145,8 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
     } else {
       IMNodeFactory nodeFactory =
           testParams.getSchemaEngineMode().equals("Memory")
-              ? MemMNodeFactory.getInstance()
-              : CacheMNodeFactory.getInstance();
+              ? MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory()
+              : MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
       // schemaRegion1
       IMNode<?> sg1 =
           nodeFactory.createDatabaseMNode(
@@ -240,7 +240,8 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
 
     if (testParams.getTestModeName().equals("PBTree-PartialMemory")
         || testParams.getTestModeName().equals("PBTree-NonMemory")) {
-      IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
+      IMNodeFactory<ICachedMNode> nodeFactory =
+          MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
       // wait release and flush task
       Thread.sleep(1000);
       // schemaRegion1
@@ -284,8 +285,8 @@ public class SchemaStatisticsTest extends AbstractSchemaRegionTest {
     } else {
       IMNodeFactory nodeFactory =
           testParams.getSchemaEngineMode().equals("Memory")
-              ? MemMNodeFactory.getInstance()
-              : CacheMNodeFactory.getInstance();
+              ? MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory()
+              : MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
       // schemaRegion1
       IMNode<?> sg1 =
           nodeFactory.createDatabaseDeviceMNode(
