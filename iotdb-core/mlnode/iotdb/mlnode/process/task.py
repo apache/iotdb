@@ -29,7 +29,7 @@ import torch
 from iotdb.mlnode.algorithm.hyperparameter import parse_fixed_hyperparameters, generate_hyperparameters
 from iotdb.mlnode.client import client_manager
 from iotdb.mlnode.config import descriptor
-from iotdb.mlnode.constant import OptionsKey
+from iotdb.mlnode.constant import OptionsKey, DEFAULT_TRIAL_ID, TRIAL_ID_PREFIX
 from iotdb.mlnode.data_access.offline.dataset import WindowDataset
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.parser import ForecastTaskOptions
@@ -82,11 +82,12 @@ class ForecastFixedParamTrainingTask(_BasicTrainingTask):
         model_hyperparameters, task_hyperparameters = parse_fixed_hyperparameters(task_options, hyperparameters)
         self.dataset = dataset
         self.trial = ForecastingTrainingTrial(
-            model_id,
-            task_options,
-            model_hyperparameters,
-            task_hyperparameters,
-            dataset)
+            trial_id=DEFAULT_TRIAL_ID,
+            model_id=model_id,
+            task_options=task_options,
+            model_hyperparameters=model_hyperparameters,
+            task_hyperparameters=task_hyperparameters,
+            dataset=dataset)
 
     def __call__(self):
         try:
@@ -125,6 +126,7 @@ class ForestingTrainingObjective:
         model_hyperparameters, task_hyperparameters = generate_hyperparameters(optuna_suggest,
                                                                                self.task_options)
         trial = ForecastingTrainingTrial(
+                                         trial_id=TRIAL_ID_PREFIX+str(optuna_suggest._trial_id),
                                          model_id=self.model_id,
                                          task_options=self.task_options,
                                          model_hyperparameters=model_hyperparameters,
@@ -159,7 +161,7 @@ class ForecastAutoTuningTrainingTask(_BasicTrainingTask):
                 pid_info=self.pid_info),
                 n_trials=descriptor.get_config().get_mn_tuning_trial_num(),
                 n_jobs=descriptor.get_config().get_mn_tuning_trial_concurrency())
-            best_trial_id = 'tid_' + str(self.study.best_trial._trial_id)
+            best_trial_id = TRIAL_ID_PREFIX + str(self.study.best_trial._trial_id)
             self.configNode_client.update_model_state(self.model_id, TrainingState.FINISHED, best_trial_id)
         except Exception as e:
             logger.warn(e)
@@ -202,8 +204,8 @@ class ForecastingInferenceTask(_BasicInferenceTask):
 
     def __call__(self, pipe: Connection = None):
         self.model, self.model_configs = model_storage.load_model(self.model_path)
-        self.model_pred_len = self.model_configs[OptionsKey.PREDICT_LENGTH]
-        self.model_input_len = self.model_configs[OptionsKey.INPUT_LENGTH]
+        self.model_pred_len = self.model_configs[OptionsKey.PREDICT_LENGTH.name()]
+        self.model_input_len = self.model_configs[OptionsKey.INPUT_LENGTH.name()]
 
         data, time_stamp = self.data
         _, c = data.shape
@@ -248,9 +250,9 @@ class ForecastingInferenceTask(_BasicInferenceTask):
         data = data[None, :]  # add batch dim
         return data, data_stamp
 
-    def generate_future_mark(self, data_stamp: pd.DataFrame, future_len: int) -> pd.DatetimeIndex:
-        time_deltas = data_stamp.diff().dropna()
+    def generate_future_mark(self, time_stamp: pd.DataFrame, future_len: int) -> pd.DatetimeIndex:
+        time_deltas = time_stamp.diff().dropna()
         mean_timedelta = time_deltas.mean()[0]
-        extrapolated_timestamp = pd.date_range(data_stamp.values[0][0], periods=future_len,
+        extrapolated_timestamp = pd.date_range(time_stamp.values[-1][0] + mean_timedelta, periods=future_len,
                                                freq=mean_timedelta)
         return extrapolated_timestamp[:, None]

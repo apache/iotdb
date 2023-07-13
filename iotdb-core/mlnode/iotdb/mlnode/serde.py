@@ -59,7 +59,6 @@ def convert_to_binary(data_frame: pd.DataFrame):
     position_count = data_shape[0]
     keys = data_frame.keys()
 
-    # binary_res = [value_column_size.to_bytes(4, byteorder="big")]
     binary = value_column_size.to_bytes(4, byteorder="big")
 
     # all the tsDataType are double
@@ -136,7 +135,7 @@ def convert_to_df(name_list, type_list, name_index, binary_list):
     while binary_index < binary_size:
         buffer = binary_list[binary_index]
         binary_index += 1
-        time_column_values, column_values, null_indicators, position_count = deserialize(buffer)
+        time_column_values, column_values, null_indicators, _ = deserialize(buffer)
         time_array = np.frombuffer(
             time_column_values, np.dtype(np.longlong).newbyteorder(">")
         )
@@ -300,7 +299,7 @@ def read_from_buffer(buffer, size):
 
 def read_column_types(buffer, value_column_count):
     data_types = []
-    for i in range(value_column_count):
+    for _ in range(value_column_count):
         res, buffer = read_byte_from_buffer(buffer)
         data_types.append(get_data_type(res))
     return data_types, buffer
@@ -325,7 +324,7 @@ def get_data_type(value):
 
 def read_column_encoding(buffer, size):
     encodings = []
-    for i in range(size):
+    for _ in range(size):
         res, buffer = read_byte_from_buffer(buffer)
         encodings.append(res)
     return encodings, buffer

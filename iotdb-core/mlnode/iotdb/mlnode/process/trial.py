@@ -45,15 +45,15 @@ class BasicTrial(object):
             dataset: Dataset
     ):
         self.model_id = model_id
-        self.device = self.__acquire_device()
-        self.model = model.to(self.device)
         self.dataset = dataset
         self.trial_configs = task_configs
-        self.batch_size = task_configs[HyperparameterName.BATCH_SIZE]
-        self.learning_rate = task_configs[HyperparameterName.LEARNING_RATE]
-        self.epochs = task_configs[HyperparameterName.EPOCHS]
-        self.num_workers = task_configs[HyperparameterName.NUM_WORKERS]
-        self.use_gpu = task_configs[HyperparameterName.USE_GPU]
+        self.batch_size = task_configs[HyperparameterName.BATCH_SIZE.name()]
+        self.learning_rate = task_configs[HyperparameterName.LEARNING_RATE.name()]
+        self.epochs = task_configs[HyperparameterName.EPOCHS.name()]
+        self.num_workers = task_configs[HyperparameterName.NUM_WORKERS.name()]
+        self.use_gpu = task_configs[HyperparameterName.USE_GPU.name()]
+        self.device = self.__acquire_device()
+        self.model = model.to(self.device)
 
     def __acquire_device(self):
         if self.use_gpu:
@@ -83,6 +83,7 @@ class BasicTrial(object):
 class ForecastingTrainingTrial(BasicTrial):
     def __init__(
             self,
+            trial_id: str,
             model_id: str,
             task_options: ForecastTaskOptions,
             model_hyperparameters: Dict,
@@ -99,7 +100,7 @@ class ForecastingTrainingTrial(BasicTrial):
         model = create_forecast_model(task_options, self.model_configs)
 
         super(ForecastingTrainingTrial, self).__init__(model_id, model, task_hyperparameters, dataset)
-        self.trial_id = DEFAULT_TRIAL_ID
+        self.trial_id = trial_id
         self.pred_len = task_options.predict_length
         self.dataloader = self._build_dataloader()
         self.datanode_client = client_manager.borrow_data_node_client()

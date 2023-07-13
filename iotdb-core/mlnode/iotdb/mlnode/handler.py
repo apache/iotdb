@@ -16,8 +16,10 @@
 # under the License.
 #
 
+from typing import cast
+
 from iotdb.mlnode.config import descriptor
-from iotdb.mlnode.constant import TSStatusCode
+from iotdb.mlnode.constant import TSStatusCode, TaskType
 from iotdb.mlnode.data_access.factory import create_dataset
 from iotdb.mlnode.data_access.offline.dataset import WindowDataset
 from iotdb.mlnode.log import logger
@@ -49,15 +51,21 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
         try:
             # parse options
             task_options = parse_task_options(req.options)
+            dataset = create_dataset(req.datasetFetchSQL, task_options)
 
             # create task according to task type
             # currently, IoTDB-ML supports forecasting training task only
-            task = self.__task_manager.create_forecast_training_task(
-                model_id=req.modelId,
-                task_options=type(ForecastTaskOptions)(task_options),
-                hyperparameters=req.hyperparameters,
-                dataset=type(WindowDataset)(create_dataset(req.datasetFetchSQL, task_options))
-            )
+            if task_options.get_task_type() == TaskType.FORECAST:
+                task_options = cast(ForecastTaskOptions, task_options)
+                dataset = cast(WindowDataset, dataset)
+                task = self.__task_manager.create_forecast_training_task(
+                    model_id=req.modelId,
+                    task_options=task_options,
+                    hyperparameters=req.hyperparameters,
+                    dataset=dataset
+                )
+            else:
+                raise NotImplementedError
 
             return get_status(TSStatusCode.SUCCESS_STATUS)
         except Exception as e:
@@ -77,7 +85,8 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
                 model_path
             )
             # submit task stage & check resource and decide pending/start
-            forecast_result = convert_to_binary(self.__task_manager.submit_forecast_task(task))
+            res = self.__task_manager.submit_forecast_task(task)
+            forecast_result = convert_to_binary(res)
             resp = TForecastResp(get_status(TSStatusCode.SUCCESS_STATUS), forecast_result)
             return resp
         except Exception as e:
