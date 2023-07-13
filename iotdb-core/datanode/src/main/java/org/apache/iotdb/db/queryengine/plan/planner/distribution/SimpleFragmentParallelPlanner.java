@@ -36,8 +36,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.MultiChildrenSinkNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastSeriesSourceNode;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -49,6 +51,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A simple implementation of IFragmentParallelPlaner. This planner will transform one PlanFragment
@@ -67,8 +70,8 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
   private final Map<PlanNodeId, Pair<PlanFragmentId, PlanNode>> planNodeMap;
   private final List<FragmentInstance> fragmentInstanceList;
 
-  // Record num of FragmentInstances dispatched to same DataNode
-  private final Map<TDataNodeLocation, Integer> dataNodeFINumMap;
+  // Record FragmentInstances dispatched to same DataNode
+  private final Map<TDataNodeLocation, List<FragmentInstance>> dataNodeFIMap;
 
   public SimpleFragmentParallelPlanner(
       SubPlan subPlan, Analysis analysis, MPPQueryContext context) {
@@ -78,7 +81,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     this.instanceMap = new HashMap<>();
     this.planNodeMap = new HashMap<>();
     this.fragmentInstanceList = new ArrayList<>();
-    this.dataNodeFINumMap = new HashMap<>();
+    this.dataNodeFIMap = new HashMap<>();
   }
 
   @Override
@@ -97,7 +100,37 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     fragmentInstanceList.forEach(
         fragmentInstance ->
             fragmentInstance.setDataNodeFINum(
-                dataNodeFINumMap.get(fragmentInstance.getHostDataNode())));
+                dataNodeFIMap.get(fragmentInstance.getHostDataNode()).size()));
+
+    // compute dataNodeSeriesScanNum in LastQueryScanNode
+    if (analysis.getStatement().isQuery()
+        && ((QueryStatement) analysis.getStatement()).isLastQuery()) {
+      final Map<Path, AtomicInteger> pathSumMap = new HashMap<>();
+      dataNodeFIMap
+          .values()
+          .forEach(
+              fragmentInstances -> {
+                fragmentInstances.forEach(
+                    fragmentInstance ->
+                        updateScanNum(
+                            fragmentInstance.getFragment().getPlanNodeTree(), pathSumMap));
+                pathSumMap.clear();
+              });
+    }
+  }
+
+  private void updateScanNum(PlanNode planNode, Map<Path, AtomicInteger> pathSumMap) {
+    if (planNode instanceof LastSeriesSourceNode) {
+      LastSeriesSourceNode lastSeriesSourceNode = (LastSeriesSourceNode) planNode;
+      pathSumMap.merge(
+          lastSeriesSourceNode.getSeriesPath(),
+          lastSeriesSourceNode.getDataNodeSeriesScanNum(),
+          (k, v) -> {
+            v.incrementAndGet();
+            return v;
+          });
+    }
+    planNode.getChildren().forEach(node -> updateScanNum(node, pathSumMap));
   }
 
   private void produceFragmentInstance(PlanFragment fragment) {
@@ -139,7 +172,15 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
       fragmentInstance.setHostDataNode(selectTargetDataNode(regionReplicaSet));
     }
 
-    dataNodeFINumMap.merge(fragmentInstance.getHostDataNode(), 1, Integer::sum);
+    dataNodeFIMap.compute(
+        fragmentInstance.getHostDataNode(),
+        (k, v) -> {
+          if (v == null) {
+            v = new ArrayList<>();
+          }
+          v.add(fragmentInstance);
+          return v;
+        });
 
     if (analysis.getStatement() instanceof QueryStatement
         || analysis.getStatement() instanceof ShowQueriesStatement) {

@@ -421,7 +421,7 @@ public class FragmentInstanceContext extends QueryContext {
       return;
     }
 
-    if (dataNodeQueryContext.decreaseDataNodeFINum() <= 0) {
+    if (dataNodeQueryContext.decreaseDataNodeFINum() == 0) {
       dataNodeQueryContext = null;
       dataNodeQueryContextMap.remove(id.getQueryId());
     }
