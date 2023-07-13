@@ -109,6 +109,10 @@ BEGIN
     : B E G I N
     ;
 
+BETWEEN
+    : B E T W E E N
+    ;
+
 BLOCKED
     : B L O C K E D
     ;
@@ -334,6 +338,10 @@ HAVING
     : H A V I N G
     ;
 
+IN
+    : I N
+    ;
+
 INDEX
     : I N D E X
     ;
@@ -348,6 +356,10 @@ INSERT
 
 INTO
     : I N T O
+    ;
+
+IS
+    : I S
     ;
 
 KILL
@@ -955,10 +967,6 @@ MANAGE_DATABASE
     : M A N A G E '_' D A T A B A S E
     ;
 
-SET_STORAGE_GROUP
-    : S E T '_' S T O R A G E '_' G R O U P
-    ;
-
 SCHEMA_REPLICATION_FACTOR
     : S C H E M A '_' R E P L I C A T I O N '_' F A C T O R
     ;
@@ -1000,12 +1008,6 @@ OPERATOR_GTE : '>=';
 OPERATOR_LT : '<';
 OPERATOR_LTE : '<=';
 OPERATOR_NEQ : '!=' | '<>';
-
-OPERATOR_BETWEEN : B E T W E E N;
-
-OPERATOR_IS : I S;
-
-OPERATOR_IN : I N;
 
 OPERATOR_BITWISE_AND : '&';
 
