@@ -58,13 +58,22 @@ public class LastCacheContainer implements ILastCacheContainer {
     }
   }
 
+  /**
+   * Total basic 100B
+   *
+   * <ul>
+   *   <li>LastCacheContainer Object header, 8B
+   *   <li>ILastCacheValue reference, 8B
+   *   <li>ILastCacheValue
+   *       <ul>
+   *         <li>long timestamp 8B
+   *         <li>Object TsPrimitiveType reference, 8B
+   *         <li>Object TsPrimitiveType value;
+   *       </ul>
+   * </ul>
+   */
   @Override
-  public synchronized void resetLastCache() {
-    lastCacheValue = null;
-  }
-
-  @Override
-  public boolean isEmpty() {
-    return lastCacheValue == null;
+  public int estimateSize() {
+    return 16 + (lastCacheValue == null ? 0 : 16 + lastCacheValue.getValue().getSize());
   }
 }

@@ -27,6 +27,8 @@ public interface ILastCacheValue {
 
   long getTimestamp();
 
+  TsPrimitiveType getValue();
+
   void setTimestamp(long timestamp);
 
   void setValue(TsPrimitiveType value);

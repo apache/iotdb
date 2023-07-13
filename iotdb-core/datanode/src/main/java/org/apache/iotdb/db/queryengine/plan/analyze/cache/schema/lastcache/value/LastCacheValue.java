@@ -39,6 +39,11 @@ public class LastCacheValue implements ILastCacheValue {
   }
 
   @Override
+  public TsPrimitiveType getValue() {
+    return value;
+  }
+
+  @Override
   public void setTimestamp(long timestamp) {
     this.timestamp = timestamp;
   }

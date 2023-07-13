@@ -86,10 +86,6 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
     return lastCacheContainer;
   }
 
-  public void setLastCacheContainer(ILastCacheContainer lastCacheContainer) {
-    this.lastCacheContainer = lastCacheContainer;
-  }
-
   /**
    * Total basic 100B
    *
@@ -110,7 +106,11 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
    */
   public static int estimateSize(SchemaCacheEntry schemaCacheEntry) {
     // each char takes 2B in Java
-    return 100 + 2 * schemaCacheEntry.getIMeasurementSchema().getMeasurementId().length();
+    int sz =
+        schemaCacheEntry.getLastCacheContainer() == null
+            ? 0
+            : schemaCacheEntry.getLastCacheContainer().estimateSize();
+    return 100 + 2 * schemaCacheEntry.getIMeasurementSchema().getMeasurementId().length() + sz;
   }
 
   @Override
