@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class DataNodeQueryContext {
+  // left of Pair is DataNodeSeriesScanNum, right of Pair is the last value waiting to be updated
   @GuardedBy("lock")
   private final Map<PartialPath, Pair<AtomicInteger, TimeValuePair>> uncachedPathToSeriesScanInfo;
 
@@ -43,12 +44,10 @@ public class DataNodeQueryContext {
     this.dataNodeFINum = new AtomicInteger(dataNodeFINum);
   }
 
-  @GuardedBy("lock")
   public boolean unCached(PartialPath path) {
     return uncachedPathToSeriesScanInfo.containsKey(path);
   }
 
-  @GuardedBy("lock")
   public void addUnCachePath(PartialPath path, AtomicInteger dataNodeSeriesScanNum) {
     uncachedPathToSeriesScanInfo.put(path, new Pair<>(dataNodeSeriesScanNum, null));
   }
