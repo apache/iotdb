@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.pipe.connector.v1.IoTDBThriftConnectorClient;
@@ -63,6 +65,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.PriorityQueue;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -75,6 +78,10 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
       "Failed to borrow client from client pool for receiver %s:%s.";
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+
+  private static final ExecutorService transferRetryExecutor =
+      IoTDBThreadPoolFactory.newSingleThreadExecutor(
+          ThreadName.PIPE_THRIFT_CONNECTOR_V2_RETRY_POOL.getName());
 
   private static volatile IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>
       asyncPipeDataTransferClientManagerHolder;
@@ -188,7 +195,11 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
               pipeInsertNodeTabletInsertionEvent.getInsertNode());
       final PipeTransferInsertNodeTabletInsertionEventHandler pipeTransferInsertNodeReqHandler =
           new PipeTransferInsertNodeTabletInsertionEventHandler(
-              requestCommitId, pipeInsertNodeTabletInsertionEvent, pipeTransferInsertNodeReq, this);
+              requestCommitId,
+              pipeInsertNodeTabletInsertionEvent,
+              pipeTransferInsertNodeReq,
+              this,
+              transferRetryExecutor);
 
       transfer(requestCommitId, pipeTransferInsertNodeReqHandler);
     } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
@@ -201,7 +212,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
               pipeRawTabletInsertionEvent.isAligned());
       final PipeTransferRawTabletInsertionEventHandler pipeTransferTabletReqHandler =
           new PipeTransferRawTabletInsertionEventHandler(
-              requestCommitId, pipeTransferTabletReq, this);
+              requestCommitId, pipeTransferTabletReq, this, transferRetryExecutor);
 
       transfer(requestCommitId, pipeTransferTabletReqHandler);
     } else {
@@ -277,7 +288,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
         (PipeTsFileInsertionEvent) tsFileInsertionEvent;
     final PipeTransferTsFileInsertionEventHandler pipeTransferTsFileInsertionEventHandler =
         new PipeTransferTsFileInsertionEventHandler(
-            requestCommitId, pipeTsFileInsertionEvent, this);
+            requestCommitId, pipeTsFileInsertionEvent, this, transferRetryExecutor);
 
     pipeTsFileInsertionEvent.waitForTsFileClose();
     transfer(requestCommitId, pipeTransferTsFileInsertionEventHandler);

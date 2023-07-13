@@ -26,12 +26,17 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.thrift.TException;
 
+import java.util.concurrent.ExecutorService;
+
 public class PipeTransferRawTabletInsertionEventHandler
     extends PipeTransferTabletInsertionEventHandler<TPipeTransferResp> {
 
   public PipeTransferRawTabletInsertionEventHandler(
-      long requestCommitId, TPipeTransferReq req, IoTDBThriftConnectorV2 connector) {
-    super(requestCommitId, null, req, connector);
+      long requestCommitId,
+      TPipeTransferReq req,
+      IoTDBThriftConnectorV2 connector,
+      ExecutorService retryExecutor) {
+    super(requestCommitId, null, req, connector, retryExecutor);
   }
 
   @Override

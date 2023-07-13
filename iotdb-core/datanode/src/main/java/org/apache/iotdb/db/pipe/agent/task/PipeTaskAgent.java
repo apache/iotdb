@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.pipe.agent.task;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
@@ -49,6 +51,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -109,13 +112,13 @@ public class PipeTaskAgent {
       List<PipeMeta> pipeMetaListFromConfigNode) {
     acquireWriteLock();
     try {
-      return handlePipeMetaChangesWithoutLock(pipeMetaListFromConfigNode);
+      return handlePipeMetaChangesInternal(pipeMetaListFromConfigNode);
     } finally {
       releaseWriteLock();
     }
   }
 
-  private List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChangesWithoutLock(
+  private List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChangesInternal(
       List<PipeMeta> pipeMetaListFromConfigNode) {
     // Do nothing if data node is removing or removed
     if (PipeAgent.runtime().isShutdown()) {
@@ -294,13 +297,13 @@ public class PipeTaskAgent {
   public synchronized void dropAllPipeTasks() {
     acquireWriteLock();
     try {
-      dropAllPipeTasksWithoutLock();
+      dropAllPipeTasksInternal();
     } finally {
       releaseWriteLock();
     }
   }
 
-  private void dropAllPipeTasksWithoutLock() {
+  private void dropAllPipeTasksInternal() {
     for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
       try {
         dropPipe(
@@ -313,6 +316,38 @@ public class PipeTaskAgent {
             e);
       }
     }
+  }
+
+  public synchronized void stopPipeTask() {
+    acquireWriteLock();
+    try {
+      stopPipeTaskInternal();
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  private void stopPipeTaskInternal() {
+    pipeMetaKeeper
+        .getPipeMetaList()
+        .forEach(
+            pipeMeta ->
+                pipeMeta
+                    .getRuntimeMeta()
+                    .getConsensusGroupId2TaskMetaMap()
+                    .values()
+                    .forEach(
+                        pipeTaskMeta -> {
+                          Iterator<PipeRuntimeException> exceptionIterator =
+                              pipeTaskMeta.getExceptionMessages().iterator();
+                          while (exceptionIterator.hasNext()) {
+                            if (exceptionIterator.next() instanceof PipeRuntimeCriticalException) {
+                              stopPipe(
+                                  pipeMeta.getStaticMeta().getPipeName(),
+                                  pipeMeta.getStaticMeta().getCreationTime());
+                            }
+                          }
+                        }));
   }
 
   ////////////////////////// Manage by Pipe Name //////////////////////////
@@ -671,13 +706,13 @@ public class PipeTaskAgent {
       throws TException {
     acquireReadLock();
     try {
-      collectPipeMetaListWithoutLock(req, resp);
+      collectPipeMetaListInternal(req, resp);
     } finally {
       releaseReadLock();
     }
   }
 
-  private void collectPipeMetaListWithoutLock(THeartbeatReq req, THeartbeatResp resp)
+  private void collectPipeMetaListInternal(THeartbeatReq req, THeartbeatResp resp)
       throws TException {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
     if (PipeAgent.runtime().isShutdown() || !req.isNeedPipeMetaList()) {
@@ -700,13 +735,13 @@ public class PipeTaskAgent {
       throws TException {
     acquireReadLock();
     try {
-      collectPipeMetaListWithoutLock(req, resp);
+      collectPipeMetaListInternal(req, resp);
     } finally {
       releaseReadLock();
     }
   }
 
-  private void collectPipeMetaListWithoutLock(TPipeHeartbeatReq req, TPipeHeartbeatResp resp)
+  private void collectPipeMetaListInternal(TPipeHeartbeatReq req, TPipeHeartbeatResp resp)
       throws TException {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
     if (PipeAgent.runtime().isShutdown()) {

@@ -20,12 +20,14 @@
 package org.apache.iotdb.db.pipe.connector.v2.handler;
 
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.connector.v1.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.v2.IoTDBThriftConnectorV2;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
@@ -40,7 +42,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeTransferTsFileInsertionEventHandler
@@ -52,6 +54,7 @@ public class PipeTransferTsFileInsertionEventHandler
   private final long requestCommitId;
   private final PipeTsFileInsertionEvent event;
   private final IoTDBThriftConnectorV2 connector;
+  private final ExecutorService retryExecutor;
 
   private final File tsFile;
   private final int readFileBufferSize;
@@ -69,11 +72,15 @@ public class PipeTransferTsFileInsertionEventHandler
   private int retryCount = 0;
 
   public PipeTransferTsFileInsertionEventHandler(
-      long requestCommitId, PipeTsFileInsertionEvent event, IoTDBThriftConnectorV2 connector)
+      long requestCommitId,
+      PipeTsFileInsertionEvent event,
+      IoTDBThriftConnectorV2 connector,
+      ExecutorService retryExecutor)
       throws FileNotFoundException {
     this.requestCommitId = requestCommitId;
     this.event = event;
     this.connector = connector;
+    this.retryExecutor = retryExecutor;
 
     tsFile = event.getTsFile();
     readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
@@ -178,9 +185,13 @@ public class PipeTransferTsFileInsertionEventHandler
       }
     }
 
-    ++retryCount;
+    if (retryCount >= PipeSubtask.MAX_RETRY_TIMES) {
+      event.reportException(new PipeRuntimeConnectorCriticalException(exception.getMessage()));
+      return;
+    }
 
-    CompletableFuture.runAsync(
+    ++retryCount;
+    retryExecutor.submit(
         () -> {
           try {
             Thread.sleep(

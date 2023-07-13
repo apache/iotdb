@@ -29,14 +29,17 @@ import org.apache.thrift.TException;
 
 import javax.annotation.Nullable;
 
+import java.util.concurrent.ExecutorService;
+
 public class PipeTransferInsertNodeTabletInsertionEventHandler
     extends PipeTransferTabletInsertionEventHandler<TPipeTransferResp> {
   public PipeTransferInsertNodeTabletInsertionEventHandler(
       long requestCommitId,
       @Nullable EnrichedEvent event,
       TPipeTransferReq req,
-      IoTDBThriftConnectorV2 connector) {
-    super(requestCommitId, event, req, connector);
+      IoTDBThriftConnectorV2 connector,
+      ExecutorService retryExecutor) {
+    super(requestCommitId, event, req, connector, retryExecutor);
   }
 
   @Override

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.agent.runtime;
 
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
@@ -107,5 +108,8 @@ public class PipeRuntimeAgent implements IService {
         pipeRuntimeException.getMessage(),
         pipeRuntimeException);
     pipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
+    if (pipeRuntimeException instanceof PipeRuntimeCriticalException) {
+      PipeAgent.task().stopPipeTask();
+    }
   }
 }

@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.pipe.connector.v2.handler;
 
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.connector.v2.IoTDBThriftConnectorV2;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -36,7 +38,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 
 public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTransferResp>
     implements AsyncMethodCallback<E> {
@@ -49,6 +51,7 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
   private final TPipeTransferReq req;
 
   private final IoTDBThriftConnectorV2 connector;
+  private final ExecutorService retryExecutor;
 
   private static final long MAX_RETRY_WAIT_TIME_MS =
       (long) (PipeConfig.getInstance().getPipeConnectorRetryIntervalMs() * Math.pow(2, 5));
@@ -58,11 +61,13 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
       long requestCommitId,
       @Nullable EnrichedEvent event,
       TPipeTransferReq req,
-      IoTDBThriftConnectorV2 connector) {
+      IoTDBThriftConnectorV2 connector,
+      ExecutorService retryExecutor) {
     this.requestCommitId = requestCommitId;
     this.event = event;
     this.req = req;
     this.connector = connector;
+    this.retryExecutor = retryExecutor;
 
     Optional.ofNullable(event)
         .ifPresent(
@@ -93,9 +98,13 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
 
   @Override
   public void onError(Exception exception) {
-    ++retryCount;
+    if (retryCount >= PipeSubtask.MAX_RETRY_TIMES) {
+      event.reportException(new PipeRuntimeConnectorCriticalException(exception.getMessage()));
+      return;
+    }
 
-    CompletableFuture.runAsync(
+    ++retryCount;
+    retryExecutor.submit(
         () -> {
           try {
             Thread.sleep(
