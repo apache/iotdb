@@ -362,7 +362,7 @@ public class IoTDBAuthIT {
 
         adminStmt.execute("CREATE ROLE admin");
         adminStmt.execute(
-            "GRANT ROLE admin PRIVILEGES MANAGE_DATABASE,WRITE_SCHEMA,READ_DATA,WRITE_DATA on root.**");
+            "GRANT ROLE admin PRIVILEGES MANAGE_DATABASE,WRITE_SCHEMA,WRITE_DATA on root.**");
         adminStmt.execute("GRANT admin TO tempuser");
 
         userStmt.execute("CREATE DATABASE root.a");
@@ -495,15 +495,15 @@ public class IoTDBAuthIT {
       String ans =
           ",root.a.b : READ_SCHEMA"
               + ",\n"
-              + "role1,root.a.b.c : READ_DATA WRITE_DATA READ_SCHEMA"
+              + "role1,root.a.b.c : WRITE_DATA READ_SCHEMA"
               + ",\n"
-              + "role1,root.d.b.c : READ_DATA WRITE_DATA READ_SCHEMA"
+              + "role1,root.d.b.c : WRITE_DATA READ_SCHEMA"
               + ",\n";
       try {
         validateResultSet(resultSet, ans);
 
         resultSet = adminStmt.executeQuery("LIST PRIVILEGES USER user1 ON root.a.b.c");
-        ans = "role1,root.a.b.c : READ_DATA WRITE_DATA READ_SCHEMA,\n";
+        ans = "role1,root.a.b.c : WRITE_DATA READ_SCHEMA,\n";
         validateResultSet(resultSet, ans);
 
         adminStmt.execute("REVOKE role1 from user1");
@@ -540,19 +540,17 @@ public class IoTDBAuthIT {
         adminStmt.execute("GRANT ROLE role1 PRIVILEGES READ_SCHEMA,WRITE_DATA ON root.a.b.c");
         adminStmt.execute("GRANT ROLE role1 PRIVILEGES READ_SCHEMA,WRITE_DATA ON root.d.b.c");
         resultSet = adminStmt.executeQuery("LIST PRIVILEGES ROLE role1");
-        ans =
-            "root.a.b.c : READ_DATA WRITE_DATA READ_SCHEMA,\n"
-                + "root.d.b.c : READ_DATA WRITE_DATA READ_SCHEMA,\n";
+        ans = "root.a.b.c : WRITE_DATA READ_SCHEMA,\n" + "root.d.b.c : WRITE_DATA READ_SCHEMA,\n";
         validateResultSet(resultSet, ans);
 
         resultSet = adminStmt.executeQuery("LIST PRIVILEGES ROLE role1 ON root.a.b.c");
-        ans = "root.a.b.c : READ_DATA WRITE_DATA READ_SCHEMA,\n";
+        ans = "root.a.b.c : WRITE_DATA READ_SCHEMA,\n";
         validateResultSet(resultSet, ans);
 
         adminStmt.execute("REVOKE ROLE role1 PRIVILEGES READ_SCHEMA,WRITE_DATA ON root.a.b.c");
 
         resultSet = adminStmt.executeQuery("LIST PRIVILEGES ROLE role1");
-        ans = "root.d.b.c : READ_DATA WRITE_DATA READ_SCHEMA,\n";
+        ans = "root.d.b.c : WRITE_DATA READ_SCHEMA,\n";
         validateResultSet(resultSet, ans);
 
         resultSet = adminStmt.executeQuery("LIST PRIVILEGES ROLE role1 ON root.a.b.c");
