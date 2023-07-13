@@ -23,30 +23,30 @@ import org.apache.iotdb.commons.path.PartialPath;
 
 import javax.annotation.concurrent.GuardedBy;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class DataNodeQueryContext {
   @GuardedBy("lock")
-  private final Set<PartialPath> needQueryAllRegionsForLastSet;
+  private final Map<PartialPath, AtomicInteger> uncachedPathToSeriesScanNum;
 
   private final AtomicInteger dataNodeFINum;
 
   private final ReentrantLock lock = new ReentrantLock();
 
   public DataNodeQueryContext(int dataNodeFINum) {
-    this.needQueryAllRegionsForLastSet = new HashSet<>();
+    this.uncachedPathToSeriesScanNum = new HashMap<>();
     this.dataNodeFINum = new AtomicInteger(dataNodeFINum);
   }
 
-  public boolean needQueryAllRegionsForLast(PartialPath path) {
-    return needQueryAllRegionsForLastSet.contains(path);
+  public boolean unCached(PartialPath path) {
+    return uncachedPathToSeriesScanNum.containsKey(path);
   }
 
-  public void addNeedQueryAllRegionsForLast(PartialPath path) {
-    needQueryAllRegionsForLastSet.add(path);
+  public void addUnCachePath(PartialPath path, AtomicInteger dataNodeSeriesScanNum) {
+    uncachedPathToSeriesScanNum.put(path, dataNodeSeriesScanNum);
   }
 
   public int decreaseDataNodeFINum() {

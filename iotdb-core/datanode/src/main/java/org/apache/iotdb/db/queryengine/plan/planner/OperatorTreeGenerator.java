@@ -1989,10 +1989,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     TimeValuePair timeValuePair = null;
     try {
       context.dataNodeQueryContext.lock();
-      if (!context.dataNodeQueryContext.needQueryAllRegionsForLast(seriesPath)) {
+      if (!context.dataNodeQueryContext.unCached(seriesPath)) {
         timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(seriesPath);
         if (timeValuePair == null) {
-          context.dataNodeQueryContext.addNeedQueryAllRegionsForLast(seriesPath);
+          context.dataNodeQueryContext.addUnCachePath(seriesPath, node.getDataNodeSeriesScanNum());
         }
       }
     } finally {
@@ -2193,10 +2193,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       TimeValuePair timeValuePair = null;
       try {
         context.dataNodeQueryContext.lock();
-        if (!context.dataNodeQueryContext.needQueryAllRegionsForLast(measurementPath)) {
+        if (!context.dataNodeQueryContext.unCached(measurementPath)) {
           timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(measurementPath);
           if (timeValuePair == null) {
-            context.dataNodeQueryContext.addNeedQueryAllRegionsForLast(measurementPath);
+            context.dataNodeQueryContext.addUnCachePath(
+                measurementPath, node.getDataNodeSeriesScanNum());
           }
         }
       } finally {
