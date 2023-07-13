@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.exception.pipe;
 
+import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMetaVersion;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -63,17 +64,30 @@ public class PipeRuntimeCriticalException extends PipeRuntimeException {
     ReadWriteIOUtils.write(getTimeStamp(), stream);
   }
 
-  public static PipeRuntimeCriticalException deserializeFrom(ByteBuffer byteBuffer) {
+  public static PipeRuntimeCriticalException deserializeFrom(
+      PipeRuntimeMetaVersion version, ByteBuffer byteBuffer) {
     final String message = ReadWriteIOUtils.readString(byteBuffer);
-    final long timeStamp = ReadWriteIOUtils.readLong(byteBuffer);
-    return new PipeRuntimeCriticalException(message, timeStamp);
+    switch (version) {
+      case VERSION_1:
+        return new PipeRuntimeCriticalException(message);
+      case VERSION_2:
+        return new PipeRuntimeCriticalException(message, ReadWriteIOUtils.readLong(byteBuffer));
+      default:
+        throw new UnsupportedOperationException(String.format("Unsupported version %s", version));
+    }
   }
 
-  public static PipeRuntimeCriticalException deserializeFrom(InputStream stream)
-      throws IOException {
+  public static PipeRuntimeCriticalException deserializeFrom(
+      PipeRuntimeMetaVersion version, InputStream stream) throws IOException {
     final String message = ReadWriteIOUtils.readString(stream);
-    final long timeStamp = ReadWriteIOUtils.readLong(stream);
-    return new PipeRuntimeCriticalException(message, timeStamp);
+    switch (version) {
+      case VERSION_1:
+        return new PipeRuntimeCriticalException(message);
+      case VERSION_2:
+        return new PipeRuntimeCriticalException(message, ReadWriteIOUtils.readLong(stream));
+      default:
+        throw new UnsupportedOperationException(String.format("Unsupported version %s", version));
+    }
   }
 
   @Override
