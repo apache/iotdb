@@ -43,12 +43,15 @@ import java.net.ServerSocket;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class ReplicateTest {
   private static final long CHECK_POINT_GAP = 500;
   private final Logger logger = LoggerFactory.getLogger(ReplicateTest.class);
 
   private final ConsensusGroupId gid = new DataRegionId(1);
+
+  private static final long timeout = TimeUnit.SECONDS.toMillis(300);
 
   private final List<Peer> peers =
       Arrays.asList(
@@ -251,7 +254,7 @@ public class ReplicateTest {
 
   private static void waitPortAvailable(int port) {
     long start = System.currentTimeMillis();
-    while (System.currentTimeMillis() - start < 60 * 1000) {
+    while (System.currentTimeMillis() - start < timeout) {
       try (ServerSocket ignored = new ServerSocket(port)) {
         return;
       } catch (IOException e) {
@@ -263,6 +266,6 @@ public class ReplicateTest {
         }
       }
     }
-    Assert.fail(String.format("can not bind port %d after 60s", port));
+    Assert.fail(String.format("can not bind port %d after 300s", port));
   }
 }
