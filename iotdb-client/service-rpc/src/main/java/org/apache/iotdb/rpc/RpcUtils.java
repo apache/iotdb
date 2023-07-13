@@ -21,7 +21,6 @@ package org.apache.iotdb.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxTSStatus;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
@@ -81,20 +80,6 @@ public class RpcUtils {
       verifySuccess(status.getSubStatus());
       return;
     }
-    if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-      return;
-    }
-    if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new StatementExecutionException(status);
-    }
-  }
-
-  /**
-   * verify success.
-   *
-   * @param status -status
-   */
-  public static void verifySuccess(InfluxTSStatus status) throws StatementExecutionException {
     if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
       return;
     }
@@ -167,16 +152,6 @@ public class RpcUtils {
 
   public static TSStatus getStatus(int code, String message) {
     TSStatus status = new TSStatus(code);
-    status.setMessage(message);
-    return status;
-  }
-
-  public static InfluxTSStatus getInfluxDBStatus(TSStatusCode tsStatusCode) {
-    return new InfluxTSStatus(tsStatusCode.getStatusCode());
-  }
-
-  public static InfluxTSStatus getInfluxDBStatus(int code, String message) {
-    InfluxTSStatus status = new InfluxTSStatus(code);
     status.setMessage(message);
     return status;
   }
