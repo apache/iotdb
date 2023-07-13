@@ -182,7 +182,8 @@ class NormalSchemaFetcher {
           indexOfMissingMeasurements,
           schemaComputationWithAutoCreation.getMeasurements(),
           schemaComputationWithAutoCreation::getDataType,
-          isAlignedPutIn);
+          isAlignedPutIn,
+          context);
       indexOfMissingMeasurements =
           schemaTree.compute(schemaComputationWithAutoCreation, indexOfMissingMeasurements);
     }
@@ -353,7 +354,8 @@ class NormalSchemaFetcher {
                     return dataTypes;
                   })
               .collect(Collectors.toList()),
-          isAlignedPutInList);
+          isAlignedPutInList,
+          context);
       indexOfDevicesWithMissingMeasurements = new ArrayList<>();
       indexOfMissingMeasurementsList = new ArrayList<>();
       for (int i = 0; i < indexOfDevicesNeedAutoCreateSchema.size(); i++) {

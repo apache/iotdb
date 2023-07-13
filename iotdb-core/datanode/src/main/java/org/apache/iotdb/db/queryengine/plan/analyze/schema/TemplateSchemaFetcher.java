@@ -74,7 +74,7 @@ class TemplateSchemaFetcher {
 
     if (!extensionMeasurementList.isEmpty() && config.isAutoCreateSchemaEnabled()) {
       autoCreateSchemaExecutor.autoExtendTemplate(
-          template.getName(), extensionMeasurementList, extensionDataTypeList);
+          template.getName(), extensionMeasurementList, extensionDataTypeList, context);
     }
 
     List<Integer> indexOfMissingMeasurements =
@@ -111,7 +111,8 @@ class TemplateSchemaFetcher {
     // auto create and process the missing schema
     if (config.isAutoCreateSchemaEnabled()) {
       ClusterSchemaTree schemaTree = new ClusterSchemaTree();
-      autoCreateSchemaExecutor.autoActivateTemplate(schemaTree, devicePath, template.getId());
+      autoCreateSchemaExecutor.autoActivateTemplate(
+          schemaTree, devicePath, template.getId(), context);
       indexOfMissingMeasurements =
           schemaTree.compute(schemaComputationWithAutoCreation, indexOfMissingMeasurements);
     }
@@ -151,7 +152,7 @@ class TemplateSchemaFetcher {
       }
     }
     if (!extensionMeasurementMap.isEmpty() && config.isAutoCreateSchemaEnabled()) {
-      autoCreateSchemaExecutor.autoExtendTemplate(extensionMeasurementMap);
+      autoCreateSchemaExecutor.autoExtendTemplate(extensionMeasurementMap, context);
     }
 
     for (int i = 0, size = schemaComputationWithAutoCreationList.size(); i < size; i++) {
@@ -211,7 +212,8 @@ class TemplateSchemaFetcher {
               .collect(Collectors.toList()),
           indexOfDevicesNeedAutoCreateSchema.stream()
               .map(templateSetInfoList::get)
-              .collect(Collectors.toList()));
+              .collect(Collectors.toList()),
+          context);
       indexOfDevicesWithMissingMeasurements = new ArrayList<>();
       indexOfMissingMeasurementsList = new ArrayList<>();
       for (int i = 0; i < indexOfDevicesNeedAutoCreateSchema.size(); i++) {

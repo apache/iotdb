@@ -301,7 +301,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
             tsDataTypesList,
             encodingsList,
             compressionTypesList,
-            isAlignedList);
+            isAlignedList,
+            context);
       }
 
       return schemaTree;
