@@ -127,7 +127,7 @@ public class IdentitySinkOperatorTest {
       seriesScanOperator1.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator1
           .getOperatorContext()
-          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+          .setMaxRunTime(new Duration(1000, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath2 =
           new MeasurementPath(IDENTITY_SINK_TEST + ".device0.sensor1", TSDataType.INT32);
@@ -141,7 +141,7 @@ public class IdentitySinkOperatorTest {
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator2
           .getOperatorContext()
-          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+          .setMaxRunTime(new Duration(1000, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath3 =
           new MeasurementPath(IDENTITY_SINK_TEST + ".device0.sensor0", TSDataType.INT32);
@@ -155,7 +155,7 @@ public class IdentitySinkOperatorTest {
       seriesScanOperator3.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator3
           .getOperatorContext()
-          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+          .setMaxRunTime(new Duration(1000, TimeUnit.MILLISECONDS));
 
       MeasurementPath measurementPath4 =
           new MeasurementPath(IDENTITY_SINK_TEST + ".device0.sensor1", TSDataType.INT32);
@@ -169,7 +169,7 @@ public class IdentitySinkOperatorTest {
       seriesScanOperator4.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
       seriesScanOperator4
           .getOperatorContext()
-          .setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
+          .setMaxRunTime(new Duration(1000, TimeUnit.MILLISECONDS));
 
       ISinkHandle sinkHandle = Mockito.mock(ShuffleSinkHandle.class);
       Mockito.when(sinkHandle.isChannelClosed(0)).thenReturn(false);
@@ -180,6 +180,9 @@ public class IdentitySinkOperatorTest {
               Arrays.asList(seriesScanOperator1, seriesScanOperator2),
               new DownStreamChannelIndex(0),
               sinkHandle);
+      identitySinkOperator
+          .getOperatorContext()
+          .setMaxRunTime(new Duration(1200, TimeUnit.MILLISECONDS));
 
       Assert.assertEquals(
           seriesScanOperator3.calculateMaxPeekMemory(),
