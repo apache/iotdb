@@ -917,6 +917,7 @@ PRIVILEGE_VALUE
     | USE_CQ
     | USE_PIPE
     | MANAGE_DATABASE
+    | MAINTAIN
     ;
 
 READ_DATA
@@ -967,8 +968,8 @@ MANAGE_DATABASE
     : M A N A G E '_' D A T A B A S E
     ;
 
-SET_STORAGE_GROUP
-    : S E T '_' S T O R A G E '_' G R O U P
+MAINTAIN
+    : M A I N T A I N
     ;
 
 SCHEMA_REPLICATION_FACTOR

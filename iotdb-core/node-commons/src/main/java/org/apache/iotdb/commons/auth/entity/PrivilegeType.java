@@ -40,6 +40,7 @@ public enum PrivilegeType {
   USE_CQ,
   USE_PIPE,
   MANAGE_DATABASE(true),
+  MAINTAIN,
   READ(true, false, READ_DATA, READ_SCHEMA),
   WRITE(true, false, WRITE_DATA, WRITE_SCHEMA),
   ALL(
@@ -54,7 +55,8 @@ public enum PrivilegeType {
       USE_TRIGGER,
       USE_CQ,
       USE_PIPE,
-      MANAGE_DATABASE);
+      MANAGE_DATABASE,
+      MAINTAIN);
 
   private static final int PRIVILEGE_COUNT = values().length;
 
