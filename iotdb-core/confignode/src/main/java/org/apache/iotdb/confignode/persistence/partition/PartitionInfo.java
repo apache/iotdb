@@ -743,15 +743,7 @@ public class PartitionInfo implements SnapshotProcessor {
    * @return The assigned TimePartitionSlots count
    */
   public long getAssignedTimePartitionSlotsCount(String database) {
-    return databasePartitionTables.get(database)
-        .getTimeSlotList(
-            new TSeriesPartitionSlot(-1),
-            new TConsensusGroupId(TConsensusGroupType.DataRegion, -1),
-            -9223372036854775808L,
-            9223372036854775807L)
-        .stream()
-        .distinct()
-        .count();
+    return databasePartitionTables.get(database).getTimeSlotCount();
   }
 
   /**

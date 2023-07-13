@@ -221,6 +221,15 @@ public class DataPartitionTable {
     }
   }
 
+  /** Get timePartitionSlot count. */
+  public long getTimeSlotCount() {
+    AtomicLong sum = new AtomicLong();
+    dataPartitionMap.forEach(
+        (seriesPartitionSlot, seriesPartitionTable) ->
+            sum.addAndGet(seriesPartitionTable.getTimeSlotCount()));
+    return sum.get();
+  }
+
   public List<TSeriesPartitionSlot> getSeriesSlotList() {
     return dataPartitionMap.keySet().stream()
         .sorted(Comparator.comparing(TSeriesPartitionSlot::getSlotId))
