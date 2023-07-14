@@ -529,9 +529,18 @@ public class OperatorMemoryTest {
     Mockito.when(child.calculateMaxPeekMemory()).thenReturn(2048L);
     Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
     Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
-
+    OperatorContext context =
+        new OperatorContext(
+            1,
+            Mockito.mock(PlanNodeId.class),
+            SeriesAggregationScanOperator.class.getSimpleName(),
+            Mockito.mock(DriverContext.class));
+    FragmentInstanceContext fragmentInstanceContext = Mockito.mock(FragmentInstanceContext.class);
+    Mockito.when(fragmentInstanceContext.getDataNodeQueryContext()).thenReturn(null);
+    Mockito.when(context.getDriverContext().getFragmentInstanceContext())
+        .thenReturn(fragmentInstanceContext);
     UpdateLastCacheOperator updateLastCacheOperator =
-        new UpdateLastCacheOperator(null, child, null, TSDataType.BOOLEAN, null, false, false);
+        new UpdateLastCacheOperator(context, child, null, TSDataType.BOOLEAN, null, false, false);
 
     assertEquals(2048, updateLastCacheOperator.calculateMaxPeekMemory());
     assertEquals(1024, updateLastCacheOperator.calculateMaxReturnSize());
