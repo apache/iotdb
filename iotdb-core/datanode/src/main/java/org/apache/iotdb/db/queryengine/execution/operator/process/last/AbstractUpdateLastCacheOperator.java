@@ -107,6 +107,11 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
       Pair<AtomicInteger, TimeValuePair> seriesScanInfo =
           dataNodeQueryContext.getSeriesScanInfo(fullPath);
 
+      // may enter this case when use TTL
+      if(seriesScanInfo == null) {
+        return;
+      }
+
       // update cache in DataNodeQueryContext
       if (seriesScanInfo.right == null || time > seriesScanInfo.right.getTimestamp()) {
         seriesScanInfo.right = new TimeValuePair(time, value);
