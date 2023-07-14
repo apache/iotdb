@@ -755,6 +755,18 @@ public class PartitionManager {
   /**
    * Only leader use this interface.
    *
+   * <p>Get the assigned TimePartitionSlots count in the specified Database
+   *
+   * @param database The specified Database
+   * @return The assigned TimePartitionSlots count
+   */
+  public long getAssignedTimePartitionSlotsCount(String database) {
+    return partitionInfo.getAssignedTimePartitionSlotsCount(database);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
    * @param database DatabaseName
    * @param type SchemaRegion or DataRegion
    * @return The specific StorageGroup's Regions that sorted by the number of allocated slots
