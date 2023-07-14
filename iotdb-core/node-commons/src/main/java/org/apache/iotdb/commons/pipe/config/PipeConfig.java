@@ -71,6 +71,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeExtractorPendingQueueTabletLimit();
   }
 
+  public int getPipeExtractorTabletRowSize() {
+    return COMMON_CONFIG.getPipeExtractorTabletRowSize();
+  }
+
   /////////////////////////////// Connector ///////////////////////////////
 
   public int getPipeConnectorReadFileBufferSize() {

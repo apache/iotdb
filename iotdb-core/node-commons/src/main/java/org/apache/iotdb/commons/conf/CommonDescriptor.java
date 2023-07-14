@@ -287,6 +287,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_extractor_pending_queue_tablet_limit",
                 String.valueOf(config.getPipeExtractorPendingQueueTabletLimit()))));
+    config.setPipeExtractorTabletRowSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_extractor_tablet_row_size",
+                String.valueOf(config.getPipeExtractorTabletRowSize()))));
 
     config.setPipeConnectorReadFileBufferSize(
         Integer.parseInt(
