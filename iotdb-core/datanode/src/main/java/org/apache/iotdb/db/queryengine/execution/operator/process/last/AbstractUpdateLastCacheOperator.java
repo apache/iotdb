@@ -108,7 +108,7 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
           dataNodeQueryContext.getSeriesScanInfo(fullPath);
 
       // may enter this case when use TTL
-      if(seriesScanInfo == null) {
+      if (seriesScanInfo == null) {
         return;
       }
 

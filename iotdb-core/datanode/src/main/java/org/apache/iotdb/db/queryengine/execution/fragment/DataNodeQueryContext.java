@@ -37,6 +37,8 @@ public class DataNodeQueryContext {
 
   private final AtomicInteger dataNodeFINum;
 
+  // TODO consider more fine-grained locks, now the AtomicInteger in uncachedPathToSeriesScanInfo is
+  // unnecessary
   private final ReentrantLock lock = new ReentrantLock();
 
   public DataNodeQueryContext(int dataNodeFINum) {
