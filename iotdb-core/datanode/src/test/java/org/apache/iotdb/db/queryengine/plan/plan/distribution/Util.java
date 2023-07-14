@@ -299,18 +299,19 @@ public class Util {
       }
 
       @Override
-      public ISchemaTree fetchSchemaWithTags(PathPatternTree patternTree) {
+      public ISchemaTree fetchSchemaWithTags(PathPatternTree patternTree, MPPQueryContext context) {
         return ANALYSIS.getSchemaTree();
       }
 
       @Override
       public void fetchAndComputeSchemaWithAutoCreate(
-          ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation) {}
+          ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation,
+          MPPQueryContext context) {}
 
       @Override
       public void fetchAndComputeSchemaWithAutoCreate(
-          List<? extends ISchemaComputationWithAutoCreation>
-              schemaComputationWithAutoCreationList) {}
+          List<? extends ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList,
+          MPPQueryContext context) {}
 
       @Override
       public ISchemaTree fetchSchemaListWithAutoCreate(
@@ -319,7 +320,8 @@ public class Util {
           List<TSDataType[]> tsDataTypes,
           List<TSEncoding[]> encodings,
           List<CompressionType[]> compressionTypes,
-          List<Boolean> aligned) {
+          List<Boolean> aligned,
+          MPPQueryContext context) {
         return ANALYSIS.getSchemaTree();
       }
 

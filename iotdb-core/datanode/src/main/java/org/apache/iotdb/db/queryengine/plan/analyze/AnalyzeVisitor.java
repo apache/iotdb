@@ -349,7 +349,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     try {
       logger.debug("[StartFetchSchema]");
       if (queryStatement.isGroupByTag()) {
-        schemaTree = schemaFetcher.fetchSchemaWithTags(patternTree);
+        schemaTree = schemaFetcher.fetchSchemaWithTags(patternTree, context);
       } else {
         schemaTree = schemaFetcher.fetchSchema(patternTree, context);
       }
@@ -2293,7 +2293,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
-    validateSchema(analysis, insertTabletStatement);
+    validateSchema(analysis, insertTabletStatement, context);
     InsertBaseStatement realStatement = removeLogicalView(analysis, insertTabletStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
@@ -2318,7 +2318,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
-    validateSchema(analysis, insertRowStatement);
+    validateSchema(analysis, insertRowStatement, context);
     InsertBaseStatement realInsertStatement = removeLogicalView(analysis, insertRowStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
       return analysis;
@@ -2364,7 +2364,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       InsertRowsStatement insertRowsStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
-    validateSchema(analysis, insertRowsStatement);
+    validateSchema(analysis, insertRowsStatement, context);
     InsertRowsStatement realInsertRowsStatement =
         (InsertRowsStatement) removeLogicalView(analysis, insertRowsStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
@@ -2402,7 +2402,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       InsertMultiTabletsStatement insertMultiTabletsStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
-    validateSchema(analysis, insertMultiTabletsStatement);
+    validateSchema(analysis, insertMultiTabletsStatement, context);
     InsertMultiTabletsStatement realStatement =
         (InsertMultiTabletsStatement) removeLogicalView(analysis, insertMultiTabletsStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
@@ -2418,7 +2418,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
-    validateSchema(analysis, insertRowsOfOneDeviceStatement);
+    validateSchema(analysis, insertRowsOfOneDeviceStatement, context);
     InsertBaseStatement realInsertStatement =
         removeLogicalView(analysis, insertRowsOfOneDeviceStatement);
     if (analysis.isFinishQueryAfterAnalyze()) {
@@ -2439,10 +2439,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
   }
 
-  private void validateSchema(Analysis analysis, InsertBaseStatement insertStatement) {
+  private void validateSchema(
+      Analysis analysis, InsertBaseStatement insertStatement, MPPQueryContext context) {
     final long startTime = System.nanoTime();
     try {
-      SchemaValidator.validate(schemaFetcher, insertStatement);
+      SchemaValidator.validate(schemaFetcher, insertStatement, context);
     } catch (SemanticException e) {
       analysis.setFinishQueryAfterAnalyze(true);
       if (e.getCause() instanceof IoTDBException) {
@@ -2520,11 +2521,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             String.format("Parse file %s to resource error", tsFile.getPath()));
       }
       if (device2Schemas.size() > CONFIG.getMaxLoadingDeviceNumber()) {
-        autoCreateAndVerifySchema(loadTsFileStatement, device2Schemas, device2IsAligned);
+        autoCreateAndVerifySchema(loadTsFileStatement, device2Schemas, device2IsAligned, context);
       }
     }
 
-    autoCreateAndVerifySchema(loadTsFileStatement, device2Schemas, device2IsAligned);
+    autoCreateAndVerifySchema(loadTsFileStatement, device2Schemas, device2IsAligned, context);
 
     // load function will query data partition in scheduler
     Analysis analysis = new Analysis();
@@ -2535,7 +2536,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   private void autoCreateAndVerifySchema(
       LoadTsFileStatement loadTsFileStatement,
       Map<String, Map<MeasurementSchema, File>> device2Schemas,
-      Map<String, Pair<Boolean, File>> device2IsAligned)
+      Map<String, Pair<Boolean, File>> device2IsAligned,
+      MPPQueryContext context)
       throws SemanticException {
     if (device2Schemas.isEmpty()) {
       return;
@@ -2550,7 +2552,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       ISchemaTree schemaTree =
           autoCreateSchema(
               device2Schemas,
-              device2IsAligned); // schema fetcher will not auto create if config set
+              device2IsAligned,
+              context); // schema fetcher will not auto create if config set
       // isAutoCreateSchemaEnabled is false.
       if (loadTsFileStatement.isVerifySchema()) {
         verifySchema(schemaTree, device2Schemas, device2IsAligned);
@@ -2703,7 +2706,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private ISchemaTree autoCreateSchema(
       Map<String, Map<MeasurementSchema, File>> device2Schemas,
-      Map<String, Pair<Boolean, File>> device2IsAligned)
+      Map<String, Pair<Boolean, File>> device2IsAligned,
+      MPPQueryContext context)
       throws IllegalPathException {
     List<PartialPath> deviceList = new ArrayList<>();
     List<String[]> measurementList = new ArrayList<>();
@@ -2742,7 +2746,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         dataTypeList,
         encodingsList,
         compressionTypesList,
-        isAlignedList);
+        isAlignedList,
+        context);
   }
 
   private void verifyLoadingMeasurements(Map<String, Map<MeasurementSchema, File>> device2Schemas)
