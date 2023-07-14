@@ -813,7 +813,7 @@ public class PipelineBuilderTest {
     fragmentInstanceContext.setDataRegion(dataRegion);
 
     return new LocalExecutionPlanContext(
-        typeProvider, fragmentInstanceContext, new DataNodeQueryContext(0));
+        typeProvider, fragmentInstanceContext, new DataNodeQueryContext(1));
   }
 
   /**

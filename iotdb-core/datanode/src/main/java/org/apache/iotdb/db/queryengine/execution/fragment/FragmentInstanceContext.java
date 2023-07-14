@@ -82,14 +82,6 @@ public class FragmentInstanceContext extends QueryContext {
   private final Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap;
   private DataNodeQueryContext dataNodeQueryContext;
 
-  //    private final GcMonitor gcMonitor;
-  //    private final AtomicLong startNanos = new AtomicLong();
-  //    private final AtomicLong startFullGcCount = new AtomicLong(-1);
-  //    private final AtomicLong startFullGcTimeNanos = new AtomicLong(-1);
-  //    private final AtomicLong endNanos = new AtomicLong();
-  //    private final AtomicLong endFullGcCount = new AtomicLong(-1);
-  //    private final AtomicLong endFullGcTimeNanos = new AtomicLong(-1);
-
   public static FragmentInstanceContext createFragmentInstanceContext(
       FragmentInstanceId id, FragmentInstanceStateMachine stateMachine, SessionInfo sessionInfo) {
     FragmentInstanceContext instanceContext =

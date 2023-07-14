@@ -117,7 +117,7 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
         seriesScanInfo.right = new TimeValuePair(time, value);
       }
 
-      if (dataNodeQueryContext.getDataNodeSeriesScanNum(fullPath).decrementAndGet() == 0) {
+      if (seriesScanInfo.left.decrementAndGet() == 0) {
         lastCache.updateLastCache(
             getDatabaseName(), fullPath, seriesScanInfo.right, false, Long.MIN_VALUE);
       }

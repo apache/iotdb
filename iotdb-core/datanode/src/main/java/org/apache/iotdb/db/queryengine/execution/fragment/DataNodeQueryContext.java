@@ -54,10 +54,6 @@ public class DataNodeQueryContext {
     uncachedPathToSeriesScanInfo.put(path, new Pair<>(dataNodeSeriesScanNum, null));
   }
 
-  public AtomicInteger getDataNodeSeriesScanNum(PartialPath path) {
-    return uncachedPathToSeriesScanInfo.get(path).left;
-  }
-
   public Pair<AtomicInteger, TimeValuePair> getSeriesScanInfo(PartialPath path) {
     return uncachedPathToSeriesScanInfo.get(path);
   }

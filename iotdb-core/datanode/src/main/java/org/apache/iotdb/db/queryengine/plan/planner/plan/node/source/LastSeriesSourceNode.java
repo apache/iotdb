@@ -39,9 +39,7 @@ public abstract class LastSeriesSourceNode extends SeriesSourceNode {
     return dataNodeSeriesScanNum;
   }
 
-  public PartialPath getSeriesPath() {
-    throw new UnsupportedOperationException();
-  }
+  public abstract PartialPath getSeriesPath();
 
   @Override
   public boolean equals(Object o) {
