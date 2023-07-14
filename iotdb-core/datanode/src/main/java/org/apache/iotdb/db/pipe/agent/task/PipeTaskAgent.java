@@ -318,16 +318,16 @@ public class PipeTaskAgent {
     }
   }
 
-  public synchronized void stopPipeTask() {
+  public synchronized void stopAllPipesWithCriticalException() {
     acquireWriteLock();
     try {
-      stopPipeTaskInternal();
+      stopAllPipesWithCriticalExceptionInternal();
     } finally {
       releaseWriteLock();
     }
   }
 
-  private void stopPipeTaskInternal() {
+  private void stopAllPipesWithCriticalExceptionInternal() {
     pipeMetaKeeper
         .getPipeMetaList()
         .forEach(

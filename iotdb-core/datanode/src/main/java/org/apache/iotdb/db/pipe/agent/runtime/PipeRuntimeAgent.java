@@ -109,7 +109,7 @@ public class PipeRuntimeAgent implements IService {
         pipeRuntimeException);
     pipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
     if (pipeRuntimeException instanceof PipeRuntimeCriticalException) {
-      PipeAgent.task().stopPipeTask();
+      PipeAgent.task().stopAllPipesWithCriticalException();
     }
   }
 }
