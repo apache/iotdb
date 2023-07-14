@@ -45,8 +45,9 @@ public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
       MeasurementPath fullPath,
       TSDataType dataType,
       DataNodeSchemaCache dataNodeSchemaCache,
-      boolean needUpdateCache) {
-    super(operatorContext, child, dataNodeSchemaCache, needUpdateCache);
+      boolean needUpdateCache,
+      boolean isNeedUpdateNullEntry) {
+    super(operatorContext, child, dataNodeSchemaCache, needUpdateCache, isNeedUpdateNullEntry);
     this.fullPath = fullPath;
     this.dataType = dataType.name();
   }
@@ -67,7 +68,9 @@ public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
     if (res.getColumn(0).isNull(0)) {
       // we still need to update last cache if there is no data for this time series to avoid
       // scanning all files each time
-      mayUpdateLastCache(Long.MIN_VALUE, null, fullPath);
+      if (needUpdateNullEntry) {
+        mayUpdateLastCache(Long.MIN_VALUE, null, fullPath);
+      }
       return LAST_QUERY_EMPTY_TSBLOCK;
     }
 

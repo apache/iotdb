@@ -79,6 +79,7 @@ public class LocalExecutionPlanContext {
   private Filter lastQueryTimeFilter;
   // whether we need to update last cache
   private boolean needUpdateLastCache;
+  private boolean needUpdateNullEntry;
 
   public final DataNodeQueryContext dataNodeQueryContext;
 
@@ -275,6 +276,14 @@ public class LocalExecutionPlanContext {
 
   public boolean isNeedUpdateLastCache() {
     return needUpdateLastCache;
+  }
+
+  public boolean isNeedUpdateNullEntry() {
+    return needUpdateNullEntry;
+  }
+
+  public void setNeedUpdateNullEntry(boolean needUpdateNullEntry) {
+    this.needUpdateNullEntry = needUpdateNullEntry;
   }
 
   public long getDataRegionTTL() {

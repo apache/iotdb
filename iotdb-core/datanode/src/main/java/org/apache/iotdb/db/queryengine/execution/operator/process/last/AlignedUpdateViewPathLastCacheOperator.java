@@ -38,8 +38,15 @@ public class AlignedUpdateViewPathLastCacheOperator extends AlignedUpdateLastCac
       AlignedPath seriesPath,
       DataNodeSchemaCache dataNodeSchemaCache,
       boolean needUpdateCache,
+      boolean needUpdateNullEntry,
       String outputViewPath) {
-    super(operatorContext, child, seriesPath, dataNodeSchemaCache, needUpdateCache);
+    super(
+        operatorContext,
+        child,
+        seriesPath,
+        dataNodeSchemaCache,
+        needUpdateCache,
+        needUpdateNullEntry);
     checkArgument(seriesPath.getMeasurementList().size() == 1);
     this.outputViewPath = outputViewPath;
   }

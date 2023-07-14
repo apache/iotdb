@@ -53,7 +53,9 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
 
   protected DataNodeSchemaCache lastCache;
 
-  protected boolean needUpdateCache;
+  protected final boolean needUpdateCache;
+
+  protected final boolean needUpdateNullEntry;
 
   protected TsBlockBuilder tsBlockBuilder;
 
@@ -63,11 +65,13 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
       OperatorContext operatorContext,
       Operator child,
       DataNodeSchemaCache dataNodeSchemaCache,
-      boolean needUpdateCache) {
+      boolean needUpdateCache,
+      boolean needUpdateNullEntry) {
     this.operatorContext = operatorContext;
     this.child = child;
     this.lastCache = dataNodeSchemaCache;
     this.needUpdateCache = needUpdateCache;
+    this.needUpdateNullEntry = needUpdateNullEntry;
     this.tsBlockBuilder = LastQueryUtil.createTsBlockBuilder(1);
     this.dataNodeQueryContext =
         operatorContext.getDriverContext().getFragmentInstanceContext().getDataNodeQueryContext();
@@ -95,6 +99,9 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
 
   protected void mayUpdateLastCache(
       long time, @Nullable TsPrimitiveType value, MeasurementPath fullPath) {
+    if (!needUpdateCache) {
+      return;
+    }
     try {
       dataNodeQueryContext.lock();
       Pair<AtomicInteger, TimeValuePair> seriesScanInfo =
@@ -105,8 +112,7 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
         seriesScanInfo.right = new TimeValuePair(time, value);
       }
 
-      if (needUpdateCache
-          && dataNodeQueryContext.getDataNodeSeriesScanNum(fullPath).decrementAndGet() == 0) {
+      if (dataNodeQueryContext.getDataNodeSeriesScanNum(fullPath).decrementAndGet() == 0) {
         lastCache.updateLastCache(
             getDatabaseName(), fullPath, seriesScanInfo.right, false, Long.MIN_VALUE);
       }

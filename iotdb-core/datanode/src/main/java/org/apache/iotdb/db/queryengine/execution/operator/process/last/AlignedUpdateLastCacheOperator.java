@@ -42,8 +42,9 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
       Operator child,
       AlignedPath seriesPath,
       DataNodeSchemaCache dataNodeSchemaCache,
-      boolean needUpdateCache) {
-    super(operatorContext, child, dataNodeSchemaCache, needUpdateCache);
+      boolean needUpdateCache,
+      boolean needUpdateNullEntry) {
+    super(operatorContext, child, dataNodeSchemaCache, needUpdateCache, needUpdateNullEntry);
     this.seriesPath = seriesPath;
     this.devicePath = seriesPath.getDevicePath();
   }
@@ -79,7 +80,9 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
       } else {
         // we still need to update last cache if there is no data for this time series to avoid
         // scanning all files each time
-        mayUpdateLastCache(Long.MIN_VALUE, null, measurementPath);
+        if (needUpdateNullEntry) {
+          mayUpdateLastCache(Long.MIN_VALUE, null, measurementPath);
+        }
       }
     }
     return !tsBlockBuilder.isEmpty() ? tsBlockBuilder.build() : LAST_QUERY_EMPTY_TSBLOCK;

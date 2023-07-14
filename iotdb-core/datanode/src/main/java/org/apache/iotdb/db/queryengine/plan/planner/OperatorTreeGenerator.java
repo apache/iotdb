@@ -2053,7 +2053,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           fullPath,
           node.getSeriesPath().getSeriesType(),
           DATA_NODE_SCHEMA_CACHE,
-          context.isNeedUpdateLastCache());
+          context.isNeedUpdateLastCache(),
+          context.isNeedUpdateNullEntry());
     } else {
       OperatorContext operatorContext =
           context
@@ -2070,6 +2071,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           node.getSeriesPath().getSeriesType(),
           DATA_NODE_SCHEMA_CACHE,
           context.isNeedUpdateLastCache(),
+          context.isNeedUpdateNullEntry(),
           node.getOutputViewPath());
     }
   }
@@ -2093,7 +2095,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           lastQueryScan,
           unCachedPath,
           DATA_NODE_SCHEMA_CACHE,
-          context.isNeedUpdateLastCache());
+          context.isNeedUpdateLastCache(),
+          context.isNeedUpdateNullEntry());
     } else {
       OperatorContext operatorContext =
           context
@@ -2109,6 +2112,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           unCachedPath,
           DATA_NODE_SCHEMA_CACHE,
           context.isNeedUpdateLastCache(),
+          context.isNeedUpdateNullEntry(),
           node.getOutputViewPath());
     }
   }
@@ -2258,6 +2262,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     context.setLastQueryTimeFilter(node.getTimeFilter());
     context.setNeedUpdateLastCache(LastQueryUtil.needUpdateCache(node.getTimeFilter()));
+    context.setNeedUpdateNullEntry(LastQueryUtil.needUpdateNullEntry(node.getTimeFilter()));
 
     List<AbstractUpdateLastCacheOperator> operatorList =
         node.getChildren().stream()
