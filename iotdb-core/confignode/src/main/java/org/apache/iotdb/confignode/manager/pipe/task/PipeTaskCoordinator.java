@@ -84,12 +84,12 @@ public class PipeTaskCoordinator {
 
     try {
       pipeTaskCoordinatorLock.unlock();
+      return true;
     } catch (IllegalMonitorStateException ignored) {
       // This is thrown if unlock() is called without lock() called first.
       LOGGER.warn("This thread is not holding the lock.");
       return false;
     }
-    return true;
   }
 
   /* Caller should ensure that the method is called in the lock {@link #lock()}. */

@@ -365,6 +365,7 @@ public class ProcedureExecutor<Env> {
                 break;
               case LOCK_EVENT_WAIT:
                 LOG.info("LOCK_EVENT_WAIT can't rollback child running for {}", proc);
+                break;
               case LOCK_YIELD_WAIT:
                 scheduler.yield(proc);
                 break;
