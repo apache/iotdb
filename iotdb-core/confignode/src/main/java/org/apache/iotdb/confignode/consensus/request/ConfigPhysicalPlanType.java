@@ -161,7 +161,7 @@ public enum ConfigPhysicalPlanType {
   UpdateModelState((short) 1202),
   DropModel((short) 1203),
   ShowModel((short) 1204),
-  ShowTrail((short) 1205),
+  ShowTrial((short) 1205),
   GetModelInfo((short) 1206),
 
   /** Pipe Plugin. */

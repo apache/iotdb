@@ -107,8 +107,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTrialReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTrialResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
@@ -656,8 +656,8 @@ public interface IManager {
   /** Return the model table. */
   TShowModelResp showModel(TShowModelReq req);
 
-  /** Return the trail table. */
-  TShowTrailResp showTrail(TShowTrailReq req);
+  /** Return the trial table. */
+  TShowTrialResp showTrial(TShowTrialReq req);
 
   /** Update the model info. */
   TSStatus updateModelInfo(TUpdateModelInfoReq req);

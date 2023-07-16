@@ -34,7 +34,7 @@ public class UpdateModelStatePlan extends ConfigPhysicalPlan {
 
   private String modelId;
   private TrainingState state;
-  private String bestTrailId;
+  private String bestTrialId;
 
   public UpdateModelStatePlan() {
     super(ConfigPhysicalPlanType.UpdateModelState);
@@ -44,7 +44,7 @@ public class UpdateModelStatePlan extends ConfigPhysicalPlan {
     super(ConfigPhysicalPlanType.UpdateModelState);
     this.modelId = updateModelStateReq.getModelId();
     this.state = updateModelStateReq.getState();
-    this.bestTrailId = updateModelStateReq.getBestTrailId();
+    this.bestTrialId = updateModelStateReq.getBestTrialId();
   }
 
   public String getModelId() {
@@ -55,8 +55,8 @@ public class UpdateModelStatePlan extends ConfigPhysicalPlan {
     return state;
   }
 
-  public String getBestTrailId() {
-    return bestTrailId;
+  public String getBestTrialId() {
+    return bestTrialId;
   }
 
   @Override
@@ -64,10 +64,10 @@ public class UpdateModelStatePlan extends ConfigPhysicalPlan {
     stream.writeShort(getType().getPlanType());
     ReadWriteIOUtils.write(modelId, stream);
     ReadWriteIOUtils.write(state.getValue(), stream);
-    boolean isNull = bestTrailId == null;
+    boolean isNull = bestTrialId == null;
     ReadWriteIOUtils.write(isNull, stream);
     if (!isNull) {
-      ReadWriteIOUtils.write(bestTrailId, stream);
+      ReadWriteIOUtils.write(bestTrialId, stream);
     }
   }
 
@@ -77,7 +77,7 @@ public class UpdateModelStatePlan extends ConfigPhysicalPlan {
     this.state = TrainingState.findByValue(ReadWriteIOUtils.readInt(buffer));
     boolean isNull = ReadWriteIOUtils.readBool(buffer);
     if (!isNull) {
-      this.bestTrailId = ReadWriteIOUtils.readString(buffer);
+      this.bestTrialId = ReadWriteIOUtils.readString(buffer);
     }
   }
 
@@ -95,11 +95,11 @@ public class UpdateModelStatePlan extends ConfigPhysicalPlan {
     UpdateModelStatePlan that = (UpdateModelStatePlan) o;
     return modelId.equals(that.modelId)
         && state == that.state
-        && Objects.equals(bestTrailId, that.bestTrailId);
+        && Objects.equals(bestTrialId, that.bestTrialId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), modelId, state, bestTrailId);
+    return Objects.hash(super.hashCode(), modelId, state, bestTrialId);
   }
 }

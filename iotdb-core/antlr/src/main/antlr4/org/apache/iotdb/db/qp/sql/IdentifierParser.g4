@@ -224,7 +224,7 @@ keyWords
     | TOLERANCE
     | TOP
     | TRACING
-    | TRAILS
+    | TRIALS
     | TRIGGER
     | TRIGGERS
     | TRUE

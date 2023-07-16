@@ -30,17 +30,17 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 
-public class TrailInformation {
+public class TrialInformation {
 
   public static final String MODEL_PATH = "model_path";
 
-  private final String trailId;
+  private final String trialId;
   private final ModelHyperparameter modelHyperparameter;
   private String modelPath;
 
-  public TrailInformation(
-      String trailId, ModelHyperparameter modelHyperparameter, String modelPath) {
-    this.trailId = trailId;
+  public TrialInformation(
+      String trialId, ModelHyperparameter modelHyperparameter, String modelPath) {
+    this.trialId = trialId;
     this.modelHyperparameter = modelHyperparameter;
     this.modelPath = modelPath;
   }
@@ -53,8 +53,8 @@ public class TrailInformation {
     modelHyperparameter.update(modelInfo);
   }
 
-  public String getTrailId() {
-    return trailId;
+  public String getTrialId() {
+    return trialId;
   }
 
   public ModelHyperparameter getModelHyperparameter() {
@@ -65,10 +65,10 @@ public class TrailInformation {
     return modelPath;
   }
 
-  public ByteBuffer serializeShowTrailResult() throws IOException {
+  public ByteBuffer serializeShowTrialResult() throws IOException {
     PublicBAOS buffer = new PublicBAOS();
     DataOutputStream stream = new DataOutputStream(buffer);
-    ReadWriteIOUtils.write(trailId, stream);
+    ReadWriteIOUtils.write(trialId, stream);
     ReadWriteIOUtils.write(modelPath, stream);
     List<String> modelHyperparameterList = modelHyperparameter.toStringList();
     ReadWriteIOUtils.write(modelHyperparameterList.size() + 1, stream);
@@ -81,26 +81,26 @@ public class TrailInformation {
   }
 
   public void serialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(trailId, stream);
+    ReadWriteIOUtils.write(trialId, stream);
     modelHyperparameter.serialize(stream);
     ReadWriteIOUtils.write(modelPath, stream);
   }
 
   public void serialize(FileOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(trailId, stream);
+    ReadWriteIOUtils.write(trialId, stream);
     modelHyperparameter.serialize(stream);
     ReadWriteIOUtils.write(modelPath, stream);
   }
 
-  public static TrailInformation deserialize(ByteBuffer buffer) {
-    return new TrailInformation(
+  public static TrialInformation deserialize(ByteBuffer buffer) {
+    return new TrialInformation(
         ReadWriteIOUtils.readString(buffer),
         ModelHyperparameter.deserialize(buffer),
         ReadWriteIOUtils.readString(buffer));
   }
 
-  public static TrailInformation deserialize(InputStream stream) throws IOException {
-    return new TrailInformation(
+  public static TrialInformation deserialize(InputStream stream) throws IOException {
+    return new TrialInformation(
         ReadWriteIOUtils.readString(stream),
         ModelHyperparameter.deserialize(stream),
         ReadWriteIOUtils.readString(stream));

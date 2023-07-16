@@ -36,7 +36,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.commons.model.TrailInformation.MODEL_PATH;
+import static org.apache.iotdb.commons.model.TrialInformation.MODEL_PATH;
 
 public abstract class ModelInformation {
 
@@ -47,8 +47,8 @@ public abstract class ModelInformation {
 
   private TrainingState trainingState;
 
-  @Nullable private String bestTrailId;
-  private final Map<String, TrailInformation> trailMap;
+  @Nullable private String bestTrialId;
+  private final Map<String, TrialInformation> trialMap;
 
   public static final String TASK_TYPE = "task_type";
   public static final String MODEL_TYPE = "model_type";
@@ -58,7 +58,7 @@ public abstract class ModelInformation {
     this.options = options;
     this.datasetFetchSQL = datasetFetchSQL;
     this.trainingState = TrainingState.PENDING;
-    this.trailMap = new HashMap<>();
+    this.trialMap = new HashMap<>();
   }
 
   protected ModelInformation(ByteBuffer buffer) {
@@ -71,14 +71,14 @@ public abstract class ModelInformation {
 
     byte isNull = ReadWriteIOUtils.readByte(buffer);
     if (isNull == 1) {
-      this.bestTrailId = ReadWriteIOUtils.readString(buffer);
+      this.bestTrialId = ReadWriteIOUtils.readString(buffer);
     }
 
     int mapSize = ReadWriteIOUtils.readInt(buffer);
-    this.trailMap = new HashMap<>();
+    this.trialMap = new HashMap<>();
     for (int i = 0; i < mapSize; i++) {
-      TrailInformation trailInformation = TrailInformation.deserialize(buffer);
-      this.trailMap.put(trailInformation.getTrailId(), trailInformation);
+      TrialInformation trialInformation = TrialInformation.deserialize(buffer);
+      this.trialMap.put(trialInformation.getTrialId(), trialInformation);
     }
   }
 
@@ -92,14 +92,14 @@ public abstract class ModelInformation {
 
     byte isNull = ReadWriteIOUtils.readByte(stream);
     if (isNull == 1) {
-      this.bestTrailId = ReadWriteIOUtils.readString(stream);
+      this.bestTrialId = ReadWriteIOUtils.readString(stream);
     }
 
     int mapSize = ReadWriteIOUtils.readInt(stream);
-    this.trailMap = new HashMap<>();
+    this.trialMap = new HashMap<>();
     for (int i = 0; i < mapSize; i++) {
-      TrailInformation trailInformation = TrailInformation.deserialize(stream);
-      this.trailMap.put(trailInformation.getTrailId(), trailInformation);
+      TrialInformation trialInformation = TrialInformation.deserialize(stream);
+      this.trialMap.put(trialInformation.getTrialId(), trialInformation);
     }
   }
 
@@ -125,29 +125,29 @@ public abstract class ModelInformation {
     return trainingState == TrainingState.FINISHED;
   }
 
-  public TrailInformation getTrailInformationById(String trailId) {
-    if (trailMap.containsKey(trailId)) {
-      return trailMap.get(trailId);
+  public TrialInformation getTrialInformationById(String trialId) {
+    if (trialMap.containsKey(trialId)) {
+      return trialMap.get(trialId);
     }
     return null;
   }
 
-  public List<TrailInformation> getAllTrailInformation() {
-    return new ArrayList<>(trailMap.values());
+  public List<TrialInformation> getAllTrialInformation() {
+    return new ArrayList<>(trialMap.values());
   }
 
   public void update(String trailId, Map<String, String> modelInfo) {
-    if (!trailMap.containsKey(trailId)) {
+    if (!trialMap.containsKey(trailId)) {
       String modelPath = null;
       if (modelInfo.containsKey(MODEL_PATH)) {
         modelPath = modelInfo.get(MODEL_PATH);
         modelInfo.remove(MODEL_PATH);
       }
-      TrailInformation trailInformation =
-          new TrailInformation(trailId, new ModelHyperparameter(modelInfo), modelPath);
-      trailMap.put(trailId, trailInformation);
+      TrialInformation trialInformation =
+          new TrialInformation(trailId, new ModelHyperparameter(modelInfo), modelPath);
+      trialMap.put(trailId, trialInformation);
     } else {
-      trailMap.get(trailId).update(modelInfo);
+      trialMap.get(trailId).update(modelInfo);
     }
   }
 
@@ -155,13 +155,13 @@ public abstract class ModelInformation {
     // TODO: add state transform validate
     this.trainingState = newState;
     if (bestTrailId != null) {
-      this.bestTrailId = bestTrailId;
+      this.bestTrialId = bestTrailId;
     }
   }
 
   public String getModelPath() {
-    if (bestTrailId != null) {
-      TrailInformation bestTrail = trailMap.get(bestTrailId);
+    if (bestTrialId != null) {
+      TrialInformation bestTrail = trialMap.get(bestTrialId);
       return bestTrail.getModelPath();
     } else {
       return "UNKNOWN";
@@ -176,16 +176,16 @@ public abstract class ModelInformation {
 
     ReadWriteIOUtils.write(trainingState.ordinal(), stream);
 
-    if (bestTrailId == null) {
+    if (bestTrialId == null) {
       ReadWriteIOUtils.write((byte) 0, stream);
     } else {
       ReadWriteIOUtils.write((byte) 1, stream);
-      ReadWriteIOUtils.write(bestTrailId, stream);
+      ReadWriteIOUtils.write(bestTrialId, stream);
     }
 
-    ReadWriteIOUtils.write(trailMap.size(), stream);
-    for (TrailInformation trailInformation : trailMap.values()) {
-      trailInformation.serialize(stream);
+    ReadWriteIOUtils.write(trialMap.size(), stream);
+    for (TrialInformation trialInformation : trialMap.values()) {
+      trialInformation.serialize(stream);
     }
   }
 
@@ -197,16 +197,16 @@ public abstract class ModelInformation {
 
     ReadWriteIOUtils.write(trainingState.ordinal(), stream);
 
-    if (bestTrailId == null) {
+    if (bestTrialId == null) {
       ReadWriteIOUtils.write((byte) 0, stream);
     } else {
       ReadWriteIOUtils.write((byte) 1, stream);
-      ReadWriteIOUtils.write(bestTrailId, stream);
+      ReadWriteIOUtils.write(bestTrialId, stream);
     }
 
-    ReadWriteIOUtils.write(trailMap.size(), stream);
-    for (TrailInformation trailInformation : trailMap.values()) {
-      trailInformation.serialize(stream);
+    ReadWriteIOUtils.write(trialMap.size(), stream);
+    for (TrialInformation trialInformation : trialMap.values()) {
+      trialInformation.serialize(stream);
     }
   }
 
@@ -243,8 +243,8 @@ public abstract class ModelInformation {
     ReadWriteIOUtils.write(datasetFetchSQL, stream);
     ReadWriteIOUtils.write(trainingState.toString(), stream);
 
-    if (bestTrailId != null) {
-      TrailInformation bestTrail = trailMap.get(bestTrailId);
+    if (bestTrialId != null) {
+      TrialInformation bestTrail = trialMap.get(bestTrialId);
       List<String> modelHyperparameterList = bestTrail.getModelHyperparameter().toStringList();
       ReadWriteIOUtils.write(modelHyperparameterList.size() + 1, stream);
       for (String hyperparameter : modelHyperparameterList) {

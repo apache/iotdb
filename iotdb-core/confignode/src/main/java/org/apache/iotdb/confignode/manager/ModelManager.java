@@ -25,12 +25,12 @@ import org.apache.iotdb.commons.model.ForecastModeInformation;
 import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.confignode.consensus.request.read.model.GetModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.model.ShowModelPlan;
-import org.apache.iotdb.confignode.consensus.request.read.model.ShowTrailPlan;
+import org.apache.iotdb.confignode.consensus.request.read.model.ShowTrialPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelStatePlan;
 import org.apache.iotdb.confignode.consensus.response.model.GetModelInfoResp;
 import org.apache.iotdb.confignode.consensus.response.model.ModelTableResp;
-import org.apache.iotdb.confignode.consensus.response.model.TrailTableResp;
+import org.apache.iotdb.confignode.consensus.response.model.TrialTableResp;
 import org.apache.iotdb.confignode.persistence.ModelInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
@@ -38,8 +38,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTrialReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTrialResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelStateReq;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
@@ -178,22 +178,22 @@ public class ModelManager {
     }
   }
 
-  public TShowTrailResp showTrail(TShowTrailReq req) {
+  public TShowTrialResp showTrial(TShowTrialReq req) {
     try {
       ConsensusReadResponse response =
-          configManager.getConsensusManager().read(new ShowTrailPlan(req));
+          configManager.getConsensusManager().read(new ShowTrialPlan(req));
       if (response.getDataset() != null) {
-        return ((TrailTableResp) response.getDataset()).convertToThriftResponse();
+        return ((TrialTableResp) response.getDataset()).convertToThriftResponse();
       } else {
         LOGGER.warn("Unexpected error happened while showing trail: ", response.getException());
         // consensus layer related errors
         TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
         res.setMessage(response.getException().toString());
-        return new TShowTrailResp(res, Collections.emptyList());
+        return new TShowTrialResp(res, Collections.emptyList());
       }
     } catch (IOException e) {
       LOGGER.warn("Fail to get TrailTable", e);
-      return new TShowTrailResp(
+      return new TShowTrialResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
               .setMessage(e.getMessage()),
           Collections.emptyList());

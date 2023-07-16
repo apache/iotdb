@@ -90,8 +90,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTrialReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTrialResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
@@ -132,7 +132,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTTLTas
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTriggersTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariablesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.ShowModelsTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.ShowTrailsTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.ShowTrialsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowNodesInSchemaTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowPathSetTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.ShowSchemaTemplateTask;
@@ -2203,18 +2203,18 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showTrails(String modelId) {
+  public SettableFuture<ConfigTaskResult> showTrials(String modelId) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TShowTrailResp showTrailResp = client.showTrail(new TShowTrailReq(modelId));
-      if (showTrailResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      TShowTrialResp showTrialResp = client.showTrial(new TShowTrialReq(modelId));
+      if (showTrialResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         future.setException(
-            new IoTDBException(showTrailResp.getStatus().message, showTrailResp.getStatus().code));
+            new IoTDBException(showTrialResp.getStatus().message, showTrialResp.getStatus().code));
         return future;
       }
       // convert trail info list and buildTsBlock
-      ShowTrailsTask.buildTsBlock(showTrailResp.getTrailInfoList(), future);
+      ShowTrialsTask.buildTsBlock(showTrialResp.getTrialInfoList(), future);
     } catch (ClientManagerException | TException e) {
       future.setException(e);
     }

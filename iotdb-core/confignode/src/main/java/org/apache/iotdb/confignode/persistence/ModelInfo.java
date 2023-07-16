@@ -22,18 +22,18 @@ package org.apache.iotdb.confignode.persistence;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.model.ModelTable;
-import org.apache.iotdb.commons.model.TrailInformation;
+import org.apache.iotdb.commons.model.TrialInformation;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.read.model.GetModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.model.ShowModelPlan;
-import org.apache.iotdb.confignode.consensus.request.read.model.ShowTrailPlan;
+import org.apache.iotdb.confignode.consensus.request.read.model.ShowTrialPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.CreateModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.DropModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelStatePlan;
 import org.apache.iotdb.confignode.consensus.response.model.GetModelInfoResp;
 import org.apache.iotdb.confignode.consensus.response.model.ModelTableResp;
-import org.apache.iotdb.confignode.consensus.response.model.TrailTableResp;
+import org.apache.iotdb.confignode.consensus.response.model.TrialTableResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
@@ -124,13 +124,13 @@ public class ModelInfo implements SnapshotProcessor {
     }
   }
 
-  public TrailTableResp showTrail(ShowTrailPlan plan) {
+  public TrialTableResp showTrial(ShowTrialPlan plan) {
     acquireModelTableLock();
     try {
       String modelId = plan.getModelId();
       ModelInformation modelInformation = modelTable.getModelInformationById(modelId);
       if (modelInformation == null) {
-        return new TrailTableResp(
+        return new TrialTableResp(
             new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
                 .setMessage(
                     String.format(
@@ -138,21 +138,21 @@ public class ModelInfo implements SnapshotProcessor {
                         modelId)));
       }
 
-      TrailTableResp trailTableResp =
-          new TrailTableResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-      if (plan.isSetTrailId()) {
-        TrailInformation trailInformation =
-            modelInformation.getTrailInformationById(plan.getTrailId());
-        if (trailInformation != null) {
-          trailTableResp.addTrailInformation(trailInformation);
+      TrialTableResp trialTableResp =
+          new TrialTableResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      if (plan.isSetTrialId()) {
+        TrialInformation trialInformation =
+            modelInformation.getTrialInformationById(plan.getTrialId());
+        if (trialInformation != null) {
+          trialTableResp.addTrialInformation(trialInformation);
         }
       } else {
-        trailTableResp.addTrailInformation(modelInformation.getAllTrailInformation());
+        trialTableResp.addTrialInformation(modelInformation.getAllTrialInformation());
       }
-      return trailTableResp;
+      return trialTableResp;
     } catch (IOException e) {
       LOGGER.warn("Fail to get TrailTable", e);
-      return new TrailTableResp(
+      return new TrialTableResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
               .setMessage(e.getMessage()));
     } finally {
@@ -188,7 +188,7 @@ public class ModelInfo implements SnapshotProcessor {
     try {
       String modelId = plan.getModelId();
       if (modelTable.containsModel(modelId)) {
-        modelTable.updateModel(modelId, plan.getTrailId(), plan.getModelInfo());
+        modelTable.updateModel(modelId, plan.getTrialId(), plan.getModelInfo());
       }
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
@@ -201,7 +201,7 @@ public class ModelInfo implements SnapshotProcessor {
     try {
       String modelId = plan.getModelId();
       if (modelTable.containsModel(modelId)) {
-        modelTable.updateState(modelId, plan.getState(), plan.getBestTrailId());
+        modelTable.updateState(modelId, plan.getState(), plan.getBestTrialId());
       }
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {

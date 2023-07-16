@@ -62,7 +62,7 @@ ddlStatement
     | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes
     | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList | migrateRegion
     // ML Model
-    | createModel | dropModel | showModels | showTrails
+    | createModel | dropModel | showModels | showTrials
     // Quota
     | setSpaceQuota | showSpaceQuota | setThrottleQuota | showThrottleQuota
     // View
@@ -619,8 +619,8 @@ showModels
     : SHOW MODELS
     ;
 
-// ---- Show Trails
-showTrails
+// ---- Show Trials
+showTrials
     : SHOW TRIALS modelId=identifier
     ;
 

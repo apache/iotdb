@@ -739,30 +739,30 @@ struct TShowModelResp {
   2: required list<binary> modelInfoList
 }
 
-struct TShowTrailReq {
+struct TShowTrialReq {
   1: required string modelId
-  2: optional string trailId
+  2: optional string trialId
 }
 
 struct TGetModelInfoReq {
   1: required string modelId
 }
 
-struct TShowTrailResp {
+struct TShowTrialResp {
   1: required common.TSStatus status
-  2: required list<binary> trailInfoList
+  2: required list<binary> trialInfoList
 }
 
 struct TUpdateModelInfoReq {
   1: required string modelId
-  2: required string trailId
+  2: required string trialId
   3: required map<string, string> modelInfo
 }
 
 struct TUpdateModelStateReq {
   1: required string modelId
   2: required common.TrainingState state
-  3: optional string bestTrailId
+  3: optional string bestTrialId
 }
 
 struct TGetModelInfoResp {
@@ -1379,9 +1379,9 @@ service IConfigNodeRPCService {
   TShowModelResp showModel(TShowModelReq req)
 
   /**
-   * Return the trail table
+   * Return the trial table
    */
-  TShowTrailResp showTrail(TShowTrailReq req)
+  TShowTrialResp showTrial(TShowTrialReq req)
 
   /**
    * Update the model info

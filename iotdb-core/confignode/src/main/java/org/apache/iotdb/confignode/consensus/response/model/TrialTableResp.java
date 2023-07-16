@@ -20,8 +20,8 @@
 package org.apache.iotdb.confignode.consensus.response.model;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.model.TrailInformation;
-import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
+import org.apache.iotdb.commons.model.TrialInformation;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTrialResp;
 import org.apache.iotdb.consensus.common.DataSet;
 
 import java.io.IOException;
@@ -29,27 +29,27 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TrailTableResp implements DataSet {
+public class TrialTableResp implements DataSet {
 
   private final TSStatus status;
-  private final List<ByteBuffer> serializedAllTrailInformation;
+  private final List<ByteBuffer> serializedAllTrialInformation;
 
-  public TrailTableResp(TSStatus status) {
+  public TrialTableResp(TSStatus status) {
     this.status = status;
-    this.serializedAllTrailInformation = new ArrayList<>();
+    this.serializedAllTrialInformation = new ArrayList<>();
   }
 
-  public void addTrailInformation(TrailInformation trailInformation) throws IOException {
-    this.serializedAllTrailInformation.add(trailInformation.serializeShowTrailResult());
+  public void addTrialInformation(TrialInformation trialInformation) throws IOException {
+    this.serializedAllTrialInformation.add(trialInformation.serializeShowTrialResult());
   }
 
-  public void addTrailInformation(List<TrailInformation> trailInformationList) throws IOException {
-    for (TrailInformation trailInformation : trailInformationList) {
-      this.serializedAllTrailInformation.add(trailInformation.serializeShowTrailResult());
+  public void addTrialInformation(List<TrialInformation> trialInformationList) throws IOException {
+    for (TrialInformation trialInformation : trialInformationList) {
+      this.serializedAllTrialInformation.add(trialInformation.serializeShowTrialResult());
     }
   }
 
-  public TShowTrailResp convertToThriftResponse() throws IOException {
-    return new TShowTrailResp(status, serializedAllTrailInformation);
+  public TShowTrialResp convertToThriftResponse() throws IOException {
+    return new TShowTrialResp(status, serializedAllTrialInformation);
   }
 }

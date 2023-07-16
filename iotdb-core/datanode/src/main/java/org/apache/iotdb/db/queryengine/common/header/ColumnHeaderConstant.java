@@ -179,9 +179,9 @@ public class ColumnHeaderConstant {
   public static final String USER = "User";
   public static final String READ_WRITE = "Read/Write";
 
-  // column names for show models/trails
+  // column names for show models/trials
   public static final String MODEL_ID = "ModelId";
-  public static final String TRAIL_ID = "TrailId";
+  public static final String TRIAL_ID = "TrialId";
   public static final String MODEL_TASK = "ModelTask";
   public static final String MODEL_TYPE = "ModelType";
   public static final String QUERY_BODY = "QueryBody";
@@ -457,9 +457,9 @@ public class ColumnHeaderConstant {
           new ColumnHeader(STATE, TSDataType.TEXT),
           new ColumnHeader(HYPERPARAMETER, TSDataType.TEXT));
 
-  public static final List<ColumnHeader> showTrailsColumnHeaders =
+  public static final List<ColumnHeader> showTrialsColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(TRAIL_ID, TSDataType.TEXT),
+          new ColumnHeader(TRIAL_ID, TSDataType.TEXT),
           new ColumnHeader(MODEL_PATH, TSDataType.TEXT),
           new ColumnHeader(HYPERPARAMETER, TSDataType.TEXT));
 

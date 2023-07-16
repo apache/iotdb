@@ -158,7 +158,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowModelsStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowTrailsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowTrialsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
@@ -1274,8 +1274,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   // Show Trails =====================================================================
   @Override
-  public Statement visitShowTrails(IoTDBSqlParser.ShowTrailsContext ctx) {
-    return new ShowTrailsStatement(parseIdentifier(ctx.modelId.getText()));
+  public Statement visitShowTrials(IoTDBSqlParser.ShowTrialsContext ctx) {
+    return new ShowTrialsStatement(parseIdentifier(ctx.modelId.getText()));
   }
 
   /** Data Manipulation Language (DML). */
