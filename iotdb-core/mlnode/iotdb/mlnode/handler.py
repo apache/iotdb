@@ -20,7 +20,7 @@ from typing import cast
 
 from iotdb.mlnode.config import descriptor
 from iotdb.mlnode.constant import TaskType, TSStatusCode
-from iotdb.mlnode.das.dataset import TsDataset
+from iotdb.mlnode.das.dataset import TsForecastDataset
 from iotdb.mlnode.das.factory import create_dataset
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.parser import (ForecastTaskOptions, parse_forecast_request,
@@ -58,7 +58,7 @@ class MLNodeRPCServiceHandler(IMLNodeRPCService.Iface):
             # currently, IoTDB-ML supports forecasting training task only
             if task_options.get_task_type() == TaskType.FORECAST:
                 task_options = cast(ForecastTaskOptions, task_options)
-                dataset = cast(TsDataset, dataset)
+                dataset = cast(TsForecastDataset, dataset)
                 task = self.__task_manager.create_forecast_training_task(
                     model_id=req.modelId,
                     task_options=task_options,

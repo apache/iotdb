@@ -20,7 +20,7 @@ from typing import cast
 from torch.utils.data import Dataset
 
 from iotdb.mlnode.constant import TaskType
-from iotdb.mlnode.das.dataset import TsDataset
+from iotdb.mlnode.das.dataset import TsForecastDataset
 from iotdb.mlnode.das.source import IoTDBDataSource
 from iotdb.mlnode.exception import UnsupportedError
 from iotdb.mlnode.parser import ForecastTaskOptions, TaskOptions
@@ -39,12 +39,12 @@ def create_dataset(query_body: str, task_options: TaskOptions) -> Dataset:
         raise UnsupportedError(f"task type {task_type}")
 
 
-def create_forecast_dataset(query_body: str, task_options: ForecastTaskOptions) -> Dataset:
+def create_forecast_dataset(query_body: str, task_options: ForecastTaskOptions) -> TsForecastDataset:
     """
     Create a dataset for training for forecasting.
-    In forecasting, dataset is created from a ThriftDataSource, and then wrapped by a WindowDataset,
+    In forecasting, dataset is created from a IoTDBDataSource, and then wrapped by a TsDataset,
     where the input length and predict length are required.
     """
     datasource = IoTDBDataSource(query_body)
-    dataset = TsDataset(datasource, task_options.input_length, task_options.predict_length)
+    dataset = TsForecastDataset(datasource, task_options.input_length, task_options.predict_length)
     return dataset

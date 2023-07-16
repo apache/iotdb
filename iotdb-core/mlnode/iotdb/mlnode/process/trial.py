@@ -29,7 +29,7 @@ from iotdb.mlnode.algorithm.hyperparameter import HyperparameterName
 from iotdb.mlnode.algorithm.metric import build_metrics, forecast_metric_names
 from iotdb.mlnode.client import client_manager
 from iotdb.mlnode.constant import OptionsKey
-from iotdb.mlnode.das.dataset import TsDataset
+from iotdb.mlnode.das.dataset import TsForecastDataset
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.parser import ForecastTaskOptions
 from iotdb.mlnode.storage import model_storage
@@ -88,7 +88,7 @@ class ForecastingTrainingTrial(BasicTrial):
             task_options: ForecastTaskOptions,
             model_hyperparameters: Dict,
             task_hyperparameters: Dict,
-            dataset: TsDataset
+            dataset: TsForecastDataset
     ):
         """
         A training trial, accept all parameters needed and train a single model.

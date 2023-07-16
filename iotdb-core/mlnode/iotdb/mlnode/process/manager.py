@@ -25,7 +25,7 @@ from typing import Dict
 import pandas as pd
 import psutil
 
-from iotdb.mlnode.das.dataset import TsDataset
+from iotdb.mlnode.das.dataset import TsForecastDataset
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.parser import ForecastTaskOptions
 from iotdb.mlnode.process.task import (ForecastAutoTuningTrainingTask,
@@ -53,7 +53,7 @@ class TaskManager(object):
                                       model_id: str,
                                       task_options: ForecastTaskOptions,
                                       hyperparameters: Dict[str, str],
-                                      dataset: TsDataset):
+                                      dataset: TsForecastDataset):
         """
         Create a training task for forecasting, which contains the training process
 

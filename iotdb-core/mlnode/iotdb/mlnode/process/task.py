@@ -31,7 +31,7 @@ from iotdb.mlnode.algorithm.hyperparameter import (generate_hyperparameters,
 from iotdb.mlnode.client import client_manager
 from iotdb.mlnode.config import descriptor
 from iotdb.mlnode.constant import DEFAULT_TRIAL_ID, TRIAL_ID_PREFIX, OptionsKey
-from iotdb.mlnode.das.dataset import TsDataset
+from iotdb.mlnode.das.dataset import TsForecastDataset
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.parser import ForecastTaskOptions
 from iotdb.mlnode.process.trial import ForecastingTrainingTrial
@@ -76,7 +76,7 @@ class ForecastFixedParamTrainingTask(_BasicTrainingTask):
             model_id: str,
             task_options: ForecastTaskOptions,
             hyperparameters: Dict[str, str],
-            dataset: TsDataset,
+            dataset: TsForecastDataset,
             pid_info: Dict
     ):
         super().__init__(model_id, hyperparameters, pid_info)
@@ -114,7 +114,7 @@ class ForestingTrainingObjective:
             model_id: str,
             task_options: ForecastTaskOptions,
             hyperparameters: Dict[str, str],
-            dataset: TsDataset,
+            dataset: TsForecastDataset,
             pid_info: Dict
     ):
         self.task_options = task_options
@@ -143,7 +143,7 @@ class ForecastAutoTuningTrainingTask(_BasicTrainingTask):
             model_id: str,
             task_options: ForecastTaskOptions,
             hyperparameters: Dict[str, str],
-            dataset: TsDataset,
+            dataset: TsForecastDataset,
             pid_info: Dict
     ):
         super().__init__(model_id, hyperparameters, pid_info)

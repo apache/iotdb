@@ -21,10 +21,10 @@ import numpy as np
 from torch.utils.data import Dataset
 
 from iotdb.mlnode.das.source import DataSource
-from iotdb.mlnode.das.utils.timefeatures import time_features
+from iotdb.mlnode.das.utils.time_features import time_features
 
 
-class TsDataset(Dataset):
+class TsForecastDataset(Dataset):
     """
     Build Windowed dataset (with each element as multivariable time series
     with a sliding window and corresponding timestamps embedding),
@@ -32,7 +32,7 @@ class TsDataset(Dataset):
 
     Args:
         data_source: the whole multivariate time series for a while
-        time_embed: embedding frequency, see `utils/timefeatures.py` for more detail
+        time_embed: embedding frequency, see `utils/time_features.py` for more detail
         input_len: input window size (unit) [1, 2, ... I]
         pred_len: output window size (unit) right after the input window [I+1, I+2, ... I+P]
 
@@ -41,9 +41,9 @@ class TsDataset(Dataset):
     """
 
     def __init__(self,
-                 data_source: DataSource = None,
-                 input_len: int = 96,
-                 pred_len: int = 96,
+                 data_source: DataSource,
+                 input_len: int,
+                 pred_len: int,
                  time_embed: str = 'h'):
         self.input_len = input_len
         self.pred_len = pred_len
