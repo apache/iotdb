@@ -30,7 +30,7 @@ mvn clean package -DskipUTs -pl iotdb-core/mlnode -am
 ```
 
 ```shell
-cd iotde-core/mlnode
+cd iotdb-core/mlnode
 poetry build
 ```
 
