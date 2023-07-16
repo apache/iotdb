@@ -37,7 +37,7 @@ class ExampleModel(nn.Module):
 
 model = ExampleModel()
 model_config = {
-    'input_len': 1,
+    'input_length': 1,
     'input_vars': 1,
     'id': time.time()
 }
@@ -54,8 +54,11 @@ def test_save_model():
 def test_load_model():
     trial_id = 'tid_0'
     model_id = 'mid_test_model_load'
+
+    model_file_path = os.path.join(f'{model_id}', f'{trial_id}.pt')
+
     model_storage.save_model(model, model_config, model_id=model_id, trial_id=trial_id)
-    _, model_config_loaded = model_storage.load_model(model_id=model_id, trial_id=trial_id)
+    _, model_config_loaded = model_storage.load_model(model_file_path)
     assert model_config == model_config_loaded
 
 
@@ -63,7 +66,7 @@ def test_load_not_exist_model():
     trial_id = 'dummy_trial'
     model_id = 'dummy_model'
     try:
-        model_storage.load_model(model_id=model_id, trial_id=trial_id)
+        model_storage.load_model(os.path.join(f'{model_id}', f'{trial_id}.pt'))
     except Exception as e:
         assert e.message == ModelNotExistError(
             os.path.join('.', descriptor.get_config().get_mn_model_storage_dir(),
