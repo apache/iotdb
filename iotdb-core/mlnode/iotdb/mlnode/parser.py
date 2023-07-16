@@ -19,9 +19,10 @@ import argparse
 from abc import abstractmethod
 from typing import Dict
 
-from iotdb.mlnode.algorithm.enums import ForecastModelType
-from iotdb.mlnode.constant import TaskType, OptionsKey
-from iotdb.mlnode.exception import MissingOptionError, UnsupportedError, RedundantOptionError
+from iotdb.mlnode.algorithm.factory import ForecastModelType
+from iotdb.mlnode.constant import OptionsKey, TaskType
+from iotdb.mlnode.exception import (MissingOptionError, RedundantOptionError,
+                                    UnsupportedError)
 from iotdb.mlnode.serde import convert_to_df
 from iotdb.thrift.mlnode.ttypes import TForecastReq
 

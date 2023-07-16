@@ -61,10 +61,10 @@ class FileDataSource(DataSource):
         self.timestamp = pd.to_datetime(raw_data[raw_data.columns[0]].values)
 
 
-class ThriftDataSource(DataSource):
+class IoTDBDataSource(DataSource):
     def __init__(self, query_body: str = None):
         self.query_body = query_body
-        super(ThriftDataSource, self).__init__()
+        super(IoTDBDataSource, self).__init__()
 
     def _read_data(self) -> None:
         try:

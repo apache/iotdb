@@ -61,8 +61,7 @@ class DLinear(nn.Module):
             kernel_size: int,
             input_len: int,
             pred_len: int,
-            input_vars: int,
-            # TODO : forecast_task_type=ForecastTaskType.ENDOGENOUS
+            input_vars: int
     ):
         super(DLinear, self).__init__()
         self.input_len = input_len
@@ -95,8 +94,7 @@ class DLinearIndividual(nn.Module):
             kernel_size=25,
             input_len=96,
             pred_len=96,
-            input_vars=1,
-            # TODO : forecast_task_type=ForecastTaskType.ENDOGENOUS
+            input_vars=1
     ):
         super(DLinearIndividual, self).__init__()
         self.input_len = input_len
@@ -128,6 +126,3 @@ class DLinearIndividual(nn.Module):
 
         x = seasonal_output + trend_output
         return x.permute(0, 2, 1)  # to [Batch, Output length, Channel]
-
-
-

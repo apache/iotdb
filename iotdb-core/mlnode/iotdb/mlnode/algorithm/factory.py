@@ -15,40 +15,30 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from typing import Dict
+from enum import Enum
+from typing import Dict, List
 
 import torch.nn as nn
 
-from iotdb.mlnode.algorithm.enums import ForecastModelType, ForecastTaskType
 from iotdb.mlnode.algorithm.hyperparameter import HyperparameterName
-from iotdb.mlnode.algorithm.models.forecast.dlinear import DLinear, DLinearIndividual
+from iotdb.mlnode.algorithm.models.forecast.dlinear import (DLinear,
+                                                            DLinearIndividual)
 from iotdb.mlnode.algorithm.models.forecast.nbeats import NBeats
 from iotdb.mlnode.exception import BadConfigValueError
-# Common configs for all forecasting model with default values
 from iotdb.mlnode.parser import ForecastTaskOptions
 
 
-def _common_config(**kwargs):
-    return {
-        'input_len': 96,
-        'pred_len': 96,
-        'input_vars': 1,
-        'output_vars': 1,
-        **kwargs
-    }
+class ForecastModelType(Enum):
+    DLINEAR = "dlinear"
+    DLINEAR_INDIVIDUAL = "dlinear_individual"
+    NBEATS = "nbeats"
 
-
-# Common forecasting task configs
-_forecasting_model_default_config_dict = {
-    # multivariable forecasting with all endogenous variables, current support this only
-    ForecastTaskType.ENDOGENOUS: _common_config(
-        input_vars=1,
-        output_vars=1),
-
-    # multivariable forecasting with some exogenous variables
-    ForecastTaskType.EXOGENOUS: _common_config(
-        output_vars=1),
-}
+    @classmethod
+    def values(cls) -> List[str]:
+        values = []
+        for item in list(cls):
+            values.append(item.value)
+        return values
 
 
 def create_forecast_model(

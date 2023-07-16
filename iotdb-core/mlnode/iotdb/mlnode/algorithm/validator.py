@@ -17,8 +17,6 @@
 #
 from abc import abstractmethod
 
-from iotdb.mlnode.exception import BadConfigValueError
-
 
 class Validator(object):
     @abstractmethod
@@ -43,5 +41,5 @@ class NumberRangeValidator(Validator):
     def validate(self, value):
         if self.min_value <= value <= self.max_value:
             return True
-        raise RuntimeError("Expect value between {0} and {1}, got {2} instead." \
-                           .format(self.min_value, self.max_value, value))
+        raise RuntimeError(
+            "Expect value between {0} and {1}, got {2} instead.".format(self.min_value, self.max_value, value))

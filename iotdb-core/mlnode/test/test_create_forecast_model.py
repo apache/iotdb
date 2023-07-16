@@ -17,11 +17,13 @@
 #
 import torch
 
-from iotdb.mlnode.algorithm.enums import ForecastModelType
-from iotdb.mlnode.algorithm.factory import create_forecast_model
-from iotdb.mlnode.algorithm.hyperparameter import HyperparameterName, parse_fixed_hyperparameters
+from iotdb.mlnode.algorithm.factory import (ForecastModelType,
+                                            create_forecast_model)
+from iotdb.mlnode.algorithm.hyperparameter import (HyperparameterName,
+                                                   parse_fixed_hyperparameters)
 from iotdb.mlnode.constant import OptionsKey
-from iotdb.mlnode.exception import BadConfigValueError, UnsupportedError, MissingOptionError
+from iotdb.mlnode.exception import (BadConfigValueError, MissingOptionError,
+                                    UnsupportedError)
 from iotdb.mlnode.parser import ForecastTaskOptions, parse_task_options
 
 

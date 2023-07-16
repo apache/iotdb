@@ -21,9 +21,6 @@ from typing import Tuple
 import torch
 import torch.nn as nn
 
-from iotdb.mlnode.algorithm.hyperparameter import HyperparameterName, IntHyperparameter
-from iotdb.mlnode.algorithm.validator import NumberRangeValidator
-
 
 class GenericBasis(nn.Module):
     """ Generic basis function """
@@ -106,8 +103,7 @@ class NBeats(nn.Module):
             outer_layers=4,
             input_len=96,
             pred_len=96,
-            input_vars=1,
-            # TODO forecast_task_type=ForecastTaskType.ENDOGENOUS
+            input_vars=1
     ):
         super(NBeats, self).__init__()
         self.enc_in = input_vars

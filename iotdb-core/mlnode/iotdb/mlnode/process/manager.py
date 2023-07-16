@@ -25,12 +25,13 @@ from typing import Dict
 import pandas as pd
 import psutil
 
-from iotdb.mlnode.data_access.offline.dataset import WindowDataset
+from iotdb.mlnode.das.dataset import TsDataset
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.parser import ForecastTaskOptions
-from iotdb.mlnode.process.task import (ForecastingInferenceTask,
+from iotdb.mlnode.process.task import (ForecastAutoTuningTrainingTask,
                                        ForecastFixedParamTrainingTask,
-                                       ForecastAutoTuningTrainingTask, _BasicTrainingTask)
+                                       ForecastingInferenceTask,
+                                       _BasicTrainingTask)
 
 
 class TaskManager(object):
@@ -52,7 +53,7 @@ class TaskManager(object):
                                       model_id: str,
                                       task_options: ForecastTaskOptions,
                                       hyperparameters: Dict[str, str],
-                                      dataset: WindowDataset):
+                                      dataset: TsDataset):
         """
         Create a training task for forecasting, which contains the training process
 

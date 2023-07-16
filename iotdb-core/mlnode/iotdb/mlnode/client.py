@@ -19,8 +19,8 @@ import time
 from typing import Dict, List
 
 import pandas as pd
-from thrift.Thrift import TException
 from thrift.protocol import TBinaryProtocol
+from thrift.Thrift import TException
 from thrift.transport import TSocket, TTransport
 
 from iotdb.mlnode import serde

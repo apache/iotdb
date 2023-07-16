@@ -16,17 +16,16 @@
 # under the License.
 #
 
-from enum import Enum
 from abc import abstractmethod
-from typing import Optional, List, Dict, Tuple
+from enum import Enum
+from typing import Dict, List, Optional, Tuple
 
 import optuna
 
+from iotdb.mlnode.algorithm.factory import ForecastModelType
+from iotdb.mlnode.algorithm.validator import NumberRangeValidator, Validator
 from iotdb.mlnode.exception import BadConfigValueError, UnsupportedError
-
-from iotdb.mlnode.algorithm.enums import ForecastModelType
-from iotdb.mlnode.algorithm.validator import Validator, NumberRangeValidator
-from iotdb.mlnode.parser import TaskOptions, ForecastTaskOptions
+from iotdb.mlnode.parser import ForecastTaskOptions, TaskOptions
 
 
 class Hyperparameter(object):
