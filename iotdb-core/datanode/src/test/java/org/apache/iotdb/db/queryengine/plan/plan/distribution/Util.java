@@ -53,6 +53,7 @@ import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -60,6 +61,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import org.mockito.Mockito;
 
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -224,6 +227,9 @@ public class Util {
       analysis.setDataPartitionInfo(dataPartition);
       analysis.setSchemaPartitionInfo(schemaPartition);
       analysis.setSchemaTree(genSchemaTree());
+      // to avoid some special case which is not the point of test
+      analysis.setStatement(Mockito.mock(QueryStatement.class));
+      Mockito.when(analysis.getStatement().isQuery()).thenReturn(false);
       return analysis;
     } catch (IllegalPathException e) {
       return new Analysis();
