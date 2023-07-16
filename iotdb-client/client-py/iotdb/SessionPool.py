@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 import multiprocessing
 import time
 from queue import Queue
@@ -39,31 +40,23 @@ class PoolConfig:
 class SessionPool(object):
     DEFAULT_MULTIPIE = 5
 
-    def __init__(self, pool_config: PoolConfig, max_pool_size: int, wait_timeout_in_ms: int, enable_compression: bool):
+    def __init__(self, pool_config: PoolConfig, max_pool_size: int, wait_timeout_in_ms: int):
         self.__pool_config = pool_config
         self.__max_pool_size = max_pool_size
-        self.__wait_timeout_in_ms = wait_timeout_in_ms
-        self.__enable_compression = enable_compression
+        self.__wait_timeout_in_ms = wait_timeout_in_ms/1000
         self.__pool_size = 0
         self.__queue = Queue(max_pool_size)
         self.__lock = Lock()
 
     def __construct_session(self) -> Session:
         if len(self.__pool_config.node_urls) > 0:
-            session = Session.init_from_node_urls(self.__pool_config.node_urls, self.__pool_config.user_name,
-                                                  self.__pool_config.password, self.__pool_config.fetch_size,
-                                                  self.__pool_config.time_zone)
+            return Session.init_from_node_urls(self.__pool_config.node_urls, self.__pool_config.user_name,
+                                               self.__pool_config.password, self.__pool_config.fetch_size,
+                                               self.__pool_config.time_zone)
 
         else:
-            session = Session(self.__pool_config.host, self.__pool_config.ip, self.__pool_config.user_name,
-                              self.__pool_config.password, self.__pool_config.fetch_size, self.__pool_config.time_zone)
-
-        try:
-            session.open(self.__enable_compression)
-            return session
-        except Exception as e:
-            session.close()
-            raise e
+            return Session(self.__pool_config.host, self.__pool_config.ip, self.__pool_config.user_name,
+                           self.__pool_config.password, self.__pool_config.fetch_size, self.__pool_config.time_zone)
 
     def __poll_session(self) -> Session | None:
         if self.__queue.empty():
@@ -75,7 +68,7 @@ class SessionPool(object):
         start = time.time()
 
         session = self.__poll_session()
-        while session is not None:
+        while session is None:
             self.__lock.acquire()
             if self.__pool_size < self.__max_pool_size:
                 self.__pool_size += 1
@@ -84,7 +77,9 @@ class SessionPool(object):
                 break
             else:
                 if time.time() - start > self.__wait_timeout_in_ms:
-                    raise TimeoutError("Wait for session timeout")
+                    self.__lock.release()
+                    raise TimeoutError("Wait to get session timeout in SessionPool, current pool size: {0}"
+                                       .format(self.__max_pool_size))
                 time.sleep(1)
             session = self.__poll_session()
             self.__lock.release()
@@ -114,8 +109,7 @@ class SessionPool(object):
             session.close()
 
 
-def new_session_pool(pool_config: PoolConfig, max_pool_size: int, wait_timeout_in_ms: int,
-                     enable_compression: bool) -> SessionPool:
+def create_session_pool(pool_config: PoolConfig, max_pool_size: int, wait_timeout_in_ms: int) -> SessionPool:
     if max_pool_size <= 0:
         max_pool_size = multiprocessing.cpu_count() * SessionPool.DEFAULT_MULTIPIE
-    return SessionPool(pool_config, max_pool_size, wait_timeout_in_ms, enable_compression)
+    return SessionPool(pool_config, max_pool_size, wait_timeout_in_ms)

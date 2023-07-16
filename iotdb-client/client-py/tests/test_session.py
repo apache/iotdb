@@ -20,6 +20,7 @@
 import numpy as np
 
 from iotdb.Session import Session
+from iotdb.SessionPool import PoolConfig, create_session_pool
 from iotdb.utils.BitMap import BitMap
 from iotdb.utils.IoTDBConstants import TSDataType, TSEncoding, Compressor
 from iotdb.utils.NumpyTablet import NumpyTablet
@@ -46,9 +47,23 @@ def print_message(message):
 
 
 def test_session():
+    session_test()
+
+
+def test_session_pool():
+    session_test(True)
+
+
+def session_test(use_session_pool=False):
     with IoTDBContainer("iotdb:dev") as db:
         db: IoTDBContainer
-        session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
+
+        if use_session_pool:
+            pool_config = PoolConfig(db.get_ip_address(), db.get_port(), None, "root", "root", 1024, "Asia/Shanghai", 3)
+            session_pool = create_session_pool(pool_config, 1, 3000)
+            session = session_pool.get_session()
+        else:
+            session = Session(db.get_container_host_ip(), db.get_exposed_port(6667))
         session.open(False)
 
         if not session.is_open():
