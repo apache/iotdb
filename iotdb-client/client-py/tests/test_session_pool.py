@@ -25,7 +25,7 @@ def test_session_pool():
     with IoTDBContainer("iotdb:dev") as db:
         db: IoTDBContainer
         max_pool_size = 2
-        pool_config = PoolConfig(db.get_ip_address(), db.get_port(), [], "root", "root", 1024, "Asia/Shanghai", 3)
+        pool_config = PoolConfig(db.get_ip_address(), db.get_port(), "root", "root", [], 1024, "Asia/Shanghai", 3)
         session_pool = create_session_pool(pool_config, max_pool_size, 3000)
         session = session_pool.get_session()
         session.open(False)

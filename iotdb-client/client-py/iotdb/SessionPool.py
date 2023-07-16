@@ -23,12 +23,20 @@ from threading import Lock
 
 from iotdb.Session import Session
 
+DEFAULT_MULTIPIE = 5
+DEFAULT_FETCH_SIZE = 5000
+DEFAULT_MAX_RETRY = 3
+DEFAULT_TIME_ZONE = "Asia/Shanghai"
 
-class PoolConfig:
-    def __init__(self, host: str, ip: str, node_urls: [], user_name: str, password: str, fetch_size: int,
-                 time_zone: str, max_retry: int):
+
+class PoolConfig(object):
+    def __init__(self, host: str, ip: str, user_name: str, password: str, node_urls: list = None,
+                 fetch_size: int = DEFAULT_FETCH_SIZE, time_zone: str = DEFAULT_TIME_ZONE,
+                 max_retry: int = DEFAULT_MAX_RETRY):
         self.host = host
         self.ip = ip
+        if node_urls is None:
+            node_urls = []
         self.node_urls = node_urls
         self.user_name = user_name
         self.password = password
@@ -38,12 +46,11 @@ class PoolConfig:
 
 
 class SessionPool(object):
-    DEFAULT_MULTIPIE = 5
 
     def __init__(self, pool_config: PoolConfig, max_pool_size: int, wait_timeout_in_ms: int):
         self.__pool_config = pool_config
         self.__max_pool_size = max_pool_size
-        self.__wait_timeout_in_ms = wait_timeout_in_ms/1000
+        self.__wait_timeout_in_ms = wait_timeout_in_ms / 1000
         self.__pool_size = 0
         self.__queue = Queue(max_pool_size)
         self.__lock = Lock()
@@ -111,5 +118,5 @@ class SessionPool(object):
 
 def create_session_pool(pool_config: PoolConfig, max_pool_size: int, wait_timeout_in_ms: int) -> SessionPool:
     if max_pool_size <= 0:
-        max_pool_size = multiprocessing.cpu_count() * SessionPool.DEFAULT_MULTIPIE
+        max_pool_size = multiprocessing.cpu_count() * DEFAULT_MULTIPIE
     return SessionPool(pool_config, max_pool_size, wait_timeout_in_ms)
