@@ -83,37 +83,37 @@ public class FragmentInstanceContext extends QueryContext {
   private DataNodeQueryContext dataNodeQueryContext;
 
   public static FragmentInstanceContext createFragmentInstanceContext(
-      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine, SessionInfo sessionInfo) {
+    FragmentInstanceId id, FragmentInstanceStateMachine stateMachine, SessionInfo sessionInfo) {
     FragmentInstanceContext instanceContext =
-        new FragmentInstanceContext(id, stateMachine, sessionInfo);
+      new FragmentInstanceContext(id, stateMachine, sessionInfo);
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
   }
 
   public static FragmentInstanceContext createFragmentInstanceContext(
-      FragmentInstanceId id,
-      FragmentInstanceStateMachine stateMachine,
-      SessionInfo sessionInfo,
-      IDataRegionForQuery dataRegion,
-      Filter timeFilter) {
+    FragmentInstanceId id,
+    FragmentInstanceStateMachine stateMachine,
+    SessionInfo sessionInfo,
+    IDataRegionForQuery dataRegion,
+    Filter timeFilter) {
     FragmentInstanceContext instanceContext =
-        new FragmentInstanceContext(id, stateMachine, sessionInfo, dataRegion, timeFilter);
+      new FragmentInstanceContext(id, stateMachine, sessionInfo, dataRegion, timeFilter);
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
   }
 
   public static FragmentInstanceContext createFragmentInstanceContext(
-      FragmentInstanceId id,
-      FragmentInstanceStateMachine stateMachine,
-      SessionInfo sessionInfo,
-      IDataRegionForQuery dataRegion,
-      Filter timeFilter,
-      Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap) {
+    FragmentInstanceId id,
+    FragmentInstanceStateMachine stateMachine,
+    SessionInfo sessionInfo,
+    IDataRegionForQuery dataRegion,
+    Filter timeFilter,
+    Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap) {
     FragmentInstanceContext instanceContext =
-        new FragmentInstanceContext(
-            id, stateMachine, sessionInfo, dataRegion, timeFilter, dataNodeQueryContextMap);
+      new FragmentInstanceContext(
+        id, stateMachine, sessionInfo, dataRegion, timeFilter, dataNodeQueryContextMap);
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
@@ -125,22 +125,22 @@ public class FragmentInstanceContext extends QueryContext {
 
   @TestOnly
   public static FragmentInstanceContext createFragmentInstanceContext(
-      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
+    FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
     FragmentInstanceContext instanceContext =
-        new FragmentInstanceContext(
-            id, stateMachine, new SessionInfo(1, "test", ZoneId.systemDefault().getId()));
+      new FragmentInstanceContext(
+        id, stateMachine, new SessionInfo(1, "test", ZoneId.systemDefault().getId()));
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
   }
 
   private FragmentInstanceContext(
-      FragmentInstanceId id,
-      FragmentInstanceStateMachine stateMachine,
-      SessionInfo sessionInfo,
-      IDataRegionForQuery dataRegion,
-      Filter timeFilter,
-      Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap) {
+    FragmentInstanceId id,
+    FragmentInstanceStateMachine stateMachine,
+    SessionInfo sessionInfo,
+    IDataRegionForQuery dataRegion,
+    Filter timeFilter,
+    Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap) {
     this.id = id;
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
@@ -152,7 +152,7 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   private FragmentInstanceContext(
-      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine, SessionInfo sessionInfo) {
+    FragmentInstanceId id, FragmentInstanceStateMachine stateMachine, SessionInfo sessionInfo) {
     this.id = id;
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
@@ -162,11 +162,11 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   private FragmentInstanceContext(
-      FragmentInstanceId id,
-      FragmentInstanceStateMachine stateMachine,
-      SessionInfo sessionInfo,
-      IDataRegionForQuery dataRegion,
-      Filter timeFilter) {
+    FragmentInstanceId id,
+    FragmentInstanceStateMachine stateMachine,
+    SessionInfo sessionInfo,
+    IDataRegionForQuery dataRegion,
+    Filter timeFilter) {
     this.id = id;
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
@@ -235,16 +235,16 @@ public class FragmentInstanceContext extends QueryContext {
   /** return Message string of all failures */
   public String getFailedCause() {
     return stateMachine.getFailureCauses().stream()
-        .findFirst()
-        .map(Throwable::getMessage)
-        .orElse("");
+      .findFirst()
+      .map(Throwable::getMessage)
+      .orElse("");
   }
 
   /** return List of specific throwable and stack trace */
   public List<FragmentInstanceFailureInfo> getFailureInfoList() {
     return stateMachine.getFailureCauses().stream()
-        .map(FragmentInstanceFailureInfo::toFragmentInstanceFailureInfo)
-        .collect(Collectors.toList());
+      .map(FragmentInstanceFailureInfo::toFragmentInstanceFailureInfo)
+      .collect(Collectors.toList());
   }
 
   public void finished() {
@@ -282,7 +282,7 @@ public class FragmentInstanceContext extends QueryContext {
 
   public FragmentInstanceInfo getInstanceInfo() {
     return new FragmentInstanceInfo(
-        stateMachine.getState(), getEndTime(), getFailedCause(), getFailureInfoList());
+      stateMachine.getState(), getEndTime(), getFailedCause(), getFailureInfoList());
   }
 
   public FragmentInstanceStateMachine getStateMachine() {
@@ -323,13 +323,13 @@ public class FragmentInstanceContext extends QueryContext {
       }
 
       this.sharedQueryDataSource =
-          dataRegion.query(
-              pathList,
-              // when all the selected series are under the same device, the QueryDataSource will be
-              // filtered according to timeIndex
-              selectedDeviceIdSet.size() == 1 ? selectedDeviceIdSet.iterator().next() : null,
-              this,
-              timeFilter != null ? timeFilter.copy() : null);
+        dataRegion.query(
+          pathList,
+          // when all the selected series are under the same device, the QueryDataSource will be
+          // filtered according to timeIndex
+          selectedDeviceIdSet.size() == 1 ? selectedDeviceIdSet.iterator().next() : null,
+          this,
+          timeFilter != null ? timeFilter.copy() : null);
 
       // used files should be added before mergeLock is unlocked, or they may be deleted by
       // running merge
@@ -410,7 +410,7 @@ public class FragmentInstanceContext extends QueryContext {
         break;
       } catch (InterruptedException e) {
         LOGGER.warn(
-            "Interrupted when await on allDriversClosed, FragmentInstance Id is {}", this.getId());
+          "Interrupted when await on allDriversClosed, FragmentInstance Id is {}", this.getId());
       }
     }
     releaseResource();
