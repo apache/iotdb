@@ -22,7 +22,6 @@ package org.apache.iotdb.consensus.natraft.protocol.log.manager;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.consensus.IStateMachine;
-import org.apache.iotdb.consensus.natraft.exception.LogExecutionException;
 import org.apache.iotdb.consensus.natraft.protocol.HardState;
 import org.apache.iotdb.consensus.natraft.protocol.RaftConfig;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
@@ -470,11 +469,7 @@ public abstract class RaftLogManager {
    */
   public boolean maybeCommit(long leaderCommit, long term) {
     if (leaderCommit > commitIndex && (term == -1 || matchTerm(term, leaderCommit))) {
-      try {
-        commitTo(leaderCommit);
-      } catch (LogExecutionException e) {
-        // exceptions are ignored on follower side
-      }
+      commitTo(leaderCommit);
       return true;
     }
     return false;
@@ -648,7 +643,7 @@ public abstract class RaftLogManager {
    *
    * @param newCommitIndex request commitIndex
    */
-  public void commitTo(long newCommitIndex) throws LogExecutionException {
+  public void commitTo(long newCommitIndex) {
     if (commitIndex >= newCommitIndex) {
       return;
     }

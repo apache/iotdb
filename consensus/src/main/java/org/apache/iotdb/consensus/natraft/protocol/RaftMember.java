@@ -1263,7 +1263,12 @@ public class RaftMember {
 
       setNewNodes(newNodes);
 
-      logDispatcher.offer(votingEntry);
+      if (allNodes.size() > 1) {
+        logDispatcher.offer(votingEntry);
+      } else {
+        logManager.commitTo(e.getCurrLogIndex());
+      }
+
     } finally {
       logManager.writeUnlock();
     }
@@ -1278,7 +1283,8 @@ public class RaftMember {
 
   private TSStatus waitForEntryResult(VotingEntry votingEntry) {
     try {
-      AppendLogResult appendLogResult = waitAppendResult(votingEntry);
+      AppendLogResult appendLogResult =
+          allNodes.size() > 1 ? waitAppendResult(votingEntry) : AppendLogResult.OK;
       Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_WAIT_APPEND_END.add(
           System.nanoTime() - votingEntry.getEntry().createTime);
       switch (appendLogResult) {

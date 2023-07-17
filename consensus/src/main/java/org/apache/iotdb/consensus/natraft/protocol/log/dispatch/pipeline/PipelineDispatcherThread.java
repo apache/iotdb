@@ -66,9 +66,7 @@ class PipelineDispatcherThread extends DynamicThread {
         DispatchTask task = taskQueue.take();
 
         idleToRunning();
-        if (logger.isDebugEnabled()) {
-          logger.debug("Sending {} to {}", task, receiver);
-        }
+        logger.debug("Sending {} to {}", task, receiver);
 
         appendEntriesAsync(task.request, task.votingEntryList);
         if (logDispatcher.getConfig().isUseFollowerLoadBalance()) {

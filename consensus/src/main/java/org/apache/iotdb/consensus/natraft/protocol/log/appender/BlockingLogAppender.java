@@ -69,6 +69,9 @@ public class BlockingLogAppender implements LogAppender {
         }
         lastLogIndex = logManager.getLastLogIndex();
         if (lastLogIndex >= prevLogIndex) {
+          if (alreadyWait > 10000L) {
+            logger.info("Waiting for {} for {}ms", prevLogIndex, alreadyWait);
+          }
           return true;
         }
       } catch (InterruptedException e) {
@@ -77,6 +80,9 @@ public class BlockingLogAppender implements LogAppender {
       }
       waitTime = waitTime * 2;
       alreadyWait = System.currentTimeMillis() - waitStart;
+    }
+    if (alreadyWait > 10000L) {
+      logger.info("Waiting for {} for {}ms", prevLogIndex, alreadyWait);
     }
 
     return alreadyWait <= config.getWriteOperationTimeoutMS();

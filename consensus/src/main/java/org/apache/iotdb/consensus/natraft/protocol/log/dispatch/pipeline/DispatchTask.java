@@ -29,4 +29,12 @@ public class DispatchTask {
   List<VotingEntry> votingEntryList = new ArrayList<>();
   AppendCompressedEntriesRequest request;
   int logSize;
+
+  @Override
+  public String toString() {
+    if (votingEntryList.isEmpty()) {
+      return "Empty DispatchTask";
+    }
+    return votingEntryList.get(0) + "..." + votingEntryList.get(votingEntryList.size() - 1);
+  }
 }

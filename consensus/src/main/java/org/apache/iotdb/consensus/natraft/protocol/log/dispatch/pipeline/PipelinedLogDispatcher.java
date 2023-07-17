@@ -98,13 +98,27 @@ public class PipelinedLogDispatcher implements ILogDispatcher {
         IoTDBThreadPoolFactory.newFixedThreadPool(
             config.getMinDispatcherBindingThreadNum(), member.getName() + "-DispatcherCompressor");
     this.compressor = ICompressor.getCompressor(config.getDispatchingCompressionType());
-    this.compressionThreadGroup =
-        new DynamicThreadGroup(
-            member.getName() + "-DispatcherCompressor",
-            r -> compressionPool.submit(r),
-            () -> new PipelineCompressor(compressionThreadGroup),
-            config.getMinDispatcherBindingThreadNum(),
-            config.getMaxDispatcherBindingThreadNum());
+
+    if (!(config.isUseFollowerSlidingWindow() && config.isEnableWeakAcceptance())) {
+      // if not using NB-Raft, the order of tasks should be preserved, otherwise,
+      // all dispatchers may be blocked by out-of-order entries
+      this.compressionThreadGroup =
+          new DynamicThreadGroup(
+              member.getName() + "-DispatcherCompressor",
+              r -> compressionPool.submit(r),
+              () -> new PipelineCompressor(compressionThreadGroup),
+              1,
+              1);
+    } else {
+      this.compressionThreadGroup =
+          new DynamicThreadGroup(
+              member.getName() + "-DispatcherCompressor",
+              r -> compressionPool.submit(r),
+              () -> new PipelineCompressor(compressionThreadGroup),
+              config.getMinDispatcherBindingThreadNum(),
+              config.getMaxDispatcherBindingThreadNum());
+    }
+
     this.compressionThreadGroup.init();
     createDispatcherGroups(unionNodes(allNodes, newNodes));
     maxBatchSize = config.getLogNumInBatch();
@@ -246,7 +260,7 @@ public class PipelinedLogDispatcher implements ILogDispatcher {
       DispatchTask dispatchTask = new DispatchTask();
       int logIndex = 0;
       logger.debug(
-          "send logs from index {} to {}",
+          "compressing logs from index {} to {}",
           currBatch.get(0).getEntry().getCurrLogIndex(),
           currBatch.get(currBatch.size() - 1).getEntry().getCurrLogIndex());
       while (logIndex < currBatch.size()) {

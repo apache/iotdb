@@ -79,6 +79,10 @@ public class SynchronousSequencer implements LogSequencer {
         votingEntry = LogUtils.enqueueEntry(votingEntry, member);
       }
 
+      if (member.getAllNodes().size() == 1) {
+        logManager.commitTo(e.getCurrLogIndex());
+      }
+
       Statistic.RAFT_SENDER_OCCUPY_LOG_MANAGER_IN_APPEND.calOperationCostTimeFromStart(startTime);
     } finally {
       logManager.writeUnlock();

@@ -20,7 +20,6 @@
 package org.apache.iotdb.consensus.natraft.protocol.log.dispatch;
 
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.natraft.exception.LogExecutionException;
 import org.apache.iotdb.consensus.natraft.protocol.RaftMember;
 import org.apache.iotdb.consensus.natraft.protocol.log.VotingEntry;
 import org.apache.iotdb.consensus.natraft.protocol.log.manager.RaftLogManager;
@@ -50,13 +49,9 @@ public class VotingLogList {
     RaftLogManager logManager = member.getLogManager();
     boolean commitIndexUpdated = computeNewCommitIndex(entry);
     if (commitIndexUpdated && newCommitIndex.get() > logManager.getCommitLogIndex()) {
-      try {
-        Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_BEFORE_COMMIT.add(
-            System.nanoTime() - entry.getEntry().createTime);
-        logManager.commitTo(newCommitIndex.get());
-      } catch (LogExecutionException e) {
-        logger.error("Fail to commit {}", newCommitIndex, e);
-      }
+      Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_BEFORE_COMMIT.add(
+          System.nanoTime() - entry.getEntry().createTime);
+      logManager.commitTo(newCommitIndex.get());
       return true;
     } else {
       return false;
