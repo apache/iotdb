@@ -157,7 +157,17 @@ public class DualKeyCacheTest {
               Collections.emptyMap(),
               false));
     }
-    Assert.assertEquals(328, dualKeyCache.stats().memoryUsage());
+    SchemaCacheEntry schemaCacheEntry =
+        new SchemaCacheEntry(
+            "root.db",
+            new MeasurementSchema("s1", TSDataType.INT32),
+            Collections.emptyMap(),
+            false);
+    int expectedSize =
+        computeStringSize("root.db.d1")
+            + computeStringSize("s1") * 2
+            + SchemaCacheEntry.estimateSize(schemaCacheEntry) * 2;
+    Assert.assertEquals(expectedSize, dualKeyCache.stats().memoryUsage());
     dualKeyCache.compute(
         new IDualKeyCacheComputation<String, String, SchemaCacheEntry>() {
           @Override
@@ -174,12 +184,14 @@ public class DualKeyCacheTest {
           public void computeValue(int index, SchemaCacheEntry value) {
             value
                 .getLastCacheContainer()
-                .updateCachedLast(
-                    new TimeValuePair(System.currentTimeMillis() + 1, new TsPrimitiveType.TsInt(1)),
-                    true,
-                    System.currentTimeMillis());
+                .updateCachedLast(new TimeValuePair(1L, new TsPrimitiveType.TsInt(1)), true, 0L);
           }
         });
-    Assert.assertEquals(376, dualKeyCache.stats().memoryUsage());
+    int tmp = SchemaCacheEntry.estimateSize(schemaCacheEntry);
+    schemaCacheEntry
+        .getLastCacheContainer()
+        .updateCachedLast(new TimeValuePair(1L, new TsPrimitiveType.TsInt(1)), true, 0L);
+    expectedSize += (SchemaCacheEntry.estimateSize(schemaCacheEntry) - tmp) * 2;
+    Assert.assertEquals(expectedSize, dualKeyCache.stats().memoryUsage());
   }
 }
