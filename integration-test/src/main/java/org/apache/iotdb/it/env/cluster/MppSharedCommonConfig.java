@@ -365,4 +365,11 @@ public class MppSharedCommonConfig implements CommonConfig {
     cnConfig.setClusterSchemaLimitThreshold(clusterSchemaLimitThreshold);
     return this;
   }
+
+  @Override
+  public CommonConfig setDatabaseLimitThreshold(long databaseLimitThreshold) {
+    dnConfig.setDatabaseLimitThreshold(databaseLimitThreshold);
+    cnConfig.setDatabaseLimitThreshold(databaseLimitThreshold);
+    return this;
+  }
 }
