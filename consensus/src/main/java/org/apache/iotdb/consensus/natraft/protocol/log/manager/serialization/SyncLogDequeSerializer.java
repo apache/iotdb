@@ -102,10 +102,10 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   private VersionController versionController;
 
   private ByteBuffer logDataBuffer;
-  private ByteBuffer logIndexBuffer;
   private ByteBuffer flushingLogDataBuffer;
-  private ByteBuffer flushingLogIndexBuffer;
-  private byte[] compressionBuffer;
+  private ByteBuffer logIndexBuffer;
+  private ByteBuffer compressingBuffer;
+  private ByteBuffer compressedBuffer;
 
   private long offsetOfTheCurrentLogDataOutputStream = 0;
 
@@ -133,6 +133,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   private ScheduledExecutorService persistLogExecutorService;
   private ScheduledFuture<?> persistLogDeleteLogFuture;
+  private ExecutorService compressingLogExecutorService;
+  private volatile Future<?> compressingLogFuture;
   private ExecutorService flushingLogExecutorService;
   private volatile Future<?> flushingLogFuture;
 
@@ -165,11 +167,11 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   private RaftMember member;
 
   private void initCommonProperties() {
-    logDataBuffer = ByteBuffer.allocate(config.getRaftLogBufferSize());
-    logIndexBuffer = ByteBuffer.allocate(config.getRaftLogBufferSize());
-    flushingLogDataBuffer = ByteBuffer.allocate(config.getRaftLogBufferSize());
-    flushingLogIndexBuffer = ByteBuffer.allocate(16);
-    compressionBuffer = new byte[64 * 1024];
+    logDataBuffer = ByteBuffer.allocate(config.getRaftLogBufferSize() / 4);
+    flushingLogDataBuffer = ByteBuffer.allocate(config.getRaftLogBufferSize() / 4);
+    logIndexBuffer = ByteBuffer.allocate(16);
+    compressingBuffer = ByteBuffer.allocate(config.getRaftLogBufferSize() / 4);
+    compressedBuffer = ByteBuffer.allocate(config.getRaftLogBufferSize() / 4);
 
     maxNumberOfLogsPerFetchOnDisk = config.getMaxNumberOfLogsPerFetchOnDisk();
     maxRaftLogIndexSizeInMemory = config.getMaxRaftLogIndexSizeInMemory();
@@ -197,6 +199,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
                 .build());
     this.flushingLogExecutorService =
         Executors.newSingleThreadExecutor((r) -> new Thread(r, name + "-flushRaftLog"));
+    this.compressingLogExecutorService =
+        Executors.newSingleThreadExecutor((r) -> new Thread(r, name + "-compressRaftLog"));
 
     this.persistLogDeleteLogFuture =
         ScheduledExecutorUtil.safelyScheduleAtFixedRate(
@@ -307,8 +311,6 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     long startTime = Statistic.RAFT_PUT_LOG.getOperationStartTime();
     for (Entry entry : entries) {
       long entryStartTime = Statistic.RAFT_PUT_ENTRY.getOperationStartTime();
-      logDataBuffer.mark();
-      logIndexBuffer.mark();
       putOneEntry(entry);
       Statistic.RAFT_PUT_ENTRY.calOperationCostTimeFromStart(entryStartTime);
     }
@@ -404,6 +406,64 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     if (isClosed || logDataBuffer.position() == 0) {
       return;
     }
+    if (compressingLogFuture != null) {
+      try {
+        compressingLogFuture.get();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      } catch (ExecutionException e) {
+        logger.error("Unexpected exception when flushing log in {}", name);
+        throw new RuntimeException(e);
+      }
+    }
+
+    switchCompressionBuffer();
+    if (isAsyncFlush) {
+      compressingLogFuture =
+          compressingLogExecutorService.submit(() -> compressBufferTask(lastLogIndex, true));
+    } else {
+      compressBufferTask(lastLogIndex, false);
+    }
+  }
+
+  private void switchFlushingBuffer() {
+    ByteBuffer temp = compressedBuffer;
+    compressedBuffer = flushingLogDataBuffer;
+    flushingLogDataBuffer = temp;
+  }
+
+  private void switchCompressionBuffer() {
+    ByteBuffer temp = logDataBuffer;
+    logDataBuffer = compressingBuffer;
+    compressingBuffer = temp;
+  }
+
+  private void compressBufferTask(long currentLastIndex, boolean isAsyncFlush) {
+    int compressedLength = 0;
+    try {
+      // 1. write to the log data file
+      int maxBytesForCompression =
+          compressor.getMaxBytesForCompression(compressingBuffer.position());
+      if (maxBytesForCompression > compressedBuffer.capacity()) {
+        compressedBuffer = ByteBuffer.allocate(maxBytesForCompression);
+      }
+
+      long startTime = Statistic.PERSISTENCE_COMPRESS_TIME.getOperationStartTime();
+      Statistic.PERSISTENCE_RAW_SIZE.add(compressingBuffer.position());
+      compressedLength =
+          compressor.compress(
+              compressingBuffer.array(), 0, compressingBuffer.position(), compressedBuffer.array());
+      compressedBuffer.position(0);
+      compressedBuffer.limit(compressedLength);
+      Statistic.PERSISTENCE_COMPRESSED_SIZE.add(compressedLength);
+      Statistic.PERSISTENCE_COMPRESS_TIME.calOperationCostTimeFromStart(startTime);
+    } catch (IOException e) {
+      logger.error("IOError in logs serialization: ", e);
+    } catch (Throwable e) {
+      logger.error("Error in logs serialization: ", e);
+    }
+    compressingBuffer.clear();
+
     if (flushingLogFuture != null) {
       try {
         flushingLogFuture.get();
@@ -415,46 +475,29 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       }
     }
 
-    switchBuffer();
+    switchFlushingBuffer();
     if (isAsyncFlush) {
-      flushingLogFuture = flushingLogExecutorService.submit(() -> flushLogBufferTask(lastLogIndex));
+      int finalCompressedLength = compressedLength;
+      flushingLogFuture =
+          flushingLogExecutorService.submit(
+              () -> flushLogBufferTask(currentLastIndex, finalCompressedLength));
     } else {
-      flushLogBufferTask(lastLogIndex);
+      flushLogBufferTask(currentLastIndex, compressedLength);
     }
   }
 
-  private void switchBuffer() {
-    ByteBuffer temp = logDataBuffer;
-    logDataBuffer = flushingLogDataBuffer;
-    flushingLogDataBuffer = temp;
-    temp = logIndexBuffer;
-    logIndexBuffer = flushingLogIndexBuffer;
-    flushingLogIndexBuffer = temp;
-  }
-
-  private void flushLogBufferTask(long currentLastIndex) {
+  private void flushLogBufferTask(long currentLastIndex, int compressedLength) {
     // write into disk
     try {
       checkStream();
-      // 1. write to the log data file
-      int maxBytesForCompression =
-          compressor.getMaxBytesForCompression(flushingLogDataBuffer.position());
-      if (maxBytesForCompression > compressionBuffer.length) {
-        compressionBuffer = new byte[maxBytesForCompression];
-      }
-      int compressedLength =
-          compressor.compress(
-              flushingLogDataBuffer.array(),
-              0,
-              flushingLogDataBuffer.position(),
-              compressionBuffer);
+      long startTime = Statistic.PERSISTENCE_IO_TIME.getOperationStartTime();
       ReadWriteIOUtils.write(compressedLength, currentLogDataOutputStream);
       logIndexOffsetList.add(new Pair<>(lastLogIndex, offsetOfTheCurrentLogDataOutputStream));
-      flushingLogIndexBuffer.putLong(lastLogIndex);
-      flushingLogIndexBuffer.putLong(offsetOfTheCurrentLogDataOutputStream);
+      logIndexBuffer.putLong(lastLogIndex);
+      logIndexBuffer.putLong(offsetOfTheCurrentLogDataOutputStream);
       offsetOfTheCurrentLogDataOutputStream += Integer.BYTES + compressedLength;
 
-      currentLogDataOutputStream.write(compressionBuffer, 0, compressedLength);
+      currentLogDataOutputStream.write(compressingBuffer.array(), 0, compressedLength);
       ReadWriteIOUtils.writeWithoutSize(
           logIndexBuffer, 0, logIndexBuffer.position(), currentLogIndexOutputStream);
       if (config.getFlushRaftLogThreshold() == 0) {
@@ -464,14 +507,15 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       persistedLogIndex = currentLastIndex;
 
       checkCloseCurrentFile(currentLastIndex);
+      Statistic.PERSISTENCE_IO_TIME.calOperationCostTimeFromStart(startTime);
     } catch (IOException e) {
       logger.error("IOError in logs serialization: ", e);
     } catch (Throwable e) {
       logger.error("Error in logs serialization: ", e);
     }
 
-    flushingLogDataBuffer.clear();
-    flushingLogIndexBuffer.clear();
+    compressingBuffer.clear();
+    logIndexBuffer.clear();
 
     logger.debug("End flushing log buffer.");
   }

@@ -84,7 +84,7 @@ public class LogDispatcher implements ILogDispatcher {
   void createDispatcherGroup(Peer node) {
     dispatcherGroupMap.computeIfAbsent(
         node,
-        n -> new QueueBasedDispatcherGroup(n, this, maxBindingThreadNum, minBindingThreadNum));
+        n -> new CursorBasedDispatcherGroup(n, this, maxBindingThreadNum, minBindingThreadNum));
   }
 
   void createDispatcherGroups(Collection<Peer> peers) {

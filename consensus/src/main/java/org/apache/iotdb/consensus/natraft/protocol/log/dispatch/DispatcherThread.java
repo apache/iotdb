@@ -213,18 +213,12 @@ public abstract class DispatcherThread extends DynamicThread {
       long logSize = 0;
       long logSizeLimit = logDispatcher.getConfig().getThriftMaxFrameSize();
       List<ByteBuffer> logList = new ArrayList<>();
-      List<Byte> compressionTypes = new ArrayList<>();
-      List<Integer> uncompressedSizes = new ArrayList<>();
       int prevIndex = logIndex;
 
       for (; logIndex < currBatch.size(); logIndex++) {
         VotingEntry entry = currBatch.get(logIndex);
         ByteBuffer serialized;
-        if (!logDispatcher.enableCompressedDispatching) {
-          serialized = entry.getEntry().serialize();
-        } else {
-          serialized = entry.getEntry().serialize(compressor);
-        }
+        serialized = entry.getEntry().serialize();
 
         long curSize = serialized.remaining();
         if (logSizeLimit - curSize - logSize <= IoTDBConstant.LEFT_SIZE_IN_REQUEST) {
@@ -232,11 +226,6 @@ public abstract class DispatcherThread extends DynamicThread {
         }
         logSize += curSize;
         logList.add(serialized);
-        if (logDispatcher.enableCompressedDispatching) {
-          compressionTypes.add(
-              entry.getEntry().getSerialization().getCompressionType().serialize());
-          uncompressedSizes.add(entry.getEntry().getSerialization().getUncompressedSize());
-        }
         Statistic.LOG_DISPATCHER_FROM_CREATE_TO_SENDING.calOperationCostTimeFromStart(
             entry.getEntry().createTime);
       }

@@ -426,6 +426,30 @@ public class Timer {
         1,
         true,
         META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    PERSISTENCE_COMPRESSED_SIZE(
+        LOG_DISPATCHER,
+        "compressed persistence size",
+        1,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    PERSISTENCE_RAW_SIZE(
+        LOG_DISPATCHER,
+        "raw persistence size",
+        1,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    PERSISTENCE_COMPRESS_TIME(
+        LOG_DISPATCHER,
+        "persistence compression time",
+        TIME_SCALE,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    PERSISTENCE_IO_TIME(
+        LOG_DISPATCHER,
+        "persistence IO time",
+        TIME_SCALE,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
     RAFT_LEADER_WEAK_ACCEPT(RAFT_MEMBER_SENDER, "leader weak accept", 1, true, ROOT),
     RAFT_FOLLOWER_WEAK_ACCEPT(RAFT_MEMBER_SENDER, "follower weak accept", TIME_SCALE, true, ROOT),
     RAFT_PUT_LOG(RAFT_MEMBER_SENDER, "put logs", TIME_SCALE, true, ROOT),
@@ -564,6 +588,10 @@ public class Timer {
       result
           .append("Dispatcher compression ratio: ")
           .append(LOG_DISPATCHER_COMPRESSED_SIZE.getSum() * 1.0 / LOG_DISPATCHER_RAW_SIZE.getSum())
+          .append("\n");
+      result
+          .append("Persistence compression ratio: ")
+          .append(PERSISTENCE_COMPRESSED_SIZE.getSum() * 1.0 / PERSISTENCE_RAW_SIZE.getSum())
           .append("\n");
       return result.toString();
     }
