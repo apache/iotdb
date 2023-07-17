@@ -154,6 +154,7 @@ public class CommonConfig {
   private int pipeExtractorMatcherCacheSize = 1024;
   private int pipeExtractorPendingQueueCapacity = 128;
   private int pipeExtractorPendingQueueTabletLimit = pipeExtractorPendingQueueCapacity / 2;
+  private int pipeDataStructureTabletRowSize = 65536;
 
   private int pipeConnectorReadFileBufferSize = 8388608;
   private long pipeConnectorRetryIntervalMs = 1000L;
@@ -459,6 +460,14 @@ public class CommonConfig {
 
   public void setPipeHardlinkTsFileDirName(String pipeHardlinkTsFileDirName) {
     this.pipeHardlinkTsFileDirName = pipeHardlinkTsFileDirName;
+  }
+
+  public int getPipeDataStructureTabletRowSize() {
+    return pipeDataStructureTabletRowSize;
+  }
+
+  public void setPipeDataStructureTabletRowSize(int pipeDataStructureTabletRowSize) {
+    this.pipeDataStructureTabletRowSize = pipeDataStructureTabletRowSize;
   }
 
   public int getPipeExtractorAssignerDisruptorRingBufferSize() {

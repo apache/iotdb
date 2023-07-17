@@ -35,6 +35,12 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeHardlinkTsFileDirName();
   }
 
+  /////////////////////////////// Tablet ///////////////////////////////
+
+  public int getPipeDataStructureTabletRowSize() {
+    return COMMON_CONFIG.getPipeDataStructureTabletRowSize();
+  }
+
   /////////////////////////////// Subtask Executor ///////////////////////////////
 
   public int getPipeSubtaskExecutorMaxThreadNum() {
