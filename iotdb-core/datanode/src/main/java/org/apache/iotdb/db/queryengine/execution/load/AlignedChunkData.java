@@ -179,8 +179,11 @@ public class AlignedChunkData implements ChunkData {
   @Override
   public void writeEntirePage(PageHeader pageHeader, ByteBuffer pageData) throws IOException {
     pageNumbers.set(pageNumbers.size() - 1, pageNumbers.get(pageNumbers.size() - 1) + 1);
+    // serialize needDecode==false
     dataSize += ReadWriteIOUtils.write(false, stream);
+    // serialize pageHeader
     dataSize += pageHeader.serializeTo(stream);
+    // serialize pageData
     dataSize += ReadWriteIOUtils.write(pageData, stream);
   }
 
@@ -191,6 +194,7 @@ public class AlignedChunkData implements ChunkData {
     satisfiedLengthQueue.offer(satisfiedLength);
     long startTime = timePartitionSlot.getStartTime();
     long endTime = startTime + TimePartitionUtils.getTimePartitionInterval();
+    // serialize needDecode==true
     dataSize += ReadWriteIOUtils.write(true, stream);
     dataSize += ReadWriteIOUtils.write(satisfiedLength, stream);
 
@@ -210,6 +214,7 @@ public class AlignedChunkData implements ChunkData {
     long startTime = timePartitionSlot.getStartTime();
     long endTime = startTime + TimePartitionUtils.getTimePartitionInterval();
     int satisfiedLength = satisfiedLengthQueue.poll();
+    // serialize needDecode==true
     dataSize += ReadWriteIOUtils.write(true, stream);
     dataSize += ReadWriteIOUtils.write(satisfiedLength, stream);
     satisfiedLengthQueue.offer(satisfiedLength);
@@ -219,7 +224,7 @@ public class AlignedChunkData implements ChunkData {
         break;
       }
       if (times[i] >= startTime) {
-        if (values[i] == null) {
+        if (values.length == 0 || values[i] == null) {
           dataSize += ReadWriteIOUtils.write(true, stream);
         } else {
           dataSize += ReadWriteIOUtils.write(false, stream);

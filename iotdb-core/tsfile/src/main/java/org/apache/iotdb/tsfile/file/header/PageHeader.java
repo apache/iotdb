@@ -120,6 +120,9 @@ public class PageHeader {
   public int serializeTo(OutputStream outputStream) throws IOException {
     int length = 0;
     length += ReadWriteForEncodingUtils.writeUnsignedVarInt(uncompressedSize, outputStream);
+    if (uncompressedSize == 0) { // Empty Page
+      return length;
+    }
     length += ReadWriteForEncodingUtils.writeUnsignedVarInt(compressedSize, outputStream);
     length += statistics.serialize(outputStream);
     return length;

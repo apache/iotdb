@@ -262,19 +262,15 @@ public class TsFileSplitter {
               }
               if (alignedChunkDataList.size() == 1) { // write entire page
                 // write the entire page if it's not an empty page.
-                if (!isEmptyPage(pageHeader)) {
-                  alignedChunkDataList
-                      .get(0)
-                      .writeEntirePage(pageHeader, reader.readCompressedPage(pageHeader));
-                }
+                alignedChunkDataList
+                    .get(0)
+                    .writeEntirePage(pageHeader, reader.readCompressedPage(pageHeader));
               } else { // decode page
                 long[] times = pageIndex2Times.get(pageIndex);
                 TsPrimitiveType[] values =
                     decodeValuePage(reader, header, pageHeader, times, valueDecoder);
                 for (AlignedChunkData alignedChunkData : alignedChunkDataList) {
-                  if (!isEmptyPage(pageHeader)) {
-                    alignedChunkData.writeDecodeValuePage(times, values, header.getDataType());
-                  }
+                  alignedChunkData.writeDecodeValuePage(times, values, header.getDataType());
                 }
               }
               long pageDataSize = pageHeader.getSerializedPageSize();

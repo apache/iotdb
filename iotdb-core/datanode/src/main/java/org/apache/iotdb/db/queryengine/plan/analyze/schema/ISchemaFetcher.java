@@ -51,7 +51,7 @@ public interface ISchemaFetcher {
    * @param patternTree used for matching the timeseries
    * @return the matched timeseries schema organized as tree structure logically
    */
-  ISchemaTree fetchSchemaWithTags(PathPatternTree patternTree);
+  ISchemaTree fetchSchemaWithTags(PathPatternTree patternTree, MPPQueryContext context);
 
   /**
    * Fetch and compute the schema of target timeseries, with device and measurement defined in given
@@ -62,7 +62,8 @@ public interface ISchemaFetcher {
    * @param schemaComputationWithAutoCreation define the target device, measurements and computation
    */
   void fetchAndComputeSchemaWithAutoCreate(
-      ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation);
+      ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation,
+      MPPQueryContext context);
 
   /**
    * Fetch and compute the schema of target timeseries, with device and measurement defined in given
@@ -74,7 +75,8 @@ public interface ISchemaFetcher {
    *     computation
    */
   void fetchAndComputeSchemaWithAutoCreate(
-      List<? extends ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList);
+      List<? extends ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList,
+      MPPQueryContext context);
 
   ISchemaTree fetchSchemaListWithAutoCreate(
       List<PartialPath> devicePath,
@@ -82,7 +84,8 @@ public interface ISchemaFetcher {
       List<TSDataType[]> tsDataTypes,
       List<TSEncoding[]> encodings,
       List<CompressionType[]> compressionTypes,
-      List<Boolean> aligned);
+      List<Boolean> aligned,
+      MPPQueryContext context);
 
   Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath devicePath);
 
