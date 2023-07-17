@@ -38,7 +38,7 @@ public class EncodeTextTest {
 
       String Input = Inputs[idx];
       String Output = Outputs[idx];
-      int repeatTime = 10; // set repeat time
+      int repeatTime = 50; // set repeat time
 
       // select encoding algorithms
       TSEncoding[] encodingList = {
