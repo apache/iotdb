@@ -274,7 +274,7 @@ showSchemaTemplates
 
 // ---- Show Measurements In Schema Template
 showNodesInSchemaTemplate
-    : SHOW NODES OPERATOR_IN SCHEMA TEMPLATE templateName=identifier
+    : SHOW NODES operator_in SCHEMA TEMPLATE templateName=identifier
     ;
 
 // ---- Show Paths Set Schema Template
@@ -1146,9 +1146,9 @@ expression
     | leftExpression=expression (PLUS | MINUS) rightExpression=expression
     | leftExpression=expression (OPERATOR_GT | OPERATOR_GTE | OPERATOR_LT | OPERATOR_LTE | OPERATOR_SEQ | OPERATOR_DEQ | OPERATOR_NEQ) rightExpression=expression
     | unaryBeforeRegularOrLikeExpression=expression operator_not? (REGEXP | LIKE) STRING_LITERAL
-    | firstExpression=expression operator_not? OPERATOR_BETWEEN secondExpression=expression operator_and thirdExpression=expression
-    | unaryBeforeIsNullExpression=expression OPERATOR_IS operator_not? null_literal
-    | unaryBeforeInExpression=expression operator_not? (OPERATOR_IN | operator_contains) LR_BRACKET constant (COMMA constant)* RR_BRACKET
+    | firstExpression=expression operator_not? operator_between secondExpression=expression operator_and thirdExpression=expression
+    | unaryBeforeIsNullExpression=expression operator_is operator_not? null_literal
+    | unaryBeforeInExpression=expression operator_not? (operator_in | operator_contains) LR_BRACKET constant (COMMA constant)* RR_BRACKET
     | leftExpression=expression operator_and rightExpression=expression
     | leftExpression=expression operator_or rightExpression=expression
     ;
@@ -1197,6 +1197,18 @@ operator_not
     
 operator_contains
     : CONTAINS
+    ;
+    
+operator_between
+    : BETWEEN
+    ;
+    
+operator_is
+    : IS
+    ;
+    
+operator_in
+    : IN
     ;
     
 null_literal

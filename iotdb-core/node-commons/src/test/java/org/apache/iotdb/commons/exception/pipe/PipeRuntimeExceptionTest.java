@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.exception.pipe;
 
+import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMetaVersion;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -35,7 +37,8 @@ public class PipeRuntimeExceptionTest {
     buffer.position(0);
     try {
       PipeRuntimeNonCriticalException e1 =
-          (PipeRuntimeNonCriticalException) PipeRuntimeExceptionType.deserializeFrom(buffer);
+          (PipeRuntimeNonCriticalException)
+              PipeRuntimeExceptionType.deserializeFrom(PipeRuntimeMetaVersion.VERSION_2, buffer);
       Assert.assertEquals(e.hashCode(), e1.hashCode());
     } catch (ClassCastException classCastException) {
       Assert.fail();
@@ -52,7 +55,8 @@ public class PipeRuntimeExceptionTest {
     buffer.position(0);
     try {
       PipeRuntimeCriticalException e1 =
-          (PipeRuntimeCriticalException) PipeRuntimeExceptionType.deserializeFrom(buffer);
+          (PipeRuntimeCriticalException)
+              PipeRuntimeExceptionType.deserializeFrom(PipeRuntimeMetaVersion.VERSION_2, buffer);
       Assert.assertEquals(e.hashCode(), e1.hashCode());
     } catch (ClassCastException classCastException) {
       Assert.fail();
@@ -70,7 +74,8 @@ public class PipeRuntimeExceptionTest {
     buffer.position(0);
     try {
       PipeRuntimeConnectorCriticalException e1 =
-          (PipeRuntimeConnectorCriticalException) PipeRuntimeExceptionType.deserializeFrom(buffer);
+          (PipeRuntimeConnectorCriticalException)
+              PipeRuntimeExceptionType.deserializeFrom(PipeRuntimeMetaVersion.VERSION_2, buffer);
       Assert.assertEquals(e.hashCode(), e1.hashCode());
     } catch (ClassCastException classCastException) {
       Assert.fail();

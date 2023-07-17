@@ -155,6 +155,7 @@ public class LastQuerySortOperatorTest {
               measurementPath1,
               measurementPath1.getSeriesType(),
               null,
+              false,
               false);
 
       SeriesAggregationScanOperator seriesAggregationScanOperator2 =
@@ -178,6 +179,7 @@ public class LastQuerySortOperatorTest {
               measurementPath2,
               measurementPath2.getSeriesType(),
               null,
+              false,
               false);
 
       LastQuerySortOperator lastQuerySortOperator =
@@ -279,6 +281,7 @@ public class LastQuerySortOperatorTest {
               measurementPath1,
               measurementPath1.getSeriesType(),
               null,
+              false,
               false);
 
       SeriesAggregationScanOperator seriesAggregationScanOperator2 =
@@ -302,6 +305,7 @@ public class LastQuerySortOperatorTest {
               measurementPath2,
               measurementPath2.getSeriesType(),
               null,
+              false,
               false);
 
       TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(6);

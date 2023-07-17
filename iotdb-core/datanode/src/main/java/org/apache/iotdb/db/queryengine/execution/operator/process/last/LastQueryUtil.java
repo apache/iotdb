@@ -169,6 +169,10 @@ public class LastQueryUtil {
         || (timeFilter instanceof Gt);
   }
 
+  public static boolean needUpdateNullEntry(Filter timeFilter) {
+    return CACHE_ENABLED && timeFilter == null;
+  }
+
   public static class LastEntry {
     private final long time;
     private final Binary timeSeries;
