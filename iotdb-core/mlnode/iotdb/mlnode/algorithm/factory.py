@@ -15,8 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from enum import Enum
-from typing import Dict, List
+
+from typing import Dict
 
 import torch.nn as nn
 
@@ -24,21 +24,9 @@ from iotdb.mlnode.algorithm.hyperparameter import HyperparameterName
 from iotdb.mlnode.algorithm.models.forecast.dlinear import (DLinear,
                                                             DLinearIndividual)
 from iotdb.mlnode.algorithm.models.forecast.nbeats import NBeats
+from iotdb.mlnode.constant import ForecastModelType
 from iotdb.mlnode.exception import BadConfigValueError
 from iotdb.mlnode.parser import ForecastTaskOptions
-
-
-class ForecastModelType(Enum):
-    DLINEAR = "dlinear"
-    DLINEAR_INDIVIDUAL = "dlinear_individual"
-    NBEATS = "nbeats"
-
-    @classmethod
-    def values(cls) -> List[str]:
-        values = []
-        for item in list(cls):
-            values.append(item.value)
-        return values
 
 
 def create_forecast_model(

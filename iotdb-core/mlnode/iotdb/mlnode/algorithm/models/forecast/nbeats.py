@@ -119,7 +119,7 @@ class NBeats(nn.Module):
             )
         )
 
-    def forward(self, x):
+    def forward(self, x, *args):
         # x: [Batch, Input length, Channel]
         res = []
         for i in range(self.enc_in):

@@ -17,13 +17,12 @@
 #
 
 from abc import abstractmethod
-from enum import Enum
 from typing import Dict, List, Optional, Tuple
 
 import optuna
 
-from iotdb.mlnode.algorithm.factory import ForecastModelType
 from iotdb.mlnode.algorithm.validator import NumberRangeValidator, Validator
+from iotdb.mlnode.constant import HyperparameterName, ForecastModelType
 from iotdb.mlnode.exception import BadConfigValueError, UnsupportedError
 from iotdb.mlnode.parser import ForecastTaskOptions, TaskOptions
 
@@ -210,28 +209,19 @@ class StringHyperparameter(Hyperparameter):
 class BooleanHyperparameter(Hyperparameter):
     def __init__(self, name: str,
                  default_value: bool,
-                 value_validators: List[Validator],
                  tuning: bool = False):
         super(BooleanHyperparameter, self).__init__(name)
         self.__default_value = default_value
-        self.__value_validators = value_validators
         self.__tuning = tuning
 
     def get_default_value(self):
         return self.__default_value
 
-    def __validate(self, value, validators: List[Validator] = None):
-        try:
-            for validator in validators:
-                validator.validate(float(value))
-        except Exception as e:
-            raise BadConfigValueError(self._name, value, str(e))
-
     def validate_value(self, value):
-        pass
+        raise UnsupportedError("validate value in boolean hyperparameter")
 
     def validate_range(self, min_value: float, max_value: float):
-        pass
+        raise UnsupportedError("validate range in boolean hyperparameter")
 
     def suggest_parameter(self, optuna_suggest: optuna.Trial):
         if not self.__tuning:
@@ -243,26 +233,6 @@ class BooleanHyperparameter(Hyperparameter):
 
     def parse(self, string_value: str):
         return bool(string_value)
-
-
-class HyperparameterName(Enum):
-    # Training hyperparameter
-    LEARNING_RATE = "learning_rate"
-    EPOCHS = "epochs"
-    BATCH_SIZE = "batch_size"
-    USE_GPU = "use_gpu"
-    NUM_WORKERS = "num_workers"
-
-    # Structure hyperparameter
-    KERNEL_SIZE = "kernel_size"
-    INPUT_VARS = "input_vars"
-    BLOCK_TYPE = "block_type"
-    D_MODEL = "d_model"
-    INNER_LAYERS = "inner_layer"
-    OUTER_LAYERS = "outer_layer"
-
-    def name(self):
-        return self.value
 
 
 training_hyperparameter_map = {
@@ -302,7 +272,6 @@ training_hyperparameter_map = {
     HyperparameterName.USE_GPU.name(): BooleanHyperparameter(
         name=HyperparameterName.USE_GPU.name(),
         default_value=False,
-        value_validators=[],
         tuning=False
     ),
     HyperparameterName.NUM_WORKERS.name(): IntHyperparameter(

@@ -16,6 +16,7 @@
 # under the License.
 #
 from enum import Enum
+from typing import List
 
 MLNODE_CONF_DIRECTORY_NAME = "conf"
 MLNODE_CONF_FILE_NAME = "iotdb-mlnode.toml"
@@ -55,3 +56,36 @@ class OptionsKey(Enum):
 
     def name(self) -> str:
         return self.value
+
+
+class HyperparameterName(Enum):
+    # Training hyperparameter
+    LEARNING_RATE = "learning_rate"
+    EPOCHS = "epochs"
+    BATCH_SIZE = "batch_size"
+    USE_GPU = "use_gpu"
+    NUM_WORKERS = "num_workers"
+
+    # Structure hyperparameter
+    KERNEL_SIZE = "kernel_size"
+    INPUT_VARS = "input_vars"
+    BLOCK_TYPE = "block_type"
+    D_MODEL = "d_model"
+    INNER_LAYERS = "inner_layer"
+    OUTER_LAYERS = "outer_layer"
+
+    def name(self):
+        return self.value
+
+
+class ForecastModelType(Enum):
+    DLINEAR = "dlinear"
+    DLINEAR_INDIVIDUAL = "dlinear_individual"
+    NBEATS = "nbeats"
+
+    @classmethod
+    def values(cls) -> List[str]:
+        values = []
+        for item in list(cls):
+            values.append(item.value)
+        return values

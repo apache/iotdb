@@ -228,7 +228,7 @@ class ConfigNodeClient(object):
         req = TUpdateModelStateReq(
             modelId=model_id,
             state=training_state,
-            bestTrailId=best_trail_id
+            bestTrialId=best_trail_id
         )
         for _ in range(0, self.__RETRY_NUM):
             try:
@@ -252,7 +252,7 @@ class ConfigNodeClient(object):
             model_info = {}
         req = TUpdateModelInfoReq(
             modelId=model_id,
-            trailId=trial_id,
+            trialId=trial_id,
             modelInfo={k: str(v) for k, v in model_info.items()},
         )
 
