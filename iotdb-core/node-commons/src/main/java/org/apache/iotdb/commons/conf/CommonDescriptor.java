@@ -234,6 +234,10 @@ public class CommonDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "time_partition_interval", String.valueOf(config.getTimePartitionInterval()))));
+    config.setDatabaseLimitThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "database_limit_threshold", String.valueOf(config.getDatabaseLimitThreshold()))));
   }
 
   private void loadPipeProps(Properties properties) {

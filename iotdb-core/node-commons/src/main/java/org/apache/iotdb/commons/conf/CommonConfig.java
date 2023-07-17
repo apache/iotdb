@@ -173,6 +173,9 @@ public class CommonConfig {
   // Max size for tag and attribute of one time series
   private int tagAttributeTotalSize = 700;
 
+  // maximum number of Cluster Databases allowed
+  private int databaseLimitThreshold = -1;
+
   CommonConfig() {
     // Empty constructor
   }
@@ -611,5 +614,13 @@ public class CommonConfig {
 
   public void setTagAttributeTotalSize(int tagAttributeTotalSize) {
     this.tagAttributeTotalSize = tagAttributeTotalSize;
+  }
+
+  public int getDatabaseLimitThreshold() {
+    return databaseLimitThreshold;
+  }
+
+  public void setDatabaseLimitThreshold(int databaseLimitThreshold) {
+    this.databaseLimitThreshold = databaseLimitThreshold;
   }
 }
