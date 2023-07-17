@@ -1940,9 +1940,17 @@ public class DataRegion implements IDataRegionForQuery {
     for (PartialPath device : devicePaths) {
       long deviceStartTime, deviceEndTime;
       if (device.hasWildcard()) {
-        if (deleteEnd < fileStartTime || deleteStart > fileEndTime) {
-          // time range of file has not overlapped with the deletion
-          return true;
+        if (!tsFileResource.isClosed() && fileEndTime == Long.MIN_VALUE) {
+          // unsealed seq file
+          if (deleteEnd < fileStartTime) {
+            // time range of file has not overlapped with the deletion
+            return true;
+          }
+        } else {
+          if (deleteEnd < fileStartTime || deleteStart > fileEndTime) {
+            // time range of file has not overlapped with the deletion
+            return true;
+          }
         }
         Pair<Long, Long> startAndEndTime =
             tsFileResource.getPossibleStartTimeAndEndTime(device, deviceMatchInfo);
