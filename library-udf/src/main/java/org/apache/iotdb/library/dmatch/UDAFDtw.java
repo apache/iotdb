@@ -37,6 +37,7 @@ public class UDAFDtw implements UDTF {
 
   private double[][] dp;
   private int m;
+  private int n;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -58,23 +59,27 @@ public class UDAFDtw implements UDTF {
   public void transform(RowWindow rowWindow, PointCollector collector) throws Exception {
     DoubleArrayList a = new DoubleArrayList();
     DoubleArrayList b = new DoubleArrayList();
-    int n = rowWindow.windowSize();
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < rowWindow.windowSize(); i++) {
       Row row = rowWindow.getRow(i);
-      if (row.isNull(0) || row.isNull(1)) {
-        continue;
+      if (!row.isNull(0)) {
+        a.add(Util.getValueAsDouble(row, 0));
       }
-      a.add(Util.getValueAsDouble(row, 0));
-      b.add(Util.getValueAsDouble(row, 1));
+      if (!row.isNull(1)) {
+        b.add(Util.getValueAsDouble(row, 1));
+      }
     }
     m = a.size();
-    dp = new double[m + 1][m + 1];
+    n = b.size();
+    dp = new double[m + 1][n + 1];
     for (int i = 1; i <= m; i++) {
-      dp[0][i] = dp[i][0] = Double.MAX_VALUE;
+      dp[i][0] = Double.MAX_VALUE;
+    }
+    for (int i = 1; i <= n; i++) {
+      dp[0][i] = Double.MAX_VALUE;
     }
     dp[0][0] = 0;
     for (int i = 1; i <= m; i++) {
-      for (int j = 1; j <= m; j++) {
+      for (int j = 1; j <= n; j++) {
         dp[i][j] =
             Math.abs(a.get(i - 1) - b.get(j - 1))
                 + Math.min(Math.min(dp[i][j - 1], dp[i - 1][j]), dp[i - 1][j - 1]);
@@ -84,6 +89,6 @@ public class UDAFDtw implements UDTF {
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
-    collector.putDouble(0, dp[m][m]);
+    collector.putDouble(0, dp[m][n]);
   }
 }
