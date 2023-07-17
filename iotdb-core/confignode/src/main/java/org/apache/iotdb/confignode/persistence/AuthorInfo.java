@@ -314,7 +314,7 @@ public class AuthorInfo implements SnapshotProcessor {
     List<String> userPrivilegesList = new ArrayList<>();
 
     if (IoTDBConstant.PATH_ROOT.equals(plan.getUserName())) {
-      for (PrivilegeType privilegeType : PrivilegeType.values()) {
+      for (PrivilegeType privilegeType : PrivilegeType.ALL.getStorablePrivilege()) {
         userPrivilegesList.add(privilegeType.toString());
       }
     } else {

@@ -72,26 +72,31 @@ public class AuthorityChecker {
       return true;
     }
 
-    int permission = translateToPermissionId(type);
-    if (permission == -1) {
-      return false;
-    } else if (permission == PrivilegeType.ALTER_PASSWORD.ordinal()
-        && username.equals(targetUser)) {
-      // A user can modify his own password
-      return true;
-    }
-
-    List<PartialPath> allPath = new ArrayList<>();
-    if (paths != null && !paths.isEmpty()) {
-      for (PartialPath path : paths) {
-        allPath.add(path == null ? AuthUtils.ROOT_PATH_PRIVILEGE_PATH : path);
+    int[] permissions = translateToPermissionId(type);
+    for (int permission : permissions) {
+      if (permission == -1) {
+        continue;
+      } else if (permission == PrivilegeType.ALTER_PASSWORD.ordinal()
+          && username.equals(targetUser)) {
+        // A user can modify his own password
+        return true;
       }
-    } else {
-      allPath.add(AuthUtils.ROOT_PATH_PRIVILEGE_PATH);
-    }
 
-    TSStatus status = authorizerManager.checkPath(username, allPath, permission);
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+      List<PartialPath> allPath = new ArrayList<>();
+      if (paths != null && !paths.isEmpty()) {
+        for (PartialPath path : paths) {
+          allPath.add(path == null ? AuthUtils.ROOT_PATH_PRIVILEGE_PATH : path);
+        }
+      } else {
+        allPath.add(AuthUtils.ROOT_PATH_PRIVILEGE_PATH);
+      }
+
+      TSStatus status = authorizerManager.checkPath(username, allPath, permission);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private static boolean checkOnePath(String username, PartialPath path, int permission)
@@ -113,11 +118,16 @@ public class AuthorityChecker {
     long startTime = System.nanoTime();
     try {
       if (!checkAuthorization(statement, session.getUsername())) {
-        return RpcUtils.getStatus(
-            TSStatusCode.NO_PERMISSION,
-            "No permissions for this operation, please add privilege "
-                + PrivilegeType.values()[
-                    AuthorityChecker.translateToPermissionId(statement.getType())]);
+        StringBuilder prompt =
+            new StringBuilder("No permissions for this operation, please add privilege ");
+        int[] permissions = translateToPermissionId(statement.getType());
+        for (int i = 0; i < permissions.length; i++) {
+          if (i != 0) {
+            prompt.append(" or ");
+          }
+          prompt.append(PrivilegeType.values()[permissions[i]]);
+        }
+        return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION, prompt.toString());
       }
     } catch (AuthException e) {
       logger.warn("Meets error while checking authorization.", e);
@@ -150,16 +160,19 @@ public class AuthorityChecker {
         username, statement.getPaths(), statement.getType(), targetUser);
   }
 
-  private static int translateToPermissionId(StatementType type) {
+  private static int[] translateToPermissionId(StatementType type) {
     switch (type) {
       case SHOW_SCHEMA_TEMPLATE:
       case SHOW_NODES_IN_SCHEMA_TEMPLATE:
       case SHOW_PATH_SET_SCHEMA_TEMPLATE:
       case SHOW_PATH_USING_SCHEMA_TEMPLATE:
-        return PrivilegeType.READ_SCHEMA.ordinal();
-      case TTL:
+        return new int[] {
+          PrivilegeType.READ_SCHEMA.ordinal(), PrivilegeType.WRITE_SCHEMA.ordinal()
+        };
       case STORAGE_GROUP_SCHEMA:
       case DELETE_STORAGE_GROUP:
+        return new int[] {PrivilegeType.MANAGE_DATABASE.ordinal()};
+      case TTL:
       case CREATE_TIMESERIES:
       case CREATE_ALIGNED_TIMESERIES:
       case CREATE_MULTI_TIMESERIES:
@@ -176,7 +189,7 @@ public class AuthorityChecker {
       case ALTER_LOGICAL_VIEW:
       case RENAME_LOGICAL_VIEW:
       case DELETE_LOGICAL_VIEW:
-        return PrivilegeType.WRITE_SCHEMA.ordinal();
+        return new int[] {PrivilegeType.WRITE_SCHEMA.ordinal()};
       case SHOW:
       case QUERY:
       case GROUP_BY_TIME:
@@ -191,7 +204,7 @@ public class AuthorityChecker {
       case COUNT:
       case CREATE_FUNCTION:
       case DROP_FUNCTION:
-        return PrivilegeType.READ_DATA.ordinal();
+        return new int[] {PrivilegeType.READ_DATA.ordinal(), PrivilegeType.WRITE_DATA.ordinal()};
       case INSERT:
       case DELETE:
       case LOAD_DATA:
@@ -200,35 +213,35 @@ public class AuthorityChecker {
       case BATCH_INSERT_ONE_DEVICE:
       case BATCH_INSERT_ROWS:
       case MULTI_BATCH_INSERT:
-        return PrivilegeType.WRITE_DATA.ordinal();
+        return new int[] {PrivilegeType.WRITE_DATA.ordinal()};
       case CREATE_USER:
       case DELETE_USER:
       case LIST_USER:
       case LIST_USER_ROLES:
       case LIST_USER_PRIVILEGE:
-        return PrivilegeType.USER_PRIVILEGE.ordinal();
+        return new int[] {PrivilegeType.MANAGE_USER.ordinal()};
       case CREATE_ROLE:
       case DELETE_ROLE:
       case LIST_ROLE:
       case LIST_ROLE_USERS:
       case LIST_ROLE_PRIVILEGE:
-        return PrivilegeType.ROLE_PRIVILEGE.ordinal();
+        return new int[] {PrivilegeType.MANAGE_ROLE.ordinal()};
       case MODIFY_PASSWORD:
-        return PrivilegeType.ALTER_PASSWORD.ordinal();
+        return new int[] {PrivilegeType.ALTER_PASSWORD.ordinal()};
       case GRANT_USER_PRIVILEGE:
       case REVOKE_USER_PRIVILEGE:
       case GRANT_ROLE_PRIVILEGE:
       case REVOKE_ROLE_PRIVILEGE:
       case GRANT_USER_ROLE:
       case REVOKE_USER_ROLE:
-        return PrivilegeType.GRANT_PRIVILEGE.ordinal();
+        return new int[] {PrivilegeType.GRANT_PRIVILEGE.ordinal()};
       case CREATE_TRIGGER:
       case DROP_TRIGGER:
-        return PrivilegeType.TRIGGER_PRIVILEGE.ordinal();
+        return new int[] {PrivilegeType.USE_TRIGGER.ordinal()};
       case CREATE_CONTINUOUS_QUERY:
       case DROP_CONTINUOUS_QUERY:
       case SHOW_CONTINUOUS_QUERIES:
-        return PrivilegeType.CONTINUOUS_QUERY_PRIVILEGE.ordinal();
+        return new int[] {PrivilegeType.USE_CQ.ordinal()};
       case CREATE_PIPEPLUGIN:
       case DROP_PIPEPLUGIN:
       case SHOW_PIPEPLUGINS:
@@ -237,10 +250,10 @@ public class AuthorityChecker {
       case STOP_PIPE:
       case DROP_PIPE:
       case SHOW_PIPES:
-        return PrivilegeType.PIPE_PRIVILEGE.ordinal();
+        return new int[] {PrivilegeType.USE_PIPE.ordinal()};
       default:
         logger.error("Unrecognizable operator type ({}) for AuthorityChecker.", type);
-        return -1;
+        return new int[] {-1};
     }
   }
 }

@@ -23,13 +23,11 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
-import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.ITemplateManager;
@@ -56,37 +54,11 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   private final Coordinator coordinator = Coordinator.getInstance();
   private final DataNodeSchemaCache schemaCache = DataNodeSchemaCache.getInstance();
   private final ITemplateManager templateManager = ClusterTemplateManager.getInstance();
-  MPPQueryContext context = null;
 
   private final AutoCreateSchemaExecutor autoCreateSchemaExecutor =
-      new AutoCreateSchemaExecutor(
-          templateManager,
-          statement -> {
-            long queryId = SessionManager.getInstance().requestQueryId();
-            return coordinator.execute(
-                statement,
-                queryId,
-                null,
-                "",
-                ClusterPartitionFetcher.getInstance(),
-                this,
-                config.getQueryTimeoutThreshold());
-          });
+      new AutoCreateSchemaExecutor(coordinator, templateManager, this);
   private final ClusterSchemaFetchExecutor clusterSchemaFetchExecutor =
-      new ClusterSchemaFetchExecutor(
-          coordinator,
-          templateManager,
-          () -> SessionManager.getInstance().requestQueryId(),
-          (queryId, statement) ->
-              coordinator.execute(
-                  statement,
-                  queryId,
-                  context == null ? null : context.getSession(),
-                  "",
-                  ClusterPartitionFetcher.getInstance(),
-                  this,
-                  config.getQueryTimeoutThreshold()),
-          schemaCache::put);
+      new ClusterSchemaFetchExecutor(coordinator, templateManager, this, schemaCache::put);
 
   private final NormalSchemaFetcher normalSchemaFetcher =
       new NormalSchemaFetcher(schemaCache, autoCreateSchemaExecutor, clusterSchemaFetchExecutor);
@@ -107,7 +79,6 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   @Override
   public ClusterSchemaTree fetchSchema(PathPatternTree patternTree, MPPQueryContext context) {
-    this.context = context;
     patternTree.constructTree();
     List<PartialPath> pathPatternList = patternTree.getAllPathPatterns();
     List<PartialPath> explicitPathList = new ArrayList<>();
@@ -122,7 +93,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     }
 
     if (explicitPathList.size() + explicitDevicePatternList.size() < pathPatternList.size()) {
-      return clusterSchemaFetchExecutor.fetchSchemaOfFuzzyMatch(patternTree, false);
+      return clusterSchemaFetchExecutor.fetchSchemaOfFuzzyMatch(patternTree, false, context);
     }
 
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
@@ -166,7 +137,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       }
 
       return clusterSchemaFetchExecutor.fetchSchemaOfPreciseMatchOrPreciseDeviceUsingTemplate(
-          pathPatternList, patternTree);
+          pathPatternList, patternTree, context);
 
     } finally {
       schemaCache.releaseReadLock();
@@ -174,14 +145,16 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   }
 
   @Override
-  public ClusterSchemaTree fetchSchemaWithTags(PathPatternTree patternTree) {
+  public ClusterSchemaTree fetchSchemaWithTags(
+      PathPatternTree patternTree, MPPQueryContext context) {
     patternTree.constructTree();
-    return clusterSchemaFetchExecutor.fetchSchemaOfFuzzyMatch(patternTree, true);
+    return clusterSchemaFetchExecutor.fetchSchemaOfFuzzyMatch(patternTree, true, context);
   }
 
   @Override
   public void fetchAndComputeSchemaWithAutoCreate(
-      ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation) {
+      ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation,
+      MPPQueryContext context) {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeseries will be effective.
     schemaCache.takeReadLock();
@@ -192,12 +165,12 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       if (templateSetInfo == null) {
         // normal timeseries
         indexOfMissingMeasurements =
-            normalSchemaFetcher.processNormalTimeSeries(schemaComputationWithAutoCreation);
+            normalSchemaFetcher.processNormalTimeSeries(schemaComputationWithAutoCreation, context);
       } else {
         // template timeseries
         indexOfMissingMeasurements =
             templateSchemaFetcher.processTemplateTimeSeries(
-                templateSetInfo, schemaComputationWithAutoCreation);
+                templateSetInfo, schemaComputationWithAutoCreation, context);
       }
 
       // all schema has been taken and processed
@@ -216,7 +189,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   @Override
   public void fetchAndComputeSchemaWithAutoCreate(
-      List<? extends ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList) {
+      List<? extends ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList,
+      MPPQueryContext context) {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeseries will be effective.
     schemaCache.takeReadLock();
@@ -239,11 +213,11 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       }
 
       if (!normalTimeSeriesRequestList.isEmpty()) {
-        normalSchemaFetcher.processNormalTimeSeries(normalTimeSeriesRequestList);
+        normalSchemaFetcher.processNormalTimeSeries(normalTimeSeriesRequestList, context);
       }
       if (!templateTimeSeriesRequestList.isEmpty()) {
         templateSchemaFetcher.processTemplateTimeSeries(
-            templateSetInfoList, templateTimeSeriesRequestList);
+            templateSetInfoList, templateTimeSeriesRequestList, context);
       }
     } finally {
       schemaCache.releaseReadLock();
@@ -257,7 +231,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       List<TSDataType[]> tsDataTypesList,
       List<TSEncoding[]> encodingsList,
       List<CompressionType[]> compressionTypesList,
-      List<Boolean> isAlignedList) {
+      List<Boolean> isAlignedList,
+      MPPQueryContext context) {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeseries will be effective.
     schemaCache.takeReadLock();
@@ -286,7 +261,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
               devicePathList,
               measurementsList,
               indexOfDevicesWithMissingMeasurements,
-              indexOfMissingMeasurementsList);
+              indexOfMissingMeasurementsList,
+              context);
       if (!remoteSchemaTree.isEmpty()) {
         schemaTree.mergeSchemaTree(remoteSchemaTree);
       }
@@ -325,7 +301,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
             tsDataTypesList,
             encodingsList,
             compressionTypesList,
-            isAlignedList);
+            isAlignedList,
+            context);
       }
 
       return schemaTree;

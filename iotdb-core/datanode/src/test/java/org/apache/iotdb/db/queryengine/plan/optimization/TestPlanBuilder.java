@@ -174,7 +174,7 @@ public class TestPlanBuilder {
 
   public TestPlanBuilder into(String id, PartialPath sourcePath, PartialPath intoPath) {
     IntoPathDescriptor intoPathDescriptor = new IntoPathDescriptor();
-    intoPathDescriptor.specifyTargetPath(sourcePath.toString(), intoPath);
+    intoPathDescriptor.specifyTargetPath(sourcePath.toString(), "", intoPath);
     intoPathDescriptor.specifyDeviceAlignment(intoPath.getDevice(), false);
     intoPathDescriptor.recordSourceColumnDataType(
         sourcePath.toString(), sourcePath.getSeriesType());

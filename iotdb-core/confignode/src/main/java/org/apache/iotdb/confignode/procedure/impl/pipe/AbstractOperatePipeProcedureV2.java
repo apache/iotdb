@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
+import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.pipe.task.OperatePipeTaskState;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -67,6 +68,50 @@ public abstract class AbstractOperatePipeProcedureV2
   // This variable should not be serialized into procedure store,
   // putting it here is just for convenience
   protected AtomicReference<PipeTaskInfo> pipeTaskInfo;
+
+  @Override
+  protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
+    configNodeProcedureEnv.getSchedulerLock().lock();
+    try {
+      if (configNodeProcedureEnv.getNodeLock().tryLock(this)) {
+        pipeTaskInfo =
+            configNodeProcedureEnv
+                .getConfigManager()
+                .getPipeManager()
+                .getPipeTaskCoordinator()
+                .lock();
+        LOGGER.info("procedureId {} acquire lock.", getProcId());
+        return ProcedureLockState.LOCK_ACQUIRED;
+      }
+      configNodeProcedureEnv.getNodeLock().waitProcedure(this);
+      LOGGER.info("procedureId {} wait for lock.", getProcId());
+      return ProcedureLockState.LOCK_EVENT_WAIT;
+    } finally {
+      configNodeProcedureEnv.getSchedulerLock().unlock();
+    }
+  }
+
+  @Override
+  protected void releaseLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
+    configNodeProcedureEnv.getSchedulerLock().lock();
+    try {
+      LOGGER.info("procedureId {} release lock.", getProcId());
+      if (pipeTaskInfo != null) {
+        configNodeProcedureEnv
+            .getConfigManager()
+            .getPipeManager()
+            .getPipeTaskCoordinator()
+            .unlock();
+      }
+      if (configNodeProcedureEnv.getNodeLock().releaseLock(this)) {
+        configNodeProcedureEnv
+            .getNodeLock()
+            .wakeWaitingProcedures(configNodeProcedureEnv.getScheduler());
+      }
+    } finally {
+      configNodeProcedureEnv.getSchedulerLock().unlock();
+    }
+  }
 
   protected abstract PipeTaskOperation getOperation();
 
@@ -119,7 +164,6 @@ public abstract class AbstractOperatePipeProcedureV2
           break;
         case OPERATE_ON_DATA_NODES:
           executeFromOperateOnDataNodes(env);
-          env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
           return Flow.NO_MORE_STATE;
         default:
           throw new UnsupportedOperationException(
@@ -162,11 +206,7 @@ public abstract class AbstractOperatePipeProcedureV2
       throws IOException, InterruptedException, ProcedureException {
     switch (state) {
       case VALIDATE_TASK:
-        try {
-          rollbackFromValidateTask(env);
-        } finally {
-          env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
-        }
+        rollbackFromValidateTask(env);
         break;
       case CALCULATE_INFO_FOR_TASK:
         rollbackFromCalculateInfoForTask(env);

@@ -37,8 +37,16 @@ public class UpdateViewPathLastCacheOperator extends UpdateLastCacheOperator {
       TSDataType dataType,
       DataNodeSchemaCache dataNodeSchemaCache,
       boolean needUpdateCache,
+      boolean needUpdateNullEntry,
       String outputViewPath) {
-    super(operatorContext, child, fullPath, dataType, dataNodeSchemaCache, needUpdateCache);
+    super(
+        operatorContext,
+        child,
+        fullPath,
+        dataType,
+        dataNodeSchemaCache,
+        needUpdateCache,
+        needUpdateNullEntry);
     this.outputViewPath = outputViewPath;
   }
 

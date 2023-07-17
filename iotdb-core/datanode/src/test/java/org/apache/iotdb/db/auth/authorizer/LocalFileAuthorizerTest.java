@@ -203,7 +203,7 @@ public class LocalFileAuthorizerTest {
     assertEquals(2, permissions.size());
     assertTrue(permissions.contains(1));
     assertTrue(permissions.contains(3));
-    assertFalse(permissions.contains(2));
+    assertFalse(permissions.contains(4));
 
     try {
       authorizer.grantRoleToUser(roleName, user.getName());
