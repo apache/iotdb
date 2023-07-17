@@ -36,7 +36,7 @@ public class EncodeTest {
 
       String Input = Inputs[idx];
       String Output = Outputs[idx];
-      int repeatTime = 5; // set repeat time
+      int repeatTime = 50; // set repeat time
 
       String[] dataTypeNames = {"INT32", "INT64", "FLOAT", "DOUBLE"};
       // select encoding algorithms
