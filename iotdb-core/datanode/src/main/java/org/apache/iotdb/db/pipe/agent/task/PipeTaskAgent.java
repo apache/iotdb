@@ -331,9 +331,11 @@ public class PipeTaskAgent {
     pipeMetaKeeper
         .getPipeMetaList()
         .forEach(
-            pipeMeta ->
-                pipeMeta
-                    .getRuntimeMeta()
+            pipeMeta -> {
+              PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+              if (runtimeMeta.getStatus().get() == PipeStatus.RUNNING) {
+                PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+                runtimeMeta
                     .getConsensusGroupId2TaskMetaMap()
                     .values()
                     .forEach(
@@ -342,12 +344,12 @@ public class PipeTaskAgent {
                               pipeTaskMeta.getExceptionMessages().iterator();
                           while (exceptionIterator.hasNext()) {
                             if (exceptionIterator.next() instanceof PipeRuntimeCriticalException) {
-                              stopPipe(
-                                  pipeMeta.getStaticMeta().getPipeName(),
-                                  pipeMeta.getStaticMeta().getCreationTime());
+                              stopPipe(staticMeta.getPipeName(), staticMeta.getCreationTime());
                             }
                           }
-                        }));
+                        });
+              }
+            });
   }
 
   ////////////////////////// Manage by Pipe Name //////////////////////////

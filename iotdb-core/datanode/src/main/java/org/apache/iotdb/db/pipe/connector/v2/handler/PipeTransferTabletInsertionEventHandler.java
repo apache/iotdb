@@ -24,7 +24,9 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalExcep
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.connector.v2.IoTDBThriftConnectorV2;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
+import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -52,6 +54,7 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
 
   private final IoTDBThriftConnectorV2 connector;
   private final ExecutorService retryExecutor;
+  private final BoundedBlockingPendingQueue<Event> retryFailureQueue;
 
   private static final long MAX_RETRY_WAIT_TIME_MS =
       (long) (PipeConfig.getInstance().getPipeConnectorRetryIntervalMs() * Math.pow(2, 5));
@@ -62,12 +65,14 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
       @Nullable EnrichedEvent event,
       TPipeTransferReq req,
       IoTDBThriftConnectorV2 connector,
-      ExecutorService retryExecutor) {
+      ExecutorService retryExecutor,
+      BoundedBlockingPendingQueue<Event> retryFailureQueue) {
     this.requestCommitId = requestCommitId;
     this.event = event;
     this.req = req;
     this.connector = connector;
     this.retryExecutor = retryExecutor;
+    this.retryFailureQueue = retryFailureQueue;
 
     Optional.ofNullable(event)
         .ifPresent(
@@ -99,6 +104,7 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
   @Override
   public void onError(Exception exception) {
     if (retryCount >= PipeSubtask.MAX_RETRY_TIMES) {
+      retryFailureQueue.offer(event);
       event.reportException(new PipeRuntimeConnectorCriticalException(exception.getMessage()));
       return;
     }

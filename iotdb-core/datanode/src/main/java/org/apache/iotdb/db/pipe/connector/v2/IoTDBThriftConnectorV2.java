@@ -39,6 +39,7 @@ import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -79,6 +80,9 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
+  private final BoundedBlockingPendingQueue<Event> retryPendingQueue =
+      new BoundedBlockingPendingQueue<>(1024);
+
   private static final ExecutorService transferRetryExecutor =
       IoTDBThreadPoolFactory.newSingleThreadExecutor(
           ThreadName.PIPE_THRIFT_CONNECTOR_V2_RETRY_POOL.getName());
@@ -110,6 +114,10 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
     }
 
     asyncPipeDataTransferClientManager = asyncPipeDataTransferClientManagerHolder;
+  }
+
+  public synchronized BoundedBlockingPendingQueue<Event> getRetryPendingQueue() {
+    return retryPendingQueue;
   }
 
   public synchronized void commit(long requestCommitId, @Nullable EnrichedEvent enrichedEvent) {
@@ -199,7 +207,8 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
               pipeInsertNodeTabletInsertionEvent,
               pipeTransferInsertNodeReq,
               this,
-              transferRetryExecutor);
+              transferRetryExecutor,
+              retryPendingQueue);
 
       transfer(requestCommitId, pipeTransferInsertNodeReqHandler);
     } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
@@ -212,7 +221,11 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
               pipeRawTabletInsertionEvent.isAligned());
       final PipeTransferRawTabletInsertionEventHandler pipeTransferTabletReqHandler =
           new PipeTransferRawTabletInsertionEventHandler(
-              requestCommitId, pipeTransferTabletReq, this, transferRetryExecutor);
+              requestCommitId,
+              pipeTransferTabletReq,
+              this,
+              transferRetryExecutor,
+              retryPendingQueue);
 
       transfer(requestCommitId, pipeTransferTabletReqHandler);
     } else {
@@ -288,7 +301,11 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
         (PipeTsFileInsertionEvent) tsFileInsertionEvent;
     final PipeTransferTsFileInsertionEventHandler pipeTransferTsFileInsertionEventHandler =
         new PipeTransferTsFileInsertionEventHandler(
-            requestCommitId, pipeTsFileInsertionEvent, this, transferRetryExecutor);
+            requestCommitId,
+            pipeTsFileInsertionEvent,
+            this,
+            transferRetryExecutor,
+            retryPendingQueue);
 
     pipeTsFileInsertionEvent.waitForTsFileClose();
     transfer(requestCommitId, pipeTransferTsFileInsertionEventHandler);

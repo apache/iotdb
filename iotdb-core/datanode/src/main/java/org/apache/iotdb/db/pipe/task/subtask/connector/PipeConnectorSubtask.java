@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.task.subtask.connector;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.pipe.connector.v2.IoTDBThriftConnectorV2;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
@@ -49,6 +50,7 @@ public class PipeConnectorSubtask extends PipeSubtask {
 
   // For input and output
   private final BoundedBlockingPendingQueue<Event> inputPendingQueue;
+  private final BoundedBlockingPendingQueue<Event> retryPendingQueue;
   private final PipeConnector outputPipeConnector;
 
   // For heartbeat scheduling
@@ -66,6 +68,11 @@ public class PipeConnectorSubtask extends PipeSubtask {
     super(taskID);
     this.inputPendingQueue = inputPendingQueue;
     this.outputPipeConnector = outputPipeConnector;
+    if (outputPipeConnector instanceof IoTDBThriftConnectorV2) {
+      retryPendingQueue = ((IoTDBThriftConnectorV2) outputPipeConnector).getRetryPendingQueue();
+    } else {
+      retryPendingQueue = new BoundedBlockingPendingQueue<>(1);
+    }
     executeOnceInvokedTimes = 0;
   }
 
@@ -101,7 +108,14 @@ public class PipeConnectorSubtask extends PipeSubtask {
           "PipeConnector: failed to connect to the target system.", e);
     }
 
-    final Event event = lastEvent != null ? lastEvent : inputPendingQueue.waitedPoll();
+    final Event event;
+    if (lastEvent != null) {
+      event = lastEvent;
+    } else if (retryPendingQueue.size() > 0) {
+      event = retryPendingQueue.directPoll();
+    } else {
+      event = inputPendingQueue.waitedPoll();
+    }
     // Record this event for retrying on connection failure or other exceptions
     lastEvent = event;
     if (event == null) {

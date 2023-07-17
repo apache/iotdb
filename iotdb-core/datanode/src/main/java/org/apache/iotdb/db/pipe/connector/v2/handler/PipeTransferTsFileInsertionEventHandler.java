@@ -27,7 +27,9 @@ import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.v2.IoTDBThriftConnectorV2;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
+import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
@@ -55,6 +57,7 @@ public class PipeTransferTsFileInsertionEventHandler
   private final PipeTsFileInsertionEvent event;
   private final IoTDBThriftConnectorV2 connector;
   private final ExecutorService retryExecutor;
+  private final BoundedBlockingPendingQueue<Event> retryFailureQueue;
 
   private final File tsFile;
   private final int readFileBufferSize;
@@ -75,12 +78,14 @@ public class PipeTransferTsFileInsertionEventHandler
       long requestCommitId,
       PipeTsFileInsertionEvent event,
       IoTDBThriftConnectorV2 connector,
-      ExecutorService retryExecutor)
+      ExecutorService retryExecutor,
+      BoundedBlockingPendingQueue<Event> retryFailureQueue)
       throws FileNotFoundException {
     this.requestCommitId = requestCommitId;
     this.event = event;
     this.connector = connector;
     this.retryExecutor = retryExecutor;
+    this.retryFailureQueue = retryFailureQueue;
 
     tsFile = event.getTsFile();
     readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
@@ -186,6 +191,7 @@ public class PipeTransferTsFileInsertionEventHandler
     }
 
     if (retryCount >= PipeSubtask.MAX_RETRY_TIMES) {
+      retryFailureQueue.offer(event);
       event.reportException(new PipeRuntimeConnectorCriticalException(exception.getMessage()));
       return;
     }

@@ -21,6 +21,8 @@ package org.apache.iotdb.db.pipe.connector.v2.handler;
 
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.db.pipe.connector.v2.IoTDBThriftConnectorV2;
+import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
+import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
@@ -35,8 +37,9 @@ public class PipeTransferRawTabletInsertionEventHandler
       long requestCommitId,
       TPipeTransferReq req,
       IoTDBThriftConnectorV2 connector,
-      ExecutorService retryExecutor) {
-    super(requestCommitId, null, req, connector, retryExecutor);
+      ExecutorService retryExecutor,
+      BoundedBlockingPendingQueue<Event> retryFailureQueue) {
+    super(requestCommitId, null, req, connector, retryExecutor, retryFailureQueue);
   }
 
   @Override
