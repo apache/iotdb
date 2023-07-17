@@ -18,7 +18,7 @@
 
 import multiprocessing
 import time
-from queue import Queue
+from multiprocessing import Queue
 from threading import Lock
 
 from iotdb.Session import Session
@@ -114,6 +114,7 @@ class SessionPool(object):
         while not self.__queue.empty():
             session = self.__queue.get(block=False)
             session.close()
+            self.__pool_size -= 1
 
 
 def create_session_pool(pool_config: PoolConfig, max_pool_size: int, wait_timeout_in_ms: int) -> SessionPool:
