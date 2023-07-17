@@ -87,32 +87,36 @@ public class PipeMetaSyncer {
   }
 
   private synchronized void sync() {
-    ProcedureManager procedureManager = configManager.getProcedureManager();
     final AtomicReference<PipeTaskInfo> pipeTaskInfo =
         configManager.getPipeManager().getPipeTaskCoordinator().lock();
-
     try {
-      boolean needBroadcastRestartSignal = false;
-
-      if (pipeAutoRestartEnabled
-          && pipeAutoRestartRoundCounter.incrementAndGet()
-              == PipeConfig.getInstance().getPipeMetaSyncerAutoRestartPipeCheckIntervalRound()) {
-        needBroadcastRestartSignal = pipeTaskInfo.get().autoRestart();
-        pipeAutoRestartRoundCounter.set(0);
-      }
-
-      final TSStatus status = procedureManager.pipeMetaSync();
-
-      if (needBroadcastRestartSignal) {
-        pipeTaskInfo.get().handleSuccessfulRestart();
-      }
-
-      if (needBroadcastRestartSignal
-          || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        procedureManager.pipeHandleMetaChange(true, true);
-      }
+      doSync(pipeTaskInfo.get());
     } finally {
       configManager.getPipeManager().getPipeTaskCoordinator().unlock();
+    }
+  }
+
+  private void doSync(final PipeTaskInfo pipeTaskInfo) {
+    final ProcedureManager procedureManager = configManager.getProcedureManager();
+
+    boolean needBroadcastRestartSignal = false;
+
+    if (pipeAutoRestartEnabled
+        && pipeAutoRestartRoundCounter.incrementAndGet()
+            == PipeConfig.getInstance().getPipeMetaSyncerAutoRestartPipeCheckIntervalRound()) {
+      needBroadcastRestartSignal = pipeTaskInfo.autoRestart();
+      pipeAutoRestartRoundCounter.set(0);
+    }
+
+    final TSStatus status = procedureManager.pipeMetaSync();
+
+    if (needBroadcastRestartSignal) {
+      pipeTaskInfo.handleSuccessfulRestart();
+    }
+
+    if (needBroadcastRestartSignal
+        || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      procedureManager.pipeHandleMetaChange(true, true);
     }
   }
 

@@ -99,14 +99,10 @@ public class PipeTaskCoordinator {
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus startPipe(String pipeName) {
-    // Whether there are exceptions to clear
-    final boolean hasExceptionsOrIsAutoStopped =
-        pipeTaskInfo.hasExceptionsOrIsAutoStopped(pipeName);
+    final boolean hasException = pipeTaskInfo.hasExceptions(pipeName);
     final TSStatus status = configManager.getProcedureManager().startPipe(pipeName);
-    if (status == RpcUtils.SUCCESS_STATUS && hasExceptionsOrIsAutoStopped) {
-      LOGGER.info(
-          "Pipe {} has started successfully, clear its exceptions and set its autoStopped flag to false..",
-          pipeName);
+    if (status == RpcUtils.SUCCESS_STATUS && hasException) {
+      LOGGER.info("Pipe {} has started successfully, clear its exceptions.", pipeName);
       configManager.getProcedureManager().pipeHandleMetaChange(true, true);
     }
     return status;
@@ -114,17 +110,15 @@ public class PipeTaskCoordinator {
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus stopPipe(String pipeName) {
-    // If the isAutoStopped flag is true when user executes the stop pipe statement, then the
-    // statement will be interpreted as "stop auto-restart process" instead of stop this pipe
-    // because the pipe is already stopped in this case.
-    if (pipeTaskInfo.setIsAutoStoppedToFalse(pipeName)) {
+    final boolean isStoppedByRuntimeException = pipeTaskInfo.isStoppedByRuntimeException(pipeName);
+    final TSStatus status = configManager.getProcedureManager().stopPipe(pipeName);
+    if (status == RpcUtils.SUCCESS_STATUS && isStoppedByRuntimeException) {
       LOGGER.info(
-          "Pipe {} is manually stopped by user, set its isAutoStopped flag to false.", pipeName);
+          "Pipe {} has stopped successfully manually, stop its auto restart process.", pipeName);
+      pipeTaskInfo.setIsStoppedByRuntimeExceptionToFalse(pipeName);
       configManager.getProcedureManager().pipeHandleMetaChange(true, true);
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-          .setMessage(String.format("Pipe %s's auto restart process is stopped.", pipeName));
     }
-    return configManager.getProcedureManager().stopPipe(pipeName);
+    return status;
   }
 
   /** Caller should ensure that the method is called in the lock {@link #lock()}. */
