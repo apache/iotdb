@@ -116,7 +116,7 @@ public class TsFileInsertionDataTabletIterator implements Iterator<Tablet> {
       schemas.add(new MeasurementSchema(measurement, dataType));
     }
     final Tablet tablet =
-        new Tablet(deviceId, schemas, PipeConfig.getInstance().getPipeExtractorTabletRowSize());
+        new Tablet(deviceId, schemas, PipeConfig.getInstance().getPipeDataStructureTabletRowSize());
     tablet.initBitMaps();
 
     while (queryDataSet.hasNext()) {

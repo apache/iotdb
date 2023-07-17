@@ -55,7 +55,7 @@ public class PipeRowCollector implements RowCollector {
           new Tablet(
               deviceId,
               measurementSchemaList,
-              PipeConfig.getInstance().getPipeExtractorTabletRowSize());
+              PipeConfig.getInstance().getPipeDataStructureTabletRowSize());
       isAligned = pipeRow.isAligned();
       tablet.initBitMaps();
     }
