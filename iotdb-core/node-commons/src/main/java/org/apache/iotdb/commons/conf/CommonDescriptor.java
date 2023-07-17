@@ -240,6 +240,11 @@ public class CommonDescriptor {
     config.setPipeHardlinkTsFileDirName(
         properties.getProperty(
             "pipe_hardlink_tsfile_dir_name", config.getPipeHardlinkTsFileDirName()));
+    config.setPipeDataStructureTabletRowSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_data_structure_tablet_row_size",
+                String.valueOf(config.getPipeDataStructureTabletRowSize()))));
 
     config.setPipeSubtaskExecutorMaxThreadNum(
         Integer.parseInt(
