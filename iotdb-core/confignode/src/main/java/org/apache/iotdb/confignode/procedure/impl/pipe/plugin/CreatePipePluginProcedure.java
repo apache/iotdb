@@ -212,6 +212,8 @@ public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipeP
       case CREATE_ON_DATA_NODES:
         rollbackFromCreateOnDataNodes(env);
         break;
+      default:
+        break;
     }
   }
 

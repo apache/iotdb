@@ -27,7 +27,9 @@ import java.util.Objects;
 
 public class RequestValidationHandler {
 
-  private RequestValidationHandler() {}
+  private RequestValidationHandler() {
+    // Empty constructor
+  }
 
   public static void validateSQL(SQL sql) {
     Objects.requireNonNull(sql.getSql(), "sql should not be null");

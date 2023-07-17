@@ -26,7 +26,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DropSche
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 
 public class ExecuteStatementHandler {
-  private ExecuteStatementHandler() {}
+  private ExecuteStatementHandler() {
+    // Empty constructor
+  }
 
   public static boolean validateStatement(Statement statement) {
     return !(statement instanceof QueryStatement)

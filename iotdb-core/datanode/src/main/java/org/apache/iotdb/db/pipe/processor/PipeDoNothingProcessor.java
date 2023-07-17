@@ -38,13 +38,13 @@ public class PipeDoNothingProcessor implements PipeProcessor {
 
   @Override
   public void validate(PipeParameterValidator validator) {
-    // do nothing
+    // Do nothing
   }
 
   @Override
   public void customize(
       PipeParameters parameters, PipeProcessorRuntimeConfiguration configuration) {
-    // do nothing
+    // Do nothing
   }
 
   @Override
@@ -107,6 +107,6 @@ public class PipeDoNothingProcessor implements PipeProcessor {
 
   @Override
   public void close() {
-    // do nothing
+    // Do nothing
   }
 }

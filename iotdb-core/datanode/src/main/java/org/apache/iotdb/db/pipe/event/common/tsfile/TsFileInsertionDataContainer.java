@@ -50,7 +50,7 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileInsertionDataContainer.class);
 
-  // used to filter data
+  // Used to filter data
   private final String pattern;
   private final IExpression timeFilterExpression;
 

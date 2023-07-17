@@ -40,7 +40,9 @@ import java.io.IOException;
 public class ExceptionHandler {
   private static final Logger LOGGER = LoggerFactory.getLogger(ExceptionHandler.class);
 
-  private ExceptionHandler() {}
+  private ExceptionHandler() {
+    // Empty constructor
+  }
 
   public static ExecutionStatus tryCatchException(Exception e) {
     ExecutionStatus responseResult = new ExecutionStatus();

@@ -29,7 +29,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * EnrichedEvent is an event that can be enriched with additional runtime information. The
+ * {@link EnrichedEvent} is an event that can be enriched with additional runtime information. The
  * additional information mainly includes the reference count of the event.
  */
 public abstract class EnrichedEvent implements Event {
@@ -47,7 +47,7 @@ public abstract class EnrichedEvent implements Event {
   }
 
   /**
-   * increase the reference count of this event. when the reference count is positive, the data in
+   * Increase the reference count of this event. when the reference count is positive, the data in
    * the resource of this event should be safe to use.
    *
    * @param holderMessage the message of the invoker

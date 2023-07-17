@@ -252,7 +252,8 @@ public abstract class AbstractOperatePipeProcedureV2
         if (!resp.isSetExceptionMessages()) {
           exceptionMessageBuilder.append(
               String.format(
-                  "DataNodeId: %s, Message: Internal error while processing pushPipeMeta on dataNodes.",
+                  "DataNodeId: %s, Message: Internal error while processing "
+                      + "pushPipeMeta on dataNodes.",
                   dataNodeId));
           continue;
         }

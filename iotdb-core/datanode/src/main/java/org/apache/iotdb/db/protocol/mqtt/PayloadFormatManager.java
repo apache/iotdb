@@ -38,7 +38,9 @@ import java.util.ServiceLoader;
 /** PayloadFormatManager loads payload formatter from SPI services. */
 public class PayloadFormatManager {
 
-  private PayloadFormatManager() {}
+  private PayloadFormatManager() {
+    // Empty constructor
+  }
 
   private static final Logger logger = LoggerFactory.getLogger(PayloadFormatManager.class);
 
@@ -117,7 +119,7 @@ public class PayloadFormatManager {
   }
 
   /**
-   * get all jar files in the given folder
+   * Get all jar files in the given folder.
    *
    * @param folderPath
    * @return all jar files' URL

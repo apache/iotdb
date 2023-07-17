@@ -38,7 +38,9 @@ public class DisruptorQueue<E> {
   private Disruptor<Container<E>> disruptor;
   private RingBuffer<Container<E>> ringBuffer;
 
-  private DisruptorQueue() {}
+  private DisruptorQueue() {
+    // Empty constructor
+  }
 
   public void publish(E obj) {
     ringBuffer.publishEvent((container, sequence, o) -> container.setObj(o), obj);
@@ -49,11 +51,11 @@ public class DisruptorQueue<E> {
   }
 
   public static class Builder<E> {
-    private int ringBufferSize =
+    private final int ringBufferSize =
         PipeConfig.getInstance().getPipeExtractorAssignerDisruptorRingBufferSize();
-    private ThreadFactory threadFactory = DaemonThreadFactory.INSTANCE;
+    private final ThreadFactory threadFactory = DaemonThreadFactory.INSTANCE;
     private ProducerType producerType = ProducerType.MULTI;
-    private WaitStrategy waitStrategy = new BlockingWaitStrategy();
+    private final WaitStrategy waitStrategy = new BlockingWaitStrategy();
     private final List<EventHandler<E>> handlers = new ArrayList<>();
 
     public Builder<E> setProducerType(ProducerType producerType) {
@@ -86,7 +88,9 @@ public class DisruptorQueue<E> {
   private static class Container<E> {
     private E obj;
 
-    private Container() {}
+    private Container() {
+      // Empty constructor
+    }
 
     public E getObj() {
       return obj;

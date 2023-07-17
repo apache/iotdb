@@ -29,18 +29,18 @@ public class PipeRealtimeDataRegionFakeExtractor extends PipeRealtimeDataRegionE
 
   @Override
   public void validate(PipeParameterValidator validator) {
-    // do nothing
+    // Do nothing
   }
 
   @Override
   public void customize(
       PipeParameters parameters, PipeExtractorRuntimeConfiguration configuration) {
-    // do nothing
+    // Do nothing
   }
 
   @Override
   public void start() {
-    // do nothing
+    // Do nothing
   }
 
   @Override
@@ -50,7 +50,7 @@ public class PipeRealtimeDataRegionFakeExtractor extends PipeRealtimeDataRegionE
 
   @Override
   public void extract(PipeRealtimeEvent event) {
-    // do nothing
+    // Do nothing
   }
 
   @Override
@@ -65,7 +65,7 @@ public class PipeRealtimeDataRegionFakeExtractor extends PipeRealtimeDataRegionE
 
   @Override
   public void close() {
-    // do nothing
+    // Do nothing
   }
 
   @Override

@@ -23,7 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 
 import java.util.Objects;
 
-/** {@link QueryExecutor} indicates this query can execute directly without data from StorageEngine. */
+/**
+ * {@link QueryExecutor} indicates this query can execute directly without data from StorageEngine.
+ */
 public class QueryExecutor implements ExecutorType {
   TDataNodeLocation dataNodeLocation;
 

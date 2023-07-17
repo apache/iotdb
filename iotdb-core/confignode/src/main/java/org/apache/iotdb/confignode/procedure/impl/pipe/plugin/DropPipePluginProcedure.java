@@ -168,6 +168,8 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
       case DROP_ON_CONFIG_NODES:
         rollbackFromDropOnConfigNodes(env);
         break;
+      default:
+        break;
     }
   }
 

@@ -41,7 +41,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileInsertionEvent.class);
 
-  // used to filter data
+  // Used to filter data
   private final long startTime;
   private final long endTime;
 

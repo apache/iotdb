@@ -442,7 +442,9 @@ public class IoTDBSyncReceiver {
 
   ///////////////////////// singleton /////////////////////////
 
-  private IoTDBSyncReceiver() {}
+  private IoTDBSyncReceiver() {
+    // Empty constructor
+  }
 
   public static IoTDBSyncReceiver getInstance() {
     return IoTDBSyncReceiverHolder.INSTANCE;

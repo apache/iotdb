@@ -677,6 +677,16 @@ public class PipeTaskAgent {
     }
   }
 
+  public synchronized void collectPipeMetaList(TPipeHeartbeatReq req, TPipeHeartbeatResp resp)
+      throws TException {
+    acquireReadLock();
+    try {
+      collectPipeMetaListWithoutLock(req, resp);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
   private void collectPipeMetaListWithoutLock(THeartbeatReq req, THeartbeatResp resp)
       throws TException {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
@@ -694,16 +704,6 @@ public class PipeTaskAgent {
       throw new TException(e);
     }
     resp.setPipeMetaList(pipeMetaBinaryList);
-  }
-
-  public synchronized void collectPipeMetaList(TPipeHeartbeatReq req, TPipeHeartbeatResp resp)
-      throws TException {
-    acquireReadLock();
-    try {
-      collectPipeMetaListWithoutLock(req, resp);
-    } finally {
-      releaseReadLock();
-    }
   }
 
   private void collectPipeMetaListWithoutLock(TPipeHeartbeatReq req, TPipeHeartbeatResp resp)

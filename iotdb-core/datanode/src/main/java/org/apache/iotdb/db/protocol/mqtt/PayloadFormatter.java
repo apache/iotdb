@@ -31,7 +31,7 @@ import java.util.List;
  */
 public interface PayloadFormatter {
   /**
-   * format a payload to a list of messages
+   * Format a payload to a list of messages.
    *
    * @param payload
    * @return
@@ -39,7 +39,7 @@ public interface PayloadFormatter {
   List<Message> format(ByteBuf payload);
 
   /**
-   * get the formatter name
+   * Get the formatter name.
    *
    * @return
    */

@@ -31,7 +31,9 @@ import java.util.List;
 import java.util.Locale;
 
 public class StatementConstructionHandler {
-  private StatementConstructionHandler() {}
+  private StatementConstructionHandler() {
+    // Empty constructor
+  }
 
   public static InsertTabletStatement constructInsertTabletStatement(
       InsertTabletRequest insertTabletRequest)
@@ -115,7 +117,7 @@ public class StatementConstructionHandler {
             if (data == null) {
               bitMaps[columnIndex].mark(rowIndex);
             } else {
-              floatValues[rowIndex] = Float.valueOf(String.valueOf(data));
+              floatValues[rowIndex] = Float.parseFloat(String.valueOf(data));
             }
           }
           columns[columnIndex] = floatValues;
@@ -127,7 +129,7 @@ public class StatementConstructionHandler {
               bitMaps[columnIndex].mark(rowIndex);
             } else {
               doubleValues[rowIndex] =
-                  Double.valueOf(String.valueOf(rawData.get(columnIndex).get(rowIndex)));
+                  Double.parseDouble(String.valueOf(rawData.get(columnIndex).get(rowIndex)));
             }
           }
           columns[columnIndex] = doubleValues;

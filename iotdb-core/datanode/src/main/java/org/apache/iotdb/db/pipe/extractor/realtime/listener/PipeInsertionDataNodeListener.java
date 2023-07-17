@@ -131,7 +131,9 @@ public class PipeInsertionDataNodeListener {
 
   /////////////////////////////// singleton ///////////////////////////////
 
-  private PipeInsertionDataNodeListener() {}
+  private PipeInsertionDataNodeListener() {
+    // Empty constructor
+  }
 
   public static PipeInsertionDataNodeListener getInstance() {
     return PipeChangeDataCaptureListenerHolder.INSTANCE;
