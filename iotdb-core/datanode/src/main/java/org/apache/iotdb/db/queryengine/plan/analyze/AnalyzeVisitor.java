@@ -484,7 +484,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       throw new SemanticException(e);
     }
     analysis.setUseLogicalView(useLogicalView);
-    if (useLogicalView && ((QueryStatement) analysis.getStatement()).isGroupByTag()) {
+    if (useLogicalView
+        && analysis.getStatement() instanceof QueryStatement
+        && (((QueryStatement) analysis.getStatement()).isGroupByTag())) {
       throw new SemanticException("Views cannot be used in GROUP BY TAGS query yet.");
     }
 
