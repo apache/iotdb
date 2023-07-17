@@ -110,12 +110,13 @@ public class PipeMetaSyncer {
 
     final TSStatus status = procedureManager.pipeMetaSync();
 
-    if (needBroadcastRestartSignal) {
+    if (needBroadcastRestartSignal
+        && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       pipeTaskInfo.handleSuccessfulRestart();
+      procedureManager.pipeHandleMetaChange(true, true);
     }
 
-    if (needBroadcastRestartSignal
-        || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       procedureManager.pipeHandleMetaChange(true, true);
     }
   }
