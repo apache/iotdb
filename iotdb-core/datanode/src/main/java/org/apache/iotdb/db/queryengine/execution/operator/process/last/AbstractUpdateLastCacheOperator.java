@@ -19,17 +19,26 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.last;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
+import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
+
+import javax.annotation.Nullable;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator {
   protected static final TsBlock LAST_QUERY_EMPTY_TSBLOCK =
@@ -38,11 +47,15 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
 
   protected OperatorContext operatorContext;
 
+  protected final DataNodeQueryContext dataNodeQueryContext;
+
   protected Operator child;
 
   protected DataNodeSchemaCache lastCache;
 
-  protected boolean needUpdateCache;
+  protected final boolean needUpdateCache;
+
+  protected final boolean needUpdateNullEntry;
 
   protected TsBlockBuilder tsBlockBuilder;
 
@@ -52,12 +65,16 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
       OperatorContext operatorContext,
       Operator child,
       DataNodeSchemaCache dataNodeSchemaCache,
-      boolean needUpdateCache) {
+      boolean needUpdateCache,
+      boolean needUpdateNullEntry) {
     this.operatorContext = operatorContext;
     this.child = child;
     this.lastCache = dataNodeSchemaCache;
     this.needUpdateCache = needUpdateCache;
+    this.needUpdateNullEntry = needUpdateNullEntry;
     this.tsBlockBuilder = LastQueryUtil.createTsBlockBuilder(1);
+    this.dataNodeQueryContext =
+        operatorContext.getDriverContext().getFragmentInstanceContext().getDataNodeQueryContext();
   }
 
   @Override
@@ -78,6 +95,35 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
               .getDatabaseName();
     }
     return databaseName;
+  }
+
+  protected void mayUpdateLastCache(
+      long time, @Nullable TsPrimitiveType value, MeasurementPath fullPath) {
+    if (!needUpdateCache) {
+      return;
+    }
+    try {
+      dataNodeQueryContext.lock();
+      Pair<AtomicInteger, TimeValuePair> seriesScanInfo =
+          dataNodeQueryContext.getSeriesScanInfo(fullPath);
+
+      // may enter this case when use TTL
+      if (seriesScanInfo == null) {
+        return;
+      }
+
+      // update cache in DataNodeQueryContext
+      if (seriesScanInfo.right == null || time > seriesScanInfo.right.getTimestamp()) {
+        seriesScanInfo.right = new TimeValuePair(time, value);
+      }
+
+      if (seriesScanInfo.left.decrementAndGet() == 0) {
+        lastCache.updateLastCache(
+            getDatabaseName(), fullPath, seriesScanInfo.right, false, Long.MIN_VALUE);
+      }
+    } finally {
+      dataNodeQueryContext.unLock();
+    }
   }
 
   @Override
