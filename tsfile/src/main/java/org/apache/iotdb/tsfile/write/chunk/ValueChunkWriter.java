@@ -209,13 +209,16 @@ public class ValueChunkWriter {
           "start to flush a page header into buffer, buffer position {} ", pageBuffer.size());
       // serialize pageHeader  see writePageToPageBuffer method
       if (numOfPages == 0) { // record the firstPageStatistics
-        if (header.getStatistics() != null) {
-          this.firstPageStatistics = header.getStatistics();
-        }
         this.sizeWithoutStatistic +=
             ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getUncompressedSize(), pageBuffer);
-        this.sizeWithoutStatistic +=
-            ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getCompressedSize(), pageBuffer);
+
+        if (header.getStatistics() == null) {
+          this.firstPageStatistics = null;
+        } else {
+          this.firstPageStatistics = header.getStatistics();
+          this.sizeWithoutStatistic +=
+              ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getCompressedSize(), pageBuffer);
+        }
       } else if (numOfPages == 1) { // put the firstPageStatistics into pageBuffer
         if (firstPageStatistics != null) {
           byte[] b = pageBuffer.toByteArray();
@@ -225,20 +228,26 @@ public class ValueChunkWriter {
           pageBuffer.write(b, this.sizeWithoutStatistic, b.length - this.sizeWithoutStatistic);
         }
         ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getUncompressedSize(), pageBuffer);
-        ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getCompressedSize(), pageBuffer);
-        header.getStatistics().serialize(pageBuffer);
+        if (header.getUncompressedSize() != 0) {
+          ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getCompressedSize(), pageBuffer);
+          header.getStatistics().serialize(pageBuffer);
+        }
         firstPageStatistics = null;
       } else {
         ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getUncompressedSize(), pageBuffer);
-        ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getCompressedSize(), pageBuffer);
-        header.getStatistics().serialize(pageBuffer);
+        if (header.getUncompressedSize() != 0) {
+          ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getCompressedSize(), pageBuffer);
+          header.getStatistics().serialize(pageBuffer);
+        }
       }
       logger.debug(
           "finish to flush a page header {} of time page into buffer, buffer position {} ",
           header,
           pageBuffer.size());
 
-      statistics.mergeStatistics(header.getStatistics());
+      if (header.getStatistics() != null) {
+        statistics.mergeStatistics(header.getStatistics());
+      }
 
     } catch (IOException e) {
       throw new PageException("IO Exception in writeDataPageHeader,ignore this page", e);
