@@ -218,10 +218,12 @@ class BooleanHyperparameter(Hyperparameter):
         return self.__default_value
 
     def validate_value(self, value):
-        raise UnsupportedError("validate value in boolean hyperparameter")
+        # no need to validate value in boolean hyperparameter
+        pass
 
     def validate_range(self, min_value: float, max_value: float):
-        raise UnsupportedError("validate range in boolean hyperparameter")
+        # no need to validate range in boolean hyperparameter
+        pass
 
     def suggest_parameter(self, optuna_suggest: optuna.Trial):
         if not self.__tuning:
