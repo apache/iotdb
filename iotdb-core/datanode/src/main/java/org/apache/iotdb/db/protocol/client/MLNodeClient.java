@@ -93,7 +93,7 @@ public class MLNodeClient implements AutoCloseable {
               modelInformation.getModelId(),
               modelInformation.getOptions(),
               hyperparameters,
-              modelInformation.getDatasetFetchSQL());
+              modelInformation.getDatasetFetchSql());
       return client.createTrainingTask(req);
     } catch (TException e) {
       logger.warn(
