@@ -484,12 +484,6 @@ public class IoTDBConfig {
    */
   private long chunkPointNumLowerBoundInCompaction = 1000;
 
-  /**
-   * If compaction thread cannot acquire the write lock within this timeout, the compaction task
-   * will be abort.
-   */
-  private long compactionAcquireWriteLockTimeout = 60_000L;
-
   /** The max candidate file num in one inner space compaction task */
   private int fileLimitPerInnerTask = 30;
 
@@ -510,9 +504,6 @@ public class IoTDBConfig {
 
   /** The interval of compaction task schedulation in each virtual database. The unit is ms. */
   private long compactionScheduleIntervalInMs = 60_000L;
-
-  /** The interval of compaction task submission from queue in CompactionTaskMananger */
-  private long compactionSubmissionIntervalInMs = 60_000L;
 
   /**
    * The number of sub compaction threads to be set up to perform compaction. Currently only works
@@ -2761,14 +2752,6 @@ public class IoTDBConfig {
     this.chunkPointNumLowerBoundInCompaction = chunkPointNumLowerBoundInCompaction;
   }
 
-  public long getCompactionAcquireWriteLockTimeout() {
-    return compactionAcquireWriteLockTimeout;
-  }
-
-  public void setCompactionAcquireWriteLockTimeout(long compactionAcquireWriteLockTimeout) {
-    this.compactionAcquireWriteLockTimeout = compactionAcquireWriteLockTimeout;
-  }
-
   public long getCompactionScheduleIntervalInMs() {
     return compactionScheduleIntervalInMs;
   }
@@ -2811,14 +2794,6 @@ public class IoTDBConfig {
 
   public void setMinCrossCompactionUnseqFileLevel(int minCrossCompactionUnseqFileLevel) {
     this.minCrossCompactionUnseqFileLevel = minCrossCompactionUnseqFileLevel;
-  }
-
-  public long getCompactionSubmissionIntervalInMs() {
-    return compactionSubmissionIntervalInMs;
-  }
-
-  public void setCompactionSubmissionIntervalInMs(long interval) {
-    compactionSubmissionIntervalInMs = interval;
   }
 
   public int getSubCompactionTaskNum() {
