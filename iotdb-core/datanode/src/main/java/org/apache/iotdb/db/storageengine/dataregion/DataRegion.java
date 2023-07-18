@@ -1851,14 +1851,26 @@ public class DataRegion implements IDataRegionForQuery {
       List<TsFileResource> sealedTsFileResource = new ArrayList<>();
       List<TsFileResource> unsealedTsFileResource = new ArrayList<>();
       separateTsFile(sealedTsFileResource, unsealedTsFileResource);
-
+      // deviceMatchInfo is used for filter the matched deviceId in TsFileResource
+      // deviceMatchInfo contains the DeviceId means this device matched the pattern
+      Set<String> deviceMatchInfo = new HashSet<>();
       deleteDataInFiles(
-          unsealedTsFileResource, deletion, devicePaths, updatedModFiles, timePartitionFilter);
+          unsealedTsFileResource,
+          deletion,
+          devicePaths,
+          updatedModFiles,
+          timePartitionFilter,
+          deviceMatchInfo);
       writeUnlock();
       hasReleasedLock = true;
 
       deleteDataInFiles(
-          sealedTsFileResource, deletion, devicePaths, updatedModFiles, timePartitionFilter);
+          sealedTsFileResource,
+          deletion,
+          devicePaths,
+          updatedModFiles,
+          timePartitionFilter,
+          deviceMatchInfo);
 
     } catch (Exception e) {
       // roll back
@@ -1916,16 +1928,32 @@ public class DataRegion implements IDataRegionForQuery {
       Set<PartialPath> devicePaths,
       long deleteStart,
       long deleteEnd,
-      TimePartitionFilter timePartitionFilter) {
+      TimePartitionFilter timePartitionFilter,
+      Set<String> deviceMatchInfo) {
     if (timePartitionFilter != null
         && !timePartitionFilter.satisfy(databaseName, tsFileResource.getTimePartition())) {
       return true;
     }
+    long fileStartTime = tsFileResource.getTimeIndex().getMinStartTime();
+    long fileEndTime = tsFileResource.getTimeIndex().getMaxEndTime();
 
     for (PartialPath device : devicePaths) {
       long deviceStartTime, deviceEndTime;
       if (device.hasWildcard()) {
-        Pair<Long, Long> startAndEndTime = tsFileResource.getPossibleStartTimeAndEndTime(device);
+        if (!tsFileResource.isClosed() && fileEndTime == Long.MIN_VALUE) {
+          // unsealed seq file
+          if (deleteEnd < fileStartTime) {
+            // time range of file has not overlapped with the deletion
+            return true;
+          }
+        } else {
+          if (deleteEnd < fileStartTime || deleteStart > fileEndTime) {
+            // time range of file has not overlapped with the deletion
+            return true;
+          }
+        }
+        Pair<Long, Long> startAndEndTime =
+            tsFileResource.getPossibleStartTimeAndEndTime(device, deviceMatchInfo);
         if (startAndEndTime == null) {
           continue;
         }
@@ -1962,7 +1990,8 @@ public class DataRegion implements IDataRegionForQuery {
       Deletion deletion,
       Set<PartialPath> devicePaths,
       List<ModificationFile> updatedModFiles,
-      TimePartitionFilter timePartitionFilter)
+      TimePartitionFilter timePartitionFilter,
+      Set<String> deviceMatchInfo)
       throws IOException {
     for (TsFileResource tsFileResource : tsFileResourceList) {
       if (canSkipDelete(
@@ -1970,7 +1999,8 @@ public class DataRegion implements IDataRegionForQuery {
           devicePaths,
           deletion.getStartTime(),
           deletion.getEndTime(),
-          timePartitionFilter)) {
+          timePartitionFilter,
+          deviceMatchInfo)) {
         continue;
       }
 
