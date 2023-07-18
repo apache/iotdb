@@ -294,12 +294,12 @@ public class SharedTsBlockQueue {
               bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
+    boolean released = false;
     try {
-      // try to lock closedChannelsLock to guarantee that either LocalSinkChannel of this
-      // SharedTsBlockQueue is set,
-      // or we register the closed LocalSinkChannel properly when closing.
       MPPDataExchangeService.getInstance().getMPPDataExchangeManager().lockClosedChannelsLock();
       if (sinkChannel != null) {
+        MPPDataExchangeService.getInstance().getMPPDataExchangeManager().unlockClosedChannelsLock();
+        released = true;
         // attention: LocalSinkChannel of this SharedTsBlockQueue could be null when we close
         // LocalSourceHandle(with limit clause it's possible) before constructing the corresponding
         // LocalSinkChannel.
@@ -311,12 +311,17 @@ public class SharedTsBlockQueue {
         // the QueryTerminator will do the final cleaning logic.
         sinkChannel.close();
       } else {
+        // try to lock closedChannelsLock to guarantee that either LocalSinkChannel of this
+        // SharedTsBlockQueue is set,
+        // or we mark the closed LocalSinkChannel properly when closing.
         MPPDataExchangeService.getInstance()
             .getMPPDataExchangeManager()
             .markClosedChannel(localFragmentInstanceId, indexOfChannel);
       }
     } finally {
-      MPPDataExchangeService.getInstance().getMPPDataExchangeManager().unlockClosedChannelsLock();
+      if (!released) {
+        MPPDataExchangeService.getInstance().getMPPDataExchangeManager().unlockClosedChannelsLock();
+      }
     }
   }
 
