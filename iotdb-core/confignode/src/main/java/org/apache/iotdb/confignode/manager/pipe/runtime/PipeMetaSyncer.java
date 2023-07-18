@@ -89,21 +89,21 @@ public class PipeMetaSyncer {
   private void sync() {
     final ProcedureManager procedureManager = configManager.getProcedureManager();
 
-    boolean needBroadcastRestartSignal = false;
+    boolean somePipesNeedRestarting = false;
 
     if (pipeAutoRestartEnabled
         && pipeAutoRestartRoundCounter.incrementAndGet()
             == PipeConfig.getInstance().getPipeMetaSyncerAutoRestartPipeCheckIntervalRound()) {
-      needBroadcastRestartSignal = autoRestartWithLock();
+      somePipesNeedRestarting = autoRestartWithLock();
       pipeAutoRestartRoundCounter.set(0);
     }
 
     final TSStatus status = procedureManager.pipeMetaSync();
 
-    if (needBroadcastRestartSignal
+    if (somePipesNeedRestarting
         && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       handleSuccessfulRestartWithLock();
-      procedureManager.pipeHandleMetaChange(true, true);
+      procedureManager.pipeHandleMetaChange(true, false);
     }
 
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
