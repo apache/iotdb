@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceCl
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
+import org.apache.iotdb.db.queryengine.exception.exchange.SinkChannelClosedOrAbortedTException;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
@@ -553,6 +554,10 @@ public class SourceHandle implements ISourceHandle {
             }
             break;
           } catch (Throwable e) {
+            if (e instanceof SinkChannelClosedOrAbortedTException) {
+              // if the SinkChannel has been closed or aborted, exits immediately.
+              return;
+            }
 
             LOGGER.warn(
                 "failed to get data block [{}, {}), attempt times: {}",
@@ -666,7 +671,7 @@ public class SourceHandle implements ISourceHandle {
     public void run() {
       try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
         LOGGER.debug(
-            "[SendCloseSinkChanelEvent] to [ShuffleSinkHandle: {}, index: {}]).",
+            "[SendCloseSinkChannelEvent] to [ShuffleSinkHandle: {}, index: {}]).",
             remoteFragmentInstanceId,
             indexOfUpstreamSinkHandle);
         int attempt = 0;
@@ -680,7 +685,7 @@ public class SourceHandle implements ISourceHandle {
             break;
           } catch (Throwable e) {
             LOGGER.warn(
-                "[SendCloseSinkChanelEvent] to [ShuffleSinkHandle: {}, index: {}] failed.).",
+                "[SendCloseSinkChannelEvent] to [ShuffleSinkHandle: {}, index: {}] failed.).",
                 remoteFragmentInstanceId,
                 indexOfUpstreamSinkHandle);
             if (attempt == MAX_ATTEMPT_TIMES) {

@@ -22,6 +22,8 @@ package org.apache.iotdb.db.queryengine.execution.exchange;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
+import org.apache.iotdb.db.queryengine.exception.exchange.GetTsBlockFromClosedOrAbortedChannelException;
+import org.apache.iotdb.db.queryengine.exception.exchange.SinkChannelClosedOrAbortedTException;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelIndex;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
@@ -58,16 +60,22 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.common.FragmentInstanceId.createFullId;
@@ -115,6 +123,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           try {
             ByteBuffer serializedTsBlock = sinkChannel.getSerializedTsBlock(i);
             resp.addToTsBlocks(serializedTsBlock);
+          } catch (GetTsBlockFromClosedOrAbortedChannelException e) {
+            throw new SinkChannelClosedOrAbortedTException(e);
           } catch (IllegalStateException | IOException e) {
             throw new TException(e);
           }
@@ -176,11 +186,13 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             "Closed source handle of ShuffleSinkHandle {}, channel index: {}.",
             e.getSourceFragmentInstanceId(),
             e.getIndex());
+        lockClosedChannelsLock();
         ISinkHandle sinkHandle = shuffleSinkHandles.get(e.getSourceFragmentInstanceId());
         if (sinkHandle == null) {
           LOGGER.debug(
               "received CloseSinkChannelEvent but target FragmentInstance[{}] is not found.",
               e.getSourceFragmentInstanceId());
+          markClosedChannel(e.getSourceFragmentInstanceId(), e.getIndex());
           return;
         }
         sinkHandle.getChannel(e.getIndex()).close();
@@ -191,6 +203,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             e.getIndex(),
             t);
         throw t;
+      } finally {
+        unlockClosedChannelsLock();
       }
     }
 
@@ -519,6 +533,10 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
   /** Each FI has only one ShuffleSinkHandle. */
   private final Map<TFragmentInstanceId, ISinkHandle> shuffleSinkHandles;
 
+  private final Map<TFragmentInstanceId, Set<Integer>> closedChannels;
+
+  private final Lock closedChannelsLock;
+
   private MPPDataExchangeServiceImpl mppDataExchangeService;
 
   public MPPDataExchangeManager(
@@ -534,6 +552,9 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         Validate.notNull(mppDataExchangeServiceClientManager);
     sourceHandles = new ConcurrentHashMap<>();
     shuffleSinkHandles = new ConcurrentHashMap<>();
+    closedChannelsLock = new ReentrantLock();
+    closedChannels = new ConcurrentHashMap<>();
+    ;
   }
 
   public MPPDataExchangeServiceImpl getOrCreateMPPDataExchangeServiceImpl() {
@@ -547,6 +568,25 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     localMemoryManager
         .getQueryPool()
         .deRegisterFragmentInstanceToQueryMemoryMap(queryId, fragmentInstanceId);
+  }
+
+  public void lockClosedChannelsLock() {
+    closedChannelsLock.lock();
+  }
+
+  public void unlockClosedChannelsLock() {
+    closedChannelsLock.unlock();
+  }
+
+  public void markClosedChannel(TFragmentInstanceId sourceId, int index) {
+    closedChannels
+        .computeIfAbsent(sourceId, key -> Collections.synchronizedSet(new HashSet<>()))
+        .add(index);
+  }
+
+  /** Avoid memory leak. */
+  public void clearClosedChannels(TFragmentInstanceId sourceId) {
+    closedChannels.remove(sourceId);
   }
 
   public LocalMemoryManager getLocalMemoryManager() {
@@ -570,7 +610,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       // TODO: replace with callbacks to decouple MPPDataExchangeManager from
       // FragmentInstanceContext
       FragmentInstanceContext instanceContext,
-      AtomicInteger cnt) {
+      AtomicInteger cnt,
+      int index) {
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
@@ -592,13 +633,22 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       queue =
           new SharedTsBlockQueue(
               localFragmentInstanceId, localPlanNodeId, localMemoryManager, executorService);
+      queue.setIndexOfChannel(index);
     }
-
-    return new LocalSinkChannel(
-        localFragmentInstanceId,
-        queue,
-        new ISinkChannelListenerImpl(
-            localFragmentInstanceId, instanceContext, instanceContext::failed, cnt));
+    try {
+      // try to lock closedChannelsLock to guarantee that either LocalSinkChannel of this
+      // SharedTsBlockQueue is set,
+      // or the corresponding SharedTsBlockQueue of LocalSourceHandle registers the closed
+      // LocalSinkChannel properly when closing.
+      lockClosedChannelsLock();
+      return new LocalSinkChannel(
+          localFragmentInstanceId,
+          queue,
+          new ISinkChannelListenerImpl(
+              localFragmentInstanceId, instanceContext, instanceContext::failed, cnt));
+    } finally {
+      unlockClosedChannelsLock();
+    }
   }
 
   /**
@@ -674,15 +724,16 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     int channelNum = downStreamChannelLocationList.size();
     AtomicInteger cnt = new AtomicInteger(channelNum);
     List<ISinkChannel> downStreamChannelList =
-        downStreamChannelLocationList.stream()
-            .map(
-                downStreamChannelLocation ->
+        IntStream.range(0, channelNum)
+            .mapToObj(
+                index ->
                     createChannelForShuffleSink(
                         localFragmentInstanceId,
                         localPlanNodeId,
-                        downStreamChannelLocation,
+                        downStreamChannelLocationList.get(index),
                         instanceContext,
-                        cnt))
+                        cnt,
+                        index))
             .collect(Collectors.toList());
 
     ShuffleSinkHandle shuffleSinkHandle =
@@ -692,7 +743,20 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             downStreamChannelIndex,
             shuffleStrategyEnum,
             new ShuffleSinkListenerImpl(instanceContext, instanceContext::failed));
-    shuffleSinkHandles.put(localFragmentInstanceId, shuffleSinkHandle);
+    try {
+      // try to lock closedChannelsLock to guarantee that either shuffleSinkHandles can be found,
+      // or the onClosedSinkChannelEvent registers the closed SinkChannel properly.
+      lockClosedChannelsLock();
+      shuffleSinkHandles.put(localFragmentInstanceId, shuffleSinkHandle);
+    } finally {
+      unlockClosedChannelsLock();
+    }
+
+    Set<Integer> closed = closedChannels.remove(localFragmentInstanceId);
+    if (closed != null) {
+      closed.forEach(index -> downStreamChannelList.get(index).close());
+    }
+
     return shuffleSinkHandle;
   }
 
@@ -701,7 +765,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       String localPlanNodeId,
       DownStreamChannelLocation downStreamChannelLocation,
       FragmentInstanceContext instanceContext,
-      AtomicInteger cnt) {
+      AtomicInteger cnt,
+      int index) {
     if (isSameNode(downStreamChannelLocation.getRemoteEndpoint())) {
       return createLocalSinkChannel(
           localFragmentInstanceId,
@@ -709,7 +774,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           downStreamChannelLocation.getRemotePlanNodeId(),
           localPlanNodeId,
           instanceContext,
-          cnt);
+          cnt,
+          index);
     } else {
       return createSinkChannel(
           localFragmentInstanceId,
@@ -772,6 +838,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       queue =
           new SharedTsBlockQueue(
               remoteFragmentInstanceId, remotePlanNodeId, localMemoryManager, executorService);
+      queue.setIndexOfChannel(index);
     }
     LocalSourceHandle localSourceHandle =
         new LocalSourceHandle(

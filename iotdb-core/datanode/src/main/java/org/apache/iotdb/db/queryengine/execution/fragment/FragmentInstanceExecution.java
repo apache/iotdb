@@ -159,6 +159,8 @@ public class FragmentInstanceExecution {
             exchangeManager.deRegisterFragmentInstanceFromMemoryPool(
                 instanceId.getQueryId().getId(), instanceId.getFragmentInstanceId());
 
+            exchangeManager.clearClosedChannels(instanceId.toThrift());
+
             if (newState.isFailed()) {
               scheduler.abortFragmentInstance(instanceId);
             }

@@ -84,6 +84,9 @@ public class SharedTsBlockQueue {
   // used for SharedTsBlockQueue listener
   private final ExecutorService executorService;
 
+  /** Index of the LocalSinkChannel in ShuffleSinkHandle */
+  private int indexOfChannel;
+
   public SharedTsBlockQueue(
       TFragmentInstanceId fragmentInstanceId,
       String planNodeId,
@@ -97,6 +100,14 @@ public class SharedTsBlockQueue {
     this.localMemoryManager =
         Validate.notNull(localMemoryManager, "local memory manager cannot be null");
     this.executorService = Validate.notNull(executorService, "ExecutorService can not be null.");
+  }
+
+  public int getIndexOfChannel() {
+    return indexOfChannel;
+  }
+
+  public void setIndexOfChannel(int indexOfChannel) {
+    this.indexOfChannel = indexOfChannel;
   }
 
   public boolean hasNoMoreTsBlocks() {
@@ -283,16 +294,29 @@ public class SharedTsBlockQueue {
               bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
     }
-    if (sinkChannel != null) {
-      // attention: LocalSinkChannel of this SharedTsBlockQueue could be null when we close
-      // LocalSourceHandle(with limit clause it's possible) before constructing the corresponding
-      // LocalSinkChannel.
-      // If this close method is invoked by LocalSourceHandle, listener of LocalSourceHandle will
-      // remove the LocalSourceHandle from the map of MppDataExchangeManager and later when
-      // LocalSinkChannel is initialized, it will construct a new SharedTsBlockQueue.
-      // It is still safe that we let the LocalSourceHandle close successfully in this case. Because
-      // the QueryTerminator will do the final cleaning logic.
-      sinkChannel.close();
+    try {
+      // try to lock closedChannelsLock to guarantee that either LocalSinkChannel of this
+      // SharedTsBlockQueue is set,
+      // or we register the closed LocalSinkChannel properly when closing.
+      MPPDataExchangeService.getInstance().getMPPDataExchangeManager().lockClosedChannelsLock();
+      if (sinkChannel != null) {
+        // attention: LocalSinkChannel of this SharedTsBlockQueue could be null when we close
+        // LocalSourceHandle(with limit clause it's possible) before constructing the corresponding
+        // LocalSinkChannel.
+        // If this close method is invoked by LocalSourceHandle, listener of LocalSourceHandle will
+        // remove the LocalSourceHandle from the map of MppDataExchangeManager and later when
+        // LocalSinkChannel is initialized, it will construct a new SharedTsBlockQueue.
+        // It is still safe that we let the LocalSourceHandle close successfully in this case.
+        // Because
+        // the QueryTerminator will do the final cleaning logic.
+        sinkChannel.close();
+      } else {
+        MPPDataExchangeService.getInstance()
+            .getMPPDataExchangeManager()
+            .markClosedChannel(localFragmentInstanceId, indexOfChannel);
+      }
+    } finally {
+      MPPDataExchangeService.getInstance().getMPPDataExchangeManager().unlockClosedChannelsLock();
     }
   }
 
