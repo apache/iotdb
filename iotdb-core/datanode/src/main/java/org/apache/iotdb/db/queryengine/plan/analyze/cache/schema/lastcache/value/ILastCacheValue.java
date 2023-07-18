@@ -34,4 +34,6 @@ public interface ILastCacheValue {
   void setValue(TsPrimitiveType value);
 
   TimeValuePair getTimeValuePair();
+
+  int estimateSize();
 }

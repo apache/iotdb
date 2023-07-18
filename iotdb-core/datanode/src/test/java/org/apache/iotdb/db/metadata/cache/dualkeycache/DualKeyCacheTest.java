@@ -57,7 +57,7 @@ public class DualKeyCacheTest {
     DualKeyCacheBuilder<String, String, String> dualKeyCacheBuilder = new DualKeyCacheBuilder<>();
     IDualKeyCache<String, String, String> dualKeyCache =
         dualKeyCacheBuilder
-            .cacheEvictionPolicy(DualKeyCachePolicy.LRU)
+            .cacheEvictionPolicy(DualKeyCachePolicy.valueOf(policy))
             .memoryCapacity(300)
             .firstKeySizeComputer(this::computeStringSize)
             .secondKeySizeComputer(this::computeStringSize)
@@ -139,7 +139,7 @@ public class DualKeyCacheTest {
         new DualKeyCacheBuilder<>();
     IDualKeyCache<String, String, SchemaCacheEntry> dualKeyCache =
         dualKeyCacheBuilder
-            .cacheEvictionPolicy(DualKeyCachePolicy.LRU)
+            .cacheEvictionPolicy(DualKeyCachePolicy.valueOf(policy))
             .memoryCapacity(500)
             .firstKeySizeComputer(this::computeStringSize)
             .secondKeySizeComputer(this::computeStringSize)
