@@ -86,17 +86,7 @@ public class PipeMetaSyncer {
     }
   }
 
-  private synchronized void sync() {
-    final AtomicReference<PipeTaskInfo> pipeTaskInfo =
-        configManager.getPipeManager().getPipeTaskCoordinator().lock();
-    try {
-      doSync(pipeTaskInfo.get());
-    } finally {
-      configManager.getPipeManager().getPipeTaskCoordinator().unlock();
-    }
-  }
-
-  private void doSync(final PipeTaskInfo pipeTaskInfo) {
+  private void sync() {
     final ProcedureManager procedureManager = configManager.getProcedureManager();
 
     boolean needBroadcastRestartSignal = false;
@@ -104,7 +94,7 @@ public class PipeMetaSyncer {
     if (pipeAutoRestartEnabled
         && pipeAutoRestartRoundCounter.incrementAndGet()
             == PipeConfig.getInstance().getPipeMetaSyncerAutoRestartPipeCheckIntervalRound()) {
-      needBroadcastRestartSignal = pipeTaskInfo.autoRestart();
+      needBroadcastRestartSignal = autoRestartWithLock();
       pipeAutoRestartRoundCounter.set(0);
     }
 
@@ -112,7 +102,7 @@ public class PipeMetaSyncer {
 
     if (needBroadcastRestartSignal
         && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      pipeTaskInfo.handleSuccessfulRestart();
+      handleSuccessfulRestartWithLock();
       procedureManager.pipeHandleMetaChange(true, true);
     }
 
@@ -126,6 +116,26 @@ public class PipeMetaSyncer {
       metaSyncFuture.cancel(false);
       metaSyncFuture = null;
       LOGGER.info("PipeMetaSyncer is stopped successfully.");
+    }
+  }
+
+  private boolean autoRestartWithLock() {
+    final AtomicReference<PipeTaskInfo> pipeTaskInfo =
+        configManager.getPipeManager().getPipeTaskCoordinator().lock();
+    try {
+      return pipeTaskInfo.get().autoRestart();
+    } finally {
+      configManager.getPipeManager().getPipeTaskCoordinator().unlock();
+    }
+  }
+
+  private void handleSuccessfulRestartWithLock() {
+    final AtomicReference<PipeTaskInfo> pipeTaskInfo =
+        configManager.getPipeManager().getPipeTaskCoordinator().lock();
+    try {
+      pipeTaskInfo.get().handleSuccessfulRestart();
+    } finally {
+      configManager.getPipeManager().getPipeTaskCoordinator().unlock();
     }
   }
 }
