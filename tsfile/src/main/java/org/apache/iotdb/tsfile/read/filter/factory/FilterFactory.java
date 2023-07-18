@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.read.filter.factory;
 
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.GroupByMonthFilter;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.filter.operator.Between;
@@ -100,6 +101,9 @@ public class FilterFactory {
         break;
       case BETWEEN:
         filter = new Between<>();
+        break;
+      case TIME_GTEQ_AND_LT:
+        filter = new TimeFilter.TimeGtEqAndLt();
         break;
       default:
         throw new UnsupportedOperationException("Unknown filter type " + id);

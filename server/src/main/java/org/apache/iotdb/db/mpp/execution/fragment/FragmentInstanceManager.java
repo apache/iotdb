@@ -64,12 +64,12 @@ public class FragmentInstanceManager {
   private final IDriverScheduler scheduler = DriverScheduler.getInstance();
 
   private final ScheduledExecutorService instanceManagementExecutor;
-  private final ExecutorService instanceNotificationExecutor;
+  public final ExecutorService instanceNotificationExecutor;
 
   private final Duration infoCacheTime;
 
   // record failed instances count
-  private final CounterStat failedInstances = new CounterStat();
+  public final CounterStat failedInstances = new CounterStat();
 
   private final ExecutorService intoOperationExecutor;
 
