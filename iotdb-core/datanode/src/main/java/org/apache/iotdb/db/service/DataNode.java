@@ -605,6 +605,7 @@ public class DataNode implements DataNodeMBean {
         new TEndPoint(config.getInternalAddress(), config.getDataRegionConsensusPort()));
     location.setSchemaRegionConsensusEndPoint(
         new TEndPoint(config.getInternalAddress(), config.getSchemaRegionConsensusPort()));
+    location.setBuildInfo(IoTDBConstant.BUILD_INFO);
     return location;
   }
 

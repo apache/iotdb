@@ -153,13 +153,13 @@ public class ConfigNode implements ConfigNodeMBean {
         SystemPropertiesUtils.storeSystemParameters();
 
         // Seed-ConfigNode should apply itself when first start
-        configManager
-            .getNodeManager()
-            .applyConfigNode(
-                new TConfigNodeLocation(
-                    SEED_CONFIG_NODE_ID,
-                    new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
-                    new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())));
+        TConfigNodeLocation seedConfigNodeLocation =
+            new TConfigNodeLocation(
+                SEED_CONFIG_NODE_ID,
+                new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
+                new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()));
+        seedConfigNodeLocation.setBuildInfo(IoTDBConstant.BUILD_INFO);
+        configManager.getNodeManager().applyConfigNode(seedConfigNodeLocation);
         setUpMetricService();
         // Notice: We always set up Seed-ConfigNode's RPC service lastly to ensure
         // that the external service is not provided until Seed-ConfigNode is fully initialized
@@ -280,13 +280,14 @@ public class ConfigNode implements ConfigNodeMBean {
    * @throws IOException if consensus manager init failed.
    */
   private void sendRegisterConfigNodeRequest() throws StartupException, IOException {
+    TConfigNodeLocation nonSeedConfigNodeLocation =
+        new TConfigNodeLocation(
+            INIT_NON_SEED_CONFIG_NODE_ID,
+            new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
+            new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()));
+    nonSeedConfigNodeLocation.setBuildInfo(IoTDBConstant.BUILD_INFO);
     TConfigNodeRegisterReq req =
-        new TConfigNodeRegisterReq(
-            configManager.getClusterParameters(),
-            new TConfigNodeLocation(
-                INIT_NON_SEED_CONFIG_NODE_ID,
-                new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
-                new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())));
+        new TConfigNodeRegisterReq(configManager.getClusterParameters(), nonSeedConfigNodeLocation);
 
     TEndPoint targetConfigNode = CONF.getTargetConfigNode();
     if (targetConfigNode == null) {
@@ -340,13 +341,14 @@ public class ConfigNode implements ConfigNodeMBean {
   }
 
   private void sendRestartConfigNodeRequest() throws StartupException {
+    TConfigNodeLocation nonSeedConfigNodeLocation =
+        new TConfigNodeLocation(
+            INIT_NON_SEED_CONFIG_NODE_ID,
+            new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
+            new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()));
+    nonSeedConfigNodeLocation.setBuildInfo(IoTDBConstant.BUILD_INFO);
     TConfigNodeRestartReq req =
-        new TConfigNodeRestartReq(
-            CONF.getClusterName(),
-            new TConfigNodeLocation(
-                CONF.getConfigNodeId(),
-                new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
-                new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())));
+        new TConfigNodeRestartReq(CONF.getClusterName(), nonSeedConfigNodeLocation);
 
     TEndPoint targetConfigNode = CONF.getTargetConfigNode();
     if (targetConfigNode == null) {

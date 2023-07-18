@@ -62,13 +62,15 @@ public class ShowClusterTask implements IConfigTask {
       String nodeType,
       String nodeStatus,
       String hostAddress,
-      int port) {
+      int port,
+      String buildInfo) {
     builder.getTimeColumnBuilder().writeLong(0L);
     builder.getColumnBuilder(0).writeInt(nodeId);
     builder.getColumnBuilder(1).writeBinary(new Binary(nodeType));
     builder.getColumnBuilder(2).writeBinary(new Binary(nodeStatus));
     builder.getColumnBuilder(3).writeBinary(new Binary(hostAddress));
     builder.getColumnBuilder(4).writeInt(port);
+    builder.getColumnBuilder(5).writeBinary(new Binary(buildInfo));
     builder.declarePosition();
   }
 
@@ -90,7 +92,8 @@ public class ShowClusterTask implements IConfigTask {
                     NODE_TYPE_CONFIG_NODE,
                     clusterNodeInfos.getNodeStatus().get(e.getConfigNodeId()),
                     e.getInternalEndPoint().getIp(),
-                    e.getInternalEndPoint().getPort()));
+                    e.getInternalEndPoint().getPort(),
+                    e.getBuildInfo()));
 
     clusterNodeInfos
         .getDataNodeList()
@@ -102,7 +105,8 @@ public class ShowClusterTask implements IConfigTask {
                     NODE_TYPE_DATA_NODE,
                     clusterNodeInfos.getNodeStatus().get(e.getDataNodeId()),
                     e.getInternalEndPoint().getIp(),
-                    e.getInternalEndPoint().getPort()));
+                    e.getInternalEndPoint().getPort(),
+                    e.getBuildInfo()));
 
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowClusterHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));

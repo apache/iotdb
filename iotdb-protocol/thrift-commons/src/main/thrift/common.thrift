@@ -68,6 +68,7 @@ struct TConfigNodeLocation {
   1: required i32 configNodeId
   2: required TEndPoint internalEndPoint
   3: required TEndPoint consensusEndPoint
+  4: optional string buildInfo
 }
 
 struct TDataNodeLocation {
@@ -82,6 +83,7 @@ struct TDataNodeLocation {
   5: required TEndPoint dataRegionConsensusEndPoint
   // TEndPoint for DataNode's schemaRegion consensus protocol
   6: required TEndPoint schemaRegionConsensusEndPoint
+  7: optional string buildInfo
 }
 
 struct TDataNodeConfiguration {
