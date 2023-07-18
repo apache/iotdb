@@ -51,7 +51,6 @@ public class DataNodeMetricsHelper {
     MetricService.getInstance().addMetricSet(new UpTimeMetrics());
     MetricService.getInstance().addMetricSet(new JvmMetrics());
     MetricService.getInstance().addMetricSet(ThreadPoolMetrics.getInstance());
-    MetricService.getInstance().addMetricSet(ClientManagerMetrics.getInstance());
     MetricService.getInstance().addMetricSet(new LogbackMetrics());
     MetricService.getInstance().addMetricSet(FileMetrics.getInstance());
     MetricService.getInstance().addMetricSet(CompactionMetrics.getInstance());
@@ -59,6 +58,7 @@ public class DataNodeMetricsHelper {
     MetricService.getInstance().addMetricSet(new SystemMetrics(true));
     MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.DN_ROLE));
     MetricService.getInstance().addMetricSet(new NetMetrics(IoTDBConstant.DN_ROLE));
+    MetricService.getInstance().addMetricSet(ClientManagerMetrics.getInstance());
     initCpuMetrics();
     MetricService.getInstance().addMetricSet(WritingMetrics.getInstance());
 

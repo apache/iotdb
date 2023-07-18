@@ -71,9 +71,7 @@ public class RemoteServerEnv implements BaseEnv {
     }
     clientManager =
         new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
-            .createClientManager(
-                new ClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory(
-                    this.getClass().getName()));
+            .createClientManager(new ClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
   }
 
   @Override

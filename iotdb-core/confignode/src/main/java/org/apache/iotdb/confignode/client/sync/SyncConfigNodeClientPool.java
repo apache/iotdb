@@ -53,9 +53,7 @@ public class SyncConfigNodeClientPool {
   private SyncConfigNodeClientPool() {
     clientManager =
         new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
-            .createClientManager(
-                new ClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory(
-                    this.getClass().getName()));
+            .createClientManager(new ClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
     configNodeLeader = new TEndPoint();
   }
 
