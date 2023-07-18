@@ -46,6 +46,7 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXT
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_ENABLE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_FILE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_FORCED_LOG;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_HYBRID;
 import static org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_REALTIME_MODE_LOG;
 
@@ -87,7 +88,8 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
           true,
           EXTRACTOR_REALTIME_MODE_HYBRID,
           EXTRACTOR_REALTIME_MODE_FILE,
-          EXTRACTOR_REALTIME_MODE_LOG);
+          EXTRACTOR_REALTIME_MODE_LOG,
+          EXTRACTOR_REALTIME_MODE_FORCED_LOG);
     }
 
     constructHistoricalExtractor();
@@ -119,9 +121,10 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
       case EXTRACTOR_REALTIME_MODE_FILE:
         realtimeExtractor = new PipeRealtimeDataRegionTsFileExtractor();
         break;
-      case EXTRACTOR_REALTIME_MODE_LOG:
+      case EXTRACTOR_REALTIME_MODE_FORCED_LOG:
         realtimeExtractor = new PipeRealtimeDataRegionLogExtractor();
         break;
+      case EXTRACTOR_REALTIME_MODE_LOG:
       case EXTRACTOR_REALTIME_MODE_HYBRID:
         realtimeExtractor = new PipeRealtimeDataRegionHybridExtractor();
         break;
