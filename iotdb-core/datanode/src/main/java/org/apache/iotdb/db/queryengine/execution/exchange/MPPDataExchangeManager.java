@@ -638,7 +638,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     try {
       // try to lock closedChannelsLock to guarantee that either LocalSinkChannel of this
       // SharedTsBlockQueue is set,
-      // or the corresponding SharedTsBlockQueue of LocalSourceHandle registers the closed
+      // or the corresponding SharedTsBlockQueue of LocalSourceHandle marks the closed
       // LocalSinkChannel properly when closing.
       lockClosedChannelsLock();
       return new LocalSinkChannel(
@@ -745,7 +745,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             new ShuffleSinkListenerImpl(instanceContext, instanceContext::failed));
     try {
       // try to lock closedChannelsLock to guarantee that either shuffleSinkHandles can be found,
-      // or the onClosedSinkChannelEvent registers the closed SinkChannel properly.
+      // or the onClosedSinkChannelEvent marks the closed SinkChannel properly.
       lockClosedChannelsLock();
       shuffleSinkHandles.put(localFragmentInstanceId, shuffleSinkHandle);
     } finally {
