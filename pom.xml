@@ -111,7 +111,7 @@
         <module>iotdb-client/compile-tools</module>
         <module>iotdb-client/client-cpp</module>
         <module>metrics</module>
-        <!--        <module>integration-test</module>-->
+        <module>integration-test</module>
         <module>consensus</module>
         <module>library-udf</module>
         <module>iotdb-api/udf-api</module>

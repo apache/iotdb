@@ -12,6 +12,7 @@ on:
     branches:
       - master
       - 'rel/1.*'
+      - 'rc/*'
     paths-ignore:
       - 'docs/**'
       - 'site/**'
