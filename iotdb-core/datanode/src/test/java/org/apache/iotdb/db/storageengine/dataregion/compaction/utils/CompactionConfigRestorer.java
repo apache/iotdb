@@ -45,7 +45,6 @@ public class CompactionConfigRestorer {
   private int maxCrossCompactionCandidateFileNum = 1000;
   private int concurrentCompactionThread = 10;
   private long compactionScheduleIntervalInMs = 60000L;
-  private long compactionSubmissionIntervalInMs = 60000L;
   private int compactionWriteThroughputMbPerSec = 8;
 
   private CrossCompactionPerformer oldCrossPerformer =
@@ -77,7 +76,6 @@ public class CompactionConfigRestorer {
     config.setFileLimitPerCrossTask(maxCrossCompactionCandidateFileNum);
     config.setCompactionThreadCount(concurrentCompactionThread);
     config.setCompactionScheduleIntervalInMs(compactionScheduleIntervalInMs);
-    config.setCompactionSubmissionIntervalInMs(compactionSubmissionIntervalInMs);
     config.setCompactionWriteThroughputMbPerSec(compactionWriteThroughputMbPerSec);
     config.setCrossCompactionPerformer(oldCrossPerformer);
     config.setInnerSeqCompactionPerformer(oldInnerSeqPerformer);
