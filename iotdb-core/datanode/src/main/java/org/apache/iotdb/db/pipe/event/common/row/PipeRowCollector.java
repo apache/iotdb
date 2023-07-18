@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.row;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
@@ -50,7 +51,11 @@ public class PipeRowCollector implements RowCollector {
       final String deviceId = pipeRow.getDeviceId();
       final List<MeasurementSchema> measurementSchemaList =
           new ArrayList<>(Arrays.asList(measurementSchemaArray));
-      tablet = new Tablet(deviceId, measurementSchemaList);
+      tablet =
+          new Tablet(
+              deviceId,
+              measurementSchemaList,
+              PipeConfig.getInstance().getPipeDataStructureTabletRowSize());
       isAligned = pipeRow.isAligned();
       tablet.initBitMaps();
     }
