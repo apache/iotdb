@@ -2207,7 +2207,7 @@ public class DataRegion implements IDataRegionForQuery {
               newTsFileResource.getTsFile().getName());
 
       resetLastCacheWhenLoadingTsFile(); // update last cache
-      updateLastFlushTime(newTsFileResource); // update last flush time
+      //      updateLastFlushTime(newTsFileResource); // update last flush time
       long partitionNum = newTsFileResource.getTimePartition();
       updatePartitionFileVersion(partitionNum, newTsFileResource.getVersion());
       logger.info("TsFile {} is successfully loaded in unsequence list.", newFileName);
