@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
+import logging
 import multiprocessing
 import time
 from multiprocessing import Queue
@@ -27,6 +27,7 @@ DEFAULT_MULTIPIE = 5
 DEFAULT_FETCH_SIZE = 5000
 DEFAULT_MAX_RETRY = 3
 DEFAULT_TIME_ZONE = "Asia/Shanghai"
+logger = logging.getLogger("IoTDB")
 
 
 class PoolConfig(object):
@@ -54,6 +55,7 @@ class SessionPool(object):
         self.__pool_size = 0
         self.__queue = Queue(max_pool_size)
         self.__lock = Lock()
+        self.__closed = False
 
     def __construct_session(self) -> Session:
         if len(self.__pool_config.node_urls) > 0:
@@ -71,6 +73,10 @@ class SessionPool(object):
         return self.__queue.get(block=False)
 
     def get_session(self) -> Session:
+
+        if self.__closed:
+            raise ConnectionError("SessionPool has already been closed.")
+
         should_create = False
         start = time.time()
 
@@ -103,6 +109,10 @@ class SessionPool(object):
         return session
 
     def put_back(self, session: Session):
+
+        if self.__closed:
+            raise ConnectionError("SessionPool has already been closed, please close the session manually.")
+
         if session.is_open():
             self.__queue.put(session)
         else:
@@ -115,6 +125,8 @@ class SessionPool(object):
             session = self.__queue.get(block=False)
             session.close()
             self.__pool_size -= 1
+        self.__closed = True
+        logger.info("SessionPool has been closed successfully.")
 
 
 def create_session_pool(pool_config: PoolConfig, max_pool_size: int, wait_timeout_in_ms: int) -> SessionPool:

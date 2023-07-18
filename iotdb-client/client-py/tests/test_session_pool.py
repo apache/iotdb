@@ -48,3 +48,19 @@ def test_session_pool():
         assert session3 is not None
 
         session_pool.close()
+
+        is_closed = False
+        try:
+            session_pool.get_session()
+        except ConnectionError as e:
+            is_closed = True
+            assert str(e) == "SessionPool has already been closed."
+        assert is_closed is True
+
+        is_closed = False
+        try:
+            session_pool.put_back(session3)
+        except ConnectionError as e:
+            is_closed = True
+            assert str(e) == "SessionPool has already been closed, please close the session manually."
+        assert is_closed is True
