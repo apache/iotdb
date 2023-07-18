@@ -180,7 +180,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
@@ -232,9 +231,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       };
 
   public static Duration DEFAULT_TIME_SLICE = new Duration(60_000, TimeUnit.MILLISECONDS);
-
-  private static final Semaphore querySemaphore =
-      new Semaphore(Runtime.getRuntime().availableProcessors() * 2);
 
   public ClientRPCServiceImpl() {
     partitionFetcher = ClusterPartitionFetcher.getInstance();
@@ -613,8 +609,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       throws TException {
 
     try {
-      querySemaphore.acquire();
-
       IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
 
       String database = req.getDatabase();
@@ -673,7 +667,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_AGG_QUERY));
     } finally {
-      querySemaphore.release();
       SESSION_MANAGER.updateIdleTime();
     }
   }
