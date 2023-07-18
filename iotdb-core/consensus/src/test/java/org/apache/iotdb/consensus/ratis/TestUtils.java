@@ -40,6 +40,8 @@ import org.apache.iotdb.consensus.config.RatisConfig;
 
 import org.apache.ratis.thirdparty.com.google.common.base.Preconditions;
 import org.apache.ratis.util.FileUtils;
+import org.apache.ratis.util.JavaUtils;
+import org.apache.ratis.util.TimeDuration;
 import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,6 +55,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -321,6 +324,10 @@ public class TestUtils {
     ConsensusGroup getGroup() {
       return group;
     }
+
+    void waitUntilActiveLeader() throws InterruptedException {
+      JavaUtils.attemptUntilTrue(() -> getServer(0).getLeader(gid) != null, 100, TimeDuration.valueOf(100, TimeUnit.MILLISECONDS), "wait leader", null);
+    }
   }
 
   static class MiniClusterFactory {
@@ -347,19 +354,22 @@ public class TestUtils {
     }
   }
 
-  public static void write(IConsensus consensus, ConsensusGroupId gid, int count) {
+  static void write(IConsensus consensus, ConsensusGroupId gid, int count) {
     for (int i = 0; i < count; i++) {
       final ByteBufferConsensusRequest increment = TestRequest.incrRequest();
       final ConsensusWriteResponse response = consensus.write(gid, increment);
-      System.out.println(response.getException());
       Assert.assertEquals(200, response.getStatus().getCode());
     }
   }
 
-  public static int read(IConsensus consensus, ConsensusGroupId gid) {
-    final ByteBufferConsensusRequest getReq = TestUtils.TestRequest.getRequest();
-    final ConsensusReadResponse response = consensus.read(gid, getReq);
+  static int read(IConsensus consensus, ConsensusGroupId gid) {
+    final ConsensusReadResponse response = doRead(consensus, gid);
     final TestUtils.TestDataSet result = (TestUtils.TestDataSet) response.getDataset();
     return result.getNumber();
+  }
+
+  static ConsensusReadResponse doRead(IConsensus consensus, ConsensusGroupId gid) {
+    final ByteBufferConsensusRequest getReq = TestUtils.TestRequest.getRequest();
+    return consensus.read(gid, getReq);
   }
 }
