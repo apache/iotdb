@@ -45,21 +45,31 @@ public class ClientPoolFactory {
   public static class SyncConfigNodeIServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, SyncConfigNodeIServiceClient> {
 
+    private String callerName;
+
+    public SyncConfigNodeIServiceClientPoolFactory(String callerName) {
+      this.callerName = callerName;
+    }
+
     @Override
     public KeyedObjectPool<TEndPoint, SyncConfigNodeIServiceClient> createClientPool(
         ClientManager<TEndPoint, SyncConfigNodeIServiceClient> manager) {
-      return new GenericKeyedObjectPool<>(
-          new SyncConfigNodeIServiceClient.Factory(
-              manager,
-              new ThriftClientProperty.Builder()
-                  .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
-                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
-                  .build()),
-          new ClientPoolProperty.Builder<SyncConfigNodeIServiceClient>()
-              .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
-              .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
-              .build()
-              .getConfig());
+      KeyedObjectPool<TEndPoint, SyncConfigNodeIServiceClient> clientPool =
+          new GenericKeyedObjectPool<>(
+              new SyncConfigNodeIServiceClient.Factory(
+                  manager,
+                  new ThriftClientProperty.Builder()
+                      .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
+                      .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
+                      .build()),
+              new ClientPoolProperty.Builder<SyncConfigNodeIServiceClient>()
+                  .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
+                  .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
+                  .build()
+                  .getConfig());
+      ClientManagerMetrics.getInstance()
+          .registerClientManager(this.getClass().getName(), this.callerName, clientPool);
+      return clientPool;
     }
   }
 

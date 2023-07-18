@@ -107,7 +107,9 @@ public abstract class AbstractEnv implements BaseEnv {
 
     clientManager =
         new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
-            .createClientManager(new ClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
+            .createClientManager(
+                new ClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory(
+                    this.getClass().getName()));
 
     final String testClassName = getTestClassName();
     final String testMethodName = getTestMethodName();
