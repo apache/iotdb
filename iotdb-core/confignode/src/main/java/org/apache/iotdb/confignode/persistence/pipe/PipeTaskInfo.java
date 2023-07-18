@@ -50,6 +50,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -376,7 +378,6 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
 
     final PipeRuntimeMeta runtimeMeta = pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta();
-
     final Map<Integer, PipeRuntimeException> exceptionMap =
         runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
 
@@ -397,29 +398,47 @@ public class PipeTaskInfo implements SnapshotProcessor {
     return hasException.get();
   }
 
+  public boolean isStoppedByRuntimeException(String pipeName) {
+    acquireReadLock();
+    try {
+      return isStoppedByRuntimeExceptionInternal(pipeName);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  private boolean isStoppedByRuntimeExceptionInternal(String pipeName) {
+    return pipeMetaKeeper.containsPipeMeta(pipeName)
+        && pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta().getIsStoppedByRuntimeException();
+  }
+
   /**
-   * Clear the exceptions of a pipe locally after it starts successfully.
+   * Clear the exceptions of, and set the isAutoStopped flag to false for a pipe locally after it
+   * starts successfully.
    *
-   * <p>If there are exceptions cleared, the messages will then be updated to all the nodes through
-   * {@link PipeHandleMetaChangeProcedure}.
+   * <p>If there are exceptions cleared or flag changed, the messages will then be updated to all
+   * the nodes through {@link PipeHandleMetaChangeProcedure}.
    *
-   * @param pipeName The name of the pipes to be clear exception
+   * @param pipeName The name of the pipe to be clear exception
    */
-  public void clearExceptions(String pipeName) {
+  public void clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalse(String pipeName) {
     acquireWriteLock();
     try {
-      clearExceptionsInternal(pipeName);
+      clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalseInternal(pipeName);
     } finally {
       releaseWriteLock();
     }
   }
 
-  private void clearExceptionsInternal(String pipeName) {
+  private void clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalseInternal(String pipeName) {
     if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
       return;
     }
 
     final PipeRuntimeMeta runtimeMeta = pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta();
+
+    // To avoid unnecessary retries, we set the isStoppedByRuntimeException flag to false
+    runtimeMeta.setIsStoppedByRuntimeException(false);
 
     runtimeMeta.setExceptionsClearTime(System.currentTimeMillis());
 
@@ -428,6 +447,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
     if (!exceptionMap.isEmpty()) {
       exceptionMap.clear();
     }
+
     runtimeMeta
         .getConsensusGroupId2TaskMetaMap()
         .values()
@@ -437,6 +457,23 @@ public class PipeTaskInfo implements SnapshotProcessor {
                 pipeTaskMeta.clearExceptionMessages();
               }
             });
+  }
+
+  public void setIsStoppedByRuntimeExceptionToFalse(String pipeName) {
+    acquireWriteLock();
+    try {
+      setIsStoppedByRuntimeExceptionToFalseInternal(pipeName);
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  private void setIsStoppedByRuntimeExceptionToFalseInternal(String pipeName) {
+    if (!pipeMetaKeeper.containsPipeMeta(pipeName)) {
+      return;
+    }
+
+    pipeMetaKeeper.getPipeMeta(pipeName).getRuntimeMeta().setIsStoppedByRuntimeException(false);
   }
 
   /**
@@ -481,6 +518,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
 
                     // Mark the status of the pipe with exception as stopped
                     runtimeMeta.getStatus().set(PipeStatus.STOPPED);
+                    runtimeMeta.setIsStoppedByRuntimeException(true);
 
                     final Map<Integer, PipeRuntimeException> exceptionMap =
                         runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
@@ -497,6 +535,68 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
 
     return hasException;
+  }
+
+  public boolean autoRestart() {
+    acquireWriteLock();
+    try {
+      return autoRestartInternal();
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  /**
+   * Set the statuses of all the pipes stopped automatically because of critical exceptions to
+   * {@link PipeStatus#RUNNING} in order to restart them.
+   *
+   * @return true if there are pipes need restarting
+   */
+  private boolean autoRestartInternal() {
+    final AtomicBoolean needRestart = new AtomicBoolean(false);
+    final List<String> pipeToRestart = new LinkedList<>();
+
+    pipeMetaKeeper
+        .getPipeMetaList()
+        .forEach(
+            pipeMeta -> {
+              if (pipeMeta.getRuntimeMeta().getIsStoppedByRuntimeException()) {
+                pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.RUNNING);
+
+                needRestart.set(true);
+                pipeToRestart.add(pipeMeta.getStaticMeta().getPipeName());
+              }
+            });
+
+    if (needRestart.get()) {
+      LOGGER.info("PipeMetaSyncer is trying to restart the pipes: {}", pipeToRestart);
+    }
+    return needRestart.get();
+  }
+
+  public void handleSuccessfulRestart() {
+    acquireWriteLock();
+    try {
+      handleSuccessfulRestartInternal();
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  /**
+   * Clear the exceptions of, and set the isAutoStopped flag to false for the successfully restarted
+   * pipe.
+   */
+  private void handleSuccessfulRestartInternal() {
+    pipeMetaKeeper
+        .getPipeMetaList()
+        .forEach(
+            pipeMeta -> {
+              if (pipeMeta.getRuntimeMeta().getStatus().get().equals(PipeStatus.RUNNING)) {
+                clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalse(
+                    pipeMeta.getStaticMeta().getPipeName());
+              }
+            });
   }
 
   /////////////////////////////// Snapshot ///////////////////////////////
