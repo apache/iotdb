@@ -17,7 +17,6 @@ on:
       - master
       - 'rel/*'
       - "new_*"
-      - 'rc/*'
     paths-ignore:
       - 'docs/**'
       - 'site/**'
