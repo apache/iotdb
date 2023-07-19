@@ -130,6 +130,9 @@ public class CommonConfig {
 
   private String timestampPrecision = "ms";
 
+  // maximum number of Cluster Databases allowed
+  private int databaseLimitThreshold = -1;
+
   CommonConfig() {}
 
   public void updatePath(String homeDir) {
@@ -385,5 +388,13 @@ public class CommonConfig {
 
   public String getTimestampPrecision() {
     return timestampPrecision;
+  }
+
+  public int getDatabaseLimitThreshold() {
+    return databaseLimitThreshold;
+  }
+
+  public void setDatabaseLimitThreshold(int databaseLimitThreshold) {
+    this.databaseLimitThreshold = databaseLimitThreshold;
   }
 }

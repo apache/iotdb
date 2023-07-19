@@ -463,6 +463,7 @@ public class ConfigManager implements IManager {
     clusterParameters.setDiskSpaceWarningThreshold(COMMON_CONF.getDiskSpaceWarningThreshold());
     clusterParameters.setReadConsistencyLevel(CONF.getReadConsistencyLevel());
     clusterParameters.setTimestampPrecision(COMMON_CONF.getTimestampPrecision());
+    clusterParameters.setDatabaseLimitThreshold(COMMON_CONF.getDatabaseLimitThreshold());
     return clusterParameters;
   }
 
@@ -1087,6 +1088,10 @@ public class ConfigManager implements IManager {
     if (clusterParameters.getDiskSpaceWarningThreshold()
         != CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold()) {
       return errorStatus.setMessage(errorPrefix + "disk_space_warning_threshold" + errorSuffix);
+    }
+
+    if (clusterParameters.getDatabaseLimitThreshold() != COMMON_CONF.getDatabaseLimitThreshold()) {
+      return errorStatus.setMessage(errorPrefix + "database_limit_threshold" + errorSuffix);
     }
 
     return null;

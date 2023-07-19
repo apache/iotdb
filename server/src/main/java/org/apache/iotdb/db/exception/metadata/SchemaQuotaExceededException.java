@@ -23,11 +23,25 @@ import org.apache.iotdb.commons.schema.ClusterSchemaQuotaLevel;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class SchemaQuotaExceededException extends MetadataException {
+
+  // used for timeseries/device limit
   public SchemaQuotaExceededException(ClusterSchemaQuotaLevel level, long limit) {
     super(
         String.format(
             "The current metadata capacity has exceeded the cluster quota. The cluster quota is set at the %s level, with a limit number of %d. Please review your configuration or delete some existing time series to comply with the quota.",
             level.toString(), limit),
+        TSStatusCode.SCHEMA_QUOTA_EXCEEDED.getStatusCode());
+  }
+
+  // used for database limit
+  public SchemaQuotaExceededException(long limit) {
+    super(
+        String.format(
+            "The current database number has exceeded the cluster quota. "
+                + "The maximum number of cluster databases allowed is %d, "
+                + "Please review your configuration database_limit_threshold "
+                + "or delete some existing database to comply with the quota.",
+            limit),
         TSStatusCode.SCHEMA_QUOTA_EXCEEDED.getStatusCode());
   }
 }

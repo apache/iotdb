@@ -75,6 +75,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUtil;
@@ -95,6 +97,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
@@ -111,6 +114,7 @@ public class ClusterSchemaManager {
   private final IManager configManager;
   private final ClusterSchemaInfo clusterSchemaInfo;
   private final ClusterSchemaQuotaStatistics schemaQuotaStatistics;
+  private final ReentrantLock createDatabaseLock = new ReentrantLock();
 
   public ClusterSchemaManager(
       IManager configManager,
@@ -145,27 +149,33 @@ public class ClusterSchemaManager {
     }
 
     try {
+      createDatabaseLock.lock();
       clusterSchemaInfo.isDatabaseNameValid(databaseSchemaPlan.getSchema().getName());
+      if (!databaseSchemaPlan.getSchema().getName().equals(IoTDBMetricsUtils.DATABASE)) {
+        clusterSchemaInfo.checkDatabaseLimit();
+      }
+      // Cache DatabaseSchema
+      result = getConsensusManager().write(databaseSchemaPlan).getStatus();
+      // Bind Database metrics
+      PartitionMetrics.bindDatabasePartitionMetrics(
+          configManager, databaseSchemaPlan.getSchema().getName());
+      // Adjust the maximum RegionGroup number of each Database
+      adjustMaxRegionGroupNum();
     } catch (MetadataException metadataException) {
       // Reject if StorageGroup already set
       if (metadataException instanceof IllegalPathException) {
         result = new TSStatus(TSStatusCode.ILLEGAL_PATH.getStatusCode());
-      } else {
+      } else if (metadataException instanceof StorageGroupAlreadySetException) {
         result = new TSStatus(TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode());
+      } else if (metadataException instanceof SchemaQuotaExceededException) {
+        result = new TSStatus(TSStatusCode.SCHEMA_QUOTA_EXCEEDED.getStatusCode());
+      } else {
+        result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       }
       result.setMessage(metadataException.getMessage());
-      return result;
+    } finally {
+      createDatabaseLock.unlock();
     }
-
-    // Cache DatabaseSchema
-    result = getConsensusManager().write(databaseSchemaPlan).getStatus();
-
-    // Bind Database metrics
-    PartitionMetrics.bindDatabasePartitionMetrics(
-        configManager, databaseSchemaPlan.getSchema().getName());
-
-    // Adjust the maximum RegionGroup number of each Database
-    adjustMaxRegionGroupNum();
 
     return result;
   }

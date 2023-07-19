@@ -425,6 +425,18 @@ Different configuration parameters take effect in the following three ways:
 |Default| 10000                          |
 |Effective|After restarting system|
 
+
+* database\_limit\_threshold
+
+|Name| database\_limit\_threshold                                                                                                                                                                                                                                                   |
+|:---:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|Description| This configuration parameter sets the maximum number of Cluster Databases allowed. The value should be a positive integer representing the desired threshold. When the threshold is reached, users will be prohibited from creating new databases. -1 means unlimited. |
+|Type| Int32                                                                                                                                                                                                                                                                        |
+|Default| -1                                                                                                                                                                                                                                                                           |
+|Effective| After restarting system                                                                                                                                                                                                                                                      |
+
+
+
 ### Configurations for creating schema automatically
 
 * enable\_auto\_create\_schema

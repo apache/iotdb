@@ -418,6 +418,18 @@ IoTDB ConfigNode 和 DataNode 的公共配置参数位于 `conf` 目录下。
 |默认值| 10000                          |
 |改后生效方式| 重启服务生效         |
 
+
+* database\_limit\_threshold
+
+|Name| database\_limit\_threshold                  |
+|:---:|:--------------------------------------------|
+|Description| 设置集群允许创建数据库最大数量，达到阈值后，用户将被禁止创建新数据库。-1表示无限制。 |
+|Type| Int32                                       |
+|Default| -1                                          |
+|Effective| 重启服务生效                                      |
+
+
+
 #### 数据类型自动推断
 
 * enable\_auto\_create\_schema
