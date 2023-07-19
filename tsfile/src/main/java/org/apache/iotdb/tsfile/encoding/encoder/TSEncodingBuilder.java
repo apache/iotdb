@@ -87,6 +87,10 @@ public abstract class TSEncodingBuilder {
         return new Rake();
       case RLBE:
         return new RLBE();
+      case BUFF:
+        return new Buff();
+      case CHIMP:
+        return new Chimp();
       default:
         throw new UnsupportedOperationException(type.toString());
     }
@@ -547,6 +551,54 @@ public abstract class TSEncodingBuilder {
     @Override
     public void initFromProps(Map<String, String> props) {
       // do nothing
+    }
+  }
+
+  public static class Buff extends TSEncodingBuilder {
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      switch (type) {
+        case INT32:
+          return new IntBUFFEncoder();
+        case INT64:
+          return new LongBUFFEncoder();
+        case FLOAT:
+          return new FloatBUFFEncoder();
+        case DOUBLE:
+          return new DoubleBUFFEncoder();
+        default:
+          throw new UnSupportedDataTypeException("BUFF doesn't support data type: " + type);
+      }
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
+    }
+  }
+
+  /** for FLOAT, DOUBLE, INT, LONG. */
+  public static class Chimp extends TSEncodingBuilder {
+
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      switch (type) {
+        case FLOAT:
+          return new SinglePrecisionChimpEncoder();
+        case DOUBLE:
+          return new DoublePrecisionChimpEncoder();
+        case INT32:
+          return new IntChimpEncoder();
+        case INT64:
+          return new LongChimpEncoder();
+        default:
+          throw new UnSupportedDataTypeException("CHIMP doesn't support data type: " + type);
+      }
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // allowed do nothing
     }
   }
 }

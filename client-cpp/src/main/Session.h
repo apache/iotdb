@@ -176,7 +176,9 @@ namespace TSEncoding {
         AC = (char) 14,
         SPRINTZ = (char) 15,
         RAKE = (char) 16,
-        RLBE = (char) 17
+        RLBE = (char) 17,
+        BUFF = (char) 18,
+        CHIMP = (char) 19
     };
 }
 
