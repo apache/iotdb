@@ -86,10 +86,10 @@ public class SessionExample {
     }
 
     //     createTemplate();
-    createTimeseries();
-    createMultiTimeseries();
+    //    createTimeseries();
+    //    createMultiTimeseries();
     insertRecord();
-    insertTablet();
+    //    insertTablet();
     //    insertTabletWithNullValues();
     //    insertTablets();
     //    insertRecords();
@@ -97,27 +97,27 @@ public class SessionExample {
     //    selectInto();
     //    createAndDropContinuousQueries();
     //    nonQuery();
-    query();
+    //    query();
     //    queryWithTimeout();
-    rawDataQuery();
-    lastDataQuery();
-    aggregationQuery();
-    groupByQuery();
+    //    rawDataQuery();
+    //    lastDataQuery();
+    //    aggregationQuery();
+    //    groupByQuery();
     //    queryByIterator();
     //    deleteData();
     //    deleteTimeseries();
     //    setTimeout();
 
-    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
-    sessionEnableRedirect.setEnableQueryRedirection(true);
-    sessionEnableRedirect.open(false);
+    //    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
+    //    sessionEnableRedirect.setEnableQueryRedirection(true);
+    //    sessionEnableRedirect.open(false);
+    //
+    //    // set session fetchSize
+    //    sessionEnableRedirect.setFetchSize(10000);
 
-    // set session fetchSize
-    sessionEnableRedirect.setFetchSize(10000);
-
-    insertRecord4Redirect();
-    query4Redirect();
-    sessionEnableRedirect.close();
+    //    insertRecord4Redirect();
+    //    query4Redirect();
+    //    sessionEnableRedirect.close();
     session.close();
   }
 
@@ -265,7 +265,7 @@ public class SessionExample {
     types.add(TSDataType.INT64);
     types.add(TSDataType.INT64);
 
-    for (long time = 0; time < 100; time++) {
+    for (long time = 0; time < 10000; time++) {
       List<Object> values = new ArrayList<>();
       values.add(1L);
       values.add(2L);

@@ -86,15 +86,45 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
         if (cacheEntry == null) {
           computation.computeValue(i, null);
         } else {
+          computation.computeValue(i, cacheEntry.getValue());
+          cacheEntryManager.access(cacheEntry);
+          hitCount++;
+        }
+      }
+      cacheStats.recordHit(hitCount);
+      cacheStats.recordMiss(secondKeyList.length - hitCount);
+    }
+  }
+
+  @Override
+  public void computeAndUpdate(IDualKeyCacheComputation<FK, SK, V> computation) {
+    FK firstKey = computation.getFirstKey();
+    ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
+    SK[] secondKeyList = computation.getSecondKeyList();
+    if (cacheEntryGroup == null) {
+      for (int i = 0; i < secondKeyList.length; i++) {
+        computation.computeValue(i, null);
+      }
+      cacheStats.recordMiss(secondKeyList.length);
+    } else {
+      T cacheEntry;
+      int hitCount = 0;
+      for (int i = 0; i < secondKeyList.length; i++) {
+        cacheEntry = cacheEntryGroup.getCacheEntry(secondKeyList[i]);
+        if (cacheEntry == null) {
+          computation.computeValue(i, null);
+        } else {
           int originalValueSize = sizeComputer.computeValueSize(cacheEntry.getValue());
           computation.computeValue(i, cacheEntry.getValue());
           int usedMemorySize =
               sizeComputer.computeValueSize(cacheEntry.getValue()) - originalValueSize;
-          cacheStats.increaseMemoryUsage(usedMemorySize);
-          if (cacheStats.isExceedMemoryCapacity()) {
-            executeCacheEviction(usedMemorySize);
-          }
           cacheEntryManager.access(cacheEntry);
+          if (usedMemorySize != 0) {
+            cacheStats.increaseMemoryUsage(usedMemorySize);
+            if (cacheStats.isExceedMemoryCapacity()) {
+              executeCacheEviction(usedMemorySize);
+            }
+          }
           hitCount++;
         }
       }

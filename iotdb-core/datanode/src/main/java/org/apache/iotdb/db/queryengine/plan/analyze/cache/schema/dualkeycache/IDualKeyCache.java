@@ -40,6 +40,8 @@ public interface IDualKeyCache<FK, SK, V> {
    */
   void compute(IDualKeyCacheComputation<FK, SK, V> computation);
 
+  void computeAndUpdate(IDualKeyCacheComputation<FK, SK, V> computation);
+
   /** put the cache value into cache */
   void put(FK firstKey, SK secondKey, V value);
 
