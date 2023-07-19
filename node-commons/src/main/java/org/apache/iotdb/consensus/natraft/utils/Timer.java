@@ -306,6 +306,12 @@ public class Timer {
         TIME_SCALE,
         true,
         META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    LOG_DISPATCHER_FROM_CREATE_TO_COMPRESSING(
+        LOG_DISPATCHER,
+        "from create to compressing",
+        TIME_SCALE,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
     LOG_DISPATCHER_FROM_CREATE_TO_SENDING(
         LOG_DISPATCHER,
         "from create to sending",
@@ -369,6 +375,12 @@ public class Timer {
     LOG_DISPATCHER_FROM_CREATE_TO_APPLIED(
         LOG_DISPATCHER,
         "from create to applied",
+        TIME_SCALE,
+        true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    LOG_DISPATCHER_FROM_CREATE_TO_PROCESSED(
+        LOG_DISPATCHER,
+        "from create to processed",
         TIME_SCALE,
         true,
         META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),

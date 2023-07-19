@@ -64,6 +64,10 @@ class PipelineDispatcherThread extends DynamicThread {
     try {
       while (!Thread.interrupted() && !group.getDynamicThreadGroup().isStopped()) {
         DispatchTask task = taskQueue.take();
+        for (VotingEntry votingEntry : task.votingEntryList) {
+          long createTime = votingEntry.getEntry().createTime;
+          Statistic.LOG_DISPATCHER_FROM_CREATE_TO_SENDING.calOperationCostTimeFromStart(createTime);
+        }
 
         idleToRunning();
         logger.debug("Sending {} to {}", task, receiver);

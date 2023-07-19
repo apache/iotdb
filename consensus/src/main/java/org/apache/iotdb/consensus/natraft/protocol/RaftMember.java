@@ -673,7 +673,10 @@ public class RaftMember {
       return StatusUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT);
     }
 
-    return waitForEntryResult(votingEntry);
+    TSStatus status = waitForEntryResult(votingEntry);
+    Statistic.LOG_DISPATCHER_FROM_CREATE_TO_PROCESSED.calOperationCostTimeFromStart(
+        votingEntry.getEntry().createTime);
+    return status;
   }
 
   protected void waitApply(Entry entry) throws LogExecutionException {

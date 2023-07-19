@@ -280,7 +280,7 @@ public class PipelinedLogDispatcher implements ILogDispatcher {
           logList.add(serialized);
           dispatchTask.votingEntryList.add(entry);
 
-          Statistic.LOG_DISPATCHER_FROM_CREATE_TO_SENDING.calOperationCostTimeFromStart(
+          Statistic.LOG_DISPATCHER_FROM_CREATE_TO_COMPRESSING.calOperationCostTimeFromStart(
               entry.getEntry().createTime);
         }
 
