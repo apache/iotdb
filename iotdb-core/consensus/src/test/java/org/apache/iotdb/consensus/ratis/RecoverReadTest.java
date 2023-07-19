@@ -24,8 +24,8 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.config.RatisConfig;
-
 import org.apache.iotdb.consensus.exception.RatisUnderRecoverException;
+
 import org.apache.ratis.util.TimeDuration;
 import org.junit.After;
 import org.junit.Assert;
@@ -33,7 +33,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
-import java.sql.Time;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -80,11 +79,15 @@ public class RecoverReadTest {
     final TestUtils.MiniClusterFactory factory = new TestUtils.MiniClusterFactory();
     miniCluster =
         factory
-            .setSMProvider(() -> new SlowRecoverStateMachine(TimeDuration.valueOf(500, TimeUnit.MILLISECONDS)))
+            .setSMProvider(
+                () -> new SlowRecoverStateMachine(TimeDuration.valueOf(500, TimeUnit.MILLISECONDS)))
             .setRatisConfig(
                 RatisConfig.newBuilder()
                     .setLog(RatisConfig.Log.newBuilder().setPurgeUptoSnapshotIndex(true).build())
-                    .setRead(RatisConfig.Read.newBuilder().setReadTimeout(TimeDuration.valueOf(30, TimeUnit.SECONDS)).build())
+                    .setRead(
+                        RatisConfig.Read.newBuilder()
+                            .setReadTimeout(TimeDuration.valueOf(30, TimeUnit.SECONDS))
+                            .build())
                     .build())
             .create();
     miniCluster.start();
@@ -95,10 +98,9 @@ public class RecoverReadTest {
     miniCluster.cleanUp();
   }
 
-
   /* mimics the situation before this patch */
   @Test
-  public void inconsistentReadAfterRestart() throws Exception{
+  public void inconsistentReadAfterRestart() throws Exception {
     final ConsensusGroupId gid = miniCluster.getGid();
     final List<Peer> members = miniCluster.getPeers();
 

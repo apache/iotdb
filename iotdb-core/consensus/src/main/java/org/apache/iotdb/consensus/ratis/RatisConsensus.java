@@ -338,7 +338,8 @@ class RatisConsensus implements IConsensus {
       reply = doRead(groupId, IConsensusRequest, isLinearizableRead);
     } catch (Exception e) {
       if (isLinearizableRead) {
-        // linearizable read failed. the RaftServer is recovering from Raft Log and cannot serve read requests.
+        // linearizable read failed. the RaftServer is recovering from Raft Log and cannot serve
+        // read requests.
         return failedRead(new RatisUnderRecoverException(e));
       } else {
         return failedRead(new RatisRequestFailedException(e));
@@ -351,10 +352,9 @@ class RatisConsensus implements IConsensus {
     return ConsensusReadResponse.newBuilder().setDataSet(dataSet).build();
   }
 
-  /**
-   *  return a success raft client reply or throw an Exception
-   */
-  private RaftClientReply doRead(RaftGroupId gid, IConsensusRequest readRequest, boolean linearizable) throws Exception {
+  /** return a success raft client reply or throw an Exception */
+  private RaftClientReply doRead(
+      RaftGroupId gid, IConsensusRequest readRequest, boolean linearizable) throws Exception {
     final RaftClientRequest.Type readType =
         linearizable
             ? RaftClientRequest.readRequestType()

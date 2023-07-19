@@ -326,7 +326,12 @@ public class TestUtils {
     }
 
     void waitUntilActiveLeader() throws InterruptedException {
-      JavaUtils.attemptUntilTrue(() -> getServer(0).getLeader(gid) != null, 100, TimeDuration.valueOf(100, TimeUnit.MILLISECONDS), "wait leader", null);
+      JavaUtils.attemptUntilTrue(
+          () -> getServer(0).getLeader(gid) != null,
+          100,
+          TimeDuration.valueOf(100, TimeUnit.MILLISECONDS),
+          "wait leader",
+          null);
     }
   }
 

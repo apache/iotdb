@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.consensus.exception;
 
-/**
- * RaftServer is redoing RaftLog. Unable to serve linearizable read requests.
- */
+/** RaftServer is redoing RaftLog. Unable to serve linearizable read requests. */
 public class RatisUnderRecoverException extends ConsensusException {
 
   public RatisUnderRecoverException(Throwable cause) {
