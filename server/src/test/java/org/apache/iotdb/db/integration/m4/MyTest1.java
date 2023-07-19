@@ -108,11 +108,16 @@ public class MyTest1 {
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
+      /*
+       * Sql format: SELECT min_time(s0), max_time(s0), first_value(s0), last_value(s0), min_value(s0),
+       * max_value(s0) ROM root.xx group by ([tqs,tqe),IntervalLength). Requirements: (1) Don't change the
+       * sequence of the above six aggregates (2) Make sure (tqe-tqs) is divisible by IntervalLength. (3)
+       * Assume each chunk has only one page.
+       */
       boolean hasResultSet =
           statement.execute(
               "SELECT min_time(s0), max_time(s0), first_value(s0), last_value(s0), min_value(s0), max_value(s0)"
                   + " FROM root.vehicle.d0 group by ([0,100),25ms)");
-
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         int i = 0;

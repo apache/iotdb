@@ -56,13 +56,7 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Sql format: SELECT min_time(s0), max_time(s0), first_value(s0), last_value(s0), min_value(s0),
- * max_value(s0) ROM root.xx group by ([tqs,tqe),IntervalLength). Requirements: (1) Don't change the
- * sequence of the above six aggregates (2) Make sure (tqe-tqs) is divisible by IntervalLength. (3)
- * Assume each chunk has only one page.
- */
-// This is the CPVGroupByExecutor in M4-LSM paper.
+// This is the MFGroupByExecutor in M4-LSM paper.
 public class LocalGroupByExecutor4CPV implements GroupByExecutor {
 
   private static final Logger M4_CHUNK_METADATA = LoggerFactory.getLogger("M4_CHUNK_METADATA");
@@ -82,8 +76,6 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
 
   private TSDataType tsDataType;
 
-  //  private PriorityMergeReader mergeReader;
-
   public LocalGroupByExecutor4CPV(
       PartialPath path,
       Set<String> allSensors,
@@ -96,7 +88,6 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
     //    long start = System.nanoTime();
 
     this.tsDataType = dataType;
-    //    this.mergeReader = new PriorityMergeReader();
 
     // get all data sources
     QueryDataSource queryDataSource =
