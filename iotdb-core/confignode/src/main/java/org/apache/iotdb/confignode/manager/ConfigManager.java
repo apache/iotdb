@@ -486,6 +486,7 @@ public class ConfigManager implements IManager {
     clusterParameters.setTimestampPrecision(COMMON_CONF.getTimestampPrecision());
     clusterParameters.setSchemaEngineMode(COMMON_CONF.getSchemaEngineMode());
     clusterParameters.setTagAttributeTotalSize(COMMON_CONF.getTagAttributeTotalSize());
+    clusterParameters.setDatabaseLimitThreshold(COMMON_CONF.getDatabaseLimitThreshold());
     return clusterParameters;
   }
 
@@ -1112,6 +1113,10 @@ public class ConfigManager implements IManager {
 
     if (clusterParameters.getTagAttributeTotalSize() != COMMON_CONF.getTagAttributeTotalSize()) {
       return errorStatus.setMessage(errorPrefix + "tag_attribute_total_size" + errorSuffix);
+    }
+
+    if (clusterParameters.getDatabaseLimitThreshold() != COMMON_CONF.getDatabaseLimitThreshold()) {
+      return errorStatus.setMessage(errorPrefix + "database_limit_threshold" + errorSuffix);
     }
 
     return null;
