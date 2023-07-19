@@ -30,9 +30,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @SuppressWarnings({"squid:S106", "squid:S1144"})
 public class SessionPoolExample {
@@ -67,54 +67,17 @@ public class SessionPoolExample {
   }
 
   public static void main(String[] args)
-      throws StatementExecutionException, IoTDBConnectionException {
+      throws StatementExecutionException, IoTDBConnectionException, InterruptedException {
     // Choose the SessionPool you going to use
     constructRedirectSessionPool();
 
-    //    service = Executors.newFixedThreadPool(10);
-    //    insertRecord();
-    //    queryByRowRecord();
-    //    Thread.sleep(1000);
-    //    queryByIterator();
-
-    SessionDataSetWrapper sessionDataSetWrapper =
-        sessionPool.executeLastDataQueryForOneDevice(
-            "root.ca.condition",
-            "root.ca.condition.`123456789`",
-            Arrays.asList("Pa", "Pb", "Pc", "status", "Pd"));
-
-    while (sessionDataSetWrapper.hasNext()) {
-      System.out.println(sessionDataSetWrapper.next());
-    }
-
-    sessionDataSetWrapper.close();
-
-    sessionDataSetWrapper =
-        sessionPool.executeLastDataQueryForOneDevice(
-            "root.ca.condition",
-            "root.ca.condition.`123456789`",
-            Arrays.asList("Pa", "Pb", "Pc", "status", "Pd"));
-
-    while (sessionDataSetWrapper.hasNext()) {
-      System.out.println(sessionDataSetWrapper.next());
-    }
-
-    sessionDataSetWrapper.close();
-
-    sessionDataSetWrapper =
-        sessionPool.executeLastDataQueryForOneDevice(
-            "root.ca.condition",
-            "root.ca.condition.`123456789`",
-            Arrays.asList("Pa", "Pb", "Pc", "status", "Pd"));
-
-    while (sessionDataSetWrapper.hasNext()) {
-      System.out.println(sessionDataSetWrapper.next());
-    }
-
-    sessionDataSetWrapper.close();
-
+    service = Executors.newFixedThreadPool(10);
+    insertRecord();
+    queryByRowRecord();
+    Thread.sleep(1000);
+    queryByIterator();
     sessionPool.close();
-    //    service.shutdown();
+    service.shutdown();
   }
 
   // more insert example, see SessionExample.java

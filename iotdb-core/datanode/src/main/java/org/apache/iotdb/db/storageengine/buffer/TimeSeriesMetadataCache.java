@@ -161,7 +161,7 @@ public class TimeSeriesMetadataCache {
           if (timeseriesMetadata == null) {
             cacheHit = false;
 
-            Path path = new Path(key.device, key.measurement, false);
+            Path path = new Path(key.device, key.measurement, true);
             // bloom filter part
             BloomFilter bloomFilter =
                 BloomFilterCache.getInstance()

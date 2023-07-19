@@ -455,13 +455,13 @@ public class SessionConnection {
   }
 
   protected Pair<SessionDataSet, TEndPoint> executeLastDataQueryForOneDevice(
-      String db, String device, List<String> sensors, long timeOut)
+      String db, String device, List<String> sensors, boolean isLegalPathNodes, long timeOut)
       throws StatementExecutionException, IoTDBConnectionException {
     TSFastLastDataQueryForOneDeviceReq req =
         new TSFastLastDataQueryForOneDeviceReq(sessionId, db, device, sensors, statementId);
     req.setFetchSize(session.fetchSize);
     req.setEnableRedirectQuery(enableRedirect);
-    req.setLegalPathNodes(true);
+    req.setLegalPathNodes(isLegalPathNodes);
     req.setTimeout(timeOut);
     TSExecuteStatementResp tsExecuteStatementResp = null;
     TEndPoint redirectedEndPoint = null;
@@ -507,7 +507,6 @@ public class SessionConnection {
         new TSLastDataQueryReq(sessionId, paths, time, statementId);
     tsLastDataQueryReq.setFetchSize(session.fetchSize);
     tsLastDataQueryReq.setEnableRedirectQuery(enableRedirect);
-    tsLastDataQueryReq.setLegalPathNodes(true);
     tsLastDataQueryReq.setTimeout(timeOut);
     TSExecuteStatementResp tsExecuteStatementResp;
     try {

@@ -57,6 +57,7 @@ public class SessionExample {
   private static final String ROOT_SG1_D1_S4 = "root.sg1.d1.s4";
   private static final String ROOT_SG1_D1_S5 = "root.sg1.d1.s5";
   private static final String ROOT_SG1_D1 = "root.sg1.d1";
+  private static final String ROOT_SG1 = "root.sg1";
   private static final String LOCAL_HOST = "127.0.0.1";
   public static final String SELECT_D1 = "select * from root.sg1.d1";
 
@@ -115,6 +116,7 @@ public class SessionExample {
     // set session fetchSize
     sessionEnableRedirect.setFetchSize(10000);
 
+    fastLastDataQueryForOneDevice();
     insertRecord4Redirect();
     query4Redirect();
     sessionEnableRedirect.close();
@@ -787,6 +789,22 @@ public class SessionExample {
     paths.add(ROOT_SG1_D1_S2);
     paths.add(ROOT_SG1_D1_S3);
     try (SessionDataSet sessionDataSet = session.executeLastDataQuery(paths, 3, 60000)) {
+      System.out.println(sessionDataSet.getColumnNames());
+      sessionDataSet.setFetchSize(1024);
+      while (sessionDataSet.hasNext()) {
+        System.out.println(sessionDataSet.next());
+      }
+    }
+  }
+
+  private static void fastLastDataQueryForOneDevice()
+      throws IoTDBConnectionException, StatementExecutionException {
+    List<String> paths = new ArrayList<>();
+    paths.add(ROOT_SG1_D1_S1);
+    paths.add(ROOT_SG1_D1_S2);
+    paths.add(ROOT_SG1_D1_S3);
+    try (SessionDataSet sessionDataSet =
+        session.executeLastDataQueryForOneDevice(ROOT_SG1, ROOT_SG1_D1, paths, true)) {
       System.out.println(sessionDataSet.getColumnNames());
       sessionDataSet.setFetchSize(1024);
       while (sessionDataSet.hasNext()) {

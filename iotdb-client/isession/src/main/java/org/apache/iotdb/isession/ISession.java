@@ -169,7 +169,8 @@ public interface ISession extends AutoCloseable {
   SessionDataSet executeLastDataQuery(List<String> paths)
       throws StatementExecutionException, IoTDBConnectionException;
 
-  SessionDataSet executeLastDataQueryForOneDevice(String db, String device, List<String> sensors)
+  SessionDataSet executeLastDataQueryForOneDevice(
+      String db, String device, List<String> sensors, boolean isLegalPathNodes)
       throws StatementExecutionException, IoTDBConnectionException;
 
   SessionDataSet executeAggregationQuery(List<String> paths, List<TAggregationType> aggregations)

@@ -611,8 +611,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     if (!SESSION_MANAGER.checkLogin(clientSession)) {
       return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
     }
-    long startTime = System.currentTimeMillis();
-    long startNanoTime = System.nanoTime();
+    long startTime = System.nanoTime();
     Throwable t = null;
     try {
       String db;
@@ -639,7 +638,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       List<TRegionReplicaSet> regionReplicaSets =
           dataPartition.getDataRegionReplicaSet(deviceId, Collections.emptyList());
 
-      // no schema
+      // no valid DataRegion
       if (regionReplicaSets.isEmpty()
           || regionReplicaSets.size() == 1 && NOT_ASSIGNED == regionReplicaSets.get(0)) {
         TSExecuteStatementResp resp =
@@ -647,7 +646,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, ""));
         resp.setQueryResult(Collections.emptyList());
         finished = true;
-        resp.setMoreData(true);
+        resp.setMoreData(false);
         return resp;
       }
 
@@ -657,18 +656,18 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               .dataNodeLocations
               .get(0)
               .mPPDataExchangeEndPoint;
-      // the device's all dataRegion's leader are on the same node, may can read directly from cache
+
+      // the device's dataRegion's leader of the latest time partition is on current node, may can
+      // read directly from cache
       if (isSameNode(lastRegionLeader)) {
+        // the device's all dataRegions' leader are on current node, can use null entry in cache
         boolean canUseNullEntry =
             regionReplicaSets.stream()
                 .limit(regionReplicaSets.size() - 1L)
                 .allMatch(
                     regionReplicaSet ->
-                        regionReplicaSet
-                            .dataNodeLocations
-                            .get(0)
-                            .mPPDataExchangeEndPoint
-                            .equals(lastRegionLeader));
+                        isSameNode(
+                            regionReplicaSet.dataNodeLocations.get(0).mPPDataExchangeEndPoint));
         int sensorNum = req.sensors.size();
         TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(sensorNum);
         boolean allCached = true;
@@ -710,7 +709,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             resp.setQueryResult(Collections.singletonList(serde.serialize(builder.build())));
           }
           finished = true;
-          resp.setMoreData(true);
+          resp.setMoreData(false);
           return resp;
         }
       }
@@ -773,12 +772,19 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       t = error;
       throw error;
     } finally {
-      COORDINATOR.recordExecutionTime(queryId, System.currentTimeMillis() - startTime);
+
+      long currentOperationCost = System.nanoTime() - startTime;
+      COORDINATOR.recordExecutionTime(queryId, currentOperationCost);
+
+      // record each operation time cost
+      addStatementExecutionLatency(
+          OperationType.EXECUTE_LAST_DATA_QUERY, StatementType.QUERY, currentOperationCost);
+
       if (finished) {
-        addStatementExecutionLatency(
-            OperationType.EXECUTE_LAST_DATA_QUERY,
-            StatementType.QUERY,
-            System.nanoTime() - startNanoTime);
+        // record total time cost for one query
+        long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
+        addQueryLatency(
+            StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
         COORDINATOR.cleanupQueryExecution(queryId, t);
       }
       SESSION_MANAGER.updateIdleTime();
@@ -2388,9 +2394,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           e, OperationType.INSERT_STRING_RECORD, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
       addStatementExecutionLatency(
-          OperationType.INSERT_STRING_RECORD,
-          StatementType.INSERT,
-          System.currentTimeMillis() - t1);
+          OperationType.INSERT_STRING_RECORD, StatementType.INSERT, System.nanoTime() - t1);
       SESSION_MANAGER.updateIdleTime();
       if (quota != null) {
         quota.close();

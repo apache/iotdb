@@ -879,13 +879,14 @@ public class Session implements ISession {
 
   @Override
   public SessionDataSet executeLastDataQueryForOneDevice(
-      String db, String device, List<String> sensors)
+      String db, String device, List<String> sensors, boolean isLegalPathNodes)
       throws StatementExecutionException, IoTDBConnectionException {
     Pair<SessionDataSet, TEndPoint> pair;
     try {
       pair =
           getSessionConnection(device)
-              .executeLastDataQueryForOneDevice(db, device, sensors, queryTimeoutInMs);
+              .executeLastDataQueryForOneDevice(
+                  db, device, sensors, isLegalPathNodes, queryTimeoutInMs);
       if (pair.right != null) {
         handleRedirection(device, pair.right);
       }
@@ -899,7 +900,7 @@ public class Session implements ISession {
 
         // reconnect with default connection
         return defaultSessionConnection.executeLastDataQueryForOneDevice(
-                db, device, sensors, queryTimeoutInMs)
+                db, device, sensors, isLegalPathNodes, queryTimeoutInMs)
             .left;
       } else {
         throw e;

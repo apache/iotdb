@@ -3076,12 +3076,13 @@ public class SessionPool implements ISessionPool {
 
   @Override
   public SessionDataSetWrapper executeLastDataQueryForOneDevice(
-      String db, String device, List<String> sensors)
+      String db, String device, List<String> sensors, boolean isLegalPathNodes)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
       ISession session = getSession();
       try {
-        SessionDataSet resp = session.executeLastDataQueryForOneDevice(db, device, sensors);
+        SessionDataSet resp =
+            session.executeLastDataQueryForOneDevice(db, device, sensors, isLegalPathNodes);
         SessionDataSetWrapper wrapper = new SessionDataSetWrapper(resp, session, this);
         occupy(session);
         return wrapper;

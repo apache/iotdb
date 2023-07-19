@@ -468,7 +468,7 @@ public interface ISessionPool {
       throws StatementExecutionException, IoTDBConnectionException;
 
   SessionDataSetWrapper executeLastDataQueryForOneDevice(
-      String db, String device, List<String> sensors)
+      String db, String device, List<String> sensors, boolean isLegalPathNodes)
       throws StatementExecutionException, IoTDBConnectionException;
 
   SessionDataSetWrapper executeAggregationQuery(
