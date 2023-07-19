@@ -46,7 +46,7 @@ public class StepRegress {
   // fix that the first segment [t1,t2) is always tilt,
   // so t2=t1 in fact means that the first status is level
   private DoubleArrayList segmentKeys = new DoubleArrayList(); // t1,t2,...,tm
-  // TODO deal with the last key tm
+  //  deal with the last key tm
 
   private LongArrayList timestamps = new LongArrayList(); // Pi.t
   private LongArrayList intervals = new LongArrayList(); // Pi+1.t-Pi.t
@@ -169,11 +169,10 @@ public class StepRegress {
           // intersect
           segmentKeys.add((intercept - segmentIntercepts.getLast()) / slope); // x2i=(b2i-b2i-1)/K
           // then add intercept to segmentIntercepts, do not change the order of codes here
-          segmentIntercepts.add(
-              intercept); // TODO debug if the first status is actually level works
+          segmentIntercepts.add(intercept); //  debug if the first status is actually level works
         }
         // deal with the last interval to make sure the last point is hit
-        // TODO create examples to debug this
+        //  create examples to debug this
         if (i == intervals.size() - 1) {
           // 3) to determine the intercept, let the level function run through
           // (timestamps.getLast(),timestamps.size())
@@ -185,7 +184,7 @@ public class StepRegress {
           segmentKeys.set(
               segmentKeys.size() - 1,
               (intercept - segmentIntercepts.get(segmentIntercepts.size() - 2))
-                  / slope); // x2i=(b2i-b2i-1)/K TODO debug here not getLast!
+                  / slope); // x2i=(b2i-b2i-1)/K  debug here not getLast!
           // then add intercept to segmentIntercepts, do not change the order of codes here
           // Note that here is rewrite instead of add.
           segmentIntercepts.set(segmentIntercepts.size() - 1, intercept);
@@ -206,7 +205,7 @@ public class StepRegress {
           tiltLatestSegmentID += 2;
         }
         // deal with the last interval to make sure the last point is hit
-        // TODO create examples to debug this
+        //  create examples to debug this
         if (i == intervals.size() - 1) {
           if (segmentIntercepts.size() == 1) { // all TTTTTT, only one segment info
             // remove all segment info, and directly connect the first and the last point
@@ -226,7 +225,7 @@ public class StepRegress {
             segmentKeys.set(
                 segmentKeys.size() - 1,
                 (segmentIntercepts.get(segmentIntercepts.size() - 2) - intercept)
-                    / slope); // x2i+1=(b2i-b2i+1)/K TODO debug here not getLast!
+                    / slope); // x2i+1=(b2i-b2i+1)/K  debug here not getLast!
             // then add intercept to segmentIntercepts, do not change the order of codes here
             // Note that here is rewrite instead of add.
             segmentIntercepts.set(segmentIntercepts.size() - 1, intercept);
@@ -234,8 +233,8 @@ public class StepRegress {
             // now check to remove possible disorders
             // search from back to front to find the first tilt intercept that is equal to or larger
             // than the current intercept
-            int start = segmentIntercepts.size() - 3; // TODO debug
-            // TODO consider only one T
+            int start = segmentIntercepts.size() - 3; //  debug
+            //  consider only one T
             boolean equals = false;
             for (; start >= 0; start -= 2) {
               // note the step is 2, only tilt intercept, no level intercept
@@ -248,7 +247,7 @@ public class StepRegress {
                 break;
               }
             }
-            if (start < 0) { // TODO bug consider when start<0, i.e., not found: connecting directly
+            if (start < 0) { //  bug consider when start<0, i.e., not found: connecting directly
               // remove all segment info, and directly connect the first and the last point
               this.slope =
                   (timestamps.size() - 1.0) / (timestamps.getLast() - timestamps.getFirst());
@@ -288,7 +287,7 @@ public class StepRegress {
                 segmentKeys =
                     DoubleArrayList.newListWith(
                         Arrays.copyOfRange(segmentKeys.toArray(), 0, start + 1));
-                // TODO debug the first status is level, b1
+                //  debug the first status is level, b1
               }
             }
             // otherwise start==segmentIntercepts.size()-3 && equal=false,
@@ -425,7 +424,7 @@ public class StepRegress {
    *     in the chunk. Pay attention that f(t) starts from (startTime,1), ends at (endTime,count).
    */
   public double infer_internal(double t) throws IOException {
-    if (segmentKeys.size() == 1) { // TODO DEBUG
+    if (segmentKeys.size() == 1) { //  DEBUG
       return 1;
     }
 

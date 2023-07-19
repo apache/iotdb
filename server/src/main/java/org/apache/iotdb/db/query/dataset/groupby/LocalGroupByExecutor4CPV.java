@@ -119,7 +119,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
 
     // unpackAllOverlappedFilesToTimeSeriesMetadata
     try {
-      // TODO: this might be bad to load all chunk metadata at first
+      // : this might be bad to load all chunk metadata at first
       futureChunkList.addAll(seriesReader.getAllChunkMetadatas4CPV());
       // order futureChunkList by chunk startTime
       futureChunkList.sort(
@@ -252,7 +252,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
     int curIdx = (int) Math.floor((curStartTime - startTime) * 1.0 / interval);
     if (splitChunkList.get(curIdx) != null) {
       currentChunkList.addAll(splitChunkList.get(curIdx));
-      // TODO when to free splitChunkList memory
+      //  when to free splitChunkList memory
     }
 
     // iterate futureChunkList
@@ -285,7 +285,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
         PageReader pageReader =
             FileLoaderUtils.loadPageReaderList4CPV(
                 chunkSuit4CPV.getChunkMetadata(), this.timeFilter);
-        // TODO ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,
+        //  ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,
         //  BECAUSE THE WHOLE IMPLEMENTATION IS BASED ON THIS ASSUMPTION.
         //  OTHERWISE, PAGEREADER IS FOR THE FIRST PAGE IN THE CHUNK WHILE
         //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS ASSIGN
@@ -358,7 +358,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
     // currentChunkList
     while (currentChunkList.size() > 0) { // loop 1
       // sorted by bottomValue, find BP candidate set
-      // TODO double check the sort order logic for different aggregations
+      //  double check the sort order logic for different aggregations
       currentChunkList.sort(
           (o1, o2) -> {
             return ((Comparable) (o1.getStatistics().getMinValue()))
@@ -377,9 +377,9 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
         }
       }
 
-      // TODO check, whether nonLazyLoad remove affects candidateSet
+      //  check, whether nonLazyLoad remove affects candidateSet
       List<ChunkSuit4CPV> nonLazyLoad = new ArrayList<>(candidateSet);
-      // TODO double check the sort order logic for version
+      //  double check the sort order logic for version
       nonLazyLoad.sort(
           (o1, o2) ->
               new MergeReaderPriority(
@@ -399,7 +399,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
               PageReader pageReader =
                   FileLoaderUtils.loadPageReaderList4CPV(
                       chunkSuit4CPV.getChunkMetadata(), this.timeFilter);
-              // TODO ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,
+              //  ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,
               //  BECAUSE THE WHOLE IMPLEMENTATION IS BASED ON THIS ASSUMPTION.
               //  OTHERWISE, PAGEREADER IS FOR THE FIRST PAGE IN THE CHUNK WHILE
               //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS ASSIGN
@@ -431,8 +431,8 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
             new MergeReaderPriority(
                 candidate.getChunkMetadata().getVersion(),
                 candidate.getChunkMetadata().getOffsetOfChunkHeader());
-        long candidateTimestamp = candidate.getStatistics().getBottomTimestamp(); // TODO check
-        Object candidateValue = candidate.getStatistics().getMinValue(); // TODO check
+        long candidateTimestamp = candidate.getStatistics().getBottomTimestamp(); //  check
+        Object candidateValue = candidate.getStatistics().getMinValue(); //  check
 
         // verify if this candidate point is deleted
         boolean isDeletedItself = false;
@@ -447,9 +447,9 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           // the candidate point is deleted, then label the chunk as already lazy loaded, and back
           // to loop 2
           nonLazyLoad.remove(candidate);
-          // TODO check this can really remove the element
-          // TODO check whether nonLazyLoad remove affects candidateSet
-          // TODO check nonLazyLoad sorted by version number from high to low
+          //  check this can really remove the element
+          //  check whether nonLazyLoad remove affects candidateSet
+          //  check nonLazyLoad sorted by version number from high to low
           continue; // back to loop 2
 
         } else { // not deleted
@@ -492,7 +492,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                 PageReader pageReader =
                     FileLoaderUtils.loadPageReaderList4CPV(
                         chunkSuit4CPV.getChunkMetadata(), this.timeFilter);
-                // TODO ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,
+                //  ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,
                 //  BECAUSE THE WHOLE IMPLEMENTATION IS BASED ON THIS ASSUMPTION.
                 //  OTHERWISE, PAGEREADER IS FOR THE FIRST PAGE IN THE CHUNK WHILE
                 //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS
@@ -524,12 +524,12 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
             } else {
               candidate
                   .getChunkMetadata()
-                  .insertIntoSortedDeletions(candidateTimestamp, candidateTimestamp); // TODO check
+                  .insertIntoSortedDeletions(candidateTimestamp, candidateTimestamp); //  check
             }
             nonLazyLoad.remove(candidate);
-            // TODO check this can really remove the element
-            // TODO check whether nonLazyLoad remove affects candidateSet
-            // TODO check nonLazyLoad sorted by version number from high to low
+            //  check this can really remove the element
+            //  check whether nonLazyLoad remove affects candidateSet
+            //  check nonLazyLoad sorted by version number from high to low
             continue; // back to loop 2
           }
         }
@@ -550,7 +550,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
     while (currentChunkList.size() > 0) { // loop 1
       // sorted by topValue, find TP candidate set
       currentChunkList.sort(
-          new Comparator<ChunkSuit4CPV>() { // TODO double check the sort order logic for different
+          new Comparator<ChunkSuit4CPV>() { //  double check the sort order logic for different
             // aggregations
             public int compare(ChunkSuit4CPV o1, ChunkSuit4CPV o2) {
               return ((Comparable) (o2.getStatistics().getMaxValue()))
@@ -574,9 +574,9 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
       }
 
       List<ChunkSuit4CPV> nonLazyLoad = new ArrayList<>(candidateSet);
-      // TODO check, whether nonLazyLoad remove affects candidateSet
+      //  check, whether nonLazyLoad remove affects candidateSet
       nonLazyLoad.sort(
-          new Comparator<ChunkSuit4CPV>() { // TODO double check the sort order logic for version
+          new Comparator<ChunkSuit4CPV>() { //  double check the sort order logic for version
             public int compare(ChunkSuit4CPV o1, ChunkSuit4CPV o2) {
               return new MergeReaderPriority(
                       o2.getChunkMetadata().getVersion(),
@@ -597,7 +597,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
               PageReader pageReader =
                   FileLoaderUtils.loadPageReaderList4CPV(
                       chunkSuit4CPV.getChunkMetadata(), this.timeFilter);
-              // TODO ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,
+              //  ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,
               //  BECAUSE THE WHOLE IMPLEMENTATION IS BASED ON THIS ASSUMPTION.
               //  OTHERWISE, PAGEREADER IS FOR THE FIRST PAGE IN THE CHUNK WHILE
               //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS ASSIGN
@@ -614,7 +614,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
             }
             // chunk data read operation (c)
             //            chunkSuit4CPV.getPageReader().updateBPTP(chunkSuit4CPV);
-            chunkSuit4CPV.getPageReader().updateTP_withValueIndex(chunkSuit4CPV); // TODO
+            chunkSuit4CPV.getPageReader().updateTP_withValueIndex(chunkSuit4CPV); //
             // check if empty
             if (chunkSuit4CPV.statistics.getCount() == 0) {
               currentChunkList.remove(chunkSuit4CPV);
@@ -633,8 +633,8 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
         // because statistics of ChunkSuit4CPV is updated, while statistics of
         // ChunkSuit4CPV.ChunkMetadata
         // is fixed.
-        long candidateTimestamp = candidate.getStatistics().getTopTimestamp(); // TODO check
-        Object candidateValue = candidate.getStatistics().getMaxValue(); // TODO check
+        long candidateTimestamp = candidate.getStatistics().getTopTimestamp(); //  check
+        Object candidateValue = candidate.getStatistics().getMaxValue(); //  check
 
         // verify if this candidate point is deleted
         boolean isDeletedItself = false;
@@ -649,9 +649,9 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           // the candidate point is deleted, then label the chunk as already lazy loaded, and back
           // to loop 2
           nonLazyLoad.remove(candidate);
-          // TODO check this can really remove the element
-          // TODO check whether nonLazyLoad remove affects candidateSet
-          // TODO check nonLazyLoad sorted by version number from high to low
+          //  check this can really remove the element
+          //  check whether nonLazyLoad remove affects candidateSet
+          //  check nonLazyLoad sorted by version number from high to low
           continue; // back to loop 2
 
         } else { // not deleted
@@ -694,7 +694,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                 PageReader pageReader =
                     FileLoaderUtils.loadPageReaderList4CPV(
                         chunkSuit4CPV.getChunkMetadata(), this.timeFilter);
-                // TODO ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,
+                //  ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,
                 //  BECAUSE THE WHOLE IMPLEMENTATION IS BASED ON THIS ASSUMPTION.
                 //  OTHERWISE, PAGEREADER IS FOR THE FIRST PAGE IN THE CHUNK WHILE
                 //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS
@@ -726,12 +726,12 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
             } else {
               candidate
                   .getChunkMetadata()
-                  .insertIntoSortedDeletions(candidateTimestamp, candidateTimestamp); // TODO check
+                  .insertIntoSortedDeletions(candidateTimestamp, candidateTimestamp); //  check
             }
             nonLazyLoad.remove(candidate);
-            // TODO check this can really remove the element
-            // TODO check whether nonLazyLoad remove affects candidateSet
-            // TODO check nonLazyLoad sorted by version number from high to low
+            //  check this can really remove the element
+            //  check whether nonLazyLoad remove affects candidateSet
+            //  check nonLazyLoad sorted by version number from high to low
             continue; // back to loop 2
           }
         }
@@ -750,7 +750,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
     while (currentChunkList.size() > 0) { // loop 1
       // sorted by startTime and version, find FP candidate
       currentChunkList.sort(
-          new Comparator<ChunkSuit4CPV>() { // TODO double check the sort order logic for different
+          new Comparator<ChunkSuit4CPV>() { //  double check the sort order logic for different
             // aggregations
             public int compare(ChunkSuit4CPV o1, ChunkSuit4CPV o2) {
               // NOTE here get statistics from ChunkSuit4CPV, not from ChunkSuit4CPV.ChunkMetadata
@@ -780,7 +780,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           PageReader pageReader =
               FileLoaderUtils.loadPageReaderList4CPV(
                   susp_candidate.getChunkMetadata(), this.timeFilter);
-          // TODO ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,
+          //  ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,
           //  BECAUSE THE WHOLE IMPLEMENTATION IS BASED ON THIS ASSUMPTION.
           //  OTHERWISE, PAGEREADER IS FOR THE FIRST PAGE IN THE CHUNK WHILE
           //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS ASSIGN
@@ -797,8 +797,8 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
         // Note the higher versions of deletes are guaranteed by
         // QueryUtils.modifyChunkMetaData(chunkMetadataList,pathModifications)
         // NOTE here get statistics from ChunkSuit4CPV, not from ChunkSuit4CPV.ChunkMetadata
-        long candidateTimestamp = susp_candidate.getStatistics().getStartTime(); // TODO check
-        Object candidateValue = susp_candidate.getStatistics().getFirstValue(); // TODO check
+        long candidateTimestamp = susp_candidate.getStatistics().getStartTime(); //  check
+        Object candidateValue = susp_candidate.getStatistics().getFirstValue(); //  check
 
         boolean isDeletedItself = false;
         long deleteEndTime = -1;
@@ -830,7 +830,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
             // update chunkStartTime without loading data, and back to loop 1
             susp_candidate.setLazyLoad(true);
             // NOTE here get statistics from ChunkSuit4CPV, not from ChunkSuit4CPV.ChunkMetadata
-            susp_candidate.getStatistics().setStartTime(deleteEndTime + 1); // TODO check
+            susp_candidate.getStatistics().setStartTime(deleteEndTime + 1); //  check
             // +1 is because delete is closed interval
           }
           continue; // back to loop 1
@@ -861,7 +861,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
     while (currentChunkList.size() > 0) { // loop 1
       // sorted by endTime and version, find LP candidate
       currentChunkList.sort(
-          new Comparator<ChunkSuit4CPV>() { // TODO double check the sort order logic for different
+          new Comparator<ChunkSuit4CPV>() {
             // aggregations
             public int compare(ChunkSuit4CPV o1, ChunkSuit4CPV o2) {
               int res =
@@ -891,29 +891,29 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           PageReader pageReader =
               FileLoaderUtils.loadPageReaderList4CPV(
                   susp_candidate.getChunkMetadata(), this.timeFilter);
-          // TODO ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,
+          // ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,
           //  BECAUSE THE WHOLE IMPLEMENTATION IS BASED ON THIS ASSUMPTION.
           //  OTHERWISE, PAGEREADER IS FOR THE FIRST PAGE IN THE CHUNK WHILE
           //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS ASSIGN
           //  DIRECTLY), WHICH WILL INTRODUCE BUGS!
           susp_candidate.setPageReader(pageReader);
         }
-        // TODO update LP equal to or before statistics.getEndTime
+        //  update LP equal to or before statistics.getEndTime
         // (b) get the closest data point after or before a timestamp
         susp_candidate.updateLPwithTheClosetPointEqualOrBefore(
-            susp_candidate.getStatistics().getEndTime()); // TODO DEBUG
-        susp_candidate.setLazyLoad(false); // TODO DO NOT FORGET THIS!!!
+            susp_candidate.getStatistics().getEndTime()); //  DEBUG
+        susp_candidate.setLazyLoad(false); //  DO NOT FORGET THIS!!!
         continue; // back to loop 1
       } else {
         // the chunk has not been lazy loaded, then verify whether the candidate point is deleted
         // Note the higher versions of deletes are guaranteed by
         // QueryUtils.modifyChunkMetaData(chunkMetadataList,pathModifications)
-        // TODO NOTE here get statistics from ChunkSuit4CPV, not from ChunkSuit4CPV.ChunkMetadata
-        long candidateTimestamp = susp_candidate.getStatistics().getEndTime(); // TODO check
-        Object candidateValue = susp_candidate.getStatistics().getLastValue(); // TODO check
+        //  NOTE here get statistics from ChunkSuit4CPV, not from ChunkSuit4CPV.ChunkMetadata
+        long candidateTimestamp = susp_candidate.getStatistics().getEndTime(); //  check
+        Object candidateValue = susp_candidate.getStatistics().getLastValue(); //  check
 
         boolean isDeletedItself = false;
-        long deleteStartTime = Long.MAX_VALUE; // TODO check
+        long deleteStartTime = Long.MAX_VALUE; //  check
         List<TimeRange> deleteIntervalList =
             susp_candidate.getChunkMetadata().getDeleteIntervalList();
         if (deleteIntervalList != null) {
@@ -939,11 +939,11 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
             currentChunkList.remove(susp_candidate);
           } else {
             susp_candidate.setLazyLoad(true);
-            // TODO NOTE here get statistics from ChunkSuit4CPV, not from
+            //  NOTE here get statistics from ChunkSuit4CPV, not from
             // ChunkSuit4CPV.ChunkMetadata
             susp_candidate.getStatistics().setEndTime(deleteStartTime - 1);
             // -1 is because delete is closed interval
-            // TODO check
+            //  check
           }
           continue; // back to loop 1
         } else {

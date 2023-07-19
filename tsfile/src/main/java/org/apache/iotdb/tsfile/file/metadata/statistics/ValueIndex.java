@@ -107,11 +107,6 @@ public class ValueIndex {
         }
       }
     }
-    //    // add the last point except the first point
-    //    if (values.size() >= 2) { // means there is last point except the first point
-    //      idxEncoder.encode(pos, idxOut);
-    //      valueEncoder.encode(values.getLast(), valueOut);
-    //    }
 
     if (hasDataToFlush) {
       // otherwise no need flush, because GorillaV2 encoding will output NaN even if
