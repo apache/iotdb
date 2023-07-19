@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.protocol.client;
 
 import org.apache.iotdb.commons.client.ClientManager;
+import org.apache.iotdb.commons.client.ClientManagerMetrics;
 import org.apache.iotdb.commons.client.IClientPoolFactory;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
@@ -44,18 +45,21 @@ public class DataNodeClientPoolFactory {
     @Override
     public KeyedObjectPool<ConfigRegionId, ConfigNodeClient> createClientPool(
         ClientManager<ConfigRegionId, ConfigNodeClient> manager) {
-      return new GenericKeyedObjectPool<>(
-          new ConfigNodeClient.Factory(
-              manager,
-              new ThriftClientProperty.Builder()
-                  .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
-                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
-                  .build()),
-          new ClientPoolProperty.Builder<ConfigNodeClient>()
-              .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
-              .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
-              .build()
-              .getConfig());
+      GenericKeyedObjectPool<ConfigRegionId, ConfigNodeClient> clientPool =
+          new GenericKeyedObjectPool<>(
+              new ConfigNodeClient.Factory(
+                  manager,
+                  new ThriftClientProperty.Builder()
+                      .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
+                      .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
+                      .build()),
+              new ClientPoolProperty.Builder<ConfigNodeClient>()
+                  .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
+                  .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
+                  .build()
+                  .getConfig());
+      ClientManagerMetrics.getInstance().registerClientManager("ConfigNodeClientPool", clientPool);
+      return clientPool;
     }
   }
 
@@ -65,22 +69,26 @@ public class DataNodeClientPoolFactory {
     @Override
     public KeyedObjectPool<ConfigRegionId, ConfigNodeClient> createClientPool(
         ClientManager<ConfigRegionId, ConfigNodeClient> manager) {
-      return new GenericKeyedObjectPool<>(
-          new ConfigNodeClient.Factory(
-              manager,
-              new ThriftClientProperty.Builder()
-                  .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS() * 10)
-                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
-                  .setSelectorNumOfAsyncClientManager(
-                      conf.getSelectorNumOfClientManager() / 10 > 0
-                          ? conf.getSelectorNumOfClientManager() / 10
-                          : 1)
-                  .build()),
-          new ClientPoolProperty.Builder<ConfigNodeClient>()
-              .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
-              .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
-              .build()
-              .getConfig());
+      GenericKeyedObjectPool<ConfigRegionId, ConfigNodeClient> clientPool =
+          new GenericKeyedObjectPool<>(
+              new ConfigNodeClient.Factory(
+                  manager,
+                  new ThriftClientProperty.Builder()
+                      .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS() * 10)
+                      .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
+                      .setSelectorNumOfAsyncClientManager(
+                          conf.getSelectorNumOfClientManager() / 10 > 0
+                              ? conf.getSelectorNumOfClientManager() / 10
+                              : 1)
+                      .build()),
+              new ClientPoolProperty.Builder<ConfigNodeClient>()
+                  .setCoreClientNumForEachNode(conf.getCoreClientNumForEachNode())
+                  .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
+                  .build()
+                  .getConfig());
+      ClientManagerMetrics.getInstance()
+          .registerClientManager("ClusterDeletionConfigNodeClientPool", clientPool);
+      return clientPool;
     }
   }
 }

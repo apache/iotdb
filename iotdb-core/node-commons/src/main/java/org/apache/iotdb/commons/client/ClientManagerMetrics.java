@@ -48,9 +48,20 @@ public class ClientManagerMetrics implements IMetricSet {
   private static final List<String> POOL_NAME_LIST = new ArrayList<>();
 
   static {
-    POOL_NAME_LIST.add("SyncConfigNodeIServiceClientPoolFactory");
     POOL_NAME_LIST.add("AsyncConfigNodeHeartbeatServiceClientPool");
+    POOL_NAME_LIST.add("AsyncConfigNodeIServiceClientPool");
     POOL_NAME_LIST.add("AsyncDataNodeHeartbeatServiceClientPool");
+    POOL_NAME_LIST.add("AsyncDataNodeInternalServiceClientPool");
+    POOL_NAME_LIST.add("AsyncDataNodeMPPDataExchangeServiceClientPool");
+    POOL_NAME_LIST.add("AsyncIoTConsensusServiceClientPool");
+    POOL_NAME_LIST.add("AsyncPipeDataTransferServiceClientPool");
+    POOL_NAME_LIST.add("ClusterDeletionConfigNodeClientPool");
+    POOL_NAME_LIST.add("ConfigNodeClientPool");
+    POOL_NAME_LIST.add("RatisClientPool");
+    POOL_NAME_LIST.add("SyncConfigNodeIServiceClientPool");
+    POOL_NAME_LIST.add("SyncDataNodeInternalServiceClientPool");
+    POOL_NAME_LIST.add("SyncDataNodeMPPDataExchangeServiceClientPool");
+    POOL_NAME_LIST.add("SyncIoTConsensusServiceClientPool");
   }
 
   private static class ClientManagerMetricsHolder {

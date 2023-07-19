@@ -21,6 +21,7 @@ package org.apache.iotdb.consensus.iot.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ClientManager;
+import org.apache.iotdb.commons.client.ClientManagerMetrics;
 import org.apache.iotdb.commons.client.IClientPoolFactory;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
@@ -48,20 +49,25 @@ public class IoTConsensusClientPool {
     @Override
     public KeyedObjectPool<TEndPoint, SyncIoTConsensusServiceClient> createClientPool(
         ClientManager<TEndPoint, SyncIoTConsensusServiceClient> manager) {
-      return new GenericKeyedObjectPool<>(
-          new SyncIoTConsensusServiceClient.Factory(
-              manager,
-              new ThriftClientProperty.Builder()
-                  .setConnectionTimeoutMs(config.getRpc().getConnectionTimeoutInMs())
-                  .setRpcThriftCompressionEnabled(config.getRpc().isRpcThriftCompressionEnabled())
-                  .setPrintLogWhenEncounterException(
-                      config.getRpc().isPrintLogWhenThriftClientEncounterException())
-                  .build()),
-          new ClientPoolProperty.Builder<SyncIoTConsensusServiceClient>()
-              .setCoreClientNumForEachNode(config.getRpc().getCoreClientNumForEachNode())
-              .setMaxClientNumForEachNode(config.getRpc().getMaxClientNumForEachNode())
-              .build()
-              .getConfig());
+      GenericKeyedObjectPool<TEndPoint, SyncIoTConsensusServiceClient> clientPool =
+          new GenericKeyedObjectPool<>(
+              new SyncIoTConsensusServiceClient.Factory(
+                  manager,
+                  new ThriftClientProperty.Builder()
+                      .setConnectionTimeoutMs(config.getRpc().getConnectionTimeoutInMs())
+                      .setRpcThriftCompressionEnabled(
+                          config.getRpc().isRpcThriftCompressionEnabled())
+                      .setPrintLogWhenEncounterException(
+                          config.getRpc().isPrintLogWhenThriftClientEncounterException())
+                      .build()),
+              new ClientPoolProperty.Builder<SyncIoTConsensusServiceClient>()
+                  .setCoreClientNumForEachNode(config.getRpc().getCoreClientNumForEachNode())
+                  .setMaxClientNumForEachNode(config.getRpc().getMaxClientNumForEachNode())
+                  .build()
+                  .getConfig());
+      ClientManagerMetrics.getInstance()
+          .registerClientManager("SyncIoTConsensusServiceClientPool", clientPool);
+      return clientPool;
     }
   }
 
@@ -77,23 +83,28 @@ public class IoTConsensusClientPool {
     @Override
     public KeyedObjectPool<TEndPoint, AsyncIoTConsensusServiceClient> createClientPool(
         ClientManager<TEndPoint, AsyncIoTConsensusServiceClient> manager) {
-      return new GenericKeyedObjectPool<>(
-          new AsyncIoTConsensusServiceClient.Factory(
-              manager,
-              new ThriftClientProperty.Builder()
-                  .setConnectionTimeoutMs(config.getRpc().getConnectionTimeoutInMs())
-                  .setRpcThriftCompressionEnabled(config.getRpc().isRpcThriftCompressionEnabled())
-                  .setSelectorNumOfAsyncClientManager(
-                      config.getRpc().getSelectorNumOfClientManager())
-                  .setPrintLogWhenEncounterException(
-                      config.getRpc().isPrintLogWhenThriftClientEncounterException())
-                  .build(),
-              ThreadName.ASYNC_DATANODE_IOT_CONSENSUS_CLIENT_POOL.getName()),
-          new ClientPoolProperty.Builder<AsyncIoTConsensusServiceClient>()
-              .setCoreClientNumForEachNode(config.getRpc().getCoreClientNumForEachNode())
-              .setMaxClientNumForEachNode(config.getRpc().getMaxClientNumForEachNode())
-              .build()
-              .getConfig());
+      GenericKeyedObjectPool<TEndPoint, AsyncIoTConsensusServiceClient> clientPool =
+          new GenericKeyedObjectPool<>(
+              new AsyncIoTConsensusServiceClient.Factory(
+                  manager,
+                  new ThriftClientProperty.Builder()
+                      .setConnectionTimeoutMs(config.getRpc().getConnectionTimeoutInMs())
+                      .setRpcThriftCompressionEnabled(
+                          config.getRpc().isRpcThriftCompressionEnabled())
+                      .setSelectorNumOfAsyncClientManager(
+                          config.getRpc().getSelectorNumOfClientManager())
+                      .setPrintLogWhenEncounterException(
+                          config.getRpc().isPrintLogWhenThriftClientEncounterException())
+                      .build(),
+                  ThreadName.ASYNC_DATANODE_IOT_CONSENSUS_CLIENT_POOL.getName()),
+              new ClientPoolProperty.Builder<AsyncIoTConsensusServiceClient>()
+                  .setCoreClientNumForEachNode(config.getRpc().getCoreClientNumForEachNode())
+                  .setMaxClientNumForEachNode(config.getRpc().getMaxClientNumForEachNode())
+                  .build()
+                  .getConfig());
+      ClientManagerMetrics.getInstance()
+          .registerClientManager("AsyncIoTConsensusServiceClientPool", clientPool);
+      return clientPool;
     }
   }
 }
