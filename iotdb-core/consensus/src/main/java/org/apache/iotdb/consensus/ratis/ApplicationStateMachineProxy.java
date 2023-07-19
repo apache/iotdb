@@ -303,7 +303,6 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
   @Override
   public void notifyConfigurationChanged(
       long term, long index, RaftConfigurationProto newRaftConfiguration) {
-    notifyTermIndexUpdated(term, index);
     applicationStateMachine
         .event()
         .notifyConfigurationChanged(
