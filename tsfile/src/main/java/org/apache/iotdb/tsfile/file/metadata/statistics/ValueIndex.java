@@ -77,8 +77,8 @@ public class ValueIndex {
 
   private void initForLearn() {
     this.stdDev = getStdDev();
-    this.errorBound = 2 * stdDev;
-    this.sdtEncoder.setCompDeviation(errorBound / 2 * errorParam); // equals stdDev is best
+    this.errorBound = 2 * stdDev * errorParam;
+    this.sdtEncoder.setCompDeviation(errorBound / 2.0); // equals stdDev
   }
 
   public void learn() {

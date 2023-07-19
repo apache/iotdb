@@ -136,7 +136,7 @@ public class PageReader implements IPageReader {
       long leftEndIncluded = curStartTime + n * interval;
       long rightEndExcluded = curStartTime + (n + 1) * interval;
       ChunkSuit4CPV chunkSuit4CPV = new ChunkSuit4CPV(chunkMetadata, this, true);
-      // TODO update FP,LP with the help of stepRegress index. BP/TP not update here.
+      //  update FP,LP with the help of stepRegress index. BP/TP not update here.
       int FP_pos = -1;
       int LP_pos = -1;
       // (b) get the closest data point after or before a timestamp
@@ -159,7 +159,7 @@ public class PageReader implements IPageReader {
                   Math.floor(
                       (chunkSuit4CPV.statistics.getStartTime() - startTime)
                           * 1.0
-                          / interval); // global index TODO debug this
+                          / interval); // global index  debug this
           splitChunkList.computeIfAbsent(idx, k -> new ArrayList<>());
           splitChunkList.get(idx).add(chunkSuit4CPV);
         }
@@ -179,7 +179,7 @@ public class PageReader implements IPageReader {
       double foundValue = 0;
       // iterate SDT points from value big to small to find the first point not deleted
       for (int n = valueIndex.sortedModelPoints.size() - 1; n >= 0; n--) { // NOTE from big to small
-        IOMonitor2.DCP_D_valueIndex_traversedPointNum++; // TODO
+        IOMonitor2.DCP_D_valueIndex_traversedPointNum++; //
         ValuePoint valuePoint = valueIndex.sortedModelPoints.get(n);
         int idx = valuePoint.index; // index starting from 1
         int pos = idx - 1; // pos starting from 0
@@ -235,7 +235,7 @@ public class PageReader implements IPageReader {
       while (localCursor < valueIndex.modelPointIdx_list.size()
           && (idx1 = valueIndex.modelPointIdx_list.get(localCursor - 1)) - 1
               <= chunkSuit4CPV.endPos) {
-        IOMonitor2.DCP_D_valueIndex_traversedPointNum++; // TODO
+        IOMonitor2.DCP_D_valueIndex_traversedPointNum++; //
         idx2 = valueIndex.modelPointIdx_list.get(localCursor);
         double v1_UB = valueIndex.modelPointVal_list.get(localCursor - 1) + valueIndex.errorBound;
         double v2_UB = valueIndex.modelPointVal_list.get(localCursor) + valueIndex.errorBound;
@@ -313,7 +313,7 @@ public class PageReader implements IPageReader {
           for (int j = search_interval_start;
               j <= search_interval_end;
               j++) { // idx starting from 1
-            IOMonitor2.DCP_D_valueIndex_traversedPointNum++; // TODO
+            IOMonitor2.DCP_D_valueIndex_traversedPointNum++; //
             double v = valueBuffer.getDouble(timeBufferLength + (j - 1) * 8); // pos starting from 0
             long t = timeBuffer.getLong((j - 1) * 8); // pos starting from 0
             if (v > candidateTPvalue && !isDeleted_NoHistoryDeleteCursor(t)) {
@@ -330,7 +330,7 @@ public class PageReader implements IPageReader {
           int search_interval_start = prune_intervals_end.get(i) + 1; // included
           int search_interval_end = prune_intervals_start.get(i) - 1; // included
           for (int j = search_interval_start; j <= search_interval_end; j++) { // starting from 1
-            IOMonitor2.DCP_D_valueIndex_traversedPointNum++; // TODO
+            IOMonitor2.DCP_D_valueIndex_traversedPointNum++; //
             long v = valueBuffer.getLong(timeBufferLength + (j - 1) * 8);
             long t = timeBuffer.getLong((j - 1) * 8);
             if (v > candidateTPvalue && !isDeleted_NoHistoryDeleteCursor(t)) {
@@ -361,7 +361,7 @@ public class PageReader implements IPageReader {
       double foundValue = 0;
       // iterate SDT points from value small to big to find the first point not deleted
       for (int n = 0; n < valueIndex.sortedModelPoints.size(); n++) { // NOTE from small to big
-        IOMonitor2.DCP_D_valueIndex_traversedPointNum++; // TODO
+        IOMonitor2.DCP_D_valueIndex_traversedPointNum++; //
         ValuePoint valuePoint = valueIndex.sortedModelPoints.get(n);
         int idx = valuePoint.index; // index starting from 1
         int pos = idx - 1; // pos starting from 0
@@ -396,7 +396,7 @@ public class PageReader implements IPageReader {
       // time span
       while ((idx2 = valueIndex.modelPointIdx_list.get(chunkSuit4CPV.modelPointsCursor)) - 1
           < chunkSuit4CPV.startPos) {
-        IOMonitor2.DCP_D_valueIndex_traversedPointNum++; // TODO
+        IOMonitor2.DCP_D_valueIndex_traversedPointNum++; //
         // -1 because idx starting from 1 while pos starting from 0
         chunkSuit4CPV.modelPointsCursor++;
         // pointing to the right end of the first model segment that passes the left endpoint of the
@@ -418,7 +418,7 @@ public class PageReader implements IPageReader {
       while (localCursor < valueIndex.modelPointIdx_list.size()
           && (idx1 = valueIndex.modelPointIdx_list.get(localCursor - 1)) - 1
               <= chunkSuit4CPV.endPos) {
-        IOMonitor2.DCP_D_valueIndex_traversedPointNum++; // TODO
+        IOMonitor2.DCP_D_valueIndex_traversedPointNum++; //
         idx2 = valueIndex.modelPointIdx_list.get(localCursor);
         double v1_LB = valueIndex.modelPointVal_list.get(localCursor - 1) - valueIndex.errorBound;
         double v2_LB = valueIndex.modelPointVal_list.get(localCursor) - valueIndex.errorBound;
@@ -496,7 +496,7 @@ public class PageReader implements IPageReader {
           for (int j = search_interval_start;
               j <= search_interval_end;
               j++) { // idx starting from 1
-            IOMonitor2.DCP_D_valueIndex_traversedPointNum++; // TODO
+            IOMonitor2.DCP_D_valueIndex_traversedPointNum++; //
             double v = valueBuffer.getDouble(timeBufferLength + (j - 1) * 8); // pos starting from 0
             long t = timeBuffer.getLong((j - 1) * 8); // pos starting from 0
             if (v < candidateBPvalue && !isDeleted_NoHistoryDeleteCursor(t)) {
@@ -513,7 +513,7 @@ public class PageReader implements IPageReader {
           int search_interval_start = prune_intervals_end.get(i) + 1; // included
           int search_interval_end = prune_intervals_start.get(i) - 1; // included
           for (int j = search_interval_start; j <= search_interval_end; j++) { // starting from 1
-            IOMonitor2.DCP_D_valueIndex_traversedPointNum++; // TODO
+            IOMonitor2.DCP_D_valueIndex_traversedPointNum++; //
             long v = valueBuffer.getLong(timeBufferLength + (j - 1) * 8);
             long t = timeBuffer.getLong((j - 1) * 8);
             if (v < candidateBPvalue && !isDeleted_NoHistoryDeleteCursor(t)) {
@@ -533,7 +533,7 @@ public class PageReader implements IPageReader {
   }
 
   public void updateBPTP_withoutTimeMeasure(ChunkSuit4CPV chunkSuit4CPV) {
-    deleteCursor = 0; // TODO DEBUG
+    deleteCursor = 0; //  DEBUG
     Statistics statistics = null;
     switch (dataType) {
       case INT64:
@@ -559,7 +559,7 @@ public class PageReader implements IPageReader {
           long aLong = valueBuffer.getLong(timeBufferLength + pos * 8);
           if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aLong))) {
             // update statistics of chunkMetadata1
-            statistics.updateStats(aLong, timestamp); // TODO DEBUG
+            statistics.updateStats(aLong, timestamp); //  DEBUG
             count++;
             // ATTENTION: do not use update() interface which will also update StepRegress!
             // only updateStats, actually only need to update BP and TP
