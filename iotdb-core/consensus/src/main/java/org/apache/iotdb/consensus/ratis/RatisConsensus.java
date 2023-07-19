@@ -49,7 +49,7 @@ import org.apache.iotdb.consensus.exception.NodeReadOnlyException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
-import org.apache.iotdb.consensus.exception.RatisUnderRecoverException;
+import org.apache.iotdb.consensus.exception.RatisUnderRecoveryException;
 import org.apache.iotdb.consensus.ratis.metrics.RatisMetricSet;
 import org.apache.iotdb.consensus.ratis.metrics.RatisMetricsManager;
 import org.apache.iotdb.consensus.ratis.utils.RatisLogMonitor;
@@ -336,11 +336,15 @@ class RatisConsensus implements IConsensus {
     RaftClientReply reply;
     try {
       reply = doRead(groupId, IConsensusRequest, isLinearizableRead);
+      // allow stale read if current linearizable read returns successfully
+      if (isLinearizableRead) {
+        canServeStaleRead.get(consensusGroupId).set(true);
+      }
     } catch (Exception e) {
       if (isLinearizableRead) {
         // linearizable read failed. the RaftServer is recovering from Raft Log and cannot serve
         // read requests.
-        return failedRead(new RatisUnderRecoverException(e));
+        return failedRead(new RatisUnderRecoveryException(e));
       } else {
         return failedRead(new RatisRequestFailedException(e));
       }
