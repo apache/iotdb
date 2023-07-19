@@ -63,7 +63,6 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
 
   // Aggregate result buffer of this path
   private final List<AggregateResult> results = new ArrayList<>();
-  //  private final TimeRange timeRange;
 
   private List<ChunkSuit4CPV> currentChunkList;
   private final List<ChunkSuit4CPV> futureChunkList = new ArrayList<>();

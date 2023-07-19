@@ -18,10 +18,8 @@ public class ValueIndex {
   int errorParam = TSFileDescriptor.getInstance().getConfig().getErrorParam();
   private DoubleArrayList values = new DoubleArrayList();
   public SDTEncoder sdtEncoder = new SDTEncoder();
-  public double errorBound = 0; // =std*2 =2*std.compDeviation
-  //  public IntDeltaEncoder idxEncoder = new IntDeltaEncoder();
+  public double errorBound = 0;
   public PlainEncoder idxEncoder = new PlainEncoder(TSDataType.INT32, 0);
-  //  public DoublePrecisionEncoderV2 valueEncoder = new DoublePrecisionEncoderV2();
   public PlainEncoder valueEncoder = new PlainEncoder(TSDataType.DOUBLE, 0);
   public PublicBAOS idxOut = new PublicBAOS();
   public PublicBAOS valueOut = new PublicBAOS();
@@ -78,7 +76,7 @@ public class ValueIndex {
   private void initForLearn() {
     this.stdDev = getStdDev();
     this.errorBound = 2 * stdDev * errorParam;
-    this.sdtEncoder.setCompDeviation(errorBound / 2.0); // equals stdDev
+    this.sdtEncoder.setCompDeviation(errorBound / 2.0); // stdDev
   }
 
   public void learn() {
