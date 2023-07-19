@@ -80,11 +80,11 @@ public abstract class AbstractOperatePipeProcedureV2
                 .getPipeManager()
                 .getPipeTaskCoordinator()
                 .lock();
-        LOGGER.info("procedureId {} acquire lock.", getProcId());
+        LOGGER.info("ProcedureId {} acquire lock.", getProcId());
         return ProcedureLockState.LOCK_ACQUIRED;
       }
       configNodeProcedureEnv.getNodeLock().waitProcedure(this);
-      LOGGER.info("procedureId {} wait for lock.", getProcId());
+      LOGGER.info("ProcedureId {} wait for lock.", getProcId());
       return ProcedureLockState.LOCK_EVENT_WAIT;
     } finally {
       configNodeProcedureEnv.getSchedulerLock().unlock();
@@ -95,7 +95,7 @@ public abstract class AbstractOperatePipeProcedureV2
   protected void releaseLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
     configNodeProcedureEnv.getSchedulerLock().lock();
     try {
-      LOGGER.info("procedureId {} release lock.", getProcId());
+      LOGGER.info("ProcedureId {} release lock.", getProcId());
       if (pipeTaskInfo != null) {
         configNodeProcedureEnv
             .getConfigManager()

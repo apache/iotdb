@@ -56,7 +56,7 @@ public class SessionPoolExample {
   /** Build a redirect-able SessionPool for this example */
   private static void constructRedirectSessionPool() {
     List<String> nodeUrls = new ArrayList<>();
-    nodeUrls.add("127.0.0.1:6668");
+    nodeUrls.add("127.0.0.1:6667");
     sessionPool =
         new SessionPool.Builder()
             .nodeUrls(nodeUrls)
