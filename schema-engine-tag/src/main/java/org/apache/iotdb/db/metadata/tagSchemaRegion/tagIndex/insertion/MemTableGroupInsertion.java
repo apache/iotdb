@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.insertion;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.InsertionRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTableGroup;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request.InsertionRequest;
 import org.apache.iotdb.lsm.annotation.InsertionProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.InsertRequestContext;
 import org.apache.iotdb.lsm.levelProcess.InsertLevelProcessor;
@@ -64,6 +64,7 @@ public class MemTableGroupInsertion
     Map<Integer, MemTable> immutableMemTables = memNode.getImmutableMemTables();
     // if the device id can not be saved to the current working MemTable
     if (!memNode.inWorkingMemTable(id)) {
+      int a = memNode.getMaxDeviceID() / memNode.getNumOfDeviceIdsInMemTable();
       workingMemTable.setStatus(MemTable.IMMUTABLE);
       immutableMemTables.put(
           memNode.getMaxDeviceID() / memNode.getNumOfDeviceIdsInMemTable(), workingMemTable);

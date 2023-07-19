@@ -19,6 +19,7 @@
 package org.apache.iotdb.lsm.context.applicationcontext;
 
 import org.apache.iotdb.lsm.annotation.DeletionProcessor;
+import org.apache.iotdb.lsm.annotation.FlushProcessor;
 import org.apache.iotdb.lsm.annotation.InsertionProcessor;
 import org.apache.iotdb.lsm.annotation.QueryProcessor;
 
@@ -26,7 +27,6 @@ import org.reflections.Reflections;
 import org.reflections.util.ConfigurationBuilder;
 import org.reflections.util.FilterBuilder;
 
-import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -39,18 +39,23 @@ public class ApplicationContextGenerator {
    * annotations of these classes
    *
    * @param packageName package name
+   * @param enableFlush whether to enable flush
    * @return ApplicationContext object
    */
-  public static ApplicationContext GeneratePropertyWithAnnotation(String packageName) {
+  public static ApplicationContext GeneratePropertyWithAnnotation(
+      String packageName, boolean enableFlush) {
     Reflections reflections =
         new Reflections(
             new ConfigurationBuilder()
                 .forPackage(packageName)
                 .filterInputsBy(new FilterBuilder().includePackage(packageName)));
-    ApplicationContext applicationContext = new ApplicationContext();
+    ApplicationContext applicationContext = ApplicationContext.getInstance();
     setDeletionLevelProcessor(applicationContext, reflections);
     setInsertionLevelProcessor(applicationContext, reflections);
     setQueryLevelProcessor(applicationContext, reflections);
+    if (enableFlush) {
+      setFlushLevelProcessor(applicationContext, reflections);
+    }
     return applicationContext;
   }
 
@@ -94,7 +99,7 @@ public class ApplicationContextGenerator {
    * @param applicationContext ApplicationContext object
    * @param reflections This object holds all the classes scanned in the package
    */
-  private static <A extends Annotation> void setQueryLevelProcessor(
+  private static void setQueryLevelProcessor(
       ApplicationContext applicationContext, Reflections reflections) {
     List<String> levelProcessClass = new ArrayList<>();
     Set<Class<?>> annotated = reflections.getTypesAnnotatedWith(QueryProcessor.class);
@@ -103,6 +108,23 @@ public class ApplicationContextGenerator {
       setLevelProcessors(levelProcessClass, clz, annotationInfo.level());
     }
     applicationContext.setQueryLevelProcessClass(levelProcessClass);
+  }
+
+  /**
+   * Assign value to the flush level processor of the ApplicationContext object
+   *
+   * @param applicationContext ApplicationContext object
+   * @param reflections This object holds all the classes scanned in the package
+   */
+  private static void setFlushLevelProcessor(
+      ApplicationContext applicationContext, Reflections reflections) {
+    List<String> levelProcessClass = new ArrayList<>();
+    Set<Class<?>> annotated = reflections.getTypesAnnotatedWith(FlushProcessor.class);
+    for (Class<?> clz : annotated) {
+      FlushProcessor annotationInfo = clz.getAnnotation(FlushProcessor.class);
+      setLevelProcessors(levelProcessClass, clz, annotationInfo.level());
+    }
+    applicationContext.setFlushLevelProcessClass(levelProcessClass);
   }
 
   private static void setLevelProcessors(

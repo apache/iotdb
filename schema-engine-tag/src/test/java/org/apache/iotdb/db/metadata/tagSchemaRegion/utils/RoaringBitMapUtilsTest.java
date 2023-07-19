@@ -16,31 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request;
+package org.apache.iotdb.db.metadata.tagSchemaRegion.utils;
 
-import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
-import org.apache.iotdb.lsm.request.IQueryRequest;
+import org.junit.Test;
+import org.roaringbitmap.RoaringBitmap;
 
 import java.util.List;
 
-/** Represents a query request */
-public class QueryRequest implements IQueryRequest<String> {
+import static org.junit.Assert.assertEquals;
 
-  // tags
-  List<String> keys;
+public class RoaringBitMapUtilsTest {
 
-  public QueryRequest(List<String> keys) {
-    super();
-    this.keys = keys;
-  }
-
-  @Override
-  public String getKey(RequestContext context) {
-    return keys.get(context.getLevel() - 1);
-  }
-
-  @Override
-  public List<String> getKeys() {
-    return keys;
+  @Test
+  public void testSliceRoaringBitMap() {
+    int resultCount = 9;
+    int[] resultsLength = {5556, 5556, 5556, 5556, 5556, 5555, 5555, 5555, 5555};
+    RoaringBitmap roaringBitmap = new RoaringBitmap();
+    for (int i = 1; i <= 50000; i++) {
+      roaringBitmap.add(i);
+    }
+    List<RoaringBitmap> roaringBitmaps = RoaringBitMapUtils.sliceRoaringBitMap(roaringBitmap, 1000);
+    assertEquals(resultCount, roaringBitmaps.size());
+    for (int i = 0; i < resultCount; i++) {
+      assertEquals(resultsLength[i], roaringBitmaps.get(i).stream().toArray().length);
+    }
   }
 }

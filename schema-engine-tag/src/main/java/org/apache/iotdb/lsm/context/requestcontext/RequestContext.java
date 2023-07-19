@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.lsm.context.requestcontext;
 
-import org.apache.iotdb.lsm.response.IResponse;
+import org.apache.iotdb.lsm.response.BaseResponse;
 import org.apache.iotdb.lsm.strategy.IAccessStrategy;
 import org.apache.iotdb.lsm.strategy.PreOrderAccessStrategy;
 
@@ -35,7 +35,7 @@ public class RequestContext {
   int levelUpperBound;
 
   // response, encapsulating the response value and exception information.
-  IResponse response;
+  BaseResponse response;
 
   public RequestContext() {
     // preorder traversal strategy is used by default
@@ -68,11 +68,11 @@ public class RequestContext {
     this.levelUpperBound = levelUpperBound;
   }
 
-  public <R extends IResponse> R getResponse() {
+  public <R extends BaseResponse> R getResponse() {
     return (R) response;
   }
 
-  public <R extends IResponse> void setResponse(R response) {
+  public <R extends BaseResponse> void setResponse(R response) {
     this.response = response;
   }
 
@@ -83,7 +83,11 @@ public class RequestContext {
    * @return response result
    */
   public <T> T getValue() {
-    return (T) getResponse().getValue();
+    if (getResponse() == null) {
+      return null;
+    } else {
+      return (T) getResponse().getValue();
+    }
   }
 
   /**

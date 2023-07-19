@@ -40,7 +40,7 @@ public class InsertionManager<T, R extends IInsertionRequest>
    */
   @Override
   public void preProcess(T root, R insertionRequest, InsertRequestContext context) {
-    walManager.write(insertionRequest);
+    walManager.write(root, insertionRequest);
   }
 
   @Override

@@ -35,6 +35,15 @@ public class ApplicationContext {
   // Save the query level processor of each layer in hierarchical order
   List<String> queryLevelProcessClass;
 
+  // Save the flush level processor of each layer in hierarchical order
+  List<String> flushLevelProcessClass;
+
+  private ApplicationContext() {}
+
+  public static ApplicationContext getInstance() {
+    return ApplicationContext.ApplicationContextHolder.INSTANCE;
+  }
+
   public List<String> getInsertionLevelProcessClass() {
     return insertionLevelProcessClass;
   }
@@ -57,5 +66,20 @@ public class ApplicationContext {
 
   public void setQueryLevelProcessClass(List<String> queryLevelProcessClass) {
     this.queryLevelProcessClass = queryLevelProcessClass;
+  }
+
+  public List<String> getFlushLevelProcessClass() {
+    return flushLevelProcessClass;
+  }
+
+  public void setFlushLevelProcessClass(List<String> flushLevelProcessClass) {
+    this.flushLevelProcessClass = flushLevelProcessClass;
+  }
+
+  private static class ApplicationContextHolder {
+
+    private static final ApplicationContext INSTANCE = new ApplicationContext();
+
+    private ApplicationContextHolder() {}
   }
 }

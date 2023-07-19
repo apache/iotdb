@@ -53,4 +53,12 @@ public class MemChunkGroup {
   public boolean isEmpty() {
     return memChunkMap.isEmpty();
   }
+
+  public Map<String, MemChunk> getMemChunkMap() {
+    return memChunkMap;
+  }
+
+  public void setMemChunkMap(Map<String, MemChunk> memChunkMap) {
+    this.memChunkMap = memChunkMap;
+  }
 }

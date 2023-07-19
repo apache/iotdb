@@ -28,9 +28,9 @@ import java.util.List;
  */
 public interface IResponse<T> {
 
-  T getValue();
-
   void setValue(T value);
+
+  T getValue();
 
   List<Exception> getExceptions();
 

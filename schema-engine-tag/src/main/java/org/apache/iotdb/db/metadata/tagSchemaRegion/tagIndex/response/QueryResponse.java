@@ -18,54 +18,104 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.response;
 
-import org.apache.iotdb.lsm.response.IResponse;
+import org.apache.iotdb.lsm.response.BaseResponse;
+import org.apache.iotdb.lsm.response.IQueryResponse;
 
 import org.roaringbitmap.RoaringBitmap;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 
-/** Represents a query response */
-public class QueryResponse implements IResponse<RoaringBitmap> {
+public class QueryResponse extends BaseResponse<RoaringBitmap>
+    implements IQueryResponse<RoaringBitmap, Integer> {
 
-  // response value
-  private RoaringBitmap roaringBitmap;
+  private final DeviceIDIterator deviceIDIterator;
 
-  // If an exception needs to be thrown during the processing of the request, this variable can be
-  // used to accept the exception
-  private List<Exception> exceptions;
-
-  @Override
-  public RoaringBitmap getValue() {
-    return roaringBitmap;
+  public QueryResponse() {
+    super(new RoaringBitmap());
+    deviceIDIterator = new DeviceIDIterator();
   }
 
   @Override
-  public void setValue(RoaringBitmap value) {
-    this.roaringBitmap = value;
+  public void or(IQueryResponse<RoaringBitmap, Integer> queryResponse) {
+    getValue().or(queryResponse.getValue());
   }
 
   @Override
-  public List<Exception> getExceptions() {
-    return exceptions;
+  public void and(IQueryResponse<RoaringBitmap, Integer> queryResponse) {
+    getValue().and(queryResponse.getValue());
   }
 
   @Override
-  public void setExceptions(List<Exception> exceptions) {
-    this.exceptions = exceptions;
-  }
-
-  /**
-   * If an exception needs to be thrown during the processing of the request, this method can be
-   * used to accept the exception
-   *
-   * @param e Exception
-   */
-  @Override
-  public void addException(Exception e) {
-    if (exceptions == null) {
-      exceptions = new ArrayList<>();
+  public Iterator<Integer> getIterator() {
+    if (getValue() != null && !getValue().isEmpty()) {
+      deviceIDIterator.addIterator(getValue().iterator());
     }
-    exceptions.add(e);
+    return deviceIDIterator;
+  }
+
+  @Override
+  public void addIterator(Iterator<Integer> iterator) {
+    deviceIDIterator.addIterator(iterator);
+  }
+
+  /** Support for iterative access to results */
+  private class DeviceIDIterator implements Iterator<Integer> {
+
+    private List<Iterator<Integer>> iterators;
+
+    private Integer next;
+
+    private int index;
+
+    public DeviceIDIterator() {
+      iterators = new ArrayList<>();
+      next = null;
+      index = 0;
+    }
+
+    /**
+     * Returns {@code true} if the iteration has more elements. (In other words, returns {@code
+     * true} if {@link #next} would return an element rather than throwing an exception.)
+     *
+     * @return {@code true} if the iteration has more elements
+     */
+    @Override
+    public boolean hasNext() {
+      if (next != null) {
+        return true;
+      }
+      while (index < iterators.size()) {
+        Iterator<Integer> iterator = iterators.get(index);
+        if (iterator.hasNext()) {
+          next = iterator.next();
+          return true;
+        }
+        index++;
+      }
+      return false;
+    }
+
+    /**
+     * Returns the next element in the iteration.
+     *
+     * @return the next element in the iteration
+     * @throws NoSuchElementException if the iteration has no more elements
+     */
+    @Override
+    public Integer next() {
+      if (next == null) {
+        throw new NoSuchElementException();
+      }
+      int now = next;
+      next = null;
+      return now;
+    }
+
+    public void addIterator(Iterator<Integer> iterator) {
+      iterators.add(iterator);
+    }
   }
 }

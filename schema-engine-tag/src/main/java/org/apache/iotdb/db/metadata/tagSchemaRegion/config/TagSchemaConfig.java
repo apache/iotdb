@@ -24,8 +24,20 @@ public class TagSchemaConfig {
   // the maximum number of device ids managed by a working memTable
   private int numOfDeviceIdsInMemTable = 65536;
 
-  // the size of wal buffer used to store a wal record
-  private int walBufferSize = 1024 * 1024;
+  // degree of a b+ tree
+  private int degree = 250;
+
+  private int bPlusTreePageSize = 4 * 1024;
+
+  // the maximum number of immutableMemTables, when this is reached, flush operation is required
+  private int numOfImmutableMemTable = 5;
+
+  // the size of max chunk in disk, if current chunk overflow, a new chunk is created to continue
+  // store.(unit: byte)
+  private long maxChunkSize = 16 * 1024;
+
+  // Decide whether to enable the flush function.
+  private boolean enableFlush = false;
 
   public int getNumOfDeviceIdsInMemTable() {
     return numOfDeviceIdsInMemTable;
@@ -35,21 +47,59 @@ public class TagSchemaConfig {
     this.numOfDeviceIdsInMemTable = numOfDeviceIdsInMemTable;
   }
 
-  public int getWalBufferSize() {
-    return walBufferSize;
+  public int getNumOfImmutableMemTable() {
+    return numOfImmutableMemTable;
   }
 
-  public void setWalBufferSize(int walBufferSize) {
-    this.walBufferSize = walBufferSize;
+  public void setNumOfImmutableMemTable(int numOfImmutableMemTable) {
+    this.numOfImmutableMemTable = numOfImmutableMemTable;
+  }
+
+  public int getDegree() {
+    return degree;
+  }
+
+  public void setDegree(int degree) {
+    this.degree = degree;
+  }
+
+  public int getBPlusTreePageSize() {
+    return bPlusTreePageSize;
+  }
+
+  public void setBPlusTreePageSize(int bPlusTreePageSize) {
+    this.bPlusTreePageSize = bPlusTreePageSize;
+  }
+
+  public long getMaxChunkSize() {
+    return maxChunkSize;
+  }
+
+  public void setMaxChunkSize(long maxChunkSize) {
+    this.maxChunkSize = maxChunkSize;
   }
 
   @Override
   public String toString() {
-    return "TagSchemaConfig["
+    return "TagSchemaConfig{"
         + "numOfDeviceIdsInMemTable="
         + numOfDeviceIdsInMemTable
-        + ", walBufferSize="
-        + walBufferSize
-        + "]";
+        + ", degree="
+        + degree
+        + ", bPlusTreePageSize="
+        + bPlusTreePageSize
+        + ", numOfImmutableMemTable="
+        + numOfImmutableMemTable
+        + ", maxChunkSize="
+        + maxChunkSize
+        + '}';
+  }
+
+  public boolean isEnableFlush() {
+    return enableFlush;
+  }
+
+  public void setEnableFlush(boolean enableFlush) {
+    this.enableFlush = enableFlush;
   }
 }

@@ -16,20 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.lsm.request;
+package org.apache.iotdb.lsm.sstable.index;
 
-/** Represents a query request that can be processed by the lsm framework */
-public interface IQueryRequest<K> extends IRequest<K, Object> {
+import org.apache.iotdb.lsm.sstable.fileIO.ISSTableOutputStream;
 
-  RequestType requestType = RequestType.QUERY;
+import java.io.IOException;
 
-  @Override
-  default Object getValue() {
-    return null;
-  }
+public interface IDiskIndex {
 
-  @Override
-  default RequestType getRequestType() {
-    return requestType;
-  }
+  /**
+   * Serialize to output stream
+   *
+   * @param out SSTable output stream
+   * @return serialized offset
+   * @throws IOException if an I/O error occurs.
+   */
+  long serialize(ISSTableOutputStream out) throws IOException;
 }

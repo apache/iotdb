@@ -25,9 +25,10 @@ import org.apache.iotdb.lsm.wal.WALWriter;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 
 /** Manage wal entry writes and reads */
-public abstract class WALManager {
+public abstract class WALManager<T> {
 
   private final String walDirPath;
 
@@ -39,33 +40,88 @@ public abstract class WALManager {
   // directly use the wal reader that comes with the lsm framework
   private WALReader walReader;
 
+  private String[] walFileNames;
+
+  private int currentFileIndex = 0;
+
+  protected int currentFileID = 0;
+
+  protected String walFilePrefix;
+
   private boolean recover;
 
-  public WALManager(String schemaDirPath) {
-    this.walDirPath = schemaDirPath;
+  private IWALRecord walRecord;
+
+  public WALManager(String walDirPath) {
+    this.walDirPath = walDirPath;
   }
 
-  public WALManager(
-      String walDirPath,
-      String walFileName,
-      int walBufferSize,
-      IWALRecord walRecord,
-      boolean forceEachWrite)
-      throws IOException {
+  public WALManager(String walDirPath, String walFilePrefix, IWALRecord walRecord) {
     this.walDirPath = walDirPath;
-    initFile(walDirPath, walFileName);
-    walWriter = new WALWriter(walFile, walBufferSize, forceEachWrite);
-    walReader = new WALReader(walFile, walRecord);
+    this.walFilePrefix = walFilePrefix;
+    this.walRecord = walRecord;
     recover = false;
   }
 
-  private void initFile(String walDirPath, String walFileName) throws IOException {
-    File schemaDir = new File(walDirPath);
-    schemaDir.mkdirs();
+  public void initRecover() throws IOException {
+    File walDir = new File(walDirPath);
+    walDir.mkdirs();
+    File[] walFiles = walDir.listFiles();
+    walFileNames =
+        Arrays.stream(walFiles)
+            .map(this::getWalFileID)
+            .sorted()
+            .map(this::getWalFileName)
+            .toArray(String[]::new);
+    String walFileName;
+    if (walFileNames.length == 0) {
+      walFileName = getWalFileName(currentFileID);
+    } else {
+      walFileName = walFileNames[currentFileIndex];
+    }
+    initWalWriterAndReader(initFile(walFileName));
+  }
+
+  public IRequest recover() throws IOException {
+    IRequest request = this.read();
+    while (request == null && currentFileIndex < walFileNames.length - 1) {
+      currentFileIndex++;
+      updateFile(walFileNames[currentFileIndex]);
+      request = this.read();
+    }
+    return request;
+  }
+
+  public void deleteWalFile(int index) {
+    File file = new File(this.walDirPath, getWalFileName(index));
+    file.delete();
+  }
+
+  protected Integer getWalFileID(File file) {
+    return Integer.parseInt(file.getName().substring(walFilePrefix.length()));
+  }
+
+  protected String getWalFileName(Integer ID) {
+    return walFilePrefix + ID;
+  }
+
+  private File initFile(String walFileName) throws IOException {
     walFile = new File(this.walDirPath, walFileName);
     if (!walFile.exists()) {
       walFile.createNewFile();
     }
+    return walFile;
+  }
+
+  private void initWalWriterAndReader(File walFile) throws IOException {
+    walWriter = new WALWriter(walFile);
+    walReader = new WALReader(walFile, this.walRecord);
+  }
+
+  public void updateFile(String walFileName) throws IOException {
+    initFile(walFileName);
+    walWriter.update(walFile);
+    walReader.update(walFile);
   }
 
   /**
@@ -74,7 +130,7 @@ public abstract class WALManager {
    * @param request request context
    * @throws IOException
    */
-  public abstract void write(IRequest request);
+  public abstract void write(T root, IRequest request);
 
   /**
    * for recover, read a wal record and generate it as a request
@@ -92,7 +148,7 @@ public abstract class WALManager {
     return walDirPath;
   }
 
-  public File getWalFile() {
+  public File getWalFile(int index) {
     return walFile;
   }
 
@@ -110,6 +166,10 @@ public abstract class WALManager {
 
   public WALReader getWalReader() {
     return walReader;
+  }
+
+  public String getWalDirPath() {
+    return walDirPath;
   }
 
   public void setWalReader(WALReader walReader) {

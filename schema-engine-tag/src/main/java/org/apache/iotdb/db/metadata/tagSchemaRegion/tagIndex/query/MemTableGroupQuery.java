@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.query;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.QueryRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTable;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemTableGroup;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request.SingleQueryRequest;
 import org.apache.iotdb.lsm.annotation.QueryProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.QueryRequestContext;
 import org.apache.iotdb.lsm.levelProcess.QueryLevelProcessor;
@@ -30,7 +30,8 @@ import java.util.List;
 
 /** query for MemTableGroup */
 @QueryProcessor(level = 0)
-public class MemTableGroupQuery extends QueryLevelProcessor<MemTableGroup, MemTable, QueryRequest> {
+public class MemTableGroupQuery
+    extends QueryLevelProcessor<MemTableGroup, MemTable, SingleQueryRequest> {
 
   /**
    * get all MemTable that need to be processed in the current MemTableGroup
@@ -41,7 +42,7 @@ public class MemTableGroupQuery extends QueryLevelProcessor<MemTableGroup, MemTa
    */
   @Override
   public List<MemTable> getChildren(
-      MemTableGroup memNode, QueryRequest request, QueryRequestContext context) {
+      MemTableGroup memNode, SingleQueryRequest request, QueryRequestContext context) {
     List<MemTable> memTables = new ArrayList<>();
     memTables.add(memNode.getWorkingMemTable());
     memTables.addAll(memNode.getImmutableMemTables().values());
@@ -55,5 +56,6 @@ public class MemTableGroupQuery extends QueryLevelProcessor<MemTableGroup, MemTa
    * @param context query request context
    */
   @Override
-  public void query(MemTableGroup memNode, QueryRequest request, QueryRequestContext context) {}
+  public void query(
+      MemTableGroup memNode, SingleQueryRequest request, QueryRequestContext context) {}
 }

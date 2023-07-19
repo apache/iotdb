@@ -20,7 +20,7 @@ package org.apache.iotdb.lsm.levelProcess;
 
 import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
 
-import java.util.List;
+import java.util.Collection;
 
 /** the processing method corresponding to each layer of memory nodes */
 public abstract class BasicLevelProcessor<I, O, R, C extends RequestContext>
@@ -44,7 +44,7 @@ public abstract class BasicLevelProcessor<I, O, R, C extends RequestContext>
    * @param context request context
    * @return all next-level memory nodes that need to be processed
    */
-  public abstract List<O> getChildren(I memNode, R request, C context);
+  public abstract Collection<O> getChildren(I memNode, R request, C context);
 
   /**
    * add the LevelProcess of the next layer of memory nodes

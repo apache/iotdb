@@ -84,4 +84,12 @@ public class MemTable {
   public void setStatus(String status) {
     this.status = status;
   }
+
+  public Map<String, MemChunkGroup> getMemChunkGroupMap() {
+    return memChunkGroupMap;
+  }
+
+  public void setMemChunkGroupMap(Map<String, MemChunkGroup> memChunkGroupMap) {
+    this.memChunkGroupMap = memChunkGroupMap;
+  }
 }

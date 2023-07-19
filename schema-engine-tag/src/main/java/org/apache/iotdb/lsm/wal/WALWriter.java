@@ -21,35 +21,24 @@ package org.apache.iotdb.lsm.wal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedOutputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
-import java.nio.channels.FileChannel;
 
 /** write records to wal file */
 public class WALWriter implements IWALWriter {
   private static final Logger logger = LoggerFactory.getLogger(WALWriter.class);
   // wal file
   private File logFile;
-  private FileOutputStream fileOutputStream;
-  private FileChannel channel;
-  // 4-bit buffer
-  private final ByteBuffer lengthBuffer;
-  // save wal record serialized byte data
-  private final ByteBuffer walBuffer;
-  private final boolean forceEachWrite;
+  private DataOutputStream outputStream;
 
-  public WALWriter(File logFile, int walBufferSize, boolean forceEachWrite)
-      throws FileNotFoundException {
+  public WALWriter(File logFile) throws FileNotFoundException {
     this.logFile = logFile;
-    this.forceEachWrite = forceEachWrite;
-    fileOutputStream = new FileOutputStream(logFile, true);
-    channel = fileOutputStream.getChannel();
-    lengthBuffer = ByteBuffer.allocate(4);
-    walBuffer = ByteBuffer.allocate(walBufferSize);
+    outputStream =
+        new DataOutputStream(new BufferedOutputStream(new FileOutputStream(logFile, true)));
   }
 
   /**
@@ -60,47 +49,23 @@ public class WALWriter implements IWALWriter {
    */
   @Override
   public void write(IWALRecord walRecord) throws IOException {
-    if (channel == null) {
-      fileOutputStream = new FileOutputStream(logFile, true);
-      channel = fileOutputStream.getChannel();
-    }
-    walBuffer.clear();
-    walRecord.serialize(walBuffer);
-    walBuffer.flip();
-    int logSize = walBuffer.limit();
-    lengthBuffer.clear();
-    lengthBuffer.putInt(logSize);
-    lengthBuffer.flip();
-
-    try {
-      channel.write(lengthBuffer);
-      channel.write(walBuffer);
-
-      if (this.forceEachWrite) {
-        channel.force(true);
-      }
-    } catch (ClosedChannelException ignored) {
-      logger.warn("someone interrupt current thread, so no need to do write for io safety");
-    }
+    walRecord.serialize(outputStream);
   }
 
-  @Override
-  public void force() throws IOException {
-    if (channel != null && channel.isOpen()) {
-      channel.force(true);
-    }
+  public void update(File logFile) throws IOException {
+    close();
+    this.logFile = logFile;
+    outputStream = new DataOutputStream(new FileOutputStream(logFile, true));
   }
 
   @Override
   public void close() throws IOException {
-    if (channel != null) {
-      if (channel.isOpen()) {
-        channel.force(true);
+    if (outputStream != null) {
+      try {
+        outputStream.flush();
+      } finally {
+        outputStream.close();
       }
-      fileOutputStream.close();
-      fileOutputStream = null;
-      channel.close();
-      channel = null;
     }
   }
 

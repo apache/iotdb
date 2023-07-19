@@ -16,44 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request;
+package org.apache.iotdb.lsm.manager;
 
-import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
-import org.apache.iotdb.lsm.request.IInsertionRequest;
+import org.apache.iotdb.lsm.context.requestcontext.QueryRequestContext;
+import org.apache.iotdb.lsm.request.ISingleQueryRequest;
 
-import java.util.List;
-
-/** Represents a insertion request */
-public class InsertionRequest implements IInsertionRequest<String, Integer> {
-
-  // tags
-  List<String> keys;
-
-  // int32 id
-  int value;
-
-  public InsertionRequest() {
-    super();
-  }
-
-  public InsertionRequest(List<String> keys, int value) {
-    super();
-    this.keys = keys;
-    this.value = value;
-  }
+/** manage query to root memory node */
+public class MemQueryManager<T, R extends ISingleQueryRequest>
+    extends BasicLSMManager<T, R, QueryRequestContext> {
+  @Override
+  public void preProcess(T root, R request, QueryRequestContext context) {}
 
   @Override
-  public String getKey(RequestContext context) {
-    return keys.get(context.getLevel() - 1);
-  }
-
-  @Override
-  public List<String> getKeys() {
-    return keys;
-  }
-
-  @Override
-  public Integer getValue() {
-    return value;
-  }
+  public void postProcess(T root, R request, QueryRequestContext context) {}
 }

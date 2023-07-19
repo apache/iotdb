@@ -18,14 +18,23 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable;
 
-import java.util.HashMap;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request.FlushRequest;
+import org.apache.iotdb.lsm.manager.IMemManager;
+import org.apache.iotdb.lsm.request.IFlushRequest;
+
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /** used to manage working and immutableMemTables */
-public class MemTableGroup {
+public class MemTableGroup implements IMemManager {
 
   // the maximum number of device ids managed by a working memTable
   private int numOfDeviceIdsInMemTable;
+
+  // the maximum number of immutableMemTable, over num will flush to disk
+  private int numOfImmutableMemTable;
 
   // (maxDeviceID / numOfDeviceIdsInMemTable) -> MemTable
   private Map<Integer, MemTable> immutableMemTables;
@@ -35,12 +44,21 @@ public class MemTableGroup {
   // the largest device id saved by the current MemTable
   private int maxDeviceID;
 
-  public MemTableGroup() {}
+  private long maxChunkSize;
 
-  public MemTableGroup(int numOfDeviceIdsInMemTable) {
+  private boolean enableFlush;
+
+  public MemTableGroup(
+      int numOfDeviceIdsInMemTable,
+      int numOfImmutableMemTable,
+      long maxChunkSize,
+      boolean enableFlush) {
     this.numOfDeviceIdsInMemTable = numOfDeviceIdsInMemTable;
+    this.numOfImmutableMemTable = numOfImmutableMemTable;
+    this.maxChunkSize = maxChunkSize;
+    this.enableFlush = enableFlush;
     workingMemTable = new MemTable(MemTable.WORKING);
-    immutableMemTables = new HashMap<>();
+    immutableMemTables = new ConcurrentHashMap<>();
     maxDeviceID = 0;
   }
 
@@ -98,5 +116,29 @@ public class MemTableGroup {
         + ", maxDeviceID="
         + maxDeviceID
         + '}';
+  }
+
+  @Override
+  public boolean isNeedFlush() {
+    return immutableMemTables.size() > numOfImmutableMemTable;
+  }
+
+  @Override
+  public boolean isEnableFlush() {
+    return enableFlush;
+  }
+
+  @Override
+  public List<FlushRequest> getFlushRequests() {
+    List<FlushRequest> flushRequests =
+        immutableMemTables.entrySet().stream()
+            .map(entry -> new FlushRequest(entry.getKey(), entry.getValue(), maxChunkSize))
+            .collect(Collectors.toList());
+    return flushRequests;
+  }
+
+  @Override
+  public void removeMemData(IFlushRequest request) {
+    immutableMemTables.remove(request.getIndex());
   }
 }

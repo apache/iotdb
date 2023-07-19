@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.deletion;
 
-import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request.DeletionRequest;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunk;
 import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.memtable.MemChunkGroup;
+import org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.request.DeletionRequest;
 import org.apache.iotdb.lsm.annotation.DeletionProcessor;
 import org.apache.iotdb.lsm.context.requestcontext.DeleteRequestContext;
 import org.apache.iotdb.lsm.levelProcess.DeleteLevelProcessor;
@@ -28,13 +28,13 @@ import org.apache.iotdb.lsm.levelProcess.DeleteLevelProcessor;
 import java.util.ArrayList;
 import java.util.List;
 
-/** deletion for MemChunkGroup */
+/** deletion for MemTagValueGroup */
 @DeletionProcessor(level = 2)
 public class MemChunkGroupDeletion
     extends DeleteLevelProcessor<MemChunkGroup, MemChunk, DeletionRequest> {
 
   /**
-   * get all MemChunks that need to be processed in the current MemChunkGroup
+   * get all MemChunkGroups that need to be processed in the current MemChunkGroup
    *
    * @param memNode memory node
    * @param context request context

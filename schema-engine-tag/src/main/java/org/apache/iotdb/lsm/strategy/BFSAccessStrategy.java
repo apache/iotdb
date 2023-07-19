@@ -22,8 +22,8 @@ import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
 import org.apache.iotdb.lsm.levelProcess.BasicLevelProcessor;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Queue;
 
 /** breadth-first access strategy implementation class */
@@ -42,7 +42,7 @@ public class BFSAccessStrategy implements IAccessStrategy {
   @Override
   public <I, O, R, C extends RequestContext> void execute(
       BasicLevelProcessor<I, O, R, C> levelProcess, I memNode, R request, C context) {
-    List<O> children = new ArrayList<>();
+    Collection<O> children = new ArrayList<>();
     int currentLevel = context.getLevel();
     if (sameLevelMemNodes == null) {
       sameLevelMemNodes = new LinkedList<>();

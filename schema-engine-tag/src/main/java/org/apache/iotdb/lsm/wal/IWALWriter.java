@@ -32,13 +32,6 @@ public interface IWALWriter {
   void write(IWALRecord walRecord) throws IOException;
 
   /**
-   * force brush
-   *
-   * @throws IOException
-   */
-  void force() throws IOException;
-
-  /**
    * close resource
    *
    * @throws IOException

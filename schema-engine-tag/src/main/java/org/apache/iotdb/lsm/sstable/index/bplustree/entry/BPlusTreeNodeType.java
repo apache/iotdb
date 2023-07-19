@@ -16,40 +16,44 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.tagSchemaRegion.tagIndex.Request;
+package org.apache.iotdb.lsm.sstable.index.bplustree.entry;
 
-import org.apache.iotdb.lsm.context.requestcontext.RequestContext;
-import org.apache.iotdb.lsm.request.IDeletionRequest;
+import org.apache.iotdb.lsm.sstable.diskentry.IDiskEntry;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.util.List;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 
-/** Represents a deletion request */
-public class DeletionRequest implements IDeletionRequest<String, Integer> {
+public enum BPlusTreeNodeType implements IDiskEntry {
+  INVALID_NODE((byte) 0),
 
-  // tags
-  List<String> keys;
+  INTERNAL_NODE((byte) 1),
 
-  // int32 id
-  int value;
+  LEAF_NODE((byte) 2);
 
-  public DeletionRequest(List<String> keys, int value) {
-    super();
-    this.keys = keys;
-    this.value = value;
+  private byte type;
+
+  BPlusTreeNodeType(byte type) {
+    this.type = type;
+  }
+
+  public byte getType() {
+    return type;
   }
 
   @Override
-  public String getKey(RequestContext context) {
-    return keys.get(context.getLevel() - 1);
+  public int serialize(DataOutputStream out) throws IOException {
+    return ReadWriteIOUtils.write(type, out);
   }
 
   @Override
-  public List<String> getKeys() {
-    return keys;
+  public IDiskEntry deserialize(DataInputStream input) throws IOException {
+    throw new UnsupportedOperationException("deserialize BPlusTreeNodeType");
   }
 
   @Override
-  public Integer getValue() {
-    return value;
+  public String toString() {
+    return "BPlusTreeNodeType{" + "type=" + type + '}';
   }
 }
