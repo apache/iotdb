@@ -54,15 +54,16 @@ public class DataNodeLastCacheManager {
    * @param highPriorityUpdate the last value from insertPlan is high priority
    * @param latestFlushedTime latest flushed time
    */
-  public static void updateLastCache(
+  public static int updateLastCache(
       SchemaCacheEntry entry,
       TimeValuePair timeValuePair,
       boolean highPriorityUpdate,
       Long latestFlushedTime) {
     if (!CACHE_ENABLED || null == entry) {
-      return;
+      return 0;
     }
     ILastCacheContainer lastCacheContainer = entry.getLastCacheContainer();
-    lastCacheContainer.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
+    return lastCacheContainer.updateCachedLast(
+        timeValuePair, highPriorityUpdate, latestFlushedTime);
   }
 }

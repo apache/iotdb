@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.i
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheComputation;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheStats;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheUpdating;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -97,13 +98,13 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
-  public void computeAndUpdate(IDualKeyCacheComputation<FK, SK, V> computation) {
-    FK firstKey = computation.getFirstKey();
+  public void update(IDualKeyCacheUpdating<FK, SK, V> updating) {
+    FK firstKey = updating.getFirstKey();
     ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
-    SK[] secondKeyList = computation.getSecondKeyList();
+    SK[] secondKeyList = updating.getSecondKeyList();
     if (cacheEntryGroup == null) {
       for (int i = 0; i < secondKeyList.length; i++) {
-        computation.computeValue(i, null);
+        updating.updateValue(i, null);
       }
       cacheStats.recordMiss(secondKeyList.length);
     } else {
@@ -112,17 +113,14 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
       for (int i = 0; i < secondKeyList.length; i++) {
         cacheEntry = cacheEntryGroup.getCacheEntry(secondKeyList[i]);
         if (cacheEntry == null) {
-          computation.computeValue(i, null);
+          updating.updateValue(i, null);
         } else {
-          int originalValueSize = sizeComputer.computeValueSize(cacheEntry.getValue());
-          computation.computeValue(i, cacheEntry.getValue());
-          int usedMemorySize =
-              sizeComputer.computeValueSize(cacheEntry.getValue()) - originalValueSize;
+          int changeSize = updating.updateValue(i, cacheEntry.getValue());
           cacheEntryManager.access(cacheEntry);
-          if (usedMemorySize != 0) {
-            cacheStats.increaseMemoryUsage(usedMemorySize);
+          if (changeSize != 0) {
+            cacheStats.increaseMemoryUsage(changeSize);
             if (cacheStats.isExceedMemoryCapacity()) {
-              executeCacheEviction(usedMemorySize);
+              executeCacheEviction(changeSize);
             }
           }
           hitCount++;

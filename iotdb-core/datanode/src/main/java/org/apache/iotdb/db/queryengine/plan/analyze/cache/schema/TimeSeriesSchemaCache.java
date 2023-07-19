@@ -28,6 +28,7 @@ import org.apache.iotdb.db.exception.metadata.view.InsertNonWritableViewExceptio
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheComputation;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheUpdating;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCacheBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCachePolicy;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.DataNodeLastCacheManager;
@@ -277,8 +278,8 @@ public class TimeSeriesSchemaCache {
       Long latestFlushedTime) {
     SchemaCacheEntry entry;
     List<Integer> missingMeasurements = new ArrayList<>();
-    dualKeyCache.computeAndUpdate(
-        new IDualKeyCacheComputation<PartialPath, String, SchemaCacheEntry>() {
+    dualKeyCache.update(
+        new IDualKeyCacheUpdating<PartialPath, String, SchemaCacheEntry>() {
           @Override
           public PartialPath getFirstKey() {
             return devicePath;
@@ -290,14 +291,15 @@ public class TimeSeriesSchemaCache {
           }
 
           @Override
-          public void computeValue(int index, SchemaCacheEntry value) {
+          public int updateValue(int index, SchemaCacheEntry value) {
             if (!shouldUpdateProvider.apply(index)) {
-              return;
+              return 0;
             }
             if (value == null) {
               missingMeasurements.add(index);
+              return 0;
             } else {
-              DataNodeLastCacheManager.updateLastCache(
+              return DataNodeLastCacheManager.updateLastCache(
                   value, timeValuePairProvider.apply(index), highPriorityUpdate, latestFlushedTime);
             }
           }

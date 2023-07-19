@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,25 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache;
+package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache;
 
-import org.apache.iotdb.tsfile.read.TimeValuePair;
+/**
+ * This interfaces defines the behaviour needed be implemented and executed during cache value
+ * traverse.
+ *
+ * @param <FK> The first key of target cache values
+ * @param <SK> The second key of one target cache value
+ * @param <V> The cache value
+ */
+public interface IDualKeyCacheUpdating<FK, SK, V> {
 
-/** this interface declares the operations of LastCache data */
-public interface ILastCacheContainer {
+  /** Return the first key of target cache values. */
+  FK getFirstKey();
 
-  // get lastCache of monad timseries
-  TimeValuePair getCachedLast();
+  /** Return the second key list of target cache values. */
+  SK[] getSecondKeyList();
 
-  /**
-   * update last point cache
-   *
-   * @param timeValuePair last point
-   * @param highPriorityUpdate whether it's a high priority update
-   * @param latestFlushedTime latest flushed time
-   */
-  int updateCachedLast(
-      TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime);
-
-  int estimateSize();
+  /** Compute each target cache value. The index is the second key's position in second key list. */
+  int updateValue(int index, V value);
 }
