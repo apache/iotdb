@@ -82,7 +82,11 @@ public class RecoverReadTest {
                 () -> new SlowRecoverStateMachine(TimeDuration.valueOf(500, TimeUnit.MILLISECONDS)))
             .setRatisConfig(
                 RatisConfig.newBuilder()
-                    .setLog(RatisConfig.Log.newBuilder().setPurgeUptoSnapshotIndex(true).build())
+                    .setLog(
+                        RatisConfig.Log.newBuilder()
+                            .setPurgeUptoSnapshotIndex(false)
+                            .setPreserveNumsWhenPurge(1024)
+                            .build())
                     .setRead(
                         RatisConfig.Read.newBuilder()
                             .setReadTimeout(TimeDuration.valueOf(30, TimeUnit.SECONDS))
