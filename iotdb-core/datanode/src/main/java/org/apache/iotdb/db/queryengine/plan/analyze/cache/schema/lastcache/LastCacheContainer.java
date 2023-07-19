@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.value.ILastCacheValue;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.value.LastCacheValue;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 /**
  * This class possesses the ILastCacheValue and implements the basic last cache operations.
@@ -61,12 +62,22 @@ public class LastCacheContainer implements ILastCacheContainer {
       }
     } else if (timeValuePair.getTimestamp() > lastCacheValue.getTimestamp()
         || (timeValuePair.getTimestamp() == lastCacheValue.getTimestamp() && highPriorityUpdate)) {
-      int originSize = lastCacheValue.estimateSize();
+      TsPrimitiveType oldValue = lastCacheValue.getValue();
       lastCacheValue.setTimestamp(timeValuePair.getTimestamp());
       lastCacheValue.setValue(timeValuePair.getValue());
-      return lastCacheValue.estimateSize() - originSize;
+      return getDiffSize(oldValue, timeValuePair.getValue());
     }
     return 0;
+  }
+
+  private int getDiffSize(TsPrimitiveType oldValue, TsPrimitiveType newValue) {
+    if (oldValue == null) {
+      return newValue == null ? 0 : newValue.getSize();
+    } else if (oldValue instanceof TsPrimitiveType.TsBinary) {
+      return (newValue == null ? 0 : newValue.getSize()) - oldValue.getSize();
+    } else {
+      return newValue == null ? -oldValue.getSize() : 0;
+    }
   }
 
   /**

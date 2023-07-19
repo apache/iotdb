@@ -35,6 +35,11 @@ public interface IDualKeyCacheUpdating<FK, SK, V> {
   /** Return the second key list of target cache values. */
   SK[] getSecondKeyList();
 
-  /** Compute each target cache value. The index is the second key's position in second key list. */
+  /**
+   * Compute each target cache value. The index is the second key's position in second key list. The
+   * value here can be updated.
+   *
+   * @return increasing memory usage
+   */
   int updateValue(int index, V value);
 }

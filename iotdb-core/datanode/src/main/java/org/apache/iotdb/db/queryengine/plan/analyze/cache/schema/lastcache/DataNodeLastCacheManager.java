@@ -53,6 +53,7 @@ public class DataNodeLastCacheManager {
    * @param timeValuePair the latest point value
    * @param highPriorityUpdate the last value from insertPlan is high priority
    * @param latestFlushedTime latest flushed time
+   * @return increasing of memory usage
    */
   public static int updateLastCache(
       SchemaCacheEntry entry,
