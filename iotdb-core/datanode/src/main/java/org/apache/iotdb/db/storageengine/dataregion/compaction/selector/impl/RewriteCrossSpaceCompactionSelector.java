@@ -53,6 +53,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   protected TsFileManager tsFileManager;
 
   private static boolean hasPrintedLog = false;
+  private boolean strictlyCheckSelectedFiles = true;
 
   private final long memoryBudget;
   private final int maxCrossCompactionFileNum;
@@ -82,6 +83,10 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     this.compactionEstimator =
         ICompactionSelector.getCompactionEstimator(
             IoTDBDescriptor.getInstance().getConfig().getCrossCompactionPerformer(), false);
+  }
+
+  public void setStrictlyCheckSelectedFiles(boolean strictlyCheckSelectedFiles) {
+    this.strictlyCheckSelectedFiles = strictlyCheckSelectedFiles;
   }
 
   /**
@@ -175,7 +180,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
 
       long memoryCost =
           compactionEstimator.estimateCrossCompactionMemory(targetSeqFiles, unseqFile);
-      if (!canAddToTaskResource(taskResource, unseqFile, targetSeqFiles, memoryCost)) {
+      if (strictlyCheckSelectedFiles
+          && !canAddToTaskResource(taskResource, unseqFile, targetSeqFiles, memoryCost)) {
         break;
       }
       taskResource.putResources(unseqFile, targetSeqFiles, memoryCost);
