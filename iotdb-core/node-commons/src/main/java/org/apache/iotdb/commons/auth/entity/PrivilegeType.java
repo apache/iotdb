@@ -29,9 +29,9 @@ import java.util.Set;
 /** This enum class contains all available privileges in IoTDB. */
 public enum PrivilegeType {
   READ_DATA(true),
-  WRITE_DATA(true, true, READ_DATA),
+  WRITE_DATA(true),
   READ_SCHEMA(true),
-  WRITE_SCHEMA(true, true, READ_SCHEMA),
+  WRITE_SCHEMA(true),
   MANAGE_USER,
   MANAGE_ROLE,
   GRANT_PRIVILEGE,
@@ -40,6 +40,7 @@ public enum PrivilegeType {
   USE_CQ,
   USE_PIPE,
   MANAGE_DATABASE(true),
+  MAINTAIN,
   READ(true, false, READ_DATA, READ_SCHEMA),
   WRITE(true, false, WRITE_DATA, WRITE_SCHEMA),
   ALL(
@@ -54,7 +55,8 @@ public enum PrivilegeType {
       USE_TRIGGER,
       USE_CQ,
       USE_PIPE,
-      MANAGE_DATABASE);
+      MANAGE_DATABASE,
+      MAINTAIN);
 
   private static final int PRIVILEGE_COUNT = values().length;
 

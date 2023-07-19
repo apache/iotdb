@@ -2051,7 +2051,7 @@ INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
 
 IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
 
-Msg: 602: No permissions for this operation, please add privilege INSERT_TIMESERIES.
+Msg: 602: No permissions for this operation, please add privilege WRITE_DATA.
 
 用root用户分别赋予他们向对应 database 数据的写入权限
 
@@ -2081,7 +2081,7 @@ REVOKE USER `ln_write_user` PRIVILEGES CREATE_USER
 
 INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
 
-Msg: 602: No permissions for this operation, please add privilege INSERT_TIMESERIES.
+Msg: 602: No permissions for this operation, please add privilege WRITE_DATA.
 
 ### 5、SQL 语句
 

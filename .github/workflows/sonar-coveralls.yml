@@ -74,7 +74,7 @@ jobs:
         run: |
           mvn -B verify sonar:sonar \
           -Dsonar.organization=apache \
-          -Dsonar.projectKey=apache_incubator-iotdb \
+          -Dsonar.projectKey=apache_iotdb \
           -Dsonar.host.url=https://sonarcloud.io \
           -Dsonar.login=${{ secrets.SONARCLOUD_TOKEN }} \
           -DskipTests -pl '!distribution,!integration-test' -am
