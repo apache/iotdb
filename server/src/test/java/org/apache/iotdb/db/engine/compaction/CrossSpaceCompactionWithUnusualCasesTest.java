@@ -303,6 +303,101 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
   }
 
   @Test
+  public void testUnSeqFileOverlapWithSeqFilesButOneDeviceNotExistInOverlapSeqFiles4()
+      throws IOException, IllegalPathException {
+    // seq file 1
+    // device: d1, time: [150, 400]
+    TsFileResource seqTsFileResource1 = createEmptyFileAndResource(true);
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(seqTsFileResource1.getTsFile())) {
+      createSimpleDevice(tsFileIOWriter, seqTsFileResource1, "d1", true, 150, 400);
+      tsFileIOWriter.endFile();
+    }
+    seqTsFileResource1.serialize();
+    seqResources.add(seqTsFileResource1);
+
+    // seq file 2
+    // device: d2, time: [100, 200]
+    TsFileResource seqTsFileResource2 = createEmptyFileAndResource(true);
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(seqTsFileResource2.getTsFile())) {
+      createSimpleDevice(tsFileIOWriter, seqTsFileResource2, "d2", true, 100, 200);
+      tsFileIOWriter.endFile();
+    }
+    seqTsFileResource2.serialize();
+    seqResources.add(seqTsFileResource2);
+
+    // seq file 3
+    // device: d2, time: [210, 270]
+    TsFileResource seqTsFileResource3 = createEmptyFileAndResource(true);
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(seqTsFileResource3.getTsFile())) {
+      createSimpleDevice(tsFileIOWriter, seqTsFileResource3, "d2", true, 210, 270);
+      tsFileIOWriter.endFile();
+    }
+    seqTsFileResource3.serialize();
+    seqResources.add(seqTsFileResource3);
+
+    // seq file 4
+    // device: d3, time: [280, 290]
+    TsFileResource seqTsFileResource4 = createEmptyFileAndResource(true);
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(seqTsFileResource4.getTsFile())) {
+      createSimpleDevice(tsFileIOWriter, seqTsFileResource4, "d3", true, 280, 290);
+      tsFileIOWriter.endFile();
+    }
+    seqTsFileResource4.serialize();
+    seqResources.add(seqTsFileResource4);
+
+    // seq file 5
+    // device: d2, time: [800, 900]
+    TsFileResource seqTsFileResource5 = createEmptyFileAndResource(true);
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(seqTsFileResource5.getTsFile())) {
+      createSimpleDevice(tsFileIOWriter, seqTsFileResource5, "d2", true, 800, 900);
+      tsFileIOWriter.endFile();
+    }
+    seqTsFileResource5.serialize();
+    seqResources.add(seqTsFileResource5);
+
+    // unSeq file 1
+    // device: d1, time: [100, 300]
+    // device: d2, time: [300, 400]
+    TsFileResource unSeqTsFileResource1 = createEmptyFileAndResource(false);
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(unSeqTsFileResource1.getTsFile())) {
+      createSimpleDevice(tsFileIOWriter, unSeqTsFileResource1, "d1", false, 100, 300);
+      createSimpleDevice(tsFileIOWriter, unSeqTsFileResource1, "d2", false, 300, 400);
+      tsFileIOWriter.endFile();
+    }
+    unSeqTsFileResource1.serialize();
+    unseqResources.add(unSeqTsFileResource1);
+
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector(COMPACTION_TEST_SG, "0", 0, tsFileManager);
+    selector.setStrictlyCheckSelectedFiles(false);
+
+    List<CrossCompactionTaskResource> result =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
+    Assert.assertEquals(1, result.size());
+    Assert.assertEquals(3, result.get(0).getTotalFileNums());
+    Assert.assertFalse(result.get(0).getSeqFiles().contains(seqTsFileResource2));
+    Assert.assertFalse(result.get(0).getSeqFiles().contains(seqTsFileResource4));
+    Assert.assertTrue(result.get(0).getSeqFiles().contains(seqTsFileResource5));
+
+    // execution
+    FastCompactionPerformer performer = new FastCompactionPerformer(true);
+    AbstractCompactionTask task =
+        new CrossSpaceCompactionTask(
+            0,
+            tsFileManager,
+            result.get(0).getSeqFiles(),
+            result.get(0).getUnseqFiles(),
+            performer,
+            new AtomicInteger(0),
+            0,
+            0);
+    Assert.assertTrue(task.start());
+    validateSeqFiles(true);
+  }
+
+  @Test
   public void testMultiUnSeqFileOverlapWithSeqFilesButOneDeviceNotExistInOverlapSeqFiles()
       throws IOException, IllegalPathException {
     // seq file 1
@@ -382,6 +477,69 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     Assert.assertEquals(1, result.size());
     Assert.assertEquals(5, result.get(0).getTotalFileNums());
     Assert.assertFalse(result.get(0).getSeqFiles().contains(seqTsFileResource2));
+
+    // execution
+    FastCompactionPerformer performer = new FastCompactionPerformer(true);
+    AbstractCompactionTask task =
+        new CrossSpaceCompactionTask(
+            0,
+            tsFileManager,
+            result.get(0).getSeqFiles(),
+            result.get(0).getUnseqFiles(),
+            performer,
+            new AtomicInteger(0),
+            0,
+            0);
+    Assert.assertTrue(task.start());
+    validateSeqFiles(true);
+  }
+
+  @Test
+  public void testUnSeqFileOverlapWithSeqFilesButOneDeviceNotExistInOverlapSeqFiles6()
+      throws IOException, IllegalPathException {
+    // seq file 1
+    // device: d1, time: [150, 400]
+    TsFileResource seqTsFileResource1 = createEmptyFileAndResource(true);
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(seqTsFileResource1.getTsFile())) {
+      createSimpleDevice(tsFileIOWriter, seqTsFileResource1, "d1", true, 150, 400);
+      tsFileIOWriter.endFile();
+    }
+    seqTsFileResource1.serialize();
+    seqResources.add(seqTsFileResource1);
+
+    // seq file 2
+    // device: d3, time: [100, 200]
+    TsFileResource seqTsFileResource2 = createEmptyFileAndResource(true);
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(seqTsFileResource2.getTsFile())) {
+      createSimpleDevice(tsFileIOWriter, seqTsFileResource2, "d3", true, 100, 200);
+      tsFileIOWriter.endFile();
+    }
+    seqTsFileResource2.serialize();
+    seqResources.add(seqTsFileResource2);
+
+    // unSeq file 1
+    // device: d1, time: [100, 300]
+    // device: d2, time: [300, 400]
+    TsFileResource unSeqTsFileResource1 = createEmptyFileAndResource(false);
+    try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(unSeqTsFileResource1.getTsFile())) {
+      createSimpleDevice(tsFileIOWriter, unSeqTsFileResource1, "d1", false, 100, 300);
+      createSimpleDevice(tsFileIOWriter, unSeqTsFileResource1, "d2", false, 300, 400);
+      tsFileIOWriter.endFile();
+    }
+    unSeqTsFileResource1.serialize();
+    unseqResources.add(unSeqTsFileResource1);
+
+    // selection
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+    RewriteCrossSpaceCompactionSelector selector =
+        new RewriteCrossSpaceCompactionSelector(COMPACTION_TEST_SG, "0", 0, tsFileManager);
+    selector.setStrictlyCheckSelectedFiles(false);
+
+    List<CrossCompactionTaskResource> result =
+        selector.selectCrossSpaceTask(seqResources, unseqResources);
+    Assert.assertEquals(1, result.size());
+    Assert.assertEquals(2, result.get(0).getTotalFileNums());
 
     // execution
     FastCompactionPerformer performer = new FastCompactionPerformer(true);
