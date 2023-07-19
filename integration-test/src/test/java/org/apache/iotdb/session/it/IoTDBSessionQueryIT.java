@@ -179,6 +179,71 @@ public class IoTDBSessionQueryIT {
     }
   }
 
+  @Test
+  public void lastQueryForOneDevice() throws IoTDBConnectionException {
+    String[] retArray = new String[] {"23,root.sg1.d1.s1,230000.0,FLOAT"};
+
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      // first time, cache miss
+      try (SessionDataSet resultSet =
+          session.executeLastDataQueryForOneDevice(
+              "root.sg1", "root.sg1.d1", Collections.singletonList("s1"))) {
+        assertResultSetEqual(resultSet, lastQueryColumnNames, retArray, true);
+      }
+      // second time, cache hit
+      try (SessionDataSet resultSet =
+          session.executeLastDataQueryForOneDevice(
+              "root.sg1", "root.sg1.d1", Collections.singletonList("s1"))) {
+        assertResultSetEqual(resultSet, lastQueryColumnNames, retArray, true);
+      }
+    } catch (StatementExecutionException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void lastQueryForOneDeviceNoSchema() throws IoTDBConnectionException {
+    String[] retArray = new String[] {};
+    String[] retArray2 = new String[] {"23,root.sg1.d1.s1,230000.0,FLOAT"};
+
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      // database has no schema
+      try (SessionDataSet resultSet =
+          session.executeLastDataQueryForOneDevice(
+              "root.sg1.d1", "root.sg1.d1", Collections.singletonList("s1"))) {
+        assertResultSetEqual(resultSet, lastQueryColumnNames, retArray, true);
+      }
+      // device has no schema
+      try (SessionDataSet resultSet =
+          session.executeLastDataQueryForOneDevice(
+              "root.sg1", "root.sg1.noThisDevice", Collections.singletonList("s1"))) {
+        assertResultSetEqual(resultSet, lastQueryColumnNames, retArray, true);
+      }
+      // sensor has no schema
+      try (SessionDataSet resultSet =
+          session.executeLastDataQueryForOneDevice(
+              "root.sg1", "root.sg1.d1", Collections.singletonList("notExist"))) {
+        assertResultSetEqual(resultSet, lastQueryColumnNames, retArray, true);
+      }
+
+      // some sensor has no schema
+      try (SessionDataSet resultSet =
+          session.executeLastDataQueryForOneDevice(
+              "root.sg1", "root.sg1.d1", Arrays.asList("notExist", "s1"))) {
+        assertResultSetEqual(resultSet, lastQueryColumnNames, retArray2, true);
+      }
+      try (SessionDataSet resultSet =
+          session.executeLastDataQueryForOneDevice(
+              "root.sg1", "root.sg1.d1", Arrays.asList("notExist", "s1"))) {
+        assertResultSetEqual(resultSet, lastQueryColumnNames, retArray2, true);
+      }
+    } catch (StatementExecutionException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
   // ------------------------------ Aggregation Query ------------------------------
   @Test
   public void aggregationQueryTest() {
