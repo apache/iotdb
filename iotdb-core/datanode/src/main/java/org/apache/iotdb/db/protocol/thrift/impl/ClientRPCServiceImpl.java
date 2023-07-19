@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.protocol.thrift.impl;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -152,6 +153,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNpeOrUnexpectedException;
@@ -601,7 +603,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSExecuteStatementResp executeFastLastDataQueryForOneDeviceV2(
-      TSFastLastDataQueryForOneDeviceReq req) throws TException {
+      TSFastLastDataQueryForOneDeviceReq req) {
     boolean finished = false;
     long queryId = Long.MIN_VALUE;
     IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
@@ -636,14 +638,37 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               Collections.singletonMap(db, Collections.singletonList(queryParam)));
       List<TRegionReplicaSet> regionReplicaSets =
           dataPartition.getDataRegionReplicaSet(deviceId, Collections.emptyList());
-      // if the device's latest dataRegion's leader is current node, we can directly read from cache
-      if (!regionReplicaSets.isEmpty()
-          && isSameNode(
-              regionReplicaSets
-                  .get(regionReplicaSets.size() - 1)
-                  .dataNodeLocations
-                  .get(0)
-                  .mPPDataExchangeEndPoint)) {
+
+      // no schema
+      if (regionReplicaSets.isEmpty()
+          || regionReplicaSets.size() == 1 && NOT_ASSIGNED == regionReplicaSets.get(0)) {
+        TSExecuteStatementResp resp =
+            createResponse(DatasetHeaderFactory.getLastQueryHeader(), queryId);
+        resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, ""));
+        resp.setQueryResult(Collections.emptyList());
+        finished = true;
+        resp.setMoreData(true);
+        return resp;
+      }
+
+      TEndPoint lastRegionLeader =
+          regionReplicaSets
+              .get(regionReplicaSets.size() - 1)
+              .dataNodeLocations
+              .get(0)
+              .mPPDataExchangeEndPoint;
+      // the device's all dataRegion's leader are on the same node, may can read directly from cache
+      if (isSameNode(lastRegionLeader)) {
+        boolean canUseNullEntry =
+            regionReplicaSets.stream()
+                .limit(regionReplicaSets.size() - 1L)
+                .allMatch(
+                    regionReplicaSet ->
+                        regionReplicaSet
+                            .dataNodeLocations
+                            .get(0)
+                            .mPPDataExchangeEndPoint
+                            .equals(lastRegionLeader));
         int sensorNum = req.sensors.size();
         TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(sensorNum);
         boolean allCached = true;
@@ -660,6 +685,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             break;
           } else if (timeValuePair.getValue() == null) {
             // there is no data for this sensor
+            if (!canUseNullEntry) {
+              allCached = false;
+              break;
+            }
           } else {
             // we don't consider TTL
             LastQueryUtil.appendLastValue(
@@ -675,7 +704,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           TSExecuteStatementResp resp =
               createResponse(DatasetHeaderFactory.getLastQueryHeader(), queryId);
           resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, ""));
-          resp.setQueryResult(Collections.singletonList(serde.serialize(builder.build())));
+          if (builder.isEmpty()) {
+            resp.setQueryResult(Collections.emptyList());
+          } else {
+            resp.setQueryResult(Collections.singletonList(serde.serialize(builder.build())));
+          }
           finished = true;
           resp.setMoreData(true);
           return resp;
@@ -720,12 +753,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           resp = createResponse(queryExecution.getDatasetHeader(), queryId);
           TSStatus tsstatus = new TSStatus();
           tsstatus.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
-          tsstatus.setRedirectNode(
-              regionReplicaSets
-                  .get(regionReplicaSets.size() - 1)
-                  .dataNodeLocations
-                  .get(0)
-                  .clientRpcEndPoint);
+          tsstatus.setRedirectNode(lastRegionLeader);
           resp.setStatus(tsstatus);
           finished = SELECT_RESULT.apply(resp, queryExecution, req.fetchSize);
           resp.setMoreData(!finished);
