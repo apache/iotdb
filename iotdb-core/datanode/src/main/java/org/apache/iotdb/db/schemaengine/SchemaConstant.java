@@ -78,6 +78,7 @@ public class SchemaConstant {
   public static final String SCHEMA_ENGINE_METRIC_NAME = "pbtree";
 
   public static final String DEFAULT_SCHEMA_ENGINE_MODE = "Memory";
+  public static final String DEFAULT_MNODE_FACTORY_ENV = "IoTDB";
 
   public static String getMNodeTypeName(byte type) {
     switch (type) {

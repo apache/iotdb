@@ -40,15 +40,19 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.ServerSocket;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class ReplicateTest {
   private static final long CHECK_POINT_GAP = 500;
   private final Logger logger = LoggerFactory.getLogger(ReplicateTest.class);
 
   private final ConsensusGroupId gid = new DataRegionId(1);
+
+  private static final long timeout = TimeUnit.SECONDS.toMillis(300);
 
   private final List<Peer> peers =
       Arrays.asList(
@@ -68,8 +72,8 @@ public class ReplicateTest {
 
   @Before
   public void setUp() throws Exception {
-    for (int i = 0; i < 3; i++) {
-      peersStorage.get(i).mkdirs();
+    for (File file : peersStorage) {
+      file.mkdirs();
       stateMachines.add(new TestStateMachine());
     }
     initServer();
@@ -84,7 +88,10 @@ public class ReplicateTest {
   }
 
   private void initServer() throws IOException {
-    for (int i = 0; i < 3; i++) {
+    for (Peer peer : peers) {
+      waitPortAvailable(peer.getEndpoint().port);
+    }
+    for (int i = 0; i < peers.size(); i++) {
       int finalI = i;
       servers.add(
           (IoTConsensus)
@@ -245,5 +252,22 @@ public class ReplicateTest {
 
     Assert.assertEquals(stateMachines.get(0).getData(), stateMachines.get(1).getData());
     Assert.assertEquals(stateMachines.get(2).getData(), stateMachines.get(1).getData());
+  }
+
+  private static void waitPortAvailable(int port) {
+    long start = System.currentTimeMillis();
+    while (System.currentTimeMillis() - start < timeout) {
+      try (ServerSocket ignored = new ServerSocket(port)) {
+        return;
+      } catch (IOException e) {
+        // Port is already in use, wait and retry
+        try {
+          Thread.sleep(1000); // Wait for 1 second before retrying
+        } catch (InterruptedException ex) {
+          // Handle the interruption if needed
+        }
+      }
+    }
+    Assert.fail(String.format("can not bind port %d after 300s", port));
   }
 }

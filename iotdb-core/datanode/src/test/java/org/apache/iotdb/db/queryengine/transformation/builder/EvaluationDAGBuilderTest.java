@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
@@ -105,7 +106,8 @@ public class EvaluationDAGBuilderTest {
           localExecutionPlanner.plan(
               instance.getFragment().getPlanNodeTree(),
               instance.getFragment().getTypeProvider(),
-              mockFIContext(queryId));
+              mockFIContext(queryId),
+              new DataNodeQueryContext(1));
       return driverFactories.get(0).getOperation();
     } catch (Exception e) {
       e.printStackTrace();

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.manager.load.balancer.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -40,7 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** Allocating new Partitions by greedy algorithm */
+/** Allocating new Partitions by greedy algorithm. */
 public class GreedyPartitionAllocator implements IPartitionAllocator {
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();

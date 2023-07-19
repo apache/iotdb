@@ -68,7 +68,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.BLOCK_QUEUED_TIME;
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.READY_QUEUED_TIME;
 
-/** the manager of fragment instances scheduling. */
+/** The manager of fragment instances scheduling. */
 public class DriverScheduler implements IDriverScheduler, IService {
 
   private static final Logger logger = LoggerFactory.getLogger(DriverScheduler.class);

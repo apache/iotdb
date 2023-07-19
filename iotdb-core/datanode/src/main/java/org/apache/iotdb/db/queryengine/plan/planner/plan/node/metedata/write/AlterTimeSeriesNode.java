@@ -54,7 +54,7 @@ public class AlterTimeSeriesNode extends WritePlanNode {
    */
   private Map<String, String> alterMap;
 
-  /** used when the alterType is UPSERT */
+  /** Used when the alterType is UPSERT. */
   private String alias;
 
   private Map<String, String> tagsMap;
@@ -145,7 +145,9 @@ public class AlterTimeSeriesNode extends WritePlanNode {
   }
 
   @Override
-  public void addChild(PlanNode child) {}
+  public void addChild(PlanNode child) {
+    // Do nothing
+  }
 
   @Override
   public PlanNode clone() {

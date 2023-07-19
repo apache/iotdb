@@ -41,10 +41,10 @@ public class IntoNodeSerdeTest {
   @Test
   public void testIntoSerde() throws IllegalPathException, IOException {
     IntoPathDescriptor descriptor = new IntoPathDescriptor();
-    descriptor.specifyTargetPath("root.sg1.d1.s1", new PartialPath("root.sg1.new_d1.s1"));
-    descriptor.specifyTargetPath("root.sg1.d1.s2", new PartialPath("root.sg1.new_d1.s2"));
-    descriptor.specifyTargetPath("root.sg1.d2.s1", new PartialPath("root.sg1.new_d2.s1"));
-    descriptor.specifyTargetPath("root.sg1.d2.s2", new PartialPath("root.sg1.new_d2.s2"));
+    descriptor.specifyTargetPath("root.sg1.d1.s1", "", new PartialPath("root.sg1.new_d1.s1"));
+    descriptor.specifyTargetPath("root.sg1.d1.s2", "", new PartialPath("root.sg1.new_d1.s2"));
+    descriptor.specifyTargetPath("root.sg1.d2.s1", "", new PartialPath("root.sg1.new_d2.s1"));
+    descriptor.specifyTargetPath("root.sg1.d2.s2", "", new PartialPath("root.sg1.new_d2.s2"));
     descriptor.specifyDeviceAlignment("root.sg1.new_d1", true);
     descriptor.specifyDeviceAlignment("root.sg1.new_d2", false);
     IntoNode expectedNode = new IntoNode(new PlanNodeId("TestIntoNode"), descriptor);

@@ -85,12 +85,7 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
     }
 
     final List<PipeMeta> pipeMetaList = new ArrayList<>();
-    for (final PipeMeta pipeMeta :
-        env.getConfigManager()
-            .getPipeManager()
-            .getPipeTaskCoordinator()
-            .getPipeTaskInfo()
-            .getPipeMetaList()) {
+    for (final PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
       pipeMetaList.add(pipeMeta);
     }
 

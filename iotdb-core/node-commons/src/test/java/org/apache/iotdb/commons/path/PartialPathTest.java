@@ -128,6 +128,11 @@ public class PartialPathTest {
     Assert.assertEquals("root.sg.abc", t.getFullPath());
     nodes = new String[] {"root", "sg", "abc"};
     checkNodes(nodes, t.getNodes());
+
+    PartialPath u = new PartialPath("root.sg.set_storage_group");
+    Assert.assertEquals("root.sg.set_storage_group", u.getFullPath());
+    nodes = new String[] {"root", "sg", "set_storage_group"};
+    checkNodes(nodes, u.getNodes());
   }
 
   @Test
@@ -170,12 +175,6 @@ public class PartialPathTest {
 
     try {
       new PartialPath("root.sg.111");
-      fail();
-    } catch (IllegalPathException ignored) {
-    }
-
-    try {
-      new PartialPath("root.sg.watermark_embedding");
       fail();
     } catch (IllegalPathException ignored) {
     }
@@ -337,12 +336,6 @@ public class PartialPathTest {
 
     try {
       new PartialPath("root.sg.d1", "device`");
-      fail();
-    } catch (IllegalPathException ignored) {
-    }
-
-    try {
-      new PartialPath("root.sg", "watermark_embedding");
       fail();
     } catch (IllegalPathException ignored) {
     }

@@ -453,6 +453,10 @@ public class DatabasePartitionTable {
     return dataPartitionTable.getTimeSlotList(seriesSlotId, regionId, startTime, endTime);
   }
 
+  public long getTimeSlotCount() {
+    return dataPartitionTable.getTimeSlotCount();
+  }
+
   public List<TSeriesPartitionSlot> getSeriesSlotList(TConsensusGroupType type) {
     if (type == TConsensusGroupType.DataRegion) {
       return dataPartitionTable.getSeriesSlotList();

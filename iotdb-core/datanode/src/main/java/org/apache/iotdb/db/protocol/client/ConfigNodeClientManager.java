@@ -23,7 +23,9 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 
 public class ConfigNodeClientManager {
-  private ConfigNodeClientManager() {}
+  private ConfigNodeClientManager() {
+    // Empty constructor
+  }
 
   private static final class ConfigNodeClientManagerHolder {
     private static final IClientManager<ConfigRegionId, ConfigNodeClient> INSTANCE =

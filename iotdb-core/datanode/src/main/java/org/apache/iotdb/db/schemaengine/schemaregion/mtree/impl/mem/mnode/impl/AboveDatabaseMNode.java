@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl;
 
 import org.apache.iotdb.commons.schema.node.common.AbstractAboveDatabaseMNode;

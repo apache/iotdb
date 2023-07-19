@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
+import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
@@ -64,6 +65,7 @@ public class FragmentInstanceManager {
 
   private final Map<FragmentInstanceId, FragmentInstanceContext> instanceContext;
   private final Map<FragmentInstanceId, FragmentInstanceExecution> instanceExecution;
+  private final Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap;
   private final LocalExecutionPlanner planner = LocalExecutionPlanner.getInstance();
   private final IDriverScheduler scheduler = DriverScheduler.getInstance();
 
@@ -90,6 +92,7 @@ public class FragmentInstanceManager {
   private FragmentInstanceManager() {
     this.instanceContext = new ConcurrentHashMap<>();
     this.instanceExecution = new ConcurrentHashMap<>();
+    this.dataNodeQueryContextMap = new ConcurrentHashMap<>();
     this.instanceManagementExecutor =
         IoTDBThreadPoolFactory.newScheduledThreadPool(
             1, ThreadName.FRAGMENT_INSTANCE_MANAGEMENT.getName());
@@ -135,6 +138,10 @@ public class FragmentInstanceManager {
                 FragmentInstanceStateMachine stateMachine =
                     new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
 
+                int dataNodeFINum = instance.getDataNodeFINum();
+                DataNodeQueryContext dataNodeQueryContext =
+                    getOrCreateDataNodeQueryContext(instanceId.getQueryId(), dataNodeFINum);
+
                 FragmentInstanceContext context =
                     instanceContext.computeIfAbsent(
                         instanceId,
@@ -144,14 +151,16 @@ public class FragmentInstanceManager {
                                 stateMachine,
                                 instance.getSessionInfo(),
                                 dataRegion,
-                                instance.getTimeFilter()));
+                                instance.getTimeFilter(),
+                                dataNodeQueryContextMap));
 
                 try {
                   List<PipelineDriverFactory> driverFactories =
                       planner.plan(
                           instance.getFragment().getPlanNodeTree(),
                           instance.getFragment().getTypeProvider(),
-                          context);
+                          context,
+                          dataNodeQueryContext);
 
                   List<IDriver> drivers = new ArrayList<>();
                   driverFactories.forEach(factory -> drivers.add(factory.createDriver()));
@@ -193,6 +202,11 @@ public class FragmentInstanceManager {
       QUERY_EXECUTION_METRIC_SET.recordExecutionCost(
           LOCAL_EXECUTION_PLANNER, System.nanoTime() - startTime);
     }
+  }
+
+  private DataNodeQueryContext getOrCreateDataNodeQueryContext(QueryId queryId, int dataNodeFINum) {
+    return dataNodeQueryContextMap.computeIfAbsent(
+        queryId, queryId1 -> new DataNodeQueryContext(dataNodeFINum));
   }
 
   @SuppressWarnings("squid:S1181")

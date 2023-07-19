@@ -30,11 +30,15 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
+import java.util.Objects;
+
 public class PipeTransferInsertNodeReq extends TPipeTransferReq {
 
   private InsertNode insertNode;
 
-  private PipeTransferInsertNodeReq() {}
+  private PipeTransferInsertNodeReq() {
+    // Do nothing
+  }
 
   public InsertNode getInsertNode() {
     return insertNode;
@@ -100,5 +104,25 @@ public class PipeTransferInsertNodeReq extends TPipeTransferReq {
     insertNodeReq.body = transferReq.body;
 
     return insertNodeReq;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    PipeTransferInsertNodeReq that = (PipeTransferInsertNodeReq) obj;
+    return insertNode.equals(that.insertNode)
+        && version == that.version
+        && type == that.type
+        && body.equals(that.body);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(insertNode, version, type, body);
   }
 }

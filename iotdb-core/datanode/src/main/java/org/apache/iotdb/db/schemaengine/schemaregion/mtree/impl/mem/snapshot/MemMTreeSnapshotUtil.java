@@ -35,8 +35,8 @@ import org.apache.iotdb.db.schemaengine.SchemaConstant;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.MemMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.factory.MemMNodeFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.LogicalViewInfo;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -72,7 +72,8 @@ public class MemMTreeSnapshotUtil {
       "Error occurred during deserializing MemMTree.";
 
   private static final byte VERSION = 0;
-  private static final IMNodeFactory<IMemMNode> nodeFactory = MemMNodeFactory.getInstance();
+  private static final IMNodeFactory<IMemMNode> nodeFactory =
+      MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory();;
 
   public static boolean createSnapshot(File snapshotDir, MemMTreeStore store) {
     File snapshotTmp =
@@ -110,7 +111,7 @@ public class MemMTreeSnapshotUtil {
 
   private static boolean deleteFile(File snapshot) {
     try {
-      Files.delete(snapshot.toPath());
+      Files.deleteIfExists(snapshot.toPath());
       return true;
     } catch (IOException e) {
       logger.error(e.getMessage(), e);

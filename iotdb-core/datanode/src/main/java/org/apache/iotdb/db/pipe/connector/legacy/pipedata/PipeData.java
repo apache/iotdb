@@ -37,7 +37,9 @@ public abstract class PipeData {
 
   protected long serialNumber;
 
-  protected PipeData() {}
+  protected PipeData() {
+    // Empty constructor
+  }
 
   protected PipeData(long serialNumber) {
     this.serialNumber = serialNumber;

@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.itbase.env;
 
-/** this interface is used to store the JVM parameters of test nodes. */
+/** This interface is used to store the JVM parameters of test nodes. */
 public interface JVMConfig {
 
   /**

@@ -55,7 +55,7 @@ class PipeAgentLauncher {
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private PipeAgentLauncher() {
-    // forbidding instantiation
+    // Forbidding instantiation
   }
 
   public static synchronized void launchPipePluginAgent(

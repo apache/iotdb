@@ -242,32 +242,42 @@ public class PipePluginInfo implements SnapshotProcessor {
 
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws IOException {
-    File snapshotFile = new File(snapshotDir, SNAPSHOT_FILE_NAME);
-    if (snapshotFile.exists() && snapshotFile.isFile()) {
-      LOGGER.error(
-          "Failed to take snapshot, because snapshot file [{}] is already exist.",
-          snapshotFile.getAbsolutePath());
-      return false;
-    }
+    acquirePipePluginInfoLock();
+    try {
+      final File snapshotFile = new File(snapshotDir, SNAPSHOT_FILE_NAME);
+      if (snapshotFile.exists() && snapshotFile.isFile()) {
+        LOGGER.error(
+            "Failed to take snapshot, because snapshot file [{}] is already exist.",
+            snapshotFile.getAbsolutePath());
+        return false;
+      }
 
-    try (FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
-      pipePluginMetaKeeper.processTakeSnapshot(fileOutputStream);
+      try (final FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
+        pipePluginMetaKeeper.processTakeSnapshot(fileOutputStream);
+      }
+      return true;
+    } finally {
+      releasePipePluginInfoLock();
     }
-    return true;
   }
 
   @Override
   public void processLoadSnapshot(File snapshotDir) throws IOException {
-    File snapshotFile = new File(snapshotDir, SNAPSHOT_FILE_NAME);
-    if (!snapshotFile.exists() || !snapshotFile.isFile()) {
-      LOGGER.error(
-          "Failed to load snapshot,snapshot file [{}] is not exist.",
-          snapshotFile.getAbsolutePath());
-      return;
-    }
+    acquirePipePluginInfoLock();
+    try {
+      final File snapshotFile = new File(snapshotDir, SNAPSHOT_FILE_NAME);
+      if (!snapshotFile.exists() || !snapshotFile.isFile()) {
+        LOGGER.error(
+            "Failed to load snapshot,snapshot file [{}] is not exist.",
+            snapshotFile.getAbsolutePath());
+        return;
+      }
 
-    try (FileInputStream fileInputStream = new FileInputStream(snapshotFile)) {
-      pipePluginMetaKeeper.processLoadSnapshot(fileInputStream);
+      try (final FileInputStream fileInputStream = new FileInputStream(snapshotFile)) {
+        pipePluginMetaKeeper.processLoadSnapshot(fileInputStream);
+      }
+    } finally {
+      releasePipePluginInfoLock();
     }
   }
 

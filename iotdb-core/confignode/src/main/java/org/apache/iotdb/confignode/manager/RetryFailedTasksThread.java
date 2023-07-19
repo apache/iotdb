@@ -16,12 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -41,8 +43,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * The RetryFailedTasksThread executed periodically to retry failed tasks in Trigger, Template and
- * CQ
+ * The {@link RetryFailedTasksThread} executed periodically to retry failed tasks in Trigger,
+ * Template and CQ.
  */
 public class RetryFailedTasksThread {
 
@@ -56,7 +58,8 @@ public class RetryFailedTasksThread {
   private final NodeManager nodeManager;
   private final LoadManager loadManager;
   private final ScheduledExecutorService retryFailTasksExecutor =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Cluster-RetryFailedTasks-Service");
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+          ThreadName.CONFIG_NODE_RETRY_FAILED_TASK.getName());
   private final Object scheduleMonitor = new Object();
   private Future<?> currentFailedTasksRetryThreadFuture;
 

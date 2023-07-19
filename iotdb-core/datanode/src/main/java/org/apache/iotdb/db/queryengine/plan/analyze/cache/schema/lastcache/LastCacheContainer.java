@@ -41,8 +41,15 @@ public class LastCacheContainer implements ILastCacheContainer {
   @Override
   public synchronized void updateCachedLast(
       TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
-    if (timeValuePair == null || timeValuePair.getValue() == null) {
-      return;
+    if (highPriorityUpdate) { // for write, we won't cache null value
+      if (timeValuePair == null || timeValuePair.getValue() == null) {
+        return;
+      }
+    } else { // for read, we need to cache null value, because it means that there is no data for
+      // this time series
+      if (timeValuePair == null) {
+        return;
+      }
     }
 
     if (lastCacheValue == null) {
@@ -58,13 +65,16 @@ public class LastCacheContainer implements ILastCacheContainer {
     }
   }
 
+  /**
+   * Total basic 100B
+   *
+   * <ul>
+   *   <li>LastCacheContainer Object header, 8B
+   *   <li>ILastCacheValue reference, 8B
+   * </ul>
+   */
   @Override
-  public synchronized void resetLastCache() {
-    lastCacheValue = null;
-  }
-
-  @Override
-  public boolean isEmpty() {
-    return lastCacheValue == null;
+  public int estimateSize() {
+    return 16 + (lastCacheValue == null ? 0 : lastCacheValue.estimateSize());
   }
 }

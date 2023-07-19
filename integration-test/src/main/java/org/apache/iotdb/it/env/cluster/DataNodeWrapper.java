@@ -48,10 +48,10 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     this.schemaRegionConsensusPort = portList[4];
     this.mqttPort = portList[5];
 
-    // initialize mutable properties
+    // Initialize mutable properties
     reloadMutableFields();
 
-    // initialize immutable properties
+    // Initialize immutable properties
     // Override mqtt properties of super class
     immutableCommonProperties.setProperty("mqtt_host", super.getIp());
     immutableCommonProperties.setProperty("mqtt_port", String.valueOf(this.mqttPort));

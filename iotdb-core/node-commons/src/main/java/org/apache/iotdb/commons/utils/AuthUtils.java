@@ -50,9 +50,9 @@ public class AuthUtils {
   private static final Logger logger = LoggerFactory.getLogger(AuthUtils.class);
   private static final String ROOT_PREFIX = IoTDBConstant.PATH_ROOT;
   public static PartialPath ROOT_PATH_PRIVILEGE_PATH;
-  private static final int MIN_PASSWORD_LENGTH = 4;
-  private static final int MIN_USERNAME_LENGTH = 4;
-  private static final int MIN_ROLENAME_LENGTH = 4;
+  private static final int MIN_LENGTH = 4;
+  private static final int MAX_LENGTH = 64;
+  private static final String REX_PATTERN = "^[-\\w]*$";
 
   static {
     try {
@@ -77,14 +77,7 @@ public class AuthUtils {
    * @throws AuthException contains message why password is invalid
    */
   public static void validatePassword(String password) throws AuthException {
-    if (password.length() < MIN_PASSWORD_LENGTH) {
-      throw new AuthException(
-          TSStatusCode.ILLEGAL_PARAMETER,
-          "Password's size must be greater than or equal to " + MIN_PASSWORD_LENGTH);
-    }
-    if (password.contains(" ")) {
-      throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, "Password cannot contain spaces");
-    }
+    validateNameOrPassword(password);
   }
 
   /**
@@ -107,14 +100,7 @@ public class AuthUtils {
    * @throws AuthException contains message why username is invalid
    */
   public static void validateUsername(String username) throws AuthException {
-    if (username.length() < MIN_USERNAME_LENGTH) {
-      throw new AuthException(
-          TSStatusCode.ILLEGAL_PARAMETER,
-          "Username's size must be greater than or equal to " + MIN_USERNAME_LENGTH);
-    }
-    if (username.contains(" ")) {
-      throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, "Username cannot contain spaces");
-    }
+    validateNameOrPassword(username);
   }
 
   /**
@@ -124,13 +110,26 @@ public class AuthUtils {
    * @throws AuthException contains message why rolename is invalid
    */
   public static void validateRolename(String rolename) throws AuthException {
-    if (rolename.length() < MIN_ROLENAME_LENGTH) {
+    validateNameOrPassword(rolename);
+  }
+
+  public static void validateNameOrPassword(String str) throws AuthException {
+    int length = str.length();
+    if (length < MIN_LENGTH) {
       throw new AuthException(
           TSStatusCode.ILLEGAL_PARAMETER,
-          "Role name's size must be greater than or equal to " + MIN_ROLENAME_LENGTH);
-    }
-    if (rolename.contains(" ")) {
-      throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, "Role name cannot contain spaces");
+          "The length of name or password must be greater than or equal to " + MIN_LENGTH);
+    } else if (length > MAX_LENGTH) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PARAMETER,
+          "The length of name or password must be less than or equal to " + MAX_LENGTH);
+    } else if (str.contains(" ")) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PARAMETER, "The name or password cannot contain spaces");
+    } else if (!str.matches(REX_PATTERN)) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PARAMETER,
+          "The name or password can only contain letters, numbers, and underscores");
     }
   }
 
@@ -176,22 +175,12 @@ public class AuthUtils {
     if (!path.equals(ROOT_PATH_PRIVILEGE_PATH)) {
       validatePath(path);
       switch (type) {
-        case READ_TIMESERIES:
-        case CREATE_DATABASE:
-        case DELETE_DATABASE:
-        case CREATE_TIMESERIES:
-        case DELETE_TIMESERIES:
-        case INSERT_TIMESERIES:
-        case ALTER_TIMESERIES:
-        case CREATE_TRIGGER:
-        case DROP_TRIGGER:
-        case START_TRIGGER:
-        case STOP_TRIGGER:
-        case APPLY_TEMPLATE:
-        case CREATE_VIEW:
-        case ALTER_VIEW:
-        case RENAME_VIEW:
-        case DELETE_VIEW:
+        case READ_SCHEMA:
+        case WRITE_SCHEMA:
+        case READ_DATA:
+        case WRITE_DATA:
+        case USE_TRIGGER:
+        case MANAGE_DATABASE:
           return;
         default:
           throw new AuthException(
@@ -200,17 +189,11 @@ public class AuthUtils {
       }
     } else {
       switch (type) {
-        case READ_TIMESERIES:
-        case CREATE_DATABASE:
-        case DELETE_DATABASE:
-        case CREATE_TIMESERIES:
-        case DELETE_TIMESERIES:
-        case INSERT_TIMESERIES:
-        case ALTER_TIMESERIES:
-        case CREATE_VIEW:
-        case ALTER_VIEW:
-        case RENAME_VIEW:
-        case DELETE_VIEW:
+        case READ_SCHEMA:
+        case WRITE_SCHEMA:
+        case MANAGE_DATABASE:
+        case READ_DATA:
+        case WRITE_DATA:
           validatePath(path);
           return;
         default:
@@ -334,12 +317,8 @@ public class AuthUtils {
       privilegeList.add(targetPathPrivilege);
     }
     // add privilegeId into targetPathPrivilege
-    if (privilegeId != PrivilegeType.ALL.ordinal()) {
-      targetPathPrivilege.getPrivileges().add(privilegeId);
-    } else {
-      for (PrivilegeType privilegeType : PrivilegeType.values()) {
-        targetPathPrivilege.getPrivileges().add(privilegeType.ordinal());
-      }
+    for (PrivilegeType privilegeType : PrivilegeType.getStorablePrivilege(privilegeId)) {
+      targetPathPrivilege.getPrivileges().add(privilegeType.ordinal());
     }
   }
 
@@ -360,15 +339,11 @@ public class AuthUtils {
       }
     }
     if (targetPathPrivilege != null) {
-      if (privilegeId == PrivilegeType.ALL.ordinal()) {
-        // remove all privileges on target path
+      for (PrivilegeType privilegeType : PrivilegeType.getStorablePrivilege(privilegeId)) {
+        targetPathPrivilege.getPrivileges().remove(privilegeType.ordinal());
+      }
+      if (targetPathPrivilege.getPrivileges().isEmpty()) {
         privilegeList.remove(targetPathPrivilege);
-      } else {
-        // remove privilege on target path
-        targetPathPrivilege.getPrivileges().remove(privilegeId);
-        if (targetPathPrivilege.getPrivileges().isEmpty()) {
-          privilegeList.remove(targetPathPrivilege);
-        }
       }
     }
   }
@@ -399,12 +374,6 @@ public class AuthUtils {
     PrivilegeType[] types = PrivilegeType.values();
     for (String authorization : authorizationList) {
       boolean legal = false;
-      if ("SET_STORAGE_GROUP".equalsIgnoreCase(authorization)) {
-        authorization = PrivilegeType.CREATE_DATABASE.name();
-      }
-      if ("DELETE_STORAGE_GROUP".equalsIgnoreCase(authorization)) {
-        authorization = PrivilegeType.DELETE_DATABASE.name();
-      }
       for (PrivilegeType privilegeType : types) {
         if (authorization.equalsIgnoreCase(privilegeType.name())) {
           result.add(privilegeType.ordinal());

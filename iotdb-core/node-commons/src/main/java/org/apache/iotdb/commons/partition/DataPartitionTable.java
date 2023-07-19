@@ -200,8 +200,7 @@ public class DataPartitionTable {
    * @param seriesSlotId SeriesPartitionSlot
    * @param regionId TConsensusGroupId
    * @param startTime startTime
-   * @return the timePartition if seriesSlotId==-1&&regionId == -1, then return all timePartition;
-   *     if timeSlotId == -1, then return all the seriesSlot's dataRegionIds.
+   * @return the timePartition if seriesSlotId==-1 && regionId == -1, then return all timePartition.
    */
   public List<TTimePartitionSlot> getTimeSlotList(
       TSeriesPartitionSlot seriesSlotId, TConsensusGroupId regionId, long startTime, long endTime) {
@@ -220,6 +219,15 @@ public class DataPartitionTable {
       SeriesPartitionTable seriesPartitionTable = dataPartitionMap.get(seriesSlotId);
       return seriesPartitionTable.getTimeSlotList(regionId, startTime, endTime);
     }
+  }
+
+  /** Get timePartitionSlot count. */
+  public long getTimeSlotCount() {
+    AtomicLong sum = new AtomicLong();
+    dataPartitionMap.forEach(
+        (seriesPartitionSlot, seriesPartitionTable) ->
+            sum.addAndGet(seriesPartitionTable.getSeriesPartitionMap().size()));
+    return sum.get();
   }
 
   public List<TSeriesPartitionSlot> getSeriesSlotList() {

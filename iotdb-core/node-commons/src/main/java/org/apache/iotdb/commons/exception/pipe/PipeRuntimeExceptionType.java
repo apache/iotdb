@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.exception.pipe;
 
+import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMetaVersion;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -50,30 +51,32 @@ public enum PipeRuntimeExceptionType {
     ReadWriteIOUtils.write(type, stream);
   }
 
-  public static PipeRuntimeException deserializeFrom(ByteBuffer byteBuffer) {
+  public static PipeRuntimeException deserializeFrom(
+      PipeRuntimeMetaVersion version, ByteBuffer byteBuffer) {
     final short type = ReadWriteIOUtils.readShort(byteBuffer);
     switch (type) {
       case 1:
-        return PipeRuntimeNonCriticalException.deserializeFrom(byteBuffer);
+        return PipeRuntimeNonCriticalException.deserializeFrom(version, byteBuffer);
       case 2:
-        return PipeRuntimeCriticalException.deserializeFrom(byteBuffer);
+        return PipeRuntimeCriticalException.deserializeFrom(version, byteBuffer);
       case 3:
-        return PipeRuntimeConnectorCriticalException.deserializeFrom(byteBuffer);
+        return PipeRuntimeConnectorCriticalException.deserializeFrom(version, byteBuffer);
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported PipeRuntimeException type %s.", type));
     }
   }
 
-  public static PipeRuntimeException deserializeFrom(InputStream stream) throws IOException {
+  public static PipeRuntimeException deserializeFrom(
+      PipeRuntimeMetaVersion version, InputStream stream) throws IOException {
     final short type = ReadWriteIOUtils.readShort(stream);
     switch (type) {
       case 1:
-        return PipeRuntimeNonCriticalException.deserializeFrom(stream);
+        return PipeRuntimeNonCriticalException.deserializeFrom(version, stream);
       case 2:
-        return PipeRuntimeCriticalException.deserializeFrom(stream);
+        return PipeRuntimeCriticalException.deserializeFrom(version, stream);
       case 3:
-        return PipeRuntimeConnectorCriticalException.deserializeFrom(stream);
+        return PipeRuntimeConnectorCriticalException.deserializeFrom(version, stream);
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported PipeRuntimeException type %s.", type));

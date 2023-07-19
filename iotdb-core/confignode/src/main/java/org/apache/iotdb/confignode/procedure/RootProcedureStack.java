@@ -59,7 +59,7 @@ public class RootProcedureStack<Env> {
     return state == State.ROLLINGBACK;
   }
 
-  /** Called by the ProcedureExecutor to mark rollback execution */
+  /** Called by the {@link ProcedureExecutor} to mark rollback execution. */
   protected synchronized boolean setRollback() {
     if (running == 0 && state == State.FAILED) {
       state = State.ROLLINGBACK;
@@ -68,7 +68,7 @@ public class RootProcedureStack<Env> {
     return false;
   }
 
-  /** Called by the ProcedureExecutor to mark rollback execution */
+  /** Called by the {@link ProcedureExecutor} to mark rollback execution. */
   protected synchronized void unsetRollback() {
     assert state == State.ROLLINGBACK;
     state = State.FAILED;
@@ -76,7 +76,7 @@ public class RootProcedureStack<Env> {
 
   protected synchronized long[] getSubprocedureIds() {
     if (subprocs == null) {
-      return null;
+      return new long[0];
     }
     return subprocs.stream().mapToLong(Procedure::getProcId).toArray();
   }
@@ -96,7 +96,7 @@ public class RootProcedureStack<Env> {
     return null;
   }
 
-  /** Called by the ProcedureExecutor to mark the procedure step as running. */
+  /** Called by the {@link ProcedureExecutor} to mark the procedure step as running. */
   protected synchronized boolean acquire() {
     if (state != State.RUNNING) {
       return false;
@@ -106,7 +106,7 @@ public class RootProcedureStack<Env> {
     return true;
   }
 
-  /** Called by the ProcedureExecutor to mark the procedure step as finished. */
+  /** Called by the {@link ProcedureExecutor} to mark the procedure step as finished. */
   protected synchronized void release() {
     running--;
   }
@@ -118,8 +118,8 @@ public class RootProcedureStack<Env> {
   }
 
   /**
-   * Called by the ProcedureExecutor after the procedure step is completed, to add the step to the
-   * rollback list (or procedure stack)
+   * Called by the {@link ProcedureExecutor} after the procedure step is completed, to add the step
+   * to the rollback list (or procedure stack).
    */
   protected synchronized void addRollbackStep(Procedure<Env> proc) {
     if (proc.isFailed()) {
@@ -144,10 +144,10 @@ public class RootProcedureStack<Env> {
   }
 
   /**
-   * Called on store load by the ProcedureExecutor to load part of the stack.
+   * Called on store load by the {@link ProcedureExecutor} to load part of the stack.
    *
    * <p>Each procedure has its own stack-positions. Which means we have to write to the store only
-   * the Procedure we executed, and nothing else. on load we recreate the full stack by aggregating
+   * the Procedure we executed, and nothing else. On load we recreate the full stack by aggregating
    * each procedure stack-positions.
    */
   protected synchronized void loadStack(Procedure<Env> proc) {

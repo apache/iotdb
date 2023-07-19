@@ -65,17 +65,4 @@ public class DataNodeLastCacheManager {
     ILastCacheContainer lastCacheContainer = entry.getLastCacheContainer();
     lastCacheContainer.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
   }
-
-  /**
-   * reset the last cache value of time series
-   *
-   * @param entry schema cache entry in DataNodeSchemaCache
-   */
-  public static void resetLastCache(SchemaCacheEntry entry) {
-    if (!CACHE_ENABLED || null == entry) {
-      return;
-    }
-    ILastCacheContainer lastCacheContainer = entry.getLastCacheContainer();
-    lastCacheContainer.resetLastCache();
-  }
 }
