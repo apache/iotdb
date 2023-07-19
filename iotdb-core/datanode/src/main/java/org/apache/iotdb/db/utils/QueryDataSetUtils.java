@@ -31,6 +31,8 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xerial.snappy.Snappy;
 
 import java.io.ByteArrayOutputStream;
@@ -47,6 +49,10 @@ import java.util.Optional;
 public class QueryDataSetUtils {
 
   private static final int FLAG = 0x01;
+
+  private static long byteBufferSize = 0L;
+
+  private static Logger LOGGER = LoggerFactory.getLogger(QueryDataSetUtils.class);
 
   private QueryDataSetUtils() {}
 
@@ -417,6 +423,8 @@ public class QueryDataSetUtils {
         break;
       }
       ByteBuffer origin = optionalByteBuffer.get();
+      byteBufferSize += origin.capacity();
+      LOGGER.warn("total size of byteBuffer is : {}MB.", byteBufferSize / 1024 / 1024);
       ByteBuffer byteBuffer;
       try {
         byteBuffer = ByteBuffer.wrap(Snappy.uncompress(origin.array()));
