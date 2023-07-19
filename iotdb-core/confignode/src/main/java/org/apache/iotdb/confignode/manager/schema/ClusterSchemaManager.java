@@ -94,6 +94,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
@@ -110,6 +111,7 @@ public class ClusterSchemaManager {
   private final IManager configManager;
   private final ClusterSchemaInfo clusterSchemaInfo;
   private final ClusterSchemaQuotaStatistics schemaQuotaStatistics;
+  private final ReentrantLock createDatabaseLock = new ReentrantLock();
 
   public ClusterSchemaManager(
       IManager configManager,
@@ -144,10 +146,18 @@ public class ClusterSchemaManager {
     }
 
     try {
+      createDatabaseLock.lock();
       clusterSchemaInfo.isDatabaseNameValid(databaseSchemaPlan.getSchema().getName());
       if (!databaseSchemaPlan.getSchema().getName().equals(IoTDBConfig.SYSTEM_DATABASE)) {
         clusterSchemaInfo.checkDatabaseLimit();
       }
+      // Cache DatabaseSchema
+      result = getConsensusManager().write(databaseSchemaPlan).getStatus();
+      // Bind Database metrics
+      PartitionMetrics.bindDatabasePartitionMetrics(
+          MetricService.getInstance(), configManager, databaseSchemaPlan.getSchema().getName());
+      // Adjust the maximum RegionGroup number of each Database
+      adjustMaxRegionGroupNum();
     } catch (MetadataException metadataException) {
       // Reject if StorageGroup already set
       if (metadataException instanceof IllegalPathException) {
@@ -160,18 +170,9 @@ public class ClusterSchemaManager {
         result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       }
       result.setMessage(metadataException.getMessage());
-      return result;
+    } finally {
+      createDatabaseLock.unlock();
     }
-
-    // Cache DatabaseSchema
-    result = getConsensusManager().write(databaseSchemaPlan).getStatus();
-
-    // Bind Database metrics
-    PartitionMetrics.bindDatabasePartitionMetrics(
-        MetricService.getInstance(), configManager, databaseSchemaPlan.getSchema().getName());
-
-    // Adjust the maximum RegionGroup number of each Database
-    adjustMaxRegionGroupNum();
 
     return result;
   }
