@@ -86,6 +86,9 @@ public class CrossSpaceCompactionCandidate {
       return false;
     }
     for (DeviceInfo unseqDeviceInfo : unseqFile.getDevices()) {
+      String deviceId = unseqDeviceInfo.deviceId;
+      boolean atLeastOneSelectedSeqFileContainsCurrentDevice = false;
+      TsFileResourceCandidate lastSeqFileWhoseDeviceTimeBeforeCurrentUnseqDevice = null;
       for (TsFileResourceCandidate seqFile : seqFiles) {
         // If the seqFile may need to be selected but its invalid, the selection should be
         // terminated.
@@ -93,10 +96,10 @@ public class CrossSpaceCompactionCandidate {
             && seqFile.mayHasOverlapWithUnseqFile(unseqDeviceInfo)) {
           return false;
         }
-        if (!seqFile.containsDevice(unseqDeviceInfo.deviceId)) {
+        if (!seqFile.containsDevice(deviceId)) {
           continue;
         }
-        DeviceInfo seqDeviceInfo = seqFile.getDeviceInfoById(unseqDeviceInfo.deviceId);
+        DeviceInfo seqDeviceInfo = seqFile.getDeviceInfoById(deviceId);
 
         // If the unsealed file is unclosed, the file should not be selected only when its startTime
         // is larger than endTime of unseqFile. Or, the selection should be terminated.
@@ -113,15 +116,29 @@ public class CrossSpaceCompactionCandidate {
           }
           nextUnseqFileHasOverlap = true;
           // if this condition is satisfied, all subsequent seq files is unnecessary to check
+          atLeastOneSelectedSeqFileContainsCurrentDevice = true;
           break;
         } else if (unseqDeviceInfo.startTime <= seqDeviceInfo.endTime) {
           if (!seqFile.selected) {
             ret.add(seqFile);
             seqFile.markAsSelected();
           }
+          atLeastOneSelectedSeqFileContainsCurrentDevice = true;
           nextUnseqFileHasOverlap = true;
+        } else if (!atLeastOneSelectedSeqFileContainsCurrentDevice) {
+          lastSeqFileWhoseDeviceTimeBeforeCurrentUnseqDevice = seqFile;
         }
       }
+      boolean seqSpaceHasCurrentUnseqDeviceButNotOverlap =
+          (!atLeastOneSelectedSeqFileContainsCurrentDevice
+              && lastSeqFileWhoseDeviceTimeBeforeCurrentUnseqDevice != null);
+      if (!seqSpaceHasCurrentUnseqDeviceButNotOverlap
+          || lastSeqFileWhoseDeviceTimeBeforeCurrentUnseqDevice.unsealed()
+          || lastSeqFileWhoseDeviceTimeBeforeCurrentUnseqDevice.selected) {
+        continue;
+      }
+      ret.add(lastSeqFileWhoseDeviceTimeBeforeCurrentUnseqDevice);
+      lastSeqFileWhoseDeviceTimeBeforeCurrentUnseqDevice.markAsSelected();
     }
     // mark candidates in next split as selected even though it may not be added to the final
     // TaskResource
