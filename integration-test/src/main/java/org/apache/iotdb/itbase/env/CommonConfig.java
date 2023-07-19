@@ -118,4 +118,6 @@ public interface CommonConfig {
   CommonConfig setClusterSchemaLimitLevel(String clusterSchemaLimitLevel);
 
   CommonConfig setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold);
+
+  CommonConfig setDatabaseLimitThreshold(long databaseLimitThreshold);
 }

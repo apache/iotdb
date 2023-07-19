@@ -213,6 +213,7 @@ public class ConfigNodeTestUtils {
     clusterParameters.setDiskSpaceWarningThreshold(0.05);
     clusterParameters.setReadConsistencyLevel("strong");
     clusterParameters.setTimestampPrecision("ms");
+    clusterParameters.setDatabaseLimitThreshold(-1);
     return clusterParameters;
   }
 

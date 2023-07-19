@@ -202,6 +202,10 @@ public class CommonDescriptor {
           "Illegal target MLNode endpoint url format in config file: {}, use default configuration.",
           endPointUrl);
     }
+    config.setDatabaseLimitThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "database_limit_threshold", String.valueOf(config.getDatabaseLimitThreshold()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

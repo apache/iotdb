@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
 
 public class MetadataConstant {
 
@@ -54,6 +55,8 @@ public class MetadataConstant {
 
   public static final String[] ALL_RESULT_NODES = new String[] {"root", "**"};
   public static final PartialPath ALL_MATCH_PATTERN = new PartialPath(new String[] {"root", "**"});
+  public static final PartialPath SYSTEM_DATABASE_PATTERN =
+      new PartialPath(IoTDBMetricsUtils.DATABASE.split("\\."));
 
   public static final int NON_TEMPLATE = -1;
   public static final int ALL_TEMPLATE = -2;
