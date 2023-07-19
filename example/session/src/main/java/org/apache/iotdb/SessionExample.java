@@ -799,12 +799,14 @@ public class SessionExample {
 
   private static void fastLastDataQueryForOneDevice()
       throws IoTDBConnectionException, StatementExecutionException {
+    System.out.println("-------fastLastQuery------");
     List<String> paths = new ArrayList<>();
-    paths.add(ROOT_SG1_D1_S1);
-    paths.add(ROOT_SG1_D1_S2);
-    paths.add(ROOT_SG1_D1_S3);
+    paths.add("s1");
+    paths.add("s2");
+    paths.add("s3");
     try (SessionDataSet sessionDataSet =
-        session.executeLastDataQueryForOneDevice(ROOT_SG1, ROOT_SG1_D1, paths, true)) {
+        sessionEnableRedirect.executeLastDataQueryForOneDevice(
+            ROOT_SG1, ROOT_SG1_D1, paths, true)) {
       System.out.println(sessionDataSet.getColumnNames());
       sessionDataSet.setFetchSize(1024);
       while (sessionDataSet.hasNext()) {

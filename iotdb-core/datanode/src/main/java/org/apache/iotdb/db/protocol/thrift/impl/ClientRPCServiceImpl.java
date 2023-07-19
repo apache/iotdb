@@ -750,9 +750,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         TSExecuteStatementResp resp;
         if (queryExecution.isQuery()) {
           resp = createResponse(queryExecution.getDatasetHeader(), queryId);
-          TSStatus tsstatus = new TSStatus();
-          tsstatus.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
-          tsstatus.setRedirectNode(lastRegionLeader);
+          TSStatus tsstatus = new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
+          tsstatus.setRedirectNode(
+              regionReplicaSets
+                  .get(regionReplicaSets.size() - 1)
+                  .dataNodeLocations
+                  .get(0)
+                  .clientRpcEndPoint);
           resp.setStatus(tsstatus);
           finished = SELECT_RESULT.apply(resp, queryExecution, req.fetchSize);
           resp.setMoreData(!finished);
