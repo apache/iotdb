@@ -230,7 +230,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
 
     long totalFileSize = unseqFile.getTsFileSize();
     for (TsFileResource f : seqFiles) {
-      if (f.getTsFileSize() >= config.getTargetCompactionFileSize()) {
+      if (f.getTsFileSize() >= config.getTargetCompactionFileSize() * 1.5) {
         // to avoid serious write amplification caused by cross space compaction, we restrict that
         // seq files are no longer be compacted when the size reaches the threshold.
         return false;
