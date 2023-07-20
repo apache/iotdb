@@ -126,7 +126,11 @@ class ForecastingTrainingTrial(BasicTrial):
             # decoder input
             dec_inp = torch.zeros_like(batch_y[:, -self.pred_len:, :]).float()
 
-            inputs = pack_input_dict(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+            inputs = pack_input_dict(
+                batch_x=batch_x,
+                batch_x_mark=batch_x_mark,
+                dec_inp=dec_inp,
+                batch_y_mark=batch_y_mark)
             outputs = self.model(inputs)
 
             outputs = outputs[:, -self.pred_len:]
