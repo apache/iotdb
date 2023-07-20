@@ -19,11 +19,21 @@
 
 package org.apache.iotdb.db.protocol.thrift.impl;
 
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -38,18 +48,42 @@ import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
+import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
+import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
+import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
+import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
+import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
+import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
+import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryUtil;
+import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractSeriesAggregationScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesAggregationScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesAggregationScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
@@ -68,10 +102,13 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.DropSche
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.schemaengine.template.TemplateQueryType;
+import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaManager;
 import org.apache.iotdb.db.storageengine.rescon.quotas.OperationQuota;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -95,11 +132,13 @@ import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSFastLastDataQueryForOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
+import org.apache.iotdb.service.rpc.thrift.TSGroupByQueryIntervalReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
@@ -122,10 +161,22 @@ import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import io.airlift.units.Duration;
+import io.jsonwebtoken.lang.Strings;
+import org.apache.commons.lang.StringUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -134,14 +185,22 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
+import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
+import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
+import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.initTimeRangeIterator;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNpeOrUnexpectedException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
+import static org.apache.iotdb.db.utils.QueryDataSetUtils.convertTsBlockByFetchSize;
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
@@ -164,6 +223,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private final ISchemaFetcher schemaFetcher;
 
+  private final TsBlockSerde serde = new TsBlockSerde();
+
+  private final DataNodeSchemaCache DATA_NODE_SCHEMA_CACHE = DataNodeSchemaCache.getInstance();
+
+  public static Duration DEFAULT_TIME_SLICE = new Duration(60_000, TimeUnit.MILLISECONDS);
+
   @FunctionalInterface
   public interface SelectResult {
     boolean apply(TSExecuteStatementResp resp, IQueryExecution queryExecution, int fetchSize)
@@ -180,8 +245,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private static final SelectResult OLD_SELECT_RESULT =
       (resp, queryExecution, fetchSize) -> {
-        Pair<TSQueryDataSet, Boolean> pair =
-            QueryDataSetUtils.convertTsBlockByFetchSize(queryExecution, fetchSize);
+        Pair<TSQueryDataSet, Boolean> pair = convertTsBlockByFetchSize(queryExecution, fetchSize);
         resp.setQueryDataSet(pair.left);
         return pair.right;
       };
@@ -558,6 +622,108 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
   }
 
+  private List<TsBlock> executeGroupByQueryInternal(
+      SessionInfo sessionInfo,
+      String device,
+      String measurement,
+      TSDataType dataType,
+      boolean isAligned,
+      long startTime,
+      long endTme,
+      long interval,
+      TAggregationType aggregationType,
+      List<DataRegion> dataRegionList)
+      throws IllegalPathException {
+
+    int dataRegionSize = dataRegionList.size();
+    if (dataRegionSize != 1) {
+      throw new IllegalArgumentException(
+          "dataRegionList.size() should only be 1 now,  current size is " + dataRegionSize);
+    }
+
+    Filter timeFilter = new TimeFilter.TimeGtEqAndLt(startTime, endTme);
+
+    QueryId queryId = new QueryId("stub_query");
+    FragmentInstanceId instanceId =
+        new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+    FragmentInstanceStateMachine stateMachine =
+        new FragmentInstanceStateMachine(
+            instanceId, FragmentInstanceManager.getInstance().instanceNotificationExecutor);
+    FragmentInstanceContext fragmentInstanceContext =
+        createFragmentInstanceContext(
+            instanceId, stateMachine, sessionInfo, dataRegionList.get(0), timeFilter);
+    DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
+    PlanNodeId planNodeId = new PlanNodeId("1");
+    driverContext.addOperatorContext(1, planNodeId, SeriesScanOperator.class.getSimpleName());
+    driverContext
+        .getOperatorContexts()
+        .forEach(operatorContext -> operatorContext.setMaxRunTime(DEFAULT_TIME_SLICE));
+
+    SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
+    scanOptionsBuilder.withAllSensors(Collections.singleton(measurement));
+    scanOptionsBuilder.withGlobalTimeFilter(timeFilter);
+
+    Aggregator aggregator =
+        new Aggregator(
+            AccumulatorFactory.createAccumulator(aggregationType, dataType, null, null, true),
+            AggregationStep.SINGLE,
+            Collections.singletonList(new InputLocation[] {new InputLocation(0, 0)}));
+
+    GroupByTimeParameter groupByTimeParameter =
+        new GroupByTimeParameter(startTime, endTme, interval, interval, true);
+
+    IMeasurementSchema measurementSchema = new MeasurementSchema(measurement, dataType);
+    AbstractSeriesAggregationScanOperator operator;
+    PartialPath path;
+    if (isAligned) {
+      path =
+          new AlignedPath(
+              device,
+              Collections.singletonList(measurement),
+              Collections.singletonList(measurementSchema));
+      operator =
+          new AlignedSeriesAggregationScanOperator(
+              planNodeId,
+              (AlignedPath) path,
+              Ordering.ASC,
+              scanOptionsBuilder.build(),
+              driverContext.getOperatorContexts().get(0),
+              Collections.singletonList(aggregator),
+              initTimeRangeIterator(groupByTimeParameter, true, true),
+              groupByTimeParameter,
+              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+    } else {
+      path = new MeasurementPath(device, measurement, measurementSchema);
+      operator =
+          new SeriesAggregationScanOperator(
+              planNodeId,
+              path,
+              Ordering.ASC,
+              scanOptionsBuilder.build(),
+              driverContext.getOperatorContexts().get(0),
+              Collections.singletonList(aggregator),
+              initTimeRangeIterator(groupByTimeParameter, true, true),
+              groupByTimeParameter,
+              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+    }
+
+    try {
+      List<TsBlock> result = new ArrayList<>();
+      fragmentInstanceContext.setSourcePaths(Collections.singletonList(path));
+      operator.initQueryDataSource(fragmentInstanceContext.getSharedQueryDataSource());
+
+      while (operator.hasNext()) {
+        result.add(operator.next());
+      }
+
+      return result;
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    } finally {
+      fragmentInstanceContext.releaseResource();
+    }
+  }
+
   @Override
   public TSExecuteStatementResp executeQueryStatementV2(TSExecuteStatementReq req) {
     return executeStatementV2(req);
@@ -584,8 +750,286 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   @Override
+  public TSExecuteStatementResp executeFastLastDataQueryForOneDeviceV2(
+      TSFastLastDataQueryForOneDeviceReq req) {
+    boolean finished = false;
+    long queryId = Long.MIN_VALUE;
+    IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    OperationQuota quota = null;
+    if (!SESSION_MANAGER.checkLogin(clientSession)) {
+      return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
+    }
+    long startTime = System.nanoTime();
+    Throwable t = null;
+    try {
+      String db;
+      String deviceId;
+      PartialPath devicePath;
+
+      queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
+
+      if (req.isLegalPathNodes()) {
+        db = req.db;
+        deviceId = req.deviceId;
+        devicePath = new PartialPath(deviceId.split("\\."));
+      } else {
+        db = new PartialPath(req.db).getFullPath();
+        devicePath = new PartialPath(req.deviceId);
+        deviceId = devicePath.getFullPath();
+      }
+
+      DataPartitionQueryParam queryParam =
+          new DataPartitionQueryParam(deviceId, Collections.emptyList(), true, true);
+      DataPartition dataPartition =
+          partitionFetcher.getDataPartitionWithUnclosedTimeRange(
+              Collections.singletonMap(db, Collections.singletonList(queryParam)));
+      List<TRegionReplicaSet> regionReplicaSets =
+          dataPartition.getDataRegionReplicaSet(deviceId, Collections.emptyList());
+
+      // no valid DataRegion
+      if (regionReplicaSets.isEmpty()
+          || regionReplicaSets.size() == 1 && NOT_ASSIGNED == regionReplicaSets.get(0)) {
+        TSExecuteStatementResp resp =
+            createResponse(DatasetHeaderFactory.getLastQueryHeader(), queryId);
+        resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, ""));
+        resp.setQueryResult(Collections.emptyList());
+        finished = true;
+        resp.setMoreData(false);
+        return resp;
+      }
+
+      TEndPoint lastRegionLeader =
+          regionReplicaSets
+              .get(regionReplicaSets.size() - 1)
+              .dataNodeLocations
+              .get(0)
+              .mPPDataExchangeEndPoint;
+
+      // the device's dataRegion's leader of the latest time partition is on current node, may can
+      // read directly from cache
+      if (isSameNode(lastRegionLeader)) {
+        // the device's all dataRegions' leader are on current node, can use null entry in cache
+        boolean canUseNullEntry =
+            regionReplicaSets.stream()
+                .limit(regionReplicaSets.size() - 1L)
+                .allMatch(
+                    regionReplicaSet ->
+                        isSameNode(
+                            regionReplicaSet.dataNodeLocations.get(0).mPPDataExchangeEndPoint));
+        int sensorNum = req.sensors.size();
+        TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(sensorNum);
+        boolean allCached = true;
+        for (String sensor : req.sensors) {
+          PartialPath fullPath;
+          if (req.isLegalPathNodes()) {
+            fullPath = devicePath.concatNode(sensor);
+          } else {
+            fullPath = devicePath.concatNode((new PartialPath(sensor)).getFullPath());
+          }
+          TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(fullPath);
+          if (timeValuePair == null) {
+            allCached = false;
+            break;
+          } else if (timeValuePair.getValue() == null) {
+            // there is no data for this sensor
+            if (!canUseNullEntry) {
+              allCached = false;
+              break;
+            }
+          } else {
+            // we don't consider TTL
+            LastQueryUtil.appendLastValue(
+                builder,
+                timeValuePair.getTimestamp(),
+                new Binary(fullPath.getFullPath()),
+                timeValuePair.getValue().getStringValue(),
+                timeValuePair.getValue().getDataType().name());
+          }
+        }
+        // cache hit
+        if (allCached) {
+          TSExecuteStatementResp resp =
+              createResponse(DatasetHeaderFactory.getLastQueryHeader(), queryId);
+          resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, ""));
+          if (builder.isEmpty()) {
+            resp.setQueryResult(Collections.emptyList());
+          } else {
+            resp.setQueryResult(Collections.singletonList(serde.serialize(builder.build())));
+          }
+          finished = true;
+          resp.setMoreData(false);
+          return resp;
+        }
+      }
+
+      // cache miss
+      Statement s = StatementGenerator.createStatement(convert(req), clientSession.getZoneId());
+      // permission check
+      TSStatus status = AuthorityChecker.checkAuthority(s, clientSession);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(status);
+      }
+
+      quota =
+          DataNodeThrottleQuotaManager.getInstance()
+              .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
+
+      if (ENABLE_AUDIT_LOG) {
+        AuditLogger.log(String.format("Last Data Query: %s", req), s);
+      }
+      // create and cache dataset
+      ExecutionResult result =
+          COORDINATOR.execute(
+              s,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(clientSession),
+              "",
+              partitionFetcher,
+              schemaFetcher,
+              req.getTimeout());
+
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new RuntimeException("error code: " + result.status);
+      }
+
+      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
+
+      try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
+        TSExecuteStatementResp resp;
+        if (queryExecution.isQuery()) {
+          resp = createResponse(queryExecution.getDatasetHeader(), queryId);
+          TSStatus tsstatus = new TSStatus(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
+          tsstatus.setRedirectNode(
+              regionReplicaSets
+                  .get(regionReplicaSets.size() - 1)
+                  .dataNodeLocations
+                  .get(0)
+                  .clientRpcEndPoint);
+          resp.setStatus(tsstatus);
+          finished = SELECT_RESULT.apply(resp, queryExecution, req.fetchSize);
+          resp.setMoreData(!finished);
+          quota.addReadResult(resp.getQueryResult());
+        } else {
+          resp = RpcUtils.getTSExecuteStatementResp(result.status);
+        }
+        return resp;
+      }
+
+    } catch (Exception e) {
+      finished = true;
+      t = e;
+      return RpcUtils.getTSExecuteStatementResp(
+          onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_LAST_DATA_QUERY));
+    } catch (Error error) {
+      t = error;
+      throw error;
+    } finally {
+
+      long currentOperationCost = System.nanoTime() - startTime;
+      COORDINATOR.recordExecutionTime(queryId, currentOperationCost);
+
+      // record each operation time cost
+      addStatementExecutionLatency(
+          OperationType.EXECUTE_LAST_DATA_QUERY, StatementType.QUERY, currentOperationCost);
+
+      if (finished) {
+        // record total time cost for one query
+        long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
+        addQueryLatency(
+            StatementType.QUERY, executionTime > 0 ? executionTime : currentOperationCost);
+        COORDINATOR.cleanupQueryExecution(queryId, t);
+      }
+      SESSION_MANAGER.updateIdleTime();
+      if (quota != null) {
+        quota.close();
+      }
+    }
+  }
+
+  private TSLastDataQueryReq convert(TSFastLastDataQueryForOneDeviceReq req) {
+    List<String> paths = new ArrayList<>(req.sensors.size());
+    for (String sensor : req.sensors) {
+      paths.add(req.deviceId + "." + sensor);
+    }
+    TSLastDataQueryReq tsLastDataQueryReq =
+        new TSLastDataQueryReq(req.sessionId, paths, 0, req.statementId);
+    tsLastDataQueryReq.setFetchSize(req.fetchSize);
+    tsLastDataQueryReq.setEnableRedirectQuery(req.enableRedirectQuery);
+    tsLastDataQueryReq.setLegalPathNodes(req.legalPathNodes);
+    tsLastDataQueryReq.setTimeout(req.timeout);
+    return tsLastDataQueryReq;
+  }
+
+  @Override
   public TSExecuteStatementResp executeAggregationQueryV2(TSAggregationQueryReq req) {
     return executeAggregationQueryInternal(req, SELECT_RESULT);
+  }
+
+  @Override
+  public TSExecuteStatementResp executeGroupByQueryIntervalQuery(TSGroupByQueryIntervalReq req)
+      throws TException {
+
+    try {
+      IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+
+      String database = req.getDatabase();
+      if (StringUtils.isEmpty(database)) {
+        String[] splits = Strings.split(req.getDevice(), "\\.");
+        database = String.format("%s.%s", splits[0], splits[1]);
+      }
+      String deviceId = req.getDevice();
+      String measurementId = req.getMeasurement();
+      TSDataType dataType = TSDataType.getTsDataType((byte) req.getDataType());
+
+      // only one database, one device, one time interval
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
+      TTimePartitionSlot timePartitionSlot =
+          TimePartitionUtils.getTimePartition(req.getStartTime());
+      DataPartitionQueryParam queryParam =
+          new DataPartitionQueryParam(
+              deviceId, Collections.singletonList(timePartitionSlot), false, false);
+      sgNameToQueryParamsMap.put(database, Collections.singletonList(queryParam));
+      DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+      List<DataRegion> dataRegionList = new ArrayList<>();
+      List<TRegionReplicaSet> replicaSets =
+          dataPartition.getDataRegionReplicaSet(
+              deviceId, Collections.singletonList(timePartitionSlot));
+      for (TRegionReplicaSet region : replicaSets) {
+        dataRegionList.add(
+            StorageEngine.getInstance()
+                .getDataRegion(new DataRegionId(region.getRegionId().getId())));
+      }
+
+      List<TsBlock> blockResult =
+          executeGroupByQueryInternal(
+              SESSION_MANAGER.getSessionInfo(clientSession),
+              deviceId,
+              measurementId,
+              dataType,
+              true,
+              req.getStartTime(),
+              req.getEndTime(),
+              req.getInterval(),
+              req.getAggregationType(),
+              dataRegionList);
+
+      String outputColumnName = req.getAggregationType().name();
+      List<ColumnHeader> columnHeaders =
+          Collections.singletonList(new ColumnHeader(outputColumnName, dataType));
+      DatasetHeader header = new DatasetHeader(columnHeaders, false);
+      header.setColumnToTsBlockIndexMap(Collections.singletonList(outputColumnName));
+
+      TSExecuteStatementResp resp = createResponse(header, 1);
+      TSQueryDataSet queryDataSet = convertTsBlockByFetchSize(blockResult);
+      resp.setQueryDataSet(queryDataSet);
+
+      return resp;
+    } catch (Exception e) {
+      return RpcUtils.getTSExecuteStatementResp(
+          onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_AGG_QUERY));
+    } finally {
+      SESSION_MANAGER.updateIdleTime();
+    }
   }
 
   @Override
@@ -1132,7 +1576,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
       try (SetThreadName queryName = new SetThreadName(queryExecution.getQueryId())) {
         Pair<TSQueryDataSet, Boolean> pair =
-            QueryDataSetUtils.convertTsBlockByFetchSize(queryExecution, req.fetchSize);
+            convertTsBlockByFetchSize(queryExecution, req.fetchSize);
         TSQueryDataSet result = pair.left;
         finished = pair.right;
         boolean hasResultSet = result.bufferForTime().limit() != 0;
