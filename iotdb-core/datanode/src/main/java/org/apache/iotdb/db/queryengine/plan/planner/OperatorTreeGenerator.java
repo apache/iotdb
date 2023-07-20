@@ -235,6 +235,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -2216,7 +2217,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(measurementPath);
           if (timeValuePair == null) {
             context.dataNodeQueryContext.addUnCachePath(
-                measurementPath, node.getDataNodeSeriesScanNum());
+                measurementPath, new AtomicInteger(node.getDataNodeSeriesScanNum().get()));
           }
         }
       } finally {
