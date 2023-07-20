@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.concurrent.ThreadModule;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.ThreadPoolMetrics;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.service.metric.JvmGcMetrics;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
@@ -72,6 +73,9 @@ public class DataNodeMetricsHelper {
 
     // bind performance overview related metrics
     MetricService.getInstance().addMetricSet(PerformanceOverviewMetrics.getInstance());
+
+    // bind gc metrics
+    MetricService.getInstance().addMetricSet(JvmGcMetrics.getInstance());
   }
 
   private static void initCpuMetrics() {
