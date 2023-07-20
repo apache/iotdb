@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.tsfile.read.filter;
 
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
 import org.apache.iotdb.tsfile.read.filter.operator.Between;
 import org.apache.iotdb.tsfile.read.filter.operator.Eq;
@@ -30,7 +32,11 @@ import org.apache.iotdb.tsfile.read.filter.operator.In;
 import org.apache.iotdb.tsfile.read.filter.operator.Lt;
 import org.apache.iotdb.tsfile.read.filter.operator.LtEq;
 import org.apache.iotdb.tsfile.read.filter.operator.NotEq;
+import org.apache.iotdb.tsfile.read.filter.operator.OrFilter;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -228,5 +234,88 @@ public class TimeFilter {
    */
   public static Filter defaultTimeFilter(boolean ascending) {
     return ascending ? TimeFilter.gtEq(Long.MIN_VALUE) : TimeFilter.ltEq(Long.MAX_VALUE);
+  }
+
+  public static class TimeGtEqAndLt implements Filter {
+
+    private long startTime;
+
+    private long endTime;
+
+    public TimeGtEqAndLt() {}
+
+    public TimeGtEqAndLt(long startTime, long endTime) {
+      this.startTime = startTime;
+      this.endTime = endTime;
+    }
+
+    @Override
+    public boolean satisfy(Statistics statistics) {
+      return !(statistics.getEndTime() < startTime || statistics.getStartTime() >= endTime);
+    }
+
+    @Override
+    public boolean allSatisfy(Statistics statistics) {
+      return startTime <= statistics.getStartTime() && statistics.getEndTime() < endTime;
+    }
+
+    @Override
+    public boolean satisfy(long time, Object value) {
+      return startTime <= time && time < endTime;
+    }
+
+    @Override
+    public boolean satisfyStartEndTime(long startTime, long endTime) {
+      return !(endTime < this.startTime || startTime >= this.endTime);
+    }
+
+    @Override
+    public boolean containStartEndTime(long startTime, long endTime) {
+      return this.startTime <= startTime && endTime < this.endTime;
+    }
+
+    @Override
+    public Filter copy() {
+      return new TimeGtEqAndLt(startTime, endTime);
+    }
+
+    @Override
+    public String toString() {
+      return "TimeGtEqAndLt{" + "startTime=" + startTime + ", endTime=" + endTime + '}';
+    }
+
+    @Override
+    public void serialize(DataOutputStream outputStream) {
+      try {
+        outputStream.write(getSerializeId().ordinal());
+        outputStream.writeLong(startTime);
+        outputStream.writeLong(endTime);
+      } catch (IOException ignored) {
+        // ignored
+      }
+    }
+
+    @Override
+    public void deserialize(ByteBuffer buffer) {
+      startTime = buffer.getLong();
+      endTime = buffer.getLong();
+    }
+
+    @Override
+    public FilterSerializeId getSerializeId() {
+      return FilterSerializeId.TIME_GTEQ_AND_LT;
+    }
+
+    @Override
+    public List<TimeRange> getTimeRanges() {
+      return startTime >= endTime
+          ? Collections.emptyList()
+          : Collections.singletonList(new TimeRange(startTime, endTime - 1));
+    }
+
+    @Override
+    public Filter reverse() {
+      return new OrFilter(new TimeLt(startTime), new TimeGtEq(endTime));
+    }
   }
 }

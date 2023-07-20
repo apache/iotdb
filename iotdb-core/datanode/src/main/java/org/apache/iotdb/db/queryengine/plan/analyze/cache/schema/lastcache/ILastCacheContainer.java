@@ -37,9 +37,5 @@ public interface ILastCacheContainer {
   void updateCachedLast(
       TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime);
 
-  // reset all lastCache data of one timeseries(monad or vector)
-  void resetLastCache();
-
-  // whether the entry contains lastCache Value.
-  boolean isEmpty();
+  int estimateSize();
 }

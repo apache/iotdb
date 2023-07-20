@@ -503,8 +503,9 @@ public class TsFileResource {
    * Get the min start time and max end time of devices matched by given devicePattern. If there's
    * no device matched by given pattern, return null.
    */
-  public Pair<Long, Long> getPossibleStartTimeAndEndTime(PartialPath devicePattern) {
-    return timeIndex.getPossibleStartTimeAndEndTime(devicePattern);
+  public Pair<Long, Long> getPossibleStartTimeAndEndTime(
+      PartialPath devicePattern, Set<String> deviceMatchInfo) {
+    return timeIndex.getPossibleStartTimeAndEndTime(devicePattern, deviceMatchInfo);
   }
 
   public boolean isClosed() {

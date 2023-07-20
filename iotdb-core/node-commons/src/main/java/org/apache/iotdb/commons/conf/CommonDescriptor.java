@@ -234,6 +234,10 @@ public class CommonDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "time_partition_interval", String.valueOf(config.getTimePartitionInterval()))));
+    config.setDatabaseLimitThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "database_limit_threshold", String.valueOf(config.getDatabaseLimitThreshold()))));
   }
 
   private void loadPipeProps(Properties properties) {
@@ -329,6 +333,15 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_meta_syncer_sync_interval_minutes",
                 String.valueOf(config.getPipeMetaSyncerSyncIntervalMinutes()))));
+    config.setPipeMetaSyncerAutoRestartPipeCheckIntervalRound(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_meta_syncer_auto_restart_pipe_check_interval_round",
+                String.valueOf(config.getPipeMetaSyncerAutoRestartPipeCheckIntervalRound()))));
+    config.setPipeAutoRestartEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_auto_restart_enabled", String.valueOf(config.getPipeAutoRestartEnabled()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

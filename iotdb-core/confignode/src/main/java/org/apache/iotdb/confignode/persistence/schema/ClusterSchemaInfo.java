@@ -22,6 +22,8 @@ package org.apache.iotdb.confignode.persistence.schema;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -58,6 +60,7 @@ import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
@@ -85,7 +88,9 @@ import java.util.UUID;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.db.schemaengine.SchemaConstant.ALL_MATCH_PATTERN;
 import static org.apache.iotdb.db.schemaengine.SchemaConstant.ALL_TEMPLATE;
+import static org.apache.iotdb.db.schemaengine.SchemaConstant.SYSTEM_DATABASE_PATTERN;
 
 /**
  * The {@link ClusterSchemaInfo} stores cluster schemaEngine. The cluster schemaEngine including: 1.
@@ -94,6 +99,7 @@ import static org.apache.iotdb.db.schemaengine.SchemaConstant.ALL_TEMPLATE;
 public class ClusterSchemaInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSchemaInfo.class);
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   // Database read write lock
   private final ReentrantReadWriteLock databaseReadWriteLock;
@@ -241,6 +247,29 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       databaseReadWriteLock.writeLock().unlock();
     }
     return result;
+  }
+
+  /**
+   * Check database limit if necessary.
+   *
+   * @throws SchemaQuotaExceededException if the number of databases exceeds the limit
+   * @throws MetadataException if other exceptions happen
+   */
+  public void checkDatabaseLimit() throws MetadataException {
+    int limit = COMMON_CONFIG.getDatabaseLimitThreshold();
+    if (limit > 0) {
+      databaseReadWriteLock.readLock().lock();
+      try {
+        int count =
+            mTree.getDatabaseNum(ALL_MATCH_PATTERN, false)
+                - mTree.getDatabaseNum(SYSTEM_DATABASE_PATTERN, false);
+        if (count >= limit) {
+          throw new SchemaQuotaExceededException(limit);
+        }
+      } finally {
+        databaseReadWriteLock.readLock().unlock();
+      }
+    }
   }
 
   /** @return The number of matched Databases by the specified Database pattern */

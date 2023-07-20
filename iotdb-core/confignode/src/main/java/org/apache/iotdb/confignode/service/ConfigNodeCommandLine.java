@@ -69,6 +69,7 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
     if (MODE_START.equals(mode)) {
       try {
         // Do ConfigNode startup checks
+        LOGGER.info("Starting IoTDB {}", IoTDBConstant.VERSION_WITH_BUILD);
         ConfigNodeStartupCheck checks = new ConfigNodeStartupCheck(IoTDBConstant.CN_ROLE);
         checks.startUpCheck();
       } catch (StartupException | ConfigurationException | IOException e) {
