@@ -30,6 +30,8 @@ import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.sql.Timestamp;
@@ -75,6 +77,12 @@ public class IoTDBRpcDataSet {
   public int queryResultIndex; // the index of bytebuffer in queryResult
   public int tsBlockSize; // the size of current tsBlock
   public int tsBlockIndex; // the row index in current tsBlock
+
+  private long bytebufferCapacity = 0L;
+
+  private long bytebufferLimit = 0L;
+
+  private static Logger Logger = LoggerFactory.getLogger(IoTDBRpcDataSet.class);
 
   @SuppressWarnings({"squid:S3776", "squid:S107"}) // Suppress high Cognitive Complexity warning
   public IoTDBRpcDataSet(
@@ -296,6 +304,8 @@ public class IoTDBRpcDataSet {
       return true;
     } else {
       try {
+        Logger.error("Total capacity is : {}MB.", bytebufferCapacity / 1024 / 1024);
+        Logger.error("Total limit is : {}MB.", bytebufferLimit / 1024 / 1024);
         close();
         return false;
       } catch (TException e) {
@@ -348,8 +358,10 @@ public class IoTDBRpcDataSet {
   public void constructOneTsBlock() {
     lastReadWasNull = false;
     ByteBuffer byteBuffer = queryResult.get(queryResultIndex);
+    bytebufferCapacity = bytebufferCapacity + (byteBuffer.capacity());
+    bytebufferLimit = bytebufferLimit + (byteBuffer.limit());
     queryResultIndex++;
-    curTsBlock = serde.deserializeUncompressed(byteBuffer);
+    curTsBlock = serde.deserialize(byteBuffer);
     tsBlockIndex = -1;
     tsBlockSize = curTsBlock.getPositionCount();
   }

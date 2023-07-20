@@ -22,12 +22,12 @@ package org.apache.iotdb;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.SessionDataSet.DataIterator;
+import org.apache.iotdb.isession.pool.SessionDataSetWrapper;
 import org.apache.iotdb.isession.template.Template;
-import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -64,61 +64,77 @@ public class SessionExample {
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
-    session =
-        new Session.Builder()
-            .host(LOCAL_HOST)
-            .port(6667)
-            .username("root")
+    SessionPool sessionPool =
+        new SessionPool.Builder()
+            .nodeUrls(Collections.singletonList("192.168.130.16:6667"))
+            .user("root")
             .password("root")
-            .version(Version.V_1_0)
+            .maxSize(1)
             .build();
-    session.open(false);
-
-    // set session fetchSize
-    session.setFetchSize(10000);
-
-    try {
-      session.createDatabase("root.sg1");
-    } catch (StatementExecutionException e) {
-      if (e.getStatusCode() != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
-        throw e;
+    //    String sql = args[0];
+    //    if(sql == null || sql.isEmpty()){
+    //      throw new RuntimeException("Sql is missing.");
+    //    }
+    String result = "Time elapsed: ";
+    long start = System.currentTimeMillis();
+    System.out.println("Begin query");
+    long rowCount = 0;
+    try (SessionDataSetWrapper dataSet =
+        sessionPool.executeQueryStatement("select * from root.**")) {
+      while (dataSet.hasNext()) {
+        dataSet.next();
+        rowCount++;
       }
+      long end = System.currentTimeMillis();
+      System.out.println("End query, fetched rowCount is : " + rowCount);
+      System.out.printf((result) + (end - start) + " ms.");
     }
 
-    //     createTemplate();
-    createTimeseries();
-    createMultiTimeseries();
-    insertRecord();
-    insertTablet();
-    //    insertTabletWithNullValues();
-    //    insertTablets();
-    //    insertRecords();
-    //    insertText();
-    //    selectInto();
-    //    createAndDropContinuousQueries();
-    //    nonQuery();
-    query();
-    //    queryWithTimeout();
-    rawDataQuery();
-    lastDataQuery();
-    aggregationQuery();
-    groupByQuery();
-    //    queryByIterator();
-    //    deleteData();
-    //    deleteTimeseries();
-    //    setTimeout();
-
-    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
-    sessionEnableRedirect.setEnableQueryRedirection(true);
-    sessionEnableRedirect.open(false);
-
-    // set session fetchSize
-    sessionEnableRedirect.setFetchSize(10000);
-
-    insertRecord4Redirect();
-    query4Redirect();
-    sessionEnableRedirect.close();
-    session.close();
+    //    // set session fetchSize
+    //    session.setFetchSize(10000);
+    //
+    //    try {
+    //      session.createDatabase("root.sg1");
+    //    } catch (StatementExecutionException e) {
+    //      if (e.getStatusCode() != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
+    //        throw e;
+    //      }
+    //    }
+    //
+    //    //     createTemplate();
+    //    createTimeseries();
+    //    createMultiTimeseries();
+    //    insertRecord();
+    //    insertTablet();
+    //    //    insertTabletWithNullValues();
+    //    //    insertTablets();
+    //    //    insertRecords();
+    //    //    insertText();
+    //    //    selectInto();
+    //    //    createAndDropContinuousQueries();
+    //    //    nonQuery();
+    //    query();
+    //    //    queryWithTimeout();
+    //    rawDataQuery();
+    //    lastDataQuery();
+    //    aggregationQuery();
+    //    groupByQuery();
+    //    //    queryByIterator();
+    //    //    deleteData();
+    //    //    deleteTimeseries();
+    //    //    setTimeout();
+    //
+    //    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
+    //    sessionEnableRedirect.setEnableQueryRedirection(true);
+    //    sessionEnableRedirect.open(false);
+    //
+    //    // set session fetchSize
+    //    sessionEnableRedirect.setFetchSize(10000);
+    //
+    //    insertRecord4Redirect();
+    //    query4Redirect();
+    //    sessionEnableRedirect.close();
+    //    session.close();
   }
 
   private static void createAndDropContinuousQueries()
