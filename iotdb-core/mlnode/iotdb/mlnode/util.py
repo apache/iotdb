@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import os
+
 import torch
 
 from iotdb.mlnode.constant import TSStatusCode, ModelInputName

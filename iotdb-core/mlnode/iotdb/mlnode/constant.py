@@ -18,7 +18,7 @@
 from enum import Enum
 from typing import List
 
-MLNODE_CONF_DIRECTORY_NAME = "conf"
+MLNODE_CONF_DIRECTORY_NAME = "resources/conf"
 MLNODE_CONF_FILE_NAME = "iotdb-mlnode.toml"
 MLNODE_LOG_CONF_FILE_NAME = "logging_config.ini"
 

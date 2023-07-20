@@ -27,7 +27,7 @@ import torch.nn as nn
 from pylru import lrucache
 
 from iotdb.mlnode.config import descriptor
-from iotdb.mlnode.constant import OptionsKey, ModelInputName
+from iotdb.mlnode.constant import OptionsKey
 from iotdb.mlnode.exception import ModelNotExistError
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.util import pack_input_dict
@@ -35,7 +35,7 @@ from iotdb.mlnode.util import pack_input_dict
 
 class ModelStorage(object):
     def __init__(self):
-        self.__model_dir = os.path.join('.', descriptor.get_config().get_mn_model_storage_dir())
+        self.__model_dir = os.path.join(os.getcwd(), descriptor.get_config().get_mn_model_storage_dir())
         if not os.path.exists(self.__model_dir):
             try:
                 os.mkdir(self.__model_dir)

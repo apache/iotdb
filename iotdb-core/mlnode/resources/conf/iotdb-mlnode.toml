@@ -37,7 +37,7 @@ mn_model_storage_dir = "models"
 
 # Cache number of model storage to avoid repeated loading
 # Datatype: int
-mn_model_storage_cachesize = 30
+mn_model_storage_cache_size = 30
 
 # Maximum number of training model tasks, otherwise the task is pending
 # Datatype: int
