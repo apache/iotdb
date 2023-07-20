@@ -29,7 +29,6 @@ import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
-import javafx.util.Pair;
 
 public class ClientManagerMetrics implements IMetricSet {
   private static final String CLIENT_MANAGER_NUM_ACTIVE = "client_manager_num_active";
@@ -42,9 +41,8 @@ public class ClientManagerMetrics implements IMetricSet {
   private static final String MEAN_IDLE_TIME_MILLIS = "client_manager_mean_idle_time";
 
   private static final String POOL_NAME = "pool_name";
-  private final ArrayList<Pair<String, GenericKeyedObjectPool<?, ?>>> registeredClientPool =
-      new ArrayList<>();
-
+  private final ArrayList<String> registeredClientName = new ArrayList<>();
+  private final ArrayList<GenericKeyedObjectPool<?, ?>> registeredClientPool = new ArrayList<>();
   private static final List<String> POOL_NAME_LIST = new ArrayList<>();
 
   static {
@@ -144,9 +142,9 @@ public class ClientManagerMetrics implements IMetricSet {
 
   private long getNumActive(String poolName) {
     AtomicLong numActive = new AtomicLong();
-    for (Pair<String, GenericKeyedObjectPool<?, ?>> pair : registeredClientPool) {
-      if (pair.getKey().equals(poolName)) {
-        numActive.addAndGet(pair.getValue().getNumActive());
+    for (int i = 0; i < registeredClientName.size(); i++) {
+      if (registeredClientName.get(i).equals(poolName)) {
+        numActive.addAndGet(registeredClientPool.get(i).getNumActive());
       }
     }
     return numActive.get();
@@ -154,9 +152,9 @@ public class ClientManagerMetrics implements IMetricSet {
 
   private long getNumIdle(String poolName) {
     AtomicLong numIdle = new AtomicLong();
-    for (Pair<String, GenericKeyedObjectPool<?, ?>> pair : registeredClientPool) {
-      if (pair.getKey().equals(poolName)) {
-        numIdle.addAndGet(pair.getValue().getNumIdle());
+    for (int i = 0; i < registeredClientName.size(); i++) {
+      if (registeredClientName.get(i).equals(poolName)) {
+        numIdle.addAndGet(registeredClientPool.get(i).getNumIdle());
       }
     }
     return numIdle.get();
@@ -164,9 +162,9 @@ public class ClientManagerMetrics implements IMetricSet {
 
   private long getBorrowedCount(String poolName) {
     AtomicLong borrowedCount = new AtomicLong();
-    for (Pair<String, GenericKeyedObjectPool<?, ?>> pair : registeredClientPool) {
-      if (pair.getKey().equals(poolName)) {
-        borrowedCount.addAndGet(pair.getValue().getBorrowedCount());
+    for (int i = 0; i < registeredClientName.size(); i++) {
+      if (registeredClientName.get(i).equals(poolName)) {
+        borrowedCount.addAndGet(registeredClientPool.get(i).getBorrowedCount());
       }
     }
     return borrowedCount.get();
@@ -174,9 +172,9 @@ public class ClientManagerMetrics implements IMetricSet {
 
   private long getCreatedCount(String poolName) {
     AtomicLong createdCount = new AtomicLong();
-    for (Pair<String, GenericKeyedObjectPool<?, ?>> pair : registeredClientPool) {
-      if (pair.getKey().equals(poolName)) {
-        createdCount.addAndGet(pair.getValue().getCreatedCount());
+    for (int i = 0; i < registeredClientName.size(); i++) {
+      if (registeredClientName.get(i).equals(poolName)) {
+        createdCount.addAndGet(registeredClientPool.get(i).getCreatedCount());
       }
     }
     return createdCount.get();
@@ -184,9 +182,9 @@ public class ClientManagerMetrics implements IMetricSet {
 
   private long getDestroyedCount(String poolName) {
     AtomicLong destroyedCount = new AtomicLong();
-    for (Pair<String, GenericKeyedObjectPool<?, ?>> pair : registeredClientPool) {
-      if (pair.getKey().equals(poolName)) {
-        destroyedCount.addAndGet(pair.getValue().getDestroyedCount());
+    for (int i = 0; i < registeredClientName.size(); i++) {
+      if (registeredClientName.get(i).equals(poolName)) {
+        destroyedCount.addAndGet(registeredClientPool.get(i).getDestroyedCount());
       }
     }
     return destroyedCount.get();
@@ -195,9 +193,9 @@ public class ClientManagerMetrics implements IMetricSet {
   private long getMeanActiveTime(String poolName) {
     AtomicLong activeTime = new AtomicLong();
     AtomicLong count = new AtomicLong();
-    for (Pair<String, GenericKeyedObjectPool<?, ?>> pair : registeredClientPool) {
-      if (pair.getKey().equals(poolName)) {
-        activeTime.addAndGet(pair.getValue().getMeanActiveTimeMillis());
+    for (int i = 0; i < registeredClientName.size(); i++) {
+      if (registeredClientName.get(i).equals(poolName)) {
+        activeTime.addAndGet(registeredClientPool.get(i).getMeanActiveTimeMillis());
         count.addAndGet(1);
       }
     }
@@ -207,9 +205,9 @@ public class ClientManagerMetrics implements IMetricSet {
   private long getMeanBorrowWaitTime(String poolName) {
     AtomicLong borrowWaitTime = new AtomicLong();
     AtomicLong count = new AtomicLong();
-    for (Pair<String, GenericKeyedObjectPool<?, ?>> pair : registeredClientPool) {
-      if (pair.getKey().equals(poolName)) {
-        borrowWaitTime.addAndGet(pair.getValue().getMeanBorrowWaitTimeMillis());
+    for (int i = 0; i < registeredClientName.size(); i++) {
+      if (registeredClientName.get(i).equals(poolName)) {
+        borrowWaitTime.addAndGet(registeredClientPool.get(i).getMeanBorrowWaitTimeMillis());
         count.addAndGet(1);
       }
     }
@@ -219,9 +217,9 @@ public class ClientManagerMetrics implements IMetricSet {
   private long getMeanIdleTime(String poolName) {
     AtomicLong idleTime = new AtomicLong();
     AtomicLong count = new AtomicLong();
-    for (Pair<String, GenericKeyedObjectPool<?, ?>> pair : registeredClientPool) {
-      if (pair.getKey().equals(poolName)) {
-        idleTime.addAndGet(pair.getValue().getMeanIdleTimeMillis());
+    for (int i = 0; i < registeredClientName.size(); i++) {
+      if (registeredClientName.get(i).equals(poolName)) {
+        idleTime.addAndGet(registeredClientPool.get(i).getMeanIdleTimeMillis());
         count.addAndGet(1);
       }
     }
@@ -240,11 +238,14 @@ public class ClientManagerMetrics implements IMetricSet {
       metricService.remove(MetricType.GAUGE, MEAN_BORROW_WAIT_TIME_MILLIS, POOL_NAME, poolName);
       metricService.remove(MetricType.GAUGE, MEAN_IDLE_TIME_MILLIS, POOL_NAME, poolName);
     }
+    registeredClientName.clear();
+    registeredClientPool.clear();
   }
 
   public void registerClientManager(String poolName, GenericKeyedObjectPool<?, ?> clientPool) {
     synchronized (this) {
-      registeredClientPool.add(new Pair<>(poolName, clientPool));
+      registeredClientName.add(poolName);
+      registeredClientPool.add(clientPool);
     }
   }
 }
