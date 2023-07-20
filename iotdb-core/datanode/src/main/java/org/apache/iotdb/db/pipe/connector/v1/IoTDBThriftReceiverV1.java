@@ -441,6 +441,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
       } catch (Exception e) {
         LOGGER.warn("IoTDBThriftReceiverV1#handleExit: close writing file writer error.", e);
       }
+      writingFileWriter = null;
     } else {
       LOGGER.info(
           "IoTDBThriftReceiverV1#handleExit: writing file writer is null. No need to close.");
@@ -456,12 +457,34 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
         LOGGER.warn(
             "IoTDBThriftReceiverV1#handleExit: delete file {} error.", writingFile.getPath());
       }
+      writingFile = null;
     } else {
       LOGGER.info("IoTDBThriftReceiverV1#handleExit: writing file is null. No need to delete.");
     }
 
-    writingFileWriter = null;
-    writingFile = null;
+    // clear the original receiver file dir if exists
+    if (receiverFileDirWithIdSuffix.get() != null) {
+      if (receiverFileDirWithIdSuffix.get().exists()) {
+        try {
+          Files.delete(receiverFileDirWithIdSuffix.get().toPath());
+          LOGGER.info(
+              "IoTDBThriftReceiverV1#handleExit: original receiver file dir {} was deleted.",
+              receiverFileDirWithIdSuffix.get().getPath());
+        } catch (IOException e) {
+          LOGGER.warn(
+              "IoTDBThriftReceiverV1#handleExit: delete original receiver file dir {} error.",
+              receiverFileDirWithIdSuffix.get().getPath());
+        }
+      } else {
+        LOGGER.info(
+            "IoTDBThriftReceiverV1#handleExit: original receiver file dir {} does not exist. No need to delete.",
+            receiverFileDirWithIdSuffix.get().getPath());
+      }
+      receiverFileDirWithIdSuffix.set(null);
+    } else {
+      LOGGER.info(
+          "IoTDBThriftReceiverV1#handleExit: original receiver file dir is null. No need to delete.");
+    }
 
     LOGGER.info("IoTDBThriftReceiverV1#handleExit: receiver exited.");
   }
