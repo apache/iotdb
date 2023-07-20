@@ -36,13 +36,9 @@ from iotdb.mlnode.log import logger
 from iotdb.mlnode.parser import ForecastTaskOptions
 from iotdb.mlnode.process.trial import ForecastingTrainingTrial
 from iotdb.mlnode.storage import model_storage
+from iotdb.mlnode.util import pack_input_dict
 from iotdb.thrift.common.ttypes import TrainingState
 
-
-def pack_up_data(data_x: torch.Tensor):
-    return {
-        ModelInputName.DATA_X.value: data_x
-    }
 
 class _BasicTask(object):
     def __init__(
@@ -225,7 +221,7 @@ class ForecastingInferenceTask(_BasicInferenceTask):
             current_data = full_data[:, -self.model_input_len:, :]
             current_data = torch.Tensor(current_data)
 
-            input_data = pack_up_data(current_data)
+            input_data = pack_input_dict(current_data)
             output_data = self.model(input_data).detach().numpy()
             full_data = np.concatenate([full_data, output_data], axis=1)
             current_pred_len += self.model_pred_len

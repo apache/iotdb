@@ -33,6 +33,7 @@ from iotdb.mlnode.das.dataset import TsForecastDataset
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.parser import ForecastTaskOptions
 from iotdb.mlnode.storage import model_storage
+from iotdb.mlnode.util import pack_input_dict
 from iotdb.thrift.common.ttypes import TrainingState
 
 
@@ -78,21 +79,6 @@ class BasicTrial(object):
     @abstractmethod
     def start(self):
         raise NotImplementedError
-
-
-def pack_input_dict(batch_x: torch.Tensor,
-                    batch_x_mark: torch.Tensor,
-                    dec_inp: torch.Tensor,
-                    batch_y_mark: torch.Tensor):
-    """
-    pack up inputs as a dict to adapt for different models
-    """
-    return {
-        ModelInputName.DATA_X.value: batch_x,
-        ModelInputName.TIME_STAMP_X.value: batch_x_mark,
-        ModelInputName.DEC_INP.value: dec_inp,
-        ModelInputName.TIME_STAMP_Y.value: batch_y_mark
-    }
 
 
 class ForecastingTrainingTrial(BasicTrial):

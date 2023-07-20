@@ -30,12 +30,7 @@ from iotdb.mlnode.config import descriptor
 from iotdb.mlnode.constant import OptionsKey, ModelInputName
 from iotdb.mlnode.exception import ModelNotExistError
 from iotdb.mlnode.log import logger
-
-
-def pack_up_data(data_x: torch.Tensor):
-    return {
-        ModelInputName.DATA_X.value: data_x
-    }
+from iotdb.mlnode.util import pack_input_dict
 
 
 class ModelStorage(object):
@@ -64,7 +59,7 @@ class ModelStorage(object):
 
         # Note: model config for time series should contain 'input_len' and 'input_vars'
         sample_input = (
-            pack_up_data(
+            pack_input_dict(
                 torch.randn(1, model_config[OptionsKey.INPUT_LENGTH.name()], model_config[OptionsKey.INPUT_VARS.name()])
             )
         )

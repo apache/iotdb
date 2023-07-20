@@ -15,7 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from iotdb.mlnode.constant import TSStatusCode
+import torch
+
+from iotdb.mlnode.constant import TSStatusCode, ModelInputName
 from iotdb.mlnode.exception import BadNodeUrlError
 from iotdb.mlnode.log import logger
 from iotdb.thrift.common.ttypes import TEndPoint, TSStatus
@@ -55,3 +57,18 @@ def verify_success(status: TSStatus, err_msg: str) -> None:
     if status.code != TSStatusCode.SUCCESS_STATUS.get_status_code():
         logger.warn(err_msg + ", error status is ", status)
         raise RuntimeError(str(status.code) + ": " + status.message)
+
+
+def pack_input_dict(batch_x: torch.Tensor,
+                    batch_x_mark: torch.Tensor,
+                    dec_inp: torch.Tensor,
+                    batch_y_mark: torch.Tensor):
+    """
+    pack up inputs as a dict to adapt for different models
+    """
+    return {
+        ModelInputName.DATA_X.value: batch_x,
+        ModelInputName.TIME_STAMP_X.value: batch_x_mark,
+        ModelInputName.DEC_INP.value: dec_inp,
+        ModelInputName.TIME_STAMP_Y.value: batch_y_mark
+    }
