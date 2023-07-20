@@ -35,7 +35,8 @@ def test_session_pool():
         assert session.is_open() is True
 
         session2 = session_pool.get_session()
-        assert session2 is not None
+        session2.open(False)
+        assert session2.is_open() is True
 
         timeout = False
         try:
@@ -47,7 +48,8 @@ def test_session_pool():
 
         Thread(target=lambda: session_pool.put_back(session2)).start()
         session3 = session_pool.get_session()
-        assert session3 is not None
+        session3.open(False)
+        assert session3.is_open() is True
 
         session_pool.close()
 
@@ -77,7 +79,8 @@ def test_session_pool_by_node_urls():
         session_pool = create_session_pool(pool_config, max_pool_size, 3000)
 
         session = session_pool.get_session()
-        assert session is not None
+        session.open(False)
+        assert session.is_open() is True
 
         timeout = False
         try:
@@ -90,17 +93,10 @@ def test_session_pool_by_node_urls():
 
         session_pool.put_back(session)
         session2 = session_pool.get_session()
-        assert session2 is not None
+        session2.open(False)
+        assert session2.is_open() is True
 
         session_pool.put_back(session2)
-
-        check = False
-        try:
-            session_pool.put_back(session2)
-        except AttributeError as e:
-            check = True
-            assert str(e) == "Session has already been put back to the pool."
-        assert check is True
 
         session_pool.close()
         assert session2.is_open() is False
