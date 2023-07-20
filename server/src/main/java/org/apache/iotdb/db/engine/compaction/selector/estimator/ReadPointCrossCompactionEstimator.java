@@ -24,8 +24,8 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-
 import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -221,15 +221,17 @@ public class ReadPointCrossCompactionEstimator extends AbstractCrossSpaceEstimat
       String device = deviceWithIsAlignedPair.left;
       boolean isAlignedDevice = deviceWithIsAlignedPair.right;
 
-      Iterator<Map<String, List<ChunkMetadata>>> measurementChunkMetadataListMapIterator
-          = reader.getMeasurementChunkMetadataListMapIterator(device);
+      Iterator<Map<String, List<ChunkMetadata>>> measurementChunkMetadataListMapIterator =
+          reader.getMeasurementChunkMetadataListMapIterator(device);
       while (measurementChunkMetadataListMapIterator.hasNext()) {
-        Map<String, List<ChunkMetadata>> measurementChunkMetadataListMap = measurementChunkMetadataListMapIterator.next();
+        Map<String, List<ChunkMetadata>> measurementChunkMetadataListMap =
+            measurementChunkMetadataListMapIterator.next();
         if (isAlignedDevice) {
           alignedSeriesNumInDevice += measurementChunkMetadataListMap.size();
         }
 
-        for (Map.Entry<String, List<ChunkMetadata>> measurementChunkMetadataList : measurementChunkMetadataListMap.entrySet()) {
+        for (Map.Entry<String, List<ChunkMetadata>> measurementChunkMetadataList :
+            measurementChunkMetadataListMap.entrySet()) {
           int currentChunkMetadataListSize = measurementChunkMetadataList.getValue().size();
           deviceChunkNum += currentChunkMetadataListSize;
           totalChunkNum += currentChunkMetadataListSize;
@@ -237,7 +239,8 @@ public class ReadPointCrossCompactionEstimator extends AbstractCrossSpaceEstimat
         }
       }
       if (isAlignedDevice) {
-        maxAlignedSeriesNumInDevice = Math.max(maxAlignedSeriesNumInDevice, alignedSeriesNumInDevice);
+        maxAlignedSeriesNumInDevice =
+            Math.max(maxAlignedSeriesNumInDevice, alignedSeriesNumInDevice);
       }
       maxDeviceChunkNum = Math.max(maxDeviceChunkNum, deviceChunkNum);
     }
