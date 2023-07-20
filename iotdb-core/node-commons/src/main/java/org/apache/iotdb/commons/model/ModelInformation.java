@@ -53,10 +53,10 @@ public abstract class ModelInformation {
   public static final String TASK_TYPE = "task_type";
   public static final String MODEL_TYPE = "model_type";
 
-  protected ModelInformation(String modelId, Map<String, String> options, String datasetFetchSQL) {
+  protected ModelInformation(String modelId, Map<String, String> options, String datasetFetchSql) {
     this.modelId = modelId;
     this.options = options;
-    this.datasetFetchSQL = datasetFetchSQL;
+    this.datasetFetchSQL = datasetFetchSql;
     this.trainingState = TrainingState.PENDING;
     this.trialMap = new HashMap<>();
   }
@@ -117,7 +117,7 @@ public abstract class ModelInformation {
     return options;
   }
 
-  public String getDatasetFetchSQL() {
+  public String getDatasetFetchSql() {
     return datasetFetchSQL;
   }
 

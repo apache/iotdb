@@ -99,13 +99,15 @@ public class CreateModelStatement extends Statement implements IConfigStatement 
       }
     }
     if (datasetStatement.isAlignByDevice()) {
-      throw new SemanticException("");
+      throw new SemanticException(
+          "Currently the sql statement in CREATE MODEL does not support align by device.");
     }
     if (datasetStatement.isLastQuery()) {
-      throw new SemanticException("");
+      throw new SemanticException("The sql statement in CREATE MODEL does not support LAST query.");
     }
     if (datasetStatement.isAggregationQuery() && !datasetStatement.isGroupByTime()) {
-      throw new SemanticException("");
+      throw new SemanticException(
+          "The aggregation sql in CREATE MODEL only supports GROUP BY TIME now.");
     }
   }
 

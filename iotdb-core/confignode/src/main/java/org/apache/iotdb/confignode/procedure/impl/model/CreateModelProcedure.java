@@ -125,6 +125,10 @@ public class CreateModelProcedure extends AbstractNodeProcedure<CreateModelState
         case ML_NODE_ACTIVE:
           env.getConfigManager().getModelManager().getModelInfo().releaseModelTableLock();
           return Flow.NO_MORE_STATE;
+
+        default:
+          throw new UnsupportedOperationException(
+              String.format("Unknown state during executing createModelProcedure, %s", state));
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {

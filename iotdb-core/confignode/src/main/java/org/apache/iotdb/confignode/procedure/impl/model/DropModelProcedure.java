@@ -101,10 +101,14 @@ public class DropModelProcedure extends AbstractNodeProcedure<DropModelState> {
                       new TDeleteModelMetricsReq(modelId),
                       DataNodeRequestType.DELETE_MODEL_METRICS);
           if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            throw new ModelManagementException(
-                String.format(
-                    "Failed to drop model [%s], fail to delete metrics: %s",
-                    modelId, status.getMessage()));
+            // It's ok for the next state if the metric path doesn't exit
+            if (status.getCode() != TSStatusCode.PATH_NOT_EXIST.getStatusCode()) {
+              throw new ModelManagementException(
+                  String.format(
+                      "Failed to drop model [%s], fail to delete metrics: %s",
+                      modelId, status.getMessage()));
+            }
+            LOGGER.warn("The path of metrics does not exist on model {}", modelId);
           }
 
           setNextState(DropModelState.DATA_NODE_DROPPED);
@@ -146,6 +150,10 @@ public class DropModelProcedure extends AbstractNodeProcedure<DropModelState> {
         case CONFIG_NODE_DROPPED:
           env.getConfigManager().getModelManager().getModelInfo().releaseModelTableLock();
           return Flow.NO_MORE_STATE;
+
+        default:
+          throw new UnsupportedOperationException(
+              String.format("Unknown state during executing dropModelProcedure, %s", state));
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {

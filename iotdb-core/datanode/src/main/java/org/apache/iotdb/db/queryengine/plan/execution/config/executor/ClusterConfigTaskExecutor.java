@@ -2097,6 +2097,15 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     Analyzer analyzer = Analyzer.getAnalyzer();
     Analysis analysis = analyzer.analyze(datasetStatement);
 
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    if (analysis.getOutputExpressions() == null) {
+      future.setException(
+          new IoTDBException(
+              "The query result of the sql in CREATE MODEL are null.",
+              TSStatusCode.ILLEGAL_PARAMETER.getStatusCode()));
+      return future;
+    }
+
     SelectComponent formattedSelect =
         new SelectComponent(datasetStatement.getSelectComponent().getZoneId());
     List<TSDataType> inputTypeList = new ArrayList<>();
@@ -2137,7 +2146,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       options.put(PREDICT_INDEX_LIST, Arrays.toString(predictIndexList.toArray()));
     }
 
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TCreateModelReq createModelReq =
