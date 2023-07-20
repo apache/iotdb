@@ -430,12 +430,10 @@ public class MTreeBelowSGCachedImpl {
         synchronized (this) {
           IDeviceMNode<ICachedMNode> device = measurementMNode.getParent().getAsDeviceMNode();
           ICachedMNode cachedMNode = store.getChild(device.getAsMNode(), alias);
-          try {
-            if (cachedMNode != null) {
-              throw new MetadataException("The alias already exists.");
-            }
-          } finally {
+          if (cachedMNode != null) {
             unPinMNode(cachedMNode);
+            throw new MetadataException(
+                "The alias is duplicated with the name or alias of other measurement.");
           }
           if (measurementMNode.getAlias() != null) {
             device.deleteAliasChild(measurementMNode.getAlias());

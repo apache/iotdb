@@ -245,6 +245,25 @@ public class SchemaRegionAliasAndTagTest extends AbstractSchemaRegionTest {
   public void testUpsertAliasAndTagsAndAttributes() {
     try {
       prepareTimeseries();
+      try {
+        schemaRegion.upsertAliasAndTagsAndAttributes(
+            "s2", null, null, new PartialPath("root.sg.wf01.wt01.v1.s1"));
+        Assert.fail();
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage()
+                .contains("The alias is duplicated with the name or alias of other measurement."));
+      }
+      try {
+        schemaRegion.upsertAliasAndTagsAndAttributes(
+            "temp", null, null, new PartialPath("root.sg.wf01.wt01.v1.s1"));
+        Assert.fail();
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage()
+                .contains("The alias is duplicated with the name or alias of other measurement."));
+      }
+
       Map<String, String> newTags =
           new HashMap<String, String>() {
             {
