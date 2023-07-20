@@ -89,7 +89,12 @@ public class RecoverReadTest {
                             .build())
                     .setRead(
                         RatisConfig.Read.newBuilder()
-                            .setReadTimeout(TimeDuration.valueOf(30, TimeUnit.SECONDS))
+                            .setReadTimeout(TimeDuration.valueOf(10, TimeUnit.SECONDS))
+                            .build())
+                    .setRpc(
+                        RatisConfig.Rpc.newBuilder()
+                            .setFirstElectionTimeoutMin(TimeDuration.valueOf(1, TimeUnit.SECONDS))
+                            .setFirstElectionTimeoutMax(TimeDuration.valueOf(2, TimeUnit.SECONDS))
                             .build())
                     .build())
             .create();
@@ -109,7 +114,7 @@ public class RecoverReadTest {
 
     miniCluster.getServers().forEach(s -> s.createPeer(gid, members));
 
-    // first write 5 ops
+    // first write 10 ops
     TestUtils.write(miniCluster.getServer(0), gid, 10);
     Assert.assertEquals(10, TestUtils.read(miniCluster.getServer(0), gid));
 
@@ -134,7 +139,7 @@ public class RecoverReadTest {
 
     miniCluster.getServers().forEach(s -> s.createPeer(gid, members));
 
-    // first write 5 ops
+    // first write 10 ops
     TestUtils.write(miniCluster.getServer(0), gid, 10);
     Assert.assertEquals(10, TestUtils.read(miniCluster.getServer(0), gid));
 
@@ -152,13 +157,13 @@ public class RecoverReadTest {
   }
 
   @Test
-  public void consistentReadTimeout() throws Exception {
+  public void consistentReadFailedWithNoLeader() throws Exception {
     final ConsensusGroupId gid = miniCluster.getGid();
     final List<Peer> members = miniCluster.getPeers();
 
     miniCluster.getServers().forEach(s -> s.createPeer(gid, members));
 
-    // first write 5 ops
+    // first write 10 ops
     TestUtils.write(miniCluster.getServer(0), gid, 10);
     Assert.assertEquals(10, TestUtils.read(miniCluster.getServer(0), gid));
 
@@ -168,6 +173,32 @@ public class RecoverReadTest {
 
     // shutdown and restart the cluster
     miniCluster.restart();
+
+    // query during redo: get exception that ratis is under recovery
+    final ConsensusReadResponse readResponse = TestUtils.doRead(miniCluster.getServer(0), gid);
+    Assert.assertTrue(readResponse.getException() instanceof RatisUnderRecoveryException);
+  }
+
+  @Test
+  public void consistentReadTimeout() throws Exception {
+    final ConsensusGroupId gid = miniCluster.getGid();
+    final List<Peer> members = miniCluster.getPeers();
+
+    miniCluster.getServers().forEach(s -> s.createPeer(gid, members));
+
+    // first write 30 ops
+    TestUtils.write(miniCluster.getServer(0), gid, 30);
+    Assert.assertEquals(30, TestUtils.read(miniCluster.getServer(0), gid));
+
+    miniCluster.getStateMachines().stream()
+        .map(SlowRecoverStateMachine.class::cast)
+        .forEach(SlowRecoverStateMachine::setStall);
+
+    // shutdown and restart the cluster
+    miniCluster.restart();
+
+    // wait until active leader to serve read index requests
+    miniCluster.waitUntilActiveLeader();
 
     // query during redo: get exception that ratis is under recovery
     final ConsensusReadResponse readResponse = TestUtils.doRead(miniCluster.getServer(0), gid);

@@ -840,7 +840,7 @@ class RatisConsensus implements IConsensus {
 
   @TestOnly
   public void allowStaleRead(ConsensusGroupId consensusGroupId) {
-    canServeStaleRead.computeIfAbsent(consensusGroupId, id -> new AtomicBoolean(true));
+    canServeStaleRead.computeIfAbsent(consensusGroupId, id -> new AtomicBoolean(false)).set(true);
   }
 
   private class RatisClientPoolFactory implements IClientPoolFactory<RaftGroup, RatisClient> {
