@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.i
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheComputation;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheStats;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheUpdating;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -86,15 +87,42 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
         if (cacheEntry == null) {
           computation.computeValue(i, null);
         } else {
-          int originalValueSize = sizeComputer.computeValueSize(cacheEntry.getValue());
           computation.computeValue(i, cacheEntry.getValue());
-          int usedMemorySize =
-              sizeComputer.computeValueSize(cacheEntry.getValue()) - originalValueSize;
-          cacheStats.increaseMemoryUsage(usedMemorySize);
-          if (cacheStats.isExceedMemoryCapacity()) {
-            executeCacheEviction(usedMemorySize);
-          }
           cacheEntryManager.access(cacheEntry);
+          hitCount++;
+        }
+      }
+      cacheStats.recordHit(hitCount);
+      cacheStats.recordMiss(secondKeyList.length - hitCount);
+    }
+  }
+
+  @Override
+  public void update(IDualKeyCacheUpdating<FK, SK, V> updating) {
+    FK firstKey = updating.getFirstKey();
+    ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
+    SK[] secondKeyList = updating.getSecondKeyList();
+    if (cacheEntryGroup == null) {
+      for (int i = 0; i < secondKeyList.length; i++) {
+        updating.updateValue(i, null);
+      }
+      cacheStats.recordMiss(secondKeyList.length);
+    } else {
+      T cacheEntry;
+      int hitCount = 0;
+      for (int i = 0; i < secondKeyList.length; i++) {
+        cacheEntry = cacheEntryGroup.getCacheEntry(secondKeyList[i]);
+        if (cacheEntry == null) {
+          updating.updateValue(i, null);
+        } else {
+          int changeSize = updating.updateValue(i, cacheEntry.getValue());
+          cacheEntryManager.access(cacheEntry);
+          if (changeSize != 0) {
+            cacheStats.increaseMemoryUsage(changeSize);
+            if (cacheStats.isExceedMemoryCapacity()) {
+              executeCacheEviction(changeSize);
+            }
+          }
           hitCount++;
         }
       }

@@ -33,8 +33,9 @@ public interface ILastCacheContainer {
    * @param timeValuePair last point
    * @param highPriorityUpdate whether it's a high priority update
    * @param latestFlushedTime latest flushed time
+   * @return increasing of memory usage
    */
-  void updateCachedLast(
+  int updateCachedLast(
       TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime);
 
   int estimateSize();
