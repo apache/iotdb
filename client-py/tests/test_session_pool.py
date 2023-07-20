@@ -20,13 +20,15 @@ from threading import Thread
 from iotdb.IoTDBContainer import IoTDBContainer
 from iotdb.SessionPool import create_session_pool, PoolConfig
 
+CONTAINER_NAME = "iotdb:dev"
+
 
 def test_session_pool():
-    with IoTDBContainer("iotdb:dev") as db:
+    with IoTDBContainer(CONTAINER_NAME) as db:
         db: IoTDBContainer
         max_pool_size = 2
         pool_config = PoolConfig(db.get_container_host_ip(), db.get_exposed_port(6667), "root", "root",
-                                 [], 1024, "Asia/Shanghai", 3)
+                                 1024, "Asia/Shanghai", 3)
         session_pool = create_session_pool(pool_config, max_pool_size, 3000)
         session = session_pool.get_session()
         session.open(False)
@@ -47,6 +49,14 @@ def test_session_pool():
         session3 = session_pool.get_session()
         assert session3 is not None
 
+        check = False
+        try:
+            session_pool.put_back(session2)
+        except AttributeError as e:
+            check = True
+            assert str(e) == "Session has already been put back to the pool."
+        assert check is True
+
         session_pool.close()
 
         is_closed = False
@@ -64,3 +74,21 @@ def test_session_pool():
             is_closed = True
             assert str(e) == "SessionPool has already been closed, please close the session manually."
         assert is_closed is True
+
+
+def test_multi_create():
+    with IoTDBContainer(CONTAINER_NAME) as db:
+        db: IoTDBContainer
+        max_pool_size = 2
+        pool_config = PoolConfig(db.get_container_host_ip(), db.get_exposed_port(6667), "root", "root",
+                                 1024, "Asia/Shanghai", 3)
+        session_pool = create_session_pool(pool_config, max_pool_size, 3000)
+        try:
+            create_session_pool(pool_config, max_pool_size, 3000)
+        except ConnectionError as e:
+            assert str(e) == "SessionPool has already been created."
+
+        session_pool.close()
+
+        session_pool2 = create_session_pool(pool_config, max_pool_size, 3000)
+        session_pool2.close()

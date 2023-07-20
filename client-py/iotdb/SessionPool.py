@@ -27,6 +27,7 @@ DEFAULT_MULTIPIE = 5
 DEFAULT_FETCH_SIZE = 5000
 DEFAULT_MAX_RETRY = 3
 DEFAULT_TIME_ZONE = "Asia/Shanghai"
+HAS_SESSION_POOL = False
 logger = logging.getLogger("IoTDB")
 
 
@@ -53,6 +54,8 @@ class SessionPool(object):
         self.__queue = Queue(max_pool_size)
         self.__lock = Lock()
         self.__closed = False
+        global HAS_SESSION_POOL
+        HAS_SESSION_POOL = True
 
     def __construct_session(self) -> Session:
         return Session(self.__pool_config.host, self.__pool_config.port, self.__pool_config.user_name,
@@ -105,6 +108,8 @@ class SessionPool(object):
             raise ConnectionError("SessionPool has already been closed, please close the session manually.")
 
         if session.is_open():
+            if session in self.__queue:
+                raise AttributeError("Session has already been put back to the pool.")
             self.__queue.put(session)
         else:
             self.__lock.acquire()
@@ -118,9 +123,13 @@ class SessionPool(object):
             self.__pool_size -= 1
         self.__closed = True
         logger.info("SessionPool has been closed successfully.")
+        global HAS_SESSION_POOL
+        HAS_SESSION_POOL = False
 
 
 def create_session_pool(pool_config: PoolConfig, max_pool_size: int, wait_timeout_in_ms: int) -> SessionPool:
+    if HAS_SESSION_POOL:
+        raise ConnectionError("SessionPool has already been created.")
     if max_pool_size <= 0:
         max_pool_size = multiprocessing.cpu_count() * DEFAULT_MULTIPIE
     return SessionPool(pool_config, max_pool_size, wait_timeout_in_ms)
