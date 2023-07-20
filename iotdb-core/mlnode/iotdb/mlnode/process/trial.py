@@ -28,7 +28,7 @@ from iotdb.mlnode.algorithm.factory import create_forecast_model
 from iotdb.mlnode.algorithm.hyperparameter import HyperparameterName
 from iotdb.mlnode.algorithm.metric import build_metrics, forecast_metric_names
 from iotdb.mlnode.client import client_manager
-from iotdb.mlnode.constant import OptionsKey
+from iotdb.mlnode.constant import OptionsKey, ModelInputName
 from iotdb.mlnode.das.dataset import TsForecastDataset
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.parser import ForecastTaskOptions
@@ -80,6 +80,21 @@ class BasicTrial(object):
         raise NotImplementedError
 
 
+def pack_input_dict(batch_x: torch.Tensor,
+                    batch_x_mark: torch.Tensor,
+                    dec_inp: torch.Tensor,
+                    batch_y_mark: torch.Tensor):
+    """
+    pack up inputs as a dict to adapt for different models
+    """
+    return {
+        ModelInputName.DATA_X.value: batch_x,
+        ModelInputName.TIME_STAMP_X.value: batch_x_mark,
+        ModelInputName.DEC_INP.value: dec_inp,
+        ModelInputName.TIME_STAMP_Y.value: batch_y_mark
+    }
+
+
 class ForecastingTrainingTrial(BasicTrial):
     def __init__(
             self,
@@ -124,7 +139,9 @@ class ForecastingTrainingTrial(BasicTrial):
 
             # decoder input
             dec_inp = torch.zeros_like(batch_y[:, -self.pred_len:, :]).float()
-            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+
+            inputs = pack_input_dict(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+            outputs = self.model(inputs)
 
             outputs = outputs[:, -self.pred_len:]
             batch_y = batch_y[:, -self.pred_len:]
@@ -157,7 +174,9 @@ class ForecastingTrainingTrial(BasicTrial):
 
             # decoder input
             dec_inp = torch.zeros_like(batch_y[:, -self.pred_len:, :]).float()
-            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+
+            inputs = pack_input_dict(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+            outputs = self.model(inputs)
 
             outputs = outputs[:, -self.pred_len:]
             batch_y = batch_y[:, -self.pred_len:]

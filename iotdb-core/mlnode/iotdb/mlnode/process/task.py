@@ -30,7 +30,7 @@ from iotdb.mlnode.algorithm.hyperparameter import (generate_hyperparameters,
                                                    parse_fixed_hyperparameters)
 from iotdb.mlnode.client import client_manager
 from iotdb.mlnode.config import descriptor
-from iotdb.mlnode.constant import DEFAULT_TRIAL_ID, TRIAL_ID_PREFIX, OptionsKey
+from iotdb.mlnode.constant import DEFAULT_TRIAL_ID, TRIAL_ID_PREFIX, OptionsKey, ModelInputName
 from iotdb.mlnode.das.dataset import TsForecastDataset
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.parser import ForecastTaskOptions
@@ -38,6 +38,11 @@ from iotdb.mlnode.process.trial import ForecastingTrainingTrial
 from iotdb.mlnode.storage import model_storage
 from iotdb.thrift.common.ttypes import TrainingState
 
+
+def pack_up_data(data_x: torch.Tensor):
+    return {
+        ModelInputName.DATA_X.value: data_x
+    }
 
 class _BasicTask(object):
     def __init__(
@@ -210,6 +215,7 @@ class ForecastingInferenceTask(_BasicInferenceTask):
 
         data, time_stamp = self.data
         _, c = data.shape
+
         time_stamp = pd.to_datetime(time_stamp.values[:, 0], unit='ms', utc=True) \
             .tz_convert('Asia/Shanghai')  # for iotdb
         data, time_stamp = self.data_align(data, time_stamp)
@@ -218,7 +224,9 @@ class ForecastingInferenceTask(_BasicInferenceTask):
         while current_pred_len < self.pred_len:
             current_data = full_data[:, -self.model_input_len:, :]
             current_data = torch.Tensor(current_data)
-            output_data = self.model(current_data).detach().numpy()
+
+            input_data = pack_up_data(current_data)
+            output_data = self.model(input_data).detach().numpy()
             full_data = np.concatenate([full_data, output_data], axis=1)
             current_pred_len += self.model_pred_len
         full_data_stamp = self.generate_future_mark(full_data_stamp, self.pred_len)

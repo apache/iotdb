@@ -27,9 +27,15 @@ import torch.nn as nn
 from pylru import lrucache
 
 from iotdb.mlnode.config import descriptor
-from iotdb.mlnode.constant import OptionsKey
+from iotdb.mlnode.constant import OptionsKey, ModelInputName
 from iotdb.mlnode.exception import ModelNotExistError
 from iotdb.mlnode.log import logger
+
+
+def pack_up_data(data_x: torch.Tensor):
+    return {
+        ModelInputName.DATA_X.value: data_x
+    }
 
 
 class ModelStorage(object):
@@ -57,8 +63,11 @@ class ModelStorage(object):
         model_file_path = os.path.join(model_dir_path, f'{trial_id}.pt')
 
         # Note: model config for time series should contain 'input_len' and 'input_vars'
-        sample_input = [torch.randn(1, model_config[OptionsKey.INPUT_LENGTH.name()],
-                                    model_config[OptionsKey.INPUT_VARS.name()])]
+        sample_input = (
+            pack_up_data(
+                torch.randn(1, model_config[OptionsKey.INPUT_LENGTH.name()], model_config[OptionsKey.INPUT_VARS.name()])
+            )
+        )
         self.lock.acquire()
         torch.jit.save(torch.jit.trace(model, sample_input),
                        model_file_path,

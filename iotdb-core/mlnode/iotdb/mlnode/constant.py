@@ -89,3 +89,11 @@ class ForecastModelType(Enum):
         for item in list(cls):
             values.append(item.value)
         return values
+
+
+class ModelInputName(Enum):
+    DATA_X = "data_x"
+    TIME_STAMP_X = "time_stamp_x"
+    TIME_STAMP_Y = "time_stamp_y"
+    DEC_INP = "dec_inp"
+

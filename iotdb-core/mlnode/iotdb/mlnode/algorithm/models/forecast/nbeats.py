@@ -16,10 +16,12 @@
 # under the License.
 #
 
-from typing import Tuple
+from typing import Tuple, Dict
 
 import torch
 import torch.nn as nn
+
+from iotdb.mlnode.constant import ModelInputName
 
 
 class GenericBasis(nn.Module):
@@ -119,8 +121,9 @@ class NBeats(nn.Module):
             )
         )
 
-    def forward(self, x, *args):
+    def forward(self, input_dict: Dict):
         # x: [Batch, Input length, Channel]
+        x = input_dict[ModelInputName.DATA_X.value]
         res = []
         for i in range(self.enc_in):
             dec_out = self.model(x[:, :, i])

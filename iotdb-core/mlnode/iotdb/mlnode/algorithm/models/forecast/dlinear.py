@@ -17,9 +17,12 @@
 #
 
 import math
+from typing import Dict
 
 import torch
 import torch.nn as nn
+
+from iotdb.mlnode.constant import ModelInputName
 
 
 class MovingAverageBlock(nn.Module):
@@ -74,8 +77,9 @@ class DLinear(nn.Module):
         self.linear_seasonal = nn.Linear(self.input_len, self.pred_len)
         self.linear_trend = nn.Linear(self.input_len, self.pred_len)
 
-    def forward(self, x, *args):
+    def forward(self, input_dict: Dict):
         # x: [Batch, Input length, Channel]
+        x = input_dict[ModelInputName.DATA_X.value]
         seasonal_init, trend_init = self.decomposition(x)
         seasonal_init, trend_init = seasonal_init.permute(0, 2, 1), trend_init.permute(0, 2, 1)
 
@@ -110,8 +114,9 @@ class DLinearIndividual(nn.Module):
             [nn.Linear(self.input_len, self.pred_len) for _ in range(self.channels)]
         )
 
-    def forward(self, x, *args):
+    def forward(self, input_dict: Dict):
         # x: [Batch, Input length, Channel]
+        x = input_dict[ModelInputName.DATA_X.value]
         seasonal_init, trend_init = self.decomposition(x)
         seasonal_init, trend_init = seasonal_init.permute(0, 2, 1), trend_init.permute(0, 2, 1)
 
