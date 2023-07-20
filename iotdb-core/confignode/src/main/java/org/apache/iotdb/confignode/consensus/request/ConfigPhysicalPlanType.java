@@ -27,8 +27,7 @@ public enum ConfigPhysicalPlanType {
   /** ConfigNode. */
   ApplyConfigNode((short) 0),
   RemoveConfigNode((short) 1),
-
-  UpdateConfigNodeLocation((short) 104),
+  UpdateConfigNodeLocation((short) 2),
 
   /** DataNode. */
   RegisterDataNode((short) 100),
