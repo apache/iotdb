@@ -27,16 +27,20 @@ DEFAULT_MULTIPIE = 5
 DEFAULT_FETCH_SIZE = 5000
 DEFAULT_MAX_RETRY = 3
 DEFAULT_TIME_ZONE = "Asia/Shanghai"
+HAS_SESSION_POOL = False
 logger = logging.getLogger("IoTDB")
 
 
 class PoolConfig(object):
-    def __init__(self, host: str, ip: str, user_name: str, password: str, node_urls: list = None,
+    def __init__(self, host: str = None, port: str = None, user_name: str = None, password: str = None,
+                 node_urls: list = None,
                  fetch_size: int = DEFAULT_FETCH_SIZE, time_zone: str = DEFAULT_TIME_ZONE,
                  max_retry: int = DEFAULT_MAX_RETRY):
         self.host = host
-        self.ip = ip
+        self.port = port
         if node_urls is None:
+            if host is None or port is None:
+                raise ValueError("(host,port) and node_urls cannot be None at the same time.")
             node_urls = []
         self.node_urls = node_urls
         self.user_name = user_name
@@ -56,6 +60,8 @@ class SessionPool(object):
         self.__queue = Queue(max_pool_size)
         self.__lock = Lock()
         self.__closed = False
+        global HAS_SESSION_POOL
+        HAS_SESSION_POOL = True
 
     def __construct_session(self) -> Session:
         if len(self.__pool_config.node_urls) > 0:
@@ -64,10 +70,10 @@ class SessionPool(object):
                                                self.__pool_config.time_zone)
 
         else:
-            return Session(self.__pool_config.host, self.__pool_config.ip, self.__pool_config.user_name,
+            return Session(self.__pool_config.host, self.__pool_config.port, self.__pool_config.user_name,
                            self.__pool_config.password, self.__pool_config.fetch_size, self.__pool_config.time_zone)
 
-    def __poll_session(self) -> Session | None:
+    def __poll_session(self):
         if self.__queue.empty():
             return None
         return self.__queue.get(block=False)
@@ -114,6 +120,8 @@ class SessionPool(object):
             raise ConnectionError("SessionPool has already been closed, please close the session manually.")
 
         if session.is_open():
+            if session in self.__queue:
+                raise AttributeError("Session has already been put back to the pool.")
             self.__queue.put(session)
         else:
             self.__lock.acquire()
@@ -127,9 +135,13 @@ class SessionPool(object):
             self.__pool_size -= 1
         self.__closed = True
         logger.info("SessionPool has been closed successfully.")
+        global HAS_SESSION_POOL
+        HAS_SESSION_POOL = False
 
 
 def create_session_pool(pool_config: PoolConfig, max_pool_size: int, wait_timeout_in_ms: int) -> SessionPool:
+    if HAS_SESSION_POOL:
+        raise ConnectionError("SessionPool has already been created.")
     if max_pool_size <= 0:
         max_pool_size = multiprocessing.cpu_count() * DEFAULT_MULTIPIE
     return SessionPool(pool_config, max_pool_size, wait_timeout_in_ms)
