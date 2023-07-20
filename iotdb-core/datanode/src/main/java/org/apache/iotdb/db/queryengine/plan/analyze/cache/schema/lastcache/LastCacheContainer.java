@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.value.ILastCacheValue;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.value.LastCacheValue;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 /**
  * This class possesses the ILastCacheValue and implements the basic last cache operations.
@@ -39,16 +40,16 @@ public class LastCacheContainer implements ILastCacheContainer {
   }
 
   @Override
-  public synchronized void updateCachedLast(
+  public synchronized int updateCachedLast(
       TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
     if (highPriorityUpdate) { // for write, we won't cache null value
       if (timeValuePair == null || timeValuePair.getValue() == null) {
-        return;
+        return 0;
       }
     } else { // for read, we need to cache null value, because it means that there is no data for
       // this time series
       if (timeValuePair == null) {
-        return;
+        return 0;
       }
     }
 
@@ -57,11 +58,25 @@ public class LastCacheContainer implements ILastCacheContainer {
       // update cache.
       if (!highPriorityUpdate || latestFlushedTime <= timeValuePair.getTimestamp()) {
         lastCacheValue = new LastCacheValue(timeValuePair.getTimestamp(), timeValuePair.getValue());
+        return lastCacheValue.estimateSize();
       }
     } else if (timeValuePair.getTimestamp() > lastCacheValue.getTimestamp()
         || (timeValuePair.getTimestamp() == lastCacheValue.getTimestamp() && highPriorityUpdate)) {
+      TsPrimitiveType oldValue = lastCacheValue.getValue();
       lastCacheValue.setTimestamp(timeValuePair.getTimestamp());
       lastCacheValue.setValue(timeValuePair.getValue());
+      return getDiffSize(oldValue, timeValuePair.getValue());
+    }
+    return 0;
+  }
+
+  private int getDiffSize(TsPrimitiveType oldValue, TsPrimitiveType newValue) {
+    if (oldValue == null) {
+      return newValue == null ? 0 : newValue.getSize();
+    } else if (oldValue instanceof TsPrimitiveType.TsBinary) {
+      return (newValue == null ? 0 : newValue.getSize()) - oldValue.getSize();
+    } else {
+      return newValue == null ? -oldValue.getSize() : 0;
     }
   }
 
