@@ -49,14 +49,6 @@ def test_session_pool():
         session3 = session_pool.get_session()
         assert session3 is not None
 
-        check = False
-        try:
-            session_pool.put_back(session2)
-        except AttributeError as e:
-            check = True
-            assert str(e) == "Session has already been put back to the pool."
-        assert check is True
-
         session_pool.close()
 
         is_closed = False

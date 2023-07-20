@@ -108,8 +108,6 @@ class SessionPool(object):
             raise ConnectionError("SessionPool has already been closed, please close the session manually.")
 
         if session.is_open():
-            if session in self.__queue:
-                raise AttributeError("Session has already been put back to the pool.")
             self.__queue.put(session)
         else:
             self.__lock.acquire()
