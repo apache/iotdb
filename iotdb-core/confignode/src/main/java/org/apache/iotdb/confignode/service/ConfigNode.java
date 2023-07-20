@@ -141,7 +141,8 @@ public class ConfigNode implements ConfigNodeMBean {
             ConfigNodeConstant.GLOBAL_NAME,
             CONF.getClusterName());
 
-        //
+        // Update variable configNodeLocation item during restart
+        // This will always execute until the consensus write succeeds
         while (true) {
           TSStatus status =
               configManager
