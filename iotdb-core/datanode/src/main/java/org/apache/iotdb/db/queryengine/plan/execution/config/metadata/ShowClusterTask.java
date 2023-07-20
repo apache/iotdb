@@ -70,6 +70,9 @@ public class ShowClusterTask implements IConfigTask {
     builder.getColumnBuilder(2).writeBinary(new Binary(nodeStatus));
     builder.getColumnBuilder(3).writeBinary(new Binary(hostAddress));
     builder.getColumnBuilder(4).writeInt(port);
+    if(buildInfo == null) {
+      buildInfo = "";
+    }
     builder.getColumnBuilder(5).writeBinary(new Binary(buildInfo));
     builder.declarePosition();
   }
