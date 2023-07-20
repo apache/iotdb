@@ -338,6 +338,19 @@ struct TSLastDataQueryReq {
   9: optional bool legalPathNodes
 }
 
+struct TSFastLastDataQueryForOneDeviceReq {
+  1: required i64 sessionId
+  2: required string db
+  3: required string deviceId
+  4: required list<string> sensors
+  5: optional i32 fetchSize
+  6: required i64 statementId
+  7: optional bool enableRedirectQuery
+  8: optional bool jdbcQuery
+  9: optional i64 timeout
+  10: optional bool legalPathNodes
+}
+
 struct TSAggregationQueryReq {
   1: required i64 sessionId
   2: required i64 statementId
@@ -512,6 +525,8 @@ service IClientRPCService {
   TSExecuteStatementResp executeRawDataQueryV2(1:TSRawDataQueryReq req);
 
   TSExecuteStatementResp executeLastDataQueryV2(1:TSLastDataQueryReq req);
+
+  TSExecuteStatementResp executeFastLastDataQueryForOneDeviceV2(1:TSFastLastDataQueryForOneDeviceReq req);
 
   TSExecuteStatementResp executeAggregationQueryV2(1:TSAggregationQueryReq req);
 
