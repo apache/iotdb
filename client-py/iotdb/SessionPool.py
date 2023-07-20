@@ -31,14 +31,11 @@ logger = logging.getLogger("IoTDB")
 
 
 class PoolConfig(object):
-    def __init__(self, host: str, ip: str, user_name: str, password: str, node_urls: list = None,
+    def __init__(self, host: str, port: str, user_name: str, password: str,
                  fetch_size: int = DEFAULT_FETCH_SIZE, time_zone: str = DEFAULT_TIME_ZONE,
                  max_retry: int = DEFAULT_MAX_RETRY):
         self.host = host
-        self.ip = ip
-        if node_urls is None:
-            node_urls = []
-        self.node_urls = node_urls
+        self.port = port
         self.user_name = user_name
         self.password = password
         self.fetch_size = fetch_size
@@ -58,14 +55,8 @@ class SessionPool(object):
         self.__closed = False
 
     def __construct_session(self) -> Session:
-        if len(self.__pool_config.node_urls) > 0:
-            return Session.init_from_node_urls(self.__pool_config.node_urls, self.__pool_config.user_name,
-                                               self.__pool_config.password, self.__pool_config.fetch_size,
-                                               self.__pool_config.time_zone)
-
-        else:
-            return Session(self.__pool_config.host, self.__pool_config.ip, self.__pool_config.user_name,
-                           self.__pool_config.password, self.__pool_config.fetch_size, self.__pool_config.time_zone)
+        return Session(self.__pool_config.host, self.__pool_config.port, self.__pool_config.user_name,
+                       self.__pool_config.password, self.__pool_config.fetch_size, self.__pool_config.time_zone)
 
     def __poll_session(self) -> Session | None:
         if self.__queue.empty():
