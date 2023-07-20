@@ -1031,7 +1031,7 @@ public class ConfigManager implements IManager {
               req.getConfigNodeLocation(),
               this);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return nodeManager.restartConfigNode(req.getConfigNodeLocation());
+        return ClusterNodeStartUtils.ACCEPT_NODE_RESTART;
       }
     }
     return status;

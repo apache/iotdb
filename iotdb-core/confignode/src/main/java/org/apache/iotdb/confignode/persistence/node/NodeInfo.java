@@ -374,6 +374,16 @@ public class NodeInfo implements SnapshotProcessor {
     return result;
   }
 
+  /** @return The specified registered ConfigNode. */
+  public TConfigNodeLocation getRegisteredConfigNode(int configNodeId) {
+    configNodeInfoReadWriteLock.readLock().lock();
+    try {
+      return registeredConfigNodes.getOrDefault(configNodeId, new TConfigNodeLocation()).deepCopy();
+    } finally {
+      configNodeInfoReadWriteLock.readLock().unlock();
+    }
+  }
+
   public int generateNextNodeId() {
     return nextNodeId.incrementAndGet();
   }

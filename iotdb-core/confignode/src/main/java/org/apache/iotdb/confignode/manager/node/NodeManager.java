@@ -40,6 +40,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
@@ -338,8 +339,14 @@ public class NodeManager {
         .setConfigNodeId(nodeId);
   }
 
-  public TSStatus restartConfigNode(TConfigNodeLocation configNodeLocation) {
-    // TODO: @Itami-Sho, update peer if necessary
+  public TSStatus updateConfigNodeIfNecessary(TConfigNodeLocation configNodeLocation) {
+    TConfigNodeLocation recordConfigNodeLocation =
+        nodeInfo.getRegisteredConfigNode(configNodeLocation.getConfigNodeId());
+    if (!recordConfigNodeLocation.equals(configNodeLocation)) {
+      // Update configNodeLocation when modified during restart
+      UpdateConfigNodePlan updateConfigNodePlan = new UpdateConfigNodePlan(configNodeLocation);
+      getConsensusManager().write(updateConfigNodePlan);
+    }
     return ClusterNodeStartUtils.ACCEPT_NODE_RESTART;
   }
 
