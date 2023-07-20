@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
@@ -343,6 +344,23 @@ public class NodeInfo implements SnapshotProcessor {
       configNodeInfoReadWriteLock.writeLock().unlock();
     }
     return status;
+  }
+
+  /**
+   * Update the specified ConfigNode‘s location.
+   *
+   * @param updateConfigNodePlan UpdateConfigNodePlan
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if update ConfigNode info successfully.
+   */
+  public TSStatus updateConfigNode(UpdateConfigNodePlan updateConfigNodePlan) {
+    configNodeInfoReadWriteLock.writeLock().lock();
+    try {
+      TConfigNodeLocation newLocation = updateConfigNodePlan.getConfigNodeLocation();
+      registeredConfigNodes.replace(newLocation.getConfigNodeId(), newLocation);
+    } finally {
+      configNodeInfoReadWriteLock.writeLock().unlock();
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   /** @return All registered ConfigNodes. */

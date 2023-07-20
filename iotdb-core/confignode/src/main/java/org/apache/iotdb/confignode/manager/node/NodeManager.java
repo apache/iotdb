@@ -74,6 +74,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
+import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -345,7 +346,8 @@ public class NodeManager {
     if (!recordConfigNodeLocation.equals(configNodeLocation)) {
       // Update configNodeLocation when modified during restart
       UpdateConfigNodePlan updateConfigNodePlan = new UpdateConfigNodePlan(configNodeLocation);
-      getConsensusManager().write(updateConfigNodePlan);
+      ConsensusWriteResponse result = getConsensusManager().write(updateConfigNodePlan);
+      return result.getStatus();
     }
     return ClusterNodeStartUtils.ACCEPT_NODE_RESTART;
   }
