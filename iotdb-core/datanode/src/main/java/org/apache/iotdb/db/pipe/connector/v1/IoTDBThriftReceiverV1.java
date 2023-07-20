@@ -60,7 +60,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
 
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final String RECEIVER_FILE_BASE_DIR = IOTDB_CONFIG.getPipeReceiverFileDir();
-  private static final AtomicReference<File> receiverFileDirWithIdSuffix = new AtomicReference<>();
+  private final AtomicReference<File> receiverFileDirWithIdSuffix = new AtomicReference<>();
 
   // Used to generate transfer id, which is used to identify a receiver thread.
   private static final AtomicLong RECEIVER_ID_GENERATOR = new AtomicLong(0);
@@ -159,7 +159,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
 
     LOGGER.info(
         "Handshake successfully, receiver id = {}, receiver file dir = {}.",
-        receiverId,
+        receiverId.get(),
         newReceiverDir.getPath());
     return new TPipeTransferResp(RpcUtils.SUCCESS_STATUS);
   }
@@ -225,18 +225,50 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
         fileName,
         writingFile == null ? "null" : writingFile.getPath());
 
-    // close current writing file writer
+    closeCurrentWritingFileWriter();
+    deleteCurrentWritingFile();
+
+    // make sure receiver file dir exists
+    // this may be useless, because receiver file dir is created when handshake. just in case.
+    if (!receiverFileDirWithIdSuffix.get().exists()) {
+      if (receiverFileDirWithIdSuffix.get().mkdirs()) {
+        LOGGER.info(
+            "Receiver file dir {} was created.", receiverFileDirWithIdSuffix.get().getPath());
+      } else {
+        LOGGER.error(
+            "Failed to create receiver file dir {}.", receiverFileDirWithIdSuffix.get().getPath());
+      }
+    }
+
+    writingFile = new File(receiverFileDirWithIdSuffix.get(), fileName);
+    writingFileWriter = new RandomAccessFile(writingFile, "rw");
+    LOGGER.info("Writing file {} was created. Ready to write file pieces.", writingFile.getPath());
+  }
+
+  private boolean isFileExistedAndNameCorrect(String fileName) {
+    return writingFile != null && writingFile.getName().equals(fileName);
+  }
+
+  private void closeCurrentWritingFileWriter() {
     if (writingFileWriter != null) {
-      writingFileWriter.close();
+      try {
+        writingFileWriter.close();
+        LOGGER.info(
+            "Current writing file writer {} was closed.",
+            writingFile == null ? "null" : writingFile.getPath());
+      } catch (IOException e) {
+        LOGGER.warn(
+            "Failed to close current writing file writer {}, because {}.",
+            writingFile == null ? "null" : writingFile.getPath(),
+            e.getMessage());
+      }
       writingFileWriter = null;
-      LOGGER.info(
-          "Current writing file writer {} was closed.",
-          writingFile == null ? "null" : writingFile.getPath());
     } else {
       LOGGER.info("Current writing file writer is null. No need to close.");
     }
+  }
 
-    // delete current writing file
+  private void deleteCurrentWritingFile() {
     if (writingFile != null) {
       if (writingFile.exists()) {
         try {
@@ -255,28 +287,6 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
     } else {
       LOGGER.info("Current writing file is null. No need to delete.");
     }
-
-    // make sure receiver file dir exists
-    // this may be useless, because receiver file dir is created when handshake. just in case.
-    if (!receiverFileDirWithIdSuffix.get().exists()) {
-      if (receiverFileDirWithIdSuffix.get().mkdirs()) {
-        LOGGER.info(
-            "Receiver file dir {} was created.", receiverFileDirWithIdSuffix.get().getPath());
-      } else {
-        LOGGER.error(
-            "Failed to create receiver file dir {}.", receiverFileDirWithIdSuffix.get().getPath());
-      }
-    }
-
-    writingFile = new File(receiverFileDirWithIdSuffix.get(), fileName);
-    writingFileWriter = new RandomAccessFile(writingFile, "rw");
-    LOGGER.info(
-        "Writing file {} was created. Ready to write transferring file piece.",
-        writingFile.getPath());
-  }
-
-  private boolean isFileExistedAndNameCorrect(String fileName) {
-    return writingFile != null && writingFile.getName().equals(fileName);
   }
 
   private boolean isWritingFileOffsetCorrect(long offset) throws IOException {
@@ -330,17 +340,21 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
         return new TPipeTransferResp(status);
       }
 
-      final LoadTsFileStatement statement = new LoadTsFileStatement(writingFile.getAbsolutePath());
+      final String fileAbsolutePath = writingFile.getAbsolutePath();
+      final LoadTsFileStatement statement = new LoadTsFileStatement(fileAbsolutePath);
 
-      // 1.The writing file writer must be closed, otherwise it may cause concurrent errors during
+      // 1. The writing file writer must be closed, otherwise it may cause concurrent errors during
       // the process of loading tsfile when parsing tsfile.
       //
-      // 2.The writing file must be set to null, otherwise if the next passed tsfile has the same
+      // 2. The writing file must be set to null, otherwise if the next passed tsfile has the same
       // name as the current tsfile, it will bypass the judgment logic of
       // updateWritingFileIfNeeded#isFileExistedAndNameCorrect, and continue to write to the already
       // loaded file. Since the writing file writer has already been closed, it will throw a Stream
       // Close exception.
       writingFileWriter.close();
+      writingFileWriter = null;
+
+      // writingFile will be deleted after load if no exception occurs
       writingFile = null;
 
       statement.setDeleteAfterLoad(true);
@@ -349,20 +363,31 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
 
       final TSStatus status = executeStatement(statement, partitionFetcher, schemaFetcher);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.info("Seal file {} successfully.", writingFile.getAbsolutePath());
+        LOGGER.info(
+            "Seal file {} successfully. Receiver id is {}.", fileAbsolutePath, receiverId.get());
       } else {
         LOGGER.warn(
-            "Failed to seal file {}, because {}.",
-            writingFile.getAbsolutePath(),
-            status.getMessage());
+            "Failed to seal file {}, because {}. Receiver id is {}.",
+            fileAbsolutePath,
+            status.getMessage(),
+            receiverId.get());
       }
       return new TPipeTransferResp(status);
     } catch (IOException e) {
-      LOGGER.warn(String.format("Failed to seal file %s from req %s.", writingFile, req), e);
+      LOGGER.warn(
+          String.format(
+              "Failed to seal file %s from req %s. Receiver id is %d.",
+              writingFile, req, receiverId.get()),
+          e);
       return new TPipeTransferResp(
           RpcUtils.getStatus(
               TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
               String.format("Failed to seal file %s because %s", writingFile, e.getMessage())));
+    } finally {
+      // If the writing file is not sealed successfully, the writing file will be deleted.
+      // All pieces of the writing file should be retransmitted by the sender.
+      closeCurrentWritingFileWriter();
+      deleteCurrentWritingFile();
     }
   }
 
