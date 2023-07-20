@@ -22,14 +22,18 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimat
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -218,19 +222,32 @@ public class ReadPointCrossCompactionEstimator extends AbstractCrossSpaceEstimat
     int maxChunkNum = 0;
     int maxAlignedSeriesNumInDevice = -1;
     int maxDeviceChunkNum = 0;
-    Map<String, List<TimeseriesMetadata>> deviceMetadata = reader.getAllTimeseriesMetadata(true);
-    for (Map.Entry<String, List<TimeseriesMetadata>> entry : deviceMetadata.entrySet()) {
+    TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
+    while (deviceIterator.hasNext()) {
       int deviceChunkNum = 0;
-      List<TimeseriesMetadata> deviceTimeseriesMetadata = entry.getValue();
-      if (deviceTimeseriesMetadata.get(0).getMeasurementId().equals("")) {
-        // aligned device
-        maxAlignedSeriesNumInDevice =
-            Math.max(maxAlignedSeriesNumInDevice, deviceTimeseriesMetadata.size());
+      int alignedSeriesNumInDevice = 0;
+
+      Pair<String, Boolean> deviceWithIsAlignedPair = deviceIterator.next();
+      String device = deviceWithIsAlignedPair.left;
+      boolean isAlignedDevice = deviceWithIsAlignedPair.right;
+
+      Iterator<Map<String, List<ChunkMetadata>>> measurementChunkMetadataListMapIterator
+          = reader.getMeasurementChunkMetadataListMapIterator(device);
+      while (measurementChunkMetadataListMapIterator.hasNext()) {
+        Map<String, List<ChunkMetadata>> measurementChunkMetadataListMap = measurementChunkMetadataListMapIterator.next();
+        if (isAlignedDevice) {
+          alignedSeriesNumInDevice += measurementChunkMetadataListMap.size();
+        }
+
+        for (Map.Entry<String, List<ChunkMetadata>> measurementChunkMetadataList : measurementChunkMetadataListMap.entrySet()) {
+          int currentChunkMetadataListSize = measurementChunkMetadataList.getValue().size();
+          deviceChunkNum += currentChunkMetadataListSize;
+          totalChunkNum += currentChunkMetadataListSize;
+          maxChunkNum = Math.max(maxChunkNum, currentChunkMetadataListSize);
+        }
       }
-      for (TimeseriesMetadata timeseriesMetadata : deviceTimeseriesMetadata) {
-        deviceChunkNum += timeseriesMetadata.getChunkMetadataList().size();
-        totalChunkNum += timeseriesMetadata.getChunkMetadataList().size();
-        maxChunkNum = Math.max(maxChunkNum, timeseriesMetadata.getChunkMetadataList().size());
+      if (isAlignedDevice) {
+        maxAlignedSeriesNumInDevice = Math.max(maxAlignedSeriesNumInDevice, alignedSeriesNumInDevice);
       }
       maxDeviceChunkNum = Math.max(maxDeviceChunkNum, deviceChunkNum);
     }
