@@ -27,7 +27,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache;
  * @param <SK> The second key of one target cache value
  * @param <V> The cache value
  */
-public interface IDualKeyCacheComputation<FK, SK, V> {
+public interface IDualKeyCacheUpdating<FK, SK, V> {
 
   /** Return the first key of target cache values. */
   FK getFirstKey();
@@ -37,7 +37,9 @@ public interface IDualKeyCacheComputation<FK, SK, V> {
 
   /**
    * Compute each target cache value. The index is the second key's position in second key list. The
-   * value here is read only.
+   * value here can be updated.
+   *
+   * @return increasing memory usage
    */
-  void computeValue(int index, V value);
+  int updateValue(int index, V value);
 }
