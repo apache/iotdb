@@ -343,7 +343,7 @@ public class ConfigNode implements ConfigNodeMBean {
   private void sendRestartConfigNodeRequest() throws StartupException {
     TConfigNodeLocation nonSeedConfigNodeLocation =
         new TConfigNodeLocation(
-            INIT_NON_SEED_CONFIG_NODE_ID,
+            CONF.getConfigNodeId(),
             new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
             new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()));
     nonSeedConfigNodeLocation.setBuildInfo(IoTDBConstant.BUILD_INFO);
