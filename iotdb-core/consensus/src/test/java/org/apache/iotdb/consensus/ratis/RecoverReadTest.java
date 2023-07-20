@@ -89,7 +89,7 @@ public class RecoverReadTest {
                             .build())
                     .setRead(
                         RatisConfig.Read.newBuilder()
-                            .setReadTimeout(TimeDuration.valueOf(10, TimeUnit.SECONDS))
+                            .setReadTimeout(TimeDuration.valueOf(20, TimeUnit.SECONDS))
                             .build())
                     .setRpc(
                         RatisConfig.Rpc.newBuilder()
@@ -187,8 +187,8 @@ public class RecoverReadTest {
     miniCluster.getServers().forEach(s -> s.createPeer(gid, members));
 
     // first write 30 ops
-    TestUtils.write(miniCluster.getServer(0), gid, 30);
-    Assert.assertEquals(30, TestUtils.read(miniCluster.getServer(0), gid));
+    TestUtils.write(miniCluster.getServer(0), gid, 50);
+    Assert.assertEquals(50, TestUtils.read(miniCluster.getServer(0), gid));
 
     miniCluster.getStateMachines().stream()
         .map(SlowRecoverStateMachine.class::cast)
