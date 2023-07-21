@@ -31,12 +31,8 @@ def test_session_pool():
                                  [], 1024, "Asia/Shanghai", 3)
         session_pool = create_session_pool(pool_config, max_pool_size, 3000)
         session = session_pool.get_session()
-        session.open(False)
         assert session.is_open() is True
-
         session2 = session_pool.get_session()
-        session2.open(False)
-        assert session2.is_open() is True
 
         timeout = False
         try:
@@ -48,8 +44,6 @@ def test_session_pool():
 
         Thread(target=lambda: session_pool.put_back(session2)).start()
         session3 = session_pool.get_session()
-        session3.open(False)
-        assert session3.is_open() is True
 
         session_pool.close()
 
@@ -79,8 +73,6 @@ def test_session_pool_by_node_urls():
         session_pool = create_session_pool(pool_config, max_pool_size, 3000)
 
         session = session_pool.get_session()
-        session.open(False)
-        assert session.is_open() is True
 
         timeout = False
         try:

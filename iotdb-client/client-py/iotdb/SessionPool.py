@@ -34,7 +34,7 @@ class PoolConfig(object):
     def __init__(self, host: str = None, port: str = None, user_name: str = None, password: str = None,
                  node_urls: list = None,
                  fetch_size: int = DEFAULT_FETCH_SIZE, time_zone: str = DEFAULT_TIME_ZONE,
-                 max_retry: int = DEFAULT_MAX_RETRY):
+                 max_retry: int = DEFAULT_MAX_RETRY, enable_compression: bool = False):
         self.host = host
         self.port = port
         if node_urls is None:
@@ -47,6 +47,7 @@ class PoolConfig(object):
         self.fetch_size = fetch_size
         self.time_zone = time_zone
         self.max_retry = max_retry
+        self.enable_compression = enable_compression
 
 
 class SessionPool(object):
@@ -63,13 +64,16 @@ class SessionPool(object):
 
     def __construct_session(self) -> Session:
         if len(self.__pool_config.node_urls) > 0:
-            return Session.init_from_node_urls(self.__pool_config.node_urls, self.__pool_config.user_name,
-                                               self.__pool_config.password, self.__pool_config.fetch_size,
-                                               self.__pool_config.time_zone)
+            session = Session.init_from_node_urls(self.__pool_config.node_urls, self.__pool_config.user_name,
+                                                  self.__pool_config.password, self.__pool_config.fetch_size,
+                                                  self.__pool_config.time_zone)
 
         else:
-            return Session(self.__pool_config.host, self.__pool_config.port, self.__pool_config.user_name,
-                           self.__pool_config.password, self.__pool_config.fetch_size, self.__pool_config.time_zone)
+            session = Session(self.__pool_config.host, self.__pool_config.port, self.__pool_config.user_name,
+                              self.__pool_config.password, self.__pool_config.fetch_size, self.__pool_config.time_zone)
+
+        session.open(self.__pool_config.enable_compression)
+        return session
 
     def __poll_session(self):
         self.__q_lock.acquire()
