@@ -127,7 +127,9 @@ public interface PipeConnector extends PipePlugin {
    * @throws PipeConnectionException if the connection is broken
    * @throws Exception the user can throw errors if necessary
    */
-  void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception;
+  default void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
+    // Do nothing
+  }
 
   /**
    * This method is used to transfer the Event.

@@ -103,8 +103,13 @@ public interface PipeProcessor extends PipePlugin {
    * @param eventCollector used to collect result events after processing
    * @throws Exception the user can throw errors if necessary
    */
-  void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)
-      throws Exception;
+  default void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)
+      throws Exception {
+    for (final TabletInsertionEvent tabletInsertionEvent :
+        tsFileInsertionEvent.toTabletInsertionEvents()) {
+      eventCollector.collect(tabletInsertionEvent);
+    }
+  }
 
   /**
    * This method is called to process the Event.
