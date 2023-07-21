@@ -18,8 +18,8 @@
 import logging
 import multiprocessing
 import time
-from multiprocessing import Queue
-from threading import Lock
+from queue import Queue
+from multiprocessing import Lock
 
 from iotdb.Session import Session
 
@@ -52,6 +52,7 @@ class SessionPool(object):
         self.__pool_size = 0
         self.__queue = Queue(max_pool_size)
         self.__lock = Lock()
+        self.__q_lock = Lock()
         self.__closed = False
 
     def __construct_session(self) -> Session:
@@ -59,9 +60,12 @@ class SessionPool(object):
                        self.__pool_config.password, self.__pool_config.fetch_size, self.__pool_config.time_zone)
 
     def __poll_session(self) -> Session | None:
-        if self.__queue.empty():
-            return None
-        return self.__queue.get(block=False)
+        self.__q_lock.acquire()
+        q = None
+        if not self.__queue.empty():
+            q = self.__queue.get(block=False)
+        self.__q_lock.release()
+        return q
 
     def get_session(self) -> Session:
 
@@ -80,13 +84,12 @@ class SessionPool(object):
                 self.__lock.release()
                 break
             else:
+                self.__lock.release()
                 if time.time() - start > self.__wait_timeout_in_ms:
-                    self.__lock.release()
                     raise TimeoutError("Wait to get session timeout in SessionPool, current pool size: {0}"
                                        .format(self.__max_pool_size))
                 time.sleep(1)
             session = self.__poll_session()
-            self.__lock.release()
 
         if should_create:
             try:
@@ -105,17 +108,23 @@ class SessionPool(object):
             raise ConnectionError("SessionPool has already been closed, please close the session manually.")
 
         if session.is_open():
+            self.__q_lock.acquire()
             self.__queue.put(session)
+            self.__q_lock.release()
         else:
             self.__lock.acquire()
             self.__pool_size -= 1
             self.__lock.release()
 
     def close(self):
+        self.__q_lock.acquire()
+        self.__lock.acquire()
         while not self.__queue.empty():
             session = self.__queue.get(block=False)
             session.close()
             self.__pool_size -= 1
+        self.__q_lock.release()
+        self.__lock.release()
         self.__closed = True
         logger.info("SessionPool has been closed successfully.")
 

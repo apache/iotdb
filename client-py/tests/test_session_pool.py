@@ -48,7 +48,6 @@ def test_session_pool():
 
         Thread(target=lambda: session_pool.put_back(session2)).start()
         session3 = session_pool.get_session()
-        session3.open(False)
         assert session3.is_open() is True
 
         session_pool.close()
