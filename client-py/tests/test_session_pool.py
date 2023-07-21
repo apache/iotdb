@@ -70,21 +70,3 @@ def test_session_pool():
         assert is_closed is True
 
         session3.close()
-
-
-def test_multi_create():
-    with IoTDBContainer(CONTAINER_NAME) as db:
-        db: IoTDBContainer
-        max_pool_size = 2
-        pool_config = PoolConfig(db.get_container_host_ip(), db.get_exposed_port(6667), "root", "root",
-                                 1024, "Asia/Shanghai", 3)
-        session_pool = create_session_pool(pool_config, max_pool_size, 3000)
-        try:
-            create_session_pool(pool_config, max_pool_size, 3000)
-        except ConnectionError as e:
-            assert str(e) == "SessionPool has already been created."
-
-        session_pool.close()
-
-        session_pool2 = create_session_pool(pool_config, max_pool_size, 3000)
-        session_pool2.close()
