@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.client;
 
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -81,60 +83,76 @@ public class ClientManagerMetrics implements IMetricSet {
     synchronized (this) {
       for (String poolName : POOL_NAME_LIST) {
         metricService.createAutoGauge(
-            CLIENT_MANAGER_NUM_ACTIVE,
+            Metric.CLIENT_MANAGER.toString(),
             MetricLevel.IMPORTANT,
             registeredClientPool,
             map -> getNumActive(poolName),
-            POOL_NAME,
+            Tag.NAME.toString(),
+            CLIENT_MANAGER_NUM_ACTIVE,
+            Tag.TYPE.toString(),
             poolName);
         metricService.createAutoGauge(
-            CLIENT_MANAGER_NUM_IDLE,
+            Metric.CLIENT_MANAGER.toString(),
             MetricLevel.IMPORTANT,
             registeredClientPool,
             map -> getNumIdle(poolName),
-            POOL_NAME,
+            Tag.NAME.toString(),
+            CLIENT_MANAGER_NUM_IDLE,
+            Tag.TYPE.toString(),
             poolName);
         metricService.createAutoGauge(
-            CLIENT_MANAGER_BORROWED_COUNT,
+            Metric.CLIENT_MANAGER.toString(),
             MetricLevel.IMPORTANT,
             registeredClientPool,
             map -> getBorrowedCount(poolName),
-            POOL_NAME,
+            Tag.NAME.toString(),
+            CLIENT_MANAGER_BORROWED_COUNT,
+            Tag.TYPE.toString(),
             poolName);
         metricService.createAutoGauge(
-            CLIENT_MANAGER_CREATED_COUNT,
+            Metric.CLIENT_MANAGER.toString(),
             MetricLevel.IMPORTANT,
             registeredClientPool,
             map -> getCreatedCount(poolName),
-            POOL_NAME,
+            Tag.NAME.toString(),
+            CLIENT_MANAGER_CREATED_COUNT,
+            Tag.TYPE.toString(),
             poolName);
         metricService.createAutoGauge(
-            CLIENT_MANAGER_DESTROYED_COUNT,
+            Metric.CLIENT_MANAGER.toString(),
             MetricLevel.IMPORTANT,
             registeredClientPool,
             map -> getDestroyedCount(poolName),
-            POOL_NAME,
+            Tag.NAME.toString(),
+            CLIENT_MANAGER_DESTROYED_COUNT,
+            Tag.TYPE.toString(),
             poolName);
         metricService.createAutoGauge(
-            MEAN_ACTIVE_TIME_MILLIS,
+            Metric.CLIENT_MANAGER.toString(),
             MetricLevel.IMPORTANT,
             registeredClientPool,
             map -> getMeanActiveTime(poolName),
-            POOL_NAME,
+            Tag.NAME.toString(),
+            MEAN_ACTIVE_TIME_MILLIS,
+            Tag.TYPE.toString(),
             poolName);
         metricService.createAutoGauge(
-            MEAN_BORROW_WAIT_TIME_MILLIS,
+            Metric.CLIENT_MANAGER.toString(),
             MetricLevel.IMPORTANT,
             registeredClientPool,
             map -> getMeanBorrowWaitTime(poolName),
-            POOL_NAME,
+            Tag.NAME.toString(),
+            MEAN_BORROW_WAIT_TIME_MILLIS,
+            Tag.TYPE.toString(),
             poolName);
         metricService.createAutoGauge(
-            MEAN_IDLE_TIME_MILLIS,
+            Metric.CLIENT_MANAGER.toString(),
             MetricLevel.IMPORTANT,
             registeredClientPool,
             map -> getMeanIdleTime(poolName),
-            POOL_NAME,
+            Tag.NAME.toString(),
+            MEAN_IDLE_TIME_MILLIS,
+            Tag.TYPE.toString(),
             poolName);
       }
     }
@@ -229,14 +247,62 @@ public class ClientManagerMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     for (String poolName : POOL_NAME_LIST) {
-      metricService.remove(MetricType.GAUGE, CLIENT_MANAGER_NUM_ACTIVE, POOL_NAME, poolName);
-      metricService.remove(MetricType.GAUGE, CLIENT_MANAGER_NUM_IDLE, POOL_NAME, poolName);
-      metricService.remove(MetricType.GAUGE, CLIENT_MANAGER_BORROWED_COUNT, POOL_NAME, poolName);
-      metricService.remove(MetricType.GAUGE, CLIENT_MANAGER_CREATED_COUNT, POOL_NAME, poolName);
-      metricService.remove(MetricType.GAUGE, CLIENT_MANAGER_DESTROYED_COUNT, POOL_NAME, poolName);
-      metricService.remove(MetricType.GAUGE, MEAN_ACTIVE_TIME_MILLIS, POOL_NAME, poolName);
-      metricService.remove(MetricType.GAUGE, MEAN_BORROW_WAIT_TIME_MILLIS, POOL_NAME, poolName);
-      metricService.remove(MetricType.GAUGE, MEAN_IDLE_TIME_MILLIS, POOL_NAME, poolName);
+      metricService.remove(
+          MetricType.GAUGE,
+          Metric.CLIENT_MANAGER.toString(),
+          Tag.NAME.toString(),
+          CLIENT_MANAGER_NUM_ACTIVE,
+          Tag.TYPE.toString(),
+          poolName);
+      metricService.remove(
+          MetricType.GAUGE,
+          Metric.CLIENT_MANAGER.toString(),
+          Tag.NAME.toString(),
+          CLIENT_MANAGER_NUM_IDLE,
+          Tag.TYPE.toString(),
+          poolName);
+      metricService.remove(
+          MetricType.GAUGE,
+          Metric.CLIENT_MANAGER.toString(),
+          Tag.NAME.toString(),
+          CLIENT_MANAGER_BORROWED_COUNT,
+          Tag.TYPE.toString(),
+          poolName);
+      metricService.remove(
+          MetricType.GAUGE,
+          Metric.CLIENT_MANAGER.toString(),
+          Tag.NAME.toString(),
+          CLIENT_MANAGER_CREATED_COUNT,
+          Tag.TYPE.toString(),
+          poolName);
+      metricService.remove(
+          MetricType.GAUGE,
+          Metric.CLIENT_MANAGER.toString(),
+          Tag.NAME.toString(),
+          CLIENT_MANAGER_DESTROYED_COUNT,
+          Tag.TYPE.toString(),
+          poolName);
+      metricService.remove(
+          MetricType.GAUGE,
+          Metric.CLIENT_MANAGER.toString(),
+          Tag.NAME.toString(),
+          MEAN_ACTIVE_TIME_MILLIS,
+          Tag.TYPE.toString(),
+          poolName);
+      metricService.remove(
+          MetricType.GAUGE,
+          Metric.CLIENT_MANAGER.toString(),
+          Tag.NAME.toString(),
+          MEAN_BORROW_WAIT_TIME_MILLIS,
+          Tag.TYPE.toString(),
+          poolName);
+      metricService.remove(
+          MetricType.GAUGE,
+          Metric.CLIENT_MANAGER.toString(),
+          Tag.NAME.toString(),
+          MEAN_IDLE_TIME_MILLIS,
+          Tag.TYPE.toString(),
+          poolName);
     }
     registeredClientName.clear();
     registeredClientPool.clear();
