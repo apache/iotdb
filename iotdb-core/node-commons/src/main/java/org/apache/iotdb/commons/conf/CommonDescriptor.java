@@ -297,6 +297,10 @@ public class CommonDescriptor {
                 "pipe_extractor_pending_queue_tablet_limit",
                 String.valueOf(config.getPipeExtractorPendingQueueTabletLimit()))));
 
+    config.setPipeConnectorTimeoutMs(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_connector_timeout_ms", String.valueOf(config.getPipeConnectorTimeoutMs()))));
     config.setPipeConnectorReadFileBufferSize(
         Integer.parseInt(
             properties.getProperty(

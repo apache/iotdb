@@ -263,12 +263,20 @@ carefully evaluated. The current Core-level metrics are as follows:
 
 #### 4.2.1. Node
 
-| Metric | Tags                                   | Type      | Description                                                   |
-| ------ | -------------------------------------- | --------- | ------------------------------------------------------------- |
-| region | name="total",type="SchemaRegion"       | AutoGauge | The total number of SchemaRegion in PartitionTable            |
-| region | name="total",type="DataRegion"         | AutoGauge | The total number of DataRegion in PartitionTable              |
-| region | name="{ip}:{port}",type="SchemaRegion" | Gauge     | The number of SchemaRegion in PartitionTable of specific node |
-| region | name="{ip}:{port}",type="DataRegion"   | Gauge     | The number of DataRegion in PartitionTable of specific node   |
+| Metric         | Tags                                                         | Type      | Description                                                  |
+| -------------- | ------------------------------------------------------------ | --------- | ------------------------------------------------------------ |
+| region         | name="total",type="SchemaRegion"                             | AutoGauge | The total number of SchemaRegion in PartitionTable           |
+| region         | name="total",type="DataRegion"                               | AutoGauge | The total number of DataRegion in PartitionTable             |
+| region         | name="{ip}:{port}",type="SchemaRegion"                       | Gauge     | The number of SchemaRegion in PartitionTable of specific node |
+| region         | name="{ip}:{port}",type="DataRegion"                         | Gauge     | The number of DataRegion in PartitionTable of specific node  |
+| client_manager | name="client_manager_num_active", type="{pool_name}"         | AutoGauge | The total number of instances currently borrowed from this pool but not yet returned |
+| client_manager | name="client_manager_num_idle", type="{pool_name}"           | AutoGauge | The total number of instances currently idle in this pool    |
+| client_manager | name="client_manager_borrowed_count", type="{pool_name}"     | AutoGauge | The total number of objects successfully borrowed from this pool over the lifetime of the pool |
+| client_manager | name="client_manager_created_count", type="{pool_name}"      | AutoGauge | The total number of objects created for this pool over the lifetime of the pool |
+| client_manager | name="client_manager_destroyed_count", type="{pool_name}"    | AutoGauge | The total number of objects destroyed by this pool over the lifetime of the pool |
+| client_manager | name="client_manager_mean_active_time", type="{pool_name}"   | AutoGauge | The mean time objects are active for based on the last MEAN_TIMING_STATS_CACHE_SIZE objects returned to the pool |
+| client_manager | name="client_manager_mean_borrow_wait_time", type="{pool_name}" | AutoGauge | The mean time threads wait to borrow an object based on the last MEAN_TIMING_STATS_CACHE_SIZE objects borrowed from the pool |
+| client_manager | name="client_manager_mean_idle_time", type="{pool_name}"     | AutoGauge | The mean time objects are idle for based on the last MEAN_TIMING_STATS_CACHE_SIZE objects borrowed from the pool |
 
 #### 4.2.2. RatisConsensus
 
