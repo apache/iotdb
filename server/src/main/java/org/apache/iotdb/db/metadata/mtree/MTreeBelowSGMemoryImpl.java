@@ -432,6 +432,29 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     }
     return failingMeasurementMap;
   }
+
+  public boolean changeAlias(String alias, PartialPath fullPath) throws MetadataException {
+    IMeasurementMNode measurementMNode = getMeasurementMNode(fullPath);
+    // upsert alias
+    if (alias != null && !alias.equals(measurementMNode.getAlias())) {
+      synchronized (this) {
+        IEntityMNode device = measurementMNode.getParent().getAsEntityMNode();
+        IMNode memMNode = store.getChild(device, alias);
+        if (memMNode != null) {
+          throw new MetadataException(
+              "The alias is duplicated with the name or alias of other measurement.");
+        }
+        if (measurementMNode.getAlias() != null) {
+          device.deleteAliasChild(measurementMNode.getAlias());
+        }
+        device.addAlias(alias, measurementMNode);
+        setAlias(measurementMNode, alias);
+      }
+      return true;
+    }
+    return false;
+  }
+
   /**
    * Delete path. The path should be a full path from root to leaf node
    *
