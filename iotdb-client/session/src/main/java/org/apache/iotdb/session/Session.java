@@ -895,7 +895,7 @@ public class Session implements ISession {
       if (enableRedirection
           && !deviceIdToEndpoint.isEmpty()
           && deviceIdToEndpoint.get(device) != null) {
-        logger.warn("Session can not connect to {}", deviceIdToEndpoint.get(device));
+        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(device));
         deviceIdToEndpoint.remove(device);
 
         // reconnect with default connection

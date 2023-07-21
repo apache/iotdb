@@ -3093,6 +3093,10 @@ public class SessionPool implements ISessionPool {
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
+      } catch (Throwable e) {
+        logger.error(EXECUTE_LASTDATAQUERY_ERROR, e);
+        putBack(session);
+        throw new RuntimeException(e);
       }
     }
     // never go here
