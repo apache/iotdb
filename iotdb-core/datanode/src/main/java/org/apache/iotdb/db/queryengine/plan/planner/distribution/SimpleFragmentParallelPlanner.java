@@ -103,7 +103,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
                 dataNodeFIMap.get(fragmentInstance.getHostDataNode()).size()));
 
     // compute dataNodeSeriesScanNum in LastQueryScanNode
-    if (analysis.getStatement().isQuery()
+    if (analysis.getStatement() instanceof QueryStatement
         && ((QueryStatement) analysis.getStatement()).isLastQuery()) {
       final Map<Path, AtomicInteger> pathSumMap = new HashMap<>();
       dataNodeFIMap
