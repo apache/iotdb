@@ -156,6 +156,7 @@ public class CommonConfig {
   private int pipeExtractorPendingQueueTabletLimit = pipeExtractorPendingQueueCapacity / 2;
   private int pipeDataStructureTabletRowSize = 65536;
 
+  private long pipeConnectorTimeoutMs = 15 * 60 * 1000L; // 15 minutes
   private int pipeConnectorReadFileBufferSize = 8388608;
   private long pipeConnectorRetryIntervalMs = 1000L;
   private int pipeConnectorPendingQueueSize = 1024;
@@ -505,6 +506,14 @@ public class CommonConfig {
 
   public void setPipeExtractorPendingQueueTabletLimit(int pipeExtractorPendingQueueTabletLimit) {
     this.pipeExtractorPendingQueueTabletLimit = pipeExtractorPendingQueueTabletLimit;
+  }
+
+  public long getPipeConnectorTimeoutMs() {
+    return pipeConnectorTimeoutMs;
+  }
+
+  public void setPipeConnectorTimeoutMs(long pipeConnectorTimeoutMs) {
+    this.pipeConnectorTimeoutMs = pipeConnectorTimeoutMs;
   }
 
   public int getPipeConnectorReadFileBufferSize() {
