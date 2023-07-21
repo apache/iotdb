@@ -38,6 +38,7 @@ import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.RatisConfig;
 
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.ratis.thirdparty.com.google.common.base.Preconditions;
 import org.apache.ratis.util.FileUtils;
 import org.apache.ratis.util.JavaUtils;
@@ -367,8 +368,11 @@ public class TestUtils {
     }
   }
 
-  static int read(IConsensus consensus, ConsensusGroupId gid) {
+  static int read(IConsensus consensus, ConsensusGroupId gid) throws ConsensusException {
     final ConsensusReadResponse response = doRead(consensus, gid);
+    if (!response.isSuccess()) {
+      throw response.getException();
+    }
     final TestUtils.TestDataSet result = (TestUtils.TestDataSet) response.getDataset();
     return result.getNumber();
   }
