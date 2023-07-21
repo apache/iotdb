@@ -33,7 +33,7 @@ logger = logging.getLogger("IoTDB")
 class PoolConfig(object):
     def __init__(self, host: str, port: str, user_name: str, password: str,
                  fetch_size: int = DEFAULT_FETCH_SIZE, time_zone: str = DEFAULT_TIME_ZONE,
-                 max_retry: int = DEFAULT_MAX_RETRY):
+                 max_retry: int = DEFAULT_MAX_RETRY, enable_compression=False):
         self.host = host
         self.port = port
         self.user_name = user_name
@@ -41,6 +41,7 @@ class PoolConfig(object):
         self.fetch_size = fetch_size
         self.time_zone = time_zone
         self.max_retry = max_retry
+        self.enable_compression = enable_compression
 
 
 class SessionPool(object):
@@ -56,8 +57,11 @@ class SessionPool(object):
         self.__closed = False
 
     def __construct_session(self) -> Session:
-        return Session(self.__pool_config.host, self.__pool_config.port, self.__pool_config.user_name,
-                       self.__pool_config.password, self.__pool_config.fetch_size, self.__pool_config.time_zone)
+        session = Session(self.__pool_config.host, self.__pool_config.port, self.__pool_config.user_name,
+                          self.__pool_config.password, self.__pool_config.fetch_size, self.__pool_config.time_zone)
+        session.open(self.__pool_config.enable_compression)
+
+        return session
 
     def __poll_session(self) -> Session | None:
         self.__q_lock.acquire()
