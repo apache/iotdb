@@ -243,10 +243,12 @@ public class JvmGcMetrics implements IMetricSet {
   }
 
   private static class TsAndData {
-    private long ts; // Timestamp when this measurement was taken
-    private long gcPause; // Total GC pause time within the interval between ts
-
+    // Timestamp when this measurement was taken
+    private long ts;
+    // Total GC pause time within the interval between ts
     // and the timestamp of the previous measurement.
+    private long gcPause;
+
     void setValues(long inTs, long inGcPause) {
       this.ts = inTs;
       this.gcPause = inGcPause;
