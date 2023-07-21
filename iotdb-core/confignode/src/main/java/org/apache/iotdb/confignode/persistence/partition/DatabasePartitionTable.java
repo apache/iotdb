@@ -220,6 +220,27 @@ public class DatabasePartitionTable {
     return result.getAndIncrement();
   }
 
+  /**
+   * Only leader use this interface.
+   *
+   * <p>Get all the RegionGroups currently owned by the specified Database
+   *
+   * @param type SchemaRegion or DataRegion
+   * @return List of TConsensusGroupId
+   */
+  public List<TConsensusGroupId> getAllRegionGroupIds(TConsensusGroupType type) {
+    List<TConsensusGroupId> result = new Vector<>();
+    regionGroupMap
+        .values()
+        .forEach(
+            regionGroup -> {
+              if (regionGroup.getId().getType().equals(type)) {
+                result.add(regionGroup.getId());
+              }
+            });
+    return result;
+  }
+
   public int getAssignedSeriesPartitionSlotsCount() {
     return Math.max(
         schemaPartitionTable.getSchemaPartitionMap().size(),
@@ -251,19 +272,15 @@ public class DatabasePartitionTable {
   }
 
   /**
-   * Checks whether the specified DataPartition has a predecessor and returns if it does.
+   * Checks whether the specified DataPartition has a successor and returns if it does.
    *
    * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
    * @param timePartitionSlot Corresponding TimePartitionSlot
-   * @param timePartitionInterval Time partition interval
    * @return The specific DataPartition's predecessor if exists, null otherwise
    */
-  public TConsensusGroupId getAdjacentDataPartition(
-      TSeriesPartitionSlot seriesPartitionSlot,
-      TTimePartitionSlot timePartitionSlot,
-      long timePartitionInterval) {
-    return dataPartitionTable.getAdjacentDataPartition(
-        seriesPartitionSlot, timePartitionSlot, timePartitionInterval);
+  public TConsensusGroupId getSuccessorDataPartition(
+      TSeriesPartitionSlot seriesPartitionSlot, TTimePartitionSlot timePartitionSlot) {
+    return dataPartitionTable.getSuccessorDataPartition(seriesPartitionSlot, timePartitionSlot);
   }
 
   /**
@@ -551,6 +568,55 @@ public class DatabasePartitionTable {
       }
     }
     return dataRegionIds;
+  }
+
+  /**
+   * Get the max TimePartitionSlot.
+   *
+   * @return The max TimePartitionSlot, null if there are no DataPartitions yet
+   */
+  public TTimePartitionSlot getMaxTimePartitionSlot() {
+    return dataPartitionTable.getMaxTimePartitionSlot();
+  }
+
+  /**
+   * Get the min TimePartitionSlot.
+   *
+   * @return The min TimePartitionSlot, null if there are no DataPartitions yet
+   */
+  public TTimePartitionSlot getMinTimePartitionSlot() {
+    return dataPartitionTable.getMinTimePartitionSlot();
+  }
+
+  /**
+   * Get the DataPartition with max TimePartition of the specified the SeriesPartitionSlot.
+   *
+   * @param seriesPartitionSlot The specified SeriesPartitionSlot
+   * @return The last DataPartition, null if there are no DataPartitions in the specified
+   *     SeriesPartitionSlot
+   */
+  public Pair<TTimePartitionSlot, TConsensusGroupId> getLastDataPartition(
+      TSeriesPartitionSlot seriesPartitionSlot) {
+    return dataPartitionTable.getLastDataPartition(seriesPartitionSlot);
+  }
+
+  /**
+   * Count SeriesSlot in the specified TimePartitionSlot.
+   *
+   * @param timePartitionSlot The specified TimePartitionSlot
+   * @return The count of SeriesSlot
+   */
+  public int countSeriesSlot(TTimePartitionSlot timePartitionSlot) {
+    return dataPartitionTable.countSeriesSlot(timePartitionSlot);
+  }
+
+  /**
+   * Get the last DataAllotTable.
+   *
+   * @return The last DataAllotTable
+   */
+  public Map<TSeriesPartitionSlot, TConsensusGroupId> getLastDataAllotTable() {
+    return dataPartitionTable.getLastDataAllotTable();
   }
 
   @Override

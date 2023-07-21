@@ -110,12 +110,6 @@ public class ConfigNodeConfig {
   private RegionBalancer.RegionGroupAllocatePolicy regionGroupAllocatePolicy =
       RegionBalancer.RegionGroupAllocatePolicy.GREEDY;
 
-  /**
-   * DataPartition within the same SeriesPartitionSlot will inherit the allocation result of the
-   * predecessor or successor TimePartitionSlot if set true.
-   */
-  private boolean enableDataPartitionInheritPolicy = true;
-
   /** Max concurrent client number. */
   private int rpcMaxConcurrentClientNum = 65535;
 
@@ -557,14 +551,6 @@ public class ConfigNodeConfig {
   public void setRegionAllocateStrategy(
       RegionBalancer.RegionGroupAllocatePolicy regionGroupAllocatePolicy) {
     this.regionGroupAllocatePolicy = regionGroupAllocatePolicy;
-  }
-
-  public boolean isEnableDataPartitionInheritPolicy() {
-    return enableDataPartitionInheritPolicy;
-  }
-
-  public void setEnableDataPartitionInheritPolicy(boolean enableDataPartitionInheritPolicy) {
-    this.enableDataPartitionInheritPolicy = enableDataPartitionInheritPolicy;
   }
 
   public int getThriftServerAwaitTimeForStopService() {

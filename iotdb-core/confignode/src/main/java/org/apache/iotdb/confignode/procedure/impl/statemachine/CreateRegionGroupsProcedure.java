@@ -201,6 +201,12 @@ public class CreateRegionGroupsProcedure
         setNextState(CreateRegionGroupsState.CREATE_REGION_GROUPS_FINISH);
         break;
       case CREATE_REGION_GROUPS_FINISH:
+        // Update all corresponding DataAllotTables
+        createRegionGroupsPlan
+            .getRegionGroupMap()
+            .keySet()
+            .forEach(
+                database -> env.getConfigManager().getLoadManager().updateDataAllotTable(database));
         return Flow.NO_MORE_STATE;
     }
 
