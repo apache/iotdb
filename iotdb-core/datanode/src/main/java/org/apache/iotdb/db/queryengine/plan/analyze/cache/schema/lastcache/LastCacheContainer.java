@@ -62,10 +62,10 @@ public class LastCacheContainer implements ILastCacheContainer {
       }
     } else if (timeValuePair.getTimestamp() > lastCacheValue.getTimestamp()
         || (timeValuePair.getTimestamp() == lastCacheValue.getTimestamp() && highPriorityUpdate)) {
-      TsPrimitiveType oldValue = lastCacheValue.getValue();
+      //      TsPrimitiveType oldValue = lastCacheValue.getValue();
       lastCacheValue.setTimestamp(timeValuePair.getTimestamp());
       lastCacheValue.setValue(timeValuePair.getValue());
-      return getDiffSize(oldValue, timeValuePair.getValue());
+      return 0;
     }
     return 0;
   }
