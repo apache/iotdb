@@ -110,7 +110,7 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
   }
 
   /**
-   * This is used to write 0-level file. The compression of the time column is 'SNAPPY' in the
+   * This is used to write 0-level file. The compression of the time column is 'LZ4' in the
    * configuration by default. The encoding of the time column is 'TS_2DIFF' in the configuration by
    * default.
    *

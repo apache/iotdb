@@ -277,8 +277,15 @@ public class AlignedChunkData implements ChunkData {
 
   private void buildChunkWriter(InputStream stream) throws IOException, PageException {
     List<IMeasurementSchema> measurementSchemaList = new ArrayList<>();
+    IMeasurementSchema timeSchema = null;
     for (ChunkHeader chunkHeader : chunkHeaderList) {
       if (TSDataType.VECTOR.equals(chunkHeader.getDataType())) {
+        timeSchema =
+            new MeasurementSchema(
+                chunkHeader.getMeasurementID(),
+                chunkHeader.getDataType(),
+                chunkHeader.getEncodingType(),
+                chunkHeader.getCompressionType());
         continue;
       }
       measurementSchemaList.add(
@@ -288,7 +295,7 @@ public class AlignedChunkData implements ChunkData {
               chunkHeader.getEncodingType(),
               chunkHeader.getCompressionType()));
     }
-    chunkWriter = new AlignedChunkWriterImpl(measurementSchemaList);
+    chunkWriter = new AlignedChunkWriterImpl(timeSchema, measurementSchemaList);
     timeBatch = new ArrayList<>();
     int chunkHeaderSize = chunkHeaderList.size();
     for (int i = 0; i < chunkHeaderSize; i++) {
