@@ -19,7 +19,7 @@ import logging
 import multiprocessing
 import time
 from queue import Queue
-from threading import Lock
+from multiprocessing import Lock
 
 from iotdb.Session import Session
 
