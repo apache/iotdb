@@ -35,7 +35,8 @@ def test_session_pool():
         assert session.is_open() is True
 
         session2 = session_pool.get_session()
-        assert session2 is not None
+        session2.open(False)
+        assert session2.is_open() is True
 
         timeout = False
         try:
@@ -47,7 +48,8 @@ def test_session_pool():
 
         Thread(target=lambda: session_pool.put_back(session2)).start()
         session3 = session_pool.get_session()
-        assert session3 is not None
+        session3.open(False)
+        assert session3.is_open() is True
 
         session_pool.close()
 
@@ -66,6 +68,8 @@ def test_session_pool():
             is_closed = True
             assert str(e) == "SessionPool has already been closed, please close the session manually."
         assert is_closed is True
+
+        session3.close()
 
 
 def test_multi_create():
