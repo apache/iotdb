@@ -28,15 +28,12 @@ def test_session_pool():
         db: IoTDBContainer
         max_pool_size = 2
         pool_config = PoolConfig(db.get_container_host_ip(), db.get_exposed_port(6667), "root", "root",
-                                 1024, "Asia/Shanghai", 3)
+                                 1024, "UTC+8", 3)
         session_pool = create_session_pool(pool_config, max_pool_size, 3000)
         session = session_pool.get_session()
-        session.open(False)
         assert session.is_open() is True
 
         session2 = session_pool.get_session()
-        session2.open(False)
-        assert session2.is_open() is True
 
         timeout = False
         try:

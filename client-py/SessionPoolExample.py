@@ -120,7 +120,7 @@ port = "6667"
 username = "root"
 password = "root"
 pool_config = PoolConfig(host=ip, port=port, user_name=username, password=password, fetch_size=1024,
-                         time_zone="Asia/Shanghai", max_retry=3)
+                         time_zone="UTC+8", max_retry=3)
 max_pool_size = 5
 wait_timeout_in_ms = 3000
 
