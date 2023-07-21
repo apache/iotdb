@@ -249,14 +249,13 @@ public class SeriesPartitionTable {
    * @return The last DataPartition, null if there are no DataPartitions
    */
   public Pair<TTimePartitionSlot, TConsensusGroupId> getLastDataPartition() {
-    try {
-      Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>> lastEntry =
-          seriesPartitionMap.lastEntry();
-      return new Pair<>(
-          lastEntry.getKey(), lastEntry.getValue().get(lastEntry.getValue().size() - 1));
-    } catch (NoSuchElementException e) {
+    Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>> lastEntry =
+        seriesPartitionMap.lastEntry();
+    if (lastEntry == null) {
       return null;
     }
+    return new Pair<>(
+        lastEntry.getKey(), lastEntry.getValue().get(lastEntry.getValue().size() - 1));
   }
 
   /**
@@ -275,11 +274,12 @@ public class SeriesPartitionTable {
    * @return The last DataPartition's ConsensusGroupId, null if there are no DataPartitions yet
    */
   public TConsensusGroupId getLastConsensusGroupId() {
-    try {
-      return seriesPartitionMap.lastEntry().getValue().get(0);
-    } catch (NoSuchElementException e) {
+    Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>> lastEntry =
+        seriesPartitionMap.lastEntry();
+    if (lastEntry == null) {
       return null;
     }
+    return lastEntry.getValue().get(lastEntry.getValue().size() - 1);
   }
 
   /**

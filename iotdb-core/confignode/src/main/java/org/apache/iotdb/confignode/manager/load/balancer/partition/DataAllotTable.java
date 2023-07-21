@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 
 public class DataAllotTable {
 
@@ -102,16 +103,26 @@ public class DataAllotTable {
 
       Map<TSeriesPartitionSlot, TConsensusGroupId> newAllotTable = new HashMap<>();
       for (TSeriesPartitionSlot seriesPartitionSlot : seriesSlotList) {
+        if (allocatedTable.containsKey(seriesPartitionSlot)) {
+          // If the SeriesSlot has already been allocated, keep the allocation
+          newAllotTable.put(seriesPartitionSlot, allocatedTable.get(seriesPartitionSlot));
+          continue;
+        }
+
         TConsensusGroupId oldRegionGroupId = dataAllotTable.get(seriesPartitionSlot);
-        if (counter.get(oldRegionGroupId) < mu) {
+        if (oldRegionGroupId != null
+            && counter.containsKey(oldRegionGroupId)
+            && counter.get(oldRegionGroupId) < mu) {
           // Inherit the oldRegionGroupId when the slotNum of oldRegionGroupId is less than average
           newAllotTable.put(seriesPartitionSlot, oldRegionGroupId);
-        } else {
-          // Otherwise, choose the regionGroup with the least slotNum to keep load balance
-          TConsensusGroupId newRegionGroupId = counter.getKeyWithMinValue();
-          newAllotTable.put(seriesPartitionSlot, newRegionGroupId);
-          counter.put(newRegionGroupId, counter.get(newRegionGroupId) + 1);
+          counter.put(oldRegionGroupId, counter.get(oldRegionGroupId) + 1);
+          continue;
         }
+
+        // Otherwise, choose the regionGroup with the least slotNum to keep load balance
+        TConsensusGroupId newRegionGroupId = counter.getKeyWithMinValue();
+        newAllotTable.put(seriesPartitionSlot, newRegionGroupId);
+        counter.put(newRegionGroupId, counter.get(newRegionGroupId) + 1);
       }
 
       dataAllotTable.clear();
@@ -128,6 +139,7 @@ public class DataAllotTable {
    * @return whether the current time partition is updated
    */
   public boolean updateCurrentTimePartition(int regionGroupNum) {
+    int threshold = timePartitionThreshold(regionGroupNum);
     dataAllotTableLock.writeLock().lock();
     try {
       AtomicLong newStartTime = new AtomicLong(Long.MIN_VALUE);
@@ -135,23 +147,18 @@ public class DataAllotTable {
           (timePartition, counter) -> {
             // Select the maximum TimePartition whose slotNum is greater than the following equation
             // Ensure that the remaining slots can be still distributed to new regionGroups
-            if (counter.get() >= timePartitionThreshold(regionGroupNum)
-                && timePartition.getStartTime() > newStartTime.get()) {
+            if (counter.get() >= threshold && timePartition.getStartTime() > newStartTime.get()) {
               newStartTime.set(timePartition.getStartTime());
             }
           });
 
       if (newStartTime.get() > currentTimePartition.get().getStartTime()) {
         currentTimePartition.set(new TTimePartitionSlot(newStartTime.get()));
-        dataPartitionCounter
-            .keySet()
-            .forEach(
-                timePartition -> {
-                  // Remove the useless TimePartitions
-                  if (timePartition.getStartTime() < newStartTime.get()) {
-                    dataPartitionCounter.remove(timePartition);
-                  }
-                });
+        List<TTimePartitionSlot> removeTimePartitionSlots =
+            dataPartitionCounter.keySet().stream()
+                .filter(timePartition -> timePartition.getStartTime() < newStartTime.get())
+                .collect(Collectors.toList());
+        removeTimePartitionSlots.forEach(dataPartitionCounter::remove);
         return true;
       }
     } finally {

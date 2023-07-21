@@ -229,16 +229,9 @@ public class DatabasePartitionTable {
    * @return List of TConsensusGroupId
    */
   public List<TConsensusGroupId> getAllRegionGroupIds(TConsensusGroupType type) {
-    List<TConsensusGroupId> result = new Vector<>();
-    regionGroupMap
-        .values()
-        .forEach(
-            regionGroup -> {
-              if (regionGroup.getId().getType().equals(type)) {
-                result.add(regionGroup.getId());
-              }
-            });
-    return result;
+    return regionGroupMap.keySet().stream()
+        .filter(regionGroupId -> regionGroupId.getType().equals(type))
+        .collect(Collectors.toList());
   }
 
   public int getAssignedSeriesPartitionSlotsCount() {

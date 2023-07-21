@@ -243,7 +243,9 @@ public class PartitionBalancer {
    */
   public void updateDataAllotTable(String database) {
     TTimePartitionSlot currentTimePartition =
-        dataAllotTableMap.get(database).getCurrentTimePartition();
+        dataAllotTableMap
+            .computeIfAbsent(database, empty -> new DataAllotTable())
+            .getCurrentTimePartition();
     Map<TSeriesPartitionSlot, TConsensusGroupId> allocatedTable = new ConcurrentHashMap<>();
     for (int i = 0; i < SERIES_SLOT_NUM; i++) {
       TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(i);

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.structure;
 
+import org.apache.iotdb.commons.utils.TestOnly;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
@@ -56,6 +58,15 @@ public class BalanceTreeMap<K, V extends Comparable<V>> {
     valueKeyMap.computeIfAbsent(value, empty -> new HashSet<>()).add(key);
   }
 
+  /**
+   * Get key with minimum value.
+   *
+   * @return Key with minimum value
+   */
+  public K getKeyWithMinValue() {
+    return valueKeyMap.firstEntry().getValue().iterator().next();
+  }
+
   public V get(K key) {
     return keyValueMap.getOrDefault(key, null);
   }
@@ -64,12 +75,20 @@ public class BalanceTreeMap<K, V extends Comparable<V>> {
     return keyValueMap.containsKey(key);
   }
 
-  /**
-   * Get key with minimum value.
-   *
-   * @return Key with minimum value
-   */
-  public K getKeyWithMinValue() {
-    return valueKeyMap.firstEntry().getValue().iterator().next();
+  @TestOnly
+  public void remove(K key) {
+    V value = keyValueMap.getOrDefault(key, null);
+    if (value != null) {
+      keyValueMap.remove(key);
+      valueKeyMap.get(value).remove(key);
+      if (valueKeyMap.get(value).isEmpty()) {
+        valueKeyMap.remove(value);
+      }
+    }
+  }
+
+  @TestOnly
+  public boolean isEmpty() {
+    return keyValueMap.isEmpty() && valueKeyMap.isEmpty();
   }
 }
