@@ -70,8 +70,8 @@ public class WrappedSegmentTest {
     sf.updateRecord("s1", RecordUtils.node2Buffer(node));
     node.getAsMeasurementMNode().setAlias("alias2");
     sf.updateRecord("s1", RecordUtils.node2Buffer(node));
-    ByteBuffer buffer = sf.getRecord("s1");
-    ICachedMNode node1 = RecordUtils.buffer2Node("s1", buffer);
+    Assert.assertEquals(null, sf.getRecordByAlias("alias1"));
+    ICachedMNode node1 = sf.getRecordByAlias("alias2");
     Assert.assertTrue(node1.isMeasurement());
     Assert.assertEquals("alias2", node1.getAsMeasurementMNode().getAlias());
   }
