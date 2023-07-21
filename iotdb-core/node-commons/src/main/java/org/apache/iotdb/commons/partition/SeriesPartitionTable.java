@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
@@ -33,10 +34,12 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.TreeMap;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -45,18 +48,22 @@ import java.util.stream.Collectors;
 
 public class SeriesPartitionTable {
 
-  private final Map<TTimePartitionSlot, List<TConsensusGroupId>> seriesPartitionMap;
+  private final TreeMap<TTimePartitionSlot, List<TConsensusGroupId>> seriesPartitionMap;
 
   public SeriesPartitionTable() {
-    this.seriesPartitionMap = new ConcurrentHashMap<>();
+    this.seriesPartitionMap = new TreeMap<>();
   }
 
   public SeriesPartitionTable(Map<TTimePartitionSlot, List<TConsensusGroupId>> seriesPartitionMap) {
-    this.seriesPartitionMap = seriesPartitionMap;
+    this.seriesPartitionMap = new TreeMap<>(seriesPartitionMap);
   }
 
   public Map<TTimePartitionSlot, List<TConsensusGroupId>> getSeriesPartitionMap() {
     return seriesPartitionMap;
+  }
+
+  public void putDataPartition(TTimePartitionSlot timePartitionSlot, TConsensusGroupId groupId) {
+    seriesPartitionMap.computeIfAbsent(timePartitionSlot, empty -> new ArrayList<>()).add(groupId);
   }
 
   /**
@@ -119,30 +126,14 @@ public class SeriesPartitionTable {
   }
 
   /**
-   * Checks whether the specified DataPartition has a predecessor or successor and returns if it
-   * does
+   * Check and return the specified DataPartition's successor
    *
    * @param timePartitionSlot Corresponding TimePartitionSlot
-   * @param timePartitionInterval Time partition interval
-   * @return The specific DataPartition's predecessor if exists, null otherwise
+   * @return The specified DataPartition's successor if exists, null otherwise
    */
-  public TConsensusGroupId getAdjacentDataPartition(
-      TTimePartitionSlot timePartitionSlot, long timePartitionInterval) {
-    if (timePartitionSlot.getStartTime() >= timePartitionInterval) {
-      // Check predecessor first
-      TTimePartitionSlot predecessorSlot =
-          new TTimePartitionSlot(timePartitionSlot.getStartTime() - timePartitionInterval);
-      TConsensusGroupId predecessor =
-          seriesPartitionMap.getOrDefault(predecessorSlot, Collections.singletonList(null)).get(0);
-      if (predecessor != null) {
-        return predecessor;
-      }
-    }
-
-    // Check successor
-    TTimePartitionSlot successorSlot =
-        new TTimePartitionSlot(timePartitionSlot.getStartTime() + timePartitionInterval);
-    return seriesPartitionMap.getOrDefault(successorSlot, Collections.singletonList(null)).get(0);
+  public TConsensusGroupId getSuccessorDataPartition(TTimePartitionSlot timePartitionSlot) {
+    TTimePartitionSlot successorSlot = seriesPartitionMap.higherKey(timePartitionSlot);
+    return successorSlot == null ? null : seriesPartitionMap.get(successorSlot).get(0);
   }
 
   /**
@@ -222,6 +213,84 @@ public class SeriesPartitionTable {
           }
         });
 
+    return result;
+  }
+
+  /**
+   * Get the max TimePartitionSlot of the specified Database.
+   *
+   * @return The max TimePartitionSlot, null if there are no DataPartitions yet
+   */
+  public TTimePartitionSlot getMaxTimePartitionSlot() {
+    try {
+      return seriesPartitionMap.lastKey();
+    } catch (NoSuchElementException e) {
+      return null;
+    }
+  }
+
+  /**
+   * Get the min TimePartitionSlot of the specified Database.
+   *
+   * @return The min TimePartitionSlot, null if there are no DataPartitions yet
+   */
+  public TTimePartitionSlot getMinTimePartitionSlot() {
+    try {
+      return seriesPartitionMap.firstKey();
+    } catch (NoSuchElementException e) {
+      return null;
+    }
+  }
+
+  /**
+   * Get the DataPartition with max TimePartition of the specified Database and the
+   * SeriesPartitionSlot.
+   *
+   * @return The last DataPartition, null if there are no DataPartitions
+   */
+  public Pair<TTimePartitionSlot, TConsensusGroupId> getLastDataPartition() {
+    try {
+      Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>> lastEntry =
+          seriesPartitionMap.lastEntry();
+      return new Pair<>(
+          lastEntry.getKey(), lastEntry.getValue().get(lastEntry.getValue().size() - 1));
+    } catch (NoSuchElementException e) {
+      return null;
+    }
+  }
+
+  /**
+   * Check whether the specified DataPartition exists
+   *
+   * @param timePartitionSlot Corresponding TimePartitionSlot
+   * @return 1 if exists, 0 otherwise
+   */
+  public int isDataPartitionExist(TTimePartitionSlot timePartitionSlot) {
+    return seriesPartitionMap.containsKey(timePartitionSlot) ? 1 : 0;
+  }
+
+  /**
+   * Get the last DataPartition's ConsensusGroupId
+   *
+   * @return The last DataPartition's ConsensusGroupId, null if there are no DataPartitions yet
+   */
+  public TConsensusGroupId getLastConsensusGroupId() {
+    try {
+      return seriesPartitionMap.lastEntry().getValue().get(0);
+    } catch (NoSuchElementException e) {
+      return null;
+    }
+  }
+
+  /**
+   * Get the number of DataPartitions in each TimePartitionSlot
+   *
+   * @return Map<TimePartitionSlot, the number of DataPartitions>
+   */
+  public Map<TTimePartitionSlot, Integer> getTimeSlotCountMap() {
+    Map<TTimePartitionSlot, Integer> result = new HashMap<>();
+    seriesPartitionMap.forEach(
+        (timePartitionSlot, consensusGroupIds) -> result.put(timePartitionSlot, 1));
     return result;
   }
 

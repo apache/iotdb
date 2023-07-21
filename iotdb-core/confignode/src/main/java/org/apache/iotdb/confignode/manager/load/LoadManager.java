@@ -94,7 +94,7 @@ public class LoadManager {
   /**
    * Generate an optimal CreateRegionGroupsPlan.
    *
-   * @param allotmentMap Map<StorageGroupName, Region allotment>
+   * @param allotmentMap Map<DatabaseName, Region allotment>
    * @param consensusGroupType TConsensusGroupType of RegionGroup to be allocated
    * @return CreateRegionGroupsPlan
    * @throws NotEnoughDataNodeException If there are not enough DataNodes
@@ -110,7 +110,7 @@ public class LoadManager {
    * Allocate SchemaPartitions.
    *
    * @param unassignedSchemaPartitionSlotsMap SchemaPartitionSlots that should be assigned
-   * @return Map<StorageGroupName, SchemaPartitionTable>, the allocating result
+   * @return Map<DatabaseName, SchemaPartitionTable>, the allocating result
    */
   public Map<String, SchemaPartitionTable> allocateSchemaPartition(
       Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap)
@@ -122,12 +122,25 @@ public class LoadManager {
    * Allocate DataPartitions.
    *
    * @param unassignedDataPartitionSlotsMap DataPartitionSlots that should be assigned
-   * @return Map<StorageGroupName, DataPartitionTable>, the allocating result
+   * @return Map<DatabaseName, DataPartitionTable>, the allocating result
    */
   public Map<String, DataPartitionTable> allocateDataPartition(
       Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> unassignedDataPartitionSlotsMap)
       throws NoAvailableRegionGroupException {
     return partitionBalancer.allocateDataPartition(unassignedDataPartitionSlotsMap);
+  }
+
+  /**
+   * Re-balance runtime status cached in the PartitionBalancer. This method may shift the
+   * currentTimePartition or update the DataAllotTable.
+   */
+  public void reBalancePartitionPolicyIfNecessary(
+      Map<String, DataPartitionTable> assignedDataPartition) {
+    partitionBalancer.reBalanceDataPartitionPolicyIfNecessary(assignedDataPartition);
+  }
+
+  public void updateDataAllotTable(String database) {
+    partitionBalancer.updateDataAllotTable(database);
   }
 
   public void broadcastLatestRegionRouteMap() {
@@ -138,12 +151,14 @@ public class LoadManager {
     loadCache.initHeartbeatCache(configManager);
     heartbeatService.startHeartbeatService();
     statisticsService.startLoadStatisticsService();
+    partitionBalancer.setupPartitionBalancer();
   }
 
   public void stopLoadServices() {
     heartbeatService.stopHeartbeatService();
     statisticsService.stopLoadStatisticsService();
     loadCache.clearHeartbeatCache();
+    partitionBalancer.clearPartitionBalancer();
   }
 
   /**

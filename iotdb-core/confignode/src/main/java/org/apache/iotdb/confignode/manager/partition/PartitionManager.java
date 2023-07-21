@@ -41,6 +41,7 @@ import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
@@ -85,6 +86,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
+import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -265,14 +267,13 @@ public class PartitionManager {
       // Cache allocating result only if the current ConfigNode still holds its leadership
       CreateSchemaPartitionPlan createPlan = new CreateSchemaPartitionPlan();
       createPlan.setAssignedSchemaPartition(assignedSchemaPartition);
-      status = getConsensusManager().confirmLeader();
+
+      status = consensusWritePartitionResult(createPlan);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        // Here we check the leadership second time
-        // since the RegionGroup creating process might take some time
+        // The allocation might fail due to consensus error
         resp.setStatus(status);
         return resp;
       }
-      getConsensusManager().write(createPlan);
     }
 
     resp = (SchemaPartitionResp) getSchemaPartition(req);
@@ -389,14 +390,16 @@ public class PartitionManager {
       // Cache allocating result only if the current ConfigNode still holds its leadership
       CreateDataPartitionPlan createPlan = new CreateDataPartitionPlan();
       createPlan.setAssignedDataPartition(assignedDataPartition);
-      status = getConsensusManager().confirmLeader();
+
+      status = consensusWritePartitionResult(createPlan);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        // Here we check the leadership second time
-        // since the RegionGroup creating process might take some time
+        // The allocation might fail due to consensus error
         resp.setStatus(status);
         return resp;
       }
-      getConsensusManager().write(createPlan);
+
+      // Statistical allocation result and re-balance the DataPartitionPolicy if necessary
+      getLoadManager().reBalancePartitionPolicyIfNecessary(assignedDataPartition);
     }
 
     resp = (DataPartitionResp) getDataPartition(req);
@@ -429,6 +432,24 @@ public class PartitionManager {
       return resp;
     }
     return resp;
+  }
+
+  private TSStatus consensusWritePartitionResult(ConfigPhysicalPlan plan) {
+    TSStatus status = getConsensusManager().confirmLeader();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // Here we check the leadership second time
+      // since the RegionGroup creating process might take some time
+      return status;
+    }
+
+    ConsensusWriteResponse writeResp = getConsensusManager().write(plan);
+    if (!writeResp.isSuccessful()) {
+      // The allocation might fail due to consensus error
+      status = writeResp.getStatus();
+      status.setMessage(writeResp.getErrorMessage());
+      LOGGER.error("Write DataPartition allocation result failed because: {}", status);
+    }
+    return status;
   }
 
   // ======================================================
@@ -590,22 +611,20 @@ public class PartitionManager {
   }
 
   /**
-   * Only leader use this interface. Checks whether the specified DataPartition has a predecessor or
-   * successor and returns if it does
+   * Only leader use this interface. Checks whether the specified DataPartition has a successor and
+   * returns if it does.
    *
    * @param database DatabaseName
    * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
    * @param timePartitionSlot Corresponding TimePartitionSlot
-   * @param timePartitionInterval Time partition interval
    * @return The specific DataPartition's predecessor if exists, null otherwise
    */
-  public TConsensusGroupId getAdjacentDataPartition(
+  public TConsensusGroupId getSuccessorDataPartition(
       String database,
       TSeriesPartitionSlot seriesPartitionSlot,
-      TTimePartitionSlot timePartitionSlot,
-      long timePartitionInterval) {
-    return partitionInfo.getAdjacentDataPartition(
-        database, seriesPartitionSlot, timePartitionSlot, timePartitionInterval);
+      TTimePartitionSlot timePartitionSlot) {
+    return partitionInfo.getSuccessorDataPartition(
+        database, seriesPartitionSlot, timePartitionSlot);
   }
 
   /**
@@ -709,6 +728,21 @@ public class PartitionManager {
   public int getRegionGroupCount(String database, TConsensusGroupType type)
       throws DatabaseNotExistsException {
     return partitionInfo.getRegionGroupCount(database, type);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * <p>Get all the RegionGroups currently owned by the specified Database
+   *
+   * @param database DatabaseName
+   * @param type SchemaRegion or DataRegion
+   * @return List of TConsensusGroupId
+   * @throws DatabaseNotExistsException When the specified Database doesn't exist
+   */
+  public List<TConsensusGroupId> getAllRegionGroupIds(String database, TConsensusGroupType type)
+      throws DatabaseNotExistsException {
+    return partitionInfo.getAllRegionGroupIds(database, type);
   }
 
   /**
@@ -1247,6 +1281,63 @@ public class PartitionManager {
 
   public void getDataRegionIds(List<String> databases, Map<String, List<Integer>> dataRegionIds) {
     partitionInfo.getDataRegionIds(databases, dataRegionIds);
+  }
+
+  /**
+   * Get the max TimePartitionSlot of the specified Database.
+   *
+   * @param database The specified Database
+   * @return The max TimePartitionSlot, null if the Database doesn't exist or there are no
+   *     DataPartitions yet
+   */
+  public TTimePartitionSlot getMaxTimePartitionSlot(String database) {
+    return partitionInfo.getMaxTimePartitionSlot(database);
+  }
+
+  /**
+   * Get the min TimePartitionSlot of the specified Database.
+   *
+   * @param database The specified Database
+   * @return The last DataPartition, null if the Database doesn't exist or there are no
+   *     DataPartitions in the specified SeriesPartitionSlot
+   */
+  public TTimePartitionSlot getMinTimePartitionSlot(String database) {
+    return partitionInfo.getMinTimePartitionSlot(database);
+  }
+
+  /**
+   * Get the DataPartition with max TimePartition of the specified Database and the
+   * SeriesPartitionSlot.
+   *
+   * @param database The specified Database
+   * @param seriesPartitionSlot The specified SeriesPartitionSlot
+   * @return The last DataPartition, null if the Database doesn't exist or there are no
+   *     DataPartitions yet
+   */
+  public Pair<TTimePartitionSlot, TConsensusGroupId> getLastDataPartition(
+      String database, TSeriesPartitionSlot seriesPartitionSlot) {
+    return partitionInfo.getLastDataPartition(database, seriesPartitionSlot);
+  }
+
+  /**
+   * Count SeriesSlot in the specified TimePartitionSlot of the Database.
+   *
+   * @param database The specified Database
+   * @param timePartitionSlot The specified TimePartitionSlot
+   * @return The count of SeriesSlot
+   */
+  public int countSeriesSlot(String database, TTimePartitionSlot timePartitionSlot) {
+    return partitionInfo.countSeriesSlot(database, timePartitionSlot);
+  }
+
+  /**
+   * Get the last DataAllotTable of the specified Database.
+   *
+   * @param database The specified Database
+   * @return The last DataAllotTable
+   */
+  public Map<TSeriesPartitionSlot, TConsensusGroupId> getLastDataAllotTable(String database) {
+    return partitionInfo.getLastDataAllotTable(database);
   }
 
   public ScheduledExecutorService getRegionMaintainer() {
