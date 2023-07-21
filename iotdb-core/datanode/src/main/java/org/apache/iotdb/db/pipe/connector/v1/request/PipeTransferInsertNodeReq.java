@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
+import java.util.Arrays;
 import java.util.Objects;
 
 public class PipeTransferInsertNodeReq extends TPipeTransferReq {
@@ -50,6 +51,9 @@ public class PipeTransferInsertNodeReq extends TPipeTransferReq {
 
       final InsertRowStatement statement = new InsertRowStatement();
       statement.setDevicePath(node.getDevicePath());
+      System.out.println("InsertRowNode: DevicePath:" + node.getDevicePath());
+      System.out.println(
+          "InsertRowNode: MeasurementSchemas:" + Arrays.toString(node.getMeasurementSchemas()));
       statement.setTime(node.getTime());
       statement.setMeasurements(node.getMeasurements());
       statement.setDataTypes(node.getDataTypes());
@@ -65,6 +69,7 @@ public class PipeTransferInsertNodeReq extends TPipeTransferReq {
 
       final InsertTabletStatement statement = new InsertTabletStatement();
       statement.setDevicePath(node.getDevicePath());
+      System.out.println("InsertTabletNode: DevicePath:" + node.getDevicePath());
       statement.setMeasurements(node.getMeasurements());
       statement.setTimes(node.getTimes());
       statement.setColumns(node.getColumns());

@@ -300,6 +300,48 @@
             </activation>
         </profile>
         <profile>
+            <id>MultiClusterIT</id>
+            <properties>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT2,org.apache.iotdb.itbase.category.MultiClusterIT1</integrationTest.includedGroups>
+                <integrationTest.excludedGroups/>
+                <integrationTest.testEnv>MultiCluster</integrationTest.testEnv>
+                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
+                <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
+                <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
+            </properties>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+        </profile>
+        <profile>
+            <id>MultiClusterIT1</id>
+            <properties>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT1</integrationTest.includedGroups>
+                <integrationTest.excludedGroups/>
+                <integrationTest.testEnv>MultiCluster</integrationTest.testEnv>
+                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
+                <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
+                <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
+            </properties>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+        </profile>
+        <profile>
+            <id>MultiClusterIT2</id>
+            <properties>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT2</integrationTest.includedGroups>
+                <integrationTest.excludedGroups/>
+                <integrationTest.testEnv>MultiCluster</integrationTest.testEnv>
+                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
+                <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
+                <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
+            </properties>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+        </profile>
+        <profile>
             <id>ClusterIT</id>
             <properties>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.ClusterIT</integrationTest.includedGroups>

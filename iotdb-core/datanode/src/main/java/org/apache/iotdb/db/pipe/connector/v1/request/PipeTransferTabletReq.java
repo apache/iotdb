@@ -216,6 +216,7 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
 
     try {
       final TSInsertTabletReq request = new TSInsertTabletReq();
+      System.out.println("Tablet, device:" + tablet.deviceId);
 
       for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
         request.addToMeasurements(measurementSchema.getMeasurementId());

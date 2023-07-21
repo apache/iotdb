@@ -21,7 +21,6 @@ package org.apache.iotdb.cli.it;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -33,7 +32,7 @@ import java.io.File;
 import java.io.IOException;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
+@Category({ClusterIT.class})
 public class StartClientScriptIT extends AbstractScript {
 
   private static String ip;

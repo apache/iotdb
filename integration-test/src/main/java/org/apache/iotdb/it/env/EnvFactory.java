@@ -47,6 +47,7 @@ public class EnvFactory {
             env = new SimpleEnv();
             break;
           case Cluster1:
+          case MultiCluster:
             env = new Cluster1Env();
             break;
           case Remote:

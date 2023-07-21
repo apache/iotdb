@@ -20,8 +20,6 @@
 package org.apache.iotdb.it.env;
 
 import org.apache.iotdb.it.env.cluster.Cluster1Env;
-import org.apache.iotdb.it.env.cluster.SimpleEnv;
-import org.apache.iotdb.it.env.remote.RemoteServerEnv;
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.Config;
@@ -34,40 +32,27 @@ import java.util.List;
 public class MultiEnvFactory {
   private static final List<BaseEnv> envList = new ArrayList<>();
   private static final Logger logger = IoTDBTestLogger.logger;
-  private static final int MAX_ENV_NUM = 5;
 
   private MultiEnvFactory() {
     // Empty constructor
   }
 
+  /** Get an environment with the specific index. */
   public static BaseEnv getEnv(int index) throws IndexOutOfBoundsException {
     return envList.get(index);
   }
 
+  /** Create several environments according to the specific number. */
   public static void createEnv(int num) {
-    if (num > MAX_ENV_NUM) {
-      String msg = String.format("Env num must be less than %s", MAX_ENV_NUM);
-      logger.warn(msg);
-      throw new IllegalArgumentException(msg);
-    }
     EnvType envType = EnvType.getSystemEnvType();
     for (int i = 0; i < num; ++i) {
       try {
         Class.forName(Config.JDBC_DRIVER_NAME);
-        switch (envType) {
-          case Simple:
-            envList.add(new SimpleEnv());
-            break;
-          case Cluster1:
-            envList.add(new Cluster1Env());
-            break;
-          case Remote:
-            envList.add(new RemoteServerEnv());
-            break;
-          default:
-            logger.warn("Unknown env type: {}", envType);
-            System.exit(-1);
-            break;
+        if (envType == EnvType.MultiCluster) {
+          envList.add(new Cluster1Env());
+        } else {
+          logger.warn("Unknown env type: {}", envType);
+          System.exit(-1);
         }
       } catch (ClassNotFoundException e) {
         logger.error("Create env error", e);
