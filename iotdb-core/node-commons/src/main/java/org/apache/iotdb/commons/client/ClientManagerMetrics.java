@@ -28,10 +28,8 @@ import org.apache.iotdb.metrics.utils.MetricType;
 
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ClientManagerMetrics implements IMetricSet {
   private static final String CLIENT_MANAGER_NUM_ACTIVE = "client_manager_num_active";
@@ -43,9 +41,7 @@ public class ClientManagerMetrics implements IMetricSet {
   private static final String MEAN_BORROW_WAIT_TIME_MILLIS = "client_manager_mean_borrow_wait_time";
   private static final String MEAN_IDLE_TIME_MILLIS = "client_manager_mean_idle_time";
 
-  private final ArrayList<String> registeredClientName = new ArrayList<>();
-  private final ArrayList<GenericKeyedObjectPool<?, ?>> registeredClientPool = new ArrayList<>();
-  private final Set<String> poolNameSet = new HashSet<>();
+  private final Map<String, GenericKeyedObjectPool<?, ?>> poolMap = new HashMap<>();
   private AbstractMetricService metricService;
 
   private static class ClientManagerMetricsHolder {
@@ -64,12 +60,11 @@ public class ClientManagerMetrics implements IMetricSet {
 
   public void registerClientManager(String poolName, GenericKeyedObjectPool<?, ?> clientPool) {
     synchronized (this) {
-      registeredClientName.add(poolName);
-      registeredClientPool.add(clientPool);
       if (metricService == null) {
-        poolNameSet.add(poolName);
+        poolMap.put(poolName, clientPool);
       } else {
-        if (!poolNameSet.contains(poolName)) {
+        if (!poolMap.containsKey(poolName)) {
+          poolMap.put(poolName, clientPool);
           createMetrics(poolName);
         }
       }
@@ -80,7 +75,7 @@ public class ClientManagerMetrics implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     this.metricService = metricService;
     synchronized (this) {
-      for (String poolName : poolNameSet) {
+      for (String poolName : poolMap.keySet()) {
         createMetrics(poolName);
       }
     }
@@ -90,8 +85,8 @@ public class ClientManagerMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.CLIENT_MANAGER.toString(),
         MetricLevel.IMPORTANT,
-        registeredClientPool,
-        map -> getNumActive(poolName),
+        poolMap,
+        map -> poolMap.get(poolName).getNumActive(),
         Tag.NAME.toString(),
         CLIENT_MANAGER_NUM_ACTIVE,
         Tag.TYPE.toString(),
@@ -99,8 +94,8 @@ public class ClientManagerMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.CLIENT_MANAGER.toString(),
         MetricLevel.IMPORTANT,
-        registeredClientPool,
-        map -> getNumIdle(poolName),
+        poolMap,
+        map -> poolMap.get(poolName).getNumIdle(),
         Tag.NAME.toString(),
         CLIENT_MANAGER_NUM_IDLE,
         Tag.TYPE.toString(),
@@ -108,8 +103,8 @@ public class ClientManagerMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.CLIENT_MANAGER.toString(),
         MetricLevel.IMPORTANT,
-        registeredClientPool,
-        map -> getBorrowedCount(poolName),
+        poolMap,
+        map -> poolMap.get(poolName).getBorrowedCount(),
         Tag.NAME.toString(),
         CLIENT_MANAGER_BORROWED_COUNT,
         Tag.TYPE.toString(),
@@ -117,8 +112,8 @@ public class ClientManagerMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.CLIENT_MANAGER.toString(),
         MetricLevel.IMPORTANT,
-        registeredClientPool,
-        map -> getCreatedCount(poolName),
+        poolMap,
+        map -> poolMap.get(poolName).getCreatedCount(),
         Tag.NAME.toString(),
         CLIENT_MANAGER_CREATED_COUNT,
         Tag.TYPE.toString(),
@@ -126,8 +121,8 @@ public class ClientManagerMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.CLIENT_MANAGER.toString(),
         MetricLevel.IMPORTANT,
-        registeredClientPool,
-        map -> getDestroyedCount(poolName),
+        poolMap,
+        map -> poolMap.get(poolName).getDestroyedCount(),
         Tag.NAME.toString(),
         CLIENT_MANAGER_DESTROYED_COUNT,
         Tag.TYPE.toString(),
@@ -135,8 +130,8 @@ public class ClientManagerMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.CLIENT_MANAGER.toString(),
         MetricLevel.IMPORTANT,
-        registeredClientPool,
-        map -> getMeanActiveTime(poolName),
+        poolMap,
+        map -> poolMap.get(poolName).getMeanActiveTimeMillis(),
         Tag.NAME.toString(),
         MEAN_ACTIVE_TIME_MILLIS,
         Tag.TYPE.toString(),
@@ -144,8 +139,8 @@ public class ClientManagerMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.CLIENT_MANAGER.toString(),
         MetricLevel.IMPORTANT,
-        registeredClientPool,
-        map -> getMeanBorrowWaitTime(poolName),
+        poolMap,
+        map -> poolMap.get(poolName).getMeanBorrowWaitTimeMillis(),
         Tag.NAME.toString(),
         MEAN_BORROW_WAIT_TIME_MILLIS,
         Tag.TYPE.toString(),
@@ -153,103 +148,17 @@ public class ClientManagerMetrics implements IMetricSet {
     metricService.createAutoGauge(
         Metric.CLIENT_MANAGER.toString(),
         MetricLevel.IMPORTANT,
-        registeredClientPool,
-        map -> getMeanIdleTime(poolName),
+        poolMap,
+        map -> poolMap.get(poolName).getMeanIdleTimeMillis(),
         Tag.NAME.toString(),
         MEAN_IDLE_TIME_MILLIS,
         Tag.TYPE.toString(),
         poolName);
   }
 
-  private long getNumActive(String poolName) {
-    AtomicLong numActive = new AtomicLong();
-    for (int i = 0; i < registeredClientName.size(); i++) {
-      if (registeredClientName.get(i).contains(poolName)) {
-        numActive.addAndGet(registeredClientPool.get(i).getNumActive());
-      }
-    }
-    return numActive.get();
-  }
-
-  private long getNumIdle(String poolName) {
-    AtomicLong numIdle = new AtomicLong();
-    for (int i = 0; i < registeredClientName.size(); i++) {
-      if (registeredClientName.get(i).contains(poolName)) {
-        numIdle.addAndGet(registeredClientPool.get(i).getNumIdle());
-      }
-    }
-    return numIdle.get();
-  }
-
-  private long getBorrowedCount(String poolName) {
-    AtomicLong borrowedCount = new AtomicLong();
-    for (int i = 0; i < registeredClientName.size(); i++) {
-      if (registeredClientName.get(i).contains(poolName)) {
-        borrowedCount.addAndGet(registeredClientPool.get(i).getBorrowedCount());
-      }
-    }
-    return borrowedCount.get();
-  }
-
-  private long getCreatedCount(String poolName) {
-    AtomicLong createdCount = new AtomicLong();
-    for (int i = 0; i < registeredClientName.size(); i++) {
-      if (registeredClientName.get(i).contains(poolName)) {
-        createdCount.addAndGet(registeredClientPool.get(i).getCreatedCount());
-      }
-    }
-    return createdCount.get();
-  }
-
-  private long getDestroyedCount(String poolName) {
-    AtomicLong destroyedCount = new AtomicLong();
-    for (int i = 0; i < registeredClientName.size(); i++) {
-      if (registeredClientName.get(i).contains(poolName)) {
-        destroyedCount.addAndGet(registeredClientPool.get(i).getDestroyedCount());
-      }
-    }
-    return destroyedCount.get();
-  }
-
-  private long getMeanActiveTime(String poolName) {
-    AtomicLong activeTime = new AtomicLong();
-    AtomicLong count = new AtomicLong();
-    for (int i = 0; i < registeredClientName.size(); i++) {
-      if (registeredClientName.get(i).contains(poolName)) {
-        activeTime.addAndGet(registeredClientPool.get(i).getMeanActiveTimeMillis());
-        count.addAndGet(1);
-      }
-    }
-    return count.get() > 0 ? activeTime.get() / count.get() : 0;
-  }
-
-  private long getMeanBorrowWaitTime(String poolName) {
-    AtomicLong borrowWaitTime = new AtomicLong();
-    AtomicLong count = new AtomicLong();
-    for (int i = 0; i < registeredClientName.size(); i++) {
-      if (registeredClientName.get(i).contains(poolName)) {
-        borrowWaitTime.addAndGet(registeredClientPool.get(i).getMeanBorrowWaitTimeMillis());
-        count.addAndGet(1);
-      }
-    }
-    return count.get() > 0 ? borrowWaitTime.get() / count.get() : 0;
-  }
-
-  private long getMeanIdleTime(String poolName) {
-    AtomicLong idleTime = new AtomicLong();
-    AtomicLong count = new AtomicLong();
-    for (int i = 0; i < registeredClientName.size(); i++) {
-      if (registeredClientName.get(i).contains(poolName)) {
-        idleTime.addAndGet(registeredClientPool.get(i).getMeanIdleTimeMillis());
-        count.addAndGet(1);
-      }
-    }
-    return count.get() > 0 ? idleTime.get() / count.get() : 0;
-  }
-
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    for (String poolName : poolNameSet) {
+    for (String poolName : poolMap.keySet()) {
       metricService.remove(
           MetricType.GAUGE,
           Metric.CLIENT_MANAGER.toString(),
@@ -307,8 +216,6 @@ public class ClientManagerMetrics implements IMetricSet {
           Tag.TYPE.toString(),
           poolName);
     }
-    registeredClientName.clear();
-    registeredClientPool.clear();
-    poolNameSet.clear();
+    poolMap.clear();
   }
 }
