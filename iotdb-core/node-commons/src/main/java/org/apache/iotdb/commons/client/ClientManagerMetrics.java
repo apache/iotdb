@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.client;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
@@ -42,40 +43,64 @@ public class ClientManagerMetrics implements IMetricSet {
   private static final String MEAN_BORROW_WAIT_TIME_MILLIS = "client_manager_mean_borrow_wait_time";
   private static final String MEAN_IDLE_TIME_MILLIS = "client_manager_mean_idle_time";
 
-  private static final String POOL_NAME = "pool_name";
+  private String role;
   private final ArrayList<String> registeredClientName = new ArrayList<>();
   private final ArrayList<GenericKeyedObjectPool<?, ?>> registeredClientPool = new ArrayList<>();
   private static final List<String> POOL_NAME_LIST = new ArrayList<>();
 
-  static {
-    POOL_NAME_LIST.add("AsyncConfigNodeHeartbeatServiceClientPool");
-    POOL_NAME_LIST.add("AsyncConfigNodeIServiceClientPool");
-    POOL_NAME_LIST.add("AsyncDataNodeHeartbeatServiceClientPool");
-    POOL_NAME_LIST.add("AsyncDataNodeInternalServiceClientPool");
-    POOL_NAME_LIST.add("AsyncDataNodeMPPDataExchangeServiceClientPool");
-    POOL_NAME_LIST.add("AsyncIoTConsensusServiceClientPool");
-    POOL_NAME_LIST.add("AsyncPipeDataTransferServiceClientPool");
-    POOL_NAME_LIST.add("ClusterDeletionConfigNodeClientPool");
-    POOL_NAME_LIST.add("ConfigNodeClientPool");
-    POOL_NAME_LIST.add("RatisClientPool");
-    POOL_NAME_LIST.add("SyncConfigNodeIServiceClientPool");
-    POOL_NAME_LIST.add("SyncDataNodeInternalServiceClientPool");
-    POOL_NAME_LIST.add("SyncDataNodeMPPDataExchangeServiceClientPool");
-    POOL_NAME_LIST.add("SyncIoTConsensusServiceClientPool");
-  }
-
   private static class ClientManagerMetricsHolder {
-    private static final ClientManagerMetrics INSTANCE = new ClientManagerMetrics();
+    private static ClientManagerMetrics INSTANCE;
 
     private ClientManagerMetricsHolder() {}
+
+    private static ClientManagerMetrics getInstance(String role) {
+      synchronized (ClientManagerMetrics.class) {
+        if (INSTANCE == null) {
+          INSTANCE = new ClientManagerMetrics(role);
+        }
+        return INSTANCE;
+      }
+    }
+
+    private static ClientManagerMetrics getInstance() {
+      synchronized (ClientManagerMetrics.class) {
+        return INSTANCE;
+      }
+    }
+  }
+
+  public static ClientManagerMetrics getInstance(String role) {
+    return ClientManagerMetrics.ClientManagerMetricsHolder.getInstance(role);
   }
 
   public static ClientManagerMetrics getInstance() {
-    return ClientManagerMetrics.ClientManagerMetricsHolder.INSTANCE;
+    return ClientManagerMetrics.ClientManagerMetricsHolder.getInstance();
   }
 
-  private ClientManagerMetrics() {
-    // empty constructor
+  private ClientManagerMetrics(String role) {
+    this.role = role;
+    if (role.equals(IoTDBConstant.CN_ROLE)) {
+      // ConfigNode list
+      POOL_NAME_LIST.add("AsyncConfigNodeHeartbeatServiceClientPool");
+      POOL_NAME_LIST.add("AsyncConfigNodeIServiceClientPool");
+      POOL_NAME_LIST.add("AsyncDataNodeHeartbeatServiceClientPool");
+      POOL_NAME_LIST.add("AsyncDataNodeInternalServiceClientPool");
+      POOL_NAME_LIST.add("SyncConfigNodeIServiceClientPool");
+      POOL_NAME_LIST.add("SyncDataNodeInternalServiceClientPool");
+      POOL_NAME_LIST.add("SyncDataNodeMPPDataExchangeServiceClientPool");
+    } else {
+      // DataNode list
+      POOL_NAME_LIST.add("AsyncDataNodeInternalServiceClientPool");
+      POOL_NAME_LIST.add("AsyncDataNodeMPPDataExchangeServiceClientPool");
+      POOL_NAME_LIST.add("AsyncIoTConsensusServiceClientPool");
+      POOL_NAME_LIST.add("AsyncPipeDataTransferServiceClientPool");
+      POOL_NAME_LIST.add("ClusterDeletionConfigNodeClientPool");
+      POOL_NAME_LIST.add("ConfigNodeClientPool");
+      POOL_NAME_LIST.add("RatisClientPool");
+      POOL_NAME_LIST.add("SyncDataNodeInternalServiceClientPool");
+      POOL_NAME_LIST.add("SyncDataNodeMPPDataExchangeServiceClientPool");
+      POOL_NAME_LIST.add("SyncIoTConsensusServiceClientPool");
+    }
   }
 
   @Override

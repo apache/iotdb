@@ -58,7 +58,8 @@ public class DataNodeClientPoolFactory {
                   .setMaxClientNumForEachNode(conf.getMaxClientNumForEachNode())
                   .build()
                   .getConfig());
-      ClientManagerMetrics.getInstance().registerClientManager("ConfigNodeClientPool", clientPool);
+      ClientManagerMetrics.getInstance()
+          .registerClientManager(this.getClass().getSimpleName(), clientPool);
       return clientPool;
     }
   }
@@ -87,7 +88,7 @@ public class DataNodeClientPoolFactory {
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()
-          .registerClientManager("ClusterDeletionConfigNodeClientPool", clientPool);
+          .registerClientManager(this.getClass().getSimpleName(), clientPool);
       return clientPool;
     }
   }

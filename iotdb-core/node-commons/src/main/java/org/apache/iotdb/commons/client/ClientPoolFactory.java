@@ -62,7 +62,7 @@ public class ClientPoolFactory {
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()
-          .registerClientManager("SyncConfigNodeIServiceClientPool", clientPool);
+          .registerClientManager(this.getClass().getSimpleName(), clientPool);
       return clientPool;
     }
   }
@@ -89,7 +89,7 @@ public class ClientPoolFactory {
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()
-          .registerClientManager("AsyncConfigNodeIServiceClientPool", clientPool);
+          .registerClientManager(this.getClass().getSimpleName(), clientPool);
       return clientPool;
     }
   }
@@ -114,7 +114,7 @@ public class ClientPoolFactory {
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()
-          .registerClientManager("SyncDataNodeInternalServiceClientPool", clientPool);
+          .registerClientManager(this.getClass().getSimpleName(), clientPool);
       return clientPool;
     }
   }
@@ -141,7 +141,7 @@ public class ClientPoolFactory {
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()
-          .registerClientManager("AsyncDataNodeInternalServiceClientPool", clientPool);
+          .registerClientManager(this.getClass().getSimpleName(), clientPool);
       return clientPool;
     }
   }
@@ -170,7 +170,7 @@ public class ClientPoolFactory {
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()
-          .registerClientManager("AsyncConfigNodeHeartbeatServiceClientPool", clientPool);
+          .registerClientManager(this.getClass().getSimpleName(), clientPool);
       return clientPool;
     }
   }
@@ -197,7 +197,7 @@ public class ClientPoolFactory {
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()
-          .registerClientManager("AsyncDataNodeHeartbeatServiceClientPool", clientPool);
+          .registerClientManager(this.getClass().getSimpleName(), clientPool);
       return clientPool;
     }
   }
@@ -222,7 +222,7 @@ public class ClientPoolFactory {
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()
-          .registerClientManager("SyncDataNodeMPPDataExchangeServiceClientPool", clientPool);
+          .registerClientManager(this.getClass().getSimpleName(), clientPool);
       return clientPool;
     }
   }
@@ -249,7 +249,7 @@ public class ClientPoolFactory {
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()
-          .registerClientManager("AsyncDataNodeMPPDataExchangeServiceClientPool", clientPool);
+          .registerClientManager(this.getClass().getSimpleName(), clientPool);
       return clientPool;
     }
   }
@@ -276,7 +276,7 @@ public class ClientPoolFactory {
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()
-          .registerClientManager("AsyncPipeDataTransferServiceClientPool", clientPool);
+          .registerClientManager(this.getClass().getSimpleName(), clientPool);
       return clientPool;
     }
   }

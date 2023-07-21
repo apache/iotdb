@@ -66,7 +66,7 @@ public class IoTConsensusClientPool {
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()
-          .registerClientManager("SyncIoTConsensusServiceClientPool", clientPool);
+          .registerClientManager(this.getClass().getSimpleName(), clientPool);
       return clientPool;
     }
   }
@@ -103,7 +103,7 @@ public class IoTConsensusClientPool {
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()
-          .registerClientManager("AsyncIoTConsensusServiceClientPool", clientPool);
+          .registerClientManager(this.getClass().getSimpleName(), clientPool);
       return clientPool;
     }
   }

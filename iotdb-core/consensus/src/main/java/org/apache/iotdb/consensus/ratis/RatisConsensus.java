@@ -817,7 +817,8 @@ class RatisConsensus implements IConsensus {
                   .setMaxClientNumForEachNode(config.getClient().getMaxClientNumForEachNode())
                   .build()
                   .getConfig());
-      ClientManagerMetrics.getInstance().registerClientManager("RatisClientPool", clientPool);
+      ClientManagerMetrics.getInstance()
+          .registerClientManager(this.getClass().getSimpleName(), clientPool);
       return clientPool;
     }
   }
