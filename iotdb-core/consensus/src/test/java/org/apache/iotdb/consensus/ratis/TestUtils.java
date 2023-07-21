@@ -37,8 +37,8 @@ import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.RatisConfig;
-
 import org.apache.iotdb.consensus.exception.ConsensusException;
+
 import org.apache.ratis.thirdparty.com.google.common.base.Preconditions;
 import org.apache.ratis.util.FileUtils;
 import org.apache.ratis.util.JavaUtils;
