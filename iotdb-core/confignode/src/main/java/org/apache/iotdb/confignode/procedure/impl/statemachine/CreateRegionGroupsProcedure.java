@@ -53,7 +53,7 @@ public class CreateRegionGroupsProcedure
   private TConsensusGroupType consensusGroupType;
 
   private CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
-  private CreateRegionGroupsPlan persistPlan;
+  private CreateRegionGroupsPlan persistPlan = new CreateRegionGroupsPlan();
 
   /** key: TConsensusGroupId value: Failed RegionReplicas */
   private Map<TConsensusGroupId, TRegionReplicaSet> failedRegionReplicaSets = new HashMap<>();
@@ -66,18 +66,18 @@ public class CreateRegionGroupsProcedure
       TConsensusGroupType consensusGroupType, CreateRegionGroupsPlan createRegionGroupsPlan) {
     this.consensusGroupType = consensusGroupType;
     this.createRegionGroupsPlan = createRegionGroupsPlan;
-    this.persistPlan = new CreateRegionGroupsPlan();
   }
 
   @TestOnly
   public CreateRegionGroupsProcedure(
       TConsensusGroupType consensusGroupType,
       CreateRegionGroupsPlan createRegionGroupsPlan,
+      CreateRegionGroupsPlan persistPlan,
       Map<TConsensusGroupId, TRegionReplicaSet> failedRegionReplicaSets) {
     this.consensusGroupType = consensusGroupType;
     this.createRegionGroupsPlan = createRegionGroupsPlan;
+    this.persistPlan = persistPlan;
     this.failedRegionReplicaSets = failedRegionReplicaSets;
-    this.persistPlan = new CreateRegionGroupsPlan();
   }
 
   @Override

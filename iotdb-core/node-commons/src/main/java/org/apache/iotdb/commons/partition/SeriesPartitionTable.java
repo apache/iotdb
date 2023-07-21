@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -67,7 +68,7 @@ public class SeriesPartitionTable {
   }
 
   /**
-   * Thread-safely get DataPartition within the specific StorageGroup
+   * Thread-safely get DataPartition within the specific Database.
    *
    * @param partitionSlotList TimePartitionSlotList
    * @param seriesPartitionTable Store the matched SeriesPartitions
@@ -126,7 +127,7 @@ public class SeriesPartitionTable {
   }
 
   /**
-   * Check and return the specified DataPartition's successor
+   * Check and return the specified DataPartition's successor.
    *
    * @param timePartitionSlot Corresponding TimePartitionSlot
    * @return The specified DataPartition's successor if exists, null otherwise
@@ -137,7 +138,7 @@ public class SeriesPartitionTable {
   }
 
   /**
-   * Query a timePartition's corresponding dataRegionIds
+   * Query a timePartition's corresponding dataRegionIds.
    *
    * @param timeSlotId Time partition's timeSlotId
    * @return the timePartition's corresponding dataRegionIds
@@ -170,7 +171,7 @@ public class SeriesPartitionTable {
   }
 
   /**
-   * Create DataPartition within the specific SeriesPartitionSlot
+   * Create DataPartition within the specific SeriesPartitionSlot.
    *
    * @param assignedSeriesPartitionTable Assigned result
    * @param seriesPartitionSlot Corresponding TSeriesPartitionSlot
@@ -197,7 +198,7 @@ public class SeriesPartitionTable {
 
   /**
    * Only Leader use this interface. And this interface is synchronized. Thread-safely filter no
-   * assigned DataPartitionSlots within the specific SeriesPartitionSlot
+   * assigned DataPartitionSlots within the specific SeriesPartitionSlot.
    *
    * @param partitionSlots TimePartitionSlots
    * @return Unassigned PartitionSlots
@@ -259,7 +260,7 @@ public class SeriesPartitionTable {
   }
 
   /**
-   * Check whether the specified DataPartition exists
+   * Check whether the specified DataPartition exists.
    *
    * @param timePartitionSlot Corresponding TimePartitionSlot
    * @return 1 if exists, 0 otherwise
@@ -269,7 +270,7 @@ public class SeriesPartitionTable {
   }
 
   /**
-   * Get the last DataPartition's ConsensusGroupId
+   * Get the last DataPartition's ConsensusGroupId.
    *
    * @return The last DataPartition's ConsensusGroupId, null if there are no DataPartitions yet
    */
@@ -283,7 +284,7 @@ public class SeriesPartitionTable {
   }
 
   /**
-   * Get the number of DataPartitions in each TimePartitionSlot
+   * Get the number of DataPartitions in each TimePartitionSlot.
    *
    * @return Map<TimePartitionSlot, the number of DataPartitions>
    */
@@ -307,7 +308,7 @@ public class SeriesPartitionTable {
     }
   }
 
-  /** Only for ConsensusRequest */
+  /** Only for ConsensusRequest. */
   public void deserialize(ByteBuffer buffer) {
     int timePartitionSlotNum = buffer.getInt();
     for (int i = 0; i < timePartitionSlotNum; i++) {
@@ -324,7 +325,7 @@ public class SeriesPartitionTable {
     }
   }
 
-  /** Only for Snapshot */
+  /** Only for Snapshot. */
   public void deserialize(InputStream inputStream, TProtocol protocol)
       throws IOException, TException {
     int timePartitionSlotNum = ReadWriteIOUtils.readInt(inputStream);
