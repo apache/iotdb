@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricType;
 
 import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
@@ -43,18 +44,25 @@ public class JvmGcMetrics implements IMetricSet {
   private Future<?> scheduledGcMonitorFuture;
   // Ring buffers containing GC timings and timestamps when timings were taken
   private final TsAndData[] gcDataBuf;
-  //    private final long maxGcTimePercentage = 0L;
+  // Max GC time threshold
   private final long maxGcTimePercentage = 70L;
+  // Duration of observation window
   private final long observationWindowMs = TimeUnit.MINUTES.toMillis(1);
-  //        private final long observationWindowMs = TimeUnit.SECONDS.toMillis(1);
+  // Interval for data collection
   private final long sleepIntervalMs = TimeUnit.SECONDS.toMillis(5);
-  //        private final long sleepIntervalMs = TimeUnit.MILLISECONDS.toMillis(1000);
+  // Buffer size
   private final int bufSize;
+  // Buffer start index
   private int startIdx;
+  // Buffer end index
   private int endIdx;
+  // The time when jvm start running
   private long startTime;
+  // Container to hold collected GC data
   private final GcData curData = new GcData();
+  // Switch for GC monitor operation
   private boolean shouldRun = true;
+  // Hook function called with GC exception
   private final GcTimeAlertHandler alertHandler;
 
   public JvmGcMetrics() {
@@ -79,7 +87,8 @@ public class JvmGcMetrics implements IMetricSet {
         GcData::getGcTimePercentage);
 
     startTime = System.currentTimeMillis();
-    curData.timestamp.set(startTime);
+    // current collect time: startTime + start delay(50ms)
+    curData.timestamp.set(startTime + TimeUnit.MILLISECONDS.toMillis(50));
     gcDataBuf[startIdx].setValues(startTime, 0);
     scheduledGcMonitorFuture =
         ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
@@ -93,6 +102,7 @@ public class JvmGcMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     shouldRun = false;
+    metricService.remove(MetricType.AUTO_GAUGE, "jvm_gc_accumulated_time_percentage");
     if (scheduledGcMonitorFuture != null) {
       scheduledGcMonitorFuture.cancel(false);
       scheduledGcMonitorFuture = null;
