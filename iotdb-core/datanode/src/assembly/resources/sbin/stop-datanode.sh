@@ -21,6 +21,24 @@
 DATANODE_CONF="`dirname "$0"`/../conf"
 dn_rpc_port=`sed '/^dn_rpc_port=/!d;s/.*=//' ${DATANODE_CONF}/iotdb-datanode.properties`
 
+force=""
+
+while true; do
+    case "$1" in
+        -f)
+            force="yes"
+            break
+        ;;
+        "")
+            #if we do not use getopt, we then have to process the case that there is no argument.
+            #in some systems, when there is no argument, shift command may throw error, so we skip directly
+            #all others are args to the program
+            PARAMS=$*
+            break
+        ;;
+    esac
+done
+
 echo "Check whether the rpc_port is used..., port is" $dn_rpc_port
 
 if  type lsof > /dev/null 2>&1 ; then
@@ -42,8 +60,13 @@ if [ -z "$PID" ]; then
   fi
   exit 1
 elif [[ "${PID_VERIFY}" =~ ${PID} ]]; then
-  kill -s TERM "$PID"
-  echo "Stop DataNode, PID:" "$PID"
+  if [[ "${force}" == "yes" ]]; then
+    kill -9 "$PID"
+    echo "Force to stop DataNode, PID:" "$PID"
+  else
+    kill -s TERM "$PID"
+    echo "Stop DataNode, PID:" "$PID"
+  fi
 else
   echo "No DataNode to stop"
   exit 1
