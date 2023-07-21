@@ -40,6 +40,7 @@ public enum Metric {
   SESSION_IDLE_TIME("session_idle_time"),
   THRIFT_CONNECTIONS("thrift_connections"),
   THRIFT_ACTIVE_THREADS("thrift_active_threads"),
+  CLIENT_MANAGER("client_manager"),
   // consensus related
   STAGE("stage"),
   IOT_CONSENSUS("iot_consensus"),

@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.ClientManager;
+import org.apache.iotdb.commons.client.ClientManagerMetrics;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.IClientPoolFactory;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
@@ -808,13 +809,17 @@ class RatisConsensus implements IConsensus {
     @Override
     public KeyedObjectPool<RaftGroup, RatisClient> createClientPool(
         ClientManager<RaftGroup, RatisClient> manager) {
-      return new GenericKeyedObjectPool<>(
-          new RatisClient.Factory(manager, properties, clientRpc, config.getClient()),
-          new ClientPoolProperty.Builder<RatisClient>()
-              .setCoreClientNumForEachNode(config.getClient().getCoreClientNumForEachNode())
-              .setMaxClientNumForEachNode(config.getClient().getMaxClientNumForEachNode())
-              .build()
-              .getConfig());
+      GenericKeyedObjectPool<RaftGroup, RatisClient> clientPool =
+          new GenericKeyedObjectPool<>(
+              new RatisClient.Factory(manager, properties, clientRpc, config.getClient()),
+              new ClientPoolProperty.Builder<RatisClient>()
+                  .setCoreClientNumForEachNode(config.getClient().getCoreClientNumForEachNode())
+                  .setMaxClientNumForEachNode(config.getClient().getMaxClientNumForEachNode())
+                  .build()
+                  .getConfig());
+      ClientManagerMetrics.getInstance()
+          .registerClientManager(this.getClass().getSimpleName(), clientPool);
+      return clientPool;
     }
   }
 }
