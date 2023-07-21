@@ -93,7 +93,6 @@ def test_session_pool_by_node_urls():
 
         session_pool.put_back(session)
         session2 = session_pool.get_session()
-        session2.open(False)
         assert session2.is_open() is True
 
         session_pool.put_back(session2)
