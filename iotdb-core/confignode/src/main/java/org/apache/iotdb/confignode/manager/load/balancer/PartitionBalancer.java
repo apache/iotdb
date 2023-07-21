@@ -215,7 +215,7 @@ public class PartitionBalancer {
   }
 
   /**
-   * Update the DataPartitionCount in DataAllotTable
+   * Update the DataPartitionCount in DataAllotTable.
    *
    * @param database Database name
    * @param dataPartitionTable new created DataPartitionTable
@@ -231,13 +231,13 @@ public class PartitionBalancer {
           .updateCurrentTimePartition(
               getPartitionManager().getRegionGroupCount(database, TConsensusGroupType.DataRegion));
     } catch (DatabaseNotExistsException e) {
-      LOGGER.error("Database {} not exists", database);
+      LOGGER.error("Database {} not exists when updateDataPartitionCount", database);
       return false;
     }
   }
 
   /**
-   * Update the DataAllotTable
+   * Update the DataAllotTable.
    *
    * @param database Database name
    */
@@ -265,7 +265,7 @@ public class PartitionBalancer {
               getPartitionManager().getAllRegionGroupIds(database, TConsensusGroupType.DataRegion),
               allocatedTable);
     } catch (DatabaseNotExistsException e) {
-      LOGGER.error("Database {} not exists", database);
+      LOGGER.error("Database {} not exists when updateDataAllotTable", database);
     }
   }
 
@@ -302,10 +302,10 @@ public class PartitionBalancer {
                       currentTimePartition.getStartTime() - TIME_PARTITION_INTERVAL);
                 }
 
-                dataAllotTable.setDataAllotTable(
+                dataAllotTable.setDataAllotMap(
                     getPartitionManager().getLastDataAllotTable(database));
               } catch (DatabaseNotExistsException e) {
-                LOGGER.error("Database {} not exists", database);
+                LOGGER.error("Database {} not exists when setupPartitionBalancer", database);
               } finally {
                 dataAllotTable.releaseWriteLock();
               }

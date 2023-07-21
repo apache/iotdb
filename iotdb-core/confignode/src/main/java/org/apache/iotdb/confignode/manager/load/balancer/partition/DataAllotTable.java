@@ -50,19 +50,19 @@ public class DataAllotTable {
   private final TreeMap<TTimePartitionSlot, AtomicInteger> dataPartitionCounter;
   // Map<SeriesPartitionSlot, RegionGroupId>
   // The optimal allocation of SeriesSlots to RegionGroups in the currentTimePartition
-  private final Map<TSeriesPartitionSlot, TConsensusGroupId> dataAllotTable;
+  private final Map<TSeriesPartitionSlot, TConsensusGroupId> dataAllotMap;
 
   public DataAllotTable() {
     this.dataAllotTableLock = new ReentrantReadWriteLock();
     this.currentTimePartition = new AtomicReference<>(new TTimePartitionSlot(0));
     this.dataPartitionCounter = new TreeMap<>();
-    this.dataAllotTable = new HashMap<>();
+    this.dataAllotMap = new HashMap<>();
   }
 
   public boolean isEmpty() {
     dataAllotTableLock.readLock().lock();
     try {
-      return dataAllotTable.isEmpty();
+      return dataAllotMap.isEmpty();
     } finally {
       dataAllotTableLock.readLock().unlock();
     }
@@ -109,7 +109,7 @@ public class DataAllotTable {
           continue;
         }
 
-        TConsensusGroupId oldRegionGroupId = dataAllotTable.get(seriesPartitionSlot);
+        TConsensusGroupId oldRegionGroupId = dataAllotMap.get(seriesPartitionSlot);
         if (oldRegionGroupId != null
             && counter.containsKey(oldRegionGroupId)
             && counter.get(oldRegionGroupId) < mu) {
@@ -125,8 +125,8 @@ public class DataAllotTable {
         counter.put(newRegionGroupId, counter.get(newRegionGroupId) + 1);
       }
 
-      dataAllotTable.clear();
-      dataAllotTable.putAll(newAllotTable);
+      dataAllotMap.clear();
+      dataAllotMap.putAll(newAllotTable);
     } finally {
       dataAllotTableLock.writeLock().unlock();
     }
@@ -187,7 +187,7 @@ public class DataAllotTable {
   public TConsensusGroupId getRegionGroupId(TSeriesPartitionSlot seriesPartitionSlot) {
     dataAllotTableLock.readLock().lock();
     try {
-      return dataAllotTable.get(seriesPartitionSlot);
+      return dataAllotMap.get(seriesPartitionSlot);
     } finally {
       dataAllotTableLock.readLock().unlock();
     }
@@ -199,8 +199,8 @@ public class DataAllotTable {
   }
 
   /** Only use this interface when init PartitionBalancer. */
-  public void setDataAllotTable(Map<TSeriesPartitionSlot, TConsensusGroupId> dataAllotTable) {
-    this.dataAllotTable.putAll(dataAllotTable);
+  public void setDataAllotMap(Map<TSeriesPartitionSlot, TConsensusGroupId> dataAllotMap) {
+    this.dataAllotMap.putAll(dataAllotMap);
   }
 
   public static int timePartitionThreshold(int regionGroupNum) {
