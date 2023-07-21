@@ -26,7 +26,7 @@ from iotdb.Session import Session
 DEFAULT_MULTIPIE = 5
 DEFAULT_FETCH_SIZE = 5000
 DEFAULT_MAX_RETRY = 3
-DEFAULT_TIME_ZONE = "Asia/Shanghai"
+DEFAULT_TIME_ZONE = "UTC+8"
 logger = logging.getLogger("IoTDB")
 
 
