@@ -73,7 +73,7 @@ def test_session_pool():
 def test_session_pool_by_node_urls():
     with IoTDBContainer(CONTAINER_NAME) as db:
         db: IoTDBContainer
-        node_url = [db.get_container_host_ip() + ":" + str(db.get_exposed_port(6667))]
+        node_url = db.get_container_host_ip() + ":" + str(db.get_exposed_port(6667))
         max_pool_size = 1
         pool_config = PoolConfig(node_urls=[node_url], user_name="root", password="root")
         session_pool = create_session_pool(pool_config, max_pool_size, 3000)
