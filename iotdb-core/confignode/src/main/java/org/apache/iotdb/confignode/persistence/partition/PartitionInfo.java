@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.partition.DataPartitionEntry;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
@@ -835,13 +836,13 @@ public class PartitionInfo implements SnapshotProcessor {
    *
    * @param database The specified Database
    * @param seriesPartitionSlot The specified SeriesPartitionSlot
-   * @return The last DataPartition, null if the Database doesn't exist or there are no
+   * @return The last DataPartitionEntry, null if the Database doesn't exist or there are no
    *     DataPartitions in the specified SeriesPartitionSlot
    */
-  public Pair<TTimePartitionSlot, TConsensusGroupId> getLastDataPartition(
+  public DataPartitionEntry getLastDataPartitionEntry(
       String database, TSeriesPartitionSlot seriesPartitionSlot) {
     if (isDatabaseExisted(database)) {
-      return databasePartitionTables.get(database).getLastDataPartition(seriesPartitionSlot);
+      return databasePartitionTables.get(database).getLastDataPartitionEntry(seriesPartitionSlot);
     }
     return null;
   }

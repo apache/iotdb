@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.partition.DataPartitionEntry;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 
@@ -31,9 +32,11 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class DataAllotTableTest {
@@ -106,7 +109,7 @@ public class DataAllotTableTest {
     // Test 1: construct DataAllotTable from scratch
     TConsensusGroupId group1 = new TConsensusGroupId(TConsensusGroupType.DataRegion, 1);
     dataRegionGroups.add(group1);
-    dataAllotTable.updateDataAllotTable(dataRegionGroups, new HashMap<>());
+    dataAllotTable.updateDataAllotTable(dataRegionGroups, new ArrayList<>());
     for (int i = 0; i < SERIES_SLOT_NUM; i++) {
       TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(i);
       // All SeriesPartitionSlots belong to group1
@@ -117,7 +120,7 @@ public class DataAllotTableTest {
     Map<TSeriesPartitionSlot, TConsensusGroupId> lastDataAllotTable = new HashMap<>();
     dataRegionGroups.add(new TConsensusGroupId(TConsensusGroupType.DataRegion, 2));
     dataRegionGroups.add(new TConsensusGroupId(TConsensusGroupType.DataRegion, 3));
-    dataAllotTable.updateDataAllotTable(dataRegionGroups, new HashMap<>());
+    dataAllotTable.updateDataAllotTable(dataRegionGroups, new ArrayList<>());
     int mu = SERIES_SLOT_NUM / 3;
     Map<TConsensusGroupId, AtomicInteger> counter = new HashMap<>();
     for (int i = 0; i < SERIES_SLOT_NUM; i++) {
@@ -135,19 +138,35 @@ public class DataAllotTableTest {
     dataRegionGroups.add(new TConsensusGroupId(TConsensusGroupType.DataRegion, 4));
     dataRegionGroups.add(new TConsensusGroupId(TConsensusGroupType.DataRegion, 5));
     Random random = new Random();
-    Map<TSeriesPartitionSlot, TConsensusGroupId> allocatedTable = new HashMap<>();
+    Set<TSeriesPartitionSlot> selectedSlots = new HashSet<>();
+    List<DataPartitionEntry> lastDataPartitions = new ArrayList<>();
     Map<TConsensusGroupId, AtomicInteger> unchangedSlots = new HashMap<>();
     for (int i = 0; i < 50; i++) {
+      // Randomly pre-allocate 50 SeriesPartitionSlots
       TSeriesPartitionSlot seriesPartitionSlot =
           new TSeriesPartitionSlot(random.nextInt(SERIES_SLOT_NUM));
-      while (allocatedTable.containsKey(seriesPartitionSlot)) {
+      while (selectedSlots.contains(seriesPartitionSlot)) {
         seriesPartitionSlot = new TSeriesPartitionSlot(random.nextInt(SERIES_SLOT_NUM));
       }
-      allocatedTable.put(
-          seriesPartitionSlot,
-          new TConsensusGroupId(TConsensusGroupType.DataRegion, random.nextInt(2) + 4));
+      selectedSlots.add(seriesPartitionSlot);
+      lastDataPartitions.add(
+          new DataPartitionEntry(
+              seriesPartitionSlot,
+              new TTimePartitionSlot(Long.MAX_VALUE),
+              new TConsensusGroupId(TConsensusGroupType.DataRegion, random.nextInt(2) + 4)));
     }
-    dataAllotTable.updateDataAllotTable(dataRegionGroups, allocatedTable);
+    for (int i = 0; i < SERIES_SLOT_NUM; i++) {
+      // Record the other allocation result
+      TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(i);
+      if (!selectedSlots.contains(seriesPartitionSlot)) {
+        lastDataPartitions.add(
+            new DataPartitionEntry(
+                seriesPartitionSlot,
+                new TTimePartitionSlot(Long.MIN_VALUE),
+                lastDataAllotTable.get(seriesPartitionSlot)));
+      }
+    }
+    dataAllotTable.updateDataAllotTable(dataRegionGroups, lastDataPartitions);
     mu = SERIES_SLOT_NUM / 5;
     counter.clear();
     for (int i = 0; i < SERIES_SLOT_NUM; i++) {
@@ -166,9 +185,11 @@ public class DataAllotTableTest {
     }
     // All SeriesPartitionSlots that have been allocated before should be allocated to the same
     // DataRegionGroup
-    allocatedTable.forEach(
-        (seriesPartitionSlot, groupId) ->
-            Assert.assertEquals(groupId, dataAllotTable.getRegionGroupId(seriesPartitionSlot)));
+    for (int i = 0; i < 50; i++) {
+      Assert.assertEquals(
+          lastDataPartitions.get(i).getDataRegionGroup(),
+          dataAllotTable.getRegionGroupId(lastDataPartitions.get(i).getSeriesPartitionSlot()));
+    }
     // Most of SeriesPartitionSlots in the first three DataRegionGroups should remain unchanged
     for (Map.Entry<TConsensusGroupId, AtomicInteger> counterEntry : unchangedSlots.entrySet()) {
       Assert.assertEquals(mu, counterEntry.getValue().get());

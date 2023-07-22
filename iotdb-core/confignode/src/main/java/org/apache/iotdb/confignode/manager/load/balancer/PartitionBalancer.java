@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.partition.DataPartitionEntry;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
@@ -42,6 +43,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -242,28 +244,22 @@ public class PartitionBalancer {
    * @param database Database name
    */
   public void updateDataAllotTable(String database) {
-    TTimePartitionSlot currentTimePartition =
-        dataAllotTableMap
-            .computeIfAbsent(database, empty -> new DataAllotTable())
-            .getCurrentTimePartition();
-    Map<TSeriesPartitionSlot, TConsensusGroupId> allocatedTable = new ConcurrentHashMap<>();
+    List<DataPartitionEntry> lastDataPartitions = new ArrayList<>();
     for (int i = 0; i < SERIES_SLOT_NUM; i++) {
       TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(i);
-      Pair<TTimePartitionSlot, TConsensusGroupId> lastDataPartition =
-          getPartitionManager().getLastDataPartition(database, seriesPartitionSlot);
-      if (lastDataPartition != null
-          && currentTimePartition.compareTo(lastDataPartition.getLeft()) < 0) {
-        // Put all future DataPartitions into the allocatedTable
-        allocatedTable.put(seriesPartitionSlot, lastDataPartition.getRight());
+      DataPartitionEntry lastDataPartition =
+          getPartitionManager().getLastDataPartitionEntry(database, seriesPartitionSlot);
+      if (lastDataPartition != null) {
+        lastDataPartitions.add(lastDataPartition);
       }
     }
 
     try {
       dataAllotTableMap
-          .get(database)
+          .computeIfAbsent(database, empty -> new DataAllotTable())
           .updateDataAllotTable(
               getPartitionManager().getAllRegionGroupIds(database, TConsensusGroupType.DataRegion),
-              allocatedTable);
+              lastDataPartitions);
     } catch (DatabaseNotExistsException e) {
       LOGGER.error("Database {} not exists when updateDataAllotTable", database);
     }

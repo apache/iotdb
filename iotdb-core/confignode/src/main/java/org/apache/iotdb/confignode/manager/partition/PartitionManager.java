@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.partition.DataPartitionEntry;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
@@ -1311,12 +1312,12 @@ public class PartitionManager {
    *
    * @param database The specified Database
    * @param seriesPartitionSlot The specified SeriesPartitionSlot
-   * @return The last DataPartition, null if the Database doesn't exist or there are no
+   * @return The last DataPartitionEntry, null if the Database doesn't exist or there are no
    *     DataPartitions yet
    */
-  public Pair<TTimePartitionSlot, TConsensusGroupId> getLastDataPartition(
+  public DataPartitionEntry getLastDataPartitionEntry(
       String database, TSeriesPartitionSlot seriesPartitionSlot) {
-    return partitionInfo.getLastDataPartition(database, seriesPartitionSlot);
+    return partitionInfo.getLastDataPartitionEntry(database, seriesPartitionSlot);
   }
 
   /**

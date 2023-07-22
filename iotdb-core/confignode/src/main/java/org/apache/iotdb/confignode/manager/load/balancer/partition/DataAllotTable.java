@@ -22,15 +22,16 @@ package org.apache.iotdb.confignode.manager.load.balancer.partition;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.partition.DataPartitionEntry;
 import org.apache.iotdb.commons.structure.BalanceTreeMap;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -72,50 +73,51 @@ public class DataAllotTable {
    * Update the DataAllotTable according to the current DataRegionGroups and future DataAllotTable.
    *
    * @param dataRegionGroups the current DataRegionGroups
-   * @param allocatedTable the future DataAllotTable, i.e. some SeriesSlots have already allocated
+   * @param lastDataPartitions the last DataPartition of each SeriesPartitionSlot
    */
   public void updateDataAllotTable(
-      List<TConsensusGroupId> dataRegionGroups,
-      Map<TSeriesPartitionSlot, TConsensusGroupId> allocatedTable) {
+      List<TConsensusGroupId> dataRegionGroups, List<DataPartitionEntry> lastDataPartitions) {
     dataAllotTableLock.writeLock().lock();
     try {
       // mu is the average number of slots allocated to each regionGroup
       int mu = SERIES_SLOT_NUM / dataRegionGroups.size();
-      // Decide all SeriesSlot randomly
-      List<TSeriesPartitionSlot> seriesSlotList = new ArrayList<>();
-      for (int i = 0; i < SERIES_SLOT_NUM; i++) {
-        seriesSlotList.add(new TSeriesPartitionSlot(i));
-      }
-      Collections.shuffle(seriesSlotList);
 
       // The counter will maintain the number of slots allocated to each regionGroup
       BalanceTreeMap<TConsensusGroupId, Integer> counter = new BalanceTreeMap<>();
-      Map<TConsensusGroupId, AtomicInteger> regionSlotCounter = new HashMap<>();
-      allocatedTable.forEach(
-          (seriesSlot, regionGroupId) ->
-              regionSlotCounter
-                  .computeIfAbsent(regionGroupId, empty -> new AtomicInteger(0))
-                  .incrementAndGet());
-      dataRegionGroups.forEach(
-          regionGroupId -> regionSlotCounter.putIfAbsent(regionGroupId, new AtomicInteger(0)));
-      regionSlotCounter.forEach(
-          (regionGroupId, slotNum) -> counter.put(regionGroupId, slotNum.get()));
+      dataRegionGroups.forEach(regionGroupId -> counter.put(regionGroupId, 0));
+
+      // Fill unallocated SeriesSlots
+      Set<TSeriesPartitionSlot> allocatedSeriesSlots =
+          lastDataPartitions.stream()
+              .map(DataPartitionEntry::getSeriesPartitionSlot)
+              .collect(Collectors.toSet());
+      for (int i = 0; i < SERIES_SLOT_NUM; i++) {
+        TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(i);
+        if (!allocatedSeriesSlots.contains(seriesPartitionSlot)) {
+          lastDataPartitions.add(
+              new DataPartitionEntry(
+                  seriesPartitionSlot, new TTimePartitionSlot(Long.MIN_VALUE), null));
+        }
+      }
+
+      // The allocated DataPartitions are sorted as follows:
+      // 1. Descending order of TimePartitionSlot
+      // 2. Ascending order of random weight
+      Collections.sort(lastDataPartitions);
 
       Map<TSeriesPartitionSlot, TConsensusGroupId> newAllotTable = new HashMap<>();
-      for (TSeriesPartitionSlot seriesPartitionSlot : seriesSlotList) {
-        if (allocatedTable.containsKey(seriesPartitionSlot)) {
-          // If the SeriesSlot has already been allocated, keep the allocation
-          newAllotTable.put(seriesPartitionSlot, allocatedTable.get(seriesPartitionSlot));
-          continue;
-        }
-
-        TConsensusGroupId oldRegionGroupId = dataAllotMap.get(seriesPartitionSlot);
-        if (oldRegionGroupId != null
-            && counter.containsKey(oldRegionGroupId)
-            && counter.get(oldRegionGroupId) < mu) {
-          // Inherit the oldRegionGroupId when the slotNum of oldRegionGroupId is less than average
-          newAllotTable.put(seriesPartitionSlot, oldRegionGroupId);
-          counter.put(oldRegionGroupId, counter.get(oldRegionGroupId) + 1);
+      // Enumerate all SeriesPartitionSlots in descending order of their TimePartitionSlot
+      for (DataPartitionEntry entry : lastDataPartitions) {
+        TSeriesPartitionSlot seriesPartitionSlot = entry.getSeriesPartitionSlot();
+        TConsensusGroupId allocatedRegionGroupId = entry.getDataRegionGroup();
+        if (allocatedRegionGroupId != null
+            // Inherit DataRegionGroup if it has been allocated in the future
+            && (entry.getTimePartitionSlot().getStartTime()
+                    > currentTimePartition.get().getStartTime()
+                // Inherit DataRegionGroup when the slotNum of oldRegionGroupId is less than average
+                || counter.get(allocatedRegionGroupId) < mu)) {
+          newAllotTable.put(seriesPartitionSlot, allocatedRegionGroupId);
+          counter.put(allocatedRegionGroupId, counter.get(allocatedRegionGroupId) + 1);
           continue;
         }
 

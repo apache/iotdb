@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
@@ -281,13 +280,14 @@ public class DataPartitionTable {
    * SeriesPartitionSlot.
    *
    * @param seriesPartitionSlot The specified SeriesPartitionSlot
-   * @return The last DataPartition, null if there are no DataPartitions in the specified
+   * @return The last DataPartitionEntry, null if there are no DataPartitions in the specified
    *     SeriesPartitionSlot
    */
-  public Pair<TTimePartitionSlot, TConsensusGroupId> getLastDataPartition(
-      TSeriesPartitionSlot seriesPartitionSlot) {
+  public DataPartitionEntry getLastDataPartitionEntry(TSeriesPartitionSlot seriesPartitionSlot) {
     if (dataPartitionMap.containsKey(seriesPartitionSlot)) {
-      return dataPartitionMap.get(seriesPartitionSlot).getLastDataPartition();
+      return dataPartitionMap
+          .get(seriesPartitionSlot)
+          .getLastDataPartitionEntry(seriesPartitionSlot);
     } else {
       return null;
     }
