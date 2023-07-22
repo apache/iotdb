@@ -119,7 +119,8 @@ public class IoTDBLastQueryLastCacheIT {
           "1679365910000,root.ln_1.tb_6141.waterInterval_DOUBLE,10.0,DOUBLE,",
           "1679365910000,root.ln_1.tb_6141.waterTP_DOUBLE,15.0,DOUBLE,",
         };
-    resultSetEqualTest("select last * from root.ln_1.tb_6141;", expectedHeader, retArray);
+    resultSetEqualTest(
+        "select last * from root.ln_1.tb_6141 order by timeseries;", expectedHeader, retArray);
   }
 
   @Test

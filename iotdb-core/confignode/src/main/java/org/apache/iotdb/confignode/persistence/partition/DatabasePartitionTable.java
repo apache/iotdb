@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.partition.DataPartitionEntry;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
@@ -585,12 +586,11 @@ public class DatabasePartitionTable {
    * Get the DataPartition with max TimePartition of the specified the SeriesPartitionSlot.
    *
    * @param seriesPartitionSlot The specified SeriesPartitionSlot
-   * @return The last DataPartition, null if there are no DataPartitions in the specified
+   * @return The last DataPartitionEntry, null if there are no DataPartitions in the specified
    *     SeriesPartitionSlot
    */
-  public Pair<TTimePartitionSlot, TConsensusGroupId> getLastDataPartition(
-      TSeriesPartitionSlot seriesPartitionSlot) {
-    return dataPartitionTable.getLastDataPartition(seriesPartitionSlot);
+  public DataPartitionEntry getLastDataPartitionEntry(TSeriesPartitionSlot seriesPartitionSlot) {
+    return dataPartitionTable.getLastDataPartitionEntry(seriesPartitionSlot);
   }
 
   /**

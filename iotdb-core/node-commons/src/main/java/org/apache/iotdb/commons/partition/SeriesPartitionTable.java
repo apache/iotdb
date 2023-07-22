@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
@@ -247,16 +246,19 @@ public class SeriesPartitionTable {
    * Get the DataPartition with max TimePartition of the specified Database and the
    * SeriesPartitionSlot.
    *
-   * @return The last DataPartition, null if there are no DataPartitions
+   * @param seriesPartitionSlot The specified SeriesPartitionSlot
+   * @return The last DataPartitionEntry, null if there are no DataPartitions
    */
-  public Pair<TTimePartitionSlot, TConsensusGroupId> getLastDataPartition() {
+  public DataPartitionEntry getLastDataPartitionEntry(TSeriesPartitionSlot seriesPartitionSlot) {
     Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>> lastEntry =
         seriesPartitionMap.lastEntry();
     if (lastEntry == null) {
       return null;
     }
-    return new Pair<>(
-        lastEntry.getKey(), lastEntry.getValue().get(lastEntry.getValue().size() - 1));
+    return new DataPartitionEntry(
+        seriesPartitionSlot,
+        lastEntry.getKey(),
+        lastEntry.getValue().get(lastEntry.getValue().size() - 1));
   }
 
   /**
