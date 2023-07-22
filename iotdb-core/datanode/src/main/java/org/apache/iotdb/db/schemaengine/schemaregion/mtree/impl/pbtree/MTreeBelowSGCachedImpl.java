@@ -422,6 +422,33 @@ public class MTreeBelowSGCachedImpl {
     }
   }
 
+  public boolean changeAlias(String alias, PartialPath fullPath) throws MetadataException {
+    IMeasurementMNode<ICachedMNode> measurementMNode = getMeasurementMNode(fullPath);
+    try {
+      // upsert alias
+      if (alias != null && !alias.equals(measurementMNode.getAlias())) {
+        synchronized (this) {
+          IDeviceMNode<ICachedMNode> device = measurementMNode.getParent().getAsDeviceMNode();
+          ICachedMNode cachedMNode = store.getChild(device.getAsMNode(), alias);
+          if (cachedMNode != null) {
+            unPinMNode(cachedMNode);
+            throw new MetadataException(
+                "The alias is duplicated with the name or alias of other measurement.");
+          }
+          if (measurementMNode.getAlias() != null) {
+            device.deleteAliasChild(measurementMNode.getAlias());
+          }
+          device.addAlias(alias, measurementMNode);
+          setAlias(measurementMNode, alias);
+        }
+        return true;
+      }
+      return false;
+    } finally {
+      unPinMNode(measurementMNode.getAsMNode());
+    }
+  }
+
   public Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
     ICachedMNode device;

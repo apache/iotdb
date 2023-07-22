@@ -234,6 +234,10 @@ public class CommonDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "time_partition_interval", String.valueOf(config.getTimePartitionInterval()))));
+    config.setDatabaseLimitThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "database_limit_threshold", String.valueOf(config.getDatabaseLimitThreshold()))));
   }
 
   private void loadPipeProps(Properties properties) {
@@ -293,6 +297,10 @@ public class CommonDescriptor {
                 "pipe_extractor_pending_queue_tablet_limit",
                 String.valueOf(config.getPipeExtractorPendingQueueTabletLimit()))));
 
+    config.setPipeConnectorTimeoutMs(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_connector_timeout_ms", String.valueOf(config.getPipeConnectorTimeoutMs()))));
     config.setPipeConnectorReadFileBufferSize(
         Integer.parseInt(
             properties.getProperty(

@@ -112,6 +112,8 @@ public interface CommonConfig {
 
   CommonConfig setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold);
 
+  CommonConfig setDatabaseLimitThreshold(long databaseLimitThreshold);
+
   CommonConfig setQuotaEnable(boolean quotaEnable);
 
   CommonConfig setSortBufferSize(long sortBufferSize);

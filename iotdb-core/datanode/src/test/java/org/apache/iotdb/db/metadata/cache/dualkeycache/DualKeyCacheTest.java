@@ -22,8 +22,10 @@ package org.apache.iotdb.db.metadata.cache.dualkeycache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.SchemaCacheEntry;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheComputation;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheUpdating;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCacheBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCachePolicy;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.DataNodeLastCacheManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -168,8 +170,8 @@ public class DualKeyCacheTest {
             + computeStringSize("s1") * 2
             + SchemaCacheEntry.estimateSize(schemaCacheEntry) * 2;
     Assert.assertEquals(expectedSize, dualKeyCache.stats().memoryUsage());
-    dualKeyCache.compute(
-        new IDualKeyCacheComputation<String, String, SchemaCacheEntry>() {
+    dualKeyCache.update(
+        new IDualKeyCacheUpdating<String, String, SchemaCacheEntry>() {
           @Override
           public String getFirstKey() {
             return firstKey;
@@ -181,10 +183,9 @@ public class DualKeyCacheTest {
           }
 
           @Override
-          public void computeValue(int index, SchemaCacheEntry value) {
-            value
-                .getLastCacheContainer()
-                .updateCachedLast(new TimeValuePair(1L, new TsPrimitiveType.TsInt(1)), true, 0L);
+          public int updateValue(int index, SchemaCacheEntry value) {
+            return DataNodeLastCacheManager.updateLastCache(
+                value, new TimeValuePair(1L, new TsPrimitiveType.TsInt(1)), true, 0L);
           }
         });
     int tmp = SchemaCacheEntry.estimateSize(schemaCacheEntry);

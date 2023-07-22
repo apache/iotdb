@@ -79,6 +79,10 @@ public class PipeConfig {
 
   /////////////////////////////// Connector ///////////////////////////////
 
+  public long getPipeConnectorTimeoutMs() {
+    return COMMON_CONFIG.getPipeConnectorTimeoutMs();
+  }
+
   public int getPipeConnectorReadFileBufferSize() {
     return COMMON_CONFIG.getPipeConnectorReadFileBufferSize();
   }

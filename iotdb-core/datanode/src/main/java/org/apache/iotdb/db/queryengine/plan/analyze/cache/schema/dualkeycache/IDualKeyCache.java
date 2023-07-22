@@ -36,9 +36,15 @@ public interface IDualKeyCache<FK, SK, V> {
 
   /**
    * Traverse target cache values via given first key and second keys provided in computation and
-   * execute the defined computation logic.
+   * execute the defined computation logic. The computation is read only.
    */
   void compute(IDualKeyCacheComputation<FK, SK, V> computation);
+
+  /**
+   * Traverse target cache values via given first key and second keys provided in computation and
+   * execute the defined computation logic. Value can be updated in this computation.
+   */
+  void update(IDualKeyCacheUpdating<FK, SK, V> updating);
 
   /** put the cache value into cache */
   void put(FK firstKey, SK secondKey, V value);
