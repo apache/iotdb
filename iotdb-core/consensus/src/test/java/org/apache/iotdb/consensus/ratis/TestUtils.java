@@ -62,6 +62,8 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 public class TestUtils {
+  private static final Logger logger = LoggerFactory.getLogger(TestUtils.class);
+
   public static class TestDataSet implements DataSet {
     private int number;
 
@@ -108,7 +110,7 @@ public class TestUtils {
   }
 
   public static class IntegerCounter implements IStateMachine, IStateMachine.EventApi {
-    private AtomicInteger integer;
+    protected AtomicInteger integer;
     private final Logger logger = LoggerFactory.getLogger(IntegerCounter.class);
     private TEndPoint leaderEndpoint;
     private int leaderId;
@@ -296,10 +298,12 @@ public class TestUtils {
     }
 
     void restart() throws IOException {
+      logger.info("start restarting the mini cluster");
       stop();
       servers.clear();
       makeServers();
       start();
+      logger.info("end restarting the mini cluster");
     }
 
     List<RatisConsensus> getServers() {

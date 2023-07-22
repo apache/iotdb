@@ -31,6 +31,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.List;
@@ -38,6 +40,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class RecoverReadTest {
+  private static final Logger logger = LoggerFactory.getLogger(RecoverReadTest.class);
 
   private static class SlowRecoverStateMachine extends TestUtils.IntegerCounter {
     private final TimeDuration stallDuration;
@@ -52,8 +55,9 @@ public class RecoverReadTest {
       if (stallApply.get()) {
         try {
           stallDuration.sleep();
+          logger.info("Apply i={} when recovering", integer.get());
         } catch (InterruptedException e) {
-          System.out.println("Interrupted when stalling for write operations");
+          logger.warn("Interrupted when stalling for write operations", e);
           Thread.currentThread().interrupt();
         }
       }
@@ -75,6 +79,7 @@ public class RecoverReadTest {
 
   @Before
   public void setUp() throws Exception {
+    logger.info("[RECOVER TEST] start setting up the test env");
     final TestUtils.MiniClusterFactory factory = new TestUtils.MiniClusterFactory();
     miniCluster =
         factory
@@ -99,11 +104,14 @@ public class RecoverReadTest {
                     .build())
             .create();
     miniCluster.start();
+    logger.info("[RECOVER TEST] end setting up the test env");
   }
 
   @After
   public void tearUp() throws Exception {
+    logger.info("[RECOVER TEST] start tearing down the test env");
     miniCluster.cleanUp();
+    logger.info("[RECOVER TEST] end tearing down the test env");
   }
 
   /* mimics the situation before this patch */
