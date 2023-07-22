@@ -436,4 +436,38 @@ public class CompactionUtils {
     }
     return true;
   }
+
+  public static void deleteSourceTsFileAndUpdateFileMetrics(
+      List<TsFileResource> sourceSeqResourceList, List<TsFileResource> sourceUnseqResourceList) {
+    // delete seq file
+    deleteSourceTsFileAndUpdateFileMetrics(sourceSeqResourceList);
+
+    // delete unSeq file
+    long[] unSequenceFileSize = new long[sourceUnseqResourceList.size()];
+    List<String> unSequenceFileNames = new ArrayList<>();
+    for (int i = 0; i < sourceUnseqResourceList.size(); i++) {
+      TsFileResource tsFileResource = sourceUnseqResourceList.get(i);
+      unSequenceFileSize[i] = tsFileResource.getTsFileSize();
+      unSequenceFileNames.add(tsFileResource.getTsFile().getName());
+      tsFileResource.remove();
+      logger.info(
+          "[Compaction] delete unSequence file :{}", tsFileResource.getTsFile().getAbsolutePath());
+    }
+    FileMetrics.getInstance().deleteFile(unSequenceFileSize, false, unSequenceFileNames);
+  }
+
+  public static void deleteSourceTsFileAndUpdateFileMetrics(
+      List<TsFileResource> sourceSeqResourceList) {
+    long[] sequenceFileSize = new long[sourceSeqResourceList.size()];
+    List<String> sequenceFileNames = new ArrayList<>();
+    for (int i = 0; i < sourceSeqResourceList.size(); i++) {
+      TsFileResource tsFileResource = sourceSeqResourceList.get(i);
+      sequenceFileSize[i] = tsFileResource.getTsFileSize();
+      sequenceFileNames.add(tsFileResource.getTsFile().getName());
+      tsFileResource.remove();
+      logger.info(
+          "[Compaction] delete unSequence file :{}", tsFileResource.getTsFile().getAbsolutePath());
+    }
+    FileMetrics.getInstance().deleteFile(sequenceFileSize, true, sequenceFileNames);
+  }
 }
