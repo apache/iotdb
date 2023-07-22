@@ -112,8 +112,6 @@ public class TestUtils {
   public static class IntegerCounter implements IStateMachine, IStateMachine.EventApi {
     protected AtomicInteger integer;
     private final Logger logger = LoggerFactory.getLogger(IntegerCounter.class);
-    private TEndPoint leaderEndpoint;
-    private int leaderId;
     private List<Peer> configuration;
 
     @Override
@@ -175,7 +173,6 @@ public class TestUtils {
 
     @Override
     public void notifyLeaderChanged(ConsensusGroupId groupId, int newLeaderId) {
-      this.leaderId = newLeaderId;
       System.out.println("---------newLeader-----------");
       System.out.println(groupId);
       System.out.println(newLeaderId);
@@ -194,6 +191,10 @@ public class TestUtils {
       System.out.println("----------------------");
     }
 
+    public void reset() {
+      this.integer.set(0);
+    }
+
     @TestOnly
     public static synchronized String ensureSnapshotFileName(File snapshotDir, String metadata) {
       File dir = new File(snapshotDir + File.separator + metadata);
@@ -201,10 +202,6 @@ public class TestUtils {
         dir.mkdirs();
       }
       return dir.getPath() + File.separator + "snapshot";
-    }
-
-    public TEndPoint getLeaderEndpoint() {
-      return leaderEndpoint;
     }
 
     public List<Peer> getConfiguration() {
@@ -222,6 +219,7 @@ public class TestUtils {
     private final RatisConfig config;
     private final List<RatisConsensus> servers;
     private final ConsensusGroup group;
+    private final Supplier<IStateMachine> smProvider;
 
     private MiniCluster(
         ConsensusGroupId gid,
@@ -232,6 +230,7 @@ public class TestUtils {
       this.gid = gid;
       this.replicas = replicas;
       this.config = config;
+      this.smProvider = smProvider;
       Preconditions.checkArgument(
           replicas % 2 == 1, "Test Env Raft Group should consists singular peers");
 
@@ -301,6 +300,7 @@ public class TestUtils {
       logger.info("start restarting the mini cluster");
       stop();
       servers.clear();
+      stateMachines.stream().map(IntegerCounter.class::cast).forEach(IntegerCounter::reset);
       makeServers();
       start();
       logger.info("end restarting the mini cluster");
