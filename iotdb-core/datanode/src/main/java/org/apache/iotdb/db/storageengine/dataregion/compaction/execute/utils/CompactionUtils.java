@@ -466,7 +466,7 @@ public class CompactionUtils {
       sequenceFileNames.add(tsFileResource.getTsFile().getName());
       tsFileResource.remove();
       logger.info(
-          "[Compaction] delete unSequence file :{}", tsFileResource.getTsFile().getAbsolutePath());
+          "[Compaction] delete sequence file :{}", tsFileResource.getTsFile().getAbsolutePath());
     }
     FileMetrics.getInstance().deleteFile(sequenceFileSize, true, sequenceFileNames);
   }
