@@ -25,7 +25,6 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 
 import java.security.SecureRandom;
 import java.util.Objects;
-import java.util.Random;
 
 public class DataPartitionEntry implements Comparable<DataPartitionEntry> {
 
