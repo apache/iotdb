@@ -59,7 +59,7 @@ def session_test(use_session_pool=False):
         db: IoTDBContainer
 
         if use_session_pool:
-            pool_config = PoolConfig(db.get_container_host_ip(), db.get_exposed_port(6667), "root", "root", None, 1024,
+            pool_config = PoolConfig(db.get_container_host_ip(), db.get_exposed_port(6667), "root", "root", 1024,
                                      "Asia/Shanghai", 3)
             session_pool = create_session_pool(pool_config, 1, 3000)
             session = session_pool.get_session()

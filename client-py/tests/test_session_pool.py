@@ -20,20 +20,20 @@ from threading import Thread
 from iotdb.IoTDBContainer import IoTDBContainer
 from iotdb.SessionPool import create_session_pool, PoolConfig
 
+CONTAINER_NAME = "iotdb:dev"
+
 
 def test_session_pool():
-    with IoTDBContainer("iotdb:dev") as db:
+    with IoTDBContainer(CONTAINER_NAME) as db:
         db: IoTDBContainer
         max_pool_size = 2
         pool_config = PoolConfig(db.get_container_host_ip(), db.get_exposed_port(6667), "root", "root",
-                                 [], 1024, "Asia/Shanghai", 3)
+                                 1024, "UTC+8", 3)
         session_pool = create_session_pool(pool_config, max_pool_size, 3000)
         session = session_pool.get_session()
-        session.open(False)
         assert session.is_open() is True
 
         session2 = session_pool.get_session()
-        assert session2 is not None
 
         timeout = False
         try:
@@ -45,7 +45,7 @@ def test_session_pool():
 
         Thread(target=lambda: session_pool.put_back(session2)).start()
         session3 = session_pool.get_session()
-        assert session3 is not None
+        assert session3.is_open() is True
 
         session_pool.close()
 
@@ -64,3 +64,5 @@ def test_session_pool():
             is_closed = True
             assert str(e) == "SessionPool has already been closed, please close the session manually."
         assert is_closed is True
+
+        session3.close()
