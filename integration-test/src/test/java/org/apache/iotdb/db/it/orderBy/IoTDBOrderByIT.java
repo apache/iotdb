@@ -1318,7 +1318,7 @@ public class IoTDBOrderByIT {
           {"15", "15", "3147483648", "3147483648"},
           {"INT32", "INT32", "INT64", "INT64"}
         };
-    String sql = "select last bigNum,num from root.** order by value";
+    String sql = "select last bigNum,num from root.** order by value, timeseries";
     testLastQueryOrderBy(sql, ans);
   }
 
