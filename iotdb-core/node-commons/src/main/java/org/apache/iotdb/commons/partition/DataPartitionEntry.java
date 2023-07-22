@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 
+import java.security.SecureRandom;
 import java.util.Objects;
 import java.util.Random;
 
@@ -40,7 +41,7 @@ public class DataPartitionEntry implements Comparable<DataPartitionEntry> {
     this.seriesPartitionSlot = seriesPartitionSlot;
     this.timePartitionSlot = timePartitionSlot;
     this.dataRegionGroup = dataRegionGroup;
-    this.weight = new Random().nextInt();
+    this.weight = new SecureRandom().nextInt();
   }
 
   public TSeriesPartitionSlot getSeriesPartitionSlot() {
@@ -60,7 +61,7 @@ public class DataPartitionEntry implements Comparable<DataPartitionEntry> {
     // The timePartitionSlot will be in descending order
     // After invoke Collections.sort()
     if (!timePartitionSlot.equals(o.timePartitionSlot)) {
-      return -timePartitionSlot.compareTo(o.timePartitionSlot);
+      return o.timePartitionSlot.compareTo(timePartitionSlot);
     }
     return Integer.compare(weight, o.weight);
   }
