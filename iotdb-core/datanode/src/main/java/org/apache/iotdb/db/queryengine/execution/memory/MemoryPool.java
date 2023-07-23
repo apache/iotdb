@@ -199,7 +199,7 @@ public class MemoryPool {
         for (Long memoryReserved : fragmentRelatedMemory.values()) {
           if (memoryReserved != 0) {
             throw new MemoryLeakException(
-                "PlanNode related memory is not zero when deregister FI from query memory pool.");
+                "PlanNode related memory is not zero when trying to deregister FI from query memory pool. QueryId is : {}, FragmentInstanceId is : {}, PlanNode related memory is : {}.");
           }
         }
       }
