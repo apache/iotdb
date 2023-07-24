@@ -106,7 +106,7 @@ public class CommonConfig {
    */
   private int selectorNumOfClientManager = 1;
 
-  /** whether to use thrift compression. */
+  /** Whether to use thrift compression. */
   private boolean isRpcThriftCompressionEnabled = false;
 
   private int coreClientNumForEachNode = DefaultProperty.CORE_CLIENT_NUM_FOR_EACH_NODE;
@@ -156,6 +156,7 @@ public class CommonConfig {
   private int pipeExtractorPendingQueueTabletLimit = pipeExtractorPendingQueueCapacity / 2;
   private int pipeDataStructureTabletRowSize = 65536;
 
+  private long pipeConnectorTimeoutMs = 15 * 60 * 1000L; // 15 minutes
   private int pipeConnectorReadFileBufferSize = 8388608;
   private long pipeConnectorRetryIntervalMs = 1000L;
   private int pipeConnectorPendingQueueSize = 1024;
@@ -164,6 +165,8 @@ public class CommonConfig {
   private int pipeHeartbeatIntervalSecondsForCollectingPipeMeta = 100;
   private long pipeMetaSyncerInitialSyncDelayMinutes = 3;
   private long pipeMetaSyncerSyncIntervalMinutes = 3;
+  private long pipeMetaSyncerAutoRestartPipeCheckIntervalRound = 1;
+  private boolean pipeAutoRestartEnabled = true;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -173,6 +176,9 @@ public class CommonConfig {
 
   // Max size for tag and attribute of one time series
   private int tagAttributeTotalSize = 700;
+
+  // maximum number of Cluster Databases allowed
+  private int databaseLimitThreshold = -1;
 
   CommonConfig() {
     // Empty constructor
@@ -502,6 +508,14 @@ public class CommonConfig {
     this.pipeExtractorPendingQueueTabletLimit = pipeExtractorPendingQueueTabletLimit;
   }
 
+  public long getPipeConnectorTimeoutMs() {
+    return pipeConnectorTimeoutMs;
+  }
+
+  public void setPipeConnectorTimeoutMs(long pipeConnectorTimeoutMs) {
+    this.pipeConnectorTimeoutMs = pipeConnectorTimeoutMs;
+  }
+
   public int getPipeConnectorReadFileBufferSize() {
     return pipeConnectorReadFileBufferSize;
   }
@@ -542,6 +556,24 @@ public class CommonConfig {
 
   public void setPipeMetaSyncerSyncIntervalMinutes(long pipeMetaSyncerSyncIntervalMinutes) {
     this.pipeMetaSyncerSyncIntervalMinutes = pipeMetaSyncerSyncIntervalMinutes;
+  }
+
+  public long getPipeMetaSyncerAutoRestartPipeCheckIntervalRound() {
+    return pipeMetaSyncerAutoRestartPipeCheckIntervalRound;
+  }
+
+  public void setPipeMetaSyncerAutoRestartPipeCheckIntervalRound(
+      long pipeMetaSyncerAutoRestartPipeCheckIntervalRound) {
+    this.pipeMetaSyncerAutoRestartPipeCheckIntervalRound =
+        pipeMetaSyncerAutoRestartPipeCheckIntervalRound;
+  }
+
+  public boolean getPipeAutoRestartEnabled() {
+    return pipeAutoRestartEnabled;
+  }
+
+  public void setPipeAutoRestartEnabled(boolean pipeAutoRestartEnabled) {
+    this.pipeAutoRestartEnabled = pipeAutoRestartEnabled;
   }
 
   public long getPipeConnectorRetryIntervalMs() {
@@ -620,5 +652,13 @@ public class CommonConfig {
 
   public void setTagAttributeTotalSize(int tagAttributeTotalSize) {
     this.tagAttributeTotalSize = tagAttributeTotalSize;
+  }
+
+  public int getDatabaseLimitThreshold() {
+    return databaseLimitThreshold;
+  }
+
+  public void setDatabaseLimitThreshold(int databaseLimitThreshold) {
+    this.databaseLimitThreshold = databaseLimitThreshold;
   }
 }

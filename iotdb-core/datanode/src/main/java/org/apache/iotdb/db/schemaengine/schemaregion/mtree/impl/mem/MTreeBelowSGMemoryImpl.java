@@ -479,6 +479,29 @@ public class MTreeBelowSGMemoryImpl {
     }
     return failingMeasurementMap;
   }
+
+  public boolean changeAlias(String alias, PartialPath fullPath) throws MetadataException {
+    IMeasurementMNode<IMemMNode> measurementMNode = getMeasurementMNode(fullPath);
+    // upsert alias
+    if (alias != null && !alias.equals(measurementMNode.getAlias())) {
+      synchronized (this) {
+        IDeviceMNode<IMemMNode> device = measurementMNode.getParent().getAsDeviceMNode();
+        IMemMNode memMNode = store.getChild(device.getAsMNode(), alias);
+        if (memMNode != null) {
+          throw new MetadataException(
+              "The alias is duplicated with the name or alias of other measurement.");
+        }
+        if (measurementMNode.getAlias() != null) {
+          device.deleteAliasChild(measurementMNode.getAlias());
+        }
+        device.addAlias(alias, measurementMNode);
+        setAlias(measurementMNode, alias);
+      }
+      return true;
+    }
+    return false;
+  }
+
   /**
    * Delete path. The path should be a full path from root to leaf node
    *

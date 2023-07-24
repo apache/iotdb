@@ -17,26 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache;
+package org.apache.iotdb.db.queryengine.exception.exchange;
 
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-
-/** this interface declares the operations of LastCache data */
-public interface ILastCacheContainer {
-
-  // get lastCache of monad timseries
-  TimeValuePair getCachedLast();
-
-  /**
-   * update last point cache
-   *
-   * @param timeValuePair last point
-   * @param highPriorityUpdate whether it's a high priority update
-   * @param latestFlushedTime latest flushed time
-   * @return increasing of memory usage
-   */
-  int updateCachedLast(
-      TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime);
-
-  int estimateSize();
+public class GetTsBlockFromClosedOrAbortedChannelException extends IllegalStateException {
+  public GetTsBlockFromClosedOrAbortedChannelException(String s) {
+    super(s);
+  }
 }

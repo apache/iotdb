@@ -26,7 +26,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.receiver.IoTDBThriftReceiver;
 import org.apache.iotdb.db.pipe.connector.IoTDBThriftConnectorRequestVersion;
 import org.apache.iotdb.db.pipe.connector.v1.reponse.PipeTransferFilePieceResp;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferBatchReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferHandshakeReq;
@@ -51,7 +50,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.util.List;
 
 public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
 
@@ -82,8 +80,6 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
         case TRANSFER_FILE_SEAL:
           return handleTransferFileSeal(
               PipeTransferFileSealReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
-        case TRANSFER_BATCH:
-          return handleTransferBatch(req, partitionFetcher, schemaFetcher);
         default:
           break;
       }
@@ -131,31 +127,6 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
         statement.isEmpty()
             ? RpcUtils.SUCCESS_STATUS
             : executeStatement(statement, partitionFetcher, schemaFetcher));
-  }
-
-  private TPipeTransferResp handleTransferBatch(
-      TPipeTransferReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
-    List<TPipeTransferReq> transferReqs = PipeTransferBatchReq.splitTPipeTransferReqs(req);
-    TPipeTransferResp resp = null;
-    for (TPipeTransferReq transferReq : transferReqs) {
-      if (transferReq.type == PipeRequestType.TRANSFER_INSERT_NODE.getType()) {
-        resp =
-            handleTransferInsertNode(
-                PipeTransferInsertNodeReq.fromTPipeTransferReq(transferReq),
-                partitionFetcher,
-                schemaFetcher);
-      } else if (transferReq.type == PipeRequestType.TRANSFER_TABLET.getType()) {
-        resp =
-            handleTransferTablet(
-                PipeTransferTabletReq.fromTPipeTransferReq(transferReq),
-                partitionFetcher,
-                schemaFetcher);
-      }
-      if (resp.getStatus() != RpcUtils.SUCCESS_STATUS) {
-        return resp;
-      }
-    }
-    return resp;
   }
 
   private TPipeTransferResp handleTransferFilePiece(PipeTransferFilePieceReq req) {
