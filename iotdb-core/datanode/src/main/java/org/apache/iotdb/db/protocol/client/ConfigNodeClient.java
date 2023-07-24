@@ -158,7 +158,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       "Fail to connect to any config node. Please check status of ConfigNodes";
 
   private static final String MSG_RECONNECTION_DATANODE_FAIL =
-      "Failed to connect to ConfigNode {} from DataNode {} when executing {}, Exception:\n{}";
+      "Failed to connect to ConfigNode %s from DataNode %s when executing %s, Exception:";
   private static final int RETRY_INTERVAL_MS = 1000;
 
   private final ThriftClientProperty property;
@@ -329,16 +329,16 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         T result = call.execute();
-        if (!check.apply(result)) {
+        if (check.apply(result)) {
           return result;
         }
       } catch (TException e) {
-        logger.warn(
-            MSG_RECONNECTION_DATANODE_FAIL,
-            configNode,
-            config.getAddressAndPort(),
-            Thread.currentThread().getStackTrace()[2].getMethodName(),
-            e);
+        String message = String.format(
+                MSG_RECONNECTION_DATANODE_FAIL,
+                configNode,
+                config.getAddressAndPort(),
+                Thread.currentThread().getStackTrace()[2].getMethodName());
+        logger.warn(message, e);
         configLeader = null;
       }
       waitAndReconnect();
@@ -374,12 +374,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
         configNodes = newConfigNodes;
       } catch (TException e) {
-        logger.warn(
-            MSG_RECONNECTION_DATANODE_FAIL,
-            configNode,
-            config.getAddressAndPort(),
-            Thread.currentThread().getStackTrace()[1].getMethodName(),
-            e);
+        String message = String.format(
+                MSG_RECONNECTION_DATANODE_FAIL,
+                configNode,
+                config.getAddressAndPort(),
+                Thread.currentThread().getStackTrace()[1].getMethodName());
+        logger.warn(message, e);
         configLeader = null;
       }
       waitAndReconnect();
