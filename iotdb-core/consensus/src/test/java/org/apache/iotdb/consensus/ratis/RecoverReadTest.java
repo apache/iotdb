@@ -173,12 +173,17 @@ public class RecoverReadTest {
     // wait an active leader to serve linearizable read requests
     miniCluster.waitUntilActiveLeader();
 
-    ConsensusReadResponse resp = TestUtils.doRead(miniCluster.getServer(0), gid);
-    while (!resp.isSuccess()) {
-      resp = TestUtils.doRead(miniCluster.getServer(0), gid);
+    // try max 3 minutes
+    for (int i = 0; i < 3 * 60 * 10; i++) {
+      ConsensusReadResponse resp = TestUtils.doRead(miniCluster.getServer(0), gid);
+      if (resp.isSuccess()) {
+        Assert.assertEquals(10, ((TestUtils.TestDataSet) resp.getDataset()).getNumber());
+        break;
+      } else {
+        logger.info("linearizable read failed when restart at {} for", i, resp.getException());
+        Thread.sleep(100);
+      }
     }
-
-    Assert.assertEquals(10, ((TestUtils.TestDataSet) resp.getDataset()).getNumber());
   }
 
   @Test
