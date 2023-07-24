@@ -938,218 +938,85 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public TGetRegionIdResp getRegionId(TGetRegionIdReq req) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TGetRegionIdResp resp = client.getRegionId(req);
-        if (!updateConfigNodeLeader(resp.getStatus())) {
-          return resp;
-        }
-      } catch (TException e) {
-        logger.warn(
-            MSG_RECONNECTION_DATANODE_FAIL,
-            configNode,
-            config.getAddressAndPort(),
-            Thread.currentThread().getStackTrace()[1].getMethodName());
-        configLeader = null;
-      }
-      waitAndReconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+    return executeRemoteCallWithRetry(
+            () -> client.getRegionId(req), (resp) -> !updateConfigNodeLeader(resp.status)
+    );
   }
 
   @Override
   public TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TGetTimeSlotListResp resp = client.getTimeSlotList(req);
-        if (!updateConfigNodeLeader(resp.getStatus())) {
-          return resp;
-        }
-      } catch (TException e) {
-        logger.warn(
-            MSG_RECONNECTION_DATANODE_FAIL,
-            configNode,
-            config.getAddressAndPort(),
-            Thread.currentThread().getStackTrace()[1].getMethodName());
-        configLeader = null;
-      }
-      waitAndReconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+    return executeRemoteCallWithRetry(
+            () -> client.getTimeSlotList(req), (resp) -> !updateConfigNodeLeader(resp.status)
+    );
   }
 
   public TCountTimeSlotListResp countTimeSlotList(TCountTimeSlotListReq req) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TCountTimeSlotListResp resp = client.countTimeSlotList(req);
-        if (!updateConfigNodeLeader(resp.getStatus())) {
-          return resp;
-        }
-      } catch (TException e) {
-        logger.warn(
-            MSG_RECONNECTION_DATANODE_FAIL,
-            configNode,
-            config.getAddressAndPort(),
-            Thread.currentThread().getStackTrace()[1].getMethodName());
-        configLeader = null;
-      }
-      waitAndReconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+    return executeRemoteCallWithRetry(
+            () -> client.countTimeSlotList(req), (resp) -> !updateConfigNodeLeader(resp.status)
+    );
   }
 
   @Override
   public TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TGetSeriesSlotListResp resp = client.getSeriesSlotList(req);
-        if (!updateConfigNodeLeader(resp.getStatus())) {
-          return resp;
-        }
-      } catch (TException e) {
-        logger.warn(
-            MSG_RECONNECTION_DATANODE_FAIL,
-            configNode,
-            config.getAddressAndPort(),
-            Thread.currentThread().getStackTrace()[1].getMethodName());
-        configLeader = null;
-      }
-      waitAndReconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+    return executeRemoteCallWithRetry(
+            () -> client.getSeriesSlotList(req), (resp) -> !updateConfigNodeLeader(resp.status)
+    );
   }
 
   @Override
   public TSStatus migrateRegion(TMigrateRegionReq req) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TSStatus status = client.migrateRegion(req);
-        if (!updateConfigNodeLeader(status)) {
-          return status;
-        }
-      } catch (TException e) {
-        logger.warn(
-            MSG_RECONNECTION_DATANODE_FAIL,
-            configNode,
-            config.getAddressAndPort(),
-            Thread.currentThread().getStackTrace()[1].getMethodName());
-        configLeader = null;
-      }
-      waitAndReconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+    return executeRemoteCallWithRetry(
+            () -> client.migrateRegion(req), (status) -> !updateConfigNodeLeader(status)
+    );
   }
 
   @Override
   public TSStatus createCQ(TCreateCQReq req) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TSStatus status = client.createCQ(req);
-        if (!updateConfigNodeLeader(status)) {
-          return status;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      waitAndReconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+    return executeRemoteCallWithRetry(
+            () -> client.createCQ(req), (status) -> !updateConfigNodeLeader(status)
+    );
   }
 
   @Override
   public TSStatus dropCQ(TDropCQReq req) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TSStatus status = client.dropCQ(req);
-        if (!updateConfigNodeLeader(status)) {
-          return status;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      waitAndReconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+    return executeRemoteCallWithRetry(
+            () -> client.dropCQ(req), (status) -> !updateConfigNodeLeader(status)
+    );
   }
 
   @Override
   public TShowCQResp showCQ() throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TShowCQResp resp = client.showCQ();
-        if (!updateConfigNodeLeader(resp.getStatus())) {
-          return resp;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      waitAndReconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+    return executeRemoteCallWithRetry(
+            () -> client.showCQ(), (resp) -> !updateConfigNodeLeader(resp.status)
+    );
   }
 
   @Override
   public TSStatus createModel(TCreateModelReq req) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TSStatus status = client.createModel(req);
-        if (!updateConfigNodeLeader(status)) {
-          return status;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      waitAndReconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+    return executeRemoteCallWithRetry(
+            () -> client.createModel(req), (status) -> !updateConfigNodeLeader(status)
+    );
   }
 
   @Override
   public TSStatus dropModel(TDropModelReq req) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TSStatus status = client.dropModel(req);
-        if (!updateConfigNodeLeader(status)) {
-          return status;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      waitAndReconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+    return executeRemoteCallWithRetry(
+            () -> client.dropModel(req), (status) -> !updateConfigNodeLeader(status)
+    );
   }
 
   @Override
   public TShowModelResp showModel(TShowModelReq req) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TShowModelResp resp = client.showModel(req);
-        if (!updateConfigNodeLeader(resp.getStatus())) {
-          return resp;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      waitAndReconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+    return executeRemoteCallWithRetry(
+            () -> client.showModel(req), (resp) -> !updateConfigNodeLeader(resp.status)
+    );
   }
 
   @Override
   public TShowTrailResp showTrail(TShowTrailReq req) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TShowTrailResp resp = client.showTrail(req);
-        if (!updateConfigNodeLeader(resp.getStatus())) {
-          return resp;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      waitAndReconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+    return executeRemoteCallWithRetry(
+            () -> client.showTrail(req), (resp) -> !updateConfigNodeLeader(resp.status)
+    );
   }
 
   @Override
@@ -1164,98 +1031,44 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public TSStatus setSpaceQuota(TSetSpaceQuotaReq req) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TSStatus status = client.setSpaceQuota(req);
-        if (!updateConfigNodeLeader(status)) {
-          return status;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      waitAndReconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+    return executeRemoteCallWithRetry(
+            () -> client.setSpaceQuota(req), (status) -> !updateConfigNodeLeader(status)
+    );
   }
 
   @Override
   public TSpaceQuotaResp showSpaceQuota(List<String> databases) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TSpaceQuotaResp resp = client.showSpaceQuota(databases);
-        if (!updateConfigNodeLeader(resp.getStatus())) {
-          return resp;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      waitAndReconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+    return executeRemoteCallWithRetry(
+            () -> client.showSpaceQuota(databases), (resp) -> !updateConfigNodeLeader(resp.status)
+    );
   }
 
   @Override
   public TSpaceQuotaResp getSpaceQuota() throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TSpaceQuotaResp resp = client.getSpaceQuota();
-        if (!updateConfigNodeLeader(resp.getStatus())) {
-          return resp;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      waitAndReconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+    return executeRemoteCallWithRetry(
+            () -> client.getSpaceQuota(), (resp) -> !updateConfigNodeLeader(resp.status)
+    );
   }
 
   @Override
   public TSStatus setThrottleQuota(TSetThrottleQuotaReq req) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TSStatus status = client.setThrottleQuota(req);
-        if (!updateConfigNodeLeader(status)) {
-          return status;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      waitAndReconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+    return executeRemoteCallWithRetry(
+            () -> client.setThrottleQuota(req), (status) -> !updateConfigNodeLeader(status)
+    );
   }
 
   @Override
   public TThrottleQuotaResp showThrottleQuota(TShowThrottleReq req) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TThrottleQuotaResp resp = client.showThrottleQuota(req);
-        if (!updateConfigNodeLeader(resp.getStatus())) {
-          return resp;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      waitAndReconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+    return executeRemoteCallWithRetry(
+            () -> client.showThrottleQuota(req), (resp) -> !updateConfigNodeLeader(resp.status)
+    );
   }
 
   @Override
   public TThrottleQuotaResp getThrottleQuota() throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TThrottleQuotaResp resp = client.getThrottleQuota();
-        if (!updateConfigNodeLeader(resp.getStatus())) {
-          return resp;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      waitAndReconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+    return executeRemoteCallWithRetry(
+            () -> client.getThrottleQuota(), (resp) -> !updateConfigNodeLeader(resp.status)
+    );
   }
 
   public static class Factory extends ThriftClientFactory<ConfigRegionId, ConfigNodeClient> {
