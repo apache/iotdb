@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.metadata.mtree.snapshot;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
@@ -81,7 +82,7 @@ public class MemMTreeSnapshotUtil {
           new BufferedOutputStream(new FileOutputStream(snapshotTmp))) {
         serializeTo(store, outputStream);
       }
-      if (snapshot.exists() && !snapshot.delete()) {
+      if (snapshot.exists() && !FileUtils.deleteFileIfExist(snapshot)) {
         logger.error(
             "Failed to delete old snapshot {} while creating mtree snapshot.", snapshot.getName());
         return false;
@@ -91,17 +92,17 @@ public class MemMTreeSnapshotUtil {
             "Failed to rename {} to {} while creating mtree snapshot.",
             snapshotTmp.getName(),
             snapshot.getName());
-        snapshot.delete();
+        FileUtils.deleteFileIfExist(snapshot);
         return false;
       }
 
       return true;
     } catch (IOException e) {
       logger.error("Failed to create mtree snapshot due to {}", e.getMessage(), e);
-      snapshot.delete();
+      FileUtils.deleteFileIfExist(snapshot);
       return false;
     } finally {
-      snapshotTmp.delete();
+      FileUtils.deleteFileIfExist(snapshotTmp);
     }
   }
 

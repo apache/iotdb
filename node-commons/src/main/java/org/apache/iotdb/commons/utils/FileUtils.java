@@ -42,6 +42,16 @@ public class FileUtils {
 
   private FileUtils() {}
 
+  public static boolean deleteFileIfExist(File file) {
+    try {
+      Files.deleteIfExists(file.toPath());
+      return true;
+    } catch (IOException e) {
+      logger.error(e.getMessage(), e);
+      return false;
+    }
+  }
+
   public static void deleteDirectory(File folder) {
     if (folder.isDirectory()) {
       for (File file : folder.listFiles()) {
