@@ -195,16 +195,15 @@ public class RestApiServiceImpl extends RestApiService {
       RequestValidationHandler.validateInsertTabletRequest(insertTabletRequest);
 
       if (!InsertTabletSortDataUtils.checkSorted(insertTabletRequest.getTimestamps())) {
-        int n = insertTabletRequest.getTimestamps().size();
-        Integer[] index = new Integer[n];
+        Integer[] index = new Integer[insertTabletRequest.getTimestamps().size()];
         for (int i = 0; i < index.length; i++) {
           index[i] = i;
         }
         Arrays.sort(index, Comparator.comparingLong(insertTabletRequest.getTimestamps()::get));
         insertTabletRequest.getTimestamps().sort(Long::compareTo);
-
         insertTabletRequest.setValues(
-            InsertTabletSortDataUtils.sortList(insertTabletRequest.getValues(), index, n));
+            InsertTabletSortDataUtils.sortList(
+                insertTabletRequest.getValues(), index, insertTabletRequest.getValues().size()));
       }
 
       InsertTabletStatement insertTabletStatement =
