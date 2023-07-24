@@ -18,8 +18,10 @@
 
 import os
 import time
+from typing import Dict
 
 import torch.nn as nn
+from iotdb.mlnode.constant import ModelInputName
 
 from iotdb.mlnode.config import descriptor
 from iotdb.mlnode.exception import ModelNotExistError
@@ -31,7 +33,9 @@ class ExampleModel(nn.Module):
         super(ExampleModel, self).__init__()
         self.layer = nn.Identity()
 
-    def forward(self, x):
+    def forward(self, input_dict: Dict):
+        # x: [Batch, Input length, Channel]
+        x = input_dict[ModelInputName.DATA_X.value]
         return self.layer(x)
 
 
@@ -69,7 +73,7 @@ def test_load_not_exist_model():
         model_storage.load_model(os.path.join(f'{model_id}', f'{trial_id}.pt'))
     except Exception as e:
         assert e.message == ModelNotExistError(
-            os.path.join('.', descriptor.get_config().get_mn_model_storage_dir(),
+            os.path.join(os.getcwd(), descriptor.get_config().get_mn_model_storage_dir(),
                          model_id, f'{trial_id}.pt')).message
 
 
