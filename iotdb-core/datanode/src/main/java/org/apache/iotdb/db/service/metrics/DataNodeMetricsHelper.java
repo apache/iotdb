@@ -42,6 +42,7 @@ import org.apache.iotdb.metrics.metricsets.disk.DiskMetrics;
 import org.apache.iotdb.metrics.metricsets.jvm.JvmMetrics;
 import org.apache.iotdb.metrics.metricsets.logback.LogbackMetrics;
 import org.apache.iotdb.metrics.metricsets.net.NetMetrics;
+import org.apache.iotdb.metrics.metricsets.system.SystemMetrics;
 
 import java.util.ArrayList;
 import java.util.Arrays;
