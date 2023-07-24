@@ -170,6 +170,7 @@ public class RatisConsensusTest {
     // 200 operation will trigger snapshot & purge
     doConsensus(servers.get(0), group.getGroupId(), 200, 200);
 
+    miniCluster.stop();
     miniCluster.restart();
 
     doConsensus(servers.get(0), gid, 10, 210);
