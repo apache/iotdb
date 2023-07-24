@@ -18,6 +18,51 @@
     under the License.
 
 -->
+
+
+
+
+# Apache IoTDB 1.1.2
+
+## New Feature
+
+* [IOTDB-5919]show variables add a variable timestamp_precision
+* Add Python SessionPool
+
+## Improvement/Bugfix
+
+* [IOTDB-5901] Load: load tsfile without data will throw NPE
+* [IOTDB-5903] Fix cannot select any inner space compaction task when there is only unsequence data
+* [IOTDB-5878] Allow ratis-client retry when gRPC IO Unavailable
+* [IOTDB-5939] Correct Flusing Task Timeout Detect Thread
+* [IOTDB-5905] Fix aligned timeseries data point lost after flushed in some scenario
+* [IOTDB-5963] Make sure that TsBlock blocked on memory is added in queue before the next TsBlock returned by root operator
+* [IOTDB-5819] Fix npe when booting net metrics
+* [IOTDB-6023] Pipe: Fix load tsfile error while handling empty value chunk
+* [IOTDB-5971] Fix potential QUOTE problem in iotdb reporter
+* [IOTDB-5993] ConfigNode leader changing causes lacking some DataPartition allocation result in the response of getOrCreateDataPartition method
+* [IOTDB-5910] Fix compaction scheduler thread pool is not shutdown when aborting compaction
+* [IOTDB-6056] Pipe: Failed to load tsfile with empty pages (NPE occurs when loading)
+* [IOTDB-5916]Fix exception when file is deleted during compaction selection
+* [IOTDB-5896] Fix the NPE issue when taking snapshot in WAL combined with Aligned Binary
+* [IOTDB-5929] Enable DataPartition inherit policy
+* [IOTDB-5934] Optimize cluster partition policy
+* [IOTDB-5926] Remove Useless Rater in Timer
+* [IOTDB-6030] Improve efficiency of ConfigNode PartitionInfo takeSnapshot
+* [IOTDB-5997] Improve efficiency of ConfigNode PartitionInfo loadSnapshot 
+* Fix potential deadlock when freeing memory in MemoryPool
+* Release resource of FI after all drivers have been closed
+* Set default degree of parallelism back to the num of CPU
+* Make SequenceStrategy and MaxDiskUsableSpaceFirstStrategy are allowed in cluster mode
+* Fix npe exception when invalid in metric module
+* Fix CQ does not take effect in ns time_precision
+* Fix storage engine memory config initialization
+* Fix template related schema query
+* add default charset setting in start-datanode.bat and print default charset when starting
+* Fix TsfileResource error after delete device in sequence working memtable
+* load TsFile bugs: Not checking whether the tsfile data loaded locally is in the same time partition during the loading process & LoadTsFilePieceNode error when loading tsfile with empty value chunks
+* Fix alias query failure after restarting DataNode
+ 
 # Apache IoTDB 1.1.1
 
 ## New Feature
