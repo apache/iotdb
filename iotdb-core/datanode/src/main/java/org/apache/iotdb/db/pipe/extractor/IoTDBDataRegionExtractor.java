@@ -86,8 +86,8 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
       validator.validateAttributeValueRange(
           EXTRACTOR_REALTIME_MODE,
           true,
-          EXTRACTOR_REALTIME_MODE_HYBRID,
           EXTRACTOR_REALTIME_MODE_FILE,
+          EXTRACTOR_REALTIME_MODE_HYBRID,
           EXTRACTOR_REALTIME_MODE_LOG,
           EXTRACTOR_REALTIME_MODE_FORCED_LOG);
     }
@@ -108,12 +108,14 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
     // Enable realtime extractor by default
     if (!parameters.getBooleanOrDefault(EXTRACTOR_REALTIME_ENABLE, true)) {
       realtimeExtractor = new PipeRealtimeDataRegionFakeExtractor();
+      LOGGER.info("'{}' is set to false, use fake realtime extractor.", EXTRACTOR_REALTIME_ENABLE);
       return;
     }
 
     // Use hybrid mode by default
     if (!parameters.hasAttribute(EXTRACTOR_REALTIME_MODE)) {
       realtimeExtractor = new PipeRealtimeDataRegionHybridExtractor();
+      LOGGER.info("'{}' is not set, use hybrid mode by default.", EXTRACTOR_REALTIME_MODE);
       return;
     }
 
@@ -121,18 +123,20 @@ public class IoTDBDataRegionExtractor implements PipeExtractor {
       case EXTRACTOR_REALTIME_MODE_FILE:
         realtimeExtractor = new PipeRealtimeDataRegionTsFileExtractor();
         break;
+      case EXTRACTOR_REALTIME_MODE_HYBRID:
+      case EXTRACTOR_REALTIME_MODE_LOG:
+        realtimeExtractor = new PipeRealtimeDataRegionHybridExtractor();
+        break;
       case EXTRACTOR_REALTIME_MODE_FORCED_LOG:
         realtimeExtractor = new PipeRealtimeDataRegionLogExtractor();
         break;
-      case EXTRACTOR_REALTIME_MODE_LOG:
-      case EXTRACTOR_REALTIME_MODE_HYBRID:
-        realtimeExtractor = new PipeRealtimeDataRegionHybridExtractor();
-        break;
       default:
         realtimeExtractor = new PipeRealtimeDataRegionHybridExtractor();
-        LOGGER.warn(
-            "Unsupported extractor realtime mode: {}, create a hybrid extractor.",
-            parameters.getString(EXTRACTOR_REALTIME_MODE));
+        if (LOGGER.isWarnEnabled()) {
+          LOGGER.warn(
+              "Unsupported extractor realtime mode: {}, create a hybrid extractor.",
+              parameters.getString(EXTRACTOR_REALTIME_MODE));
+        }
     }
   }
 

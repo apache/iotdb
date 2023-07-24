@@ -107,7 +107,7 @@ public interface PipeProcessor extends PipePlugin {
       throws Exception {
     for (final TabletInsertionEvent tabletInsertionEvent :
         tsFileInsertionEvent.toTabletInsertionEvents()) {
-      eventCollector.collect(tabletInsertionEvent);
+      process(tabletInsertionEvent, eventCollector);
     }
   }
 
