@@ -61,6 +61,21 @@ public class WrappedSegmentTest {
   }
 
   @Test
+  public void testUpdateAlias() throws MetadataException {
+    WrappedSegment sf = new WrappedSegment(500);
+    IMNode node = getMeasurementNode(null, "s1", null);
+    sf.insertRecord("s1", RecordUtils.node2Buffer(node));
+    node.getAsMeasurementMNode().setAlias("alias1");
+    sf.updateRecord("s1", RecordUtils.node2Buffer(node));
+    node.getAsMeasurementMNode().setAlias("alias2");
+    sf.updateRecord("s1", RecordUtils.node2Buffer(node));
+    Assert.assertEquals(null, sf.getRecordByAlias("alias1"));
+    IMNode node1 = sf.getRecordByAlias("alias2");
+    Assert.assertTrue(node1.isMeasurement());
+    Assert.assertEquals("alias2", node1.getAsMeasurementMNode().getAlias());
+  }
+
+  @Test
   public void flatTreeInsert() throws MetadataException {
     WrappedSegment sf = new WrappedSegment(500);
     IMNode rNode = virtualFlatMTree(10);
