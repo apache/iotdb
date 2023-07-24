@@ -242,11 +242,18 @@ public class ConfigNode implements ConfigNodeMBean {
     MetricService.getInstance().addMetricSet(new JvmMetrics());
     MetricService.getInstance().addMetricSet(new LogbackMetrics());
     MetricService.getInstance().addMetricSet(new ProcessMetrics());
-    MetricService.getInstance().addMetricSet(new SystemMetrics(false));
     MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.CN_ROLE));
     MetricService.getInstance().addMetricSet(new NetMetrics(IoTDBConstant.CN_ROLE));
     MetricService.getInstance().addMetricSet(ClientManagerMetrics.getInstance());
     initCpuMetrics();
+    initSystemMetrics();
+  }
+
+  private void initSystemMetrics() {
+    ArrayList<String> diskDirs = new ArrayList<>();
+    diskDirs.add(CONF.getSystemDir());
+    diskDirs.add(CONF.getConsensusDir());
+    MetricService.getInstance().addMetricSet(new SystemMetrics(diskDirs));
   }
 
   private void initCpuMetrics() {

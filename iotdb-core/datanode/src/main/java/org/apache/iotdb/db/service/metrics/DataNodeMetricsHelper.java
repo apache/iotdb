@@ -23,9 +23,11 @@ import org.apache.iotdb.commons.client.ClientManagerMetrics;
 import org.apache.iotdb.commons.concurrent.ThreadModule;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.ThreadPoolMetrics;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet;
@@ -55,11 +57,11 @@ public class DataNodeMetricsHelper {
     MetricService.getInstance().addMetricSet(FileMetrics.getInstance());
     MetricService.getInstance().addMetricSet(CompactionMetrics.getInstance());
     MetricService.getInstance().addMetricSet(new ProcessMetrics());
-    MetricService.getInstance().addMetricSet(new SystemMetrics(true));
     MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.DN_ROLE));
     MetricService.getInstance().addMetricSet(new NetMetrics(IoTDBConstant.DN_ROLE));
     MetricService.getInstance().addMetricSet(ClientManagerMetrics.getInstance());
     initCpuMetrics();
+    initSystemMetrics();
     MetricService.getInstance().addMetricSet(WritingMetrics.getInstance());
 
     // bind query related metrics
@@ -74,6 +76,17 @@ public class DataNodeMetricsHelper {
 
     // bind performance overview related metrics
     MetricService.getInstance().addMetricSet(PerformanceOverviewMetrics.getInstance());
+  }
+
+  private static void initSystemMetrics() {
+    ArrayList<String> diskDirs = new ArrayList<>();
+    diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getSystemDir());
+    diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getConsensusDir());
+    diskDirs.addAll(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
+    diskDirs.addAll(Arrays.asList(CommonDescriptor.getInstance().getConfig().getWalDirs()));
+    diskDirs.add(CommonDescriptor.getInstance().getConfig().getSyncDir());
+    diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getSortTmpDir());
+    MetricService.getInstance().addMetricSet(new SystemMetrics(diskDirs));
   }
 
   private static void initCpuMetrics() {

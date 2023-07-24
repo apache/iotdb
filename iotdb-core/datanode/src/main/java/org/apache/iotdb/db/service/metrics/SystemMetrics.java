@@ -22,15 +22,14 @@ package org.apache.iotdb.db.service.metrics;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
+import org.apache.iotdb.tsfile.utils.FSUtils;
 
 import com.sun.management.OperatingSystemMXBean;
 import org.slf4j.Logger;
@@ -43,7 +42,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Future;
@@ -59,12 +57,12 @@ public class SystemMetrics implements IMetricSet {
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
           ThreadName.SYSTEM_SCHEDULE_METRICS.getName());
   private final Set<FileStore> fileStores = new HashSet<>();
-  private final boolean isDataNode;
+  private final ArrayList<String> diskDirs;
   private long systemDiskTotalSpace = 0L;
   private long systemDiskFreeSpace = 0L;
 
-  public SystemMetrics(boolean isDataNode) {
-    this.isDataNode = isDataNode;
+  public SystemMetrics(ArrayList<String> diskDirs) {
+    this.diskDirs = diskDirs;
     this.osMxBean = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
   }
 
@@ -75,7 +73,7 @@ public class SystemMetrics implements IMetricSet {
 
     // register disk related metrics and start to collect the value of metrics in async way
     if (null == currentServiceFuture) {
-      collectSystemDiskInfo(metricService, isDataNode);
+      collectSystemDiskInfo(metricService);
       currentServiceFuture =
           ScheduledExecutorUtil.safelyScheduleAtFixedRate(
               service,
@@ -97,9 +95,7 @@ public class SystemMetrics implements IMetricSet {
     }
 
     removeSystemCpuInfo(metricService);
-    if (isDataNode) {
-      removeSystemDiskInfo(metricService);
-    }
+    removeSystemDiskInfo(metricService);
     removeSystemMemInfo(metricService);
   }
 
@@ -192,18 +188,12 @@ public class SystemMetrics implements IMetricSet {
         SYSTEM);
   }
 
-  private void collectSystemDiskInfo(AbstractMetricService metricService, boolean isDataNode) {
-    ArrayList<String> diskDirs = new ArrayList<>();
-    diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getSystemDir());
-    diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getConsensusDir());
-    if (isDataNode) {
-      diskDirs.addAll(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
-      diskDirs.addAll(Arrays.asList(CommonDescriptor.getInstance().getConfig().getWalDirs()));
-      diskDirs.add(CommonDescriptor.getInstance().getConfig().getSyncDir());
-      diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getSortTmpDir());
-    }
-    for (String dataDir : diskDirs) {
-      Path path = Paths.get(dataDir);
+  private void collectSystemDiskInfo(AbstractMetricService metricService) {
+    for (String diskDir : diskDirs) {
+      if (!FSUtils.isLocal(diskDir)) {
+        continue;
+      }
+      Path path = Paths.get(diskDir);
       FileStore fileStore = null;
       try {
         fileStore = Files.getFileStore(path);
@@ -213,7 +203,7 @@ public class SystemMetrics implements IMetricSet {
         try {
           fileStore = Files.getFileStore(path);
         } catch (IOException innerException) {
-          logger.error("Failed to get storage path of {}, because", dataDir, innerException);
+          logger.error("Failed to get storage path of {}, because", diskDir, innerException);
         }
       }
       if (null != fileStore) {
