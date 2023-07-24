@@ -158,7 +158,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       "Fail to connect to any config node. Please check status of ConfigNodes";
 
   private static final String MSG_RECONNECTION_DATANODE_FAIL =
-      "Failed to connect to ConfigNode {} from DataNode {} when executing {}";
+      "Failed to connect to ConfigNode {} from DataNode {} when executing {}, Exception:\n{}";
   private static final int RETRY_INTERVAL_MS = 1000;
 
   private final ThriftClientProperty property;
@@ -337,7 +337,8 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
             MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
-            Thread.currentThread().getStackTrace()[2].getMethodName());
+            Thread.currentThread().getStackTrace()[2].getMethodName(),
+            e);
         configLeader = null;
       }
       waitAndReconnect();
@@ -377,7 +378,8 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
             MSG_RECONNECTION_DATANODE_FAIL,
             configNode,
             config.getAddressAndPort(),
-            Thread.currentThread().getStackTrace()[1].getMethodName());
+            Thread.currentThread().getStackTrace()[1].getMethodName(),
+            e);
         configLeader = null;
       }
       waitAndReconnect();
