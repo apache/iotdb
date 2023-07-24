@@ -31,6 +31,7 @@ import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.protocol.rest.handler.AuthorizationHandler;
+import org.apache.iotdb.db.protocol.rest.utils.InsertTabletSortDataUtils;
 import org.apache.iotdb.db.protocol.rest.v1.RestApiService;
 import org.apache.iotdb.db.protocol.rest.v1.handler.ExceptionHandler;
 import org.apache.iotdb.db.protocol.rest.v1.handler.ExecuteStatementHandler;
@@ -48,6 +49,8 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 
 import java.time.ZoneId;
+import java.util.Arrays;
+import java.util.Comparator;
 
 public class RestApiServiceImpl extends RestApiService {
 
@@ -190,6 +193,18 @@ public class RestApiServiceImpl extends RestApiService {
     Long queryId = null;
     try {
       RequestValidationHandler.validateInsertTabletRequest(insertTabletRequest);
+
+      if (!InsertTabletSortDataUtils.checkSorted(insertTabletRequest.getTimestamps())) {
+        Integer[] index = new Integer[insertTabletRequest.getTimestamps().size()];
+        for (int i = 0; i < index.length; i++) {
+          index[i] = i;
+        }
+        Arrays.sort(index, Comparator.comparingLong(insertTabletRequest.getTimestamps()::get));
+        insertTabletRequest.getTimestamps().sort(Long::compareTo);
+        insertTabletRequest.setValues(
+            InsertTabletSortDataUtils.sortList(
+                insertTabletRequest.getValues(), index, insertTabletRequest.getDataTypes().size()));
+      }
 
       InsertTabletStatement insertTabletStatement =
           StatementConstructionHandler.constructInsertTabletStatement(insertTabletRequest);
