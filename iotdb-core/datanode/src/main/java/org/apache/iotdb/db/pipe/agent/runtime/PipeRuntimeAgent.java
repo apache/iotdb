@@ -108,7 +108,11 @@ public class PipeRuntimeAgent implements IService {
         pipeTaskMeta,
         pipeRuntimeException.getMessage(),
         pipeRuntimeException);
+
     pipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
+
+    // Quick stop all pipes locally if critical exception occurs,
+    // no need to wait for the next heartbeat cycle.
     if (pipeRuntimeException instanceof PipeRuntimeCriticalException) {
       PipeAgent.task().stopAllPipesWithCriticalException();
     }

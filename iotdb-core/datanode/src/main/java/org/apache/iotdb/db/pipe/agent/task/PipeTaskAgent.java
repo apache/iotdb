@@ -51,7 +51,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -332,19 +331,19 @@ public class PipeTaskAgent {
         .getPipeMetaList()
         .forEach(
             pipeMeta -> {
-              PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+              final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+              final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+
               if (runtimeMeta.getStatus().get() == PipeStatus.RUNNING) {
-                PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
                 runtimeMeta
                     .getConsensusGroupId2TaskMetaMap()
                     .values()
                     .forEach(
                         pipeTaskMeta -> {
-                          Iterator<PipeRuntimeException> exceptionIterator =
-                              pipeTaskMeta.getExceptionMessages().iterator();
-                          while (exceptionIterator.hasNext()) {
-                            if (exceptionIterator.next() instanceof PipeRuntimeCriticalException) {
+                          for (final PipeRuntimeException e : pipeTaskMeta.getExceptionMessages()) {
+                            if (e instanceof PipeRuntimeCriticalException) {
                               stopPipe(staticMeta.getPipeName(), staticMeta.getCreationTime());
+                              return;
                             }
                           }
                         });
