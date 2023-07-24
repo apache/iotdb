@@ -18,6 +18,32 @@
     under the License.
 
 -->
+# Apache IoTDB 1.1.1
+
+## New Feature
+
+* [IOTDB-2569] ZSTD compression
+
+## Improvement/Bugfix
+
+* [IOTDB-5781] Change the default strategy to SequenceStrategy
+* [IOTDB-5780] Let users know a node was successfully removed and data is recovered
+* [IOTDB-5735] The result of adding the distinct function to the align by device is incorrect
+* [IOTDB-5777] When writing data using non-root users, the permission authentication module takes too long
+* [IOTDB-5835] Fix wal accumulation caused by datanode restart
+* [IOTDB-5828] Optimize the implementation of some metric items in the metric module to prevent Prometheus pull timeouts
+* [IOTDB-5813] ConfigNode restart error due to installSnapshot failed
+* [IOTDB-5657] Limit does not take effect in last query
+* [IOTDB-5717] Incorrect result when querying with limit push-downing & order by time desc
+* [IOTDB-5722] Wrong default execution branch in PlanVisitor
+* [IOTDB-5784] Incorrect result when querying with offset push-down and time filter
+* [IOTDB-5815] NPE when using UDF to query
+* [IOTDB-5829] Query with limit clause will cause other concurrent query break down
+* [IOTDB-5824] show devices with * cannot display satisfied devices
+* [IOTDB-5831] Drop database won't delete totally files in disk
+* [IOTDB-5818] Cross_space compaction of Aligned timeseries is stucked
+* [IOTDB-5859] Compaction error when using Version as first sort dimension
+* [IOTDB-5869] Fix load overlap sequence TsFile
 
 # Apache IoTDB 1.1.0
 
