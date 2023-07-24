@@ -56,7 +56,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -219,7 +221,8 @@ public class TestUtils {
     private final RatisConfig config;
     private final List<RatisConsensus> servers;
     private final ConsensusGroup group;
-    private final Supplier<IStateMachine> smProvider;
+    private Supplier<IStateMachine> smProvider;
+    private final AtomicBoolean isStopped = new AtomicBoolean(false);
 
     private MiniCluster(
         ConsensusGroupId gid,
@@ -281,12 +284,14 @@ public class TestUtils {
       for (RatisConsensus server : servers) {
         server.start();
       }
+      isStopped.set(false);
     }
 
     void stop() throws IOException {
       for (RatisConsensus server : servers) {
         server.stop();
       }
+      isStopped.set(true);
     }
 
     void cleanUp() throws IOException {
@@ -294,13 +299,17 @@ public class TestUtils {
       for (File storage : peerStorage) {
         FileUtils.deleteFully(storage);
       }
+      stateMachines.clear();
     }
 
     void restart() throws IOException {
       logger.info("start restarting the mini cluster");
-      stop();
+      isStopped.set(false);
       servers.clear();
-      stateMachines.stream().map(IntegerCounter.class::cast).forEach(IntegerCounter::reset);
+      stateMachines.clear();
+      for (int i = 0; i < replicas; i++) {
+        stateMachines.add(smProvider.get());
+      }
       makeServers();
       start();
       logger.info("end restarting the mini cluster");
@@ -338,13 +347,21 @@ public class TestUtils {
           "wait leader",
           null);
     }
+
+    void resetSMProviderBeforeRestart(Supplier<IStateMachine> smProvider) {
+      Preconditions.checkArgument(
+          isStopped.get(), "call resetSMProviderBeforeRestart() before restart");
+      this.smProvider = smProvider;
+    }
   }
 
   static class MiniClusterFactory {
     private int replicas = 3;
     private ConsensusGroupId gid = new DataRegionId(1);
     private Function<Integer, File> peerStorageProvider =
-        peerId -> new File("target" + java.io.File.separator + peerId);
+        peerId ->
+            new File(
+                "target" + java.io.File.separator + UUID.randomUUID() + File.separator + peerId);
 
     private Supplier<IStateMachine> smProvider = TestUtils.IntegerCounter::new;
     private RatisConfig ratisConfig;

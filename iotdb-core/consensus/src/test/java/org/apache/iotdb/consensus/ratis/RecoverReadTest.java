@@ -41,6 +41,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class RecoverReadTest {
   private static final Logger logger = LoggerFactory.getLogger(RecoverReadTest.class);
+  private static final TimeDuration stallDuration =
+      TimeDuration.valueOf(500, TimeUnit.MILLISECONDS);
 
   private static class SlowRecoverStateMachine extends TestUtils.IntegerCounter {
     private final TimeDuration stallDuration;
@@ -48,6 +50,11 @@ public class RecoverReadTest {
 
     private SlowRecoverStateMachine(TimeDuration stallDuration) {
       this.stallDuration = stallDuration;
+    }
+
+    private SlowRecoverStateMachine(TimeDuration stallDuration, boolean isStall) {
+      this.stallDuration = stallDuration;
+      this.stallApply.set(isStall);
     }
 
     @Override
@@ -83,8 +90,7 @@ public class RecoverReadTest {
     final TestUtils.MiniClusterFactory factory = new TestUtils.MiniClusterFactory();
     miniCluster =
         factory
-            .setSMProvider(
-                () -> new SlowRecoverStateMachine(TimeDuration.valueOf(500, TimeUnit.MILLISECONDS)))
+            .setSMProvider(() -> new SlowRecoverStateMachine(stallDuration))
             .setRatisConfig(
                 RatisConfig.newBuilder()
                     .setLog(
@@ -94,12 +100,13 @@ public class RecoverReadTest {
                             .build())
                     .setRead(
                         RatisConfig.Read.newBuilder()
-                            .setReadTimeout(TimeDuration.valueOf(30, TimeUnit.SECONDS))
+                            .setReadTimeout(TimeDuration.valueOf(20, TimeUnit.SECONDS))
                             .build())
                     .setRpc(
                         RatisConfig.Rpc.newBuilder()
                             .setFirstElectionTimeoutMin(TimeDuration.valueOf(1, TimeUnit.SECONDS))
                             .setFirstElectionTimeoutMax(TimeDuration.valueOf(2, TimeUnit.SECONDS))
+                            .setRequestTimeout(TimeDuration.valueOf(20, TimeUnit.SECONDS))
                             .build())
                     .build())
             .create();
@@ -126,12 +133,14 @@ public class RecoverReadTest {
     TestUtils.write(miniCluster.getServer(0), gid, 10);
     Assert.assertEquals(10, TestUtils.read(miniCluster.getServer(0), gid));
 
-    // set apply stall time
-    miniCluster.getStateMachines().stream()
-        .map(SlowRecoverStateMachine.class::cast)
-        .forEach(SlowRecoverStateMachine::setStall);
+    // stop the cluster
+    miniCluster.stop();
 
-    // shutdown and restart the cluster
+    // set stall when restart
+    miniCluster.resetSMProviderBeforeRestart(
+        () -> new SlowRecoverStateMachine(stallDuration, true));
+
+    // restart the cluster
     miniCluster.restart();
 
     // manually set the canServe flag to true to mimic original implementation
@@ -151,11 +160,14 @@ public class RecoverReadTest {
     TestUtils.write(miniCluster.getServer(0), gid, 10);
     Assert.assertEquals(10, TestUtils.read(miniCluster.getServer(0), gid));
 
-    miniCluster.getStateMachines().stream()
-        .map(SlowRecoverStateMachine.class::cast)
-        .forEach(SlowRecoverStateMachine::setStall);
+    // stop the cluster
+    miniCluster.stop();
 
-    // shutdown and restart the cluster
+    // set stall when restart
+    miniCluster.resetSMProviderBeforeRestart(
+        () -> new SlowRecoverStateMachine(stallDuration, true));
+
+    // restart the cluster
     miniCluster.restart();
 
     // wait an active leader to serve linearizable read requests
@@ -175,11 +187,14 @@ public class RecoverReadTest {
     TestUtils.write(miniCluster.getServer(0), gid, 10);
     Assert.assertEquals(10, TestUtils.read(miniCluster.getServer(0), gid));
 
-    miniCluster.getStateMachines().stream()
-        .map(SlowRecoverStateMachine.class::cast)
-        .forEach(SlowRecoverStateMachine::setStall);
+    // stop the cluster
+    miniCluster.stop();
 
-    // shutdown and restart the cluster
+    // set stall when restart
+    miniCluster.resetSMProviderBeforeRestart(
+        () -> new SlowRecoverStateMachine(stallDuration, true));
+
+    // restart the cluster
     miniCluster.restart();
 
     // query during redo: get exception that ratis is under recovery
@@ -195,14 +210,17 @@ public class RecoverReadTest {
     miniCluster.getServers().forEach(s -> s.createPeer(gid, members));
 
     // first write 30 ops
-    TestUtils.write(miniCluster.getServer(0), gid, 100);
-    Assert.assertEquals(100, TestUtils.read(miniCluster.getServer(0), gid));
+    TestUtils.write(miniCluster.getServer(0), gid, 50);
+    Assert.assertEquals(50, TestUtils.read(miniCluster.getServer(0), gid));
 
-    miniCluster.getStateMachines().stream()
-        .map(SlowRecoverStateMachine.class::cast)
-        .forEach(SlowRecoverStateMachine::setStall);
+    // stop the cluster
+    miniCluster.stop();
 
-    // shutdown and restart the cluster
+    // set stall when restart
+    miniCluster.resetSMProviderBeforeRestart(
+        () -> new SlowRecoverStateMachine(stallDuration, true));
+
+    // restart the cluster
     miniCluster.restart();
 
     // wait until active leader to serve read index requests
