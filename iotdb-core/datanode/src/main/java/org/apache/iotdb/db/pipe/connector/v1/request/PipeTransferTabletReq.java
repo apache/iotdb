@@ -54,6 +54,17 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
   private Tablet tablet;
   private boolean isAligned;
 
+  private PipeTransferTabletReq() {
+    // do nothing
+  }
+
+  public PipeTransferTabletReq(Tablet tablet, ByteBuffer body) {
+    this.tablet = tablet;
+    this.version = IoTDBThriftConnectorRequestVersion.VERSION_1.getVersion();
+    this.type = PipeRequestType.TRANSFER_TABLET.getType();
+    this.body = body;
+  }
+
   public static PipeTransferTabletReq toTPipeTransferReq(Tablet tablet, boolean isAligned)
       throws IOException {
     final PipeTransferTabletReq tabletReq = new PipeTransferTabletReq();
@@ -71,6 +82,10 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
     }
 
     return tabletReq;
+  }
+
+  public Tablet getTablet() {
+    return tablet;
   }
 
   private static boolean checkSorted(Tablet tablet) {

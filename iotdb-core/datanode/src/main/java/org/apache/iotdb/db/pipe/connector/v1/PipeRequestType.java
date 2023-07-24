@@ -31,7 +31,7 @@ public enum PipeRequestType {
 
   TRANSFER_FILE_PIECE((short) 4),
   TRANSFER_FILE_SEAL((short) 5),
-  ;
+  TRANSFER_BATCH((short) 6);
 
   private final short type;
 

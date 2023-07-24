@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class PipeTransferInsertNodeReq extends TPipeTransferReq {
@@ -38,6 +39,13 @@ public class PipeTransferInsertNodeReq extends TPipeTransferReq {
 
   private PipeTransferInsertNodeReq() {
     // Do nothing
+  }
+
+  public PipeTransferInsertNodeReq(InsertNode insertNode, ByteBuffer body) {
+    this.insertNode = insertNode;
+    this.version = IoTDBThriftConnectorRequestVersion.VERSION_1.getVersion();
+    this.type = PipeRequestType.TRANSFER_INSERT_NODE.getType();
+    this.body = body;
   }
 
   public InsertNode getInsertNode() {
@@ -75,7 +83,6 @@ public class PipeTransferInsertNodeReq extends TPipeTransferReq {
       statement.setMeasurementSchemas(node.getMeasurementSchemas());
       return statement;
     }
-
     throw new UnsupportedOperationException(
         String.format(
             "unknown InsertNode type %s when constructing statement from insert node.",

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.connector.v1.reponse.PipeTransferFilePieceResp;
+import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferBatchReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferHandshakeReq;
@@ -43,6 +44,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.commons.lang.NotImplementedException;
@@ -53,9 +55,12 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_MODE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY;
 
 public class IoTDBThriftConnectorV1 implements PipeConnector {
@@ -66,14 +71,19 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
 
   private String ipAddress;
   private int port;
+  private String mode;
 
   private IoTDBThriftConnectorClient client;
+
+  private List<TPipeTransferReq> tPipeTransferReqs;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
     validator
         .validateRequiredAttribute(CONNECTOR_IOTDB_IP_KEY)
-        .validateRequiredAttribute(CONNECTOR_IOTDB_PORT_KEY);
+        .validateRequiredAttribute(CONNECTOR_IOTDB_PORT_KEY)
+        .validateAttributeValueRange(
+            CONNECTOR_IOTDB_MODE_KEY, true, new String[] {"single", "batch"});
   }
 
   @Override
@@ -81,6 +91,11 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
       throws Exception {
     this.ipAddress = parameters.getString(CONNECTOR_IOTDB_IP_KEY);
     this.port = parameters.getInt(CONNECTOR_IOTDB_PORT_KEY);
+    this.mode = parameters.getString(CONNECTOR_IOTDB_MODE_KEY);
+
+    if ("batch".equals(this.mode)) {
+      tPipeTransferReqs = new ArrayList<>();
+    }
   }
 
   @Override
@@ -124,9 +139,28 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
     // PipeProcessor can change the type of TabletInsertionEvent
     try {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-        doTransfer((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
+        PipeInsertNodeTabletInsertionEvent event =
+            (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
+        if ("batch".equals(mode)) {
+          tPipeTransferReqs.add(
+              PipeTransferInsertNodeReq.toTPipeTransferReq(event.getInsertNode()));
+          if (tPipeTransferReqs.size() == 10) {
+            doTransferInBatch();
+          }
+        } else {
+          doTransfer(event);
+        }
       } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-        doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
+        PipeRawTabletInsertionEvent event = (PipeRawTabletInsertionEvent) tabletInsertionEvent;
+        if ("batch".equals(mode)) {
+          tPipeTransferReqs.add(
+              PipeTransferTabletReq.toTPipeTransferReq(event.convertToTablet(), event.isAligned()));
+          if (tPipeTransferReqs.size() == 10) {
+            doTransferInBatch();
+          }
+        } else {
+          doTransfer(event);
+        }
       } else {
         throw new NotImplementedException(
             "IoTDBThriftConnectorV1 only support "
@@ -163,6 +197,17 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
   @Override
   public void transfer(Event event) {
     LOGGER.warn("IoTDBThriftConnectorV1 does not support transfer generic event: {}.", event);
+  }
+
+  private void doTransferInBatch() throws IOException, TException {
+    final TPipeTransferResp resp =
+        client.pipeTransfer(PipeTransferBatchReq.toTPipeTransferBatchReq(tPipeTransferReqs));
+
+    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(
+          String.format("Transfer in batch mode occurs error, result status %s", resp.status));
+    }
+    tPipeTransferReqs.clear();
   }
 
   private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
