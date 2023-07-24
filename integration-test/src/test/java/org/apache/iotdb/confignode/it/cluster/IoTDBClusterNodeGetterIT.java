@@ -25,7 +25,6 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
@@ -270,7 +269,6 @@ public class IoTDBClusterNodeGetterIT {
           new TEndPoint(dataNodeInfo.getRpcAddresss(), dataNodeInfo.getRpcPort() + 3));
       dataNodeLocation.setSchemaRegionConsensusEndPoint(
           new TEndPoint(dataNodeInfo.getRpcAddresss(), dataNodeInfo.getRpcPort() + 4));
-      dataNodeLocation.setBuildInfo(IoTDBConstant.BUILD_INFO);
 
       /* Test query one DataNodeInfo */
       TDataNodeConfigurationResp dataNodeConfigurationResp =
