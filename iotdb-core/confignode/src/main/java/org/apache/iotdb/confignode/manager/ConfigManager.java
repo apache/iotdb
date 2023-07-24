@@ -348,8 +348,10 @@ public class ConfigManager implements IManager {
               req.getDataNodeConfiguration().getLocation(),
               this);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return nodeManager.registerDataNode(
-            new RegisterDataNodePlan(req.getDataNodeConfiguration()));
+        RegisterDataNodePlan dataNodePlan =
+            new RegisterDataNodePlan(req.getDataNodeConfiguration());
+        dataNodePlan.setBuildInfo(req.getBuildInfo());
+        return nodeManager.registerDataNode(dataNodePlan);
       }
     }
 
@@ -375,7 +377,8 @@ public class ConfigManager implements IManager {
               req.getDataNodeConfiguration().getLocation(),
               this);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return nodeManager.updateDataNodeIfNecessary(req.getDataNodeConfiguration());
+        return nodeManager.updateDataNodeIfNecessary(
+            req.getDataNodeConfiguration(), req.getBuildInfo());
       }
     }
 
@@ -447,9 +450,12 @@ public class ConfigManager implements IManager {
               .sorted(Comparator.comparingInt(TDataNodeLocation::getDataNodeId))
               .collect(Collectors.toList());
       Map<Integer, String> nodeStatus = getLoadManager().getNodeStatusWithReason();
-      return new TShowClusterResp(status, configNodeLocations, dataNodeInfoLocations, nodeStatus);
+      Map<Integer, String> nodeBuildInfo = getNodeManager().getNodeBuildInfo();
+      return new TShowClusterResp(
+          status, configNodeLocations, dataNodeInfoLocations, nodeStatus, nodeBuildInfo);
     } else {
-      return new TShowClusterResp(status, new ArrayList<>(), new ArrayList<>(), new HashMap<>());
+      return new TShowClusterResp(
+          status, new ArrayList<>(), new ArrayList<>(), new HashMap<>(), new HashMap<>());
     }
   }
 

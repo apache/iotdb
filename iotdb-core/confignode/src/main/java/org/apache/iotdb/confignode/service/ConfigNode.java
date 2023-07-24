@@ -147,7 +147,8 @@ public class ConfigNode implements ConfigNodeMBean {
           TSStatus status =
               configManager
                   .getNodeManager()
-                  .updateConfigNodeIfNecessary(generateConfigNodeLocation(configNodeId));
+                  .updateConfigNodeIfNecessary(
+                      generateConfigNodeLocation(configNodeId), IoTDBConstant.BUILD_INFO);
           if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             break;
           } else {
@@ -174,7 +175,8 @@ public class ConfigNode implements ConfigNodeMBean {
         // Seed-ConfigNode should apply itself when first start
         configManager
             .getNodeManager()
-            .applyConfigNode(generateConfigNodeLocation(SEED_CONFIG_NODE_ID));
+            .applyConfigNode(
+                generateConfigNodeLocation(SEED_CONFIG_NODE_ID), IoTDBConstant.BUILD_INFO);
         setUpMetricService();
         // Notice: We always set up Seed-ConfigNode's RPC service lastly to ensure
         // that the external service is not provided until Seed-ConfigNode is fully initialized
@@ -292,7 +294,8 @@ public class ConfigNode implements ConfigNodeMBean {
     TConfigNodeRegisterReq req =
         new TConfigNodeRegisterReq(
             configManager.getClusterParameters(),
-            generateConfigNodeLocation(INIT_NON_SEED_CONFIG_NODE_ID));
+            generateConfigNodeLocation(INIT_NON_SEED_CONFIG_NODE_ID),
+            IoTDBConstant.BUILD_INFO);
 
     TEndPoint targetConfigNode = CONF.getTargetConfigNode();
     if (targetConfigNode == null) {
@@ -373,13 +376,10 @@ public class ConfigNode implements ConfigNodeMBean {
   }
 
   private TConfigNodeLocation generateConfigNodeLocation(int configNodeId) {
-    TConfigNodeLocation configNodeLocation =
-        new TConfigNodeLocation(
-            configNodeId,
-            new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
-            new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()));
-    configNodeLocation.setBuildInfo(IoTDBConstant.BUILD_INFO);
-    return configNodeLocation;
+    return new TConfigNodeLocation(
+        configNodeId,
+        new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
+        new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()));
   }
 
   private void startUpSleep(String errorMessage) throws StartupException {

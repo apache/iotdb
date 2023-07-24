@@ -42,6 +42,8 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
 
   private TConfigNodeLocation tConfigNodeLocation;
 
+  private String buildInfo;
+
   public AddConfigNodeProcedure() {
     super();
   }
@@ -49,6 +51,11 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
   public AddConfigNodeProcedure(TConfigNodeLocation tConfigNodeLocation) {
     super();
     this.tConfigNodeLocation = tConfigNodeLocation;
+    buildInfo = "";
+  }
+
+  public void setBuildInfo(String buildInfo) {
+    this.buildInfo = buildInfo;
   }
 
   @Override
@@ -75,7 +82,7 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
           break;
         case REGISTER_SUCCESS:
           env.notifyRegisterSuccess(tConfigNodeLocation);
-          env.applyConfigNode(tConfigNodeLocation);
+          env.applyConfigNode(tConfigNodeLocation, buildInfo);
           env.broadCastTheLatestConfigNodeGroup();
           LOG.info("The ConfigNode: {} is successfully added to the cluster", tConfigNodeLocation);
           return Flow.NO_MORE_STATE;

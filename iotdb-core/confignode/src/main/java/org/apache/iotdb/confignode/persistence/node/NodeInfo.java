@@ -90,6 +90,7 @@ public class NodeInfo implements SnapshotProcessor {
   private final AtomicInteger nextNodeId = new AtomicInteger(-1);
   private final Map<Integer, TDataNodeConfiguration> registeredDataNodes;
 
+  private final Map<Integer, String> nodeBuildInfo;
   private static final String SNAPSHOT_FILENAME = "node_info.bin";
 
   public NodeInfo() {
@@ -98,6 +99,7 @@ public class NodeInfo implements SnapshotProcessor {
 
     this.dataNodeInfoReadWriteLock = new ReentrantReadWriteLock();
     this.registeredDataNodes = new ConcurrentHashMap<>();
+    this.nodeBuildInfo = new ConcurrentHashMap<>();
   }
 
   /**
@@ -121,6 +123,7 @@ public class NodeInfo implements SnapshotProcessor {
         }
       }
       registeredDataNodes.put(info.getLocation().getDataNodeId(), info);
+      nodeBuildInfo.put(info.getLocation().getDataNodeId(), registerDataNodePlan.getBuildInfo());
 
       result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       if (nextNodeId.get() < MINIMUM_DATANODE) {
@@ -178,6 +181,8 @@ public class NodeInfo implements SnapshotProcessor {
     try {
       TDataNodeConfiguration newConfiguration = updateDataNodePlan.getDataNodeConfiguration();
       registeredDataNodes.replace(newConfiguration.getLocation().getDataNodeId(), newConfiguration);
+      nodeBuildInfo.put(
+          newConfiguration.getLocation().getDataNodeId(), updateDataNodePlan.getBuildInfo());
     } finally {
       dataNodeInfoReadWriteLock.writeLock().unlock();
     }
@@ -301,6 +306,9 @@ public class NodeInfo implements SnapshotProcessor {
       registeredConfigNodes.put(
           applyConfigNodePlan.getConfigNodeLocation().getConfigNodeId(),
           applyConfigNodePlan.getConfigNodeLocation());
+      nodeBuildInfo.put(
+          applyConfigNodePlan.getConfigNodeLocation().getConfigNodeId(),
+          applyConfigNodePlan.getBuildInfo());
       SystemPropertiesUtils.storeConfigNodeList(new ArrayList<>(registeredConfigNodes.values()));
       LOGGER.info(
           "Successfully apply ConfigNode: {}. Current ConfigNodeGroup: {}",
@@ -357,6 +365,7 @@ public class NodeInfo implements SnapshotProcessor {
     try {
       TConfigNodeLocation newLocation = updateConfigNodePlan.getConfigNodeLocation();
       registeredConfigNodes.replace(newLocation.getConfigNodeId(), newLocation);
+      nodeBuildInfo.put(newLocation.getConfigNodeId(), updateConfigNodePlan.getBuildInfo());
     } finally {
       configNodeInfoReadWriteLock.writeLock().unlock();
     }
@@ -390,6 +399,11 @@ public class NodeInfo implements SnapshotProcessor {
       configNodeInfoReadWriteLock.readLock().unlock();
     }
     return result;
+  }
+
+  /** @return all nodes buildInfo */
+  public Map<Integer, String> getNodeBuildInfo() {
+    return nodeBuildInfo;
   }
 
   /** @return The specified registered ConfigNode. */

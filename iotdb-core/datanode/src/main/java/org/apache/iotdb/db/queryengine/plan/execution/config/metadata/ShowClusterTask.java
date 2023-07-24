@@ -93,7 +93,7 @@ public class ShowClusterTask implements IConfigTask {
                     clusterNodeInfos.getNodeStatus().get(e.getConfigNodeId()),
                     e.getInternalEndPoint().getIp(),
                     e.getInternalEndPoint().getPort(),
-                    e.getBuildInfo()));
+                    clusterNodeInfos.getNodeBuildInfo().get(e.getConfigNodeId())));
 
     clusterNodeInfos
         .getDataNodeList()
@@ -106,7 +106,7 @@ public class ShowClusterTask implements IConfigTask {
                     clusterNodeInfos.getNodeStatus().get(e.getDataNodeId()),
                     e.getInternalEndPoint().getIp(),
                     e.getInternalEndPoint().getPort(),
-                    e.getBuildInfo()));
+                    clusterNodeInfos.getNodeBuildInfo().get(e.getDataNodeId())));
 
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowClusterHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));

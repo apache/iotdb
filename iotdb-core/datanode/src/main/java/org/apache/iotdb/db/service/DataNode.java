@@ -361,6 +361,7 @@ public class DataNode implements DataNodeMBean {
     TDataNodeRegisterReq req = new TDataNodeRegisterReq();
     req.setDataNodeConfiguration(generateDataNodeConfiguration());
     req.setClusterName(config.getClusterName());
+    req.setBuildInfo(IoTDBConstant.BUILD_INFO);
     TDataNodeRegisterResp dataNodeRegisterResp = null;
     while (retry > 0) {
       try (ConfigNodeClient configNodeClient =
@@ -605,7 +606,6 @@ public class DataNode implements DataNodeMBean {
         new TEndPoint(config.getInternalAddress(), config.getDataRegionConsensusPort()));
     location.setSchemaRegionConsensusEndPoint(
         new TEndPoint(config.getInternalAddress(), config.getSchemaRegionConsensusPort()));
-    location.setBuildInfo(IoTDBConstant.BUILD_INFO);
     return location;
   }
 

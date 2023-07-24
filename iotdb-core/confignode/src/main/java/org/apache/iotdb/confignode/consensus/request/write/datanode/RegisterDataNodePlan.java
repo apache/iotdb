@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -33,6 +34,8 @@ public class RegisterDataNodePlan extends ConfigPhysicalPlan {
 
   private TDataNodeConfiguration dataNodeConfiguration;
 
+  private String buildInfo;
+
   public RegisterDataNodePlan() {
     super(ConfigPhysicalPlanType.RegisterDataNode);
   }
@@ -40,21 +43,32 @@ public class RegisterDataNodePlan extends ConfigPhysicalPlan {
   public RegisterDataNodePlan(TDataNodeConfiguration dataNodeConfiguration) {
     this();
     this.dataNodeConfiguration = dataNodeConfiguration;
+    this.buildInfo = "";
   }
 
   public TDataNodeConfiguration getDataNodeConfiguration() {
     return dataNodeConfiguration;
   }
 
+  public void setBuildInfo(String buildInfo) {
+    this.buildInfo = buildInfo;
+  }
+
+  public String getBuildInfo() {
+    return buildInfo;
+  }
+
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     ThriftCommonsSerDeUtils.serializeTDataNodeInfo(dataNodeConfiguration, stream);
+    ReadWriteIOUtils.write(buildInfo, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
     dataNodeConfiguration = ThriftCommonsSerDeUtils.deserializeTDataNodeInfo(buffer);
+    this.buildInfo = ReadWriteIOUtils.readString(buffer);
   }
 
   @Override
@@ -66,11 +80,12 @@ public class RegisterDataNodePlan extends ConfigPhysicalPlan {
       return false;
     }
     RegisterDataNodePlan that = (RegisterDataNodePlan) o;
-    return dataNodeConfiguration.equals(that.dataNodeConfiguration);
+    return dataNodeConfiguration.equals(that.dataNodeConfiguration)
+        && buildInfo.equals(that.buildInfo);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(dataNodeConfiguration);
+    return Objects.hash(dataNodeConfiguration) + Objects.hash(buildInfo);
   }
 }

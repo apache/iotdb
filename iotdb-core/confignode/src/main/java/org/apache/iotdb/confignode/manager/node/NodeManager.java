@@ -265,12 +265,13 @@ public class NodeManager {
   }
 
   public TDataNodeRestartResp updateDataNodeIfNecessary(
-      TDataNodeConfiguration dataNodeConfiguration) {
+      TDataNodeConfiguration dataNodeConfiguration, String buildInfo) {
     TDataNodeConfiguration recordConfiguration =
         getRegisteredDataNode(dataNodeConfiguration.getLocation().getDataNodeId());
     if (!recordConfiguration.equals(dataNodeConfiguration)) {
       // Update DataNodeConfiguration when modified during restart
       UpdateDataNodePlan updateDataNodePlan = new UpdateDataNodePlan(dataNodeConfiguration);
+      updateDataNodePlan.setBuildInfo(buildInfo);
       getConsensusManager().write(updateDataNodePlan);
     }
 
@@ -340,12 +341,14 @@ public class NodeManager {
         .setConfigNodeId(nodeId);
   }
 
-  public TSStatus updateConfigNodeIfNecessary(TConfigNodeLocation configNodeLocation) {
+  public TSStatus updateConfigNodeIfNecessary(
+      TConfigNodeLocation configNodeLocation, String buildInfo) {
     TConfigNodeLocation recordConfigNodeLocation =
         nodeInfo.getRegisteredConfigNode(configNodeLocation.getConfigNodeId());
     if (!recordConfigNodeLocation.equals(configNodeLocation)) {
       // Update configNodeLocation when modified during restart
       UpdateConfigNodePlan updateConfigNodePlan = new UpdateConfigNodePlan(configNodeLocation);
+      updateConfigNodePlan.setBuildInfo(buildInfo);
       ConsensusWriteResponse result = getConsensusManager().write(updateConfigNodePlan);
       return result.getStatus();
     }
@@ -470,6 +473,10 @@ public class NodeManager {
     return nodeInfo.getRegisteredConfigNodes();
   }
 
+  public Map<Integer, String> getNodeBuildInfo() {
+    return nodeInfo.getNodeBuildInfo();
+  }
+
   public List<TConfigNodeInfo> getRegisteredConfigNodeInfoList() {
     List<TConfigNodeInfo> configNodeInfoList = new ArrayList<>();
     List<TConfigNodeLocation> registeredConfigNodes = this.getRegisteredConfigNodes();
@@ -498,8 +505,9 @@ public class NodeManager {
    *
    * @param configNodeLocation The new ConfigNode
    */
-  public void applyConfigNode(TConfigNodeLocation configNodeLocation) {
+  public void applyConfigNode(TConfigNodeLocation configNodeLocation, String buildInfo) {
     ApplyConfigNodePlan applyConfigNodePlan = new ApplyConfigNodePlan(configNodeLocation);
+    applyConfigNodePlan.setBuildInfo(buildInfo);
     getConsensusManager().write(applyConfigNodePlan);
   }
 

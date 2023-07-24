@@ -325,8 +325,8 @@ public class ConfigNodeProcedureEnv {
    *
    * @param configNodeLocation The new ConfigNode
    */
-  public void applyConfigNode(TConfigNodeLocation configNodeLocation) {
-    configManager.getNodeManager().applyConfigNode(configNodeLocation);
+  public void applyConfigNode(TConfigNodeLocation configNodeLocation, String buildInfo) {
+    configManager.getNodeManager().applyConfigNode(configNodeLocation, buildInfo);
   }
 
   /**
