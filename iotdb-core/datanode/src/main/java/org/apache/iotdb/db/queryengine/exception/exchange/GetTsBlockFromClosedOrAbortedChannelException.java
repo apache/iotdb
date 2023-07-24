@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,23 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.concurrent;
+package org.apache.iotdb.db.queryengine.exception.exchange;
 
-public enum DataNodeThreadModule {
-  QUERY,
-  MPP,
-  COMPACTION,
-  WAL,
-  FLUSH,
-  SCHEMA_ENGINE,
-  CLIENT_SERVICE,
-  IOT_CONSENSUS,
-  RATIS_CONSENSUS,
-  COMPUTE,
-  SYNC,
-  JVM,
-  LOG_BACK,
-  METRICS,
-  OTHER,
-  UNKNOWN
+public class GetTsBlockFromClosedOrAbortedChannelException extends IllegalStateException {
+  public GetTsBlockFromClosedOrAbortedChannelException(String s) {
+    super(s);
+  }
 }

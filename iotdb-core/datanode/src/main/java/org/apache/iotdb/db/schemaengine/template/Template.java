@@ -55,7 +55,8 @@ public class Template implements Serializable {
       List<String> measurements,
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
-      List<CompressionType> compressors) {
+      List<CompressionType> compressors)
+      throws IllegalPathException {
     this(name, measurements, dataTypes, encodings, compressors, false);
   }
 
@@ -65,11 +66,15 @@ public class Template implements Serializable {
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
       List<CompressionType> compressors,
-      boolean isAligned) {
+      boolean isAligned)
+      throws IllegalPathException {
     this.isDirectAligned = isAligned;
     this.schemaMap = new ConcurrentHashMap<>();
     this.name = name;
     for (int i = 0; i < measurements.size(); i++) {
+      if (schemaMap.containsKey(measurements.get(i))) {
+        throw new IllegalPathException("Path duplicated: " + measurements.get(i));
+      }
       IMeasurementSchema schema =
           new MeasurementSchema(
               measurements.get(i), dataTypes.get(i), encodings.get(i), compressors.get(i));

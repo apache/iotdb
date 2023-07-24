@@ -23,11 +23,11 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.db.schemaengine.SchemaEngineMode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.factory.CacheMNodeFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.ISegment;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.RecordUtils;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.SchemaFileConfig;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.WrappedSegment;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -42,7 +42,8 @@ import java.nio.ByteBuffer;
 
 public class WrappedSegmentTest {
 
-  private static final IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
+  private static final IMNodeFactory<ICachedMNode> nodeFactory =
+      MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
 
   @Before
   public void setUp() {
@@ -61,6 +62,21 @@ public class WrappedSegmentTest {
   }
 
   @Test
+  public void testUpdateAlias() throws MetadataException {
+    WrappedSegment sf = new WrappedSegment(500);
+    ICachedMNode node = getMeasurementNode(null, "s1", null);
+    sf.insertRecord("s1", RecordUtils.node2Buffer(node));
+    node.getAsMeasurementMNode().setAlias("alias1");
+    sf.updateRecord("s1", RecordUtils.node2Buffer(node));
+    node.getAsMeasurementMNode().setAlias("alias2");
+    sf.updateRecord("s1", RecordUtils.node2Buffer(node));
+    Assert.assertEquals(null, sf.getRecordByAlias("alias1"));
+    ICachedMNode node1 = sf.getRecordByAlias("alias2");
+    Assert.assertTrue(node1.isMeasurement());
+    Assert.assertEquals("alias2", node1.getAsMeasurementMNode().getAlias());
+  }
+
+  @Test
   public void flatTreeInsert() throws MetadataException {
     WrappedSegment sf = new WrappedSegment(500);
     ICachedMNode rNode = virtualFlatMTree(10);
@@ -71,7 +87,7 @@ public class WrappedSegmentTest {
 
     ByteBuffer recMid01 = sf.getRecord("mid1");
     Assert.assertEquals(
-        "[measurementNode, alias: mid1als, type: FLOAT, encoding: PLAIN, compressor: SNAPPY]",
+        "[measurementNode, alias: mid1als, type: FLOAT, encoding: PLAIN, compressor: LZ4]",
         RecordUtils.buffer2String(recMid01));
 
     int resInsertNode = sf.insertRecord(rNode.getName(), RecordUtils.node2Buffer(rNode));
@@ -85,7 +101,7 @@ public class WrappedSegmentTest {
     System.out.println(nsf);
     ByteBuffer nrec = nsf.getRecord("mid1");
     Assert.assertEquals(
-        "[measurementNode, alias: mid1als, type: FLOAT, encoding: PLAIN, compressor: SNAPPY]",
+        "[measurementNode, alias: mid1als, type: FLOAT, encoding: PLAIN, compressor: LZ4]",
         RecordUtils.buffer2String(nsf.getRecord("mid1")));
     Assert.assertEquals(
         "[entityNode, not aligned, not using template.]",

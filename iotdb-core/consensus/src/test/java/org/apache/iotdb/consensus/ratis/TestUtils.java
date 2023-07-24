@@ -19,23 +19,31 @@
 
 package org.apache.iotdb.consensus.ratis;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.ConsensusGroup;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
+import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.RatisConfig;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 
 import org.apache.ratis.thirdparty.com.google.common.base.Preconditions;
 import org.apache.ratis.util.FileUtils;
+import org.apache.ratis.util.JavaUtils;
+import org.apache.ratis.util.TimeDuration;
+import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,11 +56,16 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
 public class TestUtils {
+  private static final Logger logger = LoggerFactory.getLogger(TestUtils.class);
+
   public static class TestDataSet implements DataSet {
     private int number;
 
@@ -99,10 +112,8 @@ public class TestUtils {
   }
 
   public static class IntegerCounter implements IStateMachine, IStateMachine.EventApi {
-    private AtomicInteger integer;
+    protected AtomicInteger integer;
     private final Logger logger = LoggerFactory.getLogger(IntegerCounter.class);
-    private TEndPoint leaderEndpoint;
-    private int leaderId;
     private List<Peer> configuration;
 
     @Override
@@ -164,7 +175,6 @@ public class TestUtils {
 
     @Override
     public void notifyLeaderChanged(ConsensusGroupId groupId, int newLeaderId) {
-      this.leaderId = newLeaderId;
       System.out.println("---------newLeader-----------");
       System.out.println(groupId);
       System.out.println(newLeaderId);
@@ -183,6 +193,10 @@ public class TestUtils {
       System.out.println("----------------------");
     }
 
+    public void reset() {
+      this.integer.set(0);
+    }
+
     @TestOnly
     public static synchronized String ensureSnapshotFileName(File snapshotDir, String metadata) {
       File dir = new File(snapshotDir + File.separator + metadata);
@@ -190,10 +204,6 @@ public class TestUtils {
         dir.mkdirs();
       }
       return dir.getPath() + File.separator + "snapshot";
-    }
-
-    public TEndPoint getLeaderEndpoint() {
-      return leaderEndpoint;
     }
 
     public List<Peer> getConfiguration() {
@@ -211,6 +221,8 @@ public class TestUtils {
     private final RatisConfig config;
     private final List<RatisConsensus> servers;
     private final ConsensusGroup group;
+    private Supplier<IStateMachine> smProvider;
+    private final AtomicBoolean isStopped = new AtomicBoolean(false);
 
     private MiniCluster(
         ConsensusGroupId gid,
@@ -221,6 +233,7 @@ public class TestUtils {
       this.gid = gid;
       this.replicas = replicas;
       this.config = config;
+      this.smProvider = smProvider;
       Preconditions.checkArgument(
           replicas % 2 == 1, "Test Env Raft Group should consists singular peers");
 
@@ -255,6 +268,7 @@ public class TestUtils {
                             .setThisNode(peers.get(i).getEndpoint())
                             .setRatisConfig(config)
                             .setStorageDir(this.peerStorage.get(i).getAbsolutePath())
+                            .setConsensusGroupType(TConsensusGroupType.DataRegion)
                             .build(),
                         groupId -> stateMachines.get(fi))
                     .orElseThrow(
@@ -270,12 +284,14 @@ public class TestUtils {
       for (RatisConsensus server : servers) {
         server.start();
       }
+      isStopped.set(false);
     }
 
     void stop() throws IOException {
       for (RatisConsensus server : servers) {
         server.stop();
       }
+      isStopped.set(true);
     }
 
     void cleanUp() throws IOException {
@@ -283,13 +299,20 @@ public class TestUtils {
       for (File storage : peerStorage) {
         FileUtils.deleteFully(storage);
       }
+      stateMachines.clear();
     }
 
     void restart() throws IOException {
-      stop();
+      logger.info("start restarting the mini cluster");
+      isStopped.set(false);
       servers.clear();
+      stateMachines.clear();
+      for (int i = 0; i < replicas; i++) {
+        stateMachines.add(smProvider.get());
+      }
       makeServers();
       start();
+      logger.info("end restarting the mini cluster");
     }
 
     List<RatisConsensus> getServers() {
@@ -315,13 +338,30 @@ public class TestUtils {
     ConsensusGroup getGroup() {
       return group;
     }
+
+    void waitUntilActiveLeader() throws InterruptedException {
+      JavaUtils.attemptUntilTrue(
+          () -> getServer(0).getLeader(gid) != null,
+          100,
+          TimeDuration.valueOf(100, TimeUnit.MILLISECONDS),
+          "wait leader",
+          null);
+    }
+
+    void resetSMProviderBeforeRestart(Supplier<IStateMachine> smProvider) {
+      Preconditions.checkArgument(
+          isStopped.get(), "call resetSMProviderBeforeRestart() before restart");
+      this.smProvider = smProvider;
+    }
   }
 
   static class MiniClusterFactory {
     private int replicas = 3;
     private ConsensusGroupId gid = new DataRegionId(1);
     private Function<Integer, File> peerStorageProvider =
-        peerId -> new File("target" + java.io.File.separator + peerId);
+        peerId ->
+            new File(
+                "target" + java.io.File.separator + UUID.randomUUID() + File.separator + peerId);
 
     private Supplier<IStateMachine> smProvider = TestUtils.IntegerCounter::new;
     private RatisConfig ratisConfig;
@@ -331,8 +371,35 @@ public class TestUtils {
       return this;
     }
 
+    MiniClusterFactory setSMProvider(Supplier<IStateMachine> smProvider) {
+      this.smProvider = smProvider;
+      return this;
+    }
+
     MiniCluster create() {
       return new MiniCluster(gid, replicas, peerStorageProvider, smProvider, ratisConfig);
     }
+  }
+
+  static void write(IConsensus consensus, ConsensusGroupId gid, int count) {
+    for (int i = 0; i < count; i++) {
+      final ByteBufferConsensusRequest increment = TestRequest.incrRequest();
+      final ConsensusWriteResponse response = consensus.write(gid, increment);
+      Assert.assertEquals(200, response.getStatus().getCode());
+    }
+  }
+
+  static int read(IConsensus consensus, ConsensusGroupId gid) throws ConsensusException {
+    final ConsensusReadResponse response = doRead(consensus, gid);
+    if (!response.isSuccess()) {
+      throw response.getException();
+    }
+    final TestUtils.TestDataSet result = (TestUtils.TestDataSet) response.getDataset();
+    return result.getNumber();
+  }
+
+  static ConsensusReadResponse doRead(IConsensus consensus, ConsensusGroupId gid) {
+    final ByteBufferConsensusRequest getReq = TestUtils.TestRequest.getRequest();
+    return consensus.read(gid, getReq);
   }
 }

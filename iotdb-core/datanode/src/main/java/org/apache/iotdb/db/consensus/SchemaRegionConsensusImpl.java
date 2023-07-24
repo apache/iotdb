@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.consensus;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -62,6 +63,7 @@ public class SchemaRegionConsensusImpl {
                       .setThisNode(
                           new TEndPoint(
                               conf.getInternalAddress(), conf.getSchemaRegionConsensusPort()))
+                      .setConsensusGroupType(TConsensusGroupType.SchemaRegion)
                       .setRatisConfig(
                           RatisConfig.newBuilder()
                               .setSnapshot(

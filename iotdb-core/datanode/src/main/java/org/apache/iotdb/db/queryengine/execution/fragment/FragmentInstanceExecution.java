@@ -46,10 +46,10 @@ public class FragmentInstanceExecution {
   private final FragmentInstanceId instanceId;
   private final FragmentInstanceContext context;
 
-  // it will be set to null while this FI is FINISHED
+  // It will be set to null while this FI is FINISHED
   private List<IDriver> drivers;
 
-  // it will be set to null while this FI is FINISHED
+  // It will be set to null while this FI is FINISHED
   private ISink sink;
 
   private final FragmentInstanceStateMachine stateMachine;

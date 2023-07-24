@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.it.env.cluster;
 
 import org.apache.iotdb.itbase.env.JVMConfig;
@@ -66,7 +67,7 @@ public class MppJVMConfig implements JVMConfig {
   private void validate() {
     if (initHeapSize > maxHeapSize) {
       throw new IllegalArgumentException(
-          "the initHeapSize "
+          "The initHeapSize "
               + initHeapSize
               + " must be not larger than the maxHeapSize "
               + maxHeapSize);

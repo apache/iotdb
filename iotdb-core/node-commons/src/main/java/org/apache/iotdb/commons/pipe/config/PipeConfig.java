@@ -47,6 +47,12 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeWALEnableHardLink();
   }
 
+  /////////////////////////////// Tablet ///////////////////////////////
+
+  public int getPipeDataStructureTabletRowSize() {
+    return COMMON_CONFIG.getPipeDataStructureTabletRowSize();
+  }
+
   /////////////////////////////// Subtask Executor ///////////////////////////////
 
   public int getPipeSubtaskExecutorMaxThreadNum() {
@@ -85,6 +91,10 @@ public class PipeConfig {
 
   /////////////////////////////// Connector ///////////////////////////////
 
+  public long getPipeConnectorTimeoutMs() {
+    return COMMON_CONFIG.getPipeConnectorTimeoutMs();
+  }
+
   public int getPipeConnectorReadFileBufferSize() {
     return COMMON_CONFIG.getPipeConnectorReadFileBufferSize();
   }
@@ -113,6 +123,14 @@ public class PipeConfig {
 
   public long getPipeMetaSyncerSyncIntervalMinutes() {
     return COMMON_CONFIG.getPipeMetaSyncerSyncIntervalMinutes();
+  }
+
+  public long getPipeMetaSyncerAutoRestartPipeCheckIntervalRound() {
+    return COMMON_CONFIG.getPipeMetaSyncerAutoRestartPipeCheckIntervalRound();
+  }
+
+  public boolean getPipeAutoRestartEnabled() {
+    return COMMON_CONFIG.getPipeAutoRestartEnabled();
   }
 
   /////////////////////////////// Utils ///////////////////////////////

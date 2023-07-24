@@ -90,7 +90,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
-/** NodeManager manages cluster node addition and removal requests */
+/** {@link NodeManager} manages cluster node addition and removal requests. */
 public class NodeManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(NodeManager.class);
@@ -110,7 +110,7 @@ public class NodeManager {
   }
 
   /**
-   * Get system configurations
+   * Get system configurations.
    *
    * @return ConfigurationResp. The TSStatus will be set to SUCCESS_STATUS.
    */
@@ -209,15 +209,11 @@ public class NodeManager {
   }
 
   private TRuntimeConfiguration getRuntimeConfiguration() {
-    // getPipeTaskCoordinator.lock() should be called outside the getPipePluginCoordinator().lock()
-    // to avoid deadlock
-    getPipeManager().getPipeTaskCoordinator().lock();
     getPipeManager().getPipePluginCoordinator().lock();
     getTriggerManager().getTriggerInfo().acquireTriggerTableLock();
     getUDFManager().getUdfInfo().acquireUDFTableLock();
-
     try {
-      TRuntimeConfiguration runtimeConfiguration = new TRuntimeConfiguration();
+      final TRuntimeConfiguration runtimeConfiguration = new TRuntimeConfiguration();
       runtimeConfiguration.setTemplateInfo(getClusterSchemaManager().getAllTemplateSetInfo());
       runtimeConfiguration.setAllTriggerInformation(
           getTriggerManager().getTriggerTable(false).getAllTriggerInformation());
@@ -232,23 +228,18 @@ public class NodeManager {
       getTriggerManager().getTriggerInfo().releaseTriggerTableLock();
       getUDFManager().getUdfInfo().releaseUDFTableLock();
       getPipeManager().getPipePluginCoordinator().unlock();
-      // getPipeTaskCoordinator.unlock() should be called outside the
-      // getPipePluginCoordinator().unlock()
-      // to avoid deadlock
-      getPipeManager().getPipeTaskCoordinator().unlock();
     }
   }
 
   /**
-   * Register DataNode
+   * Register DataNode.
    *
    * @param registerDataNodePlan RegisterDataNodeReq
-   * @return DataNodeConfigurationDataSet. The TSStatus will be set to SUCCESS_STATUS when register
-   *     success, and DATANODE_ALREADY_REGISTERED when the DataNode is already exist.
+   * @return DataNodeConfigurationDataSet. The {@link TSStatus} will be set to {@link
+   *     TSStatusCode#SUCCESS_STATUS} when register success.
    */
   public DataSet registerDataNode(RegisterDataNodePlan registerDataNodePlan) {
     int dataNodeId = nodeInfo.generateNextNodeId();
-    DataNodeRegisterResp resp = new DataNodeRegisterResp();
 
     // Register new DataNode
     registerDataNodePlan.getDataNodeConfiguration().getLocation().setDataNodeId(dataNodeId);
@@ -260,6 +251,8 @@ public class NodeManager {
 
     // Adjust the maximum RegionGroup number of each StorageGroup
     getClusterSchemaManager().adjustMaxRegionGroupNum();
+
+    DataNodeRegisterResp resp = new DataNodeRegisterResp();
 
     resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_REGISTRATION);
     resp.setConfigNodeList(getRegisteredConfigNodes());
@@ -287,7 +280,7 @@ public class NodeManager {
   }
 
   /**
-   * Remove DataNodes
+   * Remove DataNodes.
    *
    * @param removeDataNodePlan removeDataNodePlan
    * @return DataNodeToStatusResp, The TSStatus will be SUCCEED_STATUS if the request is accepted,
@@ -351,7 +344,7 @@ public class NodeManager {
   }
 
   /**
-   * Get TDataNodeConfiguration
+   * Get TDataNodeConfiguration.
    *
    * @param req GetDataNodeConfigurationPlan
    * @return The specific DataNode's configuration or all DataNodes' configuration if dataNodeId in
@@ -362,7 +355,7 @@ public class NodeManager {
   }
 
   /**
-   * Only leader use this interface
+   * Only leader use this interface.
    *
    * @return The number of registered DataNodes
    */
@@ -371,7 +364,7 @@ public class NodeManager {
   }
 
   /**
-   * Only leader use this interface
+   * Only leader use this interface.
    *
    * @return All registered DataNodes
    */
@@ -380,7 +373,7 @@ public class NodeManager {
   }
 
   /**
-   * Only leader use this interface
+   * Only leader use this interface.
    *
    * <p>Notice: The result will be an empty TDataNodeConfiguration if the specified DataNode doesn't
    * register
@@ -492,7 +485,7 @@ public class NodeManager {
   }
 
   /**
-   * Only leader use this interface, record the new ConfigNode's information
+   * Only leader use this interface, record the new ConfigNode's information.
    *
    * @param configNodeLocation The new ConfigNode
    */
@@ -502,7 +495,7 @@ public class NodeManager {
   }
 
   /**
-   * Only leader use this interface, check the ConfigNode before remove it
+   * Only leader use this interface, check the ConfigNode before remove it.
    *
    * @param removeConfigNodePlan RemoveConfigNodePlan
    */
@@ -632,7 +625,7 @@ public class NodeManager {
   }
 
   /**
-   * Kill read on DataNode
+   * Kill read on DataNode.
    *
    * @param queryId the id of specific read need to be killed, it will be NULL if kill all queries
    * @param dataNodeId the DataNode obtains target read, -1 means we will kill all queries on all
@@ -670,7 +663,7 @@ public class NodeManager {
   }
 
   /**
-   * Filter ConfigNodes through the specified NodeStatus
+   * Filter ConfigNodes through the specified NodeStatus.
    *
    * @param status The specified NodeStatus
    * @return Filtered ConfigNodes with the specified NodeStatus
@@ -681,7 +674,7 @@ public class NodeManager {
   }
 
   /**
-   * Filter DataNodes through the specified NodeStatus
+   * Filter DataNodes through the specified NodeStatus.
    *
    * @param status The specified NodeStatus
    * @return Filtered DataNodes with the specified NodeStatus
@@ -691,7 +684,7 @@ public class NodeManager {
   }
 
   /**
-   * Get the DataNodeLocation of the DataNode which has the lowest loadScore
+   * Get the DataNodeLocation of the DataNode which has the lowest loadScore.
    *
    * @return TDataNodeLocation with the lowest loadScore
    */
@@ -704,7 +697,7 @@ public class NodeManager {
   }
 
   /**
-   * Get the DataNodeLocation which has the lowest loadScore within input
+   * Get the DataNodeLocation which has the lowest loadScore within input.
    *
    * @return TDataNodeLocation with the lowest loadScore
    */

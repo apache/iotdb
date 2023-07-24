@@ -63,6 +63,13 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
 
   public int compareInnerSpaceCompactionTask(
       InnerSpaceCompactionTask o1, InnerSpaceCompactionTask o2) {
+
+    // if max mods file size of o1 and o2 are different
+    // we prefer to execute task with greater mods file
+    if (o1.getMaxModsFileSize() != o2.getMaxModsFileSize()) {
+      return o2.getMaxModsFileSize() > o1.getMaxModsFileSize() ? 1 : -1;
+    }
+
     // if the sum of compaction count of the selected files are different
     // we prefer to execute task with smaller compaction count
     // this can reduce write amplification

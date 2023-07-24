@@ -39,6 +39,7 @@ keyWords
     | ALIGNED
     | ALL
     | ALTER
+    | AND
     | ANY
     | APPEND
     | AS
@@ -47,10 +48,12 @@ keyWords
     | AUTO
     | BEFORE
     | BEGIN
+    | BETWEEN
     | BLOCKED
     | BOUNDARY
     | BY
     | CACHE
+    | CASE
     | CAST
     | CHILD
     | CLEAR
@@ -59,13 +62,17 @@ keyWords
     | CONDITION
     | CONFIGNODES
     | CONFIGURATION
+    | CONNECTOR
+    | CONTAIN
+    | CONTAINS
     | CONTINUOUS
     | COUNT
-    | CONTAIN
     | CQ
     | CQS
     | CREATE
     | DATA
+    | DATA_REPLICATION_FACTOR
+    | DATA_REGION_GROUP_NUM
     | DATABASE
     | DATABASES
     | DATANODEID
@@ -75,10 +82,10 @@ keyWords
     | DELETE
     | DESC
     | DESCRIBE
+    | DETAILS
     | DEVICE
     | DEVICEID
     | DEVICES
-    | DETAILS
     | DISABLE
     | DISCARD
     | DROP
@@ -88,8 +95,11 @@ keyWords
     | ENDTIME
     | EVERY
     | EXPLAIN
+    | EXTRACTOR
+    | FALSE
     | FILL
     | FILE
+    | FIRST
     | FLUSH
     | FOR
     | FROM
@@ -100,10 +110,12 @@ keyWords
     | GRANT
     | GROUP
     | HAVING
+    | IN
     | INDEX
     | INFO
     | INSERT
     | INTO
+    | IS
     | KILL
     | LABEL
     | LAST
@@ -119,15 +131,22 @@ keyWords
     | LOCK
     | MERGE
     | METADATA
+    | MIGRATE
     | MODEL
     | MODELS
+    | NAN
+    | NODEID
     | NODES
     | NONE
+    | NOT
     | NOW
+    | NULL
+    | NULLS
     | OF
     | OFF
     | OFFSET
     | ON
+    | OR
     | ORDER
     | ONSUCCESS
     | PARTITION
@@ -146,6 +165,7 @@ keyWords
     | PRIVILEGES
     | PRIVILEGE_VALUE
     | PROCESSLIST
+    | PROCESSOR
     | PROPERTY
     | PRUNE
     | QUERIES
@@ -154,6 +174,7 @@ keyWords
     | QUOTA
     | RANGE
     | READONLY
+    | READ
     | REGEXP
     | REGIONID
     | REGIONS
@@ -167,6 +188,8 @@ keyWords
     | ROUND
     | RUNNING
     | SCHEMA
+    | SCHEMA_REPLICATION_FACTOR
+    | SCHEMA_REGION_GROUP_NUM
     | SELECT
     | SERIESSLOTID
     | SESSION
@@ -189,10 +212,13 @@ keyWords
     | TAGS
     | TASK
     | TEMPLATE
+    | TEMPLATES
     | THEN
     | THROTTLE
+    | TIME_PARTITION_INTERVAL
     | TIMEOUT
     | TIMESERIES
+    | TIMEPARTITION
     | TIMESLOTID
     | TO
     | TOLERANCE
@@ -201,6 +227,7 @@ keyWords
     | TRAILS
     | TRIGGER
     | TRIGGERS
+    | TRUE
     | TTL
     | UNLINK
     | UNLOAD
@@ -208,16 +235,20 @@ keyWords
     | UPDATE
     | UPSERT
     | URI
+    | USED
     | USER
     | USING
     | VALUES
+    | VARIABLES
     | VARIATION
     | VERIFY
     | VERSION
     | VIEW
+    | WATERMARK_EMBEDDING
     | WHEN
     | WHERE
     | WITH
     | WITHOUT
     | WRITABLE
+    | WRITE
     ;

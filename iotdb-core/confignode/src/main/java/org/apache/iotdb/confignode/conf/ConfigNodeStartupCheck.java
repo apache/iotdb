@@ -38,8 +38,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * ConfigNodeStartupCheck checks the parameters in iotdb-confignode.properties and
- * confignode-system.properties when start and restart
+ * {@link ConfigNodeStartupCheck} checks the parameters in iotdb-confignode.properties and
+ * confignode-system.properties when start and restart.
  */
 public class ConfigNodeStartupCheck extends StartupChecks {
 

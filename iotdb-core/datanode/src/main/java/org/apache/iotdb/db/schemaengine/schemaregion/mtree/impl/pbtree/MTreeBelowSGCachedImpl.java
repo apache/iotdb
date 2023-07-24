@@ -40,7 +40,7 @@ import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.schemaengine.SchemaConstant;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.factory.CacheMNodeFactory;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.MeasurementCollector;
@@ -117,7 +117,8 @@ public class MTreeBelowSGCachedImpl {
 
   private final ICachedMNode rootNode;
   private final Function<IMeasurementMNode<ICachedMNode>, Map<String, String>> tagGetter;
-  private final IMNodeFactory<ICachedMNode> nodeFactory = CacheMNodeFactory.getInstance();
+  private final IMNodeFactory<ICachedMNode> nodeFactory =
+      MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
   private final int levelOfSG;
   private final CachedSchemaRegionStatistics regionStatistics;
 
@@ -418,6 +419,33 @@ public class MTreeBelowSGCachedImpl {
       if (deviceParent != null) {
         unPinMNode(deviceParent);
       }
+    }
+  }
+
+  public boolean changeAlias(String alias, PartialPath fullPath) throws MetadataException {
+    IMeasurementMNode<ICachedMNode> measurementMNode = getMeasurementMNode(fullPath);
+    try {
+      // upsert alias
+      if (alias != null && !alias.equals(measurementMNode.getAlias())) {
+        synchronized (this) {
+          IDeviceMNode<ICachedMNode> device = measurementMNode.getParent().getAsDeviceMNode();
+          ICachedMNode cachedMNode = store.getChild(device.getAsMNode(), alias);
+          if (cachedMNode != null) {
+            unPinMNode(cachedMNode);
+            throw new MetadataException(
+                "The alias is duplicated with the name or alias of other measurement.");
+          }
+          if (measurementMNode.getAlias() != null) {
+            device.deleteAliasChild(measurementMNode.getAlias());
+          }
+          device.addAlias(alias, measurementMNode);
+          setAlias(measurementMNode, alias);
+        }
+        return true;
+      }
+      return false;
+    } finally {
+      unPinMNode(measurementMNode.getAsMNode());
     }
   }
 
@@ -1147,7 +1175,8 @@ public class MTreeBelowSGCachedImpl {
 
     collector.setTemplateMap(showTimeSeriesPlan.getRelatedTemplate(), nodeFactory);
     ISchemaReader<ITimeSeriesSchemaInfo> reader =
-        new TimeseriesReaderWithViewFetch(collector, showTimeSeriesPlan.getSchemaFilter());
+        new TimeseriesReaderWithViewFetch(
+            collector, showTimeSeriesPlan.getSchemaFilter(), showTimeSeriesPlan.needViewDetail());
     if (showTimeSeriesPlan.getLimit() > 0 || showTimeSeriesPlan.getOffset() > 0) {
       return new SchemaReaderLimitOffsetWrapper<>(
           reader, showTimeSeriesPlan.getLimit(), showTimeSeriesPlan.getOffset());

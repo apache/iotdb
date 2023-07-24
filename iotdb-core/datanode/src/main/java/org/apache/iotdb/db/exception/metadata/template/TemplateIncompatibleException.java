@@ -24,9 +24,9 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class TemplateImcompatibeException extends MetadataException {
+public class TemplateIncompatibleException extends MetadataException {
 
-  public TemplateImcompatibeException(
+  public TemplateIncompatibleException(
       String path, String templateName, PartialPath templateSetPath) {
     super(
         String.format(
@@ -36,7 +36,7 @@ public class TemplateImcompatibeException extends MetadataException {
     this.isUserException = true;
   }
 
-  public TemplateImcompatibeException(String templateName, PartialPath templateSetPath) {
+  public TemplateIncompatibleException(String templateName, PartialPath templateSetPath) {
     super(
         String.format(
             "Cannot set schema template [%s] to path [%s] "
@@ -46,7 +46,7 @@ public class TemplateImcompatibeException extends MetadataException {
     this.isUserException = true;
   }
 
-  public TemplateImcompatibeException(String reason) {
+  public TemplateIncompatibleException(String reason) {
     super(reason, TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode());
     this.isUserException = true;
   }

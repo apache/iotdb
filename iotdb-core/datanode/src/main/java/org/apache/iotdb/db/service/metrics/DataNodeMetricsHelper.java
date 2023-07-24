@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.db.service.metrics;
 
-import org.apache.iotdb.commons.concurrent.DataNodeThreadModule;
+import org.apache.iotdb.commons.client.ClientManagerMetrics;
+import org.apache.iotdb.commons.concurrent.ThreadModule;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.ThreadPoolMetrics;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -57,6 +58,7 @@ public class DataNodeMetricsHelper {
     MetricService.getInstance().addMetricSet(new SystemMetrics(true));
     MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.DN_ROLE));
     MetricService.getInstance().addMetricSet(new NetMetrics(IoTDBConstant.DN_ROLE));
+    MetricService.getInstance().addMetricSet(ClientManagerMetrics.getInstance());
     initCpuMetrics();
     MetricService.getInstance().addMetricSet(WritingMetrics.getInstance());
 
@@ -75,9 +77,8 @@ public class DataNodeMetricsHelper {
   }
 
   private static void initCpuMetrics() {
-
     List<String> threadModules = new ArrayList<>();
-    Arrays.stream(DataNodeThreadModule.values()).forEach(x -> threadModules.add(x.toString()));
+    Arrays.stream(ThreadModule.values()).forEach(x -> threadModules.add(x.toString()));
     List<String> pools = new ArrayList<>();
     Arrays.stream(ThreadName.values()).forEach(x -> pools.add(x.name()));
     MetricService.getInstance()

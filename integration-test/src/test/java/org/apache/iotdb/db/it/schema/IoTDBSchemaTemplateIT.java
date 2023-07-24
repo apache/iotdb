@@ -147,11 +147,11 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       Set<String> expectedResult =
           new HashSet<>(
               Arrays.asList(
-                  "root.sg1.d1.s1,INT64,RLE,SNAPPY",
-                  "root.sg1.d1.s2,DOUBLE,GORILLA,SNAPPY",
-                  "root.sg1.d2.s1,INT64,RLE,SNAPPY",
-                  "root.sg1.d2.s2,DOUBLE,GORILLA,SNAPPY",
-                  "root.sg1.d3.s1,INT64,RLE,SNAPPY"));
+                  "root.sg1.d1.s1,INT64,RLE,LZ4",
+                  "root.sg1.d1.s2,DOUBLE,GORILLA,LZ4",
+                  "root.sg1.d2.s1,INT64,RLE,LZ4",
+                  "root.sg1.d2.s2,DOUBLE,GORILLA,LZ4",
+                  "root.sg1.d3.s1,INT64,RLE,LZ4"));
 
       try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.**"); ) {
         while (resultSet.next()) {
@@ -230,10 +230,10 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       Set<String> expectedResult =
           new HashSet<>(
               Arrays.asList(
-                  "root.sg1.d1.s1,INT64,RLE,SNAPPY",
-                  "root.sg1.d1.s2,DOUBLE,GORILLA,SNAPPY",
-                  "root.sg1.d2.s1,INT64,RLE,SNAPPY",
-                  "root.sg1.d2.s2,DOUBLE,GORILLA,SNAPPY"));
+                  "root.sg1.d1.s1,INT64,RLE,LZ4",
+                  "root.sg1.d1.s2,DOUBLE,GORILLA,LZ4",
+                  "root.sg1.d2.s1,INT64,RLE,LZ4",
+                  "root.sg1.d2.s2,DOUBLE,GORILLA,LZ4"));
 
       try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.**")) {
         while (resultSet.next()) {
@@ -316,7 +316,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
   public void testShowNodesInSchemaTemplate() throws SQLException {
     // set schema template
     Set<String> expectedResultSet =
-        new HashSet<>(Arrays.asList("s1,INT64,RLE,SNAPPY", "s2,DOUBLE,GORILLA,SNAPPY"));
+        new HashSet<>(Arrays.asList("s1,INT64,RLE,LZ4", "s2,DOUBLE,GORILLA,LZ4"));
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
         ResultSet resultSet = statement.executeQuery("SHOW NODES IN SCHEMA TEMPLATE t1")) {
@@ -466,7 +466,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
 
       expectedResult =
           new HashSet<>(
-              Arrays.asList("root.sg1.d1.s1,INT64,RLE,SNAPPY", "root.sg1.d2.s1,INT64,RLE,SNAPPY"));
+              Arrays.asList("root.sg1.d1.s1,INT64,RLE,LZ4", "root.sg1.d2.s1,INT64,RLE,LZ4"));
 
       try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.**.s1")) {
         while (resultSet.next()) {
@@ -519,7 +519,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       }
       Assert.assertTrue(expectedResult.isEmpty());
 
-      expectedResult = new HashSet<>(Collections.singletonList("root.sg1.d1.s1,INT64,RLE,SNAPPY"));
+      expectedResult = new HashSet<>(Collections.singletonList("root.sg1.d1.s1,INT64,RLE,LZ4"));
 
       try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.**.s1")) {
         while (resultSet.next()) {
@@ -683,11 +683,11 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       Set<String> expectedResult =
           new HashSet<>(
               Arrays.asList(
-                  "root.sg1.d1.s1,INT64,RLE,SNAPPY",
-                  "root.sg1.d1.s2,DOUBLE,GORILLA,SNAPPY",
-                  "root.sg2.d2.s1,INT64,RLE,SNAPPY",
-                  "root.sg2.d2.s2,DOUBLE,GORILLA,SNAPPY",
-                  "root.sg3.d3.s1,INT64,RLE,SNAPPY"));
+                  "root.sg1.d1.s1,INT64,RLE,LZ4",
+                  "root.sg1.d1.s2,DOUBLE,GORILLA,LZ4",
+                  "root.sg2.d2.s1,INT64,RLE,LZ4",
+                  "root.sg2.d2.s2,DOUBLE,GORILLA,LZ4",
+                  "root.sg3.d3.s1,INT64,RLE,LZ4"));
 
       try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg*.*.s*")) {
         while (resultSet.next()) {
@@ -706,8 +706,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       Assert.assertTrue(expectedResult.isEmpty());
       expectedResult =
           new HashSet<>(
-              Arrays.asList(
-                  "root.sg1.d1.s1,INT64,RLE,SNAPPY", "root.sg1.d1.s2,DOUBLE,GORILLA,SNAPPY"));
+              Arrays.asList("root.sg1.d1.s1,INT64,RLE,LZ4", "root.sg1.d1.s2,DOUBLE,GORILLA,LZ4"));
 
       try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.d1.s*")) {
         while (resultSet.next()) {
@@ -750,9 +749,9 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       Set<String> expectedResult =
           new HashSet<>(
               Arrays.asList(
-                  "root.sg1.d.s1,INT32,RLE,SNAPPY",
-                  "root.sg1.d.s2,FLOAT,GORILLA,SNAPPY",
-                  "root.sg1.d.s3,FLOAT,GORILLA,SNAPPY"));
+                  "root.sg1.d.s1,INT32,RLE,LZ4",
+                  "root.sg1.d.s2,FLOAT,GORILLA,LZ4",
+                  "root.sg1.d.s3,FLOAT,GORILLA,LZ4"));
 
       try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg*.*.s*")) {
         while (resultSet.next()) {
@@ -798,6 +797,57 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
         }
       }
       Assert.assertTrue(expectedResult.isEmpty());
+    }
+  }
+
+  @Test
+  public void testAlterTemplateTimeseries() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.d1;");
+      statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.d1;");
+      try {
+        statement.execute(
+            "ALTER timeseries root.sg1.d1.s1 UPSERT tags(s0_tag1=s0_tag1, s0_tag2=s0_tag2) attributes(s0_attr1=s0_attr1, s0_attr2=s0_attr2);");
+        Assert.fail("expect exception because the template timeseries does not support tag");
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage()
+                .contains(
+                    "Cannot alter template timeseries [root.sg1.d1.s1] since schema template [t1] already set on path [root.sg1.d1]"));
+      }
+      try {
+        statement.execute("ALTER timeseries root.sg1.d1.s1 UPSERT ALIAS=s0Alias;");
+        Assert.fail("expect exception because the template timeseries does not support alias");
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage()
+                .contains(
+                    "Cannot alter template timeseries [root.sg1.d1.s1] since schema template [t1] already set on path [root.sg1.d1]"));
+      }
+    }
+  }
+
+  @Test
+  public void testActivateAndDropEmptyTemplate() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE SCHEMA TEMPLATE e_t;");
+      statement.execute("SET SCHEMA TEMPLATE e_t TO root.sg1.t.d1;");
+      statement.execute("insert into root.sg1.t.d2(timestamp,s1) values(now(),false);");
+      statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.t.d1;");
+      try (ResultSet resultSet = statement.executeQuery("show nodes in schema template e_t")) {
+        Assert.assertFalse(resultSet.next());
+      }
+      try (ResultSet resultSet = statement.executeQuery("show paths set schema template e_t")) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertFalse(resultSet.next());
+      }
+      statement.execute("DEACTIVATE SCHEMA TEMPLATE FROM root.sg1.t.d1;");
+      statement.execute("UNSET SCHEMA TEMPLATE e_t FROM root.sg1.t.d1;");
+      try (ResultSet resultSet = statement.executeQuery("show paths set schema template e_t")) {
+        Assert.assertFalse(resultSet.next());
+      }
     }
   }
 }

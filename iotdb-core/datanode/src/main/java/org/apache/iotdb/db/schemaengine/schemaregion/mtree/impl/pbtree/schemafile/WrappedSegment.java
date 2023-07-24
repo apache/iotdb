@@ -259,12 +259,11 @@ public class WrappedSegment extends Segment<ICachedMNode> {
     // update alias-key list accordingly
     if (oriAlias != null) {
       aliasKeyList.remove(binarySearchPairList(aliasKeyList, oriAlias));
-
-      uBuffer.clear();
-      String alias = RecordUtils.getRecordAlias(uBuffer);
-      if (alias != null) {
-        aliasKeyList.add(binaryInsertPairList(aliasKeyList, alias), new Pair<>(alias, key));
-      }
+    }
+    uBuffer.clear();
+    String alias = RecordUtils.getRecordAlias(uBuffer);
+    if (alias != null) {
+      aliasKeyList.add(binaryInsertPairList(aliasKeyList, alias), new Pair<>(alias, key));
     }
 
     return idx;

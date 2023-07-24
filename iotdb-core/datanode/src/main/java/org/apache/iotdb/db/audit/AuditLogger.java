@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.audit;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -68,7 +69,7 @@ public class AuditLogger {
       DataNodeDevicePathCache.getInstance();
 
   private AuditLogger() {
-    // empty constructor
+    // Empty constructor
   }
 
   @NotNull

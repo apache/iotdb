@@ -234,6 +234,10 @@ public class CommonDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "time_partition_interval", String.valueOf(config.getTimePartitionInterval()))));
+    config.setDatabaseLimitThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "database_limit_threshold", String.valueOf(config.getDatabaseLimitThreshold()))));
   }
 
   private void loadPipeProps(Properties properties) {
@@ -248,6 +252,13 @@ public class CommonDescriptor {
         Boolean.parseBoolean(
             properties.getProperty(
                 "pipe_wal_enable_hardlink", Boolean.toString(config.getPipeWALEnableHardLink()))));
+
+    config.setPipeDataStructureTabletRowSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_data_structure_tablet_row_size",
+                String.valueOf(config.getPipeDataStructureTabletRowSize()))));
+
     config.setPipeSubtaskExecutorMaxThreadNum(
         Integer.parseInt(
             properties.getProperty(
@@ -295,6 +306,10 @@ public class CommonDescriptor {
                 "pipe_extractor_pending_queue_tablet_limit",
                 String.valueOf(config.getPipeExtractorPendingQueueTabletLimit()))));
 
+    config.setPipeConnectorTimeoutMs(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_connector_timeout_ms", String.valueOf(config.getPipeConnectorTimeoutMs()))));
     config.setPipeConnectorReadFileBufferSize(
         Integer.parseInt(
             properties.getProperty(
@@ -331,6 +346,15 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_meta_syncer_sync_interval_minutes",
                 String.valueOf(config.getPipeMetaSyncerSyncIntervalMinutes()))));
+    config.setPipeMetaSyncerAutoRestartPipeCheckIntervalRound(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_meta_syncer_auto_restart_pipe_check_interval_round",
+                String.valueOf(config.getPipeMetaSyncerAutoRestartPipeCheckIntervalRound()))));
+    config.setPipeAutoRestartEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_auto_restart_enabled", String.valueOf(config.getPipeAutoRestartEnabled()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {

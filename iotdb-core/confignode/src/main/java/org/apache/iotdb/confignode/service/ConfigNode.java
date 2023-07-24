@@ -22,6 +22,9 @@ package org.apache.iotdb.confignode.service;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.ClientManagerMetrics;
+import org.apache.iotdb.commons.concurrent.ThreadModule;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
@@ -44,6 +47,7 @@ import org.apache.iotdb.db.service.metrics.ProcessMetrics;
 import org.apache.iotdb.db.service.metrics.SystemMetrics;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.metricsets.UpTimeMetrics;
+import org.apache.iotdb.metrics.metricsets.cpu.CpuUsageMetrics;
 import org.apache.iotdb.metrics.metricsets.disk.DiskMetrics;
 import org.apache.iotdb.metrics.metricsets.jvm.JvmMetrics;
 import org.apache.iotdb.metrics.metricsets.logback.LogbackMetrics;
@@ -55,6 +59,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class ConfigNode implements ConfigNodeMBean {
@@ -82,7 +90,7 @@ public class ConfigNode implements ConfigNodeMBean {
   private ConfigManager configManager;
 
   private ConfigNode() {
-    // we do not init anything here, so that we can re-initialize the instance in IT.
+    // We do not init anything here, so that we can re-initialize the instance in IT.
   }
 
   public static void main(String[] args) {
@@ -90,6 +98,10 @@ public class ConfigNode implements ConfigNodeMBean {
         "{} environment variables: {}",
         ConfigNodeConstant.GLOBAL_NAME,
         ConfigNodeConfig.getEnvironmentVariables());
+    LOGGER.info(
+        "{} default charset is: {}",
+        ConfigNodeConstant.GLOBAL_NAME,
+        Charset.defaultCharset().displayName());
     new ConfigNodeCommandLine().doMain(args);
   }
 
@@ -225,7 +237,7 @@ public class ConfigNode implements ConfigNodeMBean {
   private void setUpMetricService() throws StartupException {
     MetricConfigDescriptor.getInstance().getMetricConfig().setNodeId(CONF.getConfigNodeId());
     registerManager.register(MetricService.getInstance());
-    // bind predefined metric sets
+    // Bind predefined metric sets
     MetricService.getInstance().addMetricSet(new UpTimeMetrics());
     MetricService.getInstance().addMetricSet(new JvmMetrics());
     MetricService.getInstance().addMetricSet(new LogbackMetrics());
@@ -233,6 +245,22 @@ public class ConfigNode implements ConfigNodeMBean {
     MetricService.getInstance().addMetricSet(new SystemMetrics(false));
     MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.CN_ROLE));
     MetricService.getInstance().addMetricSet(new NetMetrics(IoTDBConstant.CN_ROLE));
+    MetricService.getInstance().addMetricSet(ClientManagerMetrics.getInstance());
+    initCpuMetrics();
+  }
+
+  private void initCpuMetrics() {
+    List<String> threadModules = new ArrayList<>();
+    Arrays.stream(ThreadModule.values()).forEach(x -> threadModules.add(x.toString()));
+    List<String> pools = new ArrayList<>();
+    Arrays.stream(ThreadName.values()).forEach(x -> pools.add(x.name()));
+    MetricService.getInstance()
+        .addMetricSet(
+            new CpuUsageMetrics(
+                threadModules,
+                pools,
+                x -> ThreadName.getModuleTheThreadBelongs(x).toString(),
+                x -> ThreadName.getThreadPoolTheThreadBelongs(x).name()));
   }
 
   private void initConfigManager() {
@@ -247,7 +275,12 @@ public class ConfigNode implements ConfigNodeMBean {
     LOGGER.info("Successfully initialize ConfigManager.");
   }
 
-  /** Register Non-seed ConfigNode when first startup. */
+  /**
+   * Register Non-seed ConfigNode when first startup.
+   *
+   * @throws StartupException if register failed.
+   * @throws IOException if consensus manager init failed.
+   */
   private void sendRegisterConfigNodeRequest() throws StartupException, IOException {
     TConfigNodeRegisterReq req =
         new TConfigNodeRegisterReq(
@@ -359,7 +392,11 @@ public class ConfigNode implements ConfigNodeMBean {
     registerManager.register(configNodeRPCService);
   }
 
-  /** Deactivating ConfigNode internal services. */
+  /**
+   * Deactivating ConfigNode internal services.
+   *
+   * @throws IOException if close configManager failed.
+   */
   public void deactivate() throws IOException {
     LOGGER.info("Deactivating {}...", ConfigNodeConstant.GLOBAL_NAME);
     registerManager.deregisterAll();

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure;
 
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
@@ -94,17 +95,19 @@ public class ProcedureExecutor<Env> {
   public void init(int numThreads) {
     this.corePoolSize = numThreads;
     this.maxPoolSize = 10 * numThreads;
-    this.threadGroup = new ThreadGroup("ProcedureWorkerGroup");
+    this.threadGroup = new ThreadGroup(ThreadName.CONFIG_NODE_PROCEDURE_WORKER.getName());
     this.timeoutExecutor =
-        new TimeoutExecutorThread<>(this, threadGroup, "ProcedureTimeoutExecutor");
+        new TimeoutExecutorThread<>(
+            this, threadGroup, ThreadName.CONFIG_NODE_TIMEOUT_EXECUTOR.getName());
     this.workerMonitorExecutor =
-        new TimeoutExecutorThread<>(this, threadGroup, "ProcedureWorkerThreadMonitor");
+        new TimeoutExecutorThread<>(
+            this, threadGroup, ThreadName.CONFIG_NODE_WORKER_THREAD_MONITOR.getName());
     workId.set(0);
     workerThreads = new CopyOnWriteArrayList<>();
     for (int i = 0; i < corePoolSize; i++) {
       workerThreads.add(new WorkerThread(threadGroup));
     }
-    // add worker Monitor
+    // Add worker monitor
     workerMonitorExecutor.add(new WorkerMonitor());
 
     scheduler.start();
@@ -118,7 +121,7 @@ public class ProcedureExecutor<Env> {
     int waitingCount = 0;
     int waitingTimeoutCount = 0;
     List<Procedure> procedureList = new ArrayList<>();
-    // load procedure wal file
+    // Load procedure wal file
     store.load(procedureList);
     for (Procedure<Env> proc : procedureList) {
       if (proc.isFinished()) {
@@ -344,6 +347,10 @@ public class ProcedureExecutor<Env> {
           switch (executeRootStackRollback(rootProcId, rootProcStack)) {
             case LOCK_ACQUIRED:
               break;
+            case LOCK_EVENT_WAIT:
+              LOG.info("LOCK_EVENT_WAIT rollback " + proc);
+              rootProcStack.unsetRollback();
+              break;
             case LOCK_YIELD_WAIT:
               rootProcStack.unsetRollback();
               scheduler.yield(proc);
@@ -358,6 +365,7 @@ public class ProcedureExecutor<Env> {
                 break;
               case LOCK_EVENT_WAIT:
                 LOG.info("LOCK_EVENT_WAIT can't rollback child running for {}", proc);
+                break;
               case LOCK_YIELD_WAIT:
                 scheduler.yield(proc);
                 break;
@@ -484,7 +492,7 @@ public class ProcedureExecutor<Env> {
       return;
     }
     if (parent != null && parent.tryRunnable()) {
-      // if success, means all its children have completed, move parent to front of the queue.
+      // If success, means all its children have completed, move parent to front of the queue.
       store.update(parent);
       scheduler.addFront(parent);
       LOG.info(
@@ -495,7 +503,7 @@ public class ProcedureExecutor<Env> {
   }
 
   /**
-   * Submit children procedures
+   * Submit children procedures.
    *
    * @param subprocs children procedures
    */
@@ -694,7 +702,7 @@ public class ProcedureExecutor<Env> {
   }
 
   /**
-   * add a Procedure to executor
+   * Add a Procedure to executor.
    *
    * @param procedure procedure
    * @return procedure id
@@ -752,7 +760,7 @@ public class ProcedureExecutor<Env> {
           LOG.warn("Worker terminated {}", this.activeProcedure.get(), throwable);
         }
       } finally {
-        LOG.debug("Worker teminated.");
+        LOG.debug("Worker terminated.");
       }
       workerThreads.remove(this);
     }
@@ -801,7 +809,7 @@ public class ProcedureExecutor<Env> {
     }
 
     private int checkForStuckWorkers() {
-      // check if any of the worker is stuck
+      // Check if any of the worker is stuck
       int stuckCount = 0;
       for (WorkerThread worker : workerThreads) {
         if (worker.activeProcedure.get() == null
@@ -817,14 +825,14 @@ public class ProcedureExecutor<Env> {
     }
 
     private void checkThreadCount(final int stuckCount) {
-      // nothing to do if there are no runnable tasks
+      // Nothing to do if there are no runnable tasks
       if (stuckCount < 1 || !scheduler.hasRunnables()) {
         return;
       }
-      // add a new thread if the worker stuck percentage exceed the threshold limit
+      // Add a new thread if the worker stuck percentage exceed the threshold limit
       // and every handler is active.
       final float stuckPerc = ((float) stuckCount) / workerThreads.size();
-      // let's add new worker thread more aggressively, as they will timeout finally if there is no
+      // Let's add new worker thread more aggressively, as they will timeout finally if there is no
       // work to do.
       if (stuckPerc >= DEFAULT_WORKER_ADD_STUCK_PERCENTAGE && workerThreads.size() < maxPoolSize) {
         final KeepAliveWorkerThread worker = new KeepAliveWorkerThread(threadGroup);
@@ -945,7 +953,7 @@ public class ProcedureExecutor<Env> {
   }
 
   /**
-   * Query a procedure result
+   * Query a procedure result.
    *
    * @param procId procedure id
    * @return procedure or retainer

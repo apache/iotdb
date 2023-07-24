@@ -23,11 +23,13 @@ import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
+import org.apache.iotdb.commons.schema.node.utils.MNodeFactory;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.impl.ConfigBasicInternalMNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.impl.ConfigDatabaseMNode;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
+@MNodeFactory
 public class ConfigMNodeFactory implements IMNodeFactory<IConfigMNode> {
   private ConfigMNodeFactory() {}
 
@@ -83,6 +85,6 @@ public class ConfigMNodeFactory implements IMNodeFactory<IConfigMNode> {
   @Override
   public IMeasurementMNode<IConfigMNode> createLogicalViewMNode(
       IDeviceMNode<IConfigMNode> parent, String name, IMeasurementInfo measurementInfo) {
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException("View is not supported.");
   }
 }

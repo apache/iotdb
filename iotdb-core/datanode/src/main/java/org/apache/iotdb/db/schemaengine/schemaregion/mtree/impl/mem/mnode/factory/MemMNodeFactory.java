@@ -23,30 +23,18 @@ import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
+import org.apache.iotdb.commons.schema.node.utils.MNodeFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl.AboveDatabaseMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl.BasicInternalMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl.DatabaseDeviceMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl.DatabaseMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl.DeviceMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl.LogicalViewMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl.MeasurementMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.LogicalViewInfo;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
+@MNodeFactory
 public class MemMNodeFactory implements IMNodeFactory<IMemMNode> {
-
-  private MemMNodeFactory() {}
-
-  private static class MemMNodeFactoryHolder {
-    private static final MemMNodeFactory INSTANCE = new MemMNodeFactory();
-
-    private MemMNodeFactoryHolder() {}
-  }
-
-  public static MemMNodeFactory getInstance() {
-    return MemMNodeFactory.MemMNodeFactoryHolder.INSTANCE;
-  }
 
   @Override
   public IMeasurementMNode<IMemMNode> createMeasurementMNode(
@@ -88,11 +76,6 @@ public class MemMNodeFactory implements IMNodeFactory<IMemMNode> {
   @Override
   public IMeasurementMNode<IMemMNode> createLogicalViewMNode(
       IDeviceMNode<IMemMNode> parent, String name, IMeasurementInfo measurementInfo) {
-    if (measurementInfo instanceof LogicalViewInfo) {
-      return new LogicalViewMNode(
-          parent, name, ((LogicalViewInfo) measurementInfo).getExpression());
-    }
-    throw new UnsupportedOperationException(
-        "createLogicalViewMNode should accept LogicalViewInfo, but got an instance that is not of this type.");
+    throw new UnsupportedOperationException("View is not supported.");
   }
 }

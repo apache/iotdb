@@ -40,6 +40,7 @@ public class RatisConfig {
   private final Client client;
   private final Impl impl;
   private final LeaderLogAppender leaderLogAppender;
+  private final Read read;
 
   private RatisConfig(
       Rpc rpc,
@@ -50,7 +51,8 @@ public class RatisConfig {
       Grpc grpc,
       Client client,
       Impl impl,
-      LeaderLogAppender leaderLogAppender) {
+      LeaderLogAppender leaderLogAppender,
+      Read read) {
     this.rpc = rpc;
     this.leaderElection = leaderElection;
     this.snapshot = snapshot;
@@ -60,6 +62,7 @@ public class RatisConfig {
     this.client = client;
     this.impl = impl;
     this.leaderLogAppender = leaderLogAppender;
+    this.read = read;
   }
 
   public Rpc getRpc() {
@@ -98,6 +101,10 @@ public class RatisConfig {
     return leaderLogAppender;
   }
 
+  public Read getRead() {
+    return read;
+  }
+
   public static Builder newBuilder() {
     return new Builder();
   }
@@ -114,6 +121,7 @@ public class RatisConfig {
     private Client client;
     private Impl impl;
     private LeaderLogAppender leaderLogAppender;
+    private Read read;
 
     public RatisConfig build() {
       return new RatisConfig(
@@ -126,7 +134,8 @@ public class RatisConfig {
           Optional.ofNullable(client).orElseGet(() -> Client.newBuilder().build()),
           Optional.ofNullable(impl).orElseGet(() -> Impl.newBuilder().build()),
           Optional.ofNullable(leaderLogAppender)
-              .orElseGet(() -> LeaderLogAppender.newBuilder().build()));
+              .orElseGet(() -> LeaderLogAppender.newBuilder().build()),
+          Optional.ofNullable(read).orElseGet(() -> Read.newBuilder().build()));
     }
 
     public Builder setRpc(Rpc rpc) {
@@ -171,6 +180,11 @@ public class RatisConfig {
 
     public Builder setLeaderLogAppender(LeaderLogAppender leaderLogAppender) {
       this.leaderLogAppender = leaderLogAppender;
+      return this;
+    }
+
+    public Builder setRead(Read read) {
+      this.read = read;
       return this;
     }
   }
@@ -1041,6 +1055,52 @@ public class RatisConfig {
       public LeaderLogAppender.Builder setInstallSnapshotEnabled(boolean installSnapshotEnabled) {
         this.installSnapshotEnabled = installSnapshotEnabled;
         return this;
+      }
+    }
+  }
+
+  public static class Read {
+    public enum Option {
+      DEFAULT,
+      LINEARIZABLE
+    }
+
+    private final Read.Option readOption;
+    private final TimeDuration readTimeout;
+
+    private Read(Read.Option readOption, TimeDuration readTimeout) {
+      this.readOption = readOption;
+      this.readTimeout = readTimeout;
+    }
+
+    public Option getReadOption() {
+      return readOption;
+    }
+
+    public TimeDuration getReadTimeout() {
+      return readTimeout;
+    }
+
+    public static Read.Builder newBuilder() {
+      return new Read.Builder();
+    }
+
+    public static class Builder {
+      private Read.Option readOption = Option.LINEARIZABLE;
+      private TimeDuration readTimeout = TimeDuration.valueOf(10, TimeUnit.SECONDS);
+
+      public Read.Builder setReadOption(Read.Option readOption) {
+        this.readOption = readOption;
+        return this;
+      }
+
+      public Read.Builder setReadTimeout(TimeDuration timeout) {
+        this.readTimeout = timeout;
+        return this;
+      }
+
+      public Read build() {
+        return new Read(readOption, readTimeout);
       }
     }
   }
