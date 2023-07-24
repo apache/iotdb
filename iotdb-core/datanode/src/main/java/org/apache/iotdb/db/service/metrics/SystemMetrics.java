@@ -22,6 +22,7 @@ package org.apache.iotdb.db.service.metrics;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -41,6 +42,8 @@ import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Future;
@@ -71,8 +74,8 @@ public class SystemMetrics implements IMetricSet {
     collectSystemMemInfo(metricService);
 
     // register disk related metrics and start to collect the value of metrics in async way
-    if (null == currentServiceFuture && isDataNode) {
-      collectSystemDiskInfo(metricService);
+    if (null == currentServiceFuture) {
+      collectSystemDiskInfo(metricService, isDataNode);
       currentServiceFuture =
           ScheduledExecutorUtil.safelyScheduleAtFixedRate(
               service,
@@ -88,7 +91,7 @@ public class SystemMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     // first stop to update the value of some metrics in async way
-    if (currentServiceFuture != null && isDataNode) {
+    if (currentServiceFuture != null) {
       currentServiceFuture.cancel(true);
       currentServiceFuture = null;
     }
@@ -189,9 +192,17 @@ public class SystemMetrics implements IMetricSet {
         SYSTEM);
   }
 
-  private void collectSystemDiskInfo(AbstractMetricService metricService) {
-    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getLocalDataDirs();
-    for (String dataDir : dataDirs) {
+  private void collectSystemDiskInfo(AbstractMetricService metricService, boolean isDataNode) {
+    ArrayList<String> diskDirs = new ArrayList<>();
+    diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getSystemDir());
+    diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getConsensusDir());
+    if(isDataNode) {
+      diskDirs.addAll(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
+      diskDirs.addAll(Arrays.asList(CommonDescriptor.getInstance().getConfig().getWalDirs()));
+      diskDirs.add(CommonDescriptor.getInstance().getConfig().getSyncDir());
+      diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getSortTmpDir());
+    }
+    for (String dataDir : diskDirs) {
       Path path = Paths.get(dataDir);
       FileStore fileStore = null;
       try {
