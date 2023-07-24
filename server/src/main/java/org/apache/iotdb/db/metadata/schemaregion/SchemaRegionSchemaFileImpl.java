@@ -958,6 +958,25 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     }
   }
 
+  private void changeAlias(PartialPath path, String alias) throws MetadataException {
+    IMeasurementMNode leafMNode = mtree.getMeasurementMNode(path);
+    try {
+      if (leafMNode.getAlias() != null) {
+        leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
+      }
+      leafMNode.getParent().addAlias(alias, leafMNode);
+      mtree.setAlias(leafMNode, alias);
+    } finally {
+      mtree.unPinMNode(leafMNode);
+    }
+
+    try {
+      writeToMLog(SchemaRegionWritePlanFactory.getChangeAliasPlan(path, alias));
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
+  }
+
   /**
    * Upsert tags and attributes key-value for the timeseries if the key has existed, just use the
    * new value to update it.
@@ -975,13 +994,15 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       Map<String, String> attributesMap,
       PartialPath fullPath)
       throws MetadataException, IOException {
-    // upsert alias
-    upsertAlias(alias, fullPath);
     IMeasurementMNode leafMNode = mtree.getMeasurementMNode(fullPath);
     try {
+      // upsert alias
+      upsertAlias(alias, fullPath, leafMNode);
+
       if (tagsMap == null && attributesMap == null) {
         return;
       }
+
       // no tag or attribute, we need to add a new record in log
       if (leafMNode.getOffset() < 0) {
         long offset = tagManager.writeTagFile(tagsMap, attributesMap);
@@ -1002,9 +1023,19 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     }
   }
 
-  private void upsertAlias(String alias, PartialPath fullPath)
+  private void upsertAlias(String alias, PartialPath fullPath, IMeasurementMNode leafMNode)
       throws MetadataException, IOException {
-    if (mtree.changeAlias(alias, fullPath)) {
+    // upsert alias
+    if (alias != null && !alias.equals(leafMNode.getAlias())) {
+      if (!leafMNode.getParent().addAlias(alias, leafMNode)) {
+        throw new MetadataException("The alias already exists.");
+      }
+
+      if (leafMNode.getAlias() != null) {
+        leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
+      }
+
+      mtree.setAlias(leafMNode, alias);
       // persist to WAL
       writeToMLog(SchemaRegionWritePlanFactory.getChangeAliasPlan(fullPath, alias));
     }
@@ -1326,9 +1357,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     public RecoverOperationResult visitChangeAlias(
         IChangeAliasPlan changeAliasPlan, SchemaRegionSchemaFileImpl context) {
       try {
-        upsertAlias(changeAliasPlan.getAlias(), changeAliasPlan.getPath());
+        changeAlias(changeAliasPlan.getPath(), changeAliasPlan.getAlias());
         return RecoverOperationResult.SUCCESS;
-      } catch (MetadataException | IOException e) {
+      } catch (MetadataException e) {
         return new RecoverOperationResult(e);
       }
     }

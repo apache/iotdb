@@ -601,33 +601,4 @@ public class IoTDBTagAlterIT extends AbstractSchemaIT {
       fail();
     }
   }
-
-  @Test
-  public void alterDuplicateAliasTest() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute(
-          "create timeseries root.turbine.d1.s1(a1) with datatype=FLOAT, encoding=RLE, compression=SNAPPY;");
-      statement.execute("create timeseries root.turbine.d1.s2 with datatype=INT32, encoding=RLE;");
-      try {
-        statement.execute("alter timeseries root.turbine.d1.s2 upsert alias=s1;");
-        fail();
-      } catch (Exception e) {
-        assertTrue(
-            e.getMessage()
-                .contains("The alias is duplicated with the name or alias of other measurement."));
-      }
-      try {
-        statement.execute("alter timeseries root.turbine.d1.s2 upsert alias=a1;");
-        fail();
-      } catch (Exception e) {
-        assertTrue(
-            e.getMessage()
-                .contains("The alias is duplicated with the name or alias of other measurement."));
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail();
-    }
-  }
 }

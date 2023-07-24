@@ -416,33 +416,6 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     }
   }
 
-  public boolean changeAlias(String alias, PartialPath fullPath) throws MetadataException {
-    IMeasurementMNode measurementMNode = getMeasurementMNode(fullPath);
-    try {
-      // upsert alias
-      if (alias != null && !alias.equals(measurementMNode.getAlias())) {
-        synchronized (this) {
-          IEntityMNode device = measurementMNode.getParent().getAsEntityMNode();
-          IMNode cachedMNode = store.getChild(device, alias);
-          if (cachedMNode != null) {
-            unPinMNode(cachedMNode);
-            throw new MetadataException(
-                "The alias is duplicated with the name or alias of other measurement.");
-          }
-          if (measurementMNode.getAlias() != null) {
-            device.deleteAliasChild(measurementMNode.getAlias());
-          }
-          device.addAlias(alias, measurementMNode);
-          setAlias(measurementMNode, alias);
-        }
-        return true;
-      }
-      return false;
-    } finally {
-      unPinMNode(measurementMNode);
-    }
-  }
-
   @Override
   public Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
