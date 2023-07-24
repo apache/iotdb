@@ -235,6 +235,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -1999,9 +2000,23 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   @Override
   public Operator visitLastQueryScan(LastQueryScanNode node, LocalExecutionPlanContext context) {
     PartialPath seriesPath = node.getSeriesPath().transformToPartialPath();
-    TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(seriesPath);
+    TimeValuePair timeValuePair = null;
+    try {
+      context.dataNodeQueryContext.lock();
+      if (!context.dataNodeQueryContext.unCached(seriesPath)) {
+        timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(seriesPath);
+        if (timeValuePair == null) {
+          context.dataNodeQueryContext.addUnCachePath(seriesPath, node.getDataNodeSeriesScanNum());
+        }
+      }
+    } finally {
+      context.dataNodeQueryContext.unLock();
+    }
+
     if (timeValuePair == null) { // last value is not cached
       return createUpdateLastCacheOperator(node, context, node.getSeriesPath());
+    } else if (timeValuePair.getValue() == null) { // there is no data for this time series
+      return null;
     } else if (!LastQueryUtil.satisfyFilter(
         updateFilterUsingTTL(context.getLastQueryTimeFilter(), context.getDataRegionTTL()),
         timeValuePair)) { // cached last value is not satisfied
@@ -2039,7 +2054,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           fullPath,
           node.getSeriesPath().getSeriesType(),
           DATA_NODE_SCHEMA_CACHE,
-          context.isNeedUpdateLastCache());
+          context.isNeedUpdateLastCache(),
+          context.isNeedUpdateNullEntry());
     } else {
       OperatorContext operatorContext =
           context
@@ -2056,6 +2072,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           node.getSeriesPath().getSeriesType(),
           DATA_NODE_SCHEMA_CACHE,
           context.isNeedUpdateLastCache(),
+          context.isNeedUpdateNullEntry(),
           node.getOutputViewPath());
     }
   }
@@ -2079,7 +2096,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           lastQueryScan,
           unCachedPath,
           DATA_NODE_SCHEMA_CACHE,
-          context.isNeedUpdateLastCache());
+          context.isNeedUpdateLastCache(),
+          context.isNeedUpdateNullEntry());
     } else {
       OperatorContext operatorContext =
           context
@@ -2095,6 +2113,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           unCachedPath,
           DATA_NODE_SCHEMA_CACHE,
           context.isNeedUpdateLastCache(),
+          context.isNeedUpdateNullEntry(),
           node.getOutputViewPath());
     }
   }
@@ -2191,9 +2210,24 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<String> measurementList = alignedPath.getMeasurementList();
     for (int i = 0; i < measurementList.size(); i++) {
       PartialPath measurementPath = devicePath.concatNode(measurementList.get(i));
-      TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(measurementPath);
+      TimeValuePair timeValuePair = null;
+      try {
+        context.dataNodeQueryContext.lock();
+        if (!context.dataNodeQueryContext.unCached(measurementPath)) {
+          timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(measurementPath);
+          if (timeValuePair == null) {
+            context.dataNodeQueryContext.addUnCachePath(
+                measurementPath, new AtomicInteger(node.getDataNodeSeriesScanNum().get()));
+          }
+        }
+      } finally {
+        context.dataNodeQueryContext.unLock();
+      }
+
       if (timeValuePair == null) { // last value is not cached
         unCachedMeasurementIndexes.add(i);
+      } else if (timeValuePair.getValue() == null) {
+        // there is no data for this time series, just ignore
       } else if (!LastQueryUtil.satisfyFilter(
           updateFilterUsingTTL(context.getLastQueryTimeFilter(), context.getDataRegionTTL()),
           timeValuePair)) { // cached last value is not satisfied
@@ -2229,6 +2263,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
     context.setLastQueryTimeFilter(node.getTimeFilter());
     context.setNeedUpdateLastCache(LastQueryUtil.needUpdateCache(node.getTimeFilter()));
+    context.setNeedUpdateNullEntry(LastQueryUtil.needUpdateNullEntry(node.getTimeFilter()));
 
     List<AbstractUpdateLastCacheOperator> operatorList =
         node.getChildren().stream()

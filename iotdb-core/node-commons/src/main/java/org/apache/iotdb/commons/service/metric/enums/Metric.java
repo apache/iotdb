@@ -34,12 +34,14 @@ public enum Metric {
   REGION_NUM_IN_DATA_NODE("region_num_in_data_node"),
   REGION_GROUP_LEADER_NUM_IN_DATA_NODE("region_group_leader_num_in_data_node"),
   SERIES_SLOT_NUM_IN_DATABASE("series_slot_num_in_database"),
+  TIME_SLOT_NUM_IN_DATABASE("time_slot_num_in_database"),
   REGION_GROUP_NUM_IN_DATABASE("region_group_num_in_database"),
   // protocol related
   ENTRY("entry"),
   SESSION_IDLE_TIME("session_idle_time"),
   THRIFT_CONNECTIONS("thrift_connections"),
   THRIFT_ACTIVE_THREADS("thrift_active_threads"),
+  CLIENT_MANAGER("client_manager"),
   // consensus related
   STAGE("stage"),
   IOT_CONSENSUS("iot_consensus"),

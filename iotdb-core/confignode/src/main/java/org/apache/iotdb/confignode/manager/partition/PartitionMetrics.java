@@ -232,6 +232,15 @@ public class PartitionMetrics implements IMetricSet {
         Tag.NAME.toString(),
         database);
 
+    // Count the number of TimeSlots in the specified Database
+    metricService.createAutoGauge(
+        Metric.TIME_SLOT_NUM_IN_DATABASE.toString(),
+        MetricLevel.CORE,
+        partitionManager,
+        manager -> manager.getAssignedTimePartitionSlotsCount(database),
+        Tag.NAME.toString(),
+        database);
+
     // Count the number of RegionGroups in the specified Database
     metricService.createAutoGauge(
         Metric.REGION_GROUP_NUM_IN_DATABASE.toString(),
@@ -287,6 +296,13 @@ public class PartitionMetrics implements IMetricSet {
     metricService.remove(
         MetricType.AUTO_GAUGE,
         Metric.SERIES_SLOT_NUM_IN_DATABASE.toString(),
+        Tag.NAME.toString(),
+        database);
+
+    // Remove the number of TimeSlots in the specified Database
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.TIME_SLOT_NUM_IN_DATABASE.toString(),
         Tag.NAME.toString(),
         database);
 

@@ -86,7 +86,11 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
   @Override
   public void handshake() throws Exception {
     if (client != null) {
-      client.close();
+      try {
+        client.close();
+      } catch (Exception e) {
+        LOGGER.warn("Close client error, because: {}", e.getMessage(), e);
+      }
     }
 
     client =
@@ -105,6 +109,8 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
                   CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new PipeException(String.format("Handshake error, result status %s.", resp.status));
+      } else {
+        LOGGER.info("Handshake success. Target server ip: {}, port: {}", ipAddress, port);
       }
     } catch (TException e) {
       throw new PipeConnectionException(
@@ -248,6 +254,8 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
     if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format("Seal file %s error, result status %s.", tsFile, resp.getStatus()));
+    } else {
+      LOGGER.info("Successfully transferred file {}.", tsFile);
     }
   }
 
