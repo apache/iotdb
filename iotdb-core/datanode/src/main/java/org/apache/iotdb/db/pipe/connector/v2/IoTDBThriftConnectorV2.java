@@ -111,6 +111,13 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
                   .createClientManager(
                       new ClientPoolFactory.AsyncPipeDataTransferServiceClientPoolFactory());
         }
+      }
+    }
+
+    asyncPipeDataTransferClientManager = asyncPipeDataTransferClientManagerHolder;
+
+    if (TRANSFER_RETRY_EXECUTOR_HOLDER.get() == null) {
+      synchronized (IoTDBThriftConnectorV2.class) {
         if (TRANSFER_RETRY_EXECUTOR_HOLDER.get() == null) {
           TRANSFER_RETRY_EXECUTOR_HOLDER.set(
               IoTDBThreadPoolFactory.newSingleThreadExecutor(
@@ -119,7 +126,6 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
       }
     }
 
-    asyncPipeDataTransferClientManager = asyncPipeDataTransferClientManagerHolder;
     transferRetryExecutor = TRANSFER_RETRY_EXECUTOR_HOLDER.get();
   }
 
