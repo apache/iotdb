@@ -1033,7 +1033,17 @@ public abstract class AlignedTVList extends TVList {
         switch (dataTypes.get(columnIndex)) {
           case TEXT:
             Binary valueT = ((Binary[]) columnValues.get(arrayIndex))[elementIndex];
-            WALWriteUtils.write(valueT, buffer);
+            // In some scenario, the Binary in AlignedTVList will be null if this field is empty in
+            // current row. We need to handle this scenario to get rid of NPE. See the similar issue
+            // here: https://github.com/apache/iotdb/pull/9884
+            // Furthermore, we use an empty Binary as a placeholder here. It won't lead to data
+            // error because whether this field is null or not is decided by the bitMap rather than
+            // the object's value here.
+            if (valueT != null) {
+              WALWriteUtils.write(valueT, buffer);
+            } else {
+              WALWriteUtils.write(new Binary(new byte[0]), buffer);
+            }
             break;
           case FLOAT:
             float valueF = ((float[]) columnValues.get(arrayIndex))[elementIndex];
