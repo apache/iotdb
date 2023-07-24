@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.protocol.client;
 
+import org.apache.commons.pool2.PooledObject;
+import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -134,9 +136,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
-
-import org.apache.commons.pool2.PooledObject;
-import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
@@ -146,6 +145,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 
 public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClient, AutoCloseable {
 
@@ -158,7 +158,6 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   private static final String MSG_RECONNECTION_DATANODE_FAIL =
       "Failed to connect to ConfigNode {} from DataNode {} when executing {}";
-
   private static final int RETRY_INTERVAL_MS = 1000;
 
   private final ThriftClientProperty property;
@@ -315,6 +314,42 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
     return false;
   }
 
+  /**
+   * The frame of execute RPC, include logic of retry and exception handling.
+   * @param call which rpc should call
+   * @param check check the rpc's result
+   * @return rpc's result
+   * @param <T> the type of rpc result
+   * @throws TException if fails more than RETRY_NUM times, throw TException(MSG_RECONNECTION_FAIL)
+   */
+  private <T> T executeRemoteCallWithRetry(
+          Operation<T> call,
+          Function<T, Boolean> check
+  ) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        T result = call.execute();
+        if (!check.apply(result)) {
+          return result;
+        }
+      } catch (TException e) {
+        logger.warn(
+                MSG_RECONNECTION_DATANODE_FAIL,
+                configNode,
+                config.getAddressAndPort(),
+                Thread.currentThread().getStackTrace()[2].getMethodName());
+        configLeader = null;
+      }
+      waitAndReconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @FunctionalInterface
+  private interface Operation<T> {
+    T execute() throws TException;
+  }
+
   @Override
   public TSystemConfigurationResp getSystemConfiguration() throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
@@ -380,6 +415,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
             config.getAddressAndPort(),
             Thread.currentThread().getStackTrace()[1].getMethodName());
         configLeader = null;
+
       }
       waitAndReconnect();
     }
@@ -854,7 +890,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TAuthorizerResp resp = client.queryPermission(req);
-        if (!updateConfigNodeLeader(resp.status)) {
+        if (!updateConfigNodeLeader(resp.getStatus())) {
           return resp;
         }
       } catch (TException e) {
@@ -874,9 +910,9 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TPermissionInfoResp login(TLoginReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TPermissionInfoResp status = client.login(req);
-        if (!updateConfigNodeLeader(status.getStatus())) {
-          return status;
+        TPermissionInfoResp resp = client.login(req);
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
         }
       } catch (TException e) {
         logger.warn(
@@ -890,6 +926,23 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
     }
     throw new TException(MSG_RECONNECTION_FAIL);
   }
+//
+//  public TPermissionInfoResp login_(TLoginReq req) throws TException {
+//    executeRemoteCallWithRetry(
+//            new Operation<TPermissionInfoResp>() {
+//                @Override
+//                public TPermissionInfoResp execute() throws TException {
+//                  return client.login(req);
+//                }
+//              },
+//            (resp) -> !updateConfigNodeLeader(resp.getStatus())
+//    );
+//    return executeRemoteCallWithRetry(
+//            () -> client.login(req),
+//            (resp) -> !updateConfigNodeLeader(resp.getStatus())
+//    );
+//  }
+
 
   @Override
   public TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req) throws TException {
