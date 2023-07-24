@@ -196,7 +196,7 @@ public class SystemMetrics implements IMetricSet {
     ArrayList<String> diskDirs = new ArrayList<>();
     diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getSystemDir());
     diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getConsensusDir());
-    if(isDataNode) {
+    if (isDataNode) {
       diskDirs.addAll(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
       diskDirs.addAll(Arrays.asList(CommonDescriptor.getInstance().getConfig().getWalDirs()));
       diskDirs.add(CommonDescriptor.getInstance().getConfig().getSyncDir());
