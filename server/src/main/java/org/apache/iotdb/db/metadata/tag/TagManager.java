@@ -21,7 +21,6 @@ package org.apache.iotdb.db.metadata.tag;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.MetadataConstant;
@@ -34,6 +33,7 @@ import org.apache.iotdb.db.metadata.query.reader.ISchemaReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,8 +82,8 @@ public class TagManager {
         SystemFileFactory.INSTANCE.getFile(targetDir, MetadataConstant.TAG_LOG_SNAPSHOT_TMP);
     try {
       tagLogFile.copyTo(tagLogSnapshotTmp);
-      if (tagLogSnapshot.exists() && !FileUtils.deleteFileIfExist(tagLogSnapshot)) {
-        logger.warn(
+      if (tagLogSnapshot.exists() && !tagLogSnapshot.delete()) {
+        logger.error(
             "Failed to delete old snapshot {} while creating tagManager snapshot.",
             tagLogSnapshot.getName());
         return false;
@@ -93,25 +93,17 @@ public class TagManager {
             "Failed to rename {} to {} while creating tagManager snapshot.",
             tagLogSnapshotTmp.getName(),
             tagLogSnapshot.getName());
-        if (!FileUtils.deleteFileIfExist(tagLogSnapshot)) {
-          logger.warn("Failed to delete {} after renaming failure.", tagLogSnapshot.getName());
-        }
+        tagLogSnapshot.delete();
         return false;
       }
 
       return true;
     } catch (IOException e) {
       logger.error("Failed to create tagManager snapshot due to {}", e.getMessage(), e);
-      if (!FileUtils.deleteFileIfExist(tagLogSnapshot)) {
-        logger.warn(
-            "Failed to delete {} after creating tagManager snapshot failure.",
-            tagLogSnapshot.getName());
-      }
+      tagLogSnapshot.delete();
       return false;
     } finally {
-      if (!FileUtils.deleteFileIfExist(tagLogSnapshotTmp)) {
-        logger.warn("Failed to delete {}.", tagLogSnapshotTmp.getName());
-      }
+      tagLogSnapshotTmp.delete();
     }
   }
 
@@ -125,7 +117,7 @@ public class TagManager {
     }
 
     try {
-      org.apache.commons.io.FileUtils.copyFile(tagSnapshot, tagFile);
+      FileUtils.copyFile(tagSnapshot, tagFile);
       return new TagManager(sgSchemaDirPath);
     } catch (IOException e) {
       tagFile.delete();
