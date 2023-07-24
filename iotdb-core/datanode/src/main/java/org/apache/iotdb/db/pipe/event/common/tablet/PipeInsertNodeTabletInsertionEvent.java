@@ -76,7 +76,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   @Override
   public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
     try {
-      if (CommonDescriptor.getInstance().getConfig().getPipeWALEnableHardLink()) {
+      if (CommonDescriptor.getInstance().getConfig().getPipeHardLinkWALEnabled()) {
         PipeResourceManager.walHardlink()
             .increaseFileReference(walEntryHandler.getWalEntryPosition().getWalFile());
       } else {
@@ -97,7 +97,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   @Override
   public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
     try {
-      if (CommonDescriptor.getInstance().getConfig().getPipeWALEnableHardLink()) {
+      if (CommonDescriptor.getInstance().getConfig().getPipeHardLinkWALEnabled()) {
         PipeResourceManager.walHardlink()
             .decreaseFileReference(walEntryHandler.getWalEntryPosition().getWalFile());
       } else {

@@ -92,7 +92,7 @@ public class PipeWALFileResourceManager {
         + File.separator
         + IoTDBConstant.DATA_FOLDER_NAME
         + File.separator
-        + PipeConfig.getInstance().getPipeHardlinkDirName()
+        + PipeConfig.getInstance().getPipeHardlinkBaseDirName()
         + File.separator
         + PipeConfig.getInstance().getPipeHardlinkWALDirName();
   }

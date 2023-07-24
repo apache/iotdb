@@ -31,8 +31,8 @@ public class PipeConfig {
 
   /////////////////////////////// File ///////////////////////////////
 
-  public String getPipeHardlinkDirName() {
-    return COMMON_CONFIG.getPipeHardlinkDirName();
+  public String getPipeHardlinkBaseDirName() {
+    return COMMON_CONFIG.getPipeHardlinkBaseDirName();
   }
 
   public String getPipeHardlinkTsFileDirName() {
@@ -43,8 +43,8 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeHardlinkWALDirName();
   }
 
-  public boolean getPipeWALEnableHardLink() {
-    return COMMON_CONFIG.getPipeWALEnableHardLink();
+  public boolean getPipeHardLinkWALEnabled() {
+    return COMMON_CONFIG.getPipeHardLinkWALEnabled();
   }
 
   /////////////////////////////// Tablet ///////////////////////////////
@@ -138,10 +138,10 @@ public class PipeConfig {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfig.class);
 
   public void printAllConfigs() {
-    LOGGER.info("PipeHardlinkDirName: {}", getPipeHardlinkDirName());
+    LOGGER.info("PipeHardlinkBaseDirName: {}", getPipeHardlinkBaseDirName());
     LOGGER.info("PipeHardlinkTsFileDirName: {}", getPipeHardlinkTsFileDirName());
     LOGGER.info("PipeHardlinkWALDirName: {}", getPipeHardlinkWALDirName());
-    LOGGER.info("PipeWALEnableHardLink: {}", getPipeWALEnableHardLink());
+    LOGGER.info("PipeHardLinkWALEnabled: {}", getPipeHardLinkWALEnabled());
 
     LOGGER.info("PipeDataStructureTabletRowSize: {}", getPipeDataStructureTabletRowSize());
 

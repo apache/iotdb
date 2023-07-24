@@ -44,7 +44,7 @@ public class PipeHardlinkFileDirStartupCleaner {
           FileUtils.listFilesAndDirs(
               new File(dataDir), DirectoryFileFilter.INSTANCE, DirectoryFileFilter.INSTANCE)) {
         if (file.isDirectory()
-            && file.getName().equals(PipeConfig.getInstance().getPipeHardlinkDirName())) {
+            && file.getName().equals(PipeConfig.getInstance().getPipeHardlinkBaseDirName())) {
           LOGGER.info(
               "pipe hardlink dir found, deleting it: {}, result: {}",
               file,

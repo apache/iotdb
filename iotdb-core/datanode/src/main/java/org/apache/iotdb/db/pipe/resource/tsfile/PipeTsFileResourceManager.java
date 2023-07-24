@@ -98,12 +98,12 @@ public class PipeTsFileResourceManager {
   private static String getPipeTsFileDirPath(File file) throws IOException {
     while (!file.getName().equals(IoTDBConstant.SEQUENCE_FLODER_NAME)
         && !file.getName().equals(IoTDBConstant.UNSEQUENCE_FLODER_NAME)
-        && !file.getName().equals(PipeConfig.getInstance().getPipeHardlinkDirName())) {
+        && !file.getName().equals(PipeConfig.getInstance().getPipeHardlinkBaseDirName())) {
       file = file.getParentFile();
     }
     return file.getParentFile().getCanonicalPath()
         + File.separator
-        + PipeConfig.getInstance().getPipeHardlinkDirName()
+        + PipeConfig.getInstance().getPipeHardlinkBaseDirName()
         + File.separator
         + PipeConfig.getInstance().getPipeHardlinkTsFileDirName();
   }
