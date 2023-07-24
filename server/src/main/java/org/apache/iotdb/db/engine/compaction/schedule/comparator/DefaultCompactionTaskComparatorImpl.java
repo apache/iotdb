@@ -71,6 +71,13 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
           - o2.getSumOfCompactionCount() / o2.getSelectedTsFileResourceList().size();
     }
 
+    // if the time partition of o1 and o2 are different
+    // we prefer to execute task with greater time partition
+    // because we want to compact files with new data
+    if (o1.getTimePartition() != o2.getTimePartition()) {
+      return o2.getTimePartition() > o1.getTimePartition() ? 1 : -1;
+    }
+
     // if the max file version of o1 and o2 are different
     // we prefer to execute task with greater file version
     // because we want to compact newly written files
@@ -105,6 +112,13 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
 
   public int compareCrossSpaceCompactionTask(
       CrossSpaceCompactionTask o1, CrossSpaceCompactionTask o2) {
+    // if the time partition of o1 and o2 are different
+    // we prefer to execute task with greater time partition
+    // because we want to compact files with new data
+    if (o1.getTimePartition() != o2.getTimePartition()) {
+      return o2.getTimePartition() > o1.getTimePartition() ? 1 : -1;
+    }
+
     if (o1.getSelectedSequenceFiles().size() != o2.getSelectedSequenceFiles().size()) {
       // we prefer the task with fewer sequence files
       // because this type of tasks consume fewer memory during execution
