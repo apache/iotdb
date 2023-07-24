@@ -20,141 +20,83 @@ package org.apache.iotdb.db.query.control;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.query.control.clientsession.IClientSession;
 import org.apache.iotdb.db.query.dataset.UDTFDataSet;
-import org.apache.iotdb.db.service.JMXService;
-import org.apache.iotdb.service.rpc.thrift.TSConnectionInfo;
-import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
-import java.util.Comparator;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
 
-/**
- * Session Manager is for mananging active sessions. It will be used by both Thrift based services
- * (i.e., TSServiceImpl and InfluxdbService) and Mqtt based service. <br>
- * Thrift based services are client-thread model, i.e., each client has a thread. So we can use
- * threadLocal for such services.<br>
- * However, Mqtt based service use message-thread model, i.e, each message has a short thread. So,
- * we can not use threadLocal for such services.
- */
-public class SessionManager implements SessionManagerMBean {
+public class SessionManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(SessionManager.class);
 
   // When the client abnormally exits, we can still know who to disconnect
-  /** currSession can be only used in client-thread model services. */
-  private final ThreadLocal<IClientSession> currSession = new ThreadLocal<>();
+  private final ThreadLocal<Long> currSessionId = new ThreadLocal<>();
+  // Record the username for every rpc connection (session).
+  private final Map<Long, String> sessionIdToUsername = new ConcurrentHashMap<>();
+  private final Map<Long, ZoneId> sessionIdToZoneId = new ConcurrentHashMap<>();
 
-  // sessions does not contain MqttSessions..
-  private final Map<IClientSession, Object> sessions = new ConcurrentHashMap<>();
-  // used for sessions.
-  private final Object placeHolder = new Object();
-
-  // we keep this sessionIdGenerator just for keep Compatible with v0.13
-  @Deprecated private final AtomicLong sessionIdGenerator = new AtomicLong();
-
+  // The sessionId is unique in one IoTDB instance.
+  private final AtomicLong sessionIdGenerator = new AtomicLong();
   // The statementId is unique in one IoTDB instance.
   private final AtomicLong statementIdGenerator = new AtomicLong();
 
+  // (sessionId -> Set(statementId))
+  private final Map<Long, Set<Long>> sessionIdToStatementId = new ConcurrentHashMap<>();
   // (statementId -> Set(queryId))
   private final Map<Long, Set<Long>> statementIdToQueryId = new ConcurrentHashMap<>();
   // (queryId -> QueryDataSet)
   private final Map<Long, QueryDataSet> queryIdToDataSet = new ConcurrentHashMap<>();
 
+  // (sessionId -> client version number)
+  private final Map<Long, IoTDBConstant.ClientVersion> sessionIdToClientVersion =
+      new ConcurrentHashMap<>();
+
   protected SessionManager() {
     // singleton
-    String mbeanName =
-        String.format(
-            "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "RpcSession");
-    JMXService.registerMBean(this, mbeanName);
   }
 
-  /**
-   * this method can be only used in client-thread model.
-   *
-   * @return
-   */
-  public IClientSession getCurrSession() {
-    return currSession.get();
+  public Long getCurrSessionId() {
+    return currSessionId.get();
   }
 
-  public TimeZone getSessionTimeZone() {
-    IClientSession session = currSession.get();
-    if (session != null) {
-      return session.getTimeZone();
+  public void removeCurrSessionId() {
+    currSessionId.remove();
+  }
+
+  public TimeZone getCurrSessionTimeZone() {
+    if (getCurrSessionId() != null) {
+      return TimeZone.getTimeZone(SessionManager.getInstance().getZoneId(getCurrSessionId()));
     } else {
       // only used for test
       return TimeZone.getTimeZone("+08:00");
     }
   }
 
-  /**
-   * this method can be only used in client-thread model. But, in message-thread model based
-   * service, calling this method has no side effect. <br>
-   * MUST CALL THIS METHOD IN client-thread model services. Fortunately, we can just call this
-   * method in thrift's event handler.
-   *
-   * @return
-   */
-  public void removeCurrSession() {
-    IClientSession session = currSession.get();
-    sessions.remove(session);
-    currSession.remove();
+  public long requestSessionId(
+      String username, String zoneId, IoTDBConstant.ClientVersion clientVersion) {
+    long sessionId = sessionIdGenerator.incrementAndGet();
+
+    currSessionId.set(sessionId);
+    sessionIdToUsername.put(sessionId, username);
+    sessionIdToZoneId.put(sessionId, ZoneId.of(zoneId));
+    sessionIdToClientVersion.put(sessionId, clientVersion);
+
+    return sessionId;
   }
 
-  /**
-   * this method can be only used in client-thread model. Do not use this method in message-thread
-   * model based service.
-   *
-   * @param session
-   * @return false if the session has been initialized.
-   */
-  public boolean registerSession(IClientSession session) {
-    if (this.currSession.get() != null) {
-      LOGGER.error("the client session is registered repeatedly, pls check whether this is a bug.");
-      return false;
-    }
-    this.currSession.set(session);
-    sessions.put(session, placeHolder);
-    return true;
-  }
+  public boolean releaseSessionResource(long sessionId) {
+    sessionIdToZoneId.remove(sessionId);
+    sessionIdToClientVersion.remove(sessionId);
 
-  /**
-   * must be called after registerSession()) will mark the session login.
-   *
-   * @param username
-   * @param zoneId
-   * @param clientVersion
-   */
-  public void supplySession(
-      IClientSession session,
-      String username,
-      String zoneId,
-      IoTDBConstant.ClientVersion clientVersion) {
-    session.setId(sessionIdGenerator.incrementAndGet());
-    session.setUsername(username);
-    session.setZoneId(ZoneId.of(zoneId));
-    session.setClientVersion(clientVersion);
-    session.setLogin(true);
-    session.setLogInTime(System.currentTimeMillis());
-  }
-
-  /**
-   * @param session
-   * @return true if releasing successfully, false otherwise (e.g., the session does not exist)
-   */
-  public boolean releaseSessionResource(IClientSession session) {
-    Set<Long> statementIdSet = session.getStatementIds();
+    Set<Long> statementIdSet = sessionIdToStatementId.remove(sessionId);
     if (statementIdSet != null) {
       for (Long statementId : statementIdSet) {
         Set<Long> queryIdSet = statementIdToQueryId.remove(statementId);
@@ -164,46 +106,44 @@ public class SessionManager implements SessionManagerMBean {
           }
         }
       }
-      return true;
     }
-    // TODO if there is no statement for the session, how to return (true or false?)
-    return false;
+
+    return sessionIdToUsername.remove(sessionId) != null;
   }
 
-  /**
-   * @param queryId
-   * @return null if not found. (e.g., the client session is closed already. TODO: do we really have
-   *     this case?)
-   */
-  public IClientSession getSessionIdByQueryId(long queryId) {
+  public long getSessionIdByQueryId(long queryId) {
     // TODO: make this more efficient with a queryId -> sessionId map
     for (Map.Entry<Long, Set<Long>> statementToQueries : statementIdToQueryId.entrySet()) {
       if (statementToQueries.getValue().contains(queryId)) {
-        Long statementId = statementToQueries.getKey();
-        for (IClientSession session : sessions.keySet()) {
-          if (session.getStatementIds().contains(statementId)) {
-            return session;
+        for (Map.Entry<Long, Set<Long>> sessionToStatements : sessionIdToStatementId.entrySet()) {
+          if (sessionToStatements.getValue().contains(statementToQueries.getKey())) {
+            return sessionToStatements.getKey();
           }
         }
       }
     }
-    return null;
+    return -1;
   }
 
-  public long requestStatementId(IClientSession session) {
+  public long requestStatementId(long sessionId) {
     long statementId = statementIdGenerator.incrementAndGet();
-    session.getStatementIds().add(statementId);
+    sessionIdToStatementId
+        .computeIfAbsent(sessionId, s -> new CopyOnWriteArraySet<>())
+        .add(statementId);
     return statementId;
   }
 
-  public void closeStatement(IClientSession session, long statementId) {
+  public void closeStatement(long sessionId, long statementId) {
     Set<Long> queryIdSet = statementIdToQueryId.remove(statementId);
     if (queryIdSet != null) {
       for (Long queryId : queryIdSet) {
         releaseQueryResourceNoExceptions(queryId);
       }
     }
-    session.getStatementIds().remove(statementId);
+
+    if (sessionIdToStatementId.containsKey(sessionId)) {
+      sessionIdToStatementId.get(sessionId).remove(statementId);
+    }
   }
 
   public long requestQueryId(Long statementId, boolean isDataQuery) {
@@ -236,6 +176,18 @@ public class SessionManager implements SessionManagerMBean {
     }
   }
 
+  public String getUsername(Long sessionId) {
+    return sessionIdToUsername.get(sessionId);
+  }
+
+  public ZoneId getZoneId(Long sessionId) {
+    return sessionIdToZoneId.get(sessionId);
+  }
+
+  public void setTimezone(Long sessionId, String zone) {
+    sessionIdToZoneId.put(sessionId, ZoneId.of(zone));
+  }
+
   public boolean hasDataset(Long queryId) {
     return queryIdToDataSet.containsKey(queryId);
   }
@@ -259,21 +211,12 @@ public class SessionManager implements SessionManagerMBean {
     }
   }
 
+  public IoTDBConstant.ClientVersion getClientVersion(Long sessionId) {
+    return sessionIdToClientVersion.get(sessionId);
+  }
+
   public static SessionManager getInstance() {
     return SessionManagerHelper.INSTANCE;
-  }
-
-  @Override
-  public Set<String> getAllRpcClients() {
-    return this.sessions.keySet().stream().map(x -> x.toString()).collect(Collectors.toSet());
-  }
-
-  public TSConnectionInfoResp getAllConnectionInfo() {
-    return new TSConnectionInfoResp(
-        sessions.keySet().stream()
-            .map(IClientSession::convertToTSConnectionInfo)
-            .sorted(Comparator.comparingLong(TSConnectionInfo::getLogInTime))
-            .collect(Collectors.toList()));
   }
 
   private static class SessionManagerHelper {
