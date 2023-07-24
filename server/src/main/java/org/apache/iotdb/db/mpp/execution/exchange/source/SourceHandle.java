@@ -668,7 +668,7 @@ public class SourceHandle implements ISourceHandle {
     public void run() {
       try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
         LOGGER.debug(
-            "[SendCloseSinkChannelEvent] to [ShuffleSinkHandle: {}, index: {}]).",
+            "[SendCloseSinkChanelEvent] to [ShuffleSinkHandle: {}, index: {}]).",
             remoteFragmentInstanceId,
             indexOfUpstreamSinkHandle);
         int attempt = 0;
@@ -683,7 +683,7 @@ public class SourceHandle implements ISourceHandle {
             break;
           } catch (Throwable e) {
             LOGGER.warn(
-                "[SendCloseSinkChannelEvent] to [ShuffleSinkHandle: {}, index: {}] failed.).",
+                "[SendCloseSinkChanelEvent] to [ShuffleSinkHandle: {}, index: {}] failed.).",
                 remoteFragmentInstanceId,
                 indexOfUpstreamSinkHandle);
             if (attempt == MAX_ATTEMPT_TIMES) {

@@ -88,11 +88,8 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
     }
     for (FragmentInstanceId fragmentInstanceId : instanceIds) {
       InstanceStateMetrics stateMetrics = instanceStateMap.get(fragmentInstanceId);
-      if (stateMetrics == null
-          || stateMetrics.lastState == null
-          || !stateMetrics.lastState.isDone()) {
-        // FI whose state has not been updated is considered to be unfinished.(In Query with limit
-        // clause, it's possible that the query is finished before the state of FI being recorded.)
+      if (stateMetrics != null
+          && (stateMetrics.lastState == null || !stateMetrics.lastState.isDone())) {
         res.add(fragmentInstanceId);
       }
     }
