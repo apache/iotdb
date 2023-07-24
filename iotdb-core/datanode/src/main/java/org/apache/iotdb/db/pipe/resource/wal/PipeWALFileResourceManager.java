@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.resource.wal;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.utils.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -139,16 +138,6 @@ public class PipeWALFileResourceManager {
     if (updatedReference != null && updatedReference == 0) {
       Files.deleteIfExists(hardlink.toPath());
       hardlinkToReferenceMap.remove(hardlink.getPath());
-    }
-  }
-
-  public synchronized void clear(String dataDir) {
-    File pipeWalDir =
-        new File(
-            dataDir + File.separator + PipeConfig.getInstance().getPipeHardlinkDirName(),
-            PipeConfig.getInstance().getPipeHardlinkWALDirName());
-    if (pipeWalDir.exists()) {
-      FileUtils.deleteDirectory(pipeWalDir);
     }
   }
 

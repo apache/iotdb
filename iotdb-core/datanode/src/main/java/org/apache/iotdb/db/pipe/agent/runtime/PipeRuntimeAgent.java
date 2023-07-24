@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.resource.file.PipeHardlinkFileDirStartupCleaner;
+import org.apache.iotdb.db.pipe.resource.PipeHardlinkFileDirStartupCleaner;
 import org.apache.iotdb.db.service.ResourcesInformationHolder;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 

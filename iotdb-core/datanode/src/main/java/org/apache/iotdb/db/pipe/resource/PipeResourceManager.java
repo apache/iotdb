@@ -19,18 +19,18 @@
 
 package org.apache.iotdb.db.pipe.resource;
 
-import org.apache.iotdb.db.pipe.resource.file.PipeFileResourceManager;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.resource.wal.PipeWALFileResourceManager;
 import org.apache.iotdb.db.pipe.resource.wal.PipeWALResourceManager;
 
 public class PipeResourceManager {
 
-  private final PipeFileResourceManager pipeFileResourceManager;
+  private final PipeTsFileResourceManager pipeTsFileResourceManager;
   private final PipeWALResourceManager pipeWALResourceManager;
   private final PipeWALFileResourceManager pipeWALFileResourceManager;
 
-  public static PipeFileResourceManager file() {
-    return PipeResourceManagerHolder.INSTANCE.pipeFileResourceManager;
+  public static PipeTsFileResourceManager tsfile() {
+    return PipeResourceManagerHolder.INSTANCE.pipeTsFileResourceManager;
   }
 
   public static PipeWALResourceManager wal() {
@@ -44,7 +44,7 @@ public class PipeResourceManager {
   ///////////////////////////// SINGLETON /////////////////////////////
 
   private PipeResourceManager() {
-    pipeFileResourceManager = new PipeFileResourceManager();
+    pipeTsFileResourceManager = new PipeTsFileResourceManager();
     pipeWALResourceManager = new PipeWALResourceManager();
     pipeWALFileResourceManager = new PipeWALFileResourceManager();
   }
