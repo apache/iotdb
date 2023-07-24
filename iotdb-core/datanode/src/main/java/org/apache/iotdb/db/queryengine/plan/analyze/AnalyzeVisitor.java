@@ -358,7 +358,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     ModelInformation modelInformation = partitionFetcher.getModelInformation(modelId);
     if (modelInformation == null || !modelInformation.available()) {
-      throw new SemanticException("");
+      throw new SemanticException("Model " + modelId + " is not available");
     }
 
     ModelInferenceFunction functionType =
@@ -385,7 +385,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       descTimeOrder.addSortItem(new SortItem("TIME", Ordering.DESC));
       queryStatement.setOrderByComponent(descTimeOrder);
     } else {
-      throw new IllegalArgumentException("");
+      throw new IllegalArgumentException(
+          "Unsupported model inference function type " + functionType);
     }
   }
 

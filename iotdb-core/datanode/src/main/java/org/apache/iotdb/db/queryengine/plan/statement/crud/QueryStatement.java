@@ -478,22 +478,25 @@ public class QueryStatement extends Statement {
   public void semanticCheck() {
     if (isModelInferenceQuery()) {
       if (selectComponent.getResultColumns().size() > 1) {
-        throw new SemanticException("");
+        throw new SemanticException("Model inference query can't be used with other queries now.");
       }
 
       Expression modelInferenceExpression =
           selectComponent.getResultColumns().get(0).getExpression();
       if (!(modelInferenceExpression instanceof FunctionExpression
           && ((FunctionExpression) modelInferenceExpression).isModelInferenceFunction())) {
-        throw new SemanticException("");
+        throw new SemanticException("Model inference only supports forecast function now.");
       }
       if (!((FunctionExpression) modelInferenceExpression)
           .getFunctionAttributes()
           .containsKey(MODEL_ID)) {
-        throw new SemanticException("");
+        throw new SemanticException("Model inference function must indicate the model id.");
       }
-      if (ExpressionAnalyzer.searchAggregationExpressions(modelInferenceExpression).size() > 0) {
-        throw new SemanticException("");
+      if (!ExpressionAnalyzer.searchAggregationExpressions(modelInferenceExpression).isEmpty()) {
+        throw new SemanticException(
+            "Expression "
+                + modelInferenceExpression.getExpressionString()
+                + " doesn't refer to any data.");
       }
 
       if (hasHaving()
@@ -507,13 +510,14 @@ public class QueryStatement extends Statement {
           || isSelectInto()
           || isOrderByDevice()
           || isOrderByTimeseries()) {
-        throw new SemanticException("");
+        throw new SemanticException("Model inference query can't be used with other queries now.");
       }
 
       if (orderByComponent != null
           && (!orderByComponent.isOrderByTime()
               || orderByComponent.getTimeOrder() != Ordering.ASC)) {
-        throw new SemanticException("");
+        throw new SemanticException(
+            "The order by clause of model inference query must be ORDER BY TIME ASC.");
       }
     }
 
