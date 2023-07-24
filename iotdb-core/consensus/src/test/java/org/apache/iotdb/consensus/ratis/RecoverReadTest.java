@@ -173,7 +173,12 @@ public class RecoverReadTest {
     // wait an active leader to serve linearizable read requests
     miniCluster.waitUntilActiveLeader();
 
-    Assert.assertEquals(10, TestUtils.read(miniCluster.getServer(0), gid));
+    ConsensusReadResponse resp = TestUtils.doRead(miniCluster.getServer(0), gid);
+    while (!resp.isSuccess()) {
+      resp = TestUtils.doRead(miniCluster.getServer(0), gid);
+    }
+
+    Assert.assertEquals(10, ((TestUtils.TestDataSet) resp.getDataset()).getNumber());
   }
 
   @Test
