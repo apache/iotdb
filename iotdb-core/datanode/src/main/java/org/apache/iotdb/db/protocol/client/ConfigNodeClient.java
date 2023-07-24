@@ -354,7 +354,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   @Override
   public TSystemConfigurationResp getSystemConfiguration() throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.getSystemConfiguration(), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.getSystemConfiguration(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
@@ -390,69 +390,69 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   @Override
   public TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.restartDataNode(req), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.restartDataNode(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TDataNodeRemoveResp removeDataNode(TDataNodeRemoveReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.removeDataNode(req), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.removeDataNode(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TSStatus reportDataNodeShutdown(TDataNodeLocation dataNodeLocation) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.reportDataNodeShutdown(dataNodeLocation),
-        (status) -> !updateConfigNodeLeader(status));
+        status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TDataNodeConfigurationResp getDataNodeConfiguration(int dataNodeId) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.getDataNodeConfiguration(dataNodeId),
-        (resp) -> !updateConfigNodeLeader(resp.status));
+        resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.reportRegionMigrateResult(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.reportRegionMigrateResult(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TShowClusterResp showCluster() throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.showCluster(), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.showCluster(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TShowVariablesResp showVariables() throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.showVariables(), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.showVariables(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TSStatus setDatabase(TDatabaseSchema databaseSchema) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.setDatabase(databaseSchema), (status) -> !updateConfigNodeLeader(status));
+        () -> client.setDatabase(databaseSchema), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TSStatus alterDatabase(TDatabaseSchema databaseSchema) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.alterDatabase(databaseSchema), (status) -> !updateConfigNodeLeader(status));
+        () -> client.alterDatabase(databaseSchema), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TSStatus deleteDatabase(TDeleteDatabaseReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.deleteDatabase(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.deleteDatabase(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TSStatus deleteDatabases(TDeleteDatabasesReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.deleteDatabases(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.deleteDatabases(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
@@ -460,7 +460,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       throws TException {
     return executeRemoteCallWithRetry(
         () -> client.countMatchedDatabases(storageGroupPathPattern),
-        (resp) -> !updateConfigNodeLeader(resp.status));
+        resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
@@ -468,38 +468,38 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       throws TException {
     return executeRemoteCallWithRetry(
         () -> client.getMatchedDatabaseSchemas(storageGroupPathPattern),
-        (resp) -> !updateConfigNodeLeader(resp.status));
+        resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TSStatus setTTL(TSetTTLReq setTTLReq) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.setTTL(setTTLReq), (status) -> !updateConfigNodeLeader(status));
+        () -> client.setTTL(setTTLReq), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TSStatus setSchemaReplicationFactor(TSetSchemaReplicationFactorReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.setSchemaReplicationFactor(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.setSchemaReplicationFactor(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TSStatus setDataReplicationFactor(TSetDataReplicationFactorReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.setDataReplicationFactor(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.setDataReplicationFactor(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TSStatus setTimePartitionInterval(TSetTimePartitionIntervalReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.setTimePartitionInterval(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.setTimePartitionInterval(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TSchemaPartitionTableResp getSchemaPartitionTable(TSchemaPartitionReq req)
       throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.getSchemaPartitionTable(req), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.getSchemaPartitionTable(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
@@ -507,7 +507,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       throws TException {
     return executeRemoteCallWithRetry(
         () -> client.getOrCreateSchemaPartitionTable(req),
-        (resp) -> !updateConfigNodeLeader(resp.status));
+        resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
@@ -515,13 +515,13 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       throws TException {
     return executeRemoteCallWithRetry(
         () -> client.getSchemaNodeManagementPartition(req),
-        (resp) -> !updateConfigNodeLeader(resp.status));
+        resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TDataPartitionTableResp getDataPartitionTable(TDataPartitionReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.getDataPartitionTable(req), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.getDataPartitionTable(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
@@ -529,31 +529,31 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       throws TException {
     return executeRemoteCallWithRetry(
         () -> client.getOrCreateDataPartitionTable(req),
-        (resp) -> !updateConfigNodeLeader(resp.status));
+        resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TSStatus operatePermission(TAuthorizerReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.operatePermission(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.operatePermission(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TAuthorizerResp queryPermission(TAuthorizerReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.queryPermission(req), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.queryPermission(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TPermissionInfoResp login(TLoginReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.login(req), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.login(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.checkUserPrivileges(req), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.checkUserPrivileges(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
@@ -600,31 +600,31 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   @Override
   public TSStatus merge() throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.merge(), (status) -> !updateConfigNodeLeader(status));
+        () -> client.merge(), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TSStatus flush(TFlushReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.flush(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.flush(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TSStatus clearCache() throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.clearCache(), (status) -> !updateConfigNodeLeader(status));
+        () -> client.clearCache(), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TSStatus loadConfiguration() throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.loadConfiguration(), (status) -> !updateConfigNodeLeader(status));
+        () -> client.loadConfiguration(), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TSStatus setSystemStatus(String systemStatus) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.setSystemStatus(systemStatus), (status) -> !updateConfigNodeLeader(status));
+        () -> client.setSystemStatus(systemStatus), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
@@ -635,19 +635,19 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   @Override
   public TSStatus killQuery(String queryId, int dataNodeId) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.killQuery(queryId, dataNodeId), (status) -> !updateConfigNodeLeader(status));
+        () -> client.killQuery(queryId, dataNodeId), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TGetDataNodeLocationsResp getRunningDataNodeLocations() throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.getRunningDataNodeLocations(), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.getRunningDataNodeLocations(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TShowRegionResp showRegion(TShowRegionReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.showRegion(req), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.showRegion(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
@@ -658,26 +658,26 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
           showDataNodesResp.setStatus(showDataNodesResp.getStatus());
           return showDataNodesResp;
         },
-        (resp) -> !updateConfigNodeLeader(resp.status));
+        resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TShowConfigNodesResp showConfigNodes() throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.showConfigNodes(), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.showConfigNodes(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TShowDatabaseResp showDatabase(List<String> storageGroupPathPattern) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.showDatabase(storageGroupPathPattern),
-        (resp) -> !updateConfigNodeLeader(resp.status));
+        resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TRegionRouteMapResp getLatestRegionRouteMap() throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.getLatestRegionRouteMap(), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.getLatestRegionRouteMap(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
@@ -688,37 +688,37 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   @Override
   public TSStatus createFunction(TCreateFunctionReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.createFunction(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.createFunction(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TSStatus dropFunction(TDropFunctionReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.dropFunction(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.dropFunction(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TGetUDFTableResp getUDFTable() throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.getUDFTable(), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.getUDFTable(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TGetJarInListResp getUDFJar(TGetJarInListReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.getUDFJar(req), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.getUDFJar(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TSStatus createTrigger(TCreateTriggerReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.createTrigger(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.createTrigger(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TSStatus dropTrigger(TDropTriggerReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.dropTrigger(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.dropTrigger(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
@@ -726,245 +726,245 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
       throws TException {
     return executeRemoteCallWithRetry(
         () -> client.getLocationOfStatefulTrigger(triggerName),
-        (resp) -> !updateConfigNodeLeader(resp.status));
+        resp -> !updateConfigNodeLeader(resp.status));
   }
 
   public TGetTriggerTableResp getTriggerTable() throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.getTriggerTable(), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.getTriggerTable(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TGetTriggerTableResp getStatefulTriggerTable() throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.getStatefulTriggerTable(), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.getStatefulTriggerTable(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TGetJarInListResp getTriggerJar(TGetJarInListReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.getTriggerJar(req), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.getTriggerJar(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TSStatus createPipePlugin(TCreatePipePluginReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.createPipePlugin(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.createPipePlugin(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TSStatus dropPipePlugin(TDropPipePluginReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.dropPipePlugin(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.dropPipePlugin(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TGetPipePluginTableResp getPipePluginTable() throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.getPipePluginTable(), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.getPipePluginTable(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TGetJarInListResp getPipePluginJar(TGetJarInListReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.getPipePluginJar(req), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.getPipePluginJar(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.createSchemaTemplate(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.createSchemaTemplate(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TGetAllTemplatesResp getAllTemplates() throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.getAllTemplates(), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.getAllTemplates(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TGetTemplateResp getTemplate(String req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.getTemplate(req), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.getTemplate(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TSStatus setSchemaTemplate(TSetSchemaTemplateReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.setSchemaTemplate(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.setSchemaTemplate(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TGetPathsSetTemplatesResp getPathsSetTemplate(String req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.getPathsSetTemplate(req), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.getPathsSetTemplate(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TSStatus deactivateSchemaTemplate(TDeactivateSchemaTemplateReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.deactivateSchemaTemplate(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.deactivateSchemaTemplate(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TSStatus unsetSchemaTemplate(TUnsetSchemaTemplateReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.unsetSchemaTemplate(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.unsetSchemaTemplate(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TSStatus dropSchemaTemplate(String req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.dropSchemaTemplate(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.dropSchemaTemplate(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TSStatus alterSchemaTemplate(TAlterSchemaTemplateReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.alterSchemaTemplate(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.alterSchemaTemplate(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.deleteTimeSeries(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.deleteTimeSeries(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TSStatus deleteLogicalView(TDeleteLogicalViewReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.deleteLogicalView(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.deleteLogicalView(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TSStatus alterLogicalView(TAlterLogicalViewReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.alterLogicalView(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.alterLogicalView(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TSStatus createPipeSink(TPipeSinkInfo req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.createPipeSink(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.createPipeSink(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TSStatus dropPipeSink(TDropPipeSinkReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.dropPipeSink(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.dropPipeSink(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TGetPipeSinkResp getPipeSink(TGetPipeSinkReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.getPipeSink(req), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.getPipeSink(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TSStatus createPipe(TCreatePipeReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.createPipe(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.createPipe(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TSStatus startPipe(String pipeName) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.startPipe(pipeName), (status) -> !updateConfigNodeLeader(status));
+        () -> client.startPipe(pipeName), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TSStatus stopPipe(String pipeName) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.stopPipe(pipeName), (status) -> !updateConfigNodeLeader(status));
+        () -> client.stopPipe(pipeName), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TSStatus dropPipe(String pipeName) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.dropPipe(pipeName), (status) -> !updateConfigNodeLeader(status));
+        () -> client.dropPipe(pipeName), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TShowPipeResp showPipe(TShowPipeReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.showPipe(req), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.showPipe(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TGetAllPipeInfoResp getAllPipeInfo() throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.getAllPipeInfo(), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.getAllPipeInfo(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TGetRegionIdResp getRegionId(TGetRegionIdReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.getRegionId(req), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.getRegionId(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TGetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.getTimeSlotList(req), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.getTimeSlotList(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   public TCountTimeSlotListResp countTimeSlotList(TCountTimeSlotListReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.countTimeSlotList(req), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.countTimeSlotList(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TGetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.getSeriesSlotList(req), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.getSeriesSlotList(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TSStatus migrateRegion(TMigrateRegionReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.migrateRegion(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.migrateRegion(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TSStatus createCQ(TCreateCQReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.createCQ(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.createCQ(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TSStatus dropCQ(TDropCQReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.dropCQ(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.dropCQ(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TShowCQResp showCQ() throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.showCQ(), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.showCQ(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TSStatus createModel(TCreateModelReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.createModel(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.createModel(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TSStatus dropModel(TDropModelReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.dropModel(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.dropModel(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TShowModelResp showModel(TShowModelReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.showModel(req), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.showModel(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TShowTrailResp showTrail(TShowTrailReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.showTrail(req), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.showTrail(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
@@ -980,37 +980,37 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   @Override
   public TSStatus setSpaceQuota(TSetSpaceQuotaReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.setSpaceQuota(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.setSpaceQuota(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TSpaceQuotaResp showSpaceQuota(List<String> databases) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.showSpaceQuota(databases), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.showSpaceQuota(databases), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TSpaceQuotaResp getSpaceQuota() throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.getSpaceQuota(), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.getSpaceQuota(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TSStatus setThrottleQuota(TSetThrottleQuotaReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.setThrottleQuota(req), (status) -> !updateConfigNodeLeader(status));
+        () -> client.setThrottleQuota(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override
   public TThrottleQuotaResp showThrottleQuota(TShowThrottleReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.showThrottleQuota(req), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.showThrottleQuota(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
   public TThrottleQuotaResp getThrottleQuota() throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.getThrottleQuota(), (resp) -> !updateConfigNodeLeader(resp.status));
+        () -> client.getThrottleQuota(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   public static class Factory extends ThriftClientFactory<ConfigRegionId, ConfigNodeClient> {
