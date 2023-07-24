@@ -46,6 +46,7 @@ public class AggregationPlan extends RawDataQueryPlan {
 
   private List<String> aggregations = new ArrayList<>();
   private List<String> deduplicatedAggregations = new ArrayList<>();
+  private List<Map<String, String>> parameters;
 
   private int[] levels;
   private GroupByLevelController groupByLevelController;
@@ -190,5 +191,13 @@ public class AggregationPlan extends RawDataQueryPlan {
       columnForDisplay = aggregatePath;
     }
     return columnForDisplay;
+  }
+
+  public List<Map<String, String>> getParameters() {
+    return parameters;
+  }
+
+  public void setParameters(List<Map<String, String>> parameters) {
+    this.parameters = parameters;
   }
 }

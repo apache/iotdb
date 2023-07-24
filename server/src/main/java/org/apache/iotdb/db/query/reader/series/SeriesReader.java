@@ -46,12 +46,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Objects;
-import java.util.PriorityQueue;
-import java.util.Set;
+import java.util.*;
 import java.util.function.ToLongFunction;
 import java.util.stream.Collectors;
 
@@ -1471,5 +1466,48 @@ public class SeriesReader {
   @TestOnly
   public Filter getValueFilter() {
     return valueFilter;
+  }
+
+  public List<ChunkMetadata> getAllChunkMetadatas() throws IOException {
+    List<ChunkMetadata> chunkList = new ArrayList<>();
+    while (orderUtils.hasNextUnseqResource()) {
+      TimeseriesMetadata timeseriesMetadata =
+          FileLoaderUtils.loadTimeSeriesMetadata(
+              orderUtils.getNextUnseqFileResource(true),
+              seriesPath,
+              context,
+              getAnyFilter(),
+              allSensors);
+      if (timeseriesMetadata != null) {
+        timeseriesMetadata.setModified(true);
+        timeseriesMetadata.setSeq(false);
+      }
+      unpackOneTimeSeriesMetadata(timeseriesMetadata, chunkList);
+    }
+    while (orderUtils.hasNextSeqResource()) {
+      TimeseriesMetadata timeseriesMetadata =
+          FileLoaderUtils.loadTimeSeriesMetadata(
+              orderUtils.getNextSeqFileResource(true),
+              seriesPath,
+              context,
+              getAnyFilter(),
+              allSensors);
+      if (timeseriesMetadata != null) {
+        timeseriesMetadata.setSeq(true);
+      } else return chunkList;
+      unpackOneTimeSeriesMetadata(timeseriesMetadata, chunkList);
+    }
+    chunkList.sort(Comparator.comparing(ChunkMetadata::getVersion));
+    return chunkList;
+  }
+
+  private void unpackOneTimeSeriesMetadata(
+      TimeseriesMetadata timeSeriesMetadata, List<ChunkMetadata> chunkList) throws IOException {
+    List<IChunkMetadata> chunkMetadataList =
+        FileLoaderUtils.loadChunkMetadataList(timeSeriesMetadata);
+    chunkMetadataList.forEach(chunkMetadata -> chunkMetadata.setSeq(timeSeriesMetadata.isSeq()));
+    for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+      chunkList.add((ChunkMetadata) chunkMetadata);
+    }
   }
 }

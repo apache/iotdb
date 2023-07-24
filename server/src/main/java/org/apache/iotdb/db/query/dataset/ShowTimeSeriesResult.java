@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -90,61 +89,25 @@ public class ShowTimeSeriesResult extends ShowResult {
     return attributes;
   }
 
-  @TestOnly
-  public void setTags(Map<String, String> tags) {
-    this.tags = tags;
-  }
-
-  @TestOnly
-  public void setAttributes(Map<String, String> attributes) {
-    this.attributes = attributes;
-  }
-
   public long getLastTime() {
     return lastTime;
   }
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    ShowTimeSeriesResult that = (ShowTimeSeriesResult) o;
-    return lastTime == that.lastTime
-        && Objects.equals(alias, that.alias)
-        && dataType == that.dataType
-        && encoding == that.encoding
-        && compressor == that.compressor
-        && Objects.equals(tags, that.tags)
-        && Objects.equals(attributes, that.attributes);
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    ShowTimeSeriesResult result = (ShowTimeSeriesResult) o;
+    return Objects.equals(name, result.name);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(alias, dataType, encoding, compressor, tags, attributes, lastTime);
-  }
-
-  @Override
-  public String toString() {
-    return "ShowTimeSeriesResult{"
-        + "name='"
-        + name
-        + '\''
-        + ", alias='"
-        + alias
-        + '\''
-        + ", dataType="
-        + dataType
-        + ", encoding="
-        + encoding
-        + ", compressor="
-        + compressor
-        + ", tags="
-        + tags
-        + ", attributes="
-        + attributes
-        + ", lastTime="
-        + lastTime
-        + '}';
+    return Objects.hash(name);
   }
 
   private void writeNullable(Map<String, String> param, OutputStream outputStream)
