@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.v1;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -44,6 +45,7 @@ import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
+import org.apache.iotdb.session.util.SessionUtils;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.thrift.TException;
@@ -54,8 +56,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
+import java.util.List;
 
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_NODE_URLS_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY;
 
 public class IoTDBThriftConnectorV1 implements PipeConnector {
@@ -66,21 +70,44 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
 
   private String ipAddress;
   private int port;
+  private List<TEndPoint> nodeUrls;
+  private boolean useNodeUrls;
 
   private IoTDBThriftConnectorClient client;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
-    validator
-        .validateRequiredAttribute(CONNECTOR_IOTDB_IP_KEY)
-        .validateRequiredAttribute(CONNECTOR_IOTDB_PORT_KEY);
+    validator.validate(
+        args -> {
+          if ((boolean) args[0] && !(boolean) args[1] && !(boolean) args[2]) {
+            useNodeUrls = true;
+            return true;
+          } else if (!(boolean) args[0] && (boolean) args[1] && (boolean) args[2]) {
+            useNodeUrls = false;
+            return true;
+          }
+          return false;
+        },
+        "Should use node urls or (ip and port) for connector-v1.",
+        validator.getParameters().hasAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY),
+        validator.getParameters().hasAttribute(CONNECTOR_IOTDB_IP_KEY),
+        validator.getParameters().hasAttribute(CONNECTOR_IOTDB_PORT_KEY));
   }
 
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
-    this.ipAddress = parameters.getString(CONNECTOR_IOTDB_IP_KEY);
-    this.port = parameters.getInt(CONNECTOR_IOTDB_PORT_KEY);
+    if (useNodeUrls) {
+      this.nodeUrls =
+          SessionUtils.parseSeedNodeUrls(
+              Arrays.asList(parameters.getString(CONNECTOR_IOTDB_NODE_URLS_KEY).split(",")));
+      if (this.nodeUrls.isEmpty()) {
+        throw new PipeException("Node urls is empty.");
+      }
+    } else {
+      this.ipAddress = parameters.getString(CONNECTOR_IOTDB_IP_KEY);
+      this.port = parameters.getInt(CONNECTOR_IOTDB_PORT_KEY);
+    }
   }
 
   @Override
