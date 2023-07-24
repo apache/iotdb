@@ -203,7 +203,7 @@ public class RestApiServiceImpl extends RestApiService {
         insertTabletRequest.getTimestamps().sort(Long::compareTo);
         insertTabletRequest.setValues(
             InsertTabletSortDataUtils.sortList(
-                insertTabletRequest.getValues(), index, insertTabletRequest.getValues().size()));
+                insertTabletRequest.getValues(), index, insertTabletRequest.getDataTypes().size()));
       }
 
       InsertTabletStatement insertTabletStatement =
