@@ -183,6 +183,8 @@ public class RecoverReadTest {
       logger.info("linearizable read failed  when restart, retrying: ", resp.getException());
       resp = TestUtils.doRead(miniCluster.getServer(0), gid);
     }
+
+    Assert.assertEquals(10, ((TestUtils.TestDataSet) resp.getDataset()).getNumber());
   }
 
   @Test
