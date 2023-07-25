@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata {
@@ -135,20 +136,25 @@ public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata {
       List<IChunkMetadata> timeChunkMetadata, List<List<IChunkMetadata>> valueChunkMetadataList) {
     List<AlignedChunkMetadata> res = new ArrayList<>();
     for (int i = 0; i < timeChunkMetadata.size(); i++) {
-      List<IChunkMetadata> chunkMetadataList = new ArrayList<>();
-      // only at least one sensor exits, we add the AlignedChunkMetadata to the list
-      boolean exits = false;
-      for (List<IChunkMetadata> chunkMetadata : valueChunkMetadataList) {
-        IChunkMetadata v =
-            chunkMetadata == null
-                    || chunkMetadata.get(i).getStatistics().getCount() == 0 // empty chunk
-                ? null
-                : chunkMetadata.get(i);
-        exits = (exits || v != null);
-        chunkMetadataList.add(v);
-      }
-      if (exits) {
-        res.add(new AlignedChunkMetadata(timeChunkMetadata.get(i), chunkMetadataList));
+      // only need time column
+      if (valueTimeseriesMetadataList.isEmpty()) {
+        res.add(new AlignedChunkMetadata(timeChunkMetadata.get(i), Collections.emptyList()));
+      } else {
+        List<IChunkMetadata> chunkMetadataList = new ArrayList<>();
+        // only at least one sensor exits, we add the AlignedChunkMetadata to the list
+        boolean exits = false;
+        for (List<IChunkMetadata> chunkMetadata : valueChunkMetadataList) {
+          IChunkMetadata v =
+              chunkMetadata == null
+                      || chunkMetadata.get(i).getStatistics().getCount() == 0 // empty chunk
+                  ? null
+                  : chunkMetadata.get(i);
+          exits = (exits || v != null);
+          chunkMetadataList.add(v);
+        }
+        if (exits) {
+          res.add(new AlignedChunkMetadata(timeChunkMetadata.get(i), chunkMetadataList));
+        }
       }
     }
     return res;

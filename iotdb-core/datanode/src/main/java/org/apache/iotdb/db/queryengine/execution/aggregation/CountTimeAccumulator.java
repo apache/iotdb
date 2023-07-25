@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -27,33 +27,18 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class CountAccumulator implements Accumulator {
+public class CountTimeAccumulator implements Accumulator {
 
   private long countValue = 0;
 
-  public CountAccumulator() {
+  public CountTimeAccumulator() {
     // do nothing
   }
 
-  // Column should be like: | Time | Value |
+  // Column should be like: | Time | Time |
   @Override
   public void addInput(Column[] column, BitMap bitMap, int lastIndex) {
-    int curPositionCount = column[0].getPositionCount();
-
-    if (!column[1].mayHaveNull()
-        && lastIndex == curPositionCount - 1
-        && ((bitMap == null) || bitMap.isAllMarked())) {
-      countValue += curPositionCount;
-    } else {
-      for (int i = 0; i <= lastIndex; i++) {
-        if (bitMap != null && !bitMap.isMarked(i)) {
-          continue;
-        }
-        if (!column[1].isNull(i)) {
-          countValue++;
-        }
-      }
-    }
+    countValue += column[0].getPositionCount();
   }
 
   // partialResult should be like: | partialCountValue1 |

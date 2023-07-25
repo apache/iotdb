@@ -56,6 +56,7 @@ import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -116,8 +117,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
    */
   @Override
   public AlignedTimeSeriesMetadata generateTimeSeriesMetadata(
-      List<ReadOnlyMemChunk> readOnlyMemChunk, List<IChunkMetadata> chunkMetadataList)
-      throws IOException {
+      List<ReadOnlyMemChunk> readOnlyMemChunk, List<IChunkMetadata> chunkMetadataList) {
     TimeseriesMetadata timeTimeSeriesMetadata = new TimeseriesMetadata();
     timeTimeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
     timeTimeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
@@ -278,17 +278,23 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     }
 
     for (int i = 0; i < timeChunkMetadataList.size(); i++) {
-      List<IChunkMetadata> valueChunkMetadata = new ArrayList<>();
-      // if all the sub sensors doesn't exist, it will be false
-      boolean exits = false;
-      for (List<ChunkMetadata> chunkMetadata : valueChunkMetadataList) {
-        boolean currentExist = i < chunkMetadata.size();
-        exits = (exits || currentExist);
-        valueChunkMetadata.add(currentExist ? chunkMetadata.get(i) : null);
-      }
-      if (exits) {
+      // only need time column
+      if (partialPath.getMeasurementList().isEmpty()) {
         chunkMetadataList.add(
-            new AlignedChunkMetadata(timeChunkMetadataList.get(i), valueChunkMetadata));
+            new AlignedChunkMetadata(timeChunkMetadataList.get(i), Collections.emptyList()));
+      } else {
+        List<IChunkMetadata> valueChunkMetadata = new ArrayList<>();
+        // if all the sub sensors doesn't exist, it will be false
+        boolean exits = false;
+        for (List<ChunkMetadata> chunkMetadata : valueChunkMetadataList) {
+          boolean currentExist = i < chunkMetadata.size();
+          exits = (exits || currentExist);
+          valueChunkMetadata.add(currentExist ? chunkMetadata.get(i) : null);
+        }
+        if (exits) {
+          chunkMetadataList.add(
+              new AlignedChunkMetadata(timeChunkMetadataList.get(i), valueChunkMetadata));
+        }
       }
     }
 

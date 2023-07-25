@@ -42,7 +42,7 @@ public class Aggregator {
   // In some intermediate result input, inputLocation[] should include two columns
   protected List<InputLocation[]> inputLocationList;
   protected final AggregationStep step;
-  protected final QueryExecutionMetricSet QUERY_EXECUTION_METRICS =
+  protected static final QueryExecutionMetricSet QUERY_EXECUTION_METRICS =
       QueryExecutionMetricSet.getInstance();
 
   // Used for SeriesAggregateScanOperator
@@ -53,7 +53,7 @@ public class Aggregator {
         Collections.singletonList(new InputLocation[] {new InputLocation(0, 0)});
   }
 
-  // Used for aggregateOperator
+  // Used for AggregateOperator, AlignedSeriesAggregateScanOperator
   public Aggregator(
       Accumulator accumulator, AggregationStep step, List<InputLocation[]> inputLocationList) {
     this.accumulator = accumulator;
@@ -74,7 +74,9 @@ public class Aggregator {
             "RawDataAggregateOperator can only process one tsBlock input.");
         Column[] timeAndValueColumn = new Column[2];
         timeAndValueColumn[0] = tsBlock.getTimeColumn();
-        timeAndValueColumn[1] = tsBlock.getColumn(inputLocations[0].getValueColumnIndex());
+        int index = inputLocations[0].getValueColumnIndex();
+        // for count_time, time column is also its value column
+        timeAndValueColumn[1] = index == -1 ? timeAndValueColumn[0] : tsBlock.getColumn(index);
         accumulator.addInput(timeAndValueColumn, bitMap, lastIndex);
       }
     } finally {

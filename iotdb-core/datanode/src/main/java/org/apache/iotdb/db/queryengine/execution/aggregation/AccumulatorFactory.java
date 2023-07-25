@@ -31,7 +31,6 @@ import java.util.Map;
 
 public class AccumulatorFactory {
 
-  // TODO: Are we going to create different seriesScanOperator based on order by sequence?
   public static Accumulator createAccumulator(
       TAggregationType aggregationType,
       TSDataType tsDataType,
@@ -71,6 +70,8 @@ public class AccumulatorFactory {
         return new TimeDurationAccumulator();
       case MODE:
         return crateModeAccumulator(tsDataType);
+      case COUNT_TIME:
+        return new CountTimeAccumulator();
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }

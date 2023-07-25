@@ -163,39 +163,42 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
       }
     }
 
-    // using bitMap in valuePageReaders to indicate whether columns of current row are all null.
-    byte[] bitmask = new byte[(timeBatch.length - 1) / 8 + 1];
-    Arrays.fill(bitmask, (byte) 0x00);
-    boolean[][] isDeleted = new boolean[valueCount][timeBatch.length];
-    for (int columnIndex = 0; columnIndex < valueCount; columnIndex++) {
-      ValuePageReader pageReader = valuePageReaderList.get(columnIndex);
-      if (pageReader != null) {
-        byte[] bitmap = pageReader.getBitmap();
-        pageReader.fillIsDeleted(timeBatch, isDeleted[columnIndex]);
+    boolean[][] isDeleted = null;
+    if (valueCount != 0) {
+      // using bitMap in valuePageReaders to indicate whether columns of current row are all null.
+      byte[] bitmask = new byte[(timeBatch.length - 1) / 8 + 1];
+      Arrays.fill(bitmask, (byte) 0x00);
+      isDeleted = new boolean[valueCount][timeBatch.length];
+      for (int columnIndex = 0; columnIndex < valueCount; columnIndex++) {
+        ValuePageReader pageReader = valuePageReaderList.get(columnIndex);
+        if (pageReader != null) {
+          byte[] bitmap = pageReader.getBitmap();
+          pageReader.fillIsDeleted(timeBatch, isDeleted[columnIndex]);
 
-        for (int i = 0, n = isDeleted[columnIndex].length; i < n; i++) {
-          if (isDeleted[columnIndex][i]) {
-            int shift = i % 8;
-            bitmap[i / 8] = (byte) (bitmap[i / 8] & (~(MASK >>> shift)));
+          for (int i = 0, n = isDeleted[columnIndex].length; i < n; i++) {
+            if (isDeleted[columnIndex][i]) {
+              int shift = i % 8;
+              bitmap[i / 8] = (byte) (bitmap[i / 8] & (~(MASK >>> shift)));
+            }
+          }
+          for (int i = 0, n = bitmask.length; i < n; i++) {
+            bitmask[i] = (byte) (bitmap[i] | bitmask[i]);
           }
         }
-        for (int i = 0, n = bitmask.length; i < n; i++) {
-          bitmask[i] = (byte) (bitmap[i] | bitmask[i]);
-        }
       }
-    }
 
-    for (int i = 0, n = bitmask.length; i < n; i++) {
-      if (bitmask[i] == (byte) 0xFF) {
-        // 8 rows are not all null, do nothing
-      } else if (bitmask[i] == (byte) 0x00) {
-        for (int j = 0; j < 8 && (i * 8 + j < keepCurrentRow.length); j++) {
-          keepCurrentRow[i * 8 + j] = false;
-        }
-      } else {
-        for (int j = 0; j < 8 && (i * 8 + j < keepCurrentRow.length); j++) {
-          if (((bitmask[i] & 0xFF) & (MASK >>> j)) == 0) {
+      for (int i = 0, n = bitmask.length; i < n; i++) {
+        if (bitmask[i] == (byte) 0xFF) {
+          // 8 rows are not all null, do nothing
+        } else if (bitmask[i] == (byte) 0x00) {
+          for (int j = 0; j < 8 && (i * 8 + j < keepCurrentRow.length); j++) {
             keepCurrentRow[i * 8 + j] = false;
+          }
+        } else {
+          for (int j = 0; j < 8 && (i * 8 + j < keepCurrentRow.length); j++) {
+            if (((bitmask[i] & 0xFF) & (MASK >>> j)) == 0) {
+              keepCurrentRow[i * 8 + j] = false;
+            }
           }
         }
       }
@@ -204,21 +207,18 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
     // construct time column
     int readEndIndex = timeBatch.length;
     for (int i = 0; i < timeBatch.length; i++) {
-      if (!keepCurrentRow[i]) {
-        continue;
-      }
-      if (paginationController.hasCurOffset()) {
-        paginationController.consumeOffset();
-        keepCurrentRow[i] = false;
-        continue;
-      }
-      if (paginationController.hasCurLimit()) {
-        builder.getTimeColumnBuilder().writeLong(timeBatch[i]);
-        builder.declarePosition();
-        paginationController.consumeLimit();
-      } else {
-        readEndIndex = i;
-        break;
+      if (keepCurrentRow[i]) {
+        if (paginationController.hasCurOffset()) {
+          paginationController.consumeOffset();
+          keepCurrentRow[i] = false;
+        } else if (paginationController.hasCurLimit()) {
+          builder.getTimeColumnBuilder().writeLong(timeBatch[i]);
+          builder.declarePosition();
+          paginationController.consumeLimit();
+        } else {
+          readEndIndex = i;
+          break;
+        }
       }
     }
 

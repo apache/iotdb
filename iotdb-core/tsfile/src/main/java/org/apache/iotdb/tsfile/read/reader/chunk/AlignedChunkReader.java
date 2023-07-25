@@ -145,7 +145,7 @@ public class AlignedChunkReader implements IChunkReader {
       PageHeader timePageHeader;
       List<PageHeader> valuePageHeaderList = new ArrayList<>();
 
-      boolean exits = false;
+      boolean exits = valueChunkDataBufferList.isEmpty();
       // this chunk has only one page
       if ((timeChunkHeader.getChunkType() & 0x3F) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
         timePageHeader = PageHeader.deserializeFrom(timeChunkDataBuffer, timeChunkStatistics);
@@ -221,7 +221,7 @@ public class AlignedChunkReader implements IChunkReader {
     List<ByteBuffer> valuePageDataList = new ArrayList<>();
     List<TSDataType> valueDataTypeList = new ArrayList<>();
     List<Decoder> valueDecoderList = new ArrayList<>();
-    boolean exist = false;
+    boolean exist = valuePageHeader.isEmpty();
     for (int i = 0; i < valuePageHeader.size(); i++) {
       if (valuePageHeader.get(i) == null
           || valuePageHeader.get(i).getUncompressedSize() == 0) { // Empty Page

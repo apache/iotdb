@@ -47,6 +47,7 @@ import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -273,25 +274,33 @@ public class FileLoaderUtils {
             resource.getTimeIndexType() != 1,
             isDebug);
     if (timeColumn != null) {
-      List<TimeseriesMetadata> valueTimeSeriesMetadataList =
-          new ArrayList<>(valueMeasurementList.size());
-      // if all the queried aligned sensors does not exist, we will return null
-      boolean exist = false;
-      for (String valueMeasurement : valueMeasurementList) {
-        TimeseriesMetadata valueColumn =
-            cache.get(
-                new TimeSeriesMetadataCacheKey(filePath, deviceId, valueMeasurement),
-                allSensors,
-                resource.getTimeIndexType() != 1,
-                isDebug);
-        exist = (exist || (valueColumn != null));
-        valueTimeSeriesMetadataList.add(valueColumn);
-      }
-      if (exist) {
+      // only need time column, like count_time aggregation
+      if (valueMeasurementList.isEmpty()) {
         alignedTimeSeriesMetadata =
-            new AlignedTimeSeriesMetadata(timeColumn, valueTimeSeriesMetadataList);
+            new AlignedTimeSeriesMetadata(timeColumn, Collections.emptyList());
         alignedTimeSeriesMetadata.setChunkMetadataLoader(
             new DiskAlignedChunkMetadataLoader(resource, alignedPath, context, filter));
+      } else {
+        List<TimeseriesMetadata> valueTimeSeriesMetadataList =
+            new ArrayList<>(valueMeasurementList.size());
+        // if all the queried aligned sensors does not exist, we will return null
+        boolean exist = false;
+        for (String valueMeasurement : valueMeasurementList) {
+          TimeseriesMetadata valueColumn =
+              cache.get(
+                  new TimeSeriesMetadataCacheKey(filePath, deviceId, valueMeasurement),
+                  allSensors,
+                  resource.getTimeIndexType() != 1,
+                  isDebug);
+          exist = (exist || (valueColumn != null));
+          valueTimeSeriesMetadataList.add(valueColumn);
+        }
+        if (exist) {
+          alignedTimeSeriesMetadata =
+              new AlignedTimeSeriesMetadata(timeColumn, valueTimeSeriesMetadataList);
+          alignedTimeSeriesMetadata.setChunkMetadataLoader(
+              new DiskAlignedChunkMetadataLoader(resource, alignedPath, context, filter));
+        }
       }
     }
     return alignedTimeSeriesMetadata;

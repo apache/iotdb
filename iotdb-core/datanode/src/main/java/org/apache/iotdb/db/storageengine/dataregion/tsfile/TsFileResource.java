@@ -207,23 +207,6 @@ public class TsFileResource {
 
   /** unsealed TsFile, for read */
   public TsFileResource(
-      PartialPath path,
-      List<ReadOnlyMemChunk> readOnlyMemChunk,
-      List<IChunkMetadata> chunkMetadataList,
-      TsFileResource originTsFileResource)
-      throws IOException {
-    this.file = originTsFileResource.file;
-    this.timeIndex = originTsFileResource.timeIndex;
-    this.pathToReadOnlyMemChunkMap.put(path, readOnlyMemChunk);
-    this.pathToChunkMetadataListMap.put(path, chunkMetadataList);
-    this.originTsFileResource = originTsFileResource;
-    this.version = originTsFileResource.version;
-    this.isSeq = originTsFileResource.isSeq;
-    this.tierLevel = originTsFileResource.tierLevel;
-  }
-
-  /** unsealed TsFile, for read */
-  public TsFileResource(
       Map<PartialPath, List<ReadOnlyMemChunk>> pathToReadOnlyMemChunkMap,
       Map<PartialPath, List<IChunkMetadata>> pathToChunkMetadataListMap,
       TsFileResource originTsFileResource)
