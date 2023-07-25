@@ -75,6 +75,16 @@ public enum SystemMetric {
   JVM_GC_LIVE_DATA_SIZE_BYTES("jvm_gc_live_data_size_bytes"),
   JVM_GC_MEMORY_ALLOCATED_BYTES("jvm_gc_memory_allocated_bytes"),
   JVM_GC_MEMORY_PROMOTED_BYTES("jvm_gc_memory_promoted_bytes"),
+  // net related
+  RECEIVED_BYTES("received_bytes"),
+  RECEIVED_PACKETS("received_packets"),
+  TRANSMITTED_BYTES("transmitted_bytes"),
+  TRANSMITTED_PACKETS("transmitted_packets"),
+  CONNECTION_NUM("connection_num"),
+  // logback related
+  LOGBACK_EVENTS("logback_events"),
+  // uptime related
+  UP_TIME("up_time"),
   ;
 
   final String value;

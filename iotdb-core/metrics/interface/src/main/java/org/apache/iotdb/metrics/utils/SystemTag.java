@@ -31,6 +31,8 @@ public enum SystemTag {
   AREA("area"),
   COMPILER("compiler"),
   STATE("state"),
+  IFACE_NAME("iface_name"),
+  PROCESS_NAME("process_num"),
   ;
 
   final String value;

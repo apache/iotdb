@@ -23,23 +23,15 @@ import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
+import org.apache.iotdb.metrics.utils.SystemMetric;
 import org.apache.iotdb.metrics.utils.SystemTag;
 
 import java.util.Set;
 
 public class NetMetrics implements IMetricSet {
   private final INetMetricManager netMetricManager = INetMetricManager.getNetMetricManager();
-
-  private static final String RECEIVED_BYTES = "received_bytes";
-  private static final String RECEIVED_PACKETS = "received_packets";
-  private static final String TRANSMITTED_BYTES = "transmitted_bytes";
-  private static final String TRANSMITTED_PACKETS = "transmitted_packets";
-  private static final String CONNECTION_NUM = "connection_num";
-
-  private static final String IFACE_NAME = "iface_name";
   private static final String RECEIVE = "receive";
   private static final String TRANSMIT = "transmit";
-  private static final String PROCESS_NAME = "process_num";
 
   private final String processName;
 
@@ -53,48 +45,48 @@ public class NetMetrics implements IMetricSet {
     Set<String> ifaceSet = netMetricManager.getIfaceSet();
     for (String iface : ifaceSet) {
       metricService.createAutoGauge(
-          RECEIVED_BYTES,
+          SystemMetric.RECEIVED_BYTES.toString(),
           MetricLevel.IMPORTANT,
           netMetricManager,
           x -> x.getReceivedByte().getOrDefault(iface, 0L).doubleValue(),
           SystemTag.TYPE.toString(),
           RECEIVE,
-          IFACE_NAME,
+          SystemTag.IFACE_NAME.toString(),
           iface);
       metricService.createAutoGauge(
-          TRANSMITTED_BYTES,
+          SystemMetric.TRANSMITTED_BYTES.toString(),
           MetricLevel.IMPORTANT,
           netMetricManager,
           x -> x.getTransmittedBytes().getOrDefault(iface, 0L).doubleValue(),
           SystemTag.TYPE.toString(),
           TRANSMIT,
-          IFACE_NAME,
+          SystemTag.IFACE_NAME.toString(),
           iface);
       metricService.createAutoGauge(
-          RECEIVED_PACKETS,
+          SystemMetric.RECEIVED_PACKETS.toString(),
           MetricLevel.IMPORTANT,
           netMetricManager,
           x -> x.getReceivedPackets().getOrDefault(iface, 0L).doubleValue(),
           SystemTag.TYPE.toString(),
           RECEIVE,
-          IFACE_NAME,
+          SystemTag.IFACE_NAME.toString(),
           iface);
       metricService.createAutoGauge(
-          TRANSMITTED_PACKETS,
+          SystemMetric.TRANSMITTED_PACKETS.toString(),
           MetricLevel.IMPORTANT,
           netMetricManager,
           x -> x.getTransmittedPackets().getOrDefault(iface, 0L).doubleValue(),
           SystemTag.TYPE.toString(),
           TRANSMIT,
-          IFACE_NAME,
+          SystemTag.IFACE_NAME.toString(),
           iface);
     }
     metricService.createAutoGauge(
-        CONNECTION_NUM,
+        SystemMetric.CONNECTION_NUM.toString(),
         MetricLevel.NORMAL,
         netMetricManager,
         INetMetricManager::getConnectionNum,
-        PROCESS_NAME,
+        SystemTag.PROCESS_NAME.toString(),
         this.processName);
   }
 
@@ -104,28 +96,37 @@ public class NetMetrics implements IMetricSet {
     for (String iface : ifaceSet) {
       metricService.remove(
           MetricType.AUTO_GAUGE,
-          RECEIVED_BYTES,
+          SystemMetric.RECEIVED_BYTES.toString(),
           SystemTag.TYPE.toString(),
           RECEIVE,
-          IFACE_NAME,
-          iface);
-      metricService.remove(
-          MetricType.AUTO_GAUGE, TRANSMIT, SystemTag.TYPE.toString(), TRANSMIT, IFACE_NAME, iface);
-      metricService.remove(
-          MetricType.AUTO_GAUGE,
-          RECEIVED_PACKETS,
-          SystemTag.TYPE.toString(),
-          RECEIVE,
-          IFACE_NAME,
+          SystemTag.IFACE_NAME.toString(),
           iface);
       metricService.remove(
           MetricType.AUTO_GAUGE,
-          TRANSMITTED_PACKETS,
+          TRANSMIT,
           SystemTag.TYPE.toString(),
           TRANSMIT,
-          IFACE_NAME,
+          SystemTag.IFACE_NAME.toString(),
+          iface);
+      metricService.remove(
+          MetricType.AUTO_GAUGE,
+          SystemMetric.RECEIVED_PACKETS.toString(),
+          SystemTag.TYPE.toString(),
+          RECEIVE,
+          SystemTag.IFACE_NAME.toString(),
+          iface);
+      metricService.remove(
+          MetricType.AUTO_GAUGE,
+          SystemMetric.TRANSMITTED_PACKETS.toString(),
+          SystemTag.TYPE.toString(),
+          TRANSMIT,
+          SystemTag.IFACE_NAME.toString(),
           iface);
     }
-    metricService.remove(MetricType.AUTO_GAUGE, CONNECTION_NUM, PROCESS_NAME, this.processName);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        SystemMetric.CONNECTION_NUM.toString(),
+        SystemTag.PROCESS_NAME.toString(),
+        this.processName);
   }
 }
