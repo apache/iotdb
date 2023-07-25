@@ -30,7 +30,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
-import org.apache.iotdb.commons.service.metric.JvmGcMetrics;
+import org.apache.iotdb.commons.service.metric.JvmGcMonitorMetrics;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
@@ -246,7 +246,7 @@ public class ConfigNode implements ConfigNodeMBean {
     MetricService.getInstance().addMetricSet(new ProcessMetrics());
     MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.CN_ROLE));
     MetricService.getInstance().addMetricSet(new NetMetrics(IoTDBConstant.CN_ROLE));
-    MetricService.getInstance().addMetricSet(JvmGcMetrics.getInstance());
+    MetricService.getInstance().addMetricSet(JvmGcMonitorMetrics.getInstance());
     MetricService.getInstance().addMetricSet(ClientManagerMetrics.getInstance());
     MetricService.getInstance().addMetricSet(ThreadPoolMetrics.getInstance());
     initCpuMetrics();

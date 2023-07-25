@@ -81,6 +81,13 @@ public enum SystemMetric {
   JVM_GC_LIVE_DATA_SIZE_BYTES("jvm_gc_live_data_size_bytes"),
   JVM_GC_MEMORY_ALLOCATED_BYTES("jvm_gc_memory_allocated_bytes"),
   JVM_GC_MEMORY_PROMOTED_BYTES("jvm_gc_memory_promoted_bytes"),
+  JVM_GC_MEMORY_USED_PERCENT("jvm_gc_memory_used_percent"),
+  JVM_GC_THROUGHOUT("jvm_gc_throughout"),
+  JVM_ZGC_CYCLES_COUNT("jvm_zgc_cycles_count"),
+  JVM_ZGC_PAUSES_COUNT("jvm_zgc_pauses_count"),
+  JVM_GC_YOUNG_GC_COUNT("jvm_gc_old_gc_count"),
+  JVM_GC_OLD_GC_COUNT("jvm_gc_young_gc_count"),
+  JVM_GC_ACCUMULATED_TIME_PERCENTAGE("jvm_gc_accumulated_time_percentage"),
   // net related
   RECEIVED_BYTES("received_bytes"),
   RECEIVED_PACKETS("received_packets"),

@@ -26,6 +26,7 @@ import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
+import org.apache.iotdb.metrics.utils.SystemMetric;
 
 import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
@@ -38,8 +39,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class JvmGcMetrics implements IMetricSet {
-  private static final Logger logger = LoggerFactory.getLogger(JvmGcMetrics.class);
+public class JvmGcMonitorMetrics implements IMetricSet {
+  private static final Logger logger = LoggerFactory.getLogger(JvmGcMonitorMetrics.class);
   private final ScheduledExecutorService scheduledGCInfoMonitor =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
           ThreadName.JVM_GC_STATISTICS_MONITOR.getName());
@@ -67,7 +68,7 @@ public class JvmGcMetrics implements IMetricSet {
   // Hook function called with GC exception
   private final GcTimeAlertHandler alertHandler;
 
-  public JvmGcMetrics() {
+  public JvmGcMonitorMetrics() {
     bufSize = (int) (observationWindowMs / sleepIntervalMs + 2);
     // Prevent the user from accidentally creating an abnormally big buffer, which will result in
     // slow calculations and likely inaccuracy.
@@ -83,7 +84,7 @@ public class JvmGcMetrics implements IMetricSet {
   @Override
   public void bindTo(AbstractMetricService metricService) {
     metricService.createAutoGauge(
-        "jvm_gc_accumulated_time_percentage",
+        SystemMetric.JVM_GC_ACCUMULATED_TIME_PERCENTAGE.toString(),
         MetricLevel.CORE,
         curData,
         GcData::getGcTimePercentage);
@@ -104,7 +105,8 @@ public class JvmGcMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     shouldRun = false;
-    metricService.remove(MetricType.AUTO_GAUGE, "jvm_gc_accumulated_time_percentage");
+    metricService.remove(
+        MetricType.AUTO_GAUGE, SystemMetric.JVM_GC_ACCUMULATED_TIME_PERCENTAGE.toString());
     if (scheduledGcMonitorFuture != null) {
       scheduledGcMonitorFuture.cancel(false);
       scheduledGcMonitorFuture = null;
@@ -266,14 +268,14 @@ public class JvmGcMetrics implements IMetricSet {
 
   private static class JvmGcMetricsHolder {
 
-    private static final JvmGcMetrics INSTANCE = new JvmGcMetrics();
+    private static final JvmGcMonitorMetrics INSTANCE = new JvmGcMonitorMetrics();
 
     private JvmGcMetricsHolder() {
       // empty constructor
     }
   }
 
-  public static JvmGcMetrics getInstance() {
+  public static JvmGcMonitorMetrics getInstance() {
     return JvmGcMetricsHolder.INSTANCE;
   }
 }

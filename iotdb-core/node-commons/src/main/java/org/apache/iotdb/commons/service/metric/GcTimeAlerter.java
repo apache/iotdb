@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-public class GcTimeAlerter implements JvmGcMetrics.GcTimeAlertHandler {
+public class GcTimeAlerter implements JvmGcMonitorMetrics.GcTimeAlertHandler {
   private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
   private static final Logger logger = LoggerFactory.getLogger(GcTimeAlerter.class);
 
@@ -35,7 +35,7 @@ public class GcTimeAlerter implements JvmGcMetrics.GcTimeAlertHandler {
    * @param gcData
    */
   @Override
-  public void alert(JvmGcMetrics.GcData gcData) {
+  public void alert(JvmGcMonitorMetrics.GcData gcData) {
     logger.warn(
         "Error metrics taken time: "
             + sdf.format(new Date(Long.parseLong(String.valueOf(gcData.getTimestamp())))));

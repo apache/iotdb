@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.ThreadPoolMetrics;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.service.metric.JvmGcMetrics;
+import org.apache.iotdb.commons.service.metric.JvmGcMonitorMetrics;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -80,7 +80,7 @@ public class DataNodeMetricsHelper {
     MetricService.getInstance().addMetricSet(PerformanceOverviewMetrics.getInstance());
 
     // bind gc metrics
-    MetricService.getInstance().addMetricSet(JvmGcMetrics.getInstance());
+    MetricService.getInstance().addMetricSet(JvmGcMonitorMetrics.getInstance());
   }
 
   private static void initSystemMetrics() {

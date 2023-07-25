@@ -75,17 +75,21 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
 
   private static boolean isPartiallyConcurrentGC(GarbageCollectorMXBean gc) {
     switch (gc.getName()) {
-        // First two are from the serial collector
+        // First two are from the `serial` collector
       case "Copy":
       case "MarkSweepCompact":
-        // Parallel collector
+        // The following 4 GCs do not contain concurrent execution phase
       case "PS MarkSweep":
       case "PS Scavenge":
       case "G1 Young Generation":
-        // CMS young generation collector
       case "ParNew":
         return false;
+
+        // The following 2 GCs' execution process consists of concurrent phase, which means they can
+        // run simultaneously with the user threads in some phases.
+        // Concurrent mark and concurrent sweep
       case "ConcurrentMarkSweep":
+        // Concurrent mark
       case "G1 Old Generation":
         return true;
       default:
@@ -99,7 +103,7 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
   }
 
   private static boolean isYoungGenPool(String name) {
-    return name != null && name.endsWith("Eden Space") && name.endsWith("Survivor Space");
+    return name != null && (name.endsWith("Eden Space") || name.endsWith("Survivor Space"));
   }
 
   private static boolean isOldGenPool(String name) {
@@ -140,10 +144,16 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
 
     AtomicLong heapMemUsedPercentage = new AtomicLong(calculateMemoryUsagePercentage());
     metricService.createAutoGauge(
-        "jvm_gc_memory_used_percent", MetricLevel.CORE, heapMemUsedPercentage, AtomicLong::get);
+        SystemMetric.JVM_GC_MEMORY_USED_PERCENT.toString(),
+        MetricLevel.CORE,
+        heapMemUsedPercentage,
+        AtomicLong::get);
 
     metricService.createAutoGauge(
-        "jvm_gc_throughout", MetricLevel.CORE, this, JvmGcMetrics::getThroughput);
+        SystemMetric.JVM_GC_THROUGHOUT.toString(),
+        MetricLevel.CORE,
+        this,
+        JvmGcMetrics::getThroughput);
 
     Counter allocatedBytes =
         metricService.getOrCreateCounter(
@@ -203,23 +213,27 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
             // add support for ZGC
             if (mbean.getName().equals("ZGC Cycles")) {
               Counter cyclesCount =
-                  metricService.getOrCreateCounter("jvm_zgc_cycles_count", MetricLevel.CORE);
+                  metricService.getOrCreateCounter(
+                      SystemMetric.JVM_ZGC_CYCLES_COUNT.toString(), MetricLevel.CORE);
               cyclesCount.inc();
             } else if (mbean.getName().equals("ZGC Pauses")) {
               Counter pausesCount =
-                  metricService.getOrCreateCounter("jvm_zgc_pauses_count", MetricLevel.CORE);
+                  metricService.getOrCreateCounter(
+                      SystemMetric.JVM_ZGC_PAUSES_COUNT.toString(), MetricLevel.CORE);
               pausesCount.inc();
             }
 
             // monitoring old/young GC count, which is helpful for users to locate GC exception.
             if (GcGenerationAge.fromName(notificationInfo.getGcName()) == GcGenerationAge.OLD) {
               Counter oldGcCounter =
-                  metricService.getOrCreateCounter("jvm_gc_old_gc_count", MetricLevel.CORE);
+                  metricService.getOrCreateCounter(
+                      SystemMetric.JVM_GC_YOUNG_GC_COUNT.toString(), MetricLevel.CORE);
               oldGcCounter.inc();
             } else if (GcGenerationAge.fromName(notificationInfo.getGcName())
                 == GcGenerationAge.YOUNG) {
               Counter youngGcCounter =
-                  metricService.getOrCreateCounter("jvm_gc_young_gc_count", MetricLevel.CORE);
+                  metricService.getOrCreateCounter(
+                      SystemMetric.JVM_GC_OLD_GC_COUNT.toString(), MetricLevel.CORE);
               youngGcCounter.inc();
             }
 
@@ -316,8 +330,8 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
     metricService.remove(
         MetricType.AUTO_GAUGE, SystemMetric.JVM_GC_LIVE_DATA_SIZE_BYTES.toString());
     metricService.remove(MetricType.COUNTER, SystemMetric.JVM_GC_MEMORY_ALLOCATED_BYTES.toString());
-    metricService.remove(MetricType.AUTO_GAUGE, "jvm_gc_memory_used_percent");
-    metricService.remove(MetricType.AUTO_GAUGE, "jvm_gc_throughout");
+    metricService.remove(MetricType.AUTO_GAUGE, SystemMetric.JVM_GC_MEMORY_USED_PERCENT.toString());
+    metricService.remove(MetricType.AUTO_GAUGE, SystemMetric.JVM_GC_THROUGHOUT.toString());
 
     if (oldGenPoolName != null) {
       metricService.remove(
@@ -346,15 +360,18 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
             timerName += gcCause;
             metricService.remove(MetricType.TIMER, timerName, "action", gcAction, "cause", gcCause);
             if (mbean.getName().equals("ZGC Cycles")) {
-              metricService.remove(MetricType.COUNTER, "jvm_zgc_cycles_count");
+              metricService.remove(
+                  MetricType.COUNTER, SystemMetric.JVM_ZGC_CYCLES_COUNT.toString());
             } else if (mbean.getName().equals("ZGC Pauses")) {
-              metricService.remove(MetricType.COUNTER, "jvm_zgc_pauses_count");
+              metricService.remove(
+                  MetricType.COUNTER, SystemMetric.JVM_ZGC_PAUSES_COUNT.toString());
             }
             if (GcGenerationAge.fromName(notificationInfo.getGcName()) == GcGenerationAge.OLD) {
-              metricService.remove(MetricType.COUNTER, "jvm_gc_old_gc_count");
+              metricService.remove(
+                  MetricType.COUNTER, SystemMetric.JVM_GC_YOUNG_GC_COUNT.toString());
             } else if (GcGenerationAge.fromName(notificationInfo.getGcName())
                 == GcGenerationAge.YOUNG) {
-              metricService.remove(MetricType.COUNTER, "jvm_gc_young_gc_count");
+              metricService.remove(MetricType.COUNTER, SystemMetric.JVM_GC_OLD_GC_COUNT.toString());
             }
           };
       NotificationEmitter notificationEmitter = (NotificationEmitter) mbean;
