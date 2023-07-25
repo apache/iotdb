@@ -158,6 +158,7 @@ public class NodeInfo implements SnapshotProcessor {
           .forEach(
               removeDataNodes -> {
                 registeredDataNodes.remove(removeDataNodes.getDataNodeId());
+                nodeBuildInfo.remove(removeDataNodes.getDataNodeId());
                 LOGGER.info("Removed the datanode {} from cluster", removeDataNodes);
               });
     } finally {
@@ -337,6 +338,7 @@ public class NodeInfo implements SnapshotProcessor {
     configNodeInfoReadWriteLock.writeLock().lock();
     try {
       registeredConfigNodes.remove(removeConfigNodePlan.getConfigNodeLocation().getConfigNodeId());
+      nodeBuildInfo.remove(removeConfigNodePlan.getConfigNodeLocation().getConfigNodeId());
       SystemPropertiesUtils.storeConfigNodeList(new ArrayList<>(registeredConfigNodes.values()));
       LOGGER.info(
           "Successfully remove ConfigNode: {}. Current ConfigNodeGroup: {}",
@@ -444,6 +446,8 @@ public class NodeInfo implements SnapshotProcessor {
 
       serializeRegisteredDataNode(fileOutputStream, protocol);
 
+      serializeBuildInfo(fileOutputStream);
+
       fileOutputStream.flush();
 
       fileOutputStream.close();
@@ -482,6 +486,14 @@ public class NodeInfo implements SnapshotProcessor {
     }
   }
 
+  private void serializeBuildInfo(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(nodeBuildInfo.size(), outputStream);
+    for (Entry<Integer, String> entry : nodeBuildInfo.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), outputStream);
+      ReadWriteIOUtils.write(entry.getValue(), outputStream);
+    }
+  }
+
   @Override
   public void processLoadSnapshot(File snapshotDir) throws IOException, TException {
 
@@ -507,6 +519,8 @@ public class NodeInfo implements SnapshotProcessor {
       deserializeRegisteredConfigNode(fileInputStream, protocol);
 
       deserializeRegisteredDataNode(fileInputStream, protocol);
+
+      deserializeBuildInfo(fileInputStream);
 
     } finally {
       configNodeInfoReadWriteLock.writeLock().unlock();
@@ -538,6 +552,18 @@ public class NodeInfo implements SnapshotProcessor {
     }
   }
 
+  private void deserializeBuildInfo(InputStream inputStream) throws IOException {
+    if (inputStream.available() != 0) {
+      int size = ReadWriteIOUtils.readInt(inputStream);
+      while (size > 0) {
+        int nodeId = ReadWriteIOUtils.readInt(inputStream);
+        String buildInfo = ReadWriteIOUtils.readString(inputStream);
+        nodeBuildInfo.put(nodeId, buildInfo);
+        size--;
+      }
+    }
+  }
+
   public static int getMinimumDataNode() {
     return MINIMUM_DATANODE;
   }
@@ -546,6 +572,7 @@ public class NodeInfo implements SnapshotProcessor {
     nextNodeId.set(-1);
     registeredDataNodes.clear();
     registeredConfigNodes.clear();
+    nodeBuildInfo.clear();
   }
 
   @Override
@@ -559,11 +586,12 @@ public class NodeInfo implements SnapshotProcessor {
     NodeInfo nodeInfo = (NodeInfo) o;
     return registeredConfigNodes.equals(nodeInfo.registeredConfigNodes)
         && nextNodeId.get() == nodeInfo.nextNodeId.get()
-        && registeredDataNodes.equals(nodeInfo.registeredDataNodes);
+        && registeredDataNodes.equals(nodeInfo.registeredDataNodes)
+        && nodeBuildInfo.equals(nodeInfo.nodeBuildInfo);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(registeredConfigNodes, nextNodeId, registeredDataNodes);
+    return Objects.hash(registeredConfigNodes, nextNodeId, registeredDataNodes, nodeBuildInfo);
   }
 }

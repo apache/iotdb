@@ -421,6 +421,7 @@ public class DataNode implements DataNodeMBean {
     req.setClusterName(
         config.getClusterName() == null ? DEFAULT_CLUSTER_NAME : config.getClusterName());
     req.setDataNodeConfiguration(generateDataNodeConfiguration());
+    req.setBuildInfo(IoTDBConstant.BUILD_INFO);
     TDataNodeRestartResp dataNodeRestartResp = null;
     while (retry > 0) {
       try (ConfigNodeClient configNodeClient =

@@ -67,7 +67,12 @@ public class UpdateDataNodePlan extends ConfigPhysicalPlan {
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
     dataNodeConfiguration = ThriftCommonsSerDeUtils.deserializeTDataNodeConfiguration(buffer);
-    this.buildInfo = ReadWriteIOUtils.readString(buffer);
+    if (buffer.hasRemaining()) {
+      this.buildInfo = ReadWriteIOUtils.readString(buffer);
+    }
+    else{
+      buildInfo = "";
+    }
   }
 
   @Override
@@ -88,6 +93,6 @@ public class UpdateDataNodePlan extends ConfigPhysicalPlan {
 
   @Override
   public int hashCode() {
-    return Objects.hash(getType(), dataNodeConfiguration) + buildInfo.hashCode();
+    return Objects.hash(getType(), dataNodeConfiguration, buildInfo);
   }
 }

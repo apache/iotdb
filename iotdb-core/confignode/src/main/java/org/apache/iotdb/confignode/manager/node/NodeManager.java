@@ -503,7 +503,8 @@ public class NodeManager {
   /**
    * Only leader use this interface, record the new ConfigNode's information.
    *
-   * @param configNodeLocation The new ConfigNode
+   * @param configNodeLocation The new ConfigNode .
+   * @param buildInfo The buildInfo of the ConfigNode 。
    */
   public void applyConfigNode(TConfigNodeLocation configNodeLocation, String buildInfo) {
     ApplyConfigNodePlan applyConfigNodePlan = new ApplyConfigNodePlan(configNodeLocation);

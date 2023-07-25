@@ -67,7 +67,12 @@ public class UpdateConfigNodePlan extends ConfigPhysicalPlan {
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
     configNodeLocation = ThriftConfigNodeSerDeUtils.deserializeTConfigNodeLocation(buffer);
-    buildInfo = ReadWriteIOUtils.readString(buffer);
+    if(buffer.hasRemaining()){
+      buildInfo = ReadWriteIOUtils.readString(buffer);
+    }
+    else{
+      buildInfo = "";
+    }
   }
 
   @Override
@@ -87,6 +92,6 @@ public class UpdateConfigNodePlan extends ConfigPhysicalPlan {
 
   @Override
   public int hashCode() {
-    return Objects.hash(configNodeLocation) + Objects.hash(buildInfo);
+    return Objects.hash(configNodeLocation, buildInfo);
   }
 }

@@ -68,7 +68,12 @@ public class ApplyConfigNodePlan extends ConfigPhysicalPlan {
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     configNodeLocation = ThriftConfigNodeSerDeUtils.deserializeTConfigNodeLocation(buffer);
-    buildInfo = ReadWriteIOUtils.readString(buffer);
+    if(buffer.hasRemaining()){
+      buildInfo = ReadWriteIOUtils.readString(buffer);
+    }
+    else{
+      buildInfo = "";
+    }
   }
 
   @Override
@@ -85,6 +90,6 @@ public class ApplyConfigNodePlan extends ConfigPhysicalPlan {
 
   @Override
   public int hashCode() {
-    return Objects.hash(configNodeLocation) + buildInfo.hashCode();
+    return Objects.hash(configNodeLocation, buildInfo);
   }
 }
