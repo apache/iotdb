@@ -228,9 +228,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     return fileMetadataSize;
   }
 
-  /**
-   * Return the tsfile meta data size of this tsfile.
-   */
+  /** Return the tsfile meta data size of this tsfile. */
   public long getFileMetadataSize() throws IOException {
     return tsFileInput.size() - getFileMetadataPos();
   }

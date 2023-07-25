@@ -25,6 +25,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactio
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.ReadChunkInnerCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -36,7 +37,8 @@ import java.util.List;
 public class CompactionTaskMemCostEstimatorTest extends AbstractCompactionTest {
 
   @Before
-  public void setUp() throws IOException, WriteProcessException, MetadataException, InterruptedException {
+  public void setUp()
+      throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
   }
 
@@ -46,7 +48,8 @@ public class CompactionTaskMemCostEstimatorTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testEstimateReadChunkInnerSpaceCompactionTaskMemCost() throws IOException, MetadataException, WriteProcessException {
+  public void testEstimateReadChunkInnerSpaceCompactionTaskMemCost()
+      throws IOException, MetadataException, WriteProcessException {
     createFiles(3, 10, 5, 100000, 0, 0, 50, 50, true, true);
     tsFileManager.addAll(seqResources, true);
     List<TsFileResource> tsFileList = tsFileManager.getTsFileList(true);
@@ -56,7 +59,8 @@ public class CompactionTaskMemCostEstimatorTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testEstimateReadChunkInnerSpaceCompactionTaskMemCost2() throws IOException, MetadataException, WriteProcessException {
+  public void testEstimateReadChunkInnerSpaceCompactionTaskMemCost2()
+      throws IOException, MetadataException, WriteProcessException {
     createFiles(3, 10, 5, 100, 0, 0, 50, 50, false, true);
     tsFileManager.addAll(seqResources, true);
     List<TsFileResource> tsFileList = tsFileManager.getTsFileList(true);
