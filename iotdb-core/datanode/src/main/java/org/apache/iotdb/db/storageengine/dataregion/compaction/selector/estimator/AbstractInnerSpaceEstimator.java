@@ -29,7 +29,8 @@ import java.util.List;
  * its corresponding implementation.
  */
 public abstract class AbstractInnerSpaceEstimator extends AbstractCompactionEstimator {
-  public abstract long estimateInnerCompactionMemory(List<TsFileResource> resources);
+  public abstract long estimateInnerCompactionMemory(List<TsFileResource> resources)
+      throws IOException;
 
   public long estimateCrossCompactionMemory(
       List<TsFileResource> seqResources, TsFileResource unseqResource) throws IOException {
