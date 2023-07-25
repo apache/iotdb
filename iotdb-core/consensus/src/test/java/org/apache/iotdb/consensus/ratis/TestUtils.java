@@ -299,11 +299,12 @@ public class TestUtils {
         FileUtils.deleteFully(storage);
       }
       stateMachines.clear();
+      servers.clear();
     }
 
     void restart() throws IOException {
       logger.info("start restarting the mini cluster");
-      isStopped.set(false);
+      // clear the servers and rebuild them
       servers.clear();
       stateMachines.clear();
       for (int i = 0; i < replicas; i++) {
@@ -355,9 +356,9 @@ public class TestUtils {
   }
 
   static class MiniClusterFactory {
-    private int replicas = 3;
-    private ConsensusGroupId gid = new DataRegionId(1);
-    private Function<Integer, File> peerStorageProvider =
+    private final int replicas = 3;
+    private final ConsensusGroupId gid = new DataRegionId(1);
+    private final Function<Integer, File> peerStorageProvider =
         peerId -> new File("target" + java.io.File.separator + peerId);
 
     private Supplier<IStateMachine> smProvider = TestUtils.IntegerCounter::new;
