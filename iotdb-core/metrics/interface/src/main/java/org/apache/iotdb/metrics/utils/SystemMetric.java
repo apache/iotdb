@@ -24,7 +24,7 @@ public enum SystemMetric {
   // thread pool related
   THREAD_POOL_ACTIVE_THREAD_COUNT("thread_pool_active_thread_count"),
   THREAD_POOL_DONE_TASK_COUNT("thread_pool_done_task_count"),
-  THREAD_POOL_WAITING_TASK_COUNT("THREAD_POOL_WAITING_TASK_COUNT"),
+  THREAD_POOL_WAITING_TASK_COUNT("thread_pool_waiting_task_count"),
   THREAD_POOL_CORE_SIZE("thread_pool_core_size"),
   THREAD_POOL_LARGEST_POOL_SIZE("thread_pool_largest_pool_size"),
   // disk related
