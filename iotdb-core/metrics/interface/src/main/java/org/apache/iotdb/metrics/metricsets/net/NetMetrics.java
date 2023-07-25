@@ -23,6 +23,7 @@ import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
+import org.apache.iotdb.metrics.utils.SystemTag;
 
 import java.util.Set;
 
@@ -35,7 +36,6 @@ public class NetMetrics implements IMetricSet {
   private static final String TRANSMITTED_PACKETS = "transmitted_packets";
   private static final String CONNECTION_NUM = "connection_num";
 
-  private static final String TYPE = "type";
   private static final String IFACE_NAME = "iface_name";
   private static final String RECEIVE = "receive";
   private static final String TRANSMIT = "transmit";
@@ -57,7 +57,7 @@ public class NetMetrics implements IMetricSet {
           MetricLevel.IMPORTANT,
           netMetricManager,
           x -> x.getReceivedByte().getOrDefault(iface, 0L).doubleValue(),
-          TYPE,
+          SystemTag.TYPE.toString(),
           RECEIVE,
           IFACE_NAME,
           iface);
@@ -66,7 +66,7 @@ public class NetMetrics implements IMetricSet {
           MetricLevel.IMPORTANT,
           netMetricManager,
           x -> x.getTransmittedBytes().getOrDefault(iface, 0L).doubleValue(),
-          TYPE,
+          SystemTag.TYPE.toString(),
           TRANSMIT,
           IFACE_NAME,
           iface);
@@ -75,7 +75,7 @@ public class NetMetrics implements IMetricSet {
           MetricLevel.IMPORTANT,
           netMetricManager,
           x -> x.getReceivedPackets().getOrDefault(iface, 0L).doubleValue(),
-          TYPE,
+          SystemTag.TYPE.toString(),
           RECEIVE,
           IFACE_NAME,
           iface);
@@ -84,7 +84,7 @@ public class NetMetrics implements IMetricSet {
           MetricLevel.IMPORTANT,
           netMetricManager,
           x -> x.getTransmittedPackets().getOrDefault(iface, 0L).doubleValue(),
-          TYPE,
+          SystemTag.TYPE.toString(),
           TRANSMIT,
           IFACE_NAME,
           iface);
@@ -102,12 +102,29 @@ public class NetMetrics implements IMetricSet {
   public void unbindFrom(AbstractMetricService metricService) {
     Set<String> ifaceSet = netMetricManager.getIfaceSet();
     for (String iface : ifaceSet) {
-      metricService.remove(MetricType.AUTO_GAUGE, RECEIVED_BYTES, TYPE, RECEIVE, IFACE_NAME, iface);
-      metricService.remove(MetricType.AUTO_GAUGE, TRANSMIT, TYPE, TRANSMIT, IFACE_NAME, iface);
       metricService.remove(
-          MetricType.AUTO_GAUGE, RECEIVED_PACKETS, TYPE, RECEIVE, IFACE_NAME, iface);
+          MetricType.AUTO_GAUGE,
+          RECEIVED_BYTES,
+          SystemTag.TYPE.toString(),
+          RECEIVE,
+          IFACE_NAME,
+          iface);
       metricService.remove(
-          MetricType.AUTO_GAUGE, TRANSMITTED_PACKETS, TYPE, TRANSMIT, IFACE_NAME, iface);
+          MetricType.AUTO_GAUGE, TRANSMIT, SystemTag.TYPE.toString(), TRANSMIT, IFACE_NAME, iface);
+      metricService.remove(
+          MetricType.AUTO_GAUGE,
+          RECEIVED_PACKETS,
+          SystemTag.TYPE.toString(),
+          RECEIVE,
+          IFACE_NAME,
+          iface);
+      metricService.remove(
+          MetricType.AUTO_GAUGE,
+          TRANSMITTED_PACKETS,
+          SystemTag.TYPE.toString(),
+          TRANSMIT,
+          IFACE_NAME,
+          iface);
     }
     metricService.remove(MetricType.AUTO_GAUGE, CONNECTION_NUM, PROCESS_NAME, this.processName);
   }

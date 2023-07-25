@@ -23,6 +23,7 @@ import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
+import org.apache.iotdb.metrics.utils.SystemMetric;
 
 import java.lang.management.ClassLoadingMXBean;
 import java.lang.management.ManagementFactory;
@@ -33,12 +34,12 @@ public class JvmClassLoaderMetrics implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     ClassLoadingMXBean classLoadingBean = ManagementFactory.getClassLoadingMXBean();
     metricService.createAutoGauge(
-        "jvm_classes_loaded_classes",
+        SystemMetric.JVM_CLASSES_LOADED_CLASSES.toString(),
         MetricLevel.IMPORTANT,
         classLoadingBean,
         ClassLoadingMXBean::getLoadedClassCount);
     metricService.createAutoGauge(
-        "jvm_classes_unloaded_classes",
+        SystemMetric.JVM_CLASSES_UNLOADED_CLASSES.toString(),
         MetricLevel.IMPORTANT,
         classLoadingBean,
         ClassLoadingMXBean::getUnloadedClassCount);
@@ -46,7 +47,8 @@ public class JvmClassLoaderMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    metricService.remove(MetricType.AUTO_GAUGE, "jvm_classes_loaded_classes");
-    metricService.remove(MetricType.AUTO_GAUGE, "jvm_classes_unloaded_classes");
+    metricService.remove(MetricType.AUTO_GAUGE, SystemMetric.JVM_CLASSES_LOADED_CLASSES.toString());
+    metricService.remove(
+        MetricType.AUTO_GAUGE, SystemMetric.JVM_CLASSES_UNLOADED_CLASSES.toString());
   }
 }
