@@ -333,7 +333,8 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
           return result;
         }
       } catch (TException e) {
-        String message = String.format(
+        String message =
+            String.format(
                 MSG_RECONNECTION_DATANODE_FAIL,
                 configNode,
                 config.getAddressAndPort(),
@@ -374,7 +375,8 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         }
         configNodes = newConfigNodes;
       } catch (TException e) {
-        String message = String.format(
+        String message =
+            String.format(
                 MSG_RECONNECTION_DATANODE_FAIL,
                 configNode,
                 config.getAddressAndPort(),
@@ -653,12 +655,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   @Override
   public TShowDataNodesResp showDataNodes() throws TException {
     return executeRemoteCallWithRetry(
-        () -> {
-          TShowDataNodesResp showDataNodesResp = client.showDataNodes();
-          showDataNodesResp.setStatus(showDataNodesResp.getStatus());
-          return showDataNodesResp;
-        },
-        resp -> !updateConfigNodeLeader(resp.status));
+        () -> client.showDataNodes(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
