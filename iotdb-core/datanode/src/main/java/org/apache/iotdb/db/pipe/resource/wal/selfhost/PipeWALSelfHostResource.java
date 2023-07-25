@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.resource.wal;
+package org.apache.iotdb.db.pipe.resource.wal.selfhost;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
@@ -32,9 +32,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class PipeWALResource implements Closeable {
+public class PipeWALSelfHostResource implements Closeable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeWALResource.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeWALSelfHostResource.class);
 
   private final WALEntryHandler walEntryHandler;
 
@@ -44,7 +44,7 @@ public class PipeWALResource implements Closeable {
   private final AtomicLong lastLogicalPinTime;
   private final AtomicBoolean isPhysicallyPinned;
 
-  public PipeWALResource(WALEntryHandler walEntryHandler) {
+  public PipeWALSelfHostResource(WALEntryHandler walEntryHandler) {
     this.walEntryHandler = walEntryHandler;
 
     referenceCount = new AtomicInteger(0);

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.event.common.tablet;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
@@ -76,13 +75,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   @Override
   public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
     try {
-      if (CommonDescriptor.getInstance().getConfig().getPipeHardLinkWALEnabled()) {
-        PipeResourceManager.walHardlink()
-            .increaseFileReference(walEntryHandler.getWalEntryPosition().getWalFile());
-      } else {
-        PipeResourceManager.wal().pin(walEntryHandler.getMemTableId(), walEntryHandler);
-      }
-
+      PipeResourceManager.wal().pin(walEntryHandler);
       return true;
     } catch (Exception e) {
       LOGGER.warn(
@@ -97,13 +90,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   @Override
   public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
     try {
-      if (CommonDescriptor.getInstance().getConfig().getPipeHardLinkWALEnabled()) {
-        PipeResourceManager.walHardlink()
-            .decreaseFileReference(walEntryHandler.getWalEntryPosition().getWalFile());
-      } else {
-        PipeResourceManager.wal().unpin(walEntryHandler.getMemTableId());
-      }
-
+      PipeResourceManager.wal().unpin(walEntryHandler);
       return true;
     } catch (Exception e) {
       LOGGER.warn(

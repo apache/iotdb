@@ -17,10 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.resource.wal;
+package org.apache.iotdb.db.pipe.resource.wal.hardlink;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.pipe.resource.wal.PipeWALResourceManager;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 
 import java.io.File;
 import java.io.IOException;
@@ -30,9 +33,20 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
-public class PipeWALFileResourceManager {
+public class PipeWALHardlinkResourceManager implements PipeWALResourceManager {
 
   private final Map<String, Integer> hardlinkToReferenceMap = new HashMap<>();
+
+  @Override
+  public void pin(final WALEntryHandler walEntryHandler) throws IOException {
+    increaseFileReference(walEntryHandler.getWalEntryPosition().getWalFile());
+  }
+
+  @Override
+  public void unpin(final WALEntryHandler walEntryHandler) throws IOException {
+    // TODO: FIXME
+    decreaseFileReference(walEntryHandler.getWalEntryPosition().getWalFile());
+  }
 
   /**
    * given a file, create a hardlink, maintain a reference count for the hardlink, and return the
@@ -141,6 +155,7 @@ public class PipeWALFileResourceManager {
     }
   }
 
+  @TestOnly
   public synchronized int getFileReferenceCount(File hardlink) {
     return hardlinkToReferenceMap.getOrDefault(hardlink.getPath(), 0);
   }
