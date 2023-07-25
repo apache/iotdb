@@ -32,8 +32,7 @@ public enum SystemTag {
   COMPILER("compiler"),
   STATE("state"),
   IFACE_NAME("iface_name"),
-  PROCESS_NAME("process_num"),
-  ;
+  PROCESS_NAME("process_num");
 
   final String value;
 

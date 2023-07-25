@@ -84,8 +84,7 @@ public enum SystemMetric {
   // logback related
   LOGBACK_EVENTS("logback_events"),
   // uptime related
-  UP_TIME("up_time"),
-  ;
+  UP_TIME("up_time");
 
   final String value;
 
