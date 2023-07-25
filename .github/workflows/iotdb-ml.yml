@@ -44,17 +44,17 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
-      - name: Build IoTDB server distribution zip
-        run: mvn -B clean install -pl distribution -am -DskipTests
+      - name: Build IoTDB server distribution zip, python client and MLNode
+        run: mvn -B clean install -pl distribution,iotdb-client/client-py,iotdb-core/mlnode -am -DskipTests
+      - name: Compile MLNode package
+        run: cd iotdb-core/mlnode && poetry build  # use download in the future
       - name: Build IoTDB server docker image
         run: |
-          docker build . -f docker/src/main/Dockerfile-1c1d -t "iotdb:dev"
+          docker build . -f docker/src/main/Dockerfile-1c1d1m -t "iotdb-mlnode:dev"
           docker images
-      - name: Install IoTDB mlnode requirements
+      - name: Install IoTDB MLNode requirements
         run: pip3 install -r iotdb-core/mlnode/requirements_dev.txt
-      - name: Build MLNode
-        run: mvn clean package -DskipUTs -pl iotdb-core/mlnode -am && pip3 install poetry && cd iotdb-core/mlnode && poetry build && pip install dist/apache_iotdb_mlnode-1.0.0-py3-none-any.whl --force-reinstall
       - name: Integration test
         shell: bash
         run: |
-          pytest iotdb-core/mlnode
+          cd iotdb-core/mlnode/ && pytest .

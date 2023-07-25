@@ -20,3 +20,5 @@
 *
 !distribution
 !docker/src/main/DockerCompose/start-1c1d.sh
+!docker/src/main/DockerCompose/start-1c1d1m.sh
+!iotdb-core/mlnode/dist/

@@ -15,10 +15,3 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
--r requirements.txt
-
-# Pytest to run tests
-pytest==7.2.0
-# Testcontainer
-testcontainers==3.4.2
