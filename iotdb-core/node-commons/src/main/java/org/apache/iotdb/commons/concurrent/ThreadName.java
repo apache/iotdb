@@ -169,6 +169,7 @@ public enum ThreadName {
   UPGRADE_TASK("UpgradeThread"),
   REGION_MIGRATE("Region-Migrate-Pool"),
   STORAGE_ENGINE_RECOVER_TRIGGER("StorageEngine-RecoverTrigger"),
+  JVM_GC_STATISTICS_MONITOR("JVM-GC-Statistics-Monitor"),
   // the unknown thread name is used for metrics
   UNKOWN("UNKNOWN");
 

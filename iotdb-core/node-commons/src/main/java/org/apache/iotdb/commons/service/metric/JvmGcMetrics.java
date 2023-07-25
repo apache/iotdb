@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.service.metric;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -40,7 +41,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public class JvmGcMetrics implements IMetricSet {
   private static final Logger logger = LoggerFactory.getLogger(JvmGcMetrics.class);
   private final ScheduledExecutorService scheduledGCInfoMonitor =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("JVM-GC-Statistics-Monitor");
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+          ThreadName.JVM_GC_STATISTICS_MONITOR.getName());
   private Future<?> scheduledGcMonitorFuture;
   // Ring buffers containing GC timings and timestamps when timings were taken
   private final TsAndData[] gcDataBuf;
@@ -114,7 +116,6 @@ public class JvmGcMetrics implements IMetricSet {
     if (shouldRun) {
       calculateGCTimePercentageWithinObservedInterval();
     }
-    // TODO: we can add an alertHandler here to handle the abnormal GC case.
     if (alertHandler != null && curData.gcTimePercentage.get() > maxGcTimePercentage) {
       alertHandler.alert(curData.clone());
     }
