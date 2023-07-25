@@ -28,7 +28,7 @@ import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateConfigNodeBuildInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
@@ -374,13 +374,15 @@ public class NodeInfo implements SnapshotProcessor {
   /**
    * Update the specified ConfigNode‘s location.
    *
-   * @param updateConfigNodePlan UpdateConfigNodePlan
+   * @param updateConfigNodeBuildInfoPlan UpdateConfigNodeBuildInfoPlan
    * @return {@link TSStatusCode#SUCCESS_STATUS} if update ConfigNode info successfully.
    */
-  public TSStatus updateConfigNode(UpdateConfigNodePlan updateConfigNodePlan) {
+  public TSStatus updateConfigNodeBuildInfo(
+      UpdateConfigNodeBuildInfoPlan updateConfigNodeBuildInfoPlan) {
     buildInfoReadWriteLock.writeLock().lock();
     try {
-      nodeBuildInfo.put(updateConfigNodePlan.getNodeId(), updateConfigNodePlan.getBuildInfo());
+      nodeBuildInfo.put(
+          updateConfigNodeBuildInfoPlan.getNodeId(), updateConfigNodeBuildInfoPlan.getBuildInfo());
     } finally {
       buildInfoReadWriteLock.writeLock().unlock();
     }
@@ -576,6 +578,8 @@ public class NodeInfo implements SnapshotProcessor {
   }
 
   private void deserializeBuildInfo(InputStream inputStream) throws IOException {
+    // during upgrade old version snapshot may not have build info,thus we need to check inputStream
+    // before deserialize
     if (inputStream.available() != 0) {
       int size = ReadWriteIOUtils.readInt(inputStream);
       while (size > 0) {

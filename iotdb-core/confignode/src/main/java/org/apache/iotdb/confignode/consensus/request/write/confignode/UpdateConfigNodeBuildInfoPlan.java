@@ -28,16 +28,16 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class UpdateConfigNodePlan extends ConfigPhysicalPlan {
+public class UpdateConfigNodeBuildInfoPlan extends ConfigPhysicalPlan {
   private String buildInfo;
 
   private int nodeId;
 
-  public UpdateConfigNodePlan() {
+  public UpdateConfigNodeBuildInfoPlan() {
     super(ConfigPhysicalPlanType.UpdateConfigNodeLocation);
   }
 
-  public UpdateConfigNodePlan(String buildInfo, int nodeId) {
+  public UpdateConfigNodeBuildInfoPlan(String buildInfo, int nodeId) {
     this();
     this.buildInfo = buildInfo;
     this.nodeId = nodeId;
@@ -72,10 +72,10 @@ public class UpdateConfigNodePlan extends ConfigPhysicalPlan {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    if (!getType().equals(((UpdateConfigNodePlan) o).getType())) {
+    if (!getType().equals(((UpdateConfigNodeBuildInfoPlan) o).getType())) {
       return false;
     }
-    UpdateConfigNodePlan that = (UpdateConfigNodePlan) o;
+    UpdateConfigNodeBuildInfoPlan that = (UpdateConfigNodeBuildInfoPlan) o;
     return nodeId == that.nodeId && buildInfo.equals(that.buildInfo);
   }
 

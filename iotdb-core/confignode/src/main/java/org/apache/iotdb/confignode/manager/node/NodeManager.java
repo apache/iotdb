@@ -40,7 +40,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateConfigNodeBuildInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
@@ -347,7 +347,8 @@ public class NodeManager {
     String recordBuildInfo = nodeInfo.getBuildInfo(configNodeId);
     if (!recordBuildInfo.equals(buildInfo)) {
       // Update buildInfo when modified during restart
-      UpdateConfigNodePlan updateConfigNodePlan = new UpdateConfigNodePlan(buildInfo, configNodeId);
+      UpdateConfigNodeBuildInfoPlan updateConfigNodePlan =
+          new UpdateConfigNodeBuildInfoPlan(buildInfo, configNodeId);
       ConsensusWriteResponse result = getConsensusManager().write(updateConfigNodePlan);
       return result.getStatus();
     }
