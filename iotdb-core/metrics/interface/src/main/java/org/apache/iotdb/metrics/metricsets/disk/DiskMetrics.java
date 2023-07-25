@@ -169,7 +169,7 @@ public class DiskMetrics implements IMetricSet {
           SystemTag.DISK.toString(),
           diskID);
       metricService.createAutoGauge(
-          SystemMetric.DISK_IO_QUEUE_SIZE.toString(),
+          SystemMetric.DISK_IO_AVG_QUEUE_SIZE.toString(),
           MetricLevel.IMPORTANT,
           diskMetricsManager,
           x -> x.getQueueSizeForDisk().getOrDefault(diskID, 0.0),
@@ -316,7 +316,7 @@ public class DiskMetrics implements IMetricSet {
           diskID);
       metricService.remove(
           MetricType.AUTO_GAUGE,
-          SystemMetric.DISK_IO_QUEUE_SIZE.toString(),
+          SystemMetric.DISK_IO_AVG_QUEUE_SIZE.toString(),
           SystemTag.DISK.toString(),
           diskID);
     }

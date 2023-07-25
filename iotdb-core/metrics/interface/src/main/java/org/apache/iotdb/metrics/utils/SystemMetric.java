@@ -21,6 +21,12 @@ package org.apache.iotdb.metrics.utils;
 
 // universal metric related to system
 public enum SystemMetric {
+  // thread pool related
+  THREAD_POOL_ACTIVE_THREAD_COUNT("thread_pool_active_thread_count"),
+  THREAD_POOL_DONE_TASK_COUNT("thread_pool_done_task_count"),
+  THREAD_POOL_WAITING_TASK_COUNT("THREAD_POOL_WAITING_TASK_COUNT"),
+  THREAD_POOL_CORE_SIZE("thread_pool_core_size"),
+  THREAD_POOL_LARGEST_POOL_SIZE("thread_pool_largest_pool_size"),
   // disk related
   DISK_IO_SIZE("disk_io_size"),
   DISK_IO_OPS("disk_io_ops"),
@@ -29,7 +35,7 @@ public enum SystemMetric {
   DISK_IO_AVG_SIZE("disk_io_avg_size"),
   DISK_IO_SECTOR_NUM("disk_io_sector_num"),
   DISK_IO_BUSY_PERCENTAGE("disk_io_busy_percentage"),
-  DISK_IO_QUEUE_SIZE("disk_io_queue_size"),
+  DISK_IO_AVG_QUEUE_SIZE("disk_io_avg_queue_size"),
   // process related
   PROCESS_IO_SIZE("process_io_size"),
   PROCESS_IO_OPS("process_io_ops"),

@@ -25,6 +25,7 @@ public enum SystemTag {
   NAME("name"),
   FROM("from"),
   POOL("pool"),
+  POOL_NAME("pool_name"),
   MODULE("module"),
   DISK("disk_id"),
   ID("id"),

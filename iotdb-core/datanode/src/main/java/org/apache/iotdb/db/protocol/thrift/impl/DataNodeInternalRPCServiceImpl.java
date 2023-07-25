@@ -257,6 +257,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   private final DataNodeThrottleQuotaManager throttleQuotaManager =
       DataNodeThrottleQuotaManager.getInstance();
 
+  private static final String SYSTEM = "system";
+
   public DataNodeInternalRPCServiceImpl() {
     super();
     partitionFetcher = ClusterPartitionFetcher.getInstance();
@@ -1137,7 +1139,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   SystemMetric.SYS_CPU_LOAD.toString(),
                   MetricLevel.CORE,
                   Tag.NAME.toString(),
-                  "system")
+                  SYSTEM)
               .value();
       if (cpuLoad != 0) {
         loadSample.setCpuUsageRate(cpuLoad);
@@ -1250,7 +1252,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 SystemMetric.SYS_DISK_FREE_SPACE.toString(),
                 MetricLevel.CORE,
                 Tag.NAME.toString(),
-                "system")
+                SYSTEM)
             .value();
     double totalDisk =
         MetricService.getInstance()
@@ -1258,7 +1260,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 SystemMetric.SYS_DISK_TOTAL_SPACE.toString(),
                 MetricLevel.CORE,
                 Tag.NAME.toString(),
-                "system")
+                SYSTEM)
             .value();
 
     if (freeDisk != 0 && totalDisk != 0) {

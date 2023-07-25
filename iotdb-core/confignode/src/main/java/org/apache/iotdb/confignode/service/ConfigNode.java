@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.ClientManagerMetrics;
 import org.apache.iotdb.commons.concurrent.ThreadModule;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.ThreadPoolMetrics;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
@@ -245,6 +246,7 @@ public class ConfigNode implements ConfigNodeMBean {
     MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.CN_ROLE));
     MetricService.getInstance().addMetricSet(new NetMetrics(IoTDBConstant.CN_ROLE));
     MetricService.getInstance().addMetricSet(ClientManagerMetrics.getInstance());
+    MetricService.getInstance().addMetricSet(ThreadPoolMetrics.getInstance());
     initCpuMetrics();
     initSystemMetrics();
   }
