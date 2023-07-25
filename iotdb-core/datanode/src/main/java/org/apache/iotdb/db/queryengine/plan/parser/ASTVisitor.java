@@ -2844,6 +2844,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       case SqlConstant.MIN_TIME:
       case SqlConstant.MAX_TIME:
       case SqlConstant.COUNT:
+      case SqlConstant.COUNT_TIME:
       case SqlConstant.MIN_VALUE:
       case SqlConstant.LAST_VALUE:
       case SqlConstant.FIRST_VALUE:

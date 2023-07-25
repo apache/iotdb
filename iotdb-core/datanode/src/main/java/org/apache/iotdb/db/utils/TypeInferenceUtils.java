@@ -24,7 +24,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
-import org.apache.iotdb.db.queryengine.plan.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
@@ -133,6 +132,7 @@ public class TypeInferenceUtils {
       case SqlConstant.MIN_TIME:
       case SqlConstant.MAX_TIME:
       case SqlConstant.COUNT:
+      case SqlConstant.COUNT_TIME:
       case SqlConstant.COUNT_IF:
       case SqlConstant.TIME_DURATION:
         return TSDataType.INT64;
@@ -168,6 +168,7 @@ public class TypeInferenceUtils {
         throw new SemanticException(
             "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]");
       case SqlConstant.COUNT:
+      case SqlConstant.COUNT_TIME:
       case SqlConstant.MIN_TIME:
       case SqlConstant.MAX_TIME:
       case SqlConstant.FIRST_VALUE:
@@ -205,6 +206,7 @@ public class TypeInferenceUtils {
       case SqlConstant.MIN_VALUE:
       case SqlConstant.MAX_VALUE:
       case SqlConstant.COUNT:
+      case SqlConstant.COUNT_TIME:
       case SqlConstant.MIN_TIME:
       case SqlConstant.MAX_TIME:
       case SqlConstant.FIRST_VALUE:
@@ -228,7 +230,7 @@ public class TypeInferenceUtils {
             outputExpressionLists.add(
                 Collections.singletonList(
                     ExpressionUtils.reconstructBinaryExpression(
-                        (BinaryExpression) keepExpression,
+                        keepExpression,
                         new TimeSeriesOperand(
                             new MeasurementPath(
                                 ((TimeSeriesOperand) leftExpression).getPath(), TSDataType.INT64)),

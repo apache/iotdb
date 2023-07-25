@@ -89,6 +89,13 @@ public class ExpressionFactory {
         Collections.singletonList(inputExpression));
   }
 
+  public static FunctionExpression countTime(Expression inputExpression) {
+    return new FunctionExpression(
+        TAggregationType.COUNT_TIME.toString(),
+        new LinkedHashMap<>(),
+        Collections.singletonList(inputExpression));
+  }
+
   public static FunctionExpression sum(Expression inputExpression) {
     return new FunctionExpression(
         TAggregationType.SUM.toString(),

@@ -120,6 +120,7 @@ public class SchemaUtils {
       case SqlConstant.MAX_TIME:
       case SqlConstant.COUNT:
       case SqlConstant.TIME_DURATION:
+      case SqlConstant.COUNT_TIME:
         return TSDataType.INT64;
       case SqlConstant.AVG:
       case SqlConstant.SUM:
@@ -153,6 +154,7 @@ public class SchemaUtils {
       case MAX_VALUE:
       case EXTREME:
       case COUNT:
+      case COUNT_TIME:
       case AVG:
       case TIME_DURATION:
         return true;
@@ -185,6 +187,7 @@ public class SchemaUtils {
       case MAX_VALUE:
       case EXTREME:
       case COUNT:
+      case COUNT_TIME:
       case MIN_TIME:
       case MAX_TIME:
       case COUNT_IF:

@@ -132,6 +132,7 @@ public class SlidingWindowAggregatorFactory {
       case SUM:
       case AVG:
       case COUNT:
+      case COUNT_TIME:
         return new SmoothQueueSlidingWindowAggregator(accumulator, inputLocationList, step);
       case MAX_VALUE:
         return new MonotonicQueueSlidingWindowAggregator(
