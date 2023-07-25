@@ -35,6 +35,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subt
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.validator.CompactionValidator;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractInnerSpaceEstimator;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.FastCompactionInnerCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.ReadChunkInnerCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -77,6 +79,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
   protected long maxModsFileSize;
 
+  protected AbstractInnerSpaceEstimator innerSpaceEstimator;
+
   public InnerSpaceCompactionTask(
       long timePartition,
       TsFileManager tsFileManager,
@@ -95,6 +99,11 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     this.selectedTsFileResourceList = selectedTsFileResourceList;
     this.sequence = sequence;
     this.performer = performer;
+    if (this.performer instanceof ReadChunkCompactionPerformer) {
+      innerSpaceEstimator = new ReadChunkInnerCompactionEstimator();
+    } else {
+      innerSpaceEstimator = new FastCompactionInnerCompactionEstimator();
+    }
     isHoldingReadLock = new boolean[selectedTsFileResourceList.size()];
     isHoldingWriteLock = new boolean[selectedTsFileResourceList.size()];
     for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
@@ -119,9 +128,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     if (!tsFileManager.isAllowCompaction()) {
       return true;
     }
-    if (!checkCurrentTaskMemCost()) {
-      return false;
-    }
+
     long startTime = System.currentTimeMillis();
     // get resource of target file
     String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
@@ -335,27 +342,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     return isSuccess;
   }
 
-  private boolean checkCurrentTaskMemCost() {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    long memoryBudget =
-        (long)
-            ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
-                / config.getCompactionThreadCount()
-                * config.getUsableCompactionMemoryProportion());
-    if (performer instanceof ReadChunkCompactionPerformer) {
-      long memCost = 0;
-      try {
-        memCost =
-            new ReadChunkInnerCompactionEstimator()
-                .estimateInnerCompactionMemory(selectedTsFileResourceList);
-      } catch (IOException e) {
-        return false;
-      }
-      return memCost < memoryBudget;
-    }
-    return true;
-  }
-
   @Override
   public boolean equalsOtherTask(AbstractCompactionTask otherTask) {
     if (!(otherTask instanceof InnerSpaceCompactionTask)) {
@@ -488,12 +474,24 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           return false;
         }
       }
-      if (performer instanceof ReadChunkCompactionPerformer) {
-        memCost = new ReadChunkInnerCompactionEstimator().estimateInnerCompactionMemory(selectedTsFileResourceList);
-        SystemInfo.getInstance().addCompactionMemoryCost(memCost, 60);
-        SystemInfo.getInstance()
-            .addCompactionFileNum(selectedTsFileResourceList.size(), 60);
+
+      IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+      long memoryBudget =
+          (long)
+              ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
+                  / config.getCompactionThreadCount()
+                  * config.getUsableCompactionMemoryProportion());
+      long estimateMemoryCost =
+          innerSpaceEstimator.estimateInnerCompactionMemory(selectedTsFileResourceList);
+      if (estimateMemoryCost > memoryBudget) {
+        LOGGER.warn(
+            "estimate memory cost greater than memory budget,estimate memory cost is {},memory budget is {}",
+            estimateMemoryCost,
+            memoryBudget);
+        return false;
       }
+      SystemInfo.getInstance().addCompactionMemoryCost(memCost, 60);
+      SystemInfo.getInstance().addCompactionFileNum(selectedTsFileResourceList.size(), 60);
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         LOGGER.warn("Interrupted when allocating memory for compaction", e);
