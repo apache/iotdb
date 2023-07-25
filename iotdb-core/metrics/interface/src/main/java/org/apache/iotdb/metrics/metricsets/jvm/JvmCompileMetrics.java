@@ -23,6 +23,8 @@ import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
+import org.apache.iotdb.metrics.utils.SystemMetric;
+import org.apache.iotdb.metrics.utils.SystemTag;
 
 import java.lang.management.CompilationMXBean;
 import java.lang.management.ManagementFactory;
@@ -34,11 +36,11 @@ public class JvmCompileMetrics implements IMetricSet {
     CompilationMXBean compilationBean = ManagementFactory.getCompilationMXBean();
     if (compilationBean != null && compilationBean.isCompilationTimeMonitoringSupported()) {
       metricService.createAutoGauge(
-          "jvm_compilation_time_ms",
+          SystemMetric.JVM_COMPILATION_TIME_MS.toString(),
           MetricLevel.IMPORTANT,
           compilationBean,
           CompilationMXBean::getTotalCompilationTime,
-          "compiler",
+          SystemTag.COMPILER.toString(),
           compilationBean.getName());
     }
   }
@@ -48,7 +50,10 @@ public class JvmCompileMetrics implements IMetricSet {
     CompilationMXBean compilationBean = ManagementFactory.getCompilationMXBean();
     if (compilationBean != null && compilationBean.isCompilationTimeMonitoringSupported()) {
       metricService.remove(
-          MetricType.AUTO_GAUGE, "jvm_compilation_time_ms", "compiler", compilationBean.getName());
+          MetricType.AUTO_GAUGE,
+          SystemMetric.JVM_COMPILATION_TIME_MS.toString(),
+          SystemTag.COMPILER.toString(),
+          compilationBean.getName());
     }
   }
 }

@@ -90,37 +90,7 @@ public enum Metric {
   LOCAL_EXECUTION_PLANNER("local_execution_planner"),
   // file related
   FILE_SIZE("file_size"),
-  FILE_COUNT("file_count"),
-  // disk related
-  DISK_IO_SIZE("disk_io_size"),
-  DISK_IO_OPS("disk_io_ops"),
-  DISK_IO_TIME("disk_io_time"),
-  DISK_IO_AVG_TIME("disk_io_avg_time"),
-  DISK_IO_SECTOR_NUM("disk_io_sector_num"),
-  DISK_IO_BUSY_PERCENTAGE("disk_io_busy_percentage"),
-  DISK_IO_QUEUE_SIZE("disk_io_queue_size"),
-  // process related
-  PROCESS_IO_SIZE("process_io_size"),
-  PROCESS_IO_OPS("process_io_ops"),
-  PROCESS_CPU_LOAD("process_cpu_load"),
-  PROCESS_CPU_TIME("process_cpu_time"),
-  PROCESS_MAX_MEM("process_max_mem"),
-  PROCESS_USED_MEM("process_used_mem"),
-  PROCESS_TOTAL_MEM("process_total_mem"),
-  PROCESS_FREE_MEM("process_free_mem"),
-  PROCESS_THREADS_COUNT("process_threads_count"),
-  PROCESS_MEM_RATIO("process_mem_ratio"),
-  PROCESS_STATUS("process_status"),
-  // system related
-  SYS_CPU_LOAD("sys_cpu_load"),
-  SYS_CPU_CORES("sys_cpu_cores"),
-  SYS_TOTAL_PHYSICAL_MEMORY_SIZE("sys_total_physical_memory_size"),
-  SYS_FREE_PHYSICAL_MEMORY_SIZE("sys_free_physical_memory_size"),
-  SYS_TOTAL_SWAP_SPACE_SIZE("sys_total_swap_space_size"),
-  SYS_FREE_SWAP_SPACE_SIZE("sys_free_swap_space_size"),
-  SYS_COMMITTED_VM_SIZE("sys_committed_vm_size"),
-  SYS_DISK_TOTAL_SPACE("sys_disk_total_space"),
-  SYS_DISK_FREE_SPACE("sys_disk_free_space");
+  FILE_COUNT("file_count");
 
   final String value;
 
