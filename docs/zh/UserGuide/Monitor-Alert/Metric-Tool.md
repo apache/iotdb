@@ -242,12 +242,20 @@ Core 级别的监控指标在系统运行中默认开启，每一个 Core 级别
 
 #### 4.2.1. 节点统计
 
-| Metric | Tags                                   | Type      | Description                          |
-| ------ | -------------------------------------- | --------- | ------------------------------------ |
-| region | name="total",type="SchemaRegion"       | AutoGauge | 分区表中 SchemaRegion 总数量         |
-| region | name="total",type="DataRegion"         | AutoGauge | 分区表中 DataRegion 总数量           |
-| region | name="{ip}:{port}",type="SchemaRegion" | Gauge     | 分区表中对应节点上 DataRegion 总数量 |
-| region | name="{ip}:{port}",type="DataRegion"   | Gauge     | 分区表中对应节点上 DataRegion 总数量 |
+| Metric         | Tags                                                         | Type      | Description                                              |
+| -------------- | ------------------------------------------------------------ | --------- | -------------------------------------------------------- |
+| region         | name="total",type="SchemaRegion"                             | AutoGauge | 分区表中 SchemaRegion 总数量                             |
+| region         | name="total",type="DataRegion"                               | AutoGauge | 分区表中 DataRegion 总数量                               |
+| region         | name="{ip}:{port}",type="SchemaRegion"                       | Gauge     | 分区表中对应节点上 DataRegion 总数量                     |
+| region         | name="{ip}:{port}",type="DataRegion"                         | Gauge     | 分区表中对应节点上 DataRegion 总数量                     |
+| client_manager | name="client_manager_num_active", type="{pool_name}"         | AutoGauge | 当前从此池中借用但尚未归还的实例总数                     |
+| client_manager | name="client_manager_num_idle", type="{pool_name}"           | AutoGauge | 该池中当前空闲的实例总数                                 |
+| client_manager | name="client_manager_borrowed_count", type="{pool_name}"     | AutoGauge | 在池的生命周期内成功从此池借用的对象总数                 |
+| client_manager | name="client_manager_created_count", type="{pool_name}"      | AutoGauge | 在池的生命周期内为此池创建的对象总数                     |
+| client_manager | name="client_manager_destroyed_count", type="{pool_name}"    | AutoGauge | 在池的生命周期内被该池销毁的对象总数                     |
+| client_manager | name="client_manager_mean_active_time", type="{pool_name}"   | AutoGauge | 最后缓存大小个返回到池对象的处于活动状态的平均时间       |
+| client_manager | name="client_manager_mean_borrow_wait_time", type="{pool_name}" | AutoGauge | 最后缓存大小个从池中借用对象的线程等待借用对象的平均时间 |
+| client_manager | name="client_manager_mean_idle_time", type="{pool_name}"     | AutoGauge | 最后缓存大小个从池中借用对象的对象空闲的平均时间         |
 
 #### 4.2.2. Ratis共识协议统计
 

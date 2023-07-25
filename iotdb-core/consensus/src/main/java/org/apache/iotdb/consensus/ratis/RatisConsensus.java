@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.ClientManager;
+import org.apache.iotdb.commons.client.ClientManagerMetrics;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.IClientPoolFactory;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
@@ -49,6 +50,7 @@ import org.apache.iotdb.consensus.exception.NodeReadOnlyException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
+import org.apache.iotdb.consensus.exception.RatisUnderRecoveryException;
 import org.apache.iotdb.consensus.ratis.metrics.RatisMetricSet;
 import org.apache.iotdb.consensus.ratis.metrics.RatisMetricsManager;
 import org.apache.iotdb.consensus.ratis.utils.RatisLogMonitor;
@@ -91,6 +93,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -130,6 +133,9 @@ class RatisConsensus implements IConsensus {
 
   private final RatisMetricSet ratisMetricSet;
   private final TConsensusGroupType consensusGroupType;
+
+  private final ConcurrentHashMap<ConsensusGroupId, AtomicBoolean> canServeStaleRead =
+      new ConcurrentHashMap<>();
 
   public RatisConsensus(ConsensusConfig config, IStateMachine.Registry registry)
       throws IOException {
@@ -325,24 +331,54 @@ class RatisConsensus implements IConsensus {
       return failedRead(new ConsensusGroupNotExistException(consensusGroupId));
     }
 
+    final boolean isLinearizableRead =
+        !canServeStaleRead.computeIfAbsent(consensusGroupId, id -> new AtomicBoolean(false)).get();
+
     RaftClientReply reply;
-    try (AutoCloseable ignored =
-        RatisMetricsManager.getInstance().startReadTimer(consensusGroupType)) {
-      RequestMessage message = new RequestMessage(IConsensusRequest);
-      RaftClientRequest clientRequest =
-          buildRawRequest(groupId, message, RaftClientRequest.staleReadRequestType(-1));
-      reply = server.submitClientRequest(clientRequest);
-      if (!reply.isSuccess()) {
-        return failedRead(new RatisRequestFailedException(reply.getException()));
+    try {
+      reply = doRead(groupId, IConsensusRequest, isLinearizableRead);
+      // allow stale read if current linearizable read returns successfully
+      if (isLinearizableRead) {
+        canServeStaleRead.get(consensusGroupId).set(true);
       }
     } catch (Exception e) {
-      return failedRead(new RatisRequestFailedException(e));
+      if (isLinearizableRead) {
+        // linearizable read failed. the RaftServer is recovering from Raft Log and cannot serve
+        // read requests.
+        return failedRead(new RatisUnderRecoveryException(e));
+      } else {
+        return failedRead(new RatisRequestFailedException(e));
+      }
     }
 
     Message ret = reply.getMessage();
     ResponseMessage readResponseMessage = (ResponseMessage) ret;
     DataSet dataSet = (DataSet) readResponseMessage.getContentHolder();
     return ConsensusReadResponse.newBuilder().setDataSet(dataSet).build();
+  }
+
+  /** return a success raft client reply or throw an Exception */
+  private RaftClientReply doRead(
+      RaftGroupId gid, IConsensusRequest readRequest, boolean linearizable) throws Exception {
+    final RaftClientRequest.Type readType =
+        linearizable
+            ? RaftClientRequest.readRequestType()
+            : RaftClientRequest.staleReadRequestType(-1);
+    final RequestMessage requestMessage = new RequestMessage(readRequest);
+    final RaftClientRequest request = buildRawRequest(gid, requestMessage, readType);
+
+    RaftClientReply reply;
+    try (AutoCloseable ignored =
+        RatisMetricsManager.getInstance().startReadTimer(consensusGroupType)) {
+      reply = server.submitClientRequest(request);
+    }
+
+    // rethrow the exception if the reply is not successful
+    if (!reply.isSuccess()) {
+      throw reply.getException();
+    }
+
+    return reply;
   }
 
   /**
@@ -803,18 +839,27 @@ class RatisConsensus implements IConsensus {
     return server;
   }
 
+  @TestOnly
+  public void allowStaleRead(ConsensusGroupId consensusGroupId) {
+    canServeStaleRead.computeIfAbsent(consensusGroupId, id -> new AtomicBoolean(false)).set(true);
+  }
+
   private class RatisClientPoolFactory implements IClientPoolFactory<RaftGroup, RatisClient> {
 
     @Override
     public KeyedObjectPool<RaftGroup, RatisClient> createClientPool(
         ClientManager<RaftGroup, RatisClient> manager) {
-      return new GenericKeyedObjectPool<>(
-          new RatisClient.Factory(manager, properties, clientRpc, config.getClient()),
-          new ClientPoolProperty.Builder<RatisClient>()
-              .setCoreClientNumForEachNode(config.getClient().getCoreClientNumForEachNode())
-              .setMaxClientNumForEachNode(config.getClient().getMaxClientNumForEachNode())
-              .build()
-              .getConfig());
+      GenericKeyedObjectPool<RaftGroup, RatisClient> clientPool =
+          new GenericKeyedObjectPool<>(
+              new RatisClient.Factory(manager, properties, clientRpc, config.getClient()),
+              new ClientPoolProperty.Builder<RatisClient>()
+                  .setCoreClientNumForEachNode(config.getClient().getCoreClientNumForEachNode())
+                  .setMaxClientNumForEachNode(config.getClient().getMaxClientNumForEachNode())
+                  .build()
+                  .getConfig());
+      ClientManagerMetrics.getInstance()
+          .registerClientManager(this.getClass().getSimpleName(), clientPool);
+      return clientPool;
     }
   }
 }
