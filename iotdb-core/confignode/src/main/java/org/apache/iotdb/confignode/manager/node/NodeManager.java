@@ -341,14 +341,11 @@ public class NodeManager {
         .setConfigNodeId(nodeId);
   }
 
-  public TSStatus updateConfigNodeIfNecessary(
-      TConfigNodeLocation configNodeLocation, String buildInfo) {
-    TConfigNodeLocation recordConfigNodeLocation =
-        nodeInfo.getRegisteredConfigNode(configNodeLocation.getConfigNodeId());
-    if (!recordConfigNodeLocation.equals(configNodeLocation)) {
-      // Update configNodeLocation when modified during restart
-      UpdateConfigNodePlan updateConfigNodePlan = new UpdateConfigNodePlan(configNodeLocation);
-      updateConfigNodePlan.setBuildInfo(buildInfo);
+  public TSStatus updateConfigNodeIfNecessary(int configNodeId, String buildInfo) {
+    String recordBuildInfo = nodeInfo.getBuildInfo(configNodeId);
+    if (!recordBuildInfo.equals(buildInfo)) {
+      // Update buildInfo when modified during restart
+      UpdateConfigNodePlan updateConfigNodePlan = new UpdateConfigNodePlan(buildInfo, configNodeId);
       ConsensusWriteResponse result = getConsensusManager().write(updateConfigNodePlan);
       return result.getStatus();
     }

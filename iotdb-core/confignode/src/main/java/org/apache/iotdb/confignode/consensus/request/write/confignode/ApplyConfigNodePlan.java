@@ -68,10 +68,9 @@ public class ApplyConfigNodePlan extends ConfigPhysicalPlan {
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     configNodeLocation = ThriftConfigNodeSerDeUtils.deserializeTConfigNodeLocation(buffer);
-    if(buffer.hasRemaining()){
+    if (buffer.hasRemaining()) {
       buildInfo = ReadWriteIOUtils.readString(buffer);
-    }
-    else{
+    } else {
       buildInfo = "";
     }
   }

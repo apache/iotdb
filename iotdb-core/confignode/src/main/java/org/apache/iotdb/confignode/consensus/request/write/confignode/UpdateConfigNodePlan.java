@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.confignode;
 
-import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -31,48 +29,39 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class UpdateConfigNodePlan extends ConfigPhysicalPlan {
-  private TConfigNodeLocation configNodeLocation;
-
   private String buildInfo;
+
+  private int nodeId;
 
   public UpdateConfigNodePlan() {
     super(ConfigPhysicalPlanType.UpdateConfigNodeLocation);
   }
 
-  public UpdateConfigNodePlan(TConfigNodeLocation configNodeLocation) {
+  public UpdateConfigNodePlan(String buildInfo, int nodeId) {
     this();
-    this.configNodeLocation = configNodeLocation;
-    this.buildInfo = "";
-  }
-
-  public TConfigNodeLocation getConfigNodeLocation() {
-    return configNodeLocation;
-  }
-
-  public void setBuildInfo(String buildInfo) {
     this.buildInfo = buildInfo;
+    this.nodeId = nodeId;
   }
 
   public String getBuildInfo() {
     return buildInfo;
   }
 
+  public int getNodeId() {
+    return nodeId;
+  }
+
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(getType().getPlanType(), stream);
-    ThriftConfigNodeSerDeUtils.serializeTConfigNodeLocation(configNodeLocation, stream);
+    ReadWriteIOUtils.write(nodeId, stream);
     ReadWriteIOUtils.write(buildInfo, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
-    configNodeLocation = ThriftConfigNodeSerDeUtils.deserializeTConfigNodeLocation(buffer);
-    if(buffer.hasRemaining()){
-      buildInfo = ReadWriteIOUtils.readString(buffer);
-    }
-    else{
-      buildInfo = "";
-    }
+    nodeId = ReadWriteIOUtils.readInt(buffer);
+    buildInfo = ReadWriteIOUtils.readString(buffer);
   }
 
   @Override
@@ -87,11 +76,11 @@ public class UpdateConfigNodePlan extends ConfigPhysicalPlan {
       return false;
     }
     UpdateConfigNodePlan that = (UpdateConfigNodePlan) o;
-    return configNodeLocation.equals(that.configNodeLocation) && buildInfo.equals(that.buildInfo);
+    return nodeId == that.nodeId && buildInfo.equals(that.buildInfo);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(configNodeLocation, buildInfo);
+    return Objects.hash(nodeId, buildInfo);
   }
 }

@@ -69,8 +69,7 @@ public class UpdateDataNodePlan extends ConfigPhysicalPlan {
     dataNodeConfiguration = ThriftCommonsSerDeUtils.deserializeTDataNodeConfiguration(buffer);
     if (buffer.hasRemaining()) {
       this.buildInfo = ReadWriteIOUtils.readString(buffer);
-    }
-    else{
+    } else {
       buildInfo = "";
     }
   }

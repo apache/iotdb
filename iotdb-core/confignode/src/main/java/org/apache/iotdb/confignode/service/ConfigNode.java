@@ -147,8 +147,7 @@ public class ConfigNode implements ConfigNodeMBean {
           TSStatus status =
               configManager
                   .getNodeManager()
-                  .updateConfigNodeIfNecessary(
-                      generateConfigNodeLocation(configNodeId), IoTDBConstant.BUILD_INFO);
+                  .updateConfigNodeIfNecessary(configNodeId, IoTDBConstant.BUILD_INFO);
           if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             break;
           } else {
