@@ -1397,14 +1397,6 @@
                 </plugins>
             </build>
         </profile>
-        <!-- enable site-->
-        <!-- use `mvn package -P site -pl site` to compile the site module only -->
-        <profile>
-            <id>site</id>
-            <modules>
-                <module>site</module>
-            </modules>
-        </profile>
         <!-- code coverage for ut and it, and then merge them together.-->
         <profile>
             <id>code-coverage</id>
