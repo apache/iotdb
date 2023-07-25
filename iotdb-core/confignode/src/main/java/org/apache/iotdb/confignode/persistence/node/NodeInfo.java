@@ -141,8 +141,8 @@ public class NodeInfo implements SnapshotProcessor {
         result.setMessage("IoTDB-Cluster could provide data service, now enjoy yourself!");
       }
     } finally {
-      dataNodeInfoReadWriteLock.writeLock().unlock();
       buildInfoReadWriteLock.writeLock().unlock();
+      dataNodeInfoReadWriteLock.writeLock().unlock();
     }
     return result;
   }
@@ -170,8 +170,8 @@ public class NodeInfo implements SnapshotProcessor {
                 LOGGER.info("Removed the datanode {} from cluster", removeDataNodes);
               });
     } finally {
-      dataNodeInfoReadWriteLock.writeLock().unlock();
       buildInfoReadWriteLock.writeLock().unlock();
+      dataNodeInfoReadWriteLock.writeLock().unlock();
     }
     LOGGER.info(
         "{}, There are {} data node in cluster after executed RemoveDataNodePlan",
@@ -192,11 +192,11 @@ public class NodeInfo implements SnapshotProcessor {
     try {
       TDataNodeConfiguration newConfiguration = updateDataNodePlan.getDataNodeConfiguration();
       registeredDataNodes.replace(newConfiguration.getLocation().getDataNodeId(), newConfiguration);
-      nodeBuildInfo.put(
+      nodeBuildInfo.replace(
           newConfiguration.getLocation().getDataNodeId(), updateDataNodePlan.getBuildInfo());
     } finally {
-      dataNodeInfoReadWriteLock.writeLock().unlock();
       buildInfoReadWriteLock.writeLock().unlock();
+      dataNodeInfoReadWriteLock.writeLock().unlock();
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
@@ -334,8 +334,8 @@ public class NodeInfo implements SnapshotProcessor {
       status.setMessage(
           "Apply new ConfigNode failed because current ConfigNode can't store ConfigNode information.");
     } finally {
-      configNodeInfoReadWriteLock.writeLock().unlock();
       buildInfoReadWriteLock.writeLock().unlock();
+      configNodeInfoReadWriteLock.writeLock().unlock();
     }
     return status;
   }
@@ -365,8 +365,8 @@ public class NodeInfo implements SnapshotProcessor {
       status.setMessage(
           "Remove ConfigNode failed because current ConfigNode can't store ConfigNode information.");
     } finally {
-      configNodeInfoReadWriteLock.writeLock().unlock();
       buildInfoReadWriteLock.writeLock().unlock();
+      configNodeInfoReadWriteLock.writeLock().unlock();
     }
     return status;
   }
@@ -475,9 +475,9 @@ public class NodeInfo implements SnapshotProcessor {
       return tmpFile.renameTo(snapshotFile);
 
     } finally {
-      configNodeInfoReadWriteLock.readLock().unlock();
-      dataNodeInfoReadWriteLock.readLock().unlock();
       buildInfoReadWriteLock.readLock().unlock();
+      dataNodeInfoReadWriteLock.readLock().unlock();
+      configNodeInfoReadWriteLock.readLock().unlock();
       for (int retry = 0; retry < 5; retry++) {
         if (!tmpFile.exists() || tmpFile.delete()) {
           break;
@@ -545,9 +545,9 @@ public class NodeInfo implements SnapshotProcessor {
       deserializeBuildInfo(fileInputStream);
 
     } finally {
-      configNodeInfoReadWriteLock.writeLock().unlock();
-      dataNodeInfoReadWriteLock.writeLock().unlock();
       buildInfoReadWriteLock.writeLock().unlock();
+      dataNodeInfoReadWriteLock.writeLock().unlock();
+      configNodeInfoReadWriteLock.writeLock().unlock();
     }
   }
 

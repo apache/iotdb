@@ -268,7 +268,9 @@ public class NodeManager {
       TDataNodeConfiguration dataNodeConfiguration, String buildInfo) {
     TDataNodeConfiguration recordConfiguration =
         getRegisteredDataNode(dataNodeConfiguration.getLocation().getDataNodeId());
-    if (!recordConfiguration.equals(dataNodeConfiguration)) {
+    String recordBuildInfo =
+        nodeInfo.getBuildInfo(dataNodeConfiguration.getLocation().getDataNodeId());
+    if (!recordConfiguration.equals(dataNodeConfiguration) || !recordBuildInfo.equals(buildInfo)) {
       // Update DataNodeConfiguration when modified during restart
       UpdateDataNodePlan updateDataNodePlan = new UpdateDataNodePlan(dataNodeConfiguration);
       updateDataNodePlan.setBuildInfo(buildInfo);
