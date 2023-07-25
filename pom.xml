@@ -160,9 +160,7 @@
         <felix.version>5.1.8</felix.version>
         <snappy.version>1.1.8.4</snappy.version>
         <zstd-jni.version>1.5.4-2</zstd-jni.version>
-        <netty.version>4.1.82.Final</netty.version>
-        <netty-buffer.version>4.1.94.Final</netty-buffer.version>
-        <netty-common.version>4.1.94.Final</netty-common.version>
+        <netty.version>4.1.94.Final</netty.version>
         <!-- URL of the ASF SonarQube server -->
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.organization>apache</sonar.organization>
@@ -229,8 +227,6 @@
         <!-- codegen -->
         <drill.freemarker.maven.plugin.version>1.17.0</drill.freemarker.maven.plugin.version>
         <codegen.phase>generate-sources</codegen.phase>
-        <!-- metrics -->
-        <reactor-netty-http.version>1.0.24</reactor-netty-http.version>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
@@ -316,12 +312,12 @@
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-buffer</artifactId>
-                <version>${netty-buffer.version}</version>
+                <version>${netty.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-common</artifactId>
-                <version>${netty-common.version}</version>
+                <version>${netty.version}</version>
             </dependency>
             <dependency>
                 <groupId>javax.annotation</groupId>
