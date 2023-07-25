@@ -22,7 +22,6 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimat
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 
 import org.slf4j.Logger;
@@ -31,7 +30,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class ReadPointCrossCompactionEstimator extends AbstractCrossSpaceEstimator {
   private static final Logger logger =
@@ -77,18 +75,7 @@ public class ReadPointCrossCompactionEstimator extends AbstractCrossSpaceEstimat
   private boolean addReadLock(List<TsFileResource> seqResources, TsFileResource unseqResource) {
     List<TsFileResource> allResources = new ArrayList<>(seqResources);
     allResources.add(unseqResource);
-    for (int i = 0; i < allResources.size(); i++) {
-      TsFileResource resource = allResources.get(i);
-      resource.readLock();
-      if (resource.isDeleted()) {
-        // release read lock
-        for (int j = 0; j <= i; j++) {
-          allResources.get(j).readUnlock();
-        }
-        return false;
-      }
-    }
-    return true;
+    return CompactionEstimateUtils.addReadLock(allResources);
   }
 
   private void releaseReadLock(List<TsFileResource> seqResources, TsFileResource unseqResource) {
@@ -104,7 +91,7 @@ public class ReadPointCrossCompactionEstimator extends AbstractCrossSpaceEstimat
    */
   private long calculateReadingUnseqFile(TsFileResource unseqResource) throws IOException {
     TsFileSequenceReader reader = getFileReader(unseqResource);
-    FileInfo fileInfo = getSeriesAndDeviceChunkNum(reader);
+    FileInfo fileInfo = CompactionEstimateUtils.getSeriesAndDeviceChunkNum(reader);
     // it is max aligned series num of one device when tsfile contains aligned series,
     // else is sub compaction task num.
     int concurrentSeriesNum =
@@ -141,7 +128,7 @@ public class ReadPointCrossCompactionEstimator extends AbstractCrossSpaceEstimat
     long cost = 0;
     for (TsFileResource seqResource : seqResources) {
       TsFileSequenceReader reader = getFileReader(seqResource);
-      FileInfo fileInfo = getSeriesAndDeviceChunkNum(reader);
+      FileInfo fileInfo = CompactionEstimateUtils.getSeriesAndDeviceChunkNum(reader);
       // it is max aligned series num of one device when tsfile contains aligned series,
       // else is sub compaction task num.
       int concurrentSeriesNum =
@@ -206,67 +193,5 @@ public class ReadPointCrossCompactionEstimator extends AbstractCrossSpaceEstimat
     }
 
     return cost;
-  }
-
-  /**
-   * Get the details of the tsfile, the returned array contains the following elements in sequence:
-   *
-   * <p>total chunk num in this tsfile
-   *
-   * <p>max chunk num of one timeseries in this tsfile
-   *
-   * <p>max aligned series num in one device. If there is no aligned series in this file, then it
-   * turns to be -1.
-   *
-   * <p>max chunk num of one device in this tsfile
-   *
-   * @throws IOException if io errors occurred
-   */
-  private FileInfo getSeriesAndDeviceChunkNum(TsFileSequenceReader reader) throws IOException {
-    int totalChunkNum = 0;
-    int maxChunkNum = 0;
-    int maxAlignedSeriesNumInDevice = -1;
-    int maxDeviceChunkNum = 0;
-    Map<String, List<TimeseriesMetadata>> deviceMetadata = reader.getAllTimeseriesMetadata(true);
-    for (Map.Entry<String, List<TimeseriesMetadata>> entry : deviceMetadata.entrySet()) {
-      int deviceChunkNum = 0;
-      List<TimeseriesMetadata> deviceTimeseriesMetadata = entry.getValue();
-      if (deviceTimeseriesMetadata.get(0).getMeasurementId().equals("")) {
-        // aligned device
-        maxAlignedSeriesNumInDevice =
-            Math.max(maxAlignedSeriesNumInDevice, deviceTimeseriesMetadata.size());
-      }
-      for (TimeseriesMetadata timeseriesMetadata : deviceTimeseriesMetadata) {
-        deviceChunkNum += timeseriesMetadata.getChunkMetadataList().size();
-        totalChunkNum += timeseriesMetadata.getChunkMetadataList().size();
-        maxChunkNum = Math.max(maxChunkNum, timeseriesMetadata.getChunkMetadataList().size());
-      }
-      maxDeviceChunkNum = Math.max(maxDeviceChunkNum, deviceChunkNum);
-    }
-    return new FileInfo(totalChunkNum, maxChunkNum, maxAlignedSeriesNumInDevice, maxDeviceChunkNum);
-  }
-
-  private class FileInfo {
-    // total chunk num in this tsfile
-    private int totalChunkNum = 0;
-    // max chunk num of one timeseries in this tsfile
-    private int maxSeriesChunkNum = 0;
-    // max aligned series num in one device. If there is no aligned series in this file, then it
-    // turns to be -1.
-    private int maxAlignedSeriesNumInDevice = -1;
-    // max chunk num of one device in this tsfile
-    @SuppressWarnings("squid:S1068")
-    private int maxDeviceChunkNum = 0;
-
-    public FileInfo(
-        int totalChunkNum,
-        int maxSeriesChunkNum,
-        int maxAlignedSeriesNumInDevice,
-        int maxDeviceChunkNum) {
-      this.totalChunkNum = totalChunkNum;
-      this.maxSeriesChunkNum = maxSeriesChunkNum;
-      this.maxAlignedSeriesNumInDevice = maxAlignedSeriesNumInDevice;
-      this.maxDeviceChunkNum = maxDeviceChunkNum;
-    }
   }
 }
