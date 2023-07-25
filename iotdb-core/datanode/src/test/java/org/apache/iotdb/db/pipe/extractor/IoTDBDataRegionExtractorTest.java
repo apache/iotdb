@@ -30,7 +30,7 @@ import java.util.HashMap;
 
 public class IoTDBDataRegionExtractorTest {
   @Test
-  public void testIoTDBDataRegionExtractorTest() {
+  public void testIoTDBDataRegionExtractor() {
     IoTDBDataRegionExtractor extractor = new IoTDBDataRegionExtractor();
     try {
       extractor.validate(

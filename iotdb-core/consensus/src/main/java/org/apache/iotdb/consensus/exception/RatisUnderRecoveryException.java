@@ -17,26 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache;
+package org.apache.iotdb.consensus.exception;
 
-import org.apache.iotdb.tsfile.read.TimeValuePair;
+/** RaftServer is redoing RaftLog. Unable to serve linearizable read requests. */
+public class RatisUnderRecoveryException extends ConsensusException {
 
-/** this interface declares the operations of LastCache data */
-public interface ILastCacheContainer {
-
-  // get lastCache of monad timseries
-  TimeValuePair getCachedLast();
-
-  /**
-   * update last point cache
-   *
-   * @param timeValuePair last point
-   * @param highPriorityUpdate whether it's a high priority update
-   * @param latestFlushedTime latest flushed time
-   * @return increasing of memory usage
-   */
-  int updateCachedLast(
-      TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime);
-
-  int estimateSize();
+  public RatisUnderRecoveryException(Throwable cause) {
+    super(
+        "Ratis Server is redoing Raft Log and cannot serve read requests now. Please try read later: "
+            + cause,
+        cause);
+  }
 }

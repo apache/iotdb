@@ -156,6 +156,7 @@ public class CommonConfig {
   private int pipeExtractorPendingQueueTabletLimit = pipeExtractorPendingQueueCapacity / 2;
   private int pipeDataStructureTabletRowSize = 65536;
 
+  private long pipeConnectorTimeoutMs = 15 * 60 * 1000L; // 15 minutes
   private int pipeConnectorReadFileBufferSize = 8388608;
   private long pipeConnectorRetryIntervalMs = 1000L;
   private int pipeConnectorPendingQueueSize = 1024;
@@ -175,6 +176,9 @@ public class CommonConfig {
 
   // Max size for tag and attribute of one time series
   private int tagAttributeTotalSize = 700;
+
+  // maximum number of Cluster Databases allowed
+  private int databaseLimitThreshold = -1;
 
   CommonConfig() {
     // Empty constructor
@@ -504,6 +508,14 @@ public class CommonConfig {
     this.pipeExtractorPendingQueueTabletLimit = pipeExtractorPendingQueueTabletLimit;
   }
 
+  public long getPipeConnectorTimeoutMs() {
+    return pipeConnectorTimeoutMs;
+  }
+
+  public void setPipeConnectorTimeoutMs(long pipeConnectorTimeoutMs) {
+    this.pipeConnectorTimeoutMs = pipeConnectorTimeoutMs;
+  }
+
   public int getPipeConnectorReadFileBufferSize() {
     return pipeConnectorReadFileBufferSize;
   }
@@ -640,5 +652,13 @@ public class CommonConfig {
 
   public void setTagAttributeTotalSize(int tagAttributeTotalSize) {
     this.tagAttributeTotalSize = tagAttributeTotalSize;
+  }
+
+  public int getDatabaseLimitThreshold() {
+    return databaseLimitThreshold;
+  }
+
+  public void setDatabaseLimitThreshold(int databaseLimitThreshold) {
+    this.databaseLimitThreshold = databaseLimitThreshold;
   }
 }
