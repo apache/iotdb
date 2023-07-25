@@ -20,21 +20,28 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionExceptionHandler;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionFileCountExceededException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionMemoryNotEnoughException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionValidationFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.validator.CompactionValidator;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.ReadChunkInnerCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceList;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 
@@ -111,6 +118,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   protected boolean doCompaction() {
     if (!tsFileManager.isAllowCompaction()) {
       return true;
+    }
+    if (!checkCurrentTaskMemCost()) {
+      return false;
     }
     long startTime = System.currentTimeMillis();
     // get resource of target file
@@ -325,6 +335,27 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     return isSuccess;
   }
 
+  private boolean checkCurrentTaskMemCost() {
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    long memoryBudget =
+        (long)
+            ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
+                / config.getCompactionThreadCount()
+                * config.getUsableCompactionMemoryProportion());
+    if (performer instanceof ReadChunkCompactionPerformer) {
+      long memCost = 0;
+      try {
+        memCost =
+            new ReadChunkInnerCompactionEstimator()
+                .estimateInnerCompactionMemory(selectedTsFileResourceList);
+      } catch (IOException e) {
+        return false;
+      }
+      return memCost < memoryBudget;
+    }
+    return true;
+  }
+
   @Override
   public boolean equalsOtherTask(AbstractCompactionTask otherTask) {
     if (!(otherTask instanceof InnerSpaceCompactionTask)) {
@@ -446,6 +477,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       resetCompactionCandidateStatusForAllSourceFiles();
       return false;
     }
+    long memCost = 0;
     try {
       for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
         TsFileResource resource = selectedTsFileResourceList.get(i);
@@ -456,9 +488,25 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           return false;
         }
       }
+      if (performer instanceof ReadChunkCompactionPerformer) {
+        memCost = new ReadChunkInnerCompactionEstimator().estimateInnerCompactionMemory(selectedTsFileResourceList);
+        SystemInfo.getInstance().addCompactionMemoryCost(memCost, 60);
+        SystemInfo.getInstance()
+            .addCompactionFileNum(selectedTsFileResourceList.size(), 60);
+      }
     } catch (Exception e) {
+      if (e instanceof InterruptedException) {
+        LOGGER.warn("Interrupted when allocating memory for compaction", e);
+        Thread.currentThread().interrupt();
+      } else if (e instanceof CompactionMemoryNotEnoughException) {
+        LOGGER.info("No enough memory for current compaction task {}", this, e);
+      } else if (e instanceof CompactionFileCountExceededException) {
+        LOGGER.info("No enough file num for current compaction task {}", this, e);
+        SystemInfo.getInstance().resetCompactionMemoryCost(memCost);
+      }
+      resetCompactionCandidateStatusForAllSourceFiles();
       releaseAllLocksAndResetStatus();
-      throw e;
+      return false;
     }
     return true;
   }
