@@ -49,14 +49,17 @@ import org.apache.iotdb.session.util.SessionUtils;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.thrift.TException;
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_NODE_URLS_KEY;
@@ -68,26 +71,14 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
-  private String ipAddress;
-  private int port;
   private List<TEndPoint> nodeUrls;
-  private boolean useNodeUrls;
-
-  private IoTDBThriftConnectorClient client;
+  private List<Boolean> isNodeUrlAvailable;
+  private final AtomicLong commitIdGenerator = new AtomicLong(0);
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
     validator.validate(
-        args -> {
-          if ((boolean) args[0] && !(boolean) args[1] && !(boolean) args[2]) {
-            useNodeUrls = true;
-            return true;
-          } else if (!(boolean) args[0] && (boolean) args[1] && (boolean) args[2]) {
-            useNodeUrls = false;
-            return true;
-          }
-          return false;
-        },
+        args -> (boolean) args[0] || ((boolean) args[1] && (boolean) args[2]),
         "Should use node urls or (ip and port) for connector-v1.",
         validator.getParameters().hasAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY),
         validator.getParameters().hasAttribute(CONNECTOR_IOTDB_IP_KEY),
@@ -97,59 +88,77 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
-    if (useNodeUrls) {
-      this.nodeUrls =
-          SessionUtils.parseSeedNodeUrls(
-              Arrays.asList(parameters.getString(CONNECTOR_IOTDB_NODE_URLS_KEY).split(",")));
-      if (this.nodeUrls.isEmpty()) {
-        throw new PipeException("Node urls is empty.");
+    String nodeUrlString = "";
+    if (parameters.hasAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY)) {
+      nodeUrlString += parameters.getString(CONNECTOR_IOTDB_NODE_URLS_KEY);
+    }
+    if (parameters.hasAttribute(CONNECTOR_IOTDB_IP_KEY)) {
+      if (!nodeUrlString.isEmpty()) {
+        nodeUrlString += ",";
       }
-    } else {
-      this.ipAddress = parameters.getString(CONNECTOR_IOTDB_IP_KEY);
-      this.port = parameters.getInt(CONNECTOR_IOTDB_PORT_KEY);
+      nodeUrlString += parameters.getString(CONNECTOR_IOTDB_IP_KEY);
+      nodeUrlString += ":";
+      nodeUrlString += parameters.getString(CONNECTOR_IOTDB_PORT_KEY);
+    }
+    this.nodeUrls = SessionUtils.parseSeedNodeUrls(Arrays.asList(nodeUrlString.split(",")));
+    if (this.nodeUrls.isEmpty()) {
+      throw new PipeException("Node urls is empty.");
+    }
+    this.isNodeUrlAvailable = new ArrayList<>();
+    for (int i = 0; i < this.nodeUrls.size(); ++i) {
+      this.isNodeUrlAvailable.add(false);
     }
   }
 
   @Override
   public void handshake() throws Exception {
-    if (client != null) {
-      try {
-        client.close();
-      } catch (Exception e) {
-        LOGGER.warn("Close client error, because: {}", e.getMessage(), e);
+    boolean atLeastOneAvailable = false;
+    for (int i = 0; i < nodeUrls.size(); ++i) {
+      final TEndPoint targetNodeUrl = nodeUrls.get(i);
+      try (final IoTDBThriftConnectorClient client =
+          new IoTDBThriftConnectorClient(
+              new ThriftClientProperty.Builder()
+                  .setConnectionTimeoutMs(COMMON_CONFIG.getConnectionTimeoutInMS())
+                  .setRpcThriftCompressionEnabled(COMMON_CONFIG.isRpcThriftCompressionEnabled())
+                  .build(),
+              targetNodeUrl.getIp(),
+              targetNodeUrl.getPort())) {
+        final TPipeTransferResp resp =
+            client.pipeTransfer(
+                PipeTransferHandshakeReq.toTPipeTransferReq(
+                    CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
+        if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          LOGGER.warn(
+              "Handshake error, target server ip: {}, port: {}, result status {}.",
+              targetNodeUrl.getIp(),
+              targetNodeUrl.getPort(),
+              resp.status);
+          isNodeUrlAvailable.set(i, false);
+        } else {
+          LOGGER.info(
+              "Handshake success. Target server ip: {}, port: {}",
+              targetNodeUrl.getIp(),
+              targetNodeUrl.getPort());
+          atLeastOneAvailable = true;
+          isNodeUrlAvailable.set(i, true);
+        }
+      } catch (TException e) {
+        LOGGER.warn(
+            "Connect to receiver {}:{} error, because: {}",
+            targetNodeUrl.getIp(),
+            targetNodeUrl.getPort(),
+            e.getMessage());
+        isNodeUrlAvailable.set(i, false);
       }
     }
-
-    client =
-        new IoTDBThriftConnectorClient(
-            new ThriftClientProperty.Builder()
-                .setConnectionTimeoutMs(COMMON_CONFIG.getConnectionTimeoutInMS())
-                .setRpcThriftCompressionEnabled(COMMON_CONFIG.isRpcThriftCompressionEnabled())
-                .build(),
-            ipAddress,
-            port);
-
-    try {
-      final TPipeTransferResp resp =
-          client.pipeTransfer(
-              PipeTransferHandshakeReq.toTPipeTransferReq(
-                  CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
-      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new PipeException(String.format("Handshake error, result status %s.", resp.status));
-      } else {
-        LOGGER.info("Handshake success. Target server ip: {}, port: {}", ipAddress, port);
-      }
-    } catch (TException e) {
-      throw new PipeConnectionException(
-          String.format(
-              "Connect to receiver %s:%s error, because: %s", ipAddress, port, e.getMessage()),
-          e);
+    if (!atLeastOneAvailable) {
+      throw new PipeConnectionException("Failed to connect to any receiver node.");
     }
   }
 
   @Override
   public void heartbeat() throws Exception {
-    // Do nothing
+    handshake();
   }
 
   @Override
@@ -200,96 +209,141 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
 
   private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, TException, WALPipeException {
-    final TPipeTransferResp resp =
-        client.pipeTransfer(
-            PipeTransferInsertNodeReq.toTPipeTransferReq(
-                pipeInsertNodeTabletInsertionEvent.getInsertNode()));
+    final long requestCommitId = commitIdGenerator.incrementAndGet();
+    final IoTDBThriftConnectorClient client = getClientByCommitId(requestCommitId);
+    try {
+      final TPipeTransferResp resp =
+          client.pipeTransfer(
+              PipeTransferInsertNodeReq.toTPipeTransferReq(
+                  pipeInsertNodeTabletInsertionEvent.getInsertNode()));
 
-    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeException(
-          String.format(
-              "Transfer PipeInsertNodeTabletInsertionEvent %s error, result status %s",
-              pipeInsertNodeTabletInsertionEvent, resp.status));
+      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new PipeException(
+            String.format(
+                "Transfer PipeInsertNodeTabletInsertionEvent %s error, result status %s",
+                pipeInsertNodeTabletInsertionEvent, resp.status));
+      }
+    } finally {
+      try {
+        client.close();
+      } catch (Exception e) {
+        LOGGER.warn("Close client error, because: {}", e.getMessage(), e);
+      }
     }
   }
 
   private void doTransfer(PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException, TException, IOException {
-    final TPipeTransferResp resp =
-        client.pipeTransfer(
-            PipeTransferTabletReq.toTPipeTransferReq(
-                pipeRawTabletInsertionEvent.convertToTablet(),
-                pipeRawTabletInsertionEvent.isAligned()));
+    final long requestCommitId = commitIdGenerator.incrementAndGet();
+    final IoTDBThriftConnectorClient client = getClientByCommitId(requestCommitId);
+    try {
+      final TPipeTransferResp resp =
+          client.pipeTransfer(
+              PipeTransferTabletReq.toTPipeTransferReq(
+                  pipeRawTabletInsertionEvent.convertToTablet(),
+                  pipeRawTabletInsertionEvent.isAligned()));
 
-    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeException(
-          String.format(
-              "Transfer PipeRawTabletInsertionEvent %s error, result status %s",
-              pipeRawTabletInsertionEvent, resp.status));
+      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new PipeException(
+            String.format(
+                "Transfer PipeRawTabletInsertionEvent %s error, result status %s",
+                pipeRawTabletInsertionEvent, resp.status));
+      }
+    } finally {
+      try {
+        client.close();
+      } catch (Exception e) {
+        LOGGER.warn("Close client error, because: {}", e.getMessage(), e);
+      }
     }
   }
 
   private void doTransfer(PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
       throws PipeException, TException, InterruptedException, IOException {
     pipeTsFileInsertionEvent.waitForTsFileClose();
+    final long requestCommitId = commitIdGenerator.incrementAndGet();
+    final IoTDBThriftConnectorClient client = getClientByCommitId(requestCommitId);
+    try {
+      final File tsFile = pipeTsFileInsertionEvent.getTsFile();
 
-    final File tsFile = pipeTsFileInsertionEvent.getTsFile();
+      // 1. Transfer file piece by piece
+      final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
+      final byte[] readBuffer = new byte[readFileBufferSize];
+      long position = 0;
+      try (final RandomAccessFile reader = new RandomAccessFile(tsFile, "r")) {
 
-    // 1. Transfer file piece by piece
-    final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
-    final byte[] readBuffer = new byte[readFileBufferSize];
-    long position = 0;
-    try (final RandomAccessFile reader = new RandomAccessFile(tsFile, "r")) {
-      while (true) {
-        final int readLength = reader.read(readBuffer);
-        if (readLength == -1) {
-          break;
-        }
+        while (true) {
+          final int readLength = reader.read(readBuffer);
+          if (readLength == -1) {
+            break;
+          }
 
-        final PipeTransferFilePieceResp resp =
-            PipeTransferFilePieceResp.fromTPipeTransferResp(
-                client.pipeTransfer(
-                    PipeTransferFilePieceReq.toTPipeTransferReq(
-                        tsFile.getName(),
-                        position,
-                        readLength == readFileBufferSize
-                            ? readBuffer
-                            : Arrays.copyOfRange(readBuffer, 0, readLength))));
-        position += readLength;
+          final PipeTransferFilePieceResp resp =
+              PipeTransferFilePieceResp.fromTPipeTransferResp(
+                  client.pipeTransfer(
+                      PipeTransferFilePieceReq.toTPipeTransferReq(
+                          tsFile.getName(),
+                          position,
+                          readLength == readFileBufferSize
+                              ? readBuffer
+                              : Arrays.copyOfRange(readBuffer, 0, readLength))));
+          position += readLength;
 
-        // This case only happens when the connection is broken, and the connector is reconnected
-        // to the receiver, then the receiver will redirect the file position to the last position
-        if (resp.getStatus().getCode()
-            == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
-          position = resp.getEndWritingOffset();
-          reader.seek(position);
-          LOGGER.info("Redirect file position to {}.", position);
-          continue;
-        }
+          // This case only happens when the connection is broken, and the connector is reconnected
+          // to the receiver, then the receiver will redirect the file position to the last position
+          if (resp.getStatus().getCode()
+              == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
+            position = resp.getEndWritingOffset();
+            reader.seek(position);
+            LOGGER.info("Redirect file position to {}.", position);
+            continue;
+          }
 
-        if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          throw new PipeException(
-              String.format("Transfer file %s error, result status %s.", tsFile, resp.getStatus()));
+          if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            throw new PipeException(
+                String.format(
+                    "Transfer file %s error, result status %s.", tsFile, resp.getStatus()));
+          }
         }
       }
-    }
 
-    // 2. Transfer file seal signal, which means the file is transferred completely
-    final TPipeTransferResp resp =
-        client.pipeTransfer(
-            PipeTransferFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()));
-    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeException(
-          String.format("Seal file %s error, result status %s.", tsFile, resp.getStatus()));
-    } else {
-      LOGGER.info("Successfully transferred file {}.", tsFile);
+      // 2. Transfer file seal signal, which means the file is transferred completely
+      final TPipeTransferResp resp =
+          client.pipeTransfer(
+              PipeTransferFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length()));
+      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new PipeException(
+            String.format("Seal file %s error, result status %s.", tsFile, resp.getStatus()));
+      } else {
+        LOGGER.info("Successfully transferred file {}.", tsFile);
+      }
+    } finally {
+      try {
+        client.close();
+      } catch (Exception e) {
+        LOGGER.warn("Close client error, because: {}", e.getMessage(), e);
+      }
     }
   }
 
   @Override
-  public void close() throws Exception {
-    if (client != null) {
-      client.close();
+  public void close() throws Exception {}
+
+  private IoTDBThriftConnectorClient getClientByCommitId(long requestCommitId)
+      throws TTransportException {
+    for (int shift = 0; shift < nodeUrls.size(); ++shift) {
+      int nodeUrlIndex = (int) ((requestCommitId + shift) % nodeUrls.size());
+      if (isNodeUrlAvailable.get(nodeUrlIndex)) {
+        final TEndPoint targetNodeUrl = nodeUrls.get(nodeUrlIndex);
+        return new IoTDBThriftConnectorClient(
+            new ThriftClientProperty.Builder()
+                .setConnectionTimeoutMs(COMMON_CONFIG.getConnectionTimeoutInMS())
+                .setRpcThriftCompressionEnabled(COMMON_CONFIG.isRpcThriftCompressionEnabled())
+                .build(),
+            targetNodeUrl.getIp(),
+            targetNodeUrl.getPort());
+      }
     }
+    throw new PipeException("All receiver nodes can't be connected.");
   }
 }
