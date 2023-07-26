@@ -36,6 +36,8 @@ import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
@@ -50,6 +52,10 @@ import java.util.Map;
 
 public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
   private boolean hasStartMeasurement = false;
+
+  private CompressionType seriesCompressionType = null;
+
+  private TSEncoding seriesTSEncoding = null;
 
   // tsfile resource -> timeseries metadata <startOffset, endOffset>
   // used to get the chunk metadatas from tsfile directly according to timeseries metadata offset.
@@ -211,6 +217,14 @@ public class NonAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor
               header.getCompressionType());
       compactionWriter.startMeasurement(Collections.singletonList(schema), subTaskId);
       hasStartMeasurement = true;
+      seriesCompressionType = header.getCompressionType();
+      seriesTSEncoding = header.getEncodingType();
+      chunkMetadataElement.needForceDecoding = false;
+    } else {
+      ChunkHeader header = chunkMetadataElement.chunk.getHeader();
+      chunkMetadataElement.needForceDecoding =
+          header.getCompressionType() != seriesCompressionType
+              || header.getEncodingType() != seriesTSEncoding;
     }
   }
 
