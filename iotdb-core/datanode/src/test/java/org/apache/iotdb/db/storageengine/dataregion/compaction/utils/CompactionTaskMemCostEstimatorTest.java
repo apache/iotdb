@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.utils;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.FastCompactionInnerCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.ReadChunkInnerCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -65,6 +66,29 @@ public class CompactionTaskMemCostEstimatorTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     List<TsFileResource> tsFileList = tsFileManager.getTsFileList(true);
     long cost = new ReadChunkInnerCompactionEstimator().estimateInnerCompactionMemory(tsFileList);
+    Assert.assertTrue(cost > 0);
+  }
+
+  @Test
+  public void testEstimateFastCompactionInnerSpaceCompactionTaskMemCost()
+      throws IOException, MetadataException, WriteProcessException {
+    createFiles(3, 10, 5, 100000, 0, 0, 50, 50, true, true);
+    tsFileManager.addAll(seqResources, true);
+    List<TsFileResource> tsFileList = tsFileManager.getTsFileList(true);
+    System.out.println(tsFileList.get(0).getTsFile().getAbsolutePath());
+    long cost =
+        new FastCompactionInnerCompactionEstimator().estimateInnerCompactionMemory(tsFileList);
+    Assert.assertTrue(cost > 0);
+  }
+
+  @Test
+  public void testEstimateFastCompactionInnerSpaceCompactionTaskMemCost2()
+      throws IOException, MetadataException, WriteProcessException {
+    createFiles(3, 10, 5, 100, 0, 0, 50, 50, false, true);
+    tsFileManager.addAll(seqResources, true);
+    List<TsFileResource> tsFileList = tsFileManager.getTsFileList(true);
+    long cost =
+        new FastCompactionInnerCompactionEstimator().estimateInnerCompactionMemory(tsFileList);
     Assert.assertTrue(cost > 0);
   }
 }
