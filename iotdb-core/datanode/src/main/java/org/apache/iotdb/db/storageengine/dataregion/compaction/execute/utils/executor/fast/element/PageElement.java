@@ -56,6 +56,8 @@ public class PageElement {
 
   public ChunkMetadataElement chunkMetadataElement;
 
+  public boolean needForceDecoding;
+
   public PageElement(
       PageHeader pageHeader,
       ByteBuffer pageData,
@@ -70,6 +72,7 @@ public class PageElement {
     this.startTime = pageHeader.getStartTime();
     this.chunkMetadataElement = chunkMetadataElement;
     this.isLastPage = isLastPage;
+    this.needForceDecoding = chunkMetadataElement.needForceDecoding;
   }
 
   @SuppressWarnings("squid:S107")
@@ -91,6 +94,7 @@ public class PageElement {
     this.startTime = pageHeader.getStartTime();
     this.chunkMetadataElement = chunkMetadataElement;
     this.isLastPage = isLastPage;
+    this.needForceDecoding = chunkMetadataElement.needForceDecoding;
   }
 
   public void deserializePage() throws IOException {
