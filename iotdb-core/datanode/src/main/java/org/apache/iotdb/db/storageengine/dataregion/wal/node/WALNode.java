@@ -372,11 +372,12 @@ public class WALNode implements IWALNode {
       }
       if (oldestMemTableInfo.isPinned()) {
         logger.warn(
-            "Pipe: Effective information ratio {} of wal node-{} is below wal min effective info ratio {}. But fail to delete memTable-{}'s wal files because they are pinned by the Pipe module.",
+            "Pipe: Effective information ratio {} of wal node-{} is below wal min effective info ratio {}. But fail to delete memTable-{}'s wal files because they are pinned by the Pipe module. Pin count: {}.",
             effectiveInfoRatio,
             identifier,
             config.getWalMinEffectiveInfoRatio(),
-            oldestMemTableInfo.getMemTableId());
+            oldestMemTableInfo.getMemTableId(),
+            oldestMemTableInfo.getPinCount());
         return false;
       }
       IMemTable oldestMemTable = oldestMemTableInfo.getMemTable();

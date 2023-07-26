@@ -35,19 +35,21 @@ import java.util.Map;
 
 public class PipeWALHardlinkResourceManager extends PipeWALResourceManager {
 
+  @Override
+  protected void pinInternal(long memtableId, WALEntryHandler walEntryHandler) {
+    memtableIdToPipeWALResourceMap
+        .computeIfAbsent(memtableId, id -> new PipeWALHardlinkResource(walEntryHandler, this))
+        .pin();
+  }
+
+  @Override
+  protected void unpinInternal(long memtableId, WALEntryHandler walEntryHandler) {
+    memtableIdToPipeWALResourceMap.get(memtableId).unpin();
+  }
+
+  //////////////////////////// hardlink related ////////////////////////////
+
   private final Map<String, Integer> hardlinkToReferenceMap = new HashMap<>();
-
-  @Override
-  protected void pinInternal(long memtableId, WALEntryHandler walEntryHandler) throws IOException {
-    increaseFileReference(walEntryHandler.getWalEntryPosition().getWalFile());
-  }
-
-  @Override
-  protected void unpinInternal(long memtableId, WALEntryHandler walEntryHandler)
-      throws IOException {
-    // TODO: FIXME
-    decreaseFileReference(walEntryHandler.getWalEntryPosition().getWalFile());
-  }
 
   /**
    * given a file, create a hardlink, maintain a reference count for the hardlink, and return the
