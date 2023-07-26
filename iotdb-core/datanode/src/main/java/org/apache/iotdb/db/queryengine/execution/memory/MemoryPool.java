@@ -307,31 +307,6 @@ public class MemoryPool {
     return ((MemoryReservationFuture<Void>) future).getBytesToReserve();
   }
 
-  /**
-   * Complete the specified memory reservation. If the reservation has finished, do nothing.
-   *
-   * @param future The future returned from {@link #reserve(String, String, String, long, long)}
-   * @return If the future has not complete, return the number of bytes being reserved. Otherwise,
-   *     return 0.
-   */
-  @SuppressWarnings("squid:S2445")
-  public synchronized long tryComplete(ListenableFuture<Void> future) {
-    // add synchronized on the future to avoid that the future is concurrently completed by
-    // MemoryPool.free() which may lead to memory leak.
-    synchronized (future) {
-      Validate.notNull(future);
-      // If the future is not a MemoryReservationFuture, it must have been completed.
-      if (future.isDone()) {
-        return 0L;
-      }
-      Validate.isTrue(
-          future instanceof MemoryReservationFuture,
-          "invalid future type " + future.getClass().getSimpleName());
-      ((MemoryReservationFuture<Void>) future).set(null);
-    }
-    return ((MemoryReservationFuture<Void>) future).getBytesToReserve();
-  }
-
   public void free(String queryId, String fragmentInstanceId, String planNodeId, long bytes) {
     Validate.notNull(queryId);
     Validate.isTrue(bytes > 0L);
