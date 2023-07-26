@@ -105,7 +105,12 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
   @Override
   public void onError(Exception exception) {
     if (retryCount >= PipeSubtask.MAX_RETRY_TIMES) {
-      retryFailureQueue.offer(new Pair<>(requestCommitId, event));
+      try {
+        retryFailureQueue.put(new Pair<>(requestCommitId, event));
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOGGER.warn("Unexpected interruption during retrying", e);
+      }
       event.reportException(new PipeRuntimeConnectorCriticalException(exception.getMessage()));
       return;
     }

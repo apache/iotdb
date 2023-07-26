@@ -53,7 +53,6 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,9 +64,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.PriorityQueue;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -77,56 +76,56 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CON
 public class IoTDBThriftConnectorV2 implements PipeConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftConnectorV2.class);
+
   private static final String FAILED_TO_BORROW_CLIENT_FORMATTER =
       "Failed to borrow client from client pool for receiver %s:%s.";
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
-  private final BlockingQueue<Pair<Long, Event>> retryQueue = new ArrayBlockingQueue<>(16);
-
-  private static final AtomicReference<ExecutorService> TRANSFER_RETRY_EXECUTOR_HOLDER =
-      new AtomicReference<>();
-  private final ExecutorService transferRetryExecutor;
-
-  private static volatile IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>
-      asyncPipeDataTransferClientManagerHolder;
+  private static final AtomicReference<
+          IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>>
+      ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER = new AtomicReference<>();
   private final IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>
       asyncPipeDataTransferClientManager;
 
-  private final AtomicBoolean isClosed = new AtomicBoolean(false);
+  private static final AtomicReference<ExecutorService> RETRY_EXECUTOR_HOLDER =
+      new AtomicReference<>();
+  private final ExecutorService retryExecutor;
+  private final BlockingQueue<Pair<Long, Event>> retryQueue =
+      new PriorityBlockingQueue<>(16, Comparator.comparing(o -> o.left));
 
   private final AtomicLong commitIdGenerator = new AtomicLong(0);
   private final AtomicLong lastCommitId = new AtomicLong(0);
   private final PriorityQueue<Pair<Long, Runnable>> commitQueue =
       new PriorityQueue<>(Comparator.comparing(o -> o.left));
 
+  private final AtomicBoolean isClosed = new AtomicBoolean(false);
+
   private List<TEndPoint> nodeUrls;
 
   public IoTDBThriftConnectorV2() {
-    if (asyncPipeDataTransferClientManagerHolder == null) {
+    if (ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get() == null) {
       synchronized (IoTDBThriftConnectorV2.class) {
-        if (asyncPipeDataTransferClientManagerHolder == null) {
-          asyncPipeDataTransferClientManagerHolder =
+        if (ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get() == null) {
+          ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.set(
               new IClientManager.Factory<TEndPoint, AsyncPipeDataTransferServiceClient>()
                   .createClientManager(
-                      new ClientPoolFactory.AsyncPipeDataTransferServiceClientPoolFactory());
+                      new ClientPoolFactory.AsyncPipeDataTransferServiceClientPoolFactory()));
         }
       }
     }
+    asyncPipeDataTransferClientManager = ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get();
 
-    asyncPipeDataTransferClientManager = asyncPipeDataTransferClientManagerHolder;
-
-    if (TRANSFER_RETRY_EXECUTOR_HOLDER.get() == null) {
+    if (RETRY_EXECUTOR_HOLDER.get() == null) {
       synchronized (IoTDBThriftConnectorV2.class) {
-        if (TRANSFER_RETRY_EXECUTOR_HOLDER.get() == null) {
-          TRANSFER_RETRY_EXECUTOR_HOLDER.set(
+        if (RETRY_EXECUTOR_HOLDER.get() == null) {
+          RETRY_EXECUTOR_HOLDER.set(
               IoTDBThreadPoolFactory.newSingleThreadExecutor(
                   ThreadName.PIPE_THRIFT_CONNECTOR_V2_RETRY_POOL.getName()));
         }
       }
     }
-
-    transferRetryExecutor = TRANSFER_RETRY_EXECUTOR_HOLDER.get();
+    retryExecutor = RETRY_EXECUTOR_HOLDER.get();
   }
 
   public synchronized void commit(long requestCommitId, @Nullable EnrichedEvent enrichedEvent) {
@@ -166,6 +165,8 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
             Arrays.asList(parameters.getString(CONNECTOR_IOTDB_NODE_URLS_KEY).split(",")));
     if (nodeUrls.isEmpty()) {
       throw new PipeException("Node urls is empty.");
+    } else {
+      LOGGER.info("Node urls: {}.", nodeUrls);
     }
   }
 
@@ -185,7 +186,13 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
               PipeTransferHandshakeReq.toTPipeTransferReq(
                   CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new PipeException(String.format("Handshake error, result status %s.", resp.status));
+        throw new PipeException(
+            String.format(
+                "Handshake error with receiver %s:%s. Response status: %s.",
+                firstNodeUrl.getIp(), firstNodeUrl.getPort(), resp.getStatus()));
+      } else {
+        LOGGER.info(
+            "Handshake success with receiver {}:{}.", firstNodeUrl.getIp(), firstNodeUrl.getPort());
       }
     } catch (TException e) {
       throw new PipeConnectionException(
@@ -203,14 +210,25 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
 
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
+    if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
+        && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
+      LOGGER.warn(
+          "IoTDBThriftConnectorV2 only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
+              + "Current event: {}.",
+          tabletInsertionEvent);
+      return;
+    }
+
+    final long requestCommitId = commitIdGenerator.incrementAndGet();
+
     if (!retryQueue.isEmpty()) {
-      retryQueue.add(new Pair<>(commitIdGenerator.incrementAndGet(), tabletInsertionEvent));
+      // maybe retryQueue is full and block here
+      retryQueue.put(new Pair<>(requestCommitId, tabletInsertionEvent));
       transferQueuedEvents();
       return;
     }
 
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-      final long requestCommitId = commitIdGenerator.incrementAndGet();
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
           (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
       final PipeTransferInsertNodeReq pipeTransferInsertNodeReq =
@@ -222,12 +240,11 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
               pipeInsertNodeTabletInsertionEvent,
               pipeTransferInsertNodeReq,
               this,
-              transferRetryExecutor,
+              retryExecutor,
               retryQueue);
 
       transfer(requestCommitId, pipeTransferInsertNodeReqHandler);
-    } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-      final long requestCommitId = commitIdGenerator.incrementAndGet();
+    } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
       final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
           (PipeRawTabletInsertionEvent) tabletInsertionEvent;
       final PipeTransferTabletReq pipeTransferTabletReq =
@@ -236,13 +253,9 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
               pipeRawTabletInsertionEvent.isAligned());
       final PipeTransferRawTabletInsertionEventHandler pipeTransferTabletReqHandler =
           new PipeTransferRawTabletInsertionEventHandler(
-              requestCommitId, pipeTransferTabletReq, this, transferRetryExecutor, retryQueue);
+              requestCommitId, pipeTransferTabletReq, this, retryExecutor, retryQueue);
 
       transfer(requestCommitId, pipeTransferTabletReqHandler);
-    } else {
-      throw new NotImplementedException(
-          "IoTDBThriftConnectorV2 only support "
-              + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent.");
     }
   }
 
@@ -302,23 +315,27 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
 
   @Override
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
+    if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
+      LOGGER.warn(
+          "IoTDBThriftConnectorV2 only support PipeTsFileInsertionEvent. Current event: {}.",
+          tsFileInsertionEvent);
+      return;
+    }
+
+    final long requestCommitId = commitIdGenerator.incrementAndGet();
+
     if (!retryQueue.isEmpty()) {
-      retryQueue.add(new Pair<>(commitIdGenerator.incrementAndGet(), tsFileInsertionEvent));
+      // maybe retryQueue is full and block here
+      retryQueue.put(new Pair<>(requestCommitId, tsFileInsertionEvent));
       transferQueuedEvents();
       return;
     }
 
-    if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
-      throw new NotImplementedException(
-          "IoTDBThriftConnectorV2 only support PipeTsFileInsertionEvent.");
-    }
-
-    final long requestCommitId = commitIdGenerator.incrementAndGet();
     final PipeTsFileInsertionEvent pipeTsFileInsertionEvent =
         (PipeTsFileInsertionEvent) tsFileInsertionEvent;
     final PipeTransferTsFileInsertionEventHandler pipeTransferTsFileInsertionEventHandler =
         new PipeTransferTsFileInsertionEventHandler(
-            requestCommitId, pipeTsFileInsertionEvent, this, transferRetryExecutor, retryQueue);
+            requestCommitId, pipeTsFileInsertionEvent, this, retryExecutor, retryQueue);
 
     pipeTsFileInsertionEvent.waitForTsFileClose();
     transfer(requestCommitId, pipeTransferTsFileInsertionEventHandler);
@@ -353,9 +370,10 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
 
   private synchronized void transferQueuedEvents() throws Exception {
     while (!retryQueue.isEmpty()) {
-      Pair<Long, Event> queuedEventPair = retryQueue.poll();
-      long requestCommitId = queuedEventPair.getLeft();
-      Event event = queuedEventPair.getRight();
+      final Pair<Long, Event> queuedEventPair = retryQueue.poll();
+      final long requestCommitId = queuedEventPair.getLeft();
+      final Event event = queuedEventPair.getRight();
+
       if (event instanceof PipeInsertNodeTabletInsertionEvent) {
         final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
             (PipeInsertNodeTabletInsertionEvent) event;
@@ -368,7 +386,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
                 pipeInsertNodeTabletInsertionEvent,
                 pipeTransferInsertNodeReq,
                 this,
-                transferRetryExecutor,
+                retryExecutor,
                 retryQueue);
 
         transfer(requestCommitId, pipeTransferInsertNodeReqHandler);
@@ -381,14 +399,14 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
                 pipeRawTabletInsertionEvent.isAligned());
         final PipeTransferRawTabletInsertionEventHandler pipeTransferTabletReqHandler =
             new PipeTransferRawTabletInsertionEventHandler(
-                requestCommitId, pipeTransferTabletReq, this, transferRetryExecutor, retryQueue);
+                requestCommitId, pipeTransferTabletReq, this, retryExecutor, retryQueue);
 
         transfer(requestCommitId, pipeTransferTabletReqHandler);
       } else if (event instanceof PipeTsFileInsertionEvent) {
         final PipeTsFileInsertionEvent pipeTsFileInsertionEvent = (PipeTsFileInsertionEvent) event;
         final PipeTransferTsFileInsertionEventHandler pipeTransferTsFileInsertionEventHandler =
             new PipeTransferTsFileInsertionEventHandler(
-                requestCommitId, pipeTsFileInsertionEvent, this, transferRetryExecutor, retryQueue);
+                requestCommitId, pipeTsFileInsertionEvent, this, retryExecutor, retryQueue);
 
         pipeTsFileInsertionEvent.waitForTsFileClose();
         transfer(requestCommitId, pipeTransferTsFileInsertionEventHandler);

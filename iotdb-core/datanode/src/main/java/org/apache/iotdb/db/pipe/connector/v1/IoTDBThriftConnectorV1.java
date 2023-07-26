@@ -45,7 +45,6 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -134,9 +133,11 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
       } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
         doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
       } else {
-        throw new NotImplementedException(
+        LOGGER.warn(
             "IoTDBThriftConnectorV1 only support "
-                + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent.");
+                + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
+                + "Ignore {}.",
+            tabletInsertionEvent);
       }
     } catch (TException e) {
       throw new PipeConnectionException(
@@ -151,8 +152,10 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     // PipeProcessor can change the type of TabletInsertionEvent
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
-      throw new NotImplementedException(
-          "IoTDBThriftConnectorV1 only support PipeTsFileInsertionEvent.");
+      LOGGER.warn(
+          "IoTDBThriftConnectorV1 only support PipeTsFileInsertionEvent. Ignore {}.",
+          tsFileInsertionEvent);
+      return;
     }
 
     try {
