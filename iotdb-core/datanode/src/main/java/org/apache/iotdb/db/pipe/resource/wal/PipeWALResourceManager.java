@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.resource.wal;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.db.pipe.resource.wal.selfhost.PipeWALSelfHostResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 
 import java.io.IOException;
@@ -73,8 +72,8 @@ public abstract class PipeWALResourceManager {
             }
           }
         },
-        PipeWALSelfHostResource.MIN_TIME_TO_LIVE_IN_MS,
-        PipeWALSelfHostResource.MIN_TIME_TO_LIVE_IN_MS,
+        PipeWALResource.MIN_TIME_TO_LIVE_IN_MS,
+        PipeWALResource.MIN_TIME_TO_LIVE_IN_MS,
         TimeUnit.MILLISECONDS);
   }
 
