@@ -99,7 +99,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     this.performer = performer;
     if (this.performer instanceof ReadChunkCompactionPerformer) {
       innerSpaceEstimator = new ReadChunkInnerCompactionEstimator();
-    } else {
+    } else if (!sequence) {
       innerSpaceEstimator = new FastCompactionInnerCompactionEstimator();
     }
     isHoldingReadLock = new boolean[selectedTsFileResourceList.size()];
@@ -473,7 +473,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           return false;
         }
       }
-      memoryCost = innerSpaceEstimator.estimateInnerCompactionMemory(selectedTsFileResourceList);
+      if (innerSpaceEstimator != null) {
+        memoryCost = innerSpaceEstimator.estimateInnerCompactionMemory(selectedTsFileResourceList);
+      }
       SystemInfo.getInstance().addCompactionMemoryCost(memoryCost, 60);
       SystemInfo.getInstance().addCompactionFileNum(selectedTsFileResourceList.size(), 60);
     } catch (Exception e) {
