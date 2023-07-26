@@ -102,7 +102,7 @@ public abstract class EnrichedEvent implements Event {
    */
   public abstract boolean internallyDecreaseResourceReferenceCount(String holderMessage);
 
-  private void reportProgress() {
+  protected void reportProgress() {
     if (pipeTaskMeta != null) {
       pipeTaskMeta.updateProgressIndex(getProgressIndex());
     }

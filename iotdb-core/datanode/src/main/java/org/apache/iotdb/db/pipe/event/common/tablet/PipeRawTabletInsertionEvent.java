@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.event.common.tablet;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
@@ -36,25 +37,14 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   private final Tablet tablet;
   private final boolean isAligned;
+  private final boolean needToReport;
   private final String pattern;
 
   private PipeTsFileInsertionEvent sourceEvent;
   private TabletInsertionDataContainer dataContainer;
 
   public PipeRawTabletInsertionEvent(Tablet tablet, boolean isAligned) {
-    this(tablet, isAligned, null, null, null);
-  }
-
-  public PipeRawTabletInsertionEvent(
-      Tablet tablet,
-      boolean isAligned,
-      PipeTaskMeta pipeTaskMeta,
-      PipeTsFileInsertionEvent sourceEvent) {
-    this(tablet, isAligned, pipeTaskMeta, sourceEvent, null);
-  }
-
-  public PipeRawTabletInsertionEvent(Tablet tablet, boolean isAligned, String pattern) {
-    this(tablet, isAligned, null, null, pattern);
+    this(tablet, isAligned, null, null, false, null);
   }
 
   public PipeRawTabletInsertionEvent(
@@ -62,11 +52,26 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
       boolean isAligned,
       PipeTaskMeta pipeTaskMeta,
       PipeTsFileInsertionEvent sourceEvent,
+      boolean needToReport) {
+    this(tablet, isAligned, pipeTaskMeta, sourceEvent, needToReport, null);
+  }
+
+  public PipeRawTabletInsertionEvent(Tablet tablet, boolean isAligned, String pattern) {
+    this(tablet, isAligned, null, null, false, pattern);
+  }
+
+  public PipeRawTabletInsertionEvent(
+      Tablet tablet,
+      boolean isAligned,
+      PipeTaskMeta pipeTaskMeta,
+      PipeTsFileInsertionEvent sourceEvent,
+      boolean needToReport,
       String pattern) {
     super(pipeTaskMeta, pattern);
     this.tablet = Objects.requireNonNull(tablet);
     this.isAligned = isAligned;
     this.sourceEvent = sourceEvent;
+    this.needToReport = needToReport;
     this.pattern = pattern;
   }
 
@@ -81,14 +86,22 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   }
 
   @Override
+  protected void reportProgress() {
+    if (needToReport) {
+      super.reportProgress();
+    }
+  }
+
+  @Override
   public ProgressIndex getProgressIndex() {
-    return sourceEvent.getProgressIndex();
+    return sourceEvent != null ? sourceEvent.getProgressIndex() : new MinimumProgressIndex();
   }
 
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       PipeTaskMeta pipeTaskMeta, String pattern) {
-    return new PipeRawTabletInsertionEvent(tablet, isAligned, pipeTaskMeta, sourceEvent, pattern);
+    return new PipeRawTabletInsertionEvent(
+        tablet, isAligned, pipeTaskMeta, sourceEvent, needToReport, pattern);
   }
 
   /////////////////////////// TabletInsertionEvent ///////////////////////////

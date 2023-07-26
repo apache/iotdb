@@ -195,10 +195,14 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
             final TabletInsertionEvent next;
 
             if (!hasNext()) {
-              next = new PipeRawTabletInsertionEvent(tablet, isAligned, pipeTaskMeta, sourceEvent);
+              next =
+                  new PipeRawTabletInsertionEvent(
+                      tablet, isAligned, pipeTaskMeta, sourceEvent, true);
               close();
             } else {
-              next = new PipeRawTabletInsertionEvent(tablet, isAligned);
+              next =
+                  new PipeRawTabletInsertionEvent(
+                      tablet, isAligned, pipeTaskMeta, sourceEvent, false);
             }
 
             return next;
