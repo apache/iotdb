@@ -371,7 +371,7 @@ public class NodeInfo implements SnapshotProcessor {
     } finally {
       buildInfoReadWriteLock.writeLock().unlock();
     }
-    LOGGER.info("Successfully update Node: {} 's buildInfo.", updateBuildInfoPlan.getNodeId());
+    LOGGER.info("Successfully update Node {} 's buildInfo.", updateBuildInfoPlan.getNodeId());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
