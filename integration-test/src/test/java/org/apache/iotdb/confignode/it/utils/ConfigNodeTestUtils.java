@@ -260,6 +260,8 @@ public class ConfigNodeTestUtils {
   public static TDataNodeRestartReq generateTDataNodeRestartReq(
       String clusterName, int nodeId, DataNodeWrapper dataNodeWrapper) {
     return new TDataNodeRestartReq(
-        clusterName, generateTDataNodeConfiguration(nodeId, dataNodeWrapper), IoTDBConstant.BUILD_INFO);
+        clusterName,
+        generateTDataNodeConfiguration(nodeId, dataNodeWrapper),
+        IoTDBConstant.BUILD_INFO);
   }
 }
