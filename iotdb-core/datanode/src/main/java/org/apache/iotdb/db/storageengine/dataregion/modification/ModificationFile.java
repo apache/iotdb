@@ -58,10 +58,8 @@ public class ModificationFile implements AutoCloseable {
   // whether to verify the last line, it may be incomplete in extreme cases
   private boolean needVerify = true;
 
-  // lazy loaded, set null when closed
-  private List<Modification> modifications;
-  private ModificationWriter writer;
-  private ModificationReader reader;
+  private final ModificationWriter writer;
+  private final ModificationReader reader;
   private String filePath;
   private final SecureRandom random = new SecureRandom();
 
@@ -80,24 +78,11 @@ public class ModificationFile implements AutoCloseable {
     this.filePath = filePath;
   }
 
-  private void init() {
-    synchronized (this) {
-      modifications = (List<Modification>) reader.read();
-    }
-  }
-
-  private void checkInit() {
-    if (modifications == null) {
-      init();
-    }
-  }
-
   /** Release resources such as streams and caches. */
   @Override
   public void close() throws IOException {
     synchronized (this) {
       writer.close();
-      modifications = null;
     }
   }
 
@@ -110,20 +95,17 @@ public class ModificationFile implements AutoCloseable {
    */
   public void write(Modification mod) throws IOException {
     synchronized (this) {
-      if (needVerify) {
+      if (needVerify && new File(filePath).exists()) {
         writer.mayTruncateLastLine();
-        // needVerify = false;
+        needVerify = false;
       }
       writer.write(mod);
-      if (modifications != null) {
-        modifications.add(mod);
-      }
     }
   }
 
   @GuardedBy("TsFileResource-WriteLock")
-  public void truncate(long position) {
-    writer.truncate(position);
+  public void truncate(long size) {
+    writer.truncate(size);
   }
 
   /**
@@ -133,13 +115,12 @@ public class ModificationFile implements AutoCloseable {
    */
   public Collection<Modification> getModifications() {
     synchronized (this) {
-      checkInit();
-      return new ArrayList<>(modifications);
+      return reader.read();
     }
   }
 
   public Iterable<Modification> getModificationsIter() {
-    return () -> reader.getModificationIterator();
+    return reader::getModificationIterator;
   }
 
   public String getFilePath() {
@@ -237,7 +218,6 @@ public class ModificationFile implements AutoCloseable {
         Files.move(new File(newModsFileName).toPath(), new File(filePath).toPath());
         logger.info("{} settle successful", filePath);
 
-        updateModifications(allSettledModifications);
         if (getSize() > COMPACT_THRESHOLD) {
           logger.warn(
               "After the mod file is settled, the file size is still greater than 1M,the size of the file before settle is {},after settled the file size is {}",
@@ -284,11 +264,5 @@ public class ModificationFile implements AutoCloseable {
       result.add(current);
     }
     return result;
-  }
-
-  public void updateModifications(List<Modification> modifications) {
-    synchronized (this) {
-      this.modifications = modifications;
-    }
   }
 }

@@ -37,7 +37,7 @@ public interface ModificationWriter {
    */
   void write(Modification mod) throws IOException;
 
-  void truncate(long position);
+  void truncate(long size);
 
   void mayTruncateLastLine();
 

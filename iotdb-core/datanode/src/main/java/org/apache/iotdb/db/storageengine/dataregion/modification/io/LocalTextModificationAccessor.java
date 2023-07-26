@@ -85,7 +85,7 @@ public class LocalTextModificationAccessor
     try {
       reader = new BufferedReader(new FileReader(file));
     } catch (FileNotFoundException e) {
-      logger.debug(NO_MODIFICATION_MSG);
+      logger.debug(NO_MODIFICATION_MSG, file);
 
       // return empty iterator
       return new Iterator<Modification>() {
@@ -109,6 +109,7 @@ public class LocalTextModificationAccessor
           if (cachedModification[0] == null) {
             String line = reader.readLine();
             if (line == null) {
+              reader.close();
               return false;
             } else {
               try {
@@ -116,6 +117,7 @@ public class LocalTextModificationAccessor
               } catch (IOException e) {
                 logger.warn("An error occurred when decode line-[{}] to modification", line);
                 cachedModification[0] = null;
+                reader.close();
                 return false;
               }
             }
@@ -174,16 +176,16 @@ public class LocalTextModificationAccessor
   }
 
   @Override
-  public void truncate(long position) {
+  public void truncate(long size) {
     try (FileOutputStream outputStream =
         new FileOutputStream(FSFactoryProducer.getFSFactory().getFile(filePath), true)) {
-      outputStream.getChannel().truncate(position);
-      logger.warn("The modifications[{}] will be truncated to size {}.", filePath, position);
+      outputStream.getChannel().truncate(size);
+      logger.warn("The modifications[{}] will be truncated to size {}.", filePath, size);
     } catch (FileNotFoundException e) {
       logger.debug(NO_MODIFICATION_MSG, filePath);
     } catch (IOException e) {
       logger.error(
-          "An error occurred when truncating modifications[{}] to size {}.", filePath, position, e);
+          "An error occurred when truncating modifications[{}] to size {}.", filePath, size, e);
     }
   }
 
