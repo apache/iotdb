@@ -104,7 +104,7 @@ public class NodeInfo implements SnapshotProcessor {
     this.registeredDataNodes = new ConcurrentHashMap<>();
 
     this.nodeBuildInfo = new ConcurrentHashMap<>();
-    buildInfoReadWriteLock = new ReentrantReadWriteLock();
+    this.buildInfoReadWriteLock = new ReentrantReadWriteLock();
   }
 
   /**
@@ -564,8 +564,9 @@ public class NodeInfo implements SnapshotProcessor {
   }
 
   private void deserializeBuildInfo(InputStream inputStream) throws IOException {
-    // during upgrade old version snapshot may not have build info,thus we need to check inputStream
-    // before deserialize
+    // during upgrade old version snapshot may not have build info, thus we need to check
+    // inputStream
+    // before deserialize.
     if (inputStream.available() != 0) {
       int size = ReadWriteIOUtils.readInt(inputStream);
       while (size > 0) {

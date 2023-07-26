@@ -142,7 +142,7 @@ public class ConfigNode implements ConfigNodeMBean {
             CONF.getClusterName());
 
         // Update item during restart
-        // This will always execute until the consensus write succeeds
+        // This will always be executed until the consensus write succeeds
         while (true) {
           TSStatus status =
               configManager

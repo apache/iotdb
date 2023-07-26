@@ -157,7 +157,9 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
     super.deserialize(byteBuffer);
     try {
       tConfigNodeLocation = ThriftConfigNodeSerDeUtils.deserializeTConfigNodeLocation(byteBuffer);
-      buildInfo = ReadWriteIOUtils.readString(byteBuffer);
+      if (byteBuffer.hasRemaining()) {
+        buildInfo = ReadWriteIOUtils.readString(byteBuffer);
+      }
     } catch (ThriftSerDeException e) {
       LOG.error("Error in deserialize AddConfigNodeProcedure", e);
     }
