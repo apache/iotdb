@@ -60,6 +60,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_NODE_URLS_KEY;
@@ -88,19 +89,21 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
-    String nodeUrlString = "";
+    List<String> nodeUrlStrings = new ArrayList<>();
     if (parameters.hasAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY)) {
-      nodeUrlString += parameters.getString(CONNECTOR_IOTDB_NODE_URLS_KEY);
+      nodeUrlStrings.addAll(
+          Arrays.asList(parameters.getString(CONNECTOR_IOTDB_NODE_URLS_KEY).split(",")));
     }
-    if (parameters.hasAttribute(CONNECTOR_IOTDB_IP_KEY)) {
-      if (!nodeUrlString.isEmpty()) {
-        nodeUrlString += ",";
-      }
-      nodeUrlString += parameters.getString(CONNECTOR_IOTDB_IP_KEY);
-      nodeUrlString += ":";
-      nodeUrlString += parameters.getString(CONNECTOR_IOTDB_PORT_KEY);
+    if (parameters.hasAttribute(CONNECTOR_IOTDB_IP_KEY)
+        && parameters.hasAttribute(CONNECTOR_IOTDB_PORT_KEY)) {
+      nodeUrlStrings.add(
+          parameters.getString(CONNECTOR_IOTDB_IP_KEY)
+              + ":"
+              + parameters.getString(CONNECTOR_IOTDB_PORT_KEY));
     }
-    this.nodeUrls = SessionUtils.parseSeedNodeUrls(Arrays.asList(nodeUrlString.split(",")));
+    this.nodeUrls =
+        SessionUtils.parseSeedNodeUrls(
+            nodeUrlStrings.stream().distinct().collect(Collectors.toList()));
     if (this.nodeUrls.isEmpty()) {
       throw new PipeException("Node urls is empty.");
     }
