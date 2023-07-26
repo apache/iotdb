@@ -215,6 +215,7 @@ public class ConfigNodeTestUtils {
     clusterParameters.setTimestampPrecision("ms");
     clusterParameters.setSchemaEngineMode("Memory");
     clusterParameters.setTagAttributeTotalSize(700);
+    clusterParameters.setDatabaseLimitThreshold(-1);
     return clusterParameters;
   }
 

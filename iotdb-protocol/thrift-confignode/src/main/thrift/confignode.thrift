@@ -358,6 +358,7 @@ struct TClusterParameters {
   15: required string timestampPrecision
   16: optional string schemaEngineMode
   17: optional i32 tagAttributeTotalSize
+  18: optional i32 databaseLimitThreshold
 }
 
 struct TConfigNodeRegisterReq {

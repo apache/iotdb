@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.connector.v1;
 
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
@@ -42,7 +43,7 @@ public class IoTDBThriftConnectorClient extends IClientRPCService.Client
                         TConfigurationConst.defaultTConfiguration,
                         ipAddress,
                         port,
-                        property.getConnectionTimeoutMs()))));
+                        (int) PipeConfig.getInstance().getPipeConnectorTimeoutMs()))));
     getInputProtocol().getTransport().open();
   }
 

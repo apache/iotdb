@@ -25,6 +25,7 @@ import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
+import org.apache.iotdb.metrics.utils.SystemMetric;
 
 import com.sun.management.GarbageCollectionNotificationInfo;
 import com.sun.management.GcInfo;
@@ -85,19 +86,27 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
 
     AtomicLong maxDataSize = new AtomicLong((long) maxLongLivedPoolBytes);
     metricService.createAutoGauge(
-        "jvm_gc_max_data_size_bytes", MetricLevel.CORE, maxDataSize, AtomicLong::get);
+        SystemMetric.JVM_GC_MAX_DATA_SIZE_BYTES.toString(),
+        MetricLevel.CORE,
+        maxDataSize,
+        AtomicLong::get);
 
     AtomicLong liveDataSize = new AtomicLong();
     metricService.createAutoGauge(
-        "jvm_gc_live_data_size_bytes", MetricLevel.CORE, liveDataSize, AtomicLong::get);
+        SystemMetric.JVM_GC_LIVE_DATA_SIZE_BYTES.toString(),
+        MetricLevel.CORE,
+        liveDataSize,
+        AtomicLong::get);
 
     Counter allocatedBytes =
-        metricService.getOrCreateCounter("jvm_gc_memory_allocated_bytes", MetricLevel.CORE);
+        metricService.getOrCreateCounter(
+            SystemMetric.JVM_GC_MEMORY_ALLOCATED_BYTES.toString(), MetricLevel.CORE);
 
     Counter promotedBytes =
         (oldGenPoolName == null)
             ? null
-            : metricService.getOrCreateCounter("jvm_gc_memory_promoted_bytes", MetricLevel.CORE);
+            : metricService.getOrCreateCounter(
+                SystemMetric.JVM_GC_MEMORY_PROMOTED_BYTES.toString(), MetricLevel.CORE);
 
     // start watching for GC notifications
     final AtomicLong heapPoolSizeAfterGc = new AtomicLong();
@@ -203,12 +212,14 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
       return;
     }
 
-    metricService.remove(MetricType.AUTO_GAUGE, "jvm_gc_max_data_size_bytes");
-    metricService.remove(MetricType.AUTO_GAUGE, "jvm_gc_live_data_size_bytes");
-    metricService.remove(MetricType.COUNTER, "jvm_gc_memory_allocated_bytes");
+    metricService.remove(MetricType.AUTO_GAUGE, SystemMetric.JVM_GC_MAX_DATA_SIZE_BYTES.toString());
+    metricService.remove(
+        MetricType.AUTO_GAUGE, SystemMetric.JVM_GC_LIVE_DATA_SIZE_BYTES.toString());
+    metricService.remove(MetricType.COUNTER, SystemMetric.JVM_GC_MEMORY_ALLOCATED_BYTES.toString());
 
     if (oldGenPoolName != null) {
-      metricService.remove(MetricType.COUNTER, "jvm_gc_memory_promoted_bytes");
+      metricService.remove(
+          MetricType.COUNTER, SystemMetric.JVM_GC_MEMORY_PROMOTED_BYTES.toString());
     }
 
     // start watching for GC notifications

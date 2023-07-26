@@ -96,6 +96,19 @@ public class FragmentInstanceContext extends QueryContext {
       FragmentInstanceStateMachine stateMachine,
       SessionInfo sessionInfo,
       IDataRegionForQuery dataRegion,
+      Filter timeFilter) {
+    FragmentInstanceContext instanceContext =
+        new FragmentInstanceContext(id, stateMachine, sessionInfo, dataRegion, timeFilter);
+    instanceContext.initialize();
+    instanceContext.start();
+    return instanceContext;
+  }
+
+  public static FragmentInstanceContext createFragmentInstanceContext(
+      FragmentInstanceId id,
+      FragmentInstanceStateMachine stateMachine,
+      SessionInfo sessionInfo,
+      IDataRegionForQuery dataRegion,
       Filter timeFilter,
       Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap) {
     FragmentInstanceContext instanceContext =
@@ -146,6 +159,21 @@ public class FragmentInstanceContext extends QueryContext {
     this.sessionInfo = sessionInfo;
     this.dataNodeQueryContextMap = null;
     this.dataNodeQueryContext = null;
+  }
+
+  private FragmentInstanceContext(
+      FragmentInstanceId id,
+      FragmentInstanceStateMachine stateMachine,
+      SessionInfo sessionInfo,
+      IDataRegionForQuery dataRegion,
+      Filter timeFilter) {
+    this.id = id;
+    this.stateMachine = stateMachine;
+    this.executionEndTime.set(END_TIME_INITIAL_VALUE);
+    this.sessionInfo = sessionInfo;
+    this.dataRegion = dataRegion;
+    this.timeFilter = timeFilter;
+    this.dataNodeQueryContextMap = null;
   }
 
   @TestOnly
@@ -392,7 +420,7 @@ public class FragmentInstanceContext extends QueryContext {
    * All file paths used by this fragment instance must be cleared and thus the usage reference must
    * be decreased.
    */
-  protected synchronized void releaseResource() {
+  public synchronized void releaseResource() {
     // For schema related query FI, closedFilePaths and unClosedFilePaths will be null
     if (closedFilePaths != null) {
       for (TsFileResource tsFile : closedFilePaths) {

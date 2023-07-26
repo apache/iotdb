@@ -23,6 +23,8 @@ import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
+import org.apache.iotdb.metrics.utils.SystemMetric;
+import org.apache.iotdb.metrics.utils.SystemTag;
 
 import java.lang.management.BufferPoolMXBean;
 import java.lang.management.ManagementFactory;
@@ -37,27 +39,27 @@ public class JvmMemoryMetrics implements IMetricSet {
     for (BufferPoolMXBean bufferPoolBean :
         ManagementFactory.getPlatformMXBeans(BufferPoolMXBean.class)) {
       metricService.createAutoGauge(
-          "jvm_buffer_count_buffers",
+          SystemMetric.JVM_BUFFER_COUNT_BUFFERS.toString(),
           MetricLevel.CORE,
           bufferPoolBean,
           BufferPoolMXBean::getCount,
-          "id",
+          SystemTag.ID.toString(),
           bufferPoolBean.getName());
 
       metricService.createAutoGauge(
-          "jvm_buffer_memory_used_bytes",
+          SystemMetric.JVM_BUFFER_MEMORY_USED_BYTES.toString(),
           MetricLevel.CORE,
           bufferPoolBean,
           BufferPoolMXBean::getMemoryUsed,
-          "id",
+          SystemTag.ID.toString(),
           bufferPoolBean.getName());
 
       metricService.createAutoGauge(
-          "jvm_buffer_total_capacity_bytes",
+          SystemMetric.JVM_BUFFER_TOTAL_CAPACITY_BYTES.toString(),
           MetricLevel.CORE,
           bufferPoolBean,
           BufferPoolMXBean::getTotalCapacity,
-          "id",
+          SystemTag.ID.toString(),
           bufferPoolBean.getName());
     }
 
@@ -66,33 +68,33 @@ public class JvmMemoryMetrics implements IMetricSet {
       String area = MemoryType.HEAP.equals(memoryPoolBean.getType()) ? "heap" : "nonheap";
 
       metricService.createAutoGauge(
-          "jvm_memory_used_bytes",
+          SystemMetric.JVM_MEMORY_USED_BYTES.toString(),
           MetricLevel.CORE,
           memoryPoolBean,
           mem -> JvmUtils.getUsageValue(mem, MemoryUsage::getUsed),
-          "id",
+          SystemTag.ID.toString(),
           memoryPoolBean.getName(),
-          "area",
+          SystemTag.AREA.toString(),
           area);
 
       metricService.createAutoGauge(
-          "jvm_memory_committed_bytes",
+          SystemMetric.JVM_MEMORY_COMMITTED_BYTES.toString(),
           MetricLevel.CORE,
           memoryPoolBean,
           mem -> JvmUtils.getUsageValue(mem, MemoryUsage::getCommitted),
-          "id",
+          SystemTag.ID.toString(),
           memoryPoolBean.getName(),
-          "area",
+          SystemTag.AREA.toString(),
           area);
 
       metricService.createAutoGauge(
-          "jvm_memory_max_bytes",
+          SystemMetric.JVM_MEMORY_MAX_BYTES.toString(),
           MetricLevel.CORE,
           memoryPoolBean,
           mem -> JvmUtils.getUsageValue(mem, MemoryUsage::getMax),
-          "id",
+          SystemTag.ID.toString(),
           memoryPoolBean.getName(),
-          "area",
+          SystemTag.AREA.toString(),
           area);
     }
   }
@@ -102,13 +104,22 @@ public class JvmMemoryMetrics implements IMetricSet {
     for (BufferPoolMXBean bufferPoolBean :
         ManagementFactory.getPlatformMXBeans(BufferPoolMXBean.class)) {
       metricService.remove(
-          MetricType.AUTO_GAUGE, "jvm_buffer_count_buffers", "id", bufferPoolBean.getName());
+          MetricType.AUTO_GAUGE,
+          SystemMetric.JVM_BUFFER_COUNT_BUFFERS.toString(),
+          SystemTag.ID.toString(),
+          bufferPoolBean.getName());
 
       metricService.remove(
-          MetricType.AUTO_GAUGE, "jvm_buffer_memory_used_bytes", "id", bufferPoolBean.getName());
+          MetricType.AUTO_GAUGE,
+          SystemMetric.JVM_BUFFER_MEMORY_USED_BYTES.toString(),
+          SystemTag.ID.toString(),
+          bufferPoolBean.getName());
 
       metricService.remove(
-          MetricType.AUTO_GAUGE, "jvm_buffer_total_capacity_bytes", "id", bufferPoolBean.getName());
+          MetricType.AUTO_GAUGE,
+          SystemMetric.JVM_BUFFER_TOTAL_CAPACITY_BYTES.toString(),
+          SystemTag.ID.toString(),
+          bufferPoolBean.getName());
     }
 
     for (MemoryPoolMXBean memoryPoolBean :
@@ -117,26 +128,26 @@ public class JvmMemoryMetrics implements IMetricSet {
 
       metricService.remove(
           MetricType.AUTO_GAUGE,
-          "jvm_memory_used_bytes",
-          "id",
+          SystemMetric.JVM_MEMORY_USED_BYTES.toString(),
+          SystemTag.ID.toString(),
           memoryPoolBean.getName(),
-          "area",
+          SystemTag.AREA.toString(),
           area);
 
       metricService.remove(
           MetricType.AUTO_GAUGE,
-          "jvm_memory_committed_bytes",
-          "id",
+          SystemMetric.JVM_MEMORY_COMMITTED_BYTES.toString(),
+          SystemTag.ID.toString(),
           memoryPoolBean.getName(),
-          "area",
+          SystemTag.AREA.toString(),
           area);
 
       metricService.remove(
           MetricType.AUTO_GAUGE,
-          "jvm_memory_max_bytes",
-          "id",
+          SystemMetric.JVM_MEMORY_MAX_BYTES.toString(),
+          SystemTag.ID.toString(),
           memoryPoolBean.getName(),
-          "area",
+          SystemTag.AREA.toString(),
           area);
     }
   }

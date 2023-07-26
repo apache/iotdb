@@ -26,6 +26,7 @@ import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.subtask.DecoratingLock;
 import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
+import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -179,7 +180,11 @@ public class PipeConnectorSubtask extends PipeSubtask {
               throwable);
 
           ((EnrichedEvent) lastEvent)
-              .reportException(new PipeRuntimeConnectorCriticalException(throwable.getMessage()));
+              .reportException(
+                  new PipeRuntimeConnectorCriticalException(
+                      throwable.getMessage()
+                          + ", root cause: "
+                          + ErrorHandlingUtils.getRootCause(throwable).getMessage()));
         } else {
           LOGGER.error(
               "Failed to reconnect to the target system after {} times, "

@@ -39,6 +39,11 @@ public class LastCacheValue implements ILastCacheValue {
   }
 
   @Override
+  public TsPrimitiveType getValue() {
+    return value;
+  }
+
+  @Override
   public void setTimestamp(long timestamp) {
     this.timestamp = timestamp;
   }
@@ -51,5 +56,19 @@ public class LastCacheValue implements ILastCacheValue {
   @Override
   public TimeValuePair getTimeValuePair() {
     return new TimeValuePair(timestamp, value);
+  }
+
+  /**
+   * Total basic 24B
+   *
+   * <ul>
+   *   <li>LastCacheContainer Object header, 8B
+   *   <li>long timestamp, 8B
+   *   <li>TsPrimitiveType reference, 8B
+   * </ul>
+   */
+  @Override
+  public int estimateSize() {
+    return 24 + (value == null ? 0 : value.getSize());
   }
 }

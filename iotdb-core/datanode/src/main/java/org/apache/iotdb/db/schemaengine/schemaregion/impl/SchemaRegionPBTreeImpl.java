@@ -954,26 +954,6 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     }
   }
 
-  private void changeAlias(PartialPath path, String alias) throws MetadataException {
-    IMeasurementMNode<ICachedMNode> leafMNode = mtree.getMeasurementMNode(path);
-    try {
-      IDeviceMNode<ICachedMNode> device = leafMNode.getParent().getAsDeviceMNode();
-      if (leafMNode.getAlias() != null) {
-        device.deleteAliasChild(leafMNode.getAlias());
-      }
-      device.addAlias(alias, leafMNode);
-      mtree.setAlias(leafMNode, alias);
-    } finally {
-      mtree.unPinMNode(leafMNode.getAsMNode());
-    }
-
-    try {
-      writeToMLog(SchemaRegionWritePlanFactory.getChangeAliasPlan(path, alias));
-    } catch (IOException e) {
-      throw new MetadataException(e);
-    }
-  }
-
   /**
    * Upsert tags and attributes key-value for the timeseries if the key has existed, just use the
    * new value to update it.
@@ -991,15 +971,13 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
       Map<String, String> attributesMap,
       PartialPath fullPath)
       throws MetadataException, IOException {
+    // upsert alias
+    upsertAlias(alias, fullPath);
     IMeasurementMNode<ICachedMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
     try {
-      // upsert alias
-      upsertAlias(alias, fullPath, leafMNode);
-
       if (tagsMap == null && attributesMap == null) {
         return;
       }
-
       // no tag or attribute, we need to add a new record in log
       if (leafMNode.getOffset() < 0) {
         long offset = tagManager.writeTagFile(tagsMap, attributesMap);
@@ -1020,21 +998,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     }
   }
 
-  private void upsertAlias(
-      String alias, PartialPath fullPath, IMeasurementMNode<ICachedMNode> leafMNode)
+  private void upsertAlias(String alias, PartialPath fullPath)
       throws MetadataException, IOException {
-    // upsert alias
-    if (alias != null && !alias.equals(leafMNode.getAlias())) {
-      IDeviceMNode<ICachedMNode> device = leafMNode.getParent().getAsDeviceMNode();
-      if (!device.addAlias(alias, leafMNode)) {
-        throw new MetadataException("The alias already exists.");
-      }
-
-      if (leafMNode.getAlias() != null) {
-        device.deleteAliasChild(leafMNode.getAlias());
-      }
-
-      mtree.setAlias(leafMNode, alias);
+    if (mtree.changeAlias(alias, fullPath)) {
       // persist to WAL
       writeToMLog(SchemaRegionWritePlanFactory.getChangeAliasPlan(fullPath, alias));
     }
@@ -1357,9 +1323,9 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     public RecoverOperationResult visitChangeAlias(
         IChangeAliasPlan changeAliasPlan, SchemaRegionPBTreeImpl context) {
       try {
-        changeAlias(changeAliasPlan.getPath(), changeAliasPlan.getAlias());
+        upsertAlias(changeAliasPlan.getAlias(), changeAliasPlan.getPath());
         return RecoverOperationResult.SUCCESS;
-      } catch (MetadataException e) {
+      } catch (MetadataException | IOException e) {
         return new RecoverOperationResult(e);
       }
     }

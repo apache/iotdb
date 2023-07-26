@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.db.exception.PartitionViolationException;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
@@ -377,19 +378,32 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public Pair<Long, Long> getPossibleStartTimeAndEndTime(PartialPath devicePattern) {
+  public Pair<Long, Long> getPossibleStartTimeAndEndTime(
+      PartialPath devicePattern, Set<String> deviceMatchInfo) {
     boolean hasMatchedDevice = false;
     long startTime = Long.MAX_VALUE;
     long endTime = Long.MIN_VALUE;
     for (Entry<String, Integer> entry : deviceToIndex.entrySet()) {
       try {
-        if (devicePattern.matchFullPath(new PartialPath(entry.getKey()))) {
+        if (deviceMatchInfo.contains(entry.getKey())) {
           hasMatchedDevice = true;
           if (startTimes[entry.getValue()] < startTime) {
             startTime = startTimes[entry.getValue()];
           }
           if (endTimes[entry.getValue()] > endTime) {
             endTime = endTimes[entry.getValue()];
+          }
+        } else {
+          if (devicePattern.matchFullPath(
+              DataNodeDevicePathCache.getInstance().getPartialPath(entry.getKey()))) {
+            deviceMatchInfo.add(entry.getKey());
+            hasMatchedDevice = true;
+            if (startTimes[entry.getValue()] < startTime) {
+              startTime = startTimes[entry.getValue()];
+            }
+            if (endTimes[entry.getValue()] > endTime) {
+              endTime = endTimes[entry.getValue()];
+            }
           }
         }
       } catch (IllegalPathException e) {

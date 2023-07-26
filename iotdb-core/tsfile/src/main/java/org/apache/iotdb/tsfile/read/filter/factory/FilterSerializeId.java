@@ -34,5 +34,6 @@ public enum FilterSerializeId {
   IN,
   REGEXP,
   LIKE,
-  BETWEEN
+  BETWEEN,
+  TIME_GTEQ_AND_LT
 }

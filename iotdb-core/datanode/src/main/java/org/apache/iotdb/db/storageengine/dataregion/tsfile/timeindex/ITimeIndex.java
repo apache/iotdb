@@ -198,7 +198,8 @@ public interface ITimeIndex {
    */
   long[] getStartAndEndTime(String deviceId);
 
-  Pair<Long, Long> getPossibleStartTimeAndEndTime(PartialPath devicePattern);
+  Pair<Long, Long> getPossibleStartTimeAndEndTime(
+      PartialPath devicePattern, Set<String> deviceMatchInfo);
 
   /**
    * Get TimeIndex Type
