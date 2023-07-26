@@ -75,10 +75,10 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
 
   private static boolean isPartiallyConcurrentGC(GarbageCollectorMXBean gc) {
     switch (gc.getName()) {
-        // First two are from the `serial` collector
+        // First two are from the 'serial' collector which are not concurrent, obviously.
       case "Copy":
       case "MarkSweepCompact":
-        // The following 4 GCs do not contain concurrent execution phase
+        // The following 4 GCs do not contain concurrent execution phase.
       case "PS MarkSweep":
       case "PS Scavenge":
       case "G1 Young Generation":
@@ -86,7 +86,8 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
         return false;
 
         // The following 2 GCs' execution process consists of concurrent phase, which means they can
-        // run simultaneously with the user threads in some phases.
+        // run simultaneously with the user thread in some phases.
+
         // Concurrent mark and concurrent sweep
       case "ConcurrentMarkSweep":
         // Concurrent mark
@@ -181,11 +182,15 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
             String gcCause = notificationInfo.getGcCause();
             String gcAction = notificationInfo.getGcAction();
             GcInfo gcInfo = notificationInfo.getGcInfo();
-            long duration = gcInfo.getDuration();
 
             // The duration supplied in the notification info includes more than just
             // application stopped time for concurrent GCs (since the concurrent phase is not
             // stop-the-world).
+            // E.g. For mixed GC or full GC in collector 'G1 old generation', the duration collected
+            // here is more than the actual pause time (the latter can be accessed by GC
+            // log/-XX:PrintGCDetails)
+            long duration = gcInfo.getDuration();
+
             // Try and do a better job coming up with a good stopped time
             // value by asking for and tracking cumulative time spent blocked in GC.
             if (isPartiallyConcurrentGC(mbean)) {
@@ -198,13 +203,11 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
 
             String timerName;
             if (isConcurrentPhase(gcCause, notificationInfo.getGcName())) {
-              timerName = "jvm_gc_concurrent_phase_time_";
+              timerName = "jvm_gc_concurrent_phase_time";
             } else {
-              timerName = "jvm_gc_pause_";
+              timerName = "jvm_gc_pause";
             }
-            String reformatCause = gcCause.replaceAll(" ", "_");
-            // create a timer for each cause, which binds gcCause with gcDuration
-            timerName += reformatCause;
+            // create a timer with tags named by gcCause, which binds gcCause with gcDuration
             Timer timer =
                 metricService.getOrCreateTimer(
                     timerName, MetricLevel.CORE, "action", gcAction, "cause", gcCause);
@@ -224,6 +227,8 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
             }
 
             // monitoring old/young GC count, which is helpful for users to locate GC exception.
+            // Unfortunately, the JMX doesn't seem to provide an api for monitoring mixed gc in G1.
+            // In fact, JMX may treat mixed GCs as minor GCs.
             if (GcGenerationAge.fromName(notificationInfo.getGcName()) == GcGenerationAge.OLD) {
               Counter oldGcCounter =
                   metricService.getOrCreateCounter(
@@ -278,7 +283,8 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
                 }
 
                 // Some GC implementations such as G1 can reduce the old gen size as part of a minor
-                // GC. To track the
+                // GC (since in JMX, a minor GC of G1 may actually represent mixed GC, which collect
+                // some obj in old gen region). To track the
                 // live data size we record the value if we see a reduction in the old gen heap size
                 // or
                 // after a major GC.
@@ -353,11 +359,10 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
             String gcAction = notificationInfo.getGcAction();
             String timerName;
             if (isConcurrentPhase(gcCause, notificationInfo.getGcName())) {
-              timerName = "jvm_gc_concurrent_phase_time_";
+              timerName = "jvm_gc_concurrent_phase_time";
             } else {
-              timerName = "jvm_gc_pause_";
+              timerName = "jvm_gc_pause";
             }
-            timerName += gcCause;
             metricService.remove(MetricType.TIMER, timerName, "action", gcAction, "cause", gcCause);
             if (mbean.getName().equals("ZGC Cycles")) {
               metricService.remove(
