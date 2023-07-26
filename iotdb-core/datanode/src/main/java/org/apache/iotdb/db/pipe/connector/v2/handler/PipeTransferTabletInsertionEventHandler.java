@@ -24,13 +24,13 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalExcep
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.connector.v2.IoTDBThriftConnectorV2;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 
 import java.util.Optional;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 
 public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTransferResp>
@@ -54,7 +55,7 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
 
   private final IoTDBThriftConnectorV2 connector;
   private final ExecutorService retryExecutor;
-  private final BoundedBlockingPendingQueue<Event> retryFailureQueue;
+  private final BlockingQueue<Pair<Long, Event>> retryFailureQueue;
 
   private static final long MAX_RETRY_WAIT_TIME_MS =
       (long) (PipeConfig.getInstance().getPipeConnectorRetryIntervalMs() * Math.pow(2, 5));
@@ -66,7 +67,7 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
       TPipeTransferReq req,
       IoTDBThriftConnectorV2 connector,
       ExecutorService retryExecutor,
-      BoundedBlockingPendingQueue<Event> retryFailureQueue) {
+      BlockingQueue<Pair<Long, Event>> retryFailureQueue) {
     this.requestCommitId = requestCommitId;
     this.event = event;
     this.req = req;
@@ -104,7 +105,7 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
   @Override
   public void onError(Exception exception) {
     if (retryCount >= PipeSubtask.MAX_RETRY_TIMES) {
-      retryFailureQueue.offer(event);
+      retryFailureQueue.offer(new Pair<>(requestCommitId, event));
       event.reportException(new PipeRuntimeConnectorCriticalException(exception.getMessage()));
       return;
     }

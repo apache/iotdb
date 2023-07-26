@@ -27,12 +27,12 @@ import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.v2.IoTDBThriftConnectorV2;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -44,6 +44,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -57,7 +58,7 @@ public class PipeTransferTsFileInsertionEventHandler
   private final PipeTsFileInsertionEvent event;
   private final IoTDBThriftConnectorV2 connector;
   private final ExecutorService retryExecutor;
-  private final BoundedBlockingPendingQueue<Event> retryFailureQueue;
+  private final BlockingQueue<Pair<Long, Event>> retryFailureQueue;
 
   private final File tsFile;
   private final int readFileBufferSize;
@@ -79,7 +80,7 @@ public class PipeTransferTsFileInsertionEventHandler
       PipeTsFileInsertionEvent event,
       IoTDBThriftConnectorV2 connector,
       ExecutorService retryExecutor,
-      BoundedBlockingPendingQueue<Event> retryFailureQueue)
+      BlockingQueue<Pair<Long, Event>> retryFailureQueue)
       throws FileNotFoundException {
     this.requestCommitId = requestCommitId;
     this.event = event;
@@ -191,7 +192,7 @@ public class PipeTransferTsFileInsertionEventHandler
     }
 
     if (retryCount >= PipeSubtask.MAX_RETRY_TIMES) {
-      retryFailureQueue.offer(event);
+      retryFailureQueue.offer(new Pair<>(requestCommitId, event));
       event.reportException(new PipeRuntimeConnectorCriticalException(exception.getMessage()));
       return;
     }
