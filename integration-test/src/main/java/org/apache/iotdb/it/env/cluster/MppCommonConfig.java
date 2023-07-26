@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.it.env.cluster;
 
 import org.apache.iotdb.itbase.env.CommonConfig;
@@ -350,6 +351,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold) {
     setProperty("cluster_schema_limit_threshold", String.valueOf(clusterSchemaLimitThreshold));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDatabaseLimitThreshold(long databaseLimitThreshold) {
+    setProperty("database_limit_threshold", String.valueOf(databaseLimitThreshold));
     return this;
   }
 }

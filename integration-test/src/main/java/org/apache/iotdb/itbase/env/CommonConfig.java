@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.itbase.env;
 
 /** This interface is used to handle properties in iotdb-common.properties. */
@@ -110,6 +111,8 @@ public interface CommonConfig {
   CommonConfig setClusterSchemaLimitLevel(String clusterSchemaLimitLevel);
 
   CommonConfig setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold);
+
+  CommonConfig setDatabaseLimitThreshold(long databaseLimitThreshold);
 
   CommonConfig setQuotaEnable(boolean quotaEnable);
 

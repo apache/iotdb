@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.it.env;
 
 import org.apache.iotdb.it.env.cluster.Cluster1Env;
@@ -31,11 +32,15 @@ public class EnvFactory {
   private static BaseEnv env;
   private static final Logger logger = IoTDBTestLogger.logger;
 
+  private EnvFactory() {
+    // Empty constructor
+  }
+
   public static BaseEnv getEnv() {
     if (env == null) {
       try {
         Class.forName(Config.JDBC_DRIVER_NAME);
-        logger.debug(">>>>>>>" + System.getProperty("TestEnv"));
+        logger.debug(">>>>>>>{}", System.getProperty("TestEnv"));
         EnvType envType = EnvType.getSystemEnvType();
         switch (envType) {
           case Simple:
@@ -48,12 +53,12 @@ public class EnvFactory {
             env = new RemoteServerEnv();
             break;
           default:
-            System.out.println("Unknown env type: " + envType);
+            logger.warn("Unknown env type: {}", envType);
             System.exit(-1);
             break;
         }
       } catch (ClassNotFoundException e) {
-        e.printStackTrace();
+        logger.error("Get env error", e);
         System.exit(-1);
       }
     }

@@ -77,7 +77,7 @@ public class IoTDBSyncReceiver {
   //////////////////////// methods for RPC handler ////////////////////////
 
   /**
-   * release resources or cleanup when a client (a sender) is disconnected (normally or abnormally).
+   * Release resources or cleanup when a client (a sender) is disconnected (normally or abnormally).
    */
   public void handleClientExit() {
     if (currentConnectionId.get() != null) {

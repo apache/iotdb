@@ -38,10 +38,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQueryScanNode.LAST_QUERY_HEADER_COLUMNS;
 
-public class AlignedLastQueryScanNode extends SeriesSourceNode {
+public class AlignedLastQueryScanNode extends LastSeriesSourceNode {
   // The path of the target series which will be scanned.
   private final AlignedPath seriesPath;
 
@@ -51,7 +52,7 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
   private final String outputViewPath;
 
   public AlignedLastQueryScanNode(PlanNodeId id, AlignedPath seriesPath, String outputViewPath) {
-    super(id);
+    super(id, new AtomicInteger(1));
     this.seriesPath = seriesPath;
     this.outputViewPath = outputViewPath;
   }
@@ -59,12 +60,23 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
   public AlignedLastQueryScanNode(
       PlanNodeId id,
       AlignedPath seriesPath,
+      AtomicInteger dataNodeSeriesScanNum,
       String outputViewPath,
       TRegionReplicaSet regionReplicaSet) {
-    super(id);
+    super(id, dataNodeSeriesScanNum);
     this.seriesPath = seriesPath;
     this.outputViewPath = outputViewPath;
     this.regionReplicaSet = regionReplicaSet;
+  }
+
+  public AlignedLastQueryScanNode(
+      PlanNodeId id,
+      AlignedPath seriesPath,
+      AtomicInteger dataNodeSeriesScanNum,
+      String outputViewPath) {
+    super(id, dataNodeSeriesScanNum);
+    this.seriesPath = seriesPath;
+    this.outputViewPath = outputViewPath;
   }
 
   public String getOutputViewPath() {
@@ -72,7 +84,9 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
   }
 
   @Override
-  public void open() throws Exception {}
+  public void open() throws Exception {
+    // Do nothing
+  }
 
   @Override
   public TRegionReplicaSet getRegionReplicaSet() {
@@ -85,7 +99,9 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
   }
 
   @Override
-  public void close() throws Exception {}
+  public void close() throws Exception {
+    // Do nothing
+  }
 
   @Override
   public List<PlanNode> getChildren() {
@@ -100,7 +116,7 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
   @Override
   public PlanNode clone() {
     return new AlignedLastQueryScanNode(
-        getPlanNodeId(), seriesPath, outputViewPath, regionReplicaSet);
+        getPlanNodeId(), seriesPath, getDataNodeSeriesScanNum(), outputViewPath, regionReplicaSet);
   }
 
   @Override
@@ -120,9 +136,15 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
     AlignedLastQueryScanNode that = (AlignedLastQueryScanNode) o;
     return Objects.equals(seriesPath, that.seriesPath)
         && Objects.equals(outputViewPath, that.outputViewPath)
@@ -147,6 +169,7 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.ALIGNED_LAST_QUERY_SCAN.serialize(byteBuffer);
     seriesPath.serialize(byteBuffer);
+    ReadWriteIOUtils.write(getDataNodeSeriesScanNum().get(), byteBuffer);
     ReadWriteIOUtils.write(outputViewPath == null, byteBuffer);
     if (outputViewPath != null) {
       ReadWriteIOUtils.write(outputViewPath, byteBuffer);
@@ -157,6 +180,7 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.ALIGNED_LAST_QUERY_SCAN.serialize(stream);
     seriesPath.serialize(stream);
+    ReadWriteIOUtils.write(getDataNodeSeriesScanNum().get(), stream);
     ReadWriteIOUtils.write(outputViewPath == null, stream);
     if (outputViewPath != null) {
       ReadWriteIOUtils.write(outputViewPath, stream);
@@ -165,10 +189,12 @@ public class AlignedLastQueryScanNode extends SeriesSourceNode {
 
   public static AlignedLastQueryScanNode deserialize(ByteBuffer byteBuffer) {
     AlignedPath partialPath = (AlignedPath) PathDeserializeUtil.deserialize(byteBuffer);
+    int dataNodeSeriesScanNum = ReadWriteIOUtils.readInt(byteBuffer);
     boolean isNull = ReadWriteIOUtils.readBool(byteBuffer);
     String outputPathSymbol = isNull ? null : ReadWriteIOUtils.readString(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new AlignedLastQueryScanNode(planNodeId, partialPath, outputPathSymbol);
+    return new AlignedLastQueryScanNode(
+        planNodeId, partialPath, new AtomicInteger(dataNodeSeriesScanNum), outputPathSymbol);
   }
 
   public AlignedPath getSeriesPath() {

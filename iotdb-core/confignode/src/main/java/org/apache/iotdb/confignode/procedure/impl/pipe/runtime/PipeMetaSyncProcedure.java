@@ -23,13 +23,15 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.util.Map;
 
 public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
 
@@ -48,67 +50,68 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
   protected void executeFromValidateTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeMetaSyncProcedure: executeFromValidateTask");
 
-    // do nothing
+    // Do nothing
   }
 
   @Override
   protected void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeMetaSyncProcedure: executeFromCalculateInfoForTask");
 
-    // do nothing
+    // Do nothing
   }
 
   @Override
   protected void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeMetaSyncProcedure: executeFromWriteConfigNodeConsensus");
 
-    // do nothing
+    // Do nothing
   }
 
   @Override
-  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
+  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
     LOGGER.info("PipeMetaSyncProcedure: executeFromOperateOnDataNodes");
 
-    pushPipeMetaToDataNodesIgnoreException(env);
+    Map<Integer, TPushPipeMetaResp> respMap = pushPipeMetaToDataNodes(env);
+    if (pipeTaskInfo.get().recordPushPipeMetaExceptions(respMap)) {
+      throw new PipeException(
+          String.format(
+              "Failed to push pipe meta to dataNodes, details: %s",
+              parsePushPipeMetaExceptionForPipe(null, respMap)));
+    }
   }
 
   @Override
   protected void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeMetaSyncProcedure: rollbackFromValidateTask");
 
-    // do nothing
+    // Do nothing
   }
 
   @Override
   protected void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeMetaSyncProcedure: rollbackFromCalculateInfoForTask");
 
-    // do nothing
+    // Do nothing
   }
 
   @Override
   protected void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeMetaSyncProcedure: rollbackFromWriteConfigNodeConsensus");
 
-    // do nothing
+    // Do nothing
   }
 
   @Override
   protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeMetaSyncProcedure: rollbackFromOperateOnDataNodes");
 
-    // do nothing
+    // Do nothing
   }
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeShort(ProcedureType.PIPE_META_SYNC_PROCEDURE.getTypeCode());
     super.serialize(stream);
-  }
-
-  @Override
-  public void deserialize(ByteBuffer byteBuffer) {
-    super.deserialize(byteBuffer);
   }
 
   @Override

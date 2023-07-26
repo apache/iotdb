@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.planner.plan;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -68,6 +69,9 @@ public class FragmentInstance implements IConsensusRequest {
 
   private final SessionInfo sessionInfo;
 
+  // The num of all FI on the dispatched DataNode in this query
+  private int dataNodeFINum;
+
   // We can add some more params for a specific FragmentInstance
   // So that we can make different FragmentInstance owns different data range.
 
@@ -97,6 +101,18 @@ public class FragmentInstance implements IConsensusRequest {
       boolean isRoot) {
     this(fragment, id, timeFilter, type, timeOut, sessionInfo);
     this.isRoot = isRoot;
+  }
+
+  public FragmentInstance(
+      PlanFragment fragment,
+      FragmentInstanceId id,
+      Filter timeFilter,
+      QueryType type,
+      long timeOut,
+      SessionInfo sessionInfo,
+      int dataNodeFINum) {
+    this(fragment, id, timeFilter, type, timeOut, sessionInfo);
+    this.dataNodeFINum = dataNodeFINum;
   }
 
   public void setExecutorAndHost(ExecutorType executorType) {
@@ -150,6 +166,14 @@ public class FragmentInstance implements IConsensusRequest {
     return type;
   }
 
+  public int getDataNodeFINum() {
+    return dataNodeFINum;
+  }
+
+  public void setDataNodeFINum(int dataNodeFINum) {
+    this.dataNodeFINum = dataNodeFINum;
+  }
+
   public String toString() {
     StringBuilder ret = new StringBuilder();
     ret.append(String.format("FragmentInstance-%s:", getId()));
@@ -178,8 +202,10 @@ public class FragmentInstance implements IConsensusRequest {
     boolean hasTimeFilter = ReadWriteIOUtils.readBool(buffer);
     Filter timeFilter = hasTimeFilter ? FilterFactory.deserialize(buffer) : null;
     QueryType queryType = QueryType.values()[ReadWriteIOUtils.readInt(buffer)];
+    int dataNodeFINum = ReadWriteIOUtils.readInt(buffer);
     FragmentInstance fragmentInstance =
-        new FragmentInstance(planFragment, id, timeFilter, queryType, timeOut, sessionInfo);
+        new FragmentInstance(
+            planFragment, id, timeFilter, queryType, timeOut, sessionInfo, dataNodeFINum);
     boolean hasHostDataNode = ReadWriteIOUtils.readBool(buffer);
     fragmentInstance.hostDataNode =
         hasHostDataNode ? ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer) : null;
@@ -201,6 +227,7 @@ public class FragmentInstance implements IConsensusRequest {
         timeFilter.serialize(outputStream);
       }
       ReadWriteIOUtils.write(type.ordinal(), outputStream);
+      ReadWriteIOUtils.write(dataNodeFINum, outputStream);
       ReadWriteIOUtils.write(hostDataNode != null, outputStream);
       if (hostDataNode != null) {
         ThriftCommonsSerDeUtils.serializeTDataNodeLocation(hostDataNode, outputStream);

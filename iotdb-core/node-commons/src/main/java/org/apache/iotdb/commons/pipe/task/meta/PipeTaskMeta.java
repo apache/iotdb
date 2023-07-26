@@ -21,8 +21,11 @@ package org.apache.iotdb.commons.pipe.task.meta;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeExceptionType;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -30,6 +33,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Queue;
@@ -41,6 +45,16 @@ public class PipeTaskMeta {
 
   private final AtomicReference<ProgressIndex> progressIndex = new AtomicReference<>();
   private final AtomicInteger leaderDataNodeId = new AtomicInteger(0);
+
+  /**
+   * Stores the exceptions encountered during run time of each pipe task.
+   *
+   * <p>The exceptions are instances of {@link PipeRuntimeCriticalException}, {@link
+   * PipeRuntimeConnectorCriticalException} and {@link PipeRuntimeNonCriticalException}.
+   *
+   * <p>The failure of them, respectively, will lead to the stop of the pipe, the stop of the pipes
+   * sharing the same connector, and nothing.
+   */
   private final Queue<PipeRuntimeException> exceptionMessages = new ConcurrentLinkedQueue<>();
 
   public PipeTaskMeta(/* @NotNull */ ProgressIndex progressIndex, int leaderDataNodeId) {
@@ -65,57 +79,66 @@ public class PipeTaskMeta {
     this.leaderDataNodeId.set(leaderDataNodeId);
   }
 
-  public Iterable<PipeRuntimeException> getExceptionMessages() {
-    return exceptionMessages;
+  public synchronized Iterable<PipeRuntimeException> getExceptionMessages() {
+    return new ArrayList<>(exceptionMessages);
   }
 
-  public void trackExceptionMessage(PipeRuntimeException exceptionMessage) {
+  public synchronized void trackExceptionMessage(PipeRuntimeException exceptionMessage) {
     exceptionMessages.add(exceptionMessage);
   }
 
-  public void clearExceptionMessages() {
+  public synchronized void clearExceptionMessages() {
     exceptionMessages.clear();
   }
 
-  public void serialize(DataOutputStream outputStream) throws IOException {
+  public synchronized void serialize(DataOutputStream outputStream) throws IOException {
     progressIndex.get().serialize(outputStream);
+
     ReadWriteIOUtils.write(leaderDataNodeId.get(), outputStream);
+
     ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
     for (final PipeRuntimeException pipeRuntimeException : exceptionMessages) {
       pipeRuntimeException.serialize(outputStream);
     }
   }
 
-  public void serialize(FileOutputStream outputStream) throws IOException {
+  public synchronized void serialize(FileOutputStream outputStream) throws IOException {
     progressIndex.get().serialize(outputStream);
+
     ReadWriteIOUtils.write(leaderDataNodeId.get(), outputStream);
+
     ReadWriteIOUtils.write(exceptionMessages.size(), outputStream);
     for (final PipeRuntimeException pipeRuntimeException : exceptionMessages) {
       pipeRuntimeException.serialize(outputStream);
     }
   }
 
-  public static PipeTaskMeta deserialize(ByteBuffer byteBuffer) {
+  public static PipeTaskMeta deserialize(PipeRuntimeMetaVersion version, ByteBuffer byteBuffer) {
     final ProgressIndex progressIndex = ProgressIndexType.deserializeFrom(byteBuffer);
+
     final int leaderDataNodeId = ReadWriteIOUtils.readInt(byteBuffer);
+
     final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(progressIndex, leaderDataNodeId);
     final int size = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < size; ++i) {
       final PipeRuntimeException pipeRuntimeException =
-          PipeRuntimeExceptionType.deserializeFrom(byteBuffer);
+          PipeRuntimeExceptionType.deserializeFrom(version, byteBuffer);
       pipeTaskMeta.exceptionMessages.add(pipeRuntimeException);
     }
     return pipeTaskMeta;
   }
 
-  public static PipeTaskMeta deserialize(InputStream inputStream) throws IOException {
+  public static PipeTaskMeta deserialize(PipeRuntimeMetaVersion version, InputStream inputStream)
+      throws IOException {
     final ProgressIndex progressIndex = ProgressIndexType.deserializeFrom(inputStream);
+
     final int leaderDataNodeId = ReadWriteIOUtils.readInt(inputStream);
+
     final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(progressIndex, leaderDataNodeId);
     final int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
       final PipeRuntimeException pipeRuntimeException =
-          PipeRuntimeExceptionType.deserializeFrom(inputStream);
+          PipeRuntimeExceptionType.deserializeFrom(version, inputStream);
       pipeTaskMeta.exceptionMessages.add(pipeRuntimeException);
     }
     return pipeTaskMeta;
@@ -137,7 +160,7 @@ public class PipeTaskMeta {
 
   @Override
   public int hashCode() {
-    return Objects.hash(progressIndex, leaderDataNodeId, exceptionMessages);
+    return Objects.hash(progressIndex.get(), leaderDataNodeId.get(), exceptionMessages);
   }
 
   @Override
@@ -145,12 +168,10 @@ public class PipeTaskMeta {
     return "PipeTask{"
         + "progressIndex='"
         + progressIndex
-        + '\''
-        + ", leaderDataNodeId='"
+        + "', leaderDataNodeId="
         + leaderDataNodeId
-        + '\''
-        + ", exceptionMessages="
+        + ", exceptionMessages='"
         + exceptionMessages
-        + '}';
+        + "'}";
   }
 }

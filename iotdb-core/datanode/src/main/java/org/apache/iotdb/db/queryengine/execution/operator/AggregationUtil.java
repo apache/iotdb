@@ -54,7 +54,7 @@ import static org.apache.iotdb.tsfile.read.common.block.TsBlockUtil.skipPointsOu
 public class AggregationUtil {
 
   private AggregationUtil() {
-    // forbidding instantiation
+    // Forbidding instantiation
   }
 
   /**

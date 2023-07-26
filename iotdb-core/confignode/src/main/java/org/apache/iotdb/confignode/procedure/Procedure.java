@@ -180,7 +180,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
       stream.writeInt(-1);
     }
 
-    // has lock
+    // Has lock
     stream.write(this.hasLock() ? (byte) 1 : (byte) 0);
   }
 

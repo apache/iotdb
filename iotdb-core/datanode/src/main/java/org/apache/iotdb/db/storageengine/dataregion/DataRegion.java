@@ -259,7 +259,7 @@ public class DataRegion implements IDataRegionForQuery {
   private ILastFlushTimeMap lastFlushTimeMap;
 
   /**
-   * record the insertWriteLock in SG is being hold by which method, it will be empty string if on
+   * record the insertWriteLock in SG is being hold by which method, it will be empty string if no
    * one holds the insertWriteLock.
    */
   private String insertWriteLockHolder = "";
@@ -1849,12 +1849,16 @@ public class DataRegion implements IDataRegionForQuery {
       List<TsFileResource> sealedTsFileResource = new ArrayList<>();
       List<TsFileResource> unsealedTsFileResource = new ArrayList<>();
       separateTsFile(sealedTsFileResource, unsealedTsFileResource);
-
-      deleteDataInFiles(unsealedTsFileResource, deletion, devicePaths, timePartitionFilter);
+      // deviceMatchInfo is used for filter the matched deviceId in TsFileResource
+      // deviceMatchInfo contains the DeviceId means this device matched the pattern
+      Set<String> deviceMatchInfo = new HashSet<>();
+      deleteDataInFiles(
+          unsealedTsFileResource, deletion, devicePaths, timePartitionFilter, deviceMatchInfo);
       writeUnlock();
       hasReleasedLock = true;
 
-      deleteDataInFiles(sealedTsFileResource, deletion, devicePaths, timePartitionFilter);
+      deleteDataInFiles(
+          sealedTsFileResource, deletion, devicePaths, timePartitionFilter, deviceMatchInfo);
 
     } catch (Exception e) {
       throw new IOException(e);
@@ -1906,16 +1910,32 @@ public class DataRegion implements IDataRegionForQuery {
       Set<PartialPath> devicePaths,
       long deleteStart,
       long deleteEnd,
-      TimePartitionFilter timePartitionFilter) {
+      TimePartitionFilter timePartitionFilter,
+      Set<String> deviceMatchInfo) {
     if (timePartitionFilter != null
         && !timePartitionFilter.satisfy(databaseName, tsFileResource.getTimePartition())) {
       return true;
     }
+    long fileStartTime = tsFileResource.getTimeIndex().getMinStartTime();
+    long fileEndTime = tsFileResource.getTimeIndex().getMaxEndTime();
 
     for (PartialPath device : devicePaths) {
       long deviceStartTime, deviceEndTime;
       if (device.hasWildcard()) {
-        Pair<Long, Long> startAndEndTime = tsFileResource.getPossibleStartTimeAndEndTime(device);
+        if (!tsFileResource.isClosed() && fileEndTime == Long.MIN_VALUE) {
+          // unsealed seq file
+          if (deleteEnd < fileStartTime) {
+            // time range of file has not overlapped with the deletion
+            return true;
+          }
+        } else {
+          if (deleteEnd < fileStartTime || deleteStart > fileEndTime) {
+            // time range of file has not overlapped with the deletion
+            return true;
+          }
+        }
+        Pair<Long, Long> startAndEndTime =
+            tsFileResource.getPossibleStartTimeAndEndTime(device, deviceMatchInfo);
         if (startAndEndTime == null) {
           continue;
         }
@@ -1951,14 +1971,17 @@ public class DataRegion implements IDataRegionForQuery {
       Collection<TsFileResource> tsFileResourceList,
       Deletion deletion,
       Set<PartialPath> devicePaths,
-      TimePartitionFilter timePartitionFilter) {
+      TimePartitionFilter timePartitionFilter,
+      Set<String> deviceMatchInfo)
+      throws IOException {
     for (TsFileResource tsFileResource : tsFileResourceList) {
       if (canSkipDelete(
           tsFileResource,
           devicePaths,
           deletion.getStartTime(),
           deletion.getEndTime(),
-          timePartitionFilter)) {
+          timePartitionFilter,
+          deviceMatchInfo)) {
         continue;
       }
 
@@ -2640,6 +2663,9 @@ public class DataRegion implements IDataRegionForQuery {
         logger.error("Thread get interrupted when waiting compaction to finish", e);
         Thread.currentThread().interrupt();
       }
+    }
+    if (timedCompactionScheduleTask != null) {
+      timedCompactionScheduleTask.shutdownNow();
     }
   }
 

@@ -67,6 +67,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -90,10 +91,10 @@ public class ConfigNodeProcedureEnv {
 
   private static final Logger LOG = LoggerFactory.getLogger(ConfigNodeProcedureEnv.class);
 
-  /** add or remove node lock */
+  /** Add or remove node lock. */
   private final LockQueue nodeLock = new LockQueue();
 
-  /** pipe operation lock */
+  /** Pipe operation lock. */
   private final LockQueue pipeLock = new LockQueue();
 
   private final ReentrantLock schedulerLock = new ReentrantLock(true);
@@ -118,7 +119,7 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * Delete ConfigNode cache, includes ClusterSchemaInfo and PartitionInfo
+   * Delete ConfigNode cache, includes ClusterSchemaInfo and PartitionInfo.
    *
    * @param name database name
    * @return tsStatus
@@ -129,7 +130,7 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * Pre delete a database
+   * Pre delete a database.
    *
    * @param preDeleteType execute/rollback
    * @param deleteSgName database name
@@ -153,7 +154,7 @@ public class ConfigNodeProcedureEnv {
     for (TDataNodeConfiguration dataNodeConfiguration : allDataNodes) {
       int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
 
-      // if the node is not alive, sleep 1 second and try again
+      // If the node is not alive, sleep 1 second and try again
       NodeStatus nodeStatus = getLoadManager().getNodeStatus(dataNodeId);
       if (nodeStatus == NodeStatus.Unknown) {
         try {
@@ -214,9 +215,10 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * Let the remotely new ConfigNode build the ConsensusGroup. Actually, the parameter of this
-   * method can be empty, adding new raft peer to exist group should invoke createPeer(groupId,
-   * emptyList).
+   * Let the remotely new ConfigNode build the ConsensusGroup.
+   *
+   * <p>Actually, the parameter of this method can be empty, adding new raft peer to exist group
+   * should invoke createPeer(groupId, emptyList).
    *
    * @param tConfigNodeLocation New ConfigNode's location
    */
@@ -238,7 +240,7 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * Leader will add the new ConfigNode Peer into ConfigRegion
+   * Leader will add the new ConfigNode Peer into ConfigRegion.
    *
    * @param configNodeLocation The new ConfigNode
    * @throws AddPeerException When addPeer doesn't success
@@ -248,7 +250,7 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * Remove peer in Leader node
+   * Remove peer in Leader node.
    *
    * @param tConfigNodeLocation node is removed
    * @throws ProcedureException if failed status
@@ -277,7 +279,7 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * Remove Consensus Group in removed node
+   * Remove Consensus Group in removed node.
    *
    * @param removedConfigNode config node location
    * @throws ProcedureException if failed status
@@ -297,7 +299,7 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * Stop ConfigNode and remove heartbeatCache
+   * Stop ConfigNode and remove heartbeatCache.
    *
    * @param tConfigNodeLocation config node location
    * @throws ProcedureException if failed status
@@ -319,7 +321,7 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * Leader will record the new ConfigNode's information
+   * Leader will record the new ConfigNode's information.
    *
    * @param configNodeLocation The new ConfigNode
    */
@@ -328,7 +330,7 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * Leader will notify the new ConfigNode that registration success
+   * Leader will notify the new ConfigNode that registration success.
    *
    * @param configNodeLocation The new ConfigNode
    */
@@ -340,7 +342,7 @@ public class ConfigNodeProcedureEnv {
             ConfigNodeRequestType.NOTIFY_REGISTER_SUCCESS);
   }
 
-  /** Notify all DataNodes when the capacity of the ConfigNodeGroup is expanded or reduced */
+  /** Notify all DataNodes when the capacity of the ConfigNodeGroup is expanded or reduced. */
   public void broadCastTheLatestConfigNodeGroup() {
     List<TConfigNodeLocation> registeredConfigNodes =
         configManager.getNodeManager().getRegisteredConfigNodes();
@@ -393,7 +395,7 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * Do region creations and broadcast the CreateRegionGroupsPlan
+   * Do region creations and broadcast the {@link CreateRegionGroupsPlan}.
    *
    * @return Those RegionReplicas that failed to create
    */
@@ -638,15 +640,16 @@ public class ConfigNodeProcedureEnv {
     return clientHandler.getResponseList();
   }
 
-  public List<TSStatus> pushPipeMetaToDataNodes(List<ByteBuffer> pipeMetaBinaryList) {
+  public Map<Integer, TPushPipeMetaResp> pushPipeMetaToDataNodes(
+      List<ByteBuffer> pipeMetaBinaryList) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TPushPipeMetaReq request = new TPushPipeMetaReq().setPipeMetas(pipeMetaBinaryList);
 
-    final AsyncClientHandler<TPushPipeMetaReq, TSStatus> clientHandler =
+    final AsyncClientHandler<TPushPipeMetaReq, TPushPipeMetaResp> clientHandler =
         new AsyncClientHandler<>(DataNodeRequestType.PUSH_PIPE_META, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
-    return clientHandler.getResponseList();
+    return clientHandler.getResponseMap();
   }
 
   public LockQueue getNodeLock() {

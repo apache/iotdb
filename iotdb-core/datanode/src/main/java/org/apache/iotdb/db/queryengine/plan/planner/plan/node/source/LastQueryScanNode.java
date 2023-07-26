@@ -38,8 +38,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 
-public class LastQueryScanNode extends SeriesSourceNode {
+public class LastQueryScanNode extends LastSeriesSourceNode {
 
   public static final List<String> LAST_QUERY_HEADER_COLUMNS =
       ImmutableList.of(
@@ -56,7 +57,7 @@ public class LastQueryScanNode extends SeriesSourceNode {
   private TRegionReplicaSet regionReplicaSet;
 
   public LastQueryScanNode(PlanNodeId id, MeasurementPath seriesPath, String outputViewPath) {
-    super(id);
+    super(id, new AtomicInteger(1));
     this.seriesPath = seriesPath;
     this.outputViewPath = outputViewPath;
   }
@@ -64,9 +65,20 @@ public class LastQueryScanNode extends SeriesSourceNode {
   public LastQueryScanNode(
       PlanNodeId id,
       MeasurementPath seriesPath,
+      AtomicInteger dataNodeSeriesScanNum,
+      String outputViewPath) {
+    super(id, dataNodeSeriesScanNum);
+    this.seriesPath = seriesPath;
+    this.outputViewPath = outputViewPath;
+  }
+
+  public LastQueryScanNode(
+      PlanNodeId id,
+      MeasurementPath seriesPath,
+      AtomicInteger dataNodeSeriesScanNum,
       String outputViewPath,
       TRegionReplicaSet regionReplicaSet) {
-    super(id);
+    super(id, dataNodeSeriesScanNum);
     this.seriesPath = seriesPath;
     this.outputViewPath = outputViewPath;
     this.regionReplicaSet = regionReplicaSet;
@@ -115,7 +127,8 @@ public class LastQueryScanNode extends SeriesSourceNode {
 
   @Override
   public PlanNode clone() {
-    return new LastQueryScanNode(getPlanNodeId(), seriesPath, outputViewPath, regionReplicaSet);
+    return new LastQueryScanNode(
+        getPlanNodeId(), seriesPath, getDataNodeSeriesScanNum(), outputViewPath, regionReplicaSet);
   }
 
   @Override
@@ -162,6 +175,7 @@ public class LastQueryScanNode extends SeriesSourceNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.LAST_QUERY_SCAN.serialize(byteBuffer);
     seriesPath.serialize(byteBuffer);
+    ReadWriteIOUtils.write(getDataNodeSeriesScanNum().get(), byteBuffer);
     ReadWriteIOUtils.write(outputViewPath == null, byteBuffer);
     if (outputViewPath != null) {
       ReadWriteIOUtils.write(outputViewPath, byteBuffer);
@@ -172,6 +186,7 @@ public class LastQueryScanNode extends SeriesSourceNode {
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.LAST_QUERY_SCAN.serialize(stream);
     seriesPath.serialize(stream);
+    ReadWriteIOUtils.write(getDataNodeSeriesScanNum().get(), stream);
     ReadWriteIOUtils.write(outputViewPath == null, stream);
     if (outputViewPath != null) {
       ReadWriteIOUtils.write(outputViewPath, stream);
@@ -180,10 +195,12 @@ public class LastQueryScanNode extends SeriesSourceNode {
 
   public static LastQueryScanNode deserialize(ByteBuffer byteBuffer) {
     MeasurementPath partialPath = (MeasurementPath) PathDeserializeUtil.deserialize(byteBuffer);
+    int dataNodeSeriesScanNum = ReadWriteIOUtils.readInt(byteBuffer);
     boolean isNull = ReadWriteIOUtils.readBool(byteBuffer);
     String outputPathSymbol = isNull ? null : ReadWriteIOUtils.readString(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new LastQueryScanNode(planNodeId, partialPath, outputPathSymbol);
+    return new LastQueryScanNode(
+        planNodeId, partialPath, new AtomicInteger(dataNodeSeriesScanNum), outputPathSymbol);
   }
 
   @Override

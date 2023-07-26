@@ -41,8 +41,10 @@ public abstract class PipeInfo {
   protected long createTime;
   protected PipeMessage.PipeMessageType messageType;
 
-  // only used for serialization
-  protected PipeInfo() {}
+  // Only used for serialization
+  protected PipeInfo() {
+    // Do nothing
+  }
 
   protected PipeInfo(String pipeName, String pipeSinkName, long createTime) {
     this.pipeName = pipeName;

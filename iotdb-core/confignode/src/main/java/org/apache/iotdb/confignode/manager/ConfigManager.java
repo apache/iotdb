@@ -199,7 +199,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
-/** Entry of all management, AssignPartitionManager,AssignRegionManager. */
+/** Entry of all management, AssignPartitionManager, AssignRegionManager. */
 public class ConfigManager implements IManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigManager.class);
@@ -486,6 +486,7 @@ public class ConfigManager implements IManager {
     clusterParameters.setTimestampPrecision(COMMON_CONF.getTimestampPrecision());
     clusterParameters.setSchemaEngineMode(COMMON_CONF.getSchemaEngineMode());
     clusterParameters.setTagAttributeTotalSize(COMMON_CONF.getTagAttributeTotalSize());
+    clusterParameters.setDatabaseLimitThreshold(COMMON_CONF.getDatabaseLimitThreshold());
     return clusterParameters;
   }
 
@@ -1114,6 +1115,10 @@ public class ConfigManager implements IManager {
       return errorStatus.setMessage(errorPrefix + "tag_attribute_total_size" + errorSuffix);
     }
 
+    if (clusterParameters.getDatabaseLimitThreshold() != COMMON_CONF.getDatabaseLimitThreshold()) {
+      return errorStatus.setMessage(errorPrefix + "database_limit_threshold" + errorSuffix);
+    }
+
     return null;
   }
 
@@ -1732,7 +1737,7 @@ public class ConfigManager implements IManager {
   }
 
   /**
-   * Get all related schemaRegion which may contains the timeSeries matched by given patternTree.
+   * Get all related schemaRegion which may contains the timeseries matched by given patternTree.
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup(
       PathPatternTree patternTree) {

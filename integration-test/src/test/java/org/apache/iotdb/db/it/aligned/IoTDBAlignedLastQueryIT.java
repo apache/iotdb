@@ -329,4 +329,15 @@ public class IoTDBAlignedLastQueryIT {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void cacheHitTest() {
+    selectAllAlignedLastTest();
+    selectAllAlignedAndNonAlignedLastTest();
+    selectSomeAlignedAndNonAlignedLastWithTimeFilterTest();
+    selectSomeAlignedLastTest1();
+    selectSomeAlignedLastTest2();
+    selectSomeAlignedLastWithTimeFilterTest();
+    selectSomeAlignedAndNonAlignedLastWithTimeFilterTest();
+  }
 }

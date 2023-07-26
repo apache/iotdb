@@ -24,6 +24,8 @@ import org.apache.iotdb.metrics.MetricConstant;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
+import org.apache.iotdb.metrics.utils.SystemMetric;
+import org.apache.iotdb.metrics.utils.SystemTag;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
@@ -44,26 +46,32 @@ public class JvmThreadMetrics implements IMetricSet {
     ThreadMXBean threadBean = ManagementFactory.getThreadMXBean();
 
     metricService.createAutoGauge(
-        "jvm_threads_peak_threads", MetricLevel.CORE, threadBean, ThreadMXBean::getPeakThreadCount);
+        SystemMetric.JVM_THREADS_PEAK_THREADS.toString(),
+        MetricLevel.CORE,
+        threadBean,
+        ThreadMXBean::getPeakThreadCount);
 
     metricService.createAutoGauge(
-        "jvm_threads_daemon_threads",
+        SystemMetric.JVM_THREADS_DAEMON_THREADS.toString(),
         MetricLevel.CORE,
         threadBean,
         ThreadMXBean::getDaemonThreadCount);
 
     metricService.createAutoGauge(
-        "jvm_threads_live_threads", MetricLevel.CORE, threadBean, ThreadMXBean::getThreadCount);
+        SystemMetric.JVM_THREADS_LIVE_THREADS.toString(),
+        MetricLevel.CORE,
+        threadBean,
+        ThreadMXBean::getThreadCount);
 
     try {
       threadBean.getAllThreadIds();
       for (Thread.State state : Thread.State.values()) {
         metricService.createAutoGauge(
-            "jvm_threads_states_threads",
+            SystemMetric.JVM_THREADS_STATUS_THREADS.toString(),
             MetricLevel.CORE,
             threadBean,
             bean -> getThreadStateCount(bean, state),
-            "state",
+            SystemTag.STATE.toString(),
             getStateTagValue(state));
       }
     } catch (Exception exception) {
@@ -76,15 +84,18 @@ public class JvmThreadMetrics implements IMetricSet {
   public void unbindFrom(AbstractMetricService metricService) {
     ThreadMXBean threadBean = ManagementFactory.getThreadMXBean();
 
-    metricService.remove(MetricType.AUTO_GAUGE, "jvm_threads_peak_threads");
-    metricService.remove(MetricType.AUTO_GAUGE, "jvm_threads_daemon_threads");
-    metricService.remove(MetricType.AUTO_GAUGE, "jvm_threads_live_threads");
+    metricService.remove(MetricType.AUTO_GAUGE, SystemMetric.JVM_THREADS_PEAK_THREADS.toString());
+    metricService.remove(MetricType.AUTO_GAUGE, SystemMetric.JVM_THREADS_DAEMON_THREADS.toString());
+    metricService.remove(MetricType.AUTO_GAUGE, SystemMetric.JVM_THREADS_LIVE_THREADS.toString());
 
     try {
       threadBean.getAllThreadIds();
       for (Thread.State state : Thread.State.values()) {
         metricService.remove(
-            MetricType.AUTO_GAUGE, "jvm_threads_states_threads", "state", getStateTagValue(state));
+            MetricType.AUTO_GAUGE,
+            SystemMetric.JVM_THREADS_STATUS_THREADS.toString(),
+            SystemTag.STATE.toString(),
+            getStateTagValue(state));
       }
     } catch (Exception exception) {
       // An error will be thrown for unsupported operations

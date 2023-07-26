@@ -66,6 +66,8 @@ public class ModificationFile implements AutoCloseable {
   private final SecureRandom random = new SecureRandom();
 
   private static final long COMPACT_THRESHOLD = 1024 * 1024;
+
+  private boolean hasCompacted = false;
   /**
    * Construct a ModificationFile using a file as its storage.
    *
@@ -209,7 +211,7 @@ public class ModificationFile implements AutoCloseable {
 
   public void compact() {
     long originFileSize = getSize();
-    if (originFileSize > COMPACT_THRESHOLD) {
+    if (originFileSize > COMPACT_THRESHOLD && !hasCompacted) {
       Map<String, List<Modification>> pathModificationMap =
           getModifications().stream().collect(Collectors.groupingBy(Modification::getPathString));
       String newModsFileName = filePath + COMPACT_SUFFIX;
@@ -245,6 +247,7 @@ public class ModificationFile implements AutoCloseable {
       } catch (IOException e) {
         logger.error("remove origin file or rename new mods file error.", e);
       }
+      hasCompacted = true;
     }
   }
 
