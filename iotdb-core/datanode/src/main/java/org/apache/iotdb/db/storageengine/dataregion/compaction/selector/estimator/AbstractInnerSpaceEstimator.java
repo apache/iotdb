@@ -23,8 +23,10 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -41,6 +43,17 @@ public abstract class AbstractInnerSpaceEstimator extends AbstractCompactionEsti
       List<TsFileResource> seqResources, TsFileResource unseqResource) throws IOException {
     throw new RuntimeException(
         "This kind of estimator cannot be used to estimate cross space compaction task");
+  }
+
+  protected InnerCompactionTaskInfo calculatingReadChunkCompactionTaskInfo(
+      List<TsFileResource> resources) throws IOException {
+    List<FileInfo> fileInfoList = new ArrayList<>();
+    for (TsFileResource resource : resources) {
+      TsFileSequenceReader reader = getFileReader(resource);
+      FileInfo fileInfo = CompactionEstimateUtils.getSeriesAndDeviceChunkNum(reader);
+      fileInfoList.add(fileInfo);
+    }
+    return new InnerCompactionTaskInfo(resources, fileInfoList);
   }
 
   protected static class InnerCompactionTaskInfo {

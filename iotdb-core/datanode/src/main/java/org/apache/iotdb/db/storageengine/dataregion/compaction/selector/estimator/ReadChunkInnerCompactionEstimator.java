@@ -21,16 +21,13 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimat
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimator {
@@ -43,25 +40,14 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
       return -1L;
     }
     long cost = 0;
-    ReadChunkCompactionTaskInfo taskInfo = calculatingReadChunkCompactionTaskInfo(resources);
+    InnerCompactionTaskInfo taskInfo = calculatingReadChunkCompactionTaskInfo(resources);
     cost += calculatingMultiDeviceIteratorCost(taskInfo);
     cost += calculatingReadChunkCost();
     cost += calculatingWriteTargetFileCost(taskInfo);
     return cost;
   }
 
-  private ReadChunkCompactionTaskInfo calculatingReadChunkCompactionTaskInfo(
-      List<TsFileResource> resources) throws IOException {
-    List<FileInfo> fileInfoList = new ArrayList<>();
-    for (TsFileResource resource : resources) {
-      TsFileSequenceReader reader = getFileReader(resource);
-      FileInfo fileInfo = CompactionEstimateUtils.getSeriesAndDeviceChunkNum(reader);
-      fileInfoList.add(fileInfo);
-    }
-    return new ReadChunkCompactionTaskInfo(resources, fileInfoList);
-  }
-
-  private long calculatingMultiDeviceIteratorCost(ReadChunkCompactionTaskInfo taskInfo) {
+  private long calculatingMultiDeviceIteratorCost(InnerCompactionTaskInfo taskInfo) {
     long cost = 0;
     cost +=
         taskInfo.getFileInfoList().size()
@@ -75,7 +61,7 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
     return IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
   }
 
-  private long calculatingWriteTargetFileCost(ReadChunkCompactionTaskInfo taskInfo) {
+  private long calculatingWriteTargetFileCost(InnerCompactionTaskInfo taskInfo) {
     long cost =
         taskInfo.getMaxConcurrentSeriesNum()
             * IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
@@ -87,51 +73,5 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
                 * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
     cost += sizeForFileWriter;
     return cost;
-  }
-
-  private static class ReadChunkCompactionTaskInfo {
-    private final List<FileInfo> fileInfoList;
-    private int maxConcurrentSeriesNum = 1;
-    private long maxChunkMetadataSize = 0;
-    private int maxChunkMetadataNumInDevice = 0;
-    private long modificationFileSize = 0;
-
-    private ReadChunkCompactionTaskInfo(
-        List<TsFileResource> resources, List<FileInfo> fileInfoList) {
-      this.fileInfoList = fileInfoList;
-      for (TsFileResource resource : resources) {
-        ModificationFile modificationFile = resource.getModFile();
-        if (modificationFile.exists()) {
-          modificationFileSize += modificationFile.getSize();
-        }
-      }
-      for (FileInfo fileInfo : fileInfoList) {
-        maxConcurrentSeriesNum =
-            Math.max(maxConcurrentSeriesNum, fileInfo.maxAlignedSeriesNumInDevice);
-        maxChunkMetadataNumInDevice =
-            Math.max(maxChunkMetadataNumInDevice, fileInfo.maxDeviceChunkNum);
-        maxChunkMetadataSize = Math.max(maxChunkMetadataSize, fileInfo.averageChunkMetadataSize);
-      }
-    }
-
-    public int getMaxChunkMetadataNumInDevice() {
-      return maxChunkMetadataNumInDevice;
-    }
-
-    public long getMaxChunkMetadataSize() {
-      return maxChunkMetadataSize;
-    }
-
-    public List<FileInfo> getFileInfoList() {
-      return fileInfoList;
-    }
-
-    public int getMaxConcurrentSeriesNum() {
-      return maxConcurrentSeriesNum;
-    }
-
-    public long getModificationFileSize() {
-      return modificationFileSize;
-    }
   }
 }
