@@ -19,16 +19,10 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimator {
-  private static final Logger logger =
-      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
   @Override
   public long calculatingMetadataMemoryCost(InnerCompactionTaskInfo taskInfo) {
@@ -38,8 +32,6 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
         taskInfo.getFileInfoList().size()
             * taskInfo.getMaxChunkMetadataNumInDevice()
             * taskInfo.getMaxChunkMetadataSize();
-    // add modification file size
-    cost += taskInfo.getModificationFileSize();
 
     // add ChunkMetadata size of targetFileWriter
     long sizeForFileWriter =
@@ -55,8 +47,13 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
   @Override
   public long calculatingDataMemoryCost(InnerCompactionTaskInfo taskInfo) {
     // add max target chunk size and max source chunk size
-    return 2
-        * taskInfo.getMaxConcurrentSeriesNum()
-        * IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
+    long cost =
+        2
+            * taskInfo.getMaxConcurrentSeriesNum()
+            * IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
+
+    // add modification file size
+    cost += taskInfo.getModificationFileSize();
+    return cost;
   }
 }
