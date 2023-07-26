@@ -82,7 +82,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
-  private final BlockingQueue<Pair<Long, Event>> retryQueue = new ArrayBlockingQueue<>(1024);
+  private final BlockingQueue<Pair<Long, Event>> retryQueue = new ArrayBlockingQueue<>(16);
 
   private static final AtomicReference<ExecutorService> TRANSFER_RETRY_EXECUTOR_HOLDER =
       new AtomicReference<>();
