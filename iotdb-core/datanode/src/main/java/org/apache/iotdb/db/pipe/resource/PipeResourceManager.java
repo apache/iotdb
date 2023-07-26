@@ -39,11 +39,12 @@ public class PipeResourceManager {
   public static PipeWALResourceManager wal() {
     if (PipeResourceManagerHolder.INSTANCE.pipeWALResourceManager.get() == null) {
       synchronized (PipeResourceManagerHolder.INSTANCE) {
-        if (PipeResourceManagerHolder.INSTANCE.pipeWALResourceManager.get() == null)
+        if (PipeResourceManagerHolder.INSTANCE.pipeWALResourceManager.get() == null) {
           PipeResourceManagerHolder.INSTANCE.pipeWALResourceManager.set(
               PipeConfig.getInstance().getPipeHardLinkWALEnabled()
                   ? new PipeWALHardlinkResourceManager()
                   : new PipeWALSelfHostResourceManager());
+        }
       }
     }
     return PipeResourceManagerHolder.INSTANCE.pipeWALResourceManager.get();
