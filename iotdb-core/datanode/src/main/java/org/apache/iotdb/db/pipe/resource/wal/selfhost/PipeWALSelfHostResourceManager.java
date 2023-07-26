@@ -19,89 +19,20 @@
 
 package org.apache.iotdb.db.pipe.resource.wal.selfhost;
 
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.pipe.resource.wal.PipeWALResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 
-import java.util.Iterator;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantLock;
+public class PipeWALSelfHostResourceManager extends PipeWALResourceManager {
 
-public class PipeWALSelfHostResourceManager implements PipeWALResourceManager {
-
-  private final Map<Long, PipeWALSelfHostResource> memtableIdToPipeWALResourceMap;
-
-  private static final int SEGMENT_LOCK_COUNT = 32;
-  private final ReentrantLock[] memtableIdSegmentLocks;
-
-  private static final ScheduledExecutorService PIPE_WAL_RESOURCE_TTL_CHECKER =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-          ThreadName.PIPE_WAL_RESOURCE_TTL_CHECKER.getName());
-
-  public PipeWALSelfHostResourceManager() {
-    // memtableIdToPipeWALResourceMap can be concurrently accessed by multiple threads
-    memtableIdToPipeWALResourceMap = new ConcurrentHashMap<>();
-
-    memtableIdSegmentLocks = new ReentrantLock[SEGMENT_LOCK_COUNT];
-    for (int i = 0; i < SEGMENT_LOCK_COUNT; i++) {
-      memtableIdSegmentLocks[i] = new ReentrantLock();
-    }
-
-    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-        PIPE_WAL_RESOURCE_TTL_CHECKER,
-        () -> {
-          Iterator<Map.Entry<Long, PipeWALSelfHostResource>> iterator =
-              memtableIdToPipeWALResourceMap.entrySet().iterator();
-          while (iterator.hasNext()) {
-            final Map.Entry<Long, PipeWALSelfHostResource> entry = iterator.next();
-            final ReentrantLock lock =
-                memtableIdSegmentLocks[(int) (entry.getKey() % SEGMENT_LOCK_COUNT)];
-
-            lock.lock();
-            try {
-              if (entry.getValue().invalidateIfPossible()) {
-                iterator.remove();
-              }
-            } finally {
-              lock.unlock();
-            }
-          }
-        },
-        PipeWALSelfHostResource.MIN_TIME_TO_LIVE_IN_MS,
-        PipeWALSelfHostResource.MIN_TIME_TO_LIVE_IN_MS,
-        TimeUnit.MILLISECONDS);
+  @Override
+  protected void pinInternal(long memtableId, WALEntryHandler walEntryHandler) {
+    memtableIdToPipeWALResourceMap
+        .computeIfAbsent(memtableId, id -> new PipeWALSelfHostResource(walEntryHandler))
+        .pin();
   }
 
   @Override
-  public void pin(final WALEntryHandler walEntryHandler) {
-    final long memtableId = walEntryHandler.getMemTableId();
-    final ReentrantLock lock = memtableIdSegmentLocks[(int) (memtableId % SEGMENT_LOCK_COUNT)];
-
-    lock.lock();
-    try {
-      memtableIdToPipeWALResourceMap
-          .computeIfAbsent(memtableId, id -> new PipeWALSelfHostResource(walEntryHandler))
-          .pin();
-    } finally {
-      lock.unlock();
-    }
-  }
-
-  @Override
-  public void unpin(final WALEntryHandler walEntryHandler) {
-    final long memtableId = walEntryHandler.getMemTableId();
-    final ReentrantLock lock = memtableIdSegmentLocks[(int) (memtableId % SEGMENT_LOCK_COUNT)];
-
-    lock.lock();
-    try {
-      memtableIdToPipeWALResourceMap.get(memtableId).unpin();
-    } finally {
-      lock.unlock();
-    }
+  protected void unpinInternal(long memtableId, WALEntryHandler walEntryHandler) {
+    memtableIdToPipeWALResourceMap.get(memtableId).unpin();
   }
 }

@@ -33,17 +33,18 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
-public class PipeWALHardlinkResourceManager implements PipeWALResourceManager {
+public class PipeWALHardlinkResourceManager extends PipeWALResourceManager {
 
   private final Map<String, Integer> hardlinkToReferenceMap = new HashMap<>();
 
   @Override
-  public void pin(final WALEntryHandler walEntryHandler) throws IOException {
+  protected void pinInternal(long memtableId, WALEntryHandler walEntryHandler) throws IOException {
     increaseFileReference(walEntryHandler.getWalEntryPosition().getWalFile());
   }
 
   @Override
-  public void unpin(final WALEntryHandler walEntryHandler) throws IOException {
+  protected void unpinInternal(long memtableId, WALEntryHandler walEntryHandler)
+      throws IOException {
     // TODO: FIXME
     decreaseFileReference(walEntryHandler.getWalEntryPosition().getWalFile());
   }
