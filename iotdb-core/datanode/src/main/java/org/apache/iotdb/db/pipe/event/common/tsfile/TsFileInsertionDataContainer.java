@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile;
 
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -52,6 +53,8 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
   // used to filter data
   private final String pattern;
+  private final PipeTaskMeta pipeTaskMeta; // used to report progress
+  private final PipeTsFileInsertionEvent sourceEvent; // used to report progress
   private final IExpression timeFilterExpression;
 
   private final TsFileSequenceReader tsFileSequenceReader;
@@ -63,7 +66,20 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
   public TsFileInsertionDataContainer(File tsFile, String pattern, long startTime, long endTime)
       throws IOException {
+    this(tsFile, pattern, null, null, startTime, endTime);
+  }
+
+  public TsFileInsertionDataContainer(
+      File tsFile,
+      String pattern,
+      PipeTaskMeta pipeTaskMeta,
+      PipeTsFileInsertionEvent sourceEvent,
+      long startTime,
+      long endTime)
+      throws IOException {
     this.pattern = pattern;
+    this.pipeTaskMeta = pipeTaskMeta;
+    this.sourceEvent = sourceEvent;
     timeFilterExpression =
         (startTime == Long.MIN_VALUE && endTime == Long.MAX_VALUE)
             ? null
@@ -176,10 +192,13 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
             final Tablet tablet = tabletIterator.next();
             final boolean isAligned = deviceIsAlignedMap.getOrDefault(tablet.deviceId, false);
-            final TabletInsertionEvent next = new PipeRawTabletInsertionEvent(tablet, isAligned);
+            final TabletInsertionEvent next;
 
             if (!hasNext()) {
+              next = new PipeRawTabletInsertionEvent(tablet, isAligned, pipeTaskMeta, sourceEvent);
               close();
+            } else {
+              next = new PipeRawTabletInsertionEvent(tablet, isAligned);
             }
 
             return next;
