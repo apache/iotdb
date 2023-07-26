@@ -21,20 +21,22 @@ package org.apache.iotdb.db.storageengine.dataregion.modification.io;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.utils.TracedBufferedReader;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -51,10 +53,8 @@ public class LocalTextModificationAccessor
 
   private static final Logger logger = LoggerFactory.getLogger(LocalTextModificationAccessor.class);
   private static final String SEPARATOR = ",";
-  private static final String ABORT_MARK = "aborted";
-  private static final String NO_MODIFICATION_MSG = "No modification has been written to this file";
-  private static final String TRUNCATE_MODIFICATION_MSG =
-      "An error occurred when reading modifications, and the remaining modifications will be truncated to size {}.";
+  private static final String NO_MODIFICATION_MSG =
+      "No modification has been written to this file[{}]";
 
   private final String filePath;
   private BufferedWriter writer;
@@ -81,16 +81,9 @@ public class LocalTextModificationAccessor
   @Override
   public Iterator<Modification> getModificationIterator() {
     File file = FSFactoryProducer.getFSFactory().getFile(filePath);
-    // we need to cache two lines to ensure because of ABORT case
-    final String[] cachedLines = new String[2];
-    final Modification[] cachedModification = new Modification[1];
-    final TracedBufferedReader reader;
-    final long[] truncatedSize = {0};
-    final boolean[] isInit = new boolean[] {true};
-    final boolean[] isTruncated = new boolean[1];
-
+    final BufferedReader reader;
     try {
-      reader = new TracedBufferedReader(new FileReader(file));
+      reader = new BufferedReader(new FileReader(file));
     } catch (FileNotFoundException e) {
       logger.debug(NO_MODIFICATION_MSG);
 
@@ -103,98 +96,46 @@ public class LocalTextModificationAccessor
 
         @Override
         public Modification next() {
-          try {
-            return null;
-          } catch (Exception e) {
-            // just for passing Sonar
-            throw new NoSuchElementException();
-          }
+          throw new NoSuchElementException();
         }
       };
     }
+
+    final Modification[] cachedModification = new Modification[1];
     return new Iterator<Modification>() {
       @Override
       public boolean hasNext() {
         try {
-          if (isTruncated[0]) {
-            return false;
-          }
-
-          truncatedSize[0] = reader.position();
-          boolean hasNext = true;
-          if (cachedLines[1] == null && cachedLines[0] == null) {
-            // we need to read two lines when init,
-            // otherwise means there are no more lines
-            if (isInit[0]) {
-              hasNext = (cachedLines[0] = reader.readLine()) != null;
-
-              // the first line may be ABORT when init
-              if (ABORT_MARK.equals(cachedLines[0])) {
-                cachedLines[0] = null;
-                isInit[0] = true;
-                return hasNext();
-              }
-
-              if (hasNext) {
-                cachedLines[1] = reader.readLine();
-              }
-              isInit[0] = false;
-            } else {
+          if (cachedModification[0] == null) {
+            String line = reader.readLine();
+            if (line == null) {
               return false;
+            } else {
+              try {
+                cachedModification[0] = decodeModification(line);
+              } catch (IOException e) {
+                logger.warn("An error occurred when decode line-[{}] to modification", line);
+                cachedModification[0] = null;
+                return false;
+              }
             }
-          } else if (cachedLines[1] == null) {
-            cachedLines[1] = reader.readLine();
           }
-
-          // meet ABORT line, the last line also need to be discarded
-          if (ABORT_MARK.equals(cachedLines[1])) {
-            cachedLines[0] = null;
-            cachedLines[1] = null;
-            isInit[0] = true;
-            return hasNext();
-          }
-
-          if (!hasNext) {
-            reader.close();
-            return false;
-          }
-          cachedModification[0] = decodeModification(cachedLines[0]);
-          return true;
         } catch (IOException e) {
-          try {
-            reader.close();
-          } catch (IOException ex) {
-            logger.warn("Fail to close reader", ex);
-          }
-          logger.error(TRUNCATE_MODIFICATION_MSG, 0, e);
-          truncateModFile(file, cachedLines[1] == null ? truncatedSize[0] : truncatedSize[0]);
+          logger.warn("An error occurred when reading modifications", e);
         }
-
-        return false;
+        return true;
       }
 
       @Override
       public Modification next() {
         if (cachedModification[0] == null) {
           throw new NoSuchElementException();
-        } else {
-          cachedLines[0] = cachedLines[1];
-          cachedLines[1] = null;
         }
-
-        return cachedModification[0];
+        Modification result = cachedModification[0];
+        cachedModification[0] = null;
+        return result;
       }
     };
-  }
-
-  private void truncateModFile(File file, long truncatedSize) {
-    try (FileOutputStream outputStream = new FileOutputStream(file, true)) {
-      outputStream.getChannel().truncate(truncatedSize);
-    } catch (FileNotFoundException e) {
-      logger.debug(NO_MODIFICATION_MSG);
-    } catch (IOException e) {
-      logger.error("An error occurred when truncating modifications to size {}.", truncatedSize, e);
-    }
   }
 
   @Override
@@ -206,16 +147,6 @@ public class LocalTextModificationAccessor
   }
 
   @Override
-  public void abort() throws IOException {
-    if (writer == null) {
-      writer = FSFactoryProducer.getFSFactory().getBufferedWriter(filePath, true);
-    }
-    writer.write(ABORT_MARK);
-    writer.newLine();
-    writer.flush();
-  }
-
-  @Override
   public void write(Modification mod) throws IOException {
     if (writer == null) {
       writer = FSFactoryProducer.getFSFactory().getBufferedWriter(filePath, true);
@@ -223,6 +154,61 @@ public class LocalTextModificationAccessor
     writer.write(encodeModification(mod));
     writer.newLine();
     writer.flush();
+  }
+
+  @TestOnly
+  public void writeInComplete(Modification mod) throws IOException {
+    if (writer == null) {
+      writer = FSFactoryProducer.getFSFactory().getBufferedWriter(filePath, true);
+    }
+    writer.write(encodeModification(mod).substring(0, 2));
+  }
+
+  @TestOnly
+  public void writeMeetException(Modification mod) throws IOException {
+    if (writer == null) {
+      writer = FSFactoryProducer.getFSFactory().getBufferedWriter(filePath, true);
+    }
+    writeInComplete(mod);
+    throw new IOException();
+  }
+
+  @Override
+  public void truncate(long position) {
+    try (FileOutputStream outputStream =
+        new FileOutputStream(FSFactoryProducer.getFSFactory().getFile(filePath), true)) {
+      outputStream.getChannel().truncate(position);
+      logger.warn("The modifications[{}] will be truncated to size {}.", filePath, position);
+    } catch (FileNotFoundException e) {
+      logger.debug(NO_MODIFICATION_MSG, filePath);
+    } catch (IOException e) {
+      logger.error(
+          "An error occurred when truncating modifications[{}] to size {}.", filePath, position, e);
+    }
+  }
+
+  @Override
+  public void mayTruncateLastLine() {
+    try (RandomAccessFile file = new RandomAccessFile(filePath, "r")) {
+      long filePointer = file.length() - 1;
+      if (filePointer == 0) {
+        return;
+      }
+
+      file.seek(filePointer);
+      byte lastChar = file.readByte();
+      if (lastChar != '\n') {
+        while (filePointer > -1 && lastChar != '\n') {
+          file.seek(filePointer);
+          filePointer--;
+          lastChar = file.readByte();
+        }
+        logger.warn("The last line of Mods is incomplete, will be truncated");
+        truncate(filePointer + 2);
+      }
+    } catch (IOException e) {
+      logger.error("An error occurred when reading modifications", e);
+    }
   }
 
   private static String encodeModification(Modification mod) {

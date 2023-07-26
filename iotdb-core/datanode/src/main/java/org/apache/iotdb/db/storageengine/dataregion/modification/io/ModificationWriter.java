@@ -37,9 +37,10 @@ public interface ModificationWriter {
    */
   void write(Modification mod) throws IOException;
 
+  void truncate(long position);
+
+  void mayTruncateLastLine();
+
   /** Release resources like streams. */
   void close() throws IOException;
-
-  /** Abort last modification. Notice that after calling abort(), a fileWriter is opened. */
-  void abort() throws IOException;
 }

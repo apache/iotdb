@@ -29,6 +29,8 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.concurrent.GuardedBy;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
@@ -52,6 +54,9 @@ public class ModificationFile implements AutoCloseable {
   public static final String FILE_SUFFIX = ".mods";
   public static final String COMPACT_SUFFIX = ".settle";
   public static final String COMPACTION_FILE_SUFFIX = ".compaction.mods";
+
+  // whether to verify the last line, it may be incomplete in extreme cases
+  private boolean needVerify = true;
 
   // lazy loaded, set null when closed
   private List<Modification> modifications;
@@ -94,15 +99,6 @@ public class ModificationFile implements AutoCloseable {
     }
   }
 
-  public void abort() throws IOException {
-    synchronized (this) {
-      writer.abort();
-      if (modifications != null && !modifications.isEmpty()) {
-        modifications.remove(modifications.size() - 1);
-      }
-    }
-  }
-
   /**
    * Write a modification in this file. The modification will first be written to the persistent
    * store then the memory cache.
@@ -112,11 +108,20 @@ public class ModificationFile implements AutoCloseable {
    */
   public void write(Modification mod) throws IOException {
     synchronized (this) {
+      if (needVerify) {
+        writer.mayTruncateLastLine();
+        // needVerify = false;
+      }
       writer.write(mod);
       if (modifications != null) {
         modifications.add(mod);
       }
     }
+  }
+
+  @GuardedBy("TsFileResource-WriteLock")
+  public void truncate(long position) {
+    writer.truncate(position);
   }
 
   /**
