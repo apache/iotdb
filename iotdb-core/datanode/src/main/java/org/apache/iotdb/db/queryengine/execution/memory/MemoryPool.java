@@ -32,9 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -58,8 +56,6 @@ public class MemoryPool {
      */
     private final long maxBytesCanReserve;
 
-    private boolean isMarked = false;
-
     private MemoryReservationFuture(
         String queryId,
         String fragmentInstanceId,
@@ -78,14 +74,6 @@ public class MemoryPool {
 
     public String getQueryId() {
       return queryId;
-    }
-
-    public boolean isMarked() {
-      return isMarked;
-    }
-
-    public void setMarked(boolean marked) {
-      isMarked = marked;
     }
 
     public String getFragmentInstanceId() {
@@ -329,7 +317,6 @@ public class MemoryPool {
 
     remainingBytes.addAndGet(bytes);
 
-    List<MemoryReservationFuture<Void>> futureList = new ArrayList<>();
     if (memoryReservationFutures.isEmpty()) {
       return;
     }
@@ -337,7 +324,7 @@ public class MemoryPool {
     while (iterator.hasNext()) {
       MemoryReservationFuture<Void> future = iterator.next();
       synchronized (future) {
-        if (future.isCancelled() || future.isDone() || future.isMarked()) {
+        if (future.isCancelled() || future.isDone()) {
           continue;
         }
         long bytesToReserve = future.getBytesToReserve();
@@ -347,21 +334,11 @@ public class MemoryPool {
         long maxBytesCanReserve = future.getMaxBytesCanReserve();
         if (tryReserve(
             curQueryId, curFragmentInstanceId, curPlanNodeId, bytesToReserve, maxBytesCanReserve)) {
-          futureList.add(future);
-          future.setMarked(true);
+          future.set(null);
           iterator.remove();
         } else {
           rollbackReserve(curQueryId, curFragmentInstanceId, curPlanNodeId, bytesToReserve);
         }
-      }
-    }
-
-    for (MemoryReservationFuture<Void> future : futureList) {
-      try {
-        future.set(null);
-      } catch (Throwable t) {
-        // ignore it, because we still need to notify other future
-        LOGGER.warn("error happened while trying to free memory: ", t);
       }
     }
   }
