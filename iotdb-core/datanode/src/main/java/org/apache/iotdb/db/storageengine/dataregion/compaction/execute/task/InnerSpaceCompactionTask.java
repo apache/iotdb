@@ -335,6 +335,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             isSequence());
       }
     } finally {
+      SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
+      SystemInfo.getInstance().decreaseCompactionFileNumCost(selectedTsFileResourceList.size());
       releaseAllLocksAndResetStatus();
     }
     return isSuccess;
@@ -461,7 +463,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       resetCompactionCandidateStatusForAllSourceFiles();
       return false;
     }
-    long estimateMemoryCost = 0;
     try {
       for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
         TsFileResource resource = selectedTsFileResourceList.get(i);
@@ -472,9 +473,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           return false;
         }
       }
-      estimateMemoryCost =
-          innerSpaceEstimator.estimateInnerCompactionMemory(selectedTsFileResourceList);
-      SystemInfo.getInstance().addCompactionMemoryCost(estimateMemoryCost, 60);
+      memoryCost = innerSpaceEstimator.estimateInnerCompactionMemory(selectedTsFileResourceList);
+      SystemInfo.getInstance().addCompactionMemoryCost(memoryCost, 60);
       SystemInfo.getInstance().addCompactionFileNum(selectedTsFileResourceList.size(), 60);
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
@@ -484,7 +484,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         LOGGER.info("No enough memory for current compaction task {}", this, e);
       } else if (e instanceof CompactionFileCountExceededException) {
         LOGGER.info("No enough file num for current compaction task {}", this, e);
-        SystemInfo.getInstance().resetCompactionMemoryCost(estimateMemoryCost);
+        SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
       }
       resetCompactionCandidateStatusForAllSourceFiles();
       releaseAllLocksAndResetStatus();
