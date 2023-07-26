@@ -45,6 +45,7 @@ import java.lang.management.MemoryUsage;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -56,8 +57,8 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
   private String youngGenPoolName;
   private String oldGenPoolName;
   private String nonGenerationalMemoryPool;
-  private final AtomicLong lastGcTotalDuration = new AtomicLong();
-  private final AtomicLong totalGcTimeSpend = new AtomicLong();
+  private final Map<String, AtomicLong> lastGcTotalDurationMap = new ConcurrentHashMap<>();
+  private final Map<String, AtomicLong> totalGcTimeSpendMap = new ConcurrentHashMap<>();
   private double throughout = 0.0d;
 
   public JvmGcMetrics() {
@@ -194,12 +195,17 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
             // Try and do a better job coming up with a good stopped time
             // value by asking for and tracking cumulative time spent blocked in GC.
             if (isPartiallyConcurrentGC(mbean)) {
-              long previousTotal = lastGcTotalDuration.get();
+              AtomicLong previousTotal =
+                  lastGcTotalDurationMap.getOrDefault(mbean.getName(), new AtomicLong());
               long total = mbean.getCollectionTime();
-              lastGcTotalDuration.set(total);
-              duration = total - previousTotal; // may be zero for a really fast collection
+              duration = total - previousTotal.get(); // may be zero for a really fast collection
+              previousTotal.set(total);
+              lastGcTotalDurationMap.put(mbean.getName(), previousTotal);
             }
+            AtomicLong totalGcTimeSpend =
+                totalGcTimeSpendMap.getOrDefault(mbean.getName(), new AtomicLong());
             totalGcTimeSpend.set(totalGcTimeSpend.get() + duration);
+            totalGcTimeSpendMap.put(mbean.getName(), totalGcTimeSpend);
 
             String timerName;
             if (isConcurrentPhase(gcCause, notificationInfo.getGcName())) {
@@ -248,7 +254,11 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
             // update throughput, which is the
             // percentage of GC time as total JVM running time
             throughout =
-                (double) ((gcInfo.getEndTime() - totalGcTimeSpend.get()))
+                (double)
+                        ((gcInfo.getEndTime()
+                            - totalGcTimeSpendMap
+                                .getOrDefault(mbean.getName(), new AtomicLong())
+                                .get()))
                     / gcInfo.getEndTime()
                     * 100L;
 
