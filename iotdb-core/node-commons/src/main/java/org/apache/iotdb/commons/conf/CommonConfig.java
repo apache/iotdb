@@ -147,7 +147,7 @@ public class CommonConfig {
 
   private String pipeHardlinkWALDirName = "wal";
 
-  private boolean pipeHardLinkWALEnabled = true;
+  private boolean pipeHardLinkWALEnabled = false;
 
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor. */
   private int pipeSubtaskExecutorMaxThreadNum = 5;
