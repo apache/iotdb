@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.service.metrics;
 
-import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.MetricConstant;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
+import org.apache.iotdb.metrics.utils.SystemMetric;
 
 import com.sun.management.OperatingSystemMXBean;
 
@@ -34,6 +34,7 @@ import java.lang.management.ManagementFactory;
 public class ProcessMetrics implements IMetricSet {
   private final OperatingSystemMXBean sunOsMxBean;
   private final Runtime runtime;
+  private static final String PROCESS = "process";
   private long lastUpdateTime = 0L;
   private volatile long processCpuLoad = 0L;
   private volatile long processCpuTime = 0L;
@@ -62,7 +63,7 @@ public class ProcessMetrics implements IMetricSet {
 
   private void collectProcessCpuInfo(AbstractMetricService metricService) {
     metricService.createAutoGauge(
-        Metric.PROCESS_CPU_LOAD.toString(),
+        SystemMetric.PROCESS_CPU_LOAD.toString(),
         MetricLevel.CORE,
         sunOsMxBean,
         a -> {
@@ -74,10 +75,10 @@ public class ProcessMetrics implements IMetricSet {
           return processCpuLoad;
         },
         Tag.NAME.toString(),
-        "process");
+        PROCESS);
 
     metricService.createAutoGauge(
-        Metric.PROCESS_CPU_TIME.toString(),
+        SystemMetric.PROCESS_CPU_TIME.toString(),
         MetricLevel.CORE,
         sunOsMxBean,
         bean -> {
@@ -89,102 +90,126 @@ public class ProcessMetrics implements IMetricSet {
           return processCpuTime;
         },
         Tag.NAME.toString(),
-        "process");
+        PROCESS);
   }
 
   private void removeProcessCpuInfo(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.PROCESS_CPU_LOAD.toString(), Tag.NAME.toString(), "process");
+        MetricType.AUTO_GAUGE,
+        SystemMetric.PROCESS_CPU_LOAD.toString(),
+        Tag.NAME.toString(),
+        PROCESS);
 
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.PROCESS_CPU_TIME.toString(), Tag.NAME.toString(), "process");
+        MetricType.AUTO_GAUGE,
+        SystemMetric.PROCESS_CPU_TIME.toString(),
+        Tag.NAME.toString(),
+        PROCESS);
   }
 
   private void collectProcessMemInfo(AbstractMetricService metricService) {
     Runtime runtime = Runtime.getRuntime();
     metricService.createAutoGauge(
-        Metric.PROCESS_MAX_MEM.toString(),
+        SystemMetric.PROCESS_MAX_MEM.toString(),
         MetricLevel.CORE,
         runtime,
         a -> runtime.maxMemory(),
         Tag.NAME.toString(),
-        "process");
+        PROCESS);
     metricService.createAutoGauge(
-        Metric.PROCESS_TOTAL_MEM.toString(),
+        SystemMetric.PROCESS_TOTAL_MEM.toString(),
         MetricLevel.CORE,
         runtime,
         a -> runtime.totalMemory(),
         Tag.NAME.toString(),
-        "process");
+        PROCESS);
     metricService.createAutoGauge(
-        Metric.PROCESS_FREE_MEM.toString(),
+        SystemMetric.PROCESS_FREE_MEM.toString(),
         MetricLevel.CORE,
         runtime,
         a -> runtime.freeMemory(),
         Tag.NAME.toString(),
-        "process");
+        PROCESS);
     // TODO maybe following metrics can be removed
     metricService.createAutoGauge(
-        Metric.PROCESS_USED_MEM.toString(),
+        SystemMetric.PROCESS_USED_MEM.toString(),
         MetricLevel.IMPORTANT,
         this,
         a -> getProcessUsedMemory(),
         Tag.NAME.toString(),
-        "process");
+        PROCESS);
     metricService.createAutoGauge(
-        Metric.PROCESS_MEM_RATIO.toString(),
+        SystemMetric.PROCESS_MEM_RATIO.toString(),
         MetricLevel.IMPORTANT,
         this,
         a -> Math.round(getProcessMemoryRatio()),
         Tag.NAME.toString(),
-        "process");
+        PROCESS);
   }
 
   private void removeProcessMemInfo(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.PROCESS_MAX_MEM.toString(), Tag.NAME.toString(), "process");
+        MetricType.AUTO_GAUGE,
+        SystemMetric.PROCESS_MAX_MEM.toString(),
+        Tag.NAME.toString(),
+        PROCESS);
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.PROCESS_TOTAL_MEM.toString(), Tag.NAME.toString(), "process");
+        MetricType.AUTO_GAUGE,
+        SystemMetric.PROCESS_TOTAL_MEM.toString(),
+        Tag.NAME.toString(),
+        PROCESS);
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.PROCESS_FREE_MEM.toString(), Tag.NAME.toString(), "process");
+        MetricType.AUTO_GAUGE,
+        SystemMetric.PROCESS_FREE_MEM.toString(),
+        Tag.NAME.toString(),
+        PROCESS);
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.PROCESS_USED_MEM.toString(), Tag.NAME.toString(), "process");
+        MetricType.AUTO_GAUGE,
+        SystemMetric.PROCESS_USED_MEM.toString(),
+        Tag.NAME.toString(),
+        PROCESS);
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.PROCESS_MEM_RATIO.toString(), Tag.NAME.toString(), "process");
+        MetricType.AUTO_GAUGE,
+        SystemMetric.PROCESS_MEM_RATIO.toString(),
+        Tag.NAME.toString(),
+        PROCESS);
   }
 
   private void collectThreadInfo(AbstractMetricService metricService) {
     // TODO maybe duplicated with thread info in jvm related metrics
     metricService.createAutoGauge(
-        Metric.PROCESS_THREADS_COUNT.toString(),
+        SystemMetric.PROCESS_THREADS_COUNT.toString(),
         MetricLevel.IMPORTANT,
         this,
         a -> getThreadsCount(),
         Tag.NAME.toString(),
-        "process");
+        PROCESS);
   }
 
   private void removeThreadInfo(AbstractMetricService metricService) {
     metricService.remove(
         MetricType.AUTO_GAUGE,
-        Metric.PROCESS_THREADS_COUNT.toString(),
+        SystemMetric.PROCESS_THREADS_COUNT.toString(),
         Tag.NAME.toString(),
-        "process");
+        PROCESS);
   }
 
   private void collectProcessStatusInfo(AbstractMetricService metricService) {
     metricService.createAutoGauge(
-        Metric.PROCESS_STATUS.toString(),
+        SystemMetric.PROCESS_STATUS.toString(),
         MetricLevel.IMPORTANT,
         this,
         a -> (getProcessStatus()),
         Tag.NAME.toString(),
-        "process");
+        PROCESS);
   }
 
   private void removeProcessStatusInfo(AbstractMetricService metricService) {
     metricService.remove(
-        MetricType.AUTO_GAUGE, Metric.PROCESS_STATUS.toString(), Tag.NAME.toString(), "process");
+        MetricType.AUTO_GAUGE,
+        SystemMetric.PROCESS_STATUS.toString(),
+        Tag.NAME.toString(),
+        PROCESS);
   }
 
   private long getProcessUsedMemory() {
