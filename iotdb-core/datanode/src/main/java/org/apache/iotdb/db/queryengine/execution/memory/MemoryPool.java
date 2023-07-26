@@ -188,26 +188,27 @@ public class MemoryPool {
    *
    * @throws MemoryLeakException throw {@link MemoryLeakException}
    */
-  public void deRegisterFragmentInstanceToQueryMemoryMap(
+  public void deRegisterFragmentInstanceFromQueryMemoryMap(
       String queryId, String fragmentInstanceId) {
     Map<String, Map<String, Long>> queryRelatedMemory = queryMemoryReservations.get(queryId);
     if (queryRelatedMemory != null) {
       Map<String, Long> fragmentRelatedMemory = queryRelatedMemory.get(fragmentInstanceId);
+      boolean hasPotentialMemoryLeak = false;
       // fragmentRelatedMemory could be null if the FI has not reserved any memory(For example,
       // next() of root operator returns no data)
       if (fragmentRelatedMemory != null) {
-        for (Long memoryReserved : fragmentRelatedMemory.values()) {
-          if (memoryReserved != 0) {
-            throw new MemoryLeakException(
-                "PlanNode related memory is not zero when trying to deregister FI from query memory pool. QueryId is : {}, FragmentInstanceId is : {}, PlanNode related memory is : {}.");
-          }
-        }
+        hasPotentialMemoryLeak =
+            fragmentRelatedMemory.values().stream().anyMatch(value -> value != 0);
       }
       synchronized (queryMemoryReservations) {
         queryRelatedMemory.remove(fragmentInstanceId);
         if (queryRelatedMemory.isEmpty()) {
           queryMemoryReservations.remove(queryId);
         }
+      }
+      if (hasPotentialMemoryLeak) {
+        throw new MemoryLeakException(
+            "PlanNode related memory is not zero when trying to deregister FI from query memory pool. QueryId is : {}, FragmentInstanceId is : {}, PlanNode related memory is : {}.");
       }
     }
   }
@@ -288,16 +289,21 @@ public class MemoryPool {
    * @return If the future has not complete, return the number of bytes being reserved. Otherwise,
    *     return 0.
    */
+  @SuppressWarnings("squid:S2445")
   public synchronized long tryCancel(ListenableFuture<Void> future) {
-    Validate.notNull(future);
-    // If the future is not a MemoryReservationFuture, it must have been completed.
-    if (future.isDone()) {
-      return 0L;
+    // add synchronized on the future to avoid that the future is concurrently completed by
+    // MemoryPool.free() which may lead to memory leak.
+    synchronized (future) {
+      Validate.notNull(future);
+      // If the future is not a MemoryReservationFuture, it must have been completed.
+      if (future.isDone()) {
+        return 0L;
+      }
+      Validate.isTrue(
+          future instanceof MemoryReservationFuture,
+          "invalid future type " + future.getClass().getSimpleName());
+      future.cancel(true);
     }
-    Validate.isTrue(
-        future instanceof MemoryReservationFuture,
-        "invalid future type " + future.getClass().getSimpleName());
-    future.cancel(true);
     return ((MemoryReservationFuture<Void>) future).getBytesToReserve();
   }
 
@@ -308,16 +314,21 @@ public class MemoryPool {
    * @return If the future has not complete, return the number of bytes being reserved. Otherwise,
    *     return 0.
    */
+  @SuppressWarnings("squid:S2445")
   public synchronized long tryComplete(ListenableFuture<Void> future) {
-    Validate.notNull(future);
-    // If the future is not a MemoryReservationFuture, it must have been completed.
-    if (future.isDone()) {
-      return 0L;
+    // add synchronized on the future to avoid that the future is concurrently completed by
+    // MemoryPool.free() which may lead to memory leak.
+    synchronized (future) {
+      Validate.notNull(future);
+      // If the future is not a MemoryReservationFuture, it must have been completed.
+      if (future.isDone()) {
+        return 0L;
+      }
+      Validate.isTrue(
+          future instanceof MemoryReservationFuture,
+          "invalid future type " + future.getClass().getSimpleName());
+      ((MemoryReservationFuture<Void>) future).set(null);
     }
-    Validate.isTrue(
-        future instanceof MemoryReservationFuture,
-        "invalid future type " + future.getClass().getSimpleName());
-    ((MemoryReservationFuture<Void>) future).set(null);
     return ((MemoryReservationFuture<Void>) future).getBytesToReserve();
   }
 
@@ -370,14 +381,6 @@ public class MemoryPool {
       }
     }
 
-    // why we need to put this outside MemoryPool's lock?
-    // If we put this block inside the MemoryPool's lock, we will get deadlock case like the
-    // following:
-    // Assuming that thread-A: LocalSourceHandle.receive() -> A-SharedTsBlockQueue.remove() ->
-    // MemoryPool.free() (hold future's lock) -> future.set(null) -> try to get
-    // B-SharedTsBlockQueue's lock
-    // thread-B: LocalSourceHandle.receive() -> B-SharedTsBlockQueue.remove() (hold
-    // B-SharedTsBlockQueue's lock) -> try to get future's lock
     for (MemoryReservationFuture<Void> future : futureList) {
       try {
         future.set(null);
