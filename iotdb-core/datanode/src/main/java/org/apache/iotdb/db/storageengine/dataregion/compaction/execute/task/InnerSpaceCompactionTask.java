@@ -20,8 +20,6 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionExceptionHandler;
@@ -474,23 +472,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           return false;
         }
       }
-
-      IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-      long memoryBudget =
-          (long)
-              ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
-                  / config.getCompactionThreadCount()
-                  * config.getUsableCompactionMemoryProportion());
       long estimateMemoryCost =
           innerSpaceEstimator.estimateInnerCompactionMemory(selectedTsFileResourceList);
-      if (estimateMemoryCost > memoryBudget) {
-        LOGGER.warn(
-            "estimate memory cost greater than memory budget,estimate memory cost is {},memory budget is {}",
-            estimateMemoryCost,
-            memoryBudget);
-        return false;
-      }
-      SystemInfo.getInstance().addCompactionMemoryCost(memCost, 60);
+      SystemInfo.getInstance().addCompactionMemoryCost(estimateMemoryCost, 60);
       SystemInfo.getInstance().addCompactionFileNum(selectedTsFileResourceList.size(), 60);
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
