@@ -57,6 +57,9 @@ public class MemoryPool {
      */
     private final long maxBytesCanReserve;
 
+    /** Being marked means this future will be completed shortly. */
+    private boolean isMarked = false;
+
     private MemoryReservationFuture(
         String queryId,
         String fragmentInstanceId,
@@ -91,6 +94,14 @@ public class MemoryPool {
 
     public long getMaxBytesCanReserve() {
       return maxBytesCanReserve;
+    }
+
+    public boolean isMarked() {
+      return isMarked;
+    }
+
+    public void setMarked(boolean marked) {
+      isMarked = marked;
     }
 
     public static <V> MemoryReservationFuture<V> create(
@@ -257,27 +268,12 @@ public class MemoryPool {
     Validate.isTrue(
         future instanceof MemoryReservationFuture,
         "invalid future type " + future.getClass().getSimpleName());
-    future.cancel(true);
-    return ((MemoryReservationFuture<Void>) future).getBytesToReserve();
-  }
-
-  /**
-   * Complete the specified memory reservation. If the reservation has finished, do nothing.
-   *
-   * @param future The future returned from {@link #reserve(String, String, String, long, long)}
-   * @return If the future has not complete, return the number of bytes being reserved. Otherwise,
-   *     return 0.
-   */
-  public synchronized long tryComplete(ListenableFuture<Void> future) {
-    Validate.notNull(future);
-    // If the future is not a MemoryReservationFuture, it must have been completed.
-    if (future.isDone()) {
+    // The MemoryReservationFuture has been marked, which means that the related Memory Reservation
+    // has been recorded in MemoryPool.
+    if (((MemoryReservationFuture<Void>) future).isMarked()) {
       return 0L;
     }
-    Validate.isTrue(
-        future instanceof MemoryReservationFuture,
-        "invalid future type " + future.getClass().getSimpleName());
-    ((MemoryReservationFuture<Void>) future).set(null);
+    future.cancel(true);
     return ((MemoryReservationFuture<Void>) future).getBytesToReserve();
   }
 
@@ -332,6 +328,7 @@ public class MemoryPool {
               .computeIfAbsent(curQueryId, x -> new HashMap<>())
               .computeIfAbsent(curFragmentInstanceId, x -> new HashMap<>())
               .merge(curPlanNodeId, bytesToReserve, Long::sum);
+          future.setMarked(true);
           futureList.add(future);
           iterator.remove();
         }
