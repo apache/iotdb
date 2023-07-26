@@ -30,41 +30,33 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
-  private long calculatingMultiDeviceIteratorCost(InnerCompactionTaskInfo taskInfo) {
+  @Override
+  public long calculatingMetadataMemoryCost(InnerCompactionTaskInfo taskInfo) {
     long cost = 0;
+    // add ChunkMetadata size of MultiTsFileDeviceIterator
     cost +=
         taskInfo.getFileInfoList().size()
             * taskInfo.getMaxChunkMetadataNumInDevice()
             * taskInfo.getMaxChunkMetadataSize();
+    // add modification file size
     cost += taskInfo.getModificationFileSize();
-    return cost;
-  }
 
-  private long calculatingReadChunkCost() {
-    return IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
-  }
-
-  private long calculatingWriteTargetFileCost(InnerCompactionTaskInfo taskInfo) {
-    long cost =
-        taskInfo.getMaxConcurrentSeriesNum()
-            * IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
-
+    // add ChunkMetadata size of targetFileWriter
     long sizeForFileWriter =
         (long)
             ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
                 / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
                 * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
     cost += sizeForFileWriter;
+
     return cost;
   }
 
   @Override
-  public long calculatingMetadataMemoryCost(InnerCompactionTaskInfo taskInfo) {
-    return 0;
-  }
-
-  @Override
   public long calculatingDataMemoryCost(InnerCompactionTaskInfo taskInfo) {
-    return 0;
+    // add max target chunk size and max source chunk size
+    return 2
+        * taskInfo.getMaxConcurrentSeriesNum()
+        * IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
   }
 }
