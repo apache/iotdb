@@ -23,13 +23,11 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEstimator {
@@ -47,17 +45,6 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
     cost += calculatingFastCompactionCost(resources.size(), taskInfo.getMaxConcurrentSeriesNum());
     cost += calculatingWriteTargetFileCost(taskInfo, resources.size());
     return cost;
-  }
-
-  private InnerCompactionTaskInfo calculatingReadChunkCompactionTaskInfo(
-      List<TsFileResource> resources) throws IOException {
-    List<FileInfo> fileInfoList = new ArrayList<>();
-    for (TsFileResource resource : resources) {
-      TsFileSequenceReader reader = getFileReader(resource);
-      FileInfo fileInfo = CompactionEstimateUtils.getSeriesAndDeviceChunkNum(reader);
-      fileInfoList.add(fileInfo);
-    }
-    return new InnerCompactionTaskInfo(resources, fileInfoList);
   }
 
   private long calculatingMultiDeviceIteratorCost(InnerCompactionTaskInfo taskInfo) {
