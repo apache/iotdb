@@ -564,9 +564,8 @@ public class NodeInfo implements SnapshotProcessor {
   }
 
   private void deserializeBuildInfo(InputStream inputStream) throws IOException {
-    // during upgrade old version snapshot may not have build info, thus we need to check
-    // inputStream
-    // before deserialize.
+    // old version may not have build info,
+    // thus we need to check inputStream before deserialize.
     if (inputStream.available() != 0) {
       int size = ReadWriteIOUtils.readInt(inputStream);
       while (size > 0) {
