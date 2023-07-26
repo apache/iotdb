@@ -82,7 +82,6 @@ public enum SystemMetric {
   JVM_GC_MEMORY_ALLOCATED_BYTES("jvm_gc_memory_allocated_bytes"),
   JVM_GC_MEMORY_PROMOTED_BYTES("jvm_gc_memory_promoted_bytes"),
   JVM_GC_MEMORY_USED_PERCENT("jvm_gc_memory_used_percent"),
-  JVM_GC_THROUGHOUT("jvm_gc_throughout"),
   JVM_ZGC_CYCLES_COUNT("jvm_zgc_cycles_count"),
   JVM_ZGC_PAUSES_COUNT("jvm_zgc_pauses_count"),
   JVM_GC_YOUNG_GC_COUNT("jvm_gc_old_gc_count"),

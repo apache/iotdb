@@ -59,7 +59,6 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
   private String nonGenerationalMemoryPool;
   private final Map<String, AtomicLong> lastGcTotalDurationMap = new ConcurrentHashMap<>();
   private final Map<String, AtomicLong> totalGcTimeSpendMap = new ConcurrentHashMap<>();
-  private double throughout = 0.0d;
 
   public JvmGcMetrics() {
     for (MemoryPoolMXBean mbean : ManagementFactory.getMemoryPoolMXBeans()) {
@@ -150,12 +149,6 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
         MetricLevel.CORE,
         heapMemUsedPercentage,
         AtomicLong::get);
-
-    metricService.createAutoGauge(
-        SystemMetric.JVM_GC_THROUGHOUT.toString(),
-        MetricLevel.CORE,
-        this,
-        JvmGcMetrics::getThroughput);
 
     Counter allocatedBytes =
         metricService.getOrCreateCounter(
@@ -251,17 +244,6 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
             // update memory usage percentage
             heapMemUsedPercentage.set(calculateMemoryUsagePercentage());
 
-            // update throughput, which is the
-            // percentage of GC time as total JVM running time
-            throughout =
-                (double)
-                        ((gcInfo.getEndTime()
-                            - totalGcTimeSpendMap
-                                .getOrDefault(mbean.getName(), new AtomicLong())
-                                .get()))
-                    / gcInfo.getEndTime()
-                    * 100L;
-
             // Update promotion and allocation counters
             final Map<String, MemoryUsage> before = gcInfo.getMemoryUsageBeforeGc();
             final Map<String, MemoryUsage> after = gcInfo.getMemoryUsageAfterGc();
@@ -347,7 +329,6 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
         MetricType.AUTO_GAUGE, SystemMetric.JVM_GC_LIVE_DATA_SIZE_BYTES.toString());
     metricService.remove(MetricType.COUNTER, SystemMetric.JVM_GC_MEMORY_ALLOCATED_BYTES.toString());
     metricService.remove(MetricType.AUTO_GAUGE, SystemMetric.JVM_GC_MEMORY_USED_PERCENT.toString());
-    metricService.remove(MetricType.AUTO_GAUGE, SystemMetric.JVM_GC_THROUGHOUT.toString());
 
     if (oldGenPoolName != null) {
       metricService.remove(
@@ -455,11 +436,6 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
     return (ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getUsed()
         * 100
         / Runtime.getRuntime().maxMemory());
-  }
-
-  // We need to keep two decimal places accurate, so we maintain a double var here.
-  public double getThroughput() {
-    return throughout;
   }
 
   enum GcGenerationAge {
