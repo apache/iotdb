@@ -19,24 +19,27 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEstimator {
-  private static final Logger logger =
-      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
+  /**
+   * The metadata algorithm is: maxChunkMetaDataSize * maxChunkNumber * fileSize * maxSeriesNumber
+   *
+   * @return estimate metadata memory cost
+   */
   @Override
   public long calculatingMetadataMemoryCost(InnerCompactionTaskInfo taskInfo) {
     return taskInfo.getFileInfoList().size()
         * taskInfo.getMaxChunkMetadataNumInDevice()
-        * taskInfo.getMaxChunkMetadataSize();
+        * taskInfo.getMaxChunkMetadataSize()
+        * Math.max(config.getSubCompactionTaskNum(), taskInfo.getMaxConcurrentSeriesNum());
   }
 
+  /**
+   * The metadata algorithm is: (targetChunkSize * fileSize * compressionRatio * maxSeriesNumber) +
+   * modsFileSize
+   *
+   * @return estimate data memory cost
+   */
   @Override
   public long calculatingDataMemoryCost(InnerCompactionTaskInfo taskInfo) {
     long cost =
@@ -44,28 +47,7 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
             * taskInfo.getFileInfoList().size()
             * Math.max(config.getSubCompactionTaskNum(), taskInfo.getMaxConcurrentSeriesNum())
             * compressionRatio;
-    return cost;
-  }
-
-  private long calculatingFastCompactionCost(int fileSize, int maxSeriesNumber) {
-    return config.getTargetChunkSize()
-        * fileSize
-        * Math.max(config.getSubCompactionTaskNum(), maxSeriesNumber)
-        * compressionRatio;
-  }
-
-  private long calculatingWriteTargetFileCost(InnerCompactionTaskInfo taskInfo, int fileSize) {
-    long cost =
-        Math.max(config.getSubCompactionTaskNum(), taskInfo.getMaxConcurrentSeriesNum())
-            * IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize()
-            * fileSize;
-
-    long sizeForFileWriter =
-        (long)
-            ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
-                / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
-                * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
-    cost += sizeForFileWriter;
+    cost += taskInfo.getModificationFileSize();
     return cost;
   }
 }
