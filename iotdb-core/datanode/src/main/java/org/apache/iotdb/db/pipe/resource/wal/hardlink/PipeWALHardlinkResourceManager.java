@@ -88,6 +88,8 @@ public class PipeWALHardlinkResourceManager extends PipeWALResourceManager {
     return hardlinkToReferenceMap.containsKey(path);
   }
 
+  // TODO: Check me! Make sure the file is not a hardlink.
+  // TODO: IF user specify a wal by config, will the method work?
   private static File getHardlinkInPipeWALDir(File file) throws IOException {
     try {
       return new File(getPipeWALDirPath(file), getRelativeFilePath(file));
