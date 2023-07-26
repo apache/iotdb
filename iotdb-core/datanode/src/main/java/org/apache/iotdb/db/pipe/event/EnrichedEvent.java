@@ -36,7 +36,7 @@ public abstract class EnrichedEvent implements Event {
 
   private final AtomicInteger referenceCount;
 
-  private final PipeTaskMeta pipeTaskMeta;
+  protected final PipeTaskMeta pipeTaskMeta;
 
   private final String pattern;
 
@@ -132,6 +132,8 @@ public abstract class EnrichedEvent implements Event {
       PipeTaskMeta pipeTaskMeta, String pattern);
 
   public void reportException(PipeRuntimeException pipeRuntimeException) {
-    PipeAgent.runtime().report(this.pipeTaskMeta, pipeRuntimeException);
+    if (pipeTaskMeta != null) {
+      PipeAgent.runtime().report(this.pipeTaskMeta, pipeRuntimeException);
+    }
   }
 }

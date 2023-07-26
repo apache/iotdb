@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.db.pipe.event.common.tablet;
 
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -28,26 +32,63 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 
-public class PipeRawTabletInsertionEvent implements TabletInsertionEvent {
+public class PipeRawTabletInsertionEvent extends EnrichedEvent implements TabletInsertionEvent {
 
   private final Tablet tablet;
   private final boolean isAligned;
   private final String pattern;
 
+  private PipeTsFileInsertionEvent sourceEvent;
   private TabletInsertionDataContainer dataContainer;
 
   public PipeRawTabletInsertionEvent(Tablet tablet, boolean isAligned) {
-    this(tablet, isAligned, null);
+    this(tablet, isAligned, null, null, null);
+  }
+
+  public PipeRawTabletInsertionEvent(
+      Tablet tablet,
+      boolean isAligned,
+      PipeTaskMeta pipeTaskMeta,
+      PipeTsFileInsertionEvent sourceEvent) {
+    this(tablet, isAligned, pipeTaskMeta, sourceEvent, null);
   }
 
   public PipeRawTabletInsertionEvent(Tablet tablet, boolean isAligned, String pattern) {
+    this(tablet, isAligned, null, null, pattern);
+  }
+
+  public PipeRawTabletInsertionEvent(
+      Tablet tablet,
+      boolean isAligned,
+      PipeTaskMeta pipeTaskMeta,
+      PipeTsFileInsertionEvent sourceEvent,
+      String pattern) {
+    super(pipeTaskMeta, pattern);
     this.tablet = Objects.requireNonNull(tablet);
     this.isAligned = isAligned;
+    this.sourceEvent = sourceEvent;
     this.pattern = pattern;
   }
 
-  public String getPattern() {
-    return pattern == null ? PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE : pattern;
+  @Override
+  public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
+    return true;
+  }
+
+  @Override
+  public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
+    return true;
+  }
+
+  @Override
+  public ProgressIndex getProgressIndex() {
+    return sourceEvent.getProgressIndex();
+  }
+
+  @Override
+  public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+      PipeTaskMeta pipeTaskMeta, String pattern) {
+    return new PipeRawTabletInsertionEvent(tablet, isAligned, pipeTaskMeta, sourceEvent, pattern);
   }
 
   /////////////////////////// TabletInsertionEvent ///////////////////////////
