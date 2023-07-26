@@ -24,11 +24,10 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
+import org.junit.After;
 import org.junit.Test;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -38,17 +37,49 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class LocalTextModificationAccessorTest {
+  private static Modification[] modifications =
+      new Modification[] {
+        new Deletion(new PartialPath(new String[] {"d1", "s1"}), 1, 1),
+        new Deletion(new PartialPath(new String[] {"d1", "s2"}), 2, 2),
+        new Deletion(new PartialPath(new String[] {"d1", "s3"}), 3, 3),
+        new Deletion(new PartialPath(new String[] {"d1", "s4"}), 4, 4),
+      };
+
+  @After
+  public void tearDown() {
+    modifications = null;
+  }
+
+  @Test
+  public void writeMeetException() {
+    String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("mod.temp");
+    LocalTextModificationAccessor accessor = new LocalTextModificationAccessor(tempFileName);
+    long length = 0;
+    try {
+      for (int i = 0; i < 2; i++) {
+        accessor.write(modifications[i]);
+      }
+      length = new File(tempFileName).length();
+      // the current line should be truncated when meet exception
+      accessor.writeMeetException(modifications[2]);
+      for (int i = 2; i < 4; i++) {
+        accessor.write(modifications[i]);
+      }
+      List<Modification> modificationList = (List<Modification>) accessor.read();
+      assertEquals(4, modificationList.size());
+      for (int i = 0; i < 4; i++) {
+        assertEquals(modifications[i], modificationList.get(i));
+      }
+    } catch (IOException e) {
+      accessor.truncate(length);
+    } finally {
+      new File(tempFileName).delete();
+    }
+  }
 
   @Test
   public void readMyWrite() {
     String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("mod.temp");
-    Modification[] modifications =
-        new Modification[] {
-          new Deletion(new PartialPath(new String[] {"d1", "s1"}), 1, 1),
-          new Deletion(new PartialPath(new String[] {"d1", "s2"}), 2, 2),
-          new Deletion(new PartialPath(new String[] {"d1", "s3"}), 3, 3),
-          new Deletion(new PartialPath(new String[] {"d1", "s4"}), 4, 4),
-        };
     try (LocalTextModificationAccessor accessor = new LocalTextModificationAccessor(tempFileName)) {
       for (int i = 0; i < 2; i++) {
         accessor.write(modifications[i]);
@@ -82,45 +113,31 @@ public class LocalTextModificationAccessorTest {
   }
 
   @Test
-  public void readAndTruncate() {
+  public void readMeetError() {
     String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("mod.temp");
     File file = new File(tempFileName);
     if (file.exists()) {
       file.delete();
     }
-    Modification[] modifications =
-        new Modification[] {
-          new Deletion(new PartialPath(new String[] {"d1", "s1"}), 1, 1),
-          new Deletion(new PartialPath(new String[] {"d1", "s2"}), 2, 2),
-          new Deletion(new PartialPath(new String[] {"d1", "s3"}), 3, 3),
-          new Deletion(new PartialPath(new String[] {"d1", "s4"}), 4, 4),
-        };
-    try (LocalTextModificationAccessor accessor = new LocalTextModificationAccessor(tempFileName);
-        BufferedWriter writer = new BufferedWriter(new FileWriter(tempFileName, true))) {
+    try (LocalTextModificationAccessor accessor = new LocalTextModificationAccessor(tempFileName)) {
       // write normal message
-      for (int i = 0; i < 2; i++) {
+      for (int i = 0; i < 4; i++) {
         accessor.write(modifications[i]);
       }
       List<Modification> modificationList = (List<Modification>) accessor.read();
-      for (int i = 0; i < 2; i++) {
+      for (int i = 0; i < 4; i++) {
         assertEquals(modifications[i], modificationList.get(i));
       }
       // write error message
-      long length = file.length();
-      writer.write("error");
-      writer.newLine();
-      writer.flush();
-      // write normal message & read
-      for (int i = 2; i < 4; i++) {
-        accessor.write(modifications[i]);
-      }
+      accessor.writeInComplete(modifications[0]);
+
       modificationList = (List<Modification>) accessor.read();
-      for (int i = 0; i < 2; i++) {
+      // the error line is ignored
+      assertEquals(4, modificationList.size());
+      for (int i = 0; i < 4; i++) {
         System.out.println(modificationList);
         assertEquals(modifications[i], modificationList.get(i));
       }
-      // check truncated file
-      assertEquals(length, file.length());
     } catch (IOException e) {
       fail(e.getMessage());
     } finally {
