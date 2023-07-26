@@ -1924,6 +1924,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     sinkHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
     context.getDriverContext().setSink(sinkHandle);
 
+    if (node.getChildren().size() == 1) {
+      // if IdentitySinkNode only has one child, we do not need to split pipeline for it.
+      context.setDegreeOfParallelism(1);
+    }
     List<Operator> children = dealWithConsumeChildrenOneByOneNode(node, context);
     return new IdentitySinkOperator(operatorContext, children, downStreamChannelIndex, sinkHandle);
   }
