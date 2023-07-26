@@ -122,12 +122,13 @@ public class Aggregator {
   }
 
   /** Used for SeriesAggregateScanOperator. */
-  public void processStatistics(Statistics[] statistics) {
+  public void processStatistics(Statistics timeStatistics, Statistics[] valueStatistics) {
     long startTime = System.nanoTime();
     try {
       for (InputLocation[] inputLocations : inputLocationList) {
         int valueIndex = inputLocations[0].getValueColumnIndex();
-        accumulator.addStatistics(statistics[valueIndex]);
+        // valueIndex == -1 means it is count_time, we need to use timeStatistics
+        accumulator.addStatistics(valueIndex == -1 ? timeStatistics : valueStatistics[valueIndex]);
       }
     } finally {
       QUERY_EXECUTION_METRICS.recordExecutionCost(
