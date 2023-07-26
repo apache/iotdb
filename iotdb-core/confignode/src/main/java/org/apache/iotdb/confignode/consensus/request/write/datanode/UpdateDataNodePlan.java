@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -33,7 +32,6 @@ import java.util.Objects;
 public class UpdateDataNodePlan extends ConfigPhysicalPlan {
 
   private TDataNodeConfiguration dataNodeConfiguration;
-  private String buildInfo;
 
   public UpdateDataNodePlan() {
     super(ConfigPhysicalPlanType.UpdateDataNodeConfiguration);
@@ -42,36 +40,21 @@ public class UpdateDataNodePlan extends ConfigPhysicalPlan {
   public UpdateDataNodePlan(TDataNodeConfiguration dataNodeConfiguration) {
     this();
     this.dataNodeConfiguration = dataNodeConfiguration;
-    this.buildInfo = "";
   }
 
   public TDataNodeConfiguration getDataNodeConfiguration() {
     return dataNodeConfiguration;
   }
 
-  public void setBuildInfo(String buildInfo) {
-    this.buildInfo = buildInfo;
-  }
-
-  public String getBuildInfo() {
-    return buildInfo;
-  }
-
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
     ThriftCommonsSerDeUtils.serializeTDataNodeConfiguration(dataNodeConfiguration, stream);
-    ReadWriteIOUtils.write(buildInfo, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
     dataNodeConfiguration = ThriftCommonsSerDeUtils.deserializeTDataNodeConfiguration(buffer);
-    if (buffer.hasRemaining()) {
-      this.buildInfo = ReadWriteIOUtils.readString(buffer);
-    } else {
-      buildInfo = "";
-    }
   }
 
   @Override
@@ -86,12 +69,11 @@ public class UpdateDataNodePlan extends ConfigPhysicalPlan {
       return false;
     }
     UpdateDataNodePlan that = (UpdateDataNodePlan) o;
-    return dataNodeConfiguration.equals(that.dataNodeConfiguration)
-        && buildInfo.equals(that.buildInfo);
+    return dataNodeConfiguration.equals(that.dataNodeConfiguration);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(getType(), dataNodeConfiguration, buildInfo);
+    return Objects.hash(getType(), dataNodeConfiguration);
   }
 }

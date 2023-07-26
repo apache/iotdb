@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.AddConfigNodeState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,13 +49,9 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
     super();
   }
 
-  public AddConfigNodeProcedure(TConfigNodeLocation tConfigNodeLocation) {
+  public AddConfigNodeProcedure(TConfigNodeLocation tConfigNodeLocation, String buildInfo) {
     super();
     this.tConfigNodeLocation = tConfigNodeLocation;
-    buildInfo = "";
-  }
-
-  public void setBuildInfo(String buildInfo) {
     this.buildInfo = buildInfo;
   }
 
@@ -152,6 +149,7 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
     stream.writeShort(ProcedureType.ADD_CONFIG_NODE_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ThriftConfigNodeSerDeUtils.serializeTConfigNodeLocation(tConfigNodeLocation, stream);
+    ReadWriteIOUtils.write(buildInfo, stream);
   }
 
   @Override
@@ -159,6 +157,7 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
     super.deserialize(byteBuffer);
     try {
       tConfigNodeLocation = ThriftConfigNodeSerDeUtils.deserializeTConfigNodeLocation(byteBuffer);
+      buildInfo = ReadWriteIOUtils.readString(byteBuffer);
     } catch (ThriftSerDeException e) {
       LOG.error("Error in deserialize AddConfigNodeProcedure", e);
     }
@@ -170,13 +169,14 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
       AddConfigNodeProcedure thatProc = (AddConfigNodeProcedure) that;
       return thatProc.getProcId() == this.getProcId()
           && thatProc.getState() == this.getState()
-          && thatProc.tConfigNodeLocation.equals(this.tConfigNodeLocation);
+          && thatProc.tConfigNodeLocation.equals(this.tConfigNodeLocation)
+          && thatProc.buildInfo.equals(this.buildInfo);
     }
     return false;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(this.tConfigNodeLocation);
+    return Objects.hash(this.tConfigNodeLocation, this.buildInfo);
   }
 }

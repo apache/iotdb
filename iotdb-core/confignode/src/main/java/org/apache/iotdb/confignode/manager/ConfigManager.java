@@ -61,7 +61,6 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetDataRepli
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
-import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
@@ -348,13 +347,9 @@ public class ConfigManager implements IManager {
               req.getDataNodeConfiguration().getLocation(),
               this);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        RegisterDataNodePlan dataNodePlan =
-            new RegisterDataNodePlan(req.getDataNodeConfiguration());
-        dataNodePlan.setBuildInfo(req.getBuildInfo());
-        return nodeManager.registerDataNode(dataNodePlan);
+        return nodeManager.registerDataNode(req);
       }
     }
-
     DataNodeRegisterResp resp = new DataNodeRegisterResp();
     resp.setStatus(status);
     resp.setConfigNodeList(getNodeManager().getRegisteredConfigNodes());
@@ -377,8 +372,7 @@ public class ConfigManager implements IManager {
               req.getDataNodeConfiguration().getLocation(),
               this);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return nodeManager.updateDataNodeIfNecessary(
-            req.getDataNodeConfiguration(), req.getBuildInfo());
+        return nodeManager.updateDataNodeIfNecessary(req);
       }
     }
 

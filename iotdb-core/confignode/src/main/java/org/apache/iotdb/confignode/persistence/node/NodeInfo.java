@@ -28,7 +28,7 @@ import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateConfigNodeBuildInfoPlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateBuildInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
@@ -117,7 +117,6 @@ public class NodeInfo implements SnapshotProcessor {
     TSStatus result;
     TDataNodeConfiguration info = registerDataNodePlan.getDataNodeConfiguration();
     dataNodeInfoReadWriteLock.writeLock().lock();
-    buildInfoReadWriteLock.writeLock().lock();
     try {
 
       // To ensure that the nextNodeId is updated correctly when
@@ -129,8 +128,6 @@ public class NodeInfo implements SnapshotProcessor {
         }
       }
       registeredDataNodes.put(info.getLocation().getDataNodeId(), info);
-      nodeBuildInfo.put(info.getLocation().getDataNodeId(), registerDataNodePlan.getBuildInfo());
-
       result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       if (nextNodeId.get() < MINIMUM_DATANODE) {
         result.setMessage(
@@ -141,7 +138,6 @@ public class NodeInfo implements SnapshotProcessor {
         result.setMessage("IoTDB-Cluster could provide data service, now enjoy yourself!");
       }
     } finally {
-      buildInfoReadWriteLock.writeLock().unlock();
       dataNodeInfoReadWriteLock.writeLock().unlock();
     }
     return result;
@@ -188,14 +184,10 @@ public class NodeInfo implements SnapshotProcessor {
    */
   public TSStatus updateDataNode(UpdateDataNodePlan updateDataNodePlan) {
     dataNodeInfoReadWriteLock.writeLock().lock();
-    buildInfoReadWriteLock.writeLock().lock();
     try {
       TDataNodeConfiguration newConfiguration = updateDataNodePlan.getDataNodeConfiguration();
       registeredDataNodes.replace(newConfiguration.getLocation().getDataNodeId(), newConfiguration);
-      nodeBuildInfo.replace(
-          newConfiguration.getLocation().getDataNodeId(), updateDataNodePlan.getBuildInfo());
     } finally {
-      buildInfoReadWriteLock.writeLock().unlock();
       dataNodeInfoReadWriteLock.writeLock().unlock();
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -305,7 +297,6 @@ public class NodeInfo implements SnapshotProcessor {
   public TSStatus applyConfigNode(ApplyConfigNodePlan applyConfigNodePlan) {
     TSStatus status = new TSStatus();
     configNodeInfoReadWriteLock.writeLock().lock();
-    buildInfoReadWriteLock.writeLock().lock();
     try {
       // To ensure that the nextNodeId is updated correctly when
       // the ConfigNode-followers concurrently processes ApplyConfigNodePlan,
@@ -319,9 +310,6 @@ public class NodeInfo implements SnapshotProcessor {
       registeredConfigNodes.put(
           applyConfigNodePlan.getConfigNodeLocation().getConfigNodeId(),
           applyConfigNodePlan.getConfigNodeLocation());
-      nodeBuildInfo.put(
-          applyConfigNodePlan.getConfigNodeLocation().getConfigNodeId(),
-          applyConfigNodePlan.getBuildInfo());
       SystemPropertiesUtils.storeConfigNodeList(new ArrayList<>(registeredConfigNodes.values()));
       LOGGER.info(
           "Successfully apply ConfigNode: {}. Current ConfigNodeGroup: {}",
@@ -334,7 +322,6 @@ public class NodeInfo implements SnapshotProcessor {
       status.setMessage(
           "Apply new ConfigNode failed because current ConfigNode can't store ConfigNode information.");
     } finally {
-      buildInfoReadWriteLock.writeLock().unlock();
       configNodeInfoReadWriteLock.writeLock().unlock();
     }
     return status;
@@ -372,20 +359,19 @@ public class NodeInfo implements SnapshotProcessor {
   }
 
   /**
-   * Update the specified ConfigNode‘s location.
+   * Update the specified Node‘s buildInfo.
    *
-   * @param updateConfigNodeBuildInfoPlan UpdateConfigNodeBuildInfoPlan
-   * @return {@link TSStatusCode#SUCCESS_STATUS} if update ConfigNode info successfully.
+   * @param updateBuildInfoPlan UpdateBuildInfoPlan
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if update build info successfully.
    */
-  public TSStatus updateConfigNodeBuildInfo(
-      UpdateConfigNodeBuildInfoPlan updateConfigNodeBuildInfoPlan) {
+  public TSStatus updateBuildInfo(UpdateBuildInfoPlan updateBuildInfoPlan) {
     buildInfoReadWriteLock.writeLock().lock();
     try {
-      nodeBuildInfo.put(
-          updateConfigNodeBuildInfoPlan.getNodeId(), updateConfigNodeBuildInfoPlan.getBuildInfo());
+      nodeBuildInfo.put(updateBuildInfoPlan.getNodeId(), updateBuildInfoPlan.getBuildInfo());
     } finally {
       buildInfoReadWriteLock.writeLock().unlock();
     }
+    LOGGER.info("Successfully update Node: {} 's buildInfo.", updateBuildInfoPlan.getNodeId());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

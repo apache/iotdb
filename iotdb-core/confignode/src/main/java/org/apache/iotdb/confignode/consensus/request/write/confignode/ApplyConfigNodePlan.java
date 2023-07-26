@@ -34,8 +34,6 @@ public class ApplyConfigNodePlan extends ConfigPhysicalPlan {
 
   private TConfigNodeLocation configNodeLocation;
 
-  private String buildInfo;
-
   public ApplyConfigNodePlan() {
     super(ConfigPhysicalPlanType.ApplyConfigNode);
   }
@@ -43,36 +41,21 @@ public class ApplyConfigNodePlan extends ConfigPhysicalPlan {
   public ApplyConfigNodePlan(TConfigNodeLocation configNodeLocation) {
     this();
     this.configNodeLocation = configNodeLocation;
-    this.buildInfo = "";
   }
 
   public TConfigNodeLocation getConfigNodeLocation() {
     return configNodeLocation;
   }
 
-  public void setBuildInfo(String buildInfo) {
-    this.buildInfo = buildInfo;
-  }
-
-  public String getBuildInfo() {
-    return buildInfo;
-  }
-
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(getType().getPlanType(), stream);
     ThriftConfigNodeSerDeUtils.serializeTConfigNodeLocation(configNodeLocation, stream);
-    ReadWriteIOUtils.write(buildInfo, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     configNodeLocation = ThriftConfigNodeSerDeUtils.deserializeTConfigNodeLocation(buffer);
-    if (buffer.hasRemaining()) {
-      buildInfo = ReadWriteIOUtils.readString(buffer);
-    } else {
-      buildInfo = "";
-    }
   }
 
   @Override
@@ -84,11 +67,11 @@ public class ApplyConfigNodePlan extends ConfigPhysicalPlan {
       return false;
     }
     ApplyConfigNodePlan that = (ApplyConfigNodePlan) o;
-    return configNodeLocation.equals(that.configNodeLocation) && buildInfo.equals(that.buildInfo);
+    return configNodeLocation.equals(that.configNodeLocation);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(configNodeLocation, buildInfo);
+    return Objects.hash(configNodeLocation);
   }
 }
