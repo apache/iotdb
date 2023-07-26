@@ -35,7 +35,7 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
   }
 
   /**
-   * The metadata algorithm is: (targetChunkSize * fileSize * compressionRatio * maxSeriesNumber) +
+   * The data algorithm is: (targetChunkSize * fileSize * compressionRatio * maxSeriesNumber) +
    * modsFileSize
    *
    * @return estimate data memory cost
