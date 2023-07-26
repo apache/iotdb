@@ -21,31 +21,14 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimat
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.util.List;
-
 public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimator {
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
-
-  @Override
-  public long estimateInnerCompactionMemory(List<TsFileResource> resources) throws IOException {
-    if (resources.isEmpty()) {
-      return -1L;
-    }
-    long cost = 0;
-    InnerCompactionTaskInfo taskInfo = calculatingReadChunkCompactionTaskInfo(resources);
-    cost += calculatingMultiDeviceIteratorCost(taskInfo);
-    cost += calculatingReadChunkCost();
-    cost += calculatingWriteTargetFileCost(taskInfo);
-    return cost;
-  }
 
   private long calculatingMultiDeviceIteratorCost(InnerCompactionTaskInfo taskInfo) {
     long cost = 0;
@@ -73,5 +56,15 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
                 * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
     cost += sizeForFileWriter;
     return cost;
+  }
+
+  @Override
+  public long calculatingMetadataMemoryCost(InnerCompactionTaskInfo taskInfo) {
+    return 0;
+  }
+
+  @Override
+  public long calculatingDataMemoryCost(InnerCompactionTaskInfo taskInfo) {
+    return 0;
   }
 }

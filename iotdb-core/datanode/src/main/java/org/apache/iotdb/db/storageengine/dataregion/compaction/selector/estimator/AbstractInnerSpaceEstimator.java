@@ -36,8 +36,16 @@ import java.util.List;
 public abstract class AbstractInnerSpaceEstimator extends AbstractCompactionEstimator {
   protected IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  public abstract long estimateInnerCompactionMemory(List<TsFileResource> resources)
-      throws IOException;
+  public long estimateInnerCompactionMemory(List<TsFileResource> resources) throws IOException {
+    InnerCompactionTaskInfo taskInfo = calculatingCompactionTaskInfo(resources);
+    long cost = calculatingMetadataMemoryCost(taskInfo);
+    cost += calculatingDataMemoryCost(taskInfo);
+    return cost;
+  }
+
+  public abstract long calculatingMetadataMemoryCost(InnerCompactionTaskInfo taskInfo);
+
+  public abstract long calculatingDataMemoryCost(InnerCompactionTaskInfo taskInfo);
 
   public long estimateCrossCompactionMemory(
       List<TsFileResource> seqResources, TsFileResource unseqResource) throws IOException {
@@ -45,8 +53,8 @@ public abstract class AbstractInnerSpaceEstimator extends AbstractCompactionEsti
         "This kind of estimator cannot be used to estimate cross space compaction task");
   }
 
-  protected InnerCompactionTaskInfo calculatingReadChunkCompactionTaskInfo(
-      List<TsFileResource> resources) throws IOException {
+  protected InnerCompactionTaskInfo calculatingCompactionTaskInfo(List<TsFileResource> resources)
+      throws IOException {
     List<FileInfo> fileInfoList = new ArrayList<>();
     for (TsFileResource resource : resources) {
       TsFileSequenceReader reader = getFileReader(resource);
