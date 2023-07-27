@@ -259,7 +259,7 @@ public class DataRegion implements IDataRegionForQuery {
   private ILastFlushTimeMap lastFlushTimeMap;
 
   /**
-   * record the insertWriteLock in SG is being hold by which method, it will be empty string if on
+   * record the insertWriteLock in SG is being hold by which method, it will be empty string if no
    * one holds the insertWriteLock.
    */
   private String insertWriteLockHolder = "";
