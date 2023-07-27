@@ -228,20 +228,12 @@ public class TsFileSequenceReader implements AutoCloseable {
     return fileMetadataSize;
   }
 
-  /** Return the tsfile meta data size of this tsfile. */
-  public long getFileMetadataSize() throws IOException {
-    return tsFileInput.size() - getFileMetadataPos();
-  }
-
   /**
    * Return the whole meta data size of this tsfile, including ChunkMetadata, TimeseriesMetadata and
    * etc.
    */
-  public long getAllMetadataSize() throws IOException {
-    if (tsFileMetaData == null) {
-      readFileMetadata();
-    }
-    return tsFileInput.size() - tsFileMetaData.getMetaOffset();
+  public long getFileMetadataSize() throws IOException {
+    return tsFileInput.size() - getFileMetadataPos();
   }
 
   /** this function does not modify the position of the file reader. */

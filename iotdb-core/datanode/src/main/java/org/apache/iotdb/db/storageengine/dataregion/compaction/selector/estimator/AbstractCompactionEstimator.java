@@ -52,8 +52,7 @@ public abstract class AbstractCompactionEstimator {
       List<TsFileResource> seqResources, TsFileResource unseqResource) throws IOException;
 
   /** Estimate the memory cost of compacting the source files in inner space compaction task. */
-  public abstract long estimateInnerCompactionMemory(List<TsFileResource> resources)
-      throws IOException;
+  public abstract long estimateInnerCompactionMemory(List<TsFileResource> resources);
 
   /**
    * Construct a new or get an existing TsFileSequenceReader of a TsFile.
