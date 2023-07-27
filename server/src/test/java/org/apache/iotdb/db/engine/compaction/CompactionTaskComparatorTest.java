@@ -34,6 +34,7 @@ import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
 import com.google.common.collect.MinMaxPriorityQueue;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -312,6 +313,64 @@ public class CompactionTaskComparatorTest {
       for (int i = 0; i < 10; ++i) {
         assertEquals(cnt, taskCount.get("fakeSg" + i + "-0").get());
       }
+    }
+  }
+
+  @Test
+  public void testCompareByTimePartitionWithInnerSpaceCompaction() throws InterruptedException {
+    List<TsFileResource> resources1 = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      resources1.add(
+          new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", i, i)), 10));
+    }
+    FixedPriorityBlockingQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
+        new FixedPriorityBlockingQueue<>(
+            IoTDBDescriptor.getInstance().getConfig().getCandidateCompactionTaskQueueSize(),
+            new DefaultCompactionTaskComparatorImpl());
+    for (int i = 0; i < 10; i++) {
+      FakedInnerSpaceCompactionTask task =
+          new FakedInnerSpaceCompactionTask(
+              "fakeSg", i, tsFileManager, taskNum, true, resources1, 0);
+      candidateCompactionTaskQueue.put(task);
+    }
+
+    for (int i = 9; i >= 0; i--) {
+      Assert.assertEquals(candidateCompactionTaskQueue.take().getTimePartition(), i);
+    }
+  }
+
+  @Test
+  public void testCompareByTimePartitionWithCrossSpaceCompaction() throws InterruptedException {
+    List<TsFileResource> seqResources = new ArrayList<>();
+    List<TsFileResource> unseqResources = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      seqResources.add(
+          new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", i, i)), 10));
+    }
+    for (int i = 10; i < 20; i++) {
+      unseqResources.add(
+          new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", i, i)), 10));
+    }
+    FixedPriorityBlockingQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
+        new FixedPriorityBlockingQueue<>(
+            IoTDBDescriptor.getInstance().getConfig().getCandidateCompactionTaskQueueSize(),
+            new DefaultCompactionTaskComparatorImpl());
+    for (int i = 0; i < 10; i++) {
+      CrossSpaceCompactionTask task =
+          new CrossSpaceCompactionTask(
+              i,
+              tsFileManager,
+              seqResources,
+              unseqResources,
+              new FastCompactionPerformer(true),
+              taskNum,
+              0,
+              0);
+      candidateCompactionTaskQueue.put(task);
+    }
+
+    for (int i = 9; i >= 0; i--) {
+      Assert.assertEquals(candidateCompactionTaskQueue.take().getTimePartition(), i);
     }
   }
 
