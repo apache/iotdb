@@ -23,6 +23,8 @@ public class CompactionTestFileWriter {
   private TsFileIOWriter fileWriter;
   private static final String SG_NAME = "root.testsg";
   private String currentDeviceId;
+  private long currentDeviceStartTime;
+  private long currentDeviceEndTime;
   public CompactionTestFileWriter(TsFileResource emptyFile) throws IOException {
     this.resource = emptyFile;
     fileWriter = new TsFileIOWriter(emptyFile.getTsFile());
@@ -31,15 +33,20 @@ public class CompactionTestFileWriter {
   public String startChunkGroup(String deviceName) throws IOException {
     currentDeviceId = SG_NAME + "." + deviceName;
     fileWriter.startChunkGroup(currentDeviceId);
+    currentDeviceStartTime = Long.MAX_VALUE;
+    currentDeviceEndTime = Long.MIN_VALUE;
     return currentDeviceId;
   }
 
   public void endChunkGroup() throws IOException {
+    resource.updateStartTime(currentDeviceId, currentDeviceStartTime);
+    resource.updateEndTime(currentDeviceId, currentDeviceEndTime);
     fileWriter.endChunkGroup();
   }
 
   public void endFile() throws IOException {
     fileWriter.endFile();
+    resource.serialize();
   }
 
   public void close() throws IOException {
@@ -55,6 +62,8 @@ public class CompactionTestFileWriter {
     );
     for (TimeRange timeRange : toGenerateChunkTimeRanges) {
       ChunkWriterImpl chunkWriter = new ChunkWriterImpl(schema);
+      currentDeviceStartTime = Math.min(timeRange.getMin(), currentDeviceStartTime);
+      currentDeviceEndTime = Math.max(timeRange.getMax(), currentDeviceEndTime);
       for (long time = timeRange.getMin(); time <= timeRange.getMax(); time++) {
         chunkWriter.write(time, new Random().nextInt());
       }
@@ -74,6 +83,8 @@ public class CompactionTestFileWriter {
       ChunkWriterImpl chunkWriter = new ChunkWriterImpl(schema);
       for (TimeRange toGeneratePage : toGenerateChunk) {
         PageWriter pageWriter = chunkWriter.getPageWriter();
+        currentDeviceStartTime = Math.min(toGeneratePage.getMin(), currentDeviceStartTime);
+        currentDeviceEndTime = Math.max(toGeneratePage.getMax(), currentDeviceEndTime);
         for (long time = toGeneratePage.getMin(); time <= toGeneratePage.getMax(); time++) {
           pageWriter.write(time, new Random().nextInt());
         }
@@ -95,6 +106,8 @@ public class CompactionTestFileWriter {
       for (TimeRange[] toGeneratePage : toGenerateChunk) {
         PageWriter pageWriter = chunkWriter.getPageWriter();
         for (TimeRange pagePointTimeRange : toGeneratePage) {
+          currentDeviceStartTime = Math.min(pagePointTimeRange.getMin(), currentDeviceStartTime);
+          currentDeviceEndTime = Math.max(pagePointTimeRange.getMax(), currentDeviceEndTime);
           for (long time = pagePointTimeRange.getMin(); time <= pagePointTimeRange.getMax(); time++) {
             pageWriter.write(time, new Random().nextInt());
           }
@@ -117,6 +130,8 @@ public class CompactionTestFileWriter {
     }
     for (TimeRange toGenerateChunk : toGenerateChunkTimeRanges) {
       AlignedChunkWriterImpl alignedChunkWriter = new AlignedChunkWriterImpl(measurementSchemas);
+      currentDeviceStartTime = Math.min(toGenerateChunk.getMin(), currentDeviceStartTime);
+      currentDeviceEndTime = Math.max(toGenerateChunk.getMax(), currentDeviceEndTime);
       for (long time = toGenerateChunk.getMin(); time <= toGenerateChunk.getMax(); time++) {
         alignedChunkWriter.getTimeChunkWriter().write(time);
         for (int i = 0; i < measurementNames.size(); i++) {
@@ -140,6 +155,8 @@ public class CompactionTestFileWriter {
     for (TimeRange[] toGenerateChunk : toGenerateChunkPageTimeRanges) {
       AlignedChunkWriterImpl alignedChunkWriter = new AlignedChunkWriterImpl(measurementSchemas);
       for (TimeRange toGeneratePageTimeRange : toGenerateChunk) {
+        currentDeviceStartTime = Math.min(toGeneratePageTimeRange.getMin(), currentDeviceStartTime);
+        currentDeviceEndTime = Math.max(toGeneratePageTimeRange.getMax(), currentDeviceEndTime);
         for (long time = toGeneratePageTimeRange.getMin(); time <= toGeneratePageTimeRange.getMax(); time++) {
           for (int i = 0; i < measurementNames.size(); i++) {
             alignedChunkWriter.getValueChunkWriterByIndex(i).getPageWriter().write(time, new Random().nextInt(), false);
@@ -165,6 +182,8 @@ public class CompactionTestFileWriter {
       AlignedChunkWriterImpl alignedChunkWriter = new AlignedChunkWriterImpl(measurementSchemas);
       for (TimeRange[] toGeneratePageTimeRanges : toGenerateChunk) {
         for (TimeRange pointsTimeRange : toGeneratePageTimeRanges) {
+          currentDeviceStartTime = Math.min(pointsTimeRange.getMin(), currentDeviceStartTime);
+          currentDeviceEndTime = Math.max(pointsTimeRange.getMax(), currentDeviceEndTime);
           for (long time = pointsTimeRange.getMin(); time <= pointsTimeRange.getMax(); time++) {
             for (int i = 0; i < measurementNames.size(); i++) {
               alignedChunkWriter.getValueChunkWriterByIndex(i).getPageWriter().write(time, new Random().nextInt(), false);
