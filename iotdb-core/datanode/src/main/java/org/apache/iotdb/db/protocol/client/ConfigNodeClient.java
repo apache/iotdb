@@ -961,7 +961,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TShowTrailResp showTrial(TShowTrailReq req) throws TException {
+  public TShowTrialResp showTrial(TShowTrialReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.showTrial(req), resp -> !updateConfigNodeLeader(resp.status));
   }

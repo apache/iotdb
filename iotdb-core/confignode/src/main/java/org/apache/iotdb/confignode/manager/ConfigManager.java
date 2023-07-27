@@ -1891,7 +1891,7 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? modelManager.getModelInfo(req)
-        : new TGetModelInfoResp(status, null);
+        : new TGetModelInfoResp(status, ByteBuffer.allocate(0));
   }
 
   @Override

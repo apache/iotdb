@@ -163,15 +163,25 @@ public class ModelInfo implements SnapshotProcessor {
   public GetModelInfoResp getModelInfo(GetModelInfoPlan plan) {
     acquireModelTableLock();
     try {
+
+      ModelInformation modelInformation = modelTable.getModelInformationById(plan.getModelId());
+      if (modelInformation == null) {
+        return new GetModelInfoResp(
+            new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+                .setMessage(
+                    String.format(
+                        "Failed to get model info of model [%s], this model does not been exist.",
+                        plan.getModelId())));
+      }
+
       GetModelInfoResp getModelInfoResp =
           new GetModelInfoResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-      ModelInformation modelInformation = modelTable.getModelInformationById(plan.getModelId());
-      if (modelInformation != null) {
-        PublicBAOS buffer = new PublicBAOS();
-        DataOutputStream stream = new DataOutputStream(buffer);
-        modelInformation.serialize(stream);
-        getModelInfoResp.setModelInfo(ByteBuffer.wrap(buffer.getBuf(), 0, buffer.size()));
-      }
+
+      PublicBAOS buffer = new PublicBAOS();
+      DataOutputStream stream = new DataOutputStream(buffer);
+      modelInformation.serialize(stream);
+      getModelInfoResp.setModelInfo(ByteBuffer.wrap(buffer.getBuf(), 0, buffer.size()));
+
       return getModelInfoResp;
     } catch (IOException e) {
       LOGGER.warn("Fail to get model info", e);
