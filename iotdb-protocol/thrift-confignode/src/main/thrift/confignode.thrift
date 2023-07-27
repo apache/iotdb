@@ -102,7 +102,7 @@ struct TRuntimeConfiguration {
 struct TDataNodeRegisterReq {
   1: required string clusterName
   2: required common.TDataNodeConfiguration dataNodeConfiguration
-  3: optional string buildInfo = "unknown"
+  3: optional string buildInfo = "Unknown"
 }
 
 struct TDataNodeRegisterResp {
@@ -115,7 +115,7 @@ struct TDataNodeRegisterResp {
 struct TDataNodeRestartReq {
   1: required string clusterName
   2: required common.TDataNodeConfiguration dataNodeConfiguration
-  3: optional string buildInfo = "unknown"
+  3: optional string buildInfo = "Unknown"
 }
 
 struct TDataNodeRestartResp {
@@ -367,7 +367,7 @@ struct TConfigNodeRegisterReq {
   // fields are consistent with the Seed-ConfigNode
   1: required TClusterParameters clusterParameters
   2: required common.TConfigNodeLocation configNodeLocation
-  3: optional string buildInfo = "unknown"
+  3: optional string buildInfo = "Unknown"
 }
 
 struct TConfigNodeRegisterResp {
