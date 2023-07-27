@@ -419,7 +419,7 @@ public class NodeInfo implements SnapshotProcessor {
   public String getBuildInfo(int nodeId) {
     buildInfoReadWriteLock.readLock().lock();
     try {
-      return nodeBuildInfo.getOrDefault(nodeId, "");
+      return nodeBuildInfo.getOrDefault(nodeId, "Unknown");
     } finally {
       buildInfoReadWriteLock.readLock().unlock();
     }

@@ -276,13 +276,13 @@ public class NodeManager {
   public TDataNodeRestartResp updateDataNodeIfNecessary(TDataNodeRestartReq req) {
     int nodeId = req.getDataNodeConfiguration().getLocation().getDataNodeId();
     TDataNodeConfiguration dataNodeConfiguration = getRegisteredDataNode(nodeId);
-    String recordBuildInfo = nodeInfo.getBuildInfo(nodeId);
     if (!req.getDataNodeConfiguration().equals(dataNodeConfiguration)) {
       // Update DataNodeConfiguration when modified during restart
       UpdateDataNodePlan updateDataNodePlan =
           new UpdateDataNodePlan(req.getDataNodeConfiguration());
       getConsensusManager().write(updateDataNodePlan);
     }
+    String recordBuildInfo = nodeInfo.getBuildInfo(nodeId);
     if (!req.getBuildInfo().equals(recordBuildInfo)) {
       // Update buildInfo when modified during restart
       UpdateBuildInfoPlan updateBuildInfoPlan = new UpdateBuildInfoPlan(req.getBuildInfo(), nodeId);
