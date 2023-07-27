@@ -26,8 +26,9 @@ import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.pipe.connector.v1.IoTDBThriftConnectorV1;
+import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferTabletReq;
 import org.apache.iotdb.db.pipe.connector.v2.handler.PipeTransferInsertNodeTabletInsertionEventHandler;
@@ -46,10 +47,13 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
+import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,6 +67,7 @@ import java.util.PriorityQueue;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -83,6 +88,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
 
   private static final AtomicReference<ScheduledExecutorService> RETRY_TRIGGER =
       new AtomicReference<>();
+  private static final int RETRY_TRIGGER_INTERVAL_MINUTES = 1;
   private final AtomicReference<Future<?>> retryTriggerFuture = new AtomicReference<>();
   private final AtomicReference<IoTDBThriftConnectorV1> retryConnector = new AtomicReference<>();
   private final PriorityQueue<Pair<Long, Event>> retryEventQueue =
@@ -221,6 +227,8 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
       final AsyncPipeDataTransferServiceClient client =
           asyncPipeDataTransferClientManager.borrowClient(targetNodeUrl);
 
+      handshakeIfNecessary(client);
+
       try {
         pipeTransferInsertNodeReqHandler.transfer(client);
       } catch (TException e) {
@@ -247,6 +255,8 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
     try {
       final AsyncPipeDataTransferServiceClient client =
           asyncPipeDataTransferClientManager.borrowClient(targetNodeUrl);
+
+      handshakeIfNecessary(client);
 
       try {
         pipeTransferTabletReqHandler.transfer(client);
@@ -298,6 +308,8 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
       final AsyncPipeDataTransferServiceClient client =
           asyncPipeDataTransferClientManager.borrowClient(targetNodeUrl);
 
+      handshakeIfNecessary(client);
+
       try {
         pipeTransferTsFileInsertionEventHandler.transfer(client);
       } catch (TException e) {
@@ -321,6 +333,60 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
     transferQueuedEventsIfNecessary();
 
     LOGGER.warn("IoTDBThriftConnectorV2 does not support transfer generic event: {}.", event);
+  }
+
+  private void handshakeIfNecessary(AsyncPipeDataTransferServiceClient client) throws Exception {
+    if (client.isHandshakeFinished()) {
+      return;
+    }
+
+    final AtomicBoolean isHandshakeFinished = new AtomicBoolean(false);
+    final AtomicReference<Exception> exception = new AtomicReference<>();
+
+    client.pipeTransfer(
+        PipeTransferHandshakeReq.toTPipeTransferReq(
+            CommonDescriptor.getInstance().getConfig().getTimestampPrecision()),
+        new AsyncMethodCallback<TPipeTransferResp>() {
+          @Override
+          public void onComplete(TPipeTransferResp response) {
+            isHandshakeFinished.set(true);
+
+            if (response.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              LOGGER.warn(
+                  "Handshake error, code: {}, message: {}.",
+                  response.getStatus().getCode(),
+                  response.getStatus().getMessage());
+              exception.set(
+                  new PipeException(
+                      String.format(
+                          "Handshake error, code: %d, message: %s.",
+                          response.getStatus().getCode(), response.getStatus().getMessage())));
+            }
+          }
+
+          @Override
+          public void onError(Exception e) {
+            isHandshakeFinished.set(true);
+
+            LOGGER.warn("Handshake error.", e);
+            exception.set(e);
+          }
+        });
+
+    try {
+      while (!isHandshakeFinished.get()) {
+        Thread.sleep(100);
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new PipeException("Interrupted while waiting for handshake response.", e);
+    }
+
+    if (exception.get() != null) {
+      throw exception.get();
+    }
+
+    client.markHandshakeFinished();
   }
 
   /**
@@ -423,9 +489,9 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
                       LOGGER.warn("Failed to trigger retry.", e);
                     }
                   },
-                  PipeConfig.getInstance().getPipeConnectorRetryIntervalMs(),
-                  PipeConfig.getInstance().getPipeConnectorRetryIntervalMs(),
-                  TimeUnit.MILLISECONDS));
+                  RETRY_TRIGGER_INTERVAL_MINUTES,
+                  RETRY_TRIGGER_INTERVAL_MINUTES,
+                  TimeUnit.MINUTES));
         }
       }
     }

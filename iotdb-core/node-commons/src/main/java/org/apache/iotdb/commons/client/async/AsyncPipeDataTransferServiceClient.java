@@ -49,6 +49,8 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
 
   private final AtomicBoolean shouldReturnSelf = new AtomicBoolean(true);
 
+  private final AtomicBoolean isHandshakeFinished = new AtomicBoolean(false);
+
   public AsyncPipeDataTransferServiceClient(
       ThriftClientProperty property,
       TEndPoint endpoint,
@@ -124,6 +126,14 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
       }
       return false;
     }
+  }
+
+  public boolean isHandshakeFinished() {
+    return isHandshakeFinished.get();
+  }
+
+  public void markHandshakeFinished() {
+    isHandshakeFinished.set(true);
   }
 
   @Override
