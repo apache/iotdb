@@ -24,7 +24,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Test;
 
 import java.io.File;
@@ -45,17 +45,18 @@ public class LocalTextModificationAccessorTest {
         new Deletion(new PartialPath(new String[] {"d1", "s4"}), 4, 4),
       };
 
-  @After
-  public void tearDown() {
+  @AfterClass
+  public static void tearDown() {
     modifications = null;
   }
 
   @Test
-  public void writeMeetException() {
+  public void writeMeetException() throws IOException {
     String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("mod.temp");
-    LocalTextModificationAccessor accessor = new LocalTextModificationAccessor(tempFileName);
     long length = 0;
+    LocalTextModificationAccessor accessor = null;
     try {
+      accessor = new LocalTextModificationAccessor(tempFileName);
       for (int i = 0; i < 2; i++) {
         accessor.write(modifications[i]);
       }
@@ -73,6 +74,9 @@ public class LocalTextModificationAccessorTest {
     } catch (IOException e) {
       accessor.truncate(length);
     } finally {
+      if (accessor != null) {
+        accessor.close();
+      }
       new File(tempFileName).delete();
     }
   }
@@ -106,10 +110,13 @@ public class LocalTextModificationAccessorTest {
   @Test
   public void readNull() {
     String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("mod.temp");
-    LocalTextModificationAccessor accessor = new LocalTextModificationAccessor(tempFileName);
-    new File(tempFileName).delete();
-    Collection<Modification> modifications = accessor.read();
-    assertEquals(new ArrayList<>(), modifications);
+    try (LocalTextModificationAccessor accessor = new LocalTextModificationAccessor(tempFileName)) {
+      new File(tempFileName).delete();
+      Collection<Modification> modifications = accessor.read();
+      assertEquals(new ArrayList<>(), modifications);
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
   }
 
   @Test

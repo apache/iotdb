@@ -1967,6 +1967,8 @@ public class DataRegion implements IDataRegionForQuery {
     return true;
   }
 
+  // suppress warn of Throwable catch
+  @SuppressWarnings("java:S1181")
   private void deleteDataInFiles(
       Collection<TsFileResource> tsFileResourceList,
       Deletion deletion,
@@ -1986,10 +1988,11 @@ public class DataRegion implements IDataRegionForQuery {
       }
 
       ModificationFile modFile = tsFileResource.getModFile();
-      long originSize = modFile.getSize();
       if (tsFileResource.isClosed()) {
+        long originSize = -1;
         try {
           tsFileResource.writeLock();
+          originSize = modFile.getSize();
           // delete data in sealed file
           if (tsFileResource.isCompacting()) {
             // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
@@ -2023,8 +2026,11 @@ public class DataRegion implements IDataRegionForQuery {
             // negative
             FileMetrics.getInstance().increaseModFileSize(modFile.getSize() - originSize);
           }
-        } catch (IOException e) {
-          modFile.truncate(originSize);
+        } catch (Throwable t) {
+          if (originSize != -1) {
+            modFile.truncate(originSize);
+          }
+          throw t;
         } finally {
           tsFileResource.writeUnlock();
         }

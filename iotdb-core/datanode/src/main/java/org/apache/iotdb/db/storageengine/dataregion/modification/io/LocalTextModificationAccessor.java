@@ -78,6 +78,8 @@ public class LocalTextModificationAccessor
     return result;
   }
 
+  // we need to hold the reader for the Iterator, cannot use auto close or close in finally block
+  @SuppressWarnings("java:S2095")
   @Override
   public Iterator<Modification> getModificationIterator() {
     File file = FSFactoryProducer.getFSFactory().getFile(filePath);
@@ -112,14 +114,7 @@ public class LocalTextModificationAccessor
               reader.close();
               return false;
             } else {
-              try {
-                cachedModification[0] = decodeModification(line);
-              } catch (IOException e) {
-                logger.warn("An error occurred when decode line-[{}] to modification", line);
-                cachedModification[0] = null;
-                reader.close();
-                return false;
-              }
+              return decodeModificationAndCache(reader, cachedModification, line);
             }
           }
         } catch (IOException e) {
@@ -138,6 +133,19 @@ public class LocalTextModificationAccessor
         return result;
       }
     };
+  }
+
+  private boolean decodeModificationAndCache(
+      BufferedReader reader, Modification[] cachedModification, String line) throws IOException {
+    try {
+      cachedModification[0] = decodeModification(line);
+      return true;
+    } catch (IOException e) {
+      logger.warn("An error occurred when decode line-[{}] to modification", line);
+      cachedModification[0] = null;
+      reader.close();
+      return false;
+    }
   }
 
   @Override
@@ -163,7 +171,10 @@ public class LocalTextModificationAccessor
     if (writer == null) {
       writer = FSFactoryProducer.getFSFactory().getBufferedWriter(filePath, true);
     }
-    writer.write(encodeModification(mod).substring(0, 2));
+    String line = encodeModification(mod);
+    if (line != null) {
+      writer.write(line.substring(0, 2));
+    }
   }
 
   @TestOnly
