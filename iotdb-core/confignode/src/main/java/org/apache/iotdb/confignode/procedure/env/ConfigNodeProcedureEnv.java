@@ -324,10 +324,17 @@ public class ConfigNodeProcedureEnv {
    * Leader will record the new ConfigNode's information.
    *
    * @param configNodeLocation The new ConfigNode
+   * @param buildInfo The new ConfigNode's buildInfo
    */
-  public void applyConfigNode(TConfigNodeLocation configNodeLocation) {
-    configManager.getNodeManager().applyConfigNode(configNodeLocation);
+  public void applyConfigNode(TConfigNodeLocation configNodeLocation, String buildInfo) {
+    configManager.getNodeManager().applyConfigNode(configNodeLocation, buildInfo);
   }
+
+  /**
+   * Leader will record the new Confignode's information.
+   *
+   * @param dataNodeConfiguration The new DataNode
+   */
 
   /**
    * Leader will notify the new ConfigNode that registration success.
