@@ -393,7 +393,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
     }
 
     if (exception.get() != null) {
-      throw exception.get();
+      throw new PipeConnectionException("Failed to handshake.", exception.get());
     }
 
     client.markHandshakeFinished();
