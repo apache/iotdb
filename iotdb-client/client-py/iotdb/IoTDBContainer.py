@@ -19,6 +19,7 @@
 from os import environ
 
 from testcontainers.core.container import DockerContainer
+from testcontainers.core.exceptions import ContainerStartException
 from testcontainers.core.waiting_utils import wait_container_is_ready
 
 from iotdb.Session import Session
@@ -41,12 +42,8 @@ class IoTDBContainer(DockerContainer):
                 "SHOW CLUSTER"
         ) as session_data_set:
             while session_data_set.has_next():
-                print(session_data_set.next())
-        with session.execute_statement(
-                "SHOW VERSION"
-        ) as session_data_set:
-            while session_data_set.has_next():
-                print(session_data_set.next())
+                if session_data_set.next().get_fields()[2].get_string_value() != "Running":
+                    raise ContainerStartException("IoTDB is not started")
         session.close()
 
     def __init__(self, image="apache/iotdb:latest", **kwargs):
