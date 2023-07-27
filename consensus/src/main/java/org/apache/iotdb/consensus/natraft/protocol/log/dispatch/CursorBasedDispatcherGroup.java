@@ -66,7 +66,6 @@ public class CursorBasedDispatcherGroup extends DispatcherGroup {
   }
 
   public boolean add(VotingEntry request) {
-    wakeUp();
     return true;
   }
 }

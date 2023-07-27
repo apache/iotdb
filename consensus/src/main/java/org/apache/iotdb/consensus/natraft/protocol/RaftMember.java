@@ -1275,6 +1275,7 @@ public class RaftMember {
     } finally {
       logManager.writeUnlock();
     }
+    logDispatcher.wakeUp();
 
     List<Peer> addedNodes = NodeUtils.computeAddedNodes(oldNodes, this.newNodes);
     for (Peer addedNode : addedNodes) {
