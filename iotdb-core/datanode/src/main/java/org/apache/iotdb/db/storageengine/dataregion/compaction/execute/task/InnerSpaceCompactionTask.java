@@ -491,7 +491,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         LOGGER.info("No enough file num for current compaction task {}", this, e);
         SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
       }
-      resetCompactionCandidateStatusForAllSourceFiles();
       releaseAllLocksAndResetStatus();
       return false;
     }
