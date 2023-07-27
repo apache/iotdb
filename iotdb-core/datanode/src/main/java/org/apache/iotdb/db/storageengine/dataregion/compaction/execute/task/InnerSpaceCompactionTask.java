@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionExceptionHandler;
@@ -97,10 +98,12 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     this.selectedTsFileResourceList = selectedTsFileResourceList;
     this.sequence = sequence;
     this.performer = performer;
-    if (this.performer instanceof ReadChunkCompactionPerformer) {
-      innerSpaceEstimator = new ReadChunkInnerCompactionEstimator();
-    } else if (!sequence) {
-      innerSpaceEstimator = new FastCompactionInnerCompactionEstimator();
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionMemControl()) {
+      if (this.performer instanceof ReadChunkCompactionPerformer) {
+        innerSpaceEstimator = new ReadChunkInnerCompactionEstimator();
+      } else if (!sequence && this.performer instanceof FastCompactionInnerCompactionEstimator) {
+        innerSpaceEstimator = new FastCompactionInnerCompactionEstimator();
+      }
     }
     isHoldingReadLock = new boolean[selectedTsFileResourceList.size()];
     isHoldingWriteLock = new boolean[selectedTsFileResourceList.size()];
