@@ -258,7 +258,7 @@ public class SinkChannel implements ISinkChannel {
     }
     sequenceIdToTsBlock.clear();
     if (blocked != null) {
-      bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryComplete(blocked);
+      bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blocked);
     }
     if (bufferRetainedSizeInBytes > 0) {
       localMemoryManager
