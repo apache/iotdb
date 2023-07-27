@@ -22,38 +22,27 @@ package org.apache.iotdb.db.pipe.connector.v2.handler;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.db.pipe.connector.v2.IoTDBThriftConnectorV2;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
-import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
 
 import javax.annotation.Nullable;
 
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutorService;
-
 public class PipeTransferInsertNodeTabletInsertionEventHandler
     extends PipeTransferTabletInsertionEventHandler<TPipeTransferResp> {
+
   public PipeTransferInsertNodeTabletInsertionEventHandler(
       long requestCommitId,
       @Nullable EnrichedEvent event,
       TPipeTransferReq req,
-      IoTDBThriftConnectorV2 connector,
-      ExecutorService retryExecutor,
-      BlockingQueue<Pair<Long, Event>> retryFailureQueue) {
-    super(requestCommitId, event, req, connector, retryExecutor, retryFailureQueue);
+      IoTDBThriftConnectorV2 connector) {
+    super(requestCommitId, event, req, connector);
   }
 
   @Override
   protected void doTransfer(AsyncPipeDataTransferServiceClient client, TPipeTransferReq req)
       throws TException {
     client.pipeTransfer(req, this);
-  }
-
-  @Override
-  protected void retryTransfer(IoTDBThriftConnectorV2 connector, long requestCommitId) {
-    connector.transfer(requestCommitId, this);
   }
 }

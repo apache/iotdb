@@ -68,6 +68,15 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
 
   private IoTDBThriftConnectorClient client;
 
+  public IoTDBThriftConnectorV1() {
+    // Do nothing
+  }
+
+  public IoTDBThriftConnectorV1(String ipAddress, int port) {
+    this.ipAddress = ipAddress;
+    this.port = port;
+  }
+
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
     validator
