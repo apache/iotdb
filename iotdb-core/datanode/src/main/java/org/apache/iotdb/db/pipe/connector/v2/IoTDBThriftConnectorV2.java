@@ -451,6 +451,10 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
       final Event event = queuedEventPair.getRight();
 
       final IoTDBThriftConnectorV1 connector = retryConnector.get();
+      if (connector == null) {
+        LOGGER.warn("Retry connector is broken. Will try to reconnect it by handshake.");
+        handshake();
+      }
       if (event instanceof PipeInsertNodeTabletInsertionEvent) {
         connector.transfer((PipeInsertNodeTabletInsertionEvent) event);
       } else if (event instanceof PipeRawTabletInsertionEvent) {
