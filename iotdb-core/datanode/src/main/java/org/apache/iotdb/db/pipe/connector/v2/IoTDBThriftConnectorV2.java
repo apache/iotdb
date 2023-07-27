@@ -234,10 +234,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
     final TEndPoint targetNodeUrl = nodeUrls.get((int) (requestCommitId % nodeUrls.size()));
 
     try {
-      final AsyncPipeDataTransferServiceClient client =
-          asyncPipeDataTransferClientManager.borrowClient(targetNodeUrl);
-
-      handshakeIfNecessary(client);
+      final AsyncPipeDataTransferServiceClient client = borrowClient(targetNodeUrl);
 
       try {
         pipeTransferInsertNodeReqHandler.transfer(client);
@@ -263,10 +260,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
     final TEndPoint targetNodeUrl = nodeUrls.get((int) (requestCommitId % nodeUrls.size()));
 
     try {
-      final AsyncPipeDataTransferServiceClient client =
-          asyncPipeDataTransferClientManager.borrowClient(targetNodeUrl);
-
-      handshakeIfNecessary(client);
+      final AsyncPipeDataTransferServiceClient client = borrowClient(targetNodeUrl);
 
       try {
         pipeTransferTabletReqHandler.transfer(client);
@@ -315,10 +309,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
     final TEndPoint targetNodeUrl = nodeUrls.get((int) (requestCommitId % nodeUrls.size()));
 
     try {
-      final AsyncPipeDataTransferServiceClient client =
-          asyncPipeDataTransferClientManager.borrowClient(targetNodeUrl);
-
-      handshakeIfNecessary(client);
+      final AsyncPipeDataTransferServiceClient client = borrowClient(targetNodeUrl);
 
       try {
         pipeTransferTsFileInsertionEventHandler.transfer(client);
@@ -345,9 +336,35 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
     LOGGER.warn("IoTDBThriftConnectorV2 does not support transfer generic event: {}.", event);
   }
 
-  private void handshakeIfNecessary(AsyncPipeDataTransferServiceClient client) throws Exception {
+  private AsyncPipeDataTransferServiceClient borrowClient(TEndPoint targetNodeUrl)
+      throws PipeConnectionException {
+    try {
+      while (true) {
+        final AsyncPipeDataTransferServiceClient client =
+            asyncPipeDataTransferClientManager.borrowClient(targetNodeUrl);
+        if (handshakeIfNecessary(client)) {
+          return client;
+        }
+      }
+    } catch (Exception e) {
+      throw new PipeConnectionException(
+          String.format(
+              FAILED_TO_BORROW_CLIENT_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
+          e);
+    }
+  }
+
+  /**
+   * Handshake with the target if necessary.
+   *
+   * @param client client to handshake
+   * @return true if the handshake is already finished, false if the handshake is not finished yet
+   *     and finished in this method
+   * @throws Exception if an error occurs.
+   */
+  private boolean handshakeIfNecessary(AsyncPipeDataTransferServiceClient client) throws Exception {
     if (client.isHandshakeFinished()) {
-      return;
+      return true;
     }
 
     final AtomicBoolean isHandshakeFinished = new AtomicBoolean(false);
@@ -359,7 +376,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
         new AsyncMethodCallback<TPipeTransferResp>() {
           @Override
           public void onComplete(TPipeTransferResp response) {
-            isHandshakeFinished.set(true);
+            client.markHandshakeFinished();
 
             if (response.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               LOGGER.warn(
@@ -372,14 +389,16 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
                           "Handshake error, code: %d, message: %s.",
                           response.getStatus().getCode(), response.getStatus().getMessage())));
             }
+
+            isHandshakeFinished.set(true);
           }
 
           @Override
           public void onError(Exception e) {
-            isHandshakeFinished.set(true);
-
             LOGGER.warn("Handshake error.", e);
             exception.set(e);
+
+            isHandshakeFinished.set(true);
           }
         });
 
@@ -396,7 +415,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
       throw new PipeConnectionException("Failed to handshake.", exception.get());
     }
 
-    client.markHandshakeFinished();
+    return false;
   }
 
   /**
