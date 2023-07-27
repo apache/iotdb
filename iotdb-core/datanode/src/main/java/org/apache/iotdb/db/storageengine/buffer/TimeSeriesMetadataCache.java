@@ -30,7 +30,6 @@ import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManag
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -138,8 +137,7 @@ public class TimeSeriesMetadataCache {
           return null;
         }
         TimeseriesMetadata timeseriesMetadata =
-            reader.readTimeseriesMetadata(
-                new Path(key.device, key.measurement, true), ignoreNotExists);
+            reader.readTimeseriesMetadata(key.device, key.measurement, ignoreNotExists);
         return (timeseriesMetadata == null || timeseriesMetadata.getStatistics().getCount() == 0)
             ? null
             : timeseriesMetadata;
@@ -153,20 +151,19 @@ public class TimeSeriesMetadataCache {
               "Cache miss: {}.{} in file: {}", key.device, key.measurement, key.filePath);
           DEBUG_LOGGER.info("Device: {}, all sensors: {}", key.device, allSensors);
         }
+        final String fullPath = key.device + SEPARATOR + key.filePath;
         // allow for the parallelism of different devices
-        synchronized (
-            devices.computeIfAbsent(key.device + SEPARATOR + key.filePath, WeakReference::new)) {
+        synchronized (devices.computeIfAbsent(fullPath, WeakReference::new)) {
           // double check
           timeseriesMetadata = lruCache.getIfPresent(key);
           if (timeseriesMetadata == null) {
             cacheHit = false;
 
-            Path path = new Path(key.device, key.measurement, true);
             // bloom filter part
             BloomFilter bloomFilter =
                 BloomFilterCache.getInstance()
                     .get(new BloomFilterCache.BloomFilterCacheKey(key.filePath), debug);
-            if (bloomFilter != null && !bloomFilter.contains(path.getFullPath())) {
+            if (bloomFilter != null && !bloomFilter.contains(fullPath)) {
               if (debug) {
                 DEBUG_LOGGER.info("TimeSeries meta data {} is filter by bloomFilter!", key);
               }
@@ -174,7 +171,7 @@ public class TimeSeriesMetadataCache {
             }
             TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
             List<TimeseriesMetadata> timeSeriesMetadataList =
-                reader.readTimeseriesMetadata(path, allSensors);
+                reader.readTimeseriesMetadata(key.device, key.measurement, allSensors);
             // put TimeSeriesMetadata of all sensors used in this read into cache
             for (TimeseriesMetadata metadata : timeSeriesMetadataList) {
               TimeSeriesMetadataCacheKey k =
