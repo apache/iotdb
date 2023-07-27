@@ -25,6 +25,7 @@ public class CompactionTestFileWriter {
   private String currentDeviceId;
   private long currentDeviceStartTime;
   private long currentDeviceEndTime;
+
   public CompactionTestFileWriter(TsFileResource emptyFile) throws IOException {
     this.resource = emptyFile;
     fileWriter = new TsFileIOWriter(emptyFile.getTsFile());
@@ -53,13 +54,14 @@ public class CompactionTestFileWriter {
     fileWriter.close();
   }
 
-  public void generateSimpleNonAlignedSeriesToCurrentDevice(String measurementName, TimeRange[] toGenerateChunkTimeRanges, TSEncoding encoding, CompressionType compressionType) throws IOException {
-    MeasurementSchema schema = new MeasurementSchema(
-        measurementName,
-        TSDataType.INT32,
-        encoding,
-        compressionType
-    );
+  public void generateSimpleNonAlignedSeriesToCurrentDevice(
+      String measurementName,
+      TimeRange[] toGenerateChunkTimeRanges,
+      TSEncoding encoding,
+      CompressionType compressionType)
+      throws IOException {
+    MeasurementSchema schema =
+        new MeasurementSchema(measurementName, TSDataType.INT32, encoding, compressionType);
     for (TimeRange timeRange : toGenerateChunkTimeRanges) {
       ChunkWriterImpl chunkWriter = new ChunkWriterImpl(schema);
       currentDeviceStartTime = Math.min(timeRange.getMin(), currentDeviceStartTime);
@@ -72,13 +74,14 @@ public class CompactionTestFileWriter {
     }
   }
 
-  public void generateSimpleNonAlignedSeriesToCurrentDevice(String measurementName, TimeRange[][] toGenerateChunkPageTimeRanges, TSEncoding encoding, CompressionType compressionType) throws IOException {
-    MeasurementSchema schema = new MeasurementSchema(
-        measurementName,
-        TSDataType.INT32,
-        encoding,
-        compressionType
-    );
+  public void generateSimpleNonAlignedSeriesToCurrentDevice(
+      String measurementName,
+      TimeRange[][] toGenerateChunkPageTimeRanges,
+      TSEncoding encoding,
+      CompressionType compressionType)
+      throws IOException {
+    MeasurementSchema schema =
+        new MeasurementSchema(measurementName, TSDataType.INT32, encoding, compressionType);
     for (TimeRange[] toGenerateChunk : toGenerateChunkPageTimeRanges) {
       ChunkWriterImpl chunkWriter = new ChunkWriterImpl(schema);
       for (TimeRange toGeneratePage : toGenerateChunk) {
@@ -94,13 +97,14 @@ public class CompactionTestFileWriter {
     }
   }
 
-  public void generateSimpleNonAlignedSeriesToCurrentDevice(String measurementName, TimeRange[][][] toGenerateChunkPagePointsTimeRanges, TSEncoding encoding, CompressionType compressionType) throws IOException {
-    MeasurementSchema schema = new MeasurementSchema(
-        measurementName,
-        TSDataType.INT32,
-        encoding,
-        compressionType
-    );
+  public void generateSimpleNonAlignedSeriesToCurrentDevice(
+      String measurementName,
+      TimeRange[][][] toGenerateChunkPagePointsTimeRanges,
+      TSEncoding encoding,
+      CompressionType compressionType)
+      throws IOException {
+    MeasurementSchema schema =
+        new MeasurementSchema(measurementName, TSDataType.INT32, encoding, compressionType);
     for (TimeRange[][] toGenerateChunk : toGenerateChunkPagePointsTimeRanges) {
       ChunkWriterImpl chunkWriter = new ChunkWriterImpl(schema);
       for (TimeRange[] toGeneratePage : toGenerateChunk) {
@@ -108,7 +112,9 @@ public class CompactionTestFileWriter {
         for (TimeRange pagePointTimeRange : toGeneratePage) {
           currentDeviceStartTime = Math.min(pagePointTimeRange.getMin(), currentDeviceStartTime);
           currentDeviceEndTime = Math.max(pagePointTimeRange.getMax(), currentDeviceEndTime);
-          for (long time = pagePointTimeRange.getMin(); time <= pagePointTimeRange.getMax(); time++) {
+          for (long time = pagePointTimeRange.getMin();
+              time <= pagePointTimeRange.getMax();
+              time++) {
             pageWriter.write(time, new Random().nextInt());
           }
         }
@@ -118,15 +124,16 @@ public class CompactionTestFileWriter {
     }
   }
 
-  public void generateSimpleAlignedSeriesToCurrentDevice(List<String> measurementNames, TimeRange[] toGenerateChunkTimeRanges, TSEncoding encoding, CompressionType compressionType) throws IOException {
+  public void generateSimpleAlignedSeriesToCurrentDevice(
+      List<String> measurementNames,
+      TimeRange[] toGenerateChunkTimeRanges,
+      TSEncoding encoding,
+      CompressionType compressionType)
+      throws IOException {
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
     for (String measurementName : measurementNames) {
-      measurementSchemas.add(new MeasurementSchema(
-          measurementName,
-          TSDataType.INT32,
-          encoding,
-          compressionType
-      ));
+      measurementSchemas.add(
+          new MeasurementSchema(measurementName, TSDataType.INT32, encoding, compressionType));
     }
     for (TimeRange toGenerateChunk : toGenerateChunkTimeRanges) {
       AlignedChunkWriterImpl alignedChunkWriter = new AlignedChunkWriterImpl(measurementSchemas);
@@ -135,31 +142,40 @@ public class CompactionTestFileWriter {
       for (long time = toGenerateChunk.getMin(); time <= toGenerateChunk.getMax(); time++) {
         alignedChunkWriter.getTimeChunkWriter().write(time);
         for (int i = 0; i < measurementNames.size(); i++) {
-          alignedChunkWriter.getValueChunkWriterByIndex(i).write(time, new Random().nextInt(), false);
+          alignedChunkWriter
+              .getValueChunkWriterByIndex(i)
+              .write(time, new Random().nextInt(), false);
         }
       }
       alignedChunkWriter.writeToFileWriter(fileWriter);
     }
   }
 
-  public void generateSimpleAlignedSeriesToCurrentDevice(List<String> measurementNames, TimeRange[][] toGenerateChunkPageTimeRanges, TSEncoding encoding, CompressionType compressionType) throws IOException {
+  public void generateSimpleAlignedSeriesToCurrentDevice(
+      List<String> measurementNames,
+      TimeRange[][] toGenerateChunkPageTimeRanges,
+      TSEncoding encoding,
+      CompressionType compressionType)
+      throws IOException {
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
     for (String measurementName : measurementNames) {
-      measurementSchemas.add(new MeasurementSchema(
-          measurementName,
-          TSDataType.INT32,
-          encoding,
-          compressionType
-      ));
+      measurementSchemas.add(
+          new MeasurementSchema(measurementName, TSDataType.INT32, encoding, compressionType));
     }
     for (TimeRange[] toGenerateChunk : toGenerateChunkPageTimeRanges) {
       AlignedChunkWriterImpl alignedChunkWriter = new AlignedChunkWriterImpl(measurementSchemas);
       for (TimeRange toGeneratePageTimeRange : toGenerateChunk) {
         currentDeviceStartTime = Math.min(toGeneratePageTimeRange.getMin(), currentDeviceStartTime);
         currentDeviceEndTime = Math.max(toGeneratePageTimeRange.getMax(), currentDeviceEndTime);
-        for (long time = toGeneratePageTimeRange.getMin(); time <= toGeneratePageTimeRange.getMax(); time++) {
+        for (long time = toGeneratePageTimeRange.getMin();
+            time <= toGeneratePageTimeRange.getMax();
+            time++) {
+          alignedChunkWriter.write(time);
           for (int i = 0; i < measurementNames.size(); i++) {
-            alignedChunkWriter.getValueChunkWriterByIndex(i).getPageWriter().write(time, new Random().nextInt(), false);
+            alignedChunkWriter
+                .getValueChunkWriterByIndex(i)
+                .getPageWriter()
+                .write(time, new Random().nextInt(), false);
           }
         }
         alignedChunkWriter.sealCurrentPage();
@@ -168,15 +184,16 @@ public class CompactionTestFileWriter {
     }
   }
 
-  public void generateSimpleAlignedSeriesToCurrentDevice(List<String> measurementNames, TimeRange[][][] toGenerateChunkPageTimeRanges, TSEncoding encoding, CompressionType compressionType) throws IOException {
+  public void generateSimpleAlignedSeriesToCurrentDevice(
+      List<String> measurementNames,
+      TimeRange[][][] toGenerateChunkPageTimeRanges,
+      TSEncoding encoding,
+      CompressionType compressionType)
+      throws IOException {
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
     for (String measurementName : measurementNames) {
-      measurementSchemas.add(new MeasurementSchema(
-          measurementName,
-          TSDataType.INT32,
-          encoding,
-          compressionType
-      ));
+      measurementSchemas.add(
+          new MeasurementSchema(measurementName, TSDataType.INT32, encoding, compressionType));
     }
     for (TimeRange[][] toGenerateChunk : toGenerateChunkPageTimeRanges) {
       AlignedChunkWriterImpl alignedChunkWriter = new AlignedChunkWriterImpl(measurementSchemas);
@@ -185,8 +202,12 @@ public class CompactionTestFileWriter {
           currentDeviceStartTime = Math.min(pointsTimeRange.getMin(), currentDeviceStartTime);
           currentDeviceEndTime = Math.max(pointsTimeRange.getMax(), currentDeviceEndTime);
           for (long time = pointsTimeRange.getMin(); time <= pointsTimeRange.getMax(); time++) {
+            alignedChunkWriter.write(time);
             for (int i = 0; i < measurementNames.size(); i++) {
-              alignedChunkWriter.getValueChunkWriterByIndex(i).getPageWriter().write(time, new Random().nextInt(), false);
+              alignedChunkWriter
+                  .getValueChunkWriterByIndex(i)
+                  .getPageWriter()
+                  .write(time, new Random().nextInt(), false);
             }
           }
         }
