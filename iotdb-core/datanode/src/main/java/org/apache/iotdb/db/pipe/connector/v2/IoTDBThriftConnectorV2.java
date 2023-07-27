@@ -135,7 +135,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
   }
 
   @Override
-  public void handshake() throws Exception {
+  public synchronized void handshake() throws Exception {
     if (retryConnector.get() != null) {
       try {
         retryConnector.get().close();
