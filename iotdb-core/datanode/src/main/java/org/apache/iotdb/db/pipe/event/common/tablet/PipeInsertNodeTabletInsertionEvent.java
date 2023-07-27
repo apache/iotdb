@@ -75,7 +75,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   @Override
   public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
     try {
-      PipeResourceManager.wal().pin(walEntryHandler.getMemTableId(), walEntryHandler);
+      PipeResourceManager.wal().pin(walEntryHandler);
       return true;
     } catch (Exception e) {
       LOGGER.warn(
@@ -90,7 +90,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   @Override
   public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
     try {
-      PipeResourceManager.wal().unpin(walEntryHandler.getMemTableId());
+      PipeResourceManager.wal().unpin(walEntryHandler);
       return true;
     } catch (Exception e) {
       LOGGER.warn(
