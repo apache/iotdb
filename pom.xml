@@ -84,6 +84,7 @@
         <module>iotdb-connector</module>
         <module>iotdb-core</module>
         <module>iotdb-protocol</module>
+        <module>distribution</module>
         <module>example</module>
         <module>library-udf</module>
     </modules>
