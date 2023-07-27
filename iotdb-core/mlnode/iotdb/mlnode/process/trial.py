@@ -197,7 +197,6 @@ class ForecastingTrainingTrial(BasicTrial):
         Start training with the specified parameters, save the best model and report metrics to the db.
         """
         try:
-            self.configNode_client.update_model_state(self.model_id, TrainingState.RUNNING)
             best_loss = np.inf
             best_metrics_dict = None
             model_path = None
@@ -221,5 +220,4 @@ class ForecastingTrainingTrial(BasicTrial):
             return best_loss
         except Exception as e:
             logger.warn(e)
-            self.configNode_client.update_model_state(self.model_id, TrainingState.FAILED)
             raise e

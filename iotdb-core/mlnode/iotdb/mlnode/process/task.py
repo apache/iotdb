@@ -93,6 +93,7 @@ class ForecastFixedParamTrainingTask(_BasicTrainingTask):
 
     def __call__(self):
         try:
+            self.configNode_client.update_model_state(self.model_id, TrainingState.RUNNING)
             self.pid_info[self.model_id] = os.getpid()
             self.trial.start()
             self.configNode_client.update_model_state(self.model_id, TrainingState.FINISHED, self.trial.trial_id)
@@ -155,6 +156,7 @@ class ForecastAutoTuningTrainingTask(_BasicTrainingTask):
     def __call__(self):
         self.pid_info[self.model_id] = os.getpid()
         try:
+            self.configNode_client.update_model_state(self.model_id, TrainingState.RUNNING)
             self.study.optimize(ForestingTrainingObjective(
                 model_id=self.model_id,
                 task_options=self.task_options,

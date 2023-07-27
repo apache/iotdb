@@ -16,6 +16,7 @@
 # under the License.
 #
 import torch
+from iotdb.mlnode.util import pack_input_dict
 
 from iotdb.mlnode.algorithm.factory import (ForecastModelType,
                                             create_forecast_model)
@@ -38,6 +39,7 @@ def test_create_forecast_model():
     model = create_forecast_model(d_forecast_task_options, model_configs)
     sample_input = torch.randn(1, model_configs[OptionsKey.INPUT_LENGTH.value],
                                model_configs[HyperparameterName.INPUT_VARS.value])
+    sample_input = pack_input_dict(sample_input)
     output = model(sample_input)
     assert output.shape[1] == model_configs[OptionsKey.PREDICT_LENGTH.value]
     assert output.shape[2] == model_configs[HyperparameterName.INPUT_VARS.value]
