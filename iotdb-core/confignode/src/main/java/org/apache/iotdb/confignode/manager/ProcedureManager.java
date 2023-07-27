@@ -467,7 +467,7 @@ public class ProcedureManager {
    */
   public void addConfigNode(TConfigNodeRegisterReq req) {
     AddConfigNodeProcedure addConfigNodeProcedure =
-        new AddConfigNodeProcedure(req.getConfigNodeLocation());
+        new AddConfigNodeProcedure(req.getConfigNodeLocation(), req.getBuildInfo());
     this.executor.submitProcedure(addConfigNodeProcedure);
   }
 
