@@ -135,6 +135,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
   }
 
   @Override
+  // synchronized to avoid close connector when transfer event
   public synchronized void handshake() throws Exception {
     if (retryConnector.get() != null) {
       try {
@@ -509,7 +510,8 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
   }
 
   @Override
-  public void close() throws Exception {
+  // synchronized to avoid close connector when transfer event
+  public synchronized void close() throws Exception {
     if (retryTriggerFuture.get() != null) {
       retryTriggerFuture.get().cancel(false);
     }
