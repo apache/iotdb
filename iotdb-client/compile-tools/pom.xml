@@ -51,7 +51,7 @@
                 <os.suffix>linux</os.suffix>
                 <os.classifier>linux-x86_64</os.classifier>
                 <cmake.url>https://github.com/Kitware/CMake/releases/download/v${cmake-version}/cmake-${cmake-version}-linux-x86_64.tar.gz</cmake.url>
-                <cmake.root.dir>${project.build.directory}/cmake-${cmake-version}-Linux-x86_64/</cmake.root.dir>
+                <cmake.root.dir>${project.build.directory}/cmake-${cmake-version}-linux-x86_64/</cmake.root.dir>
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <boost.url>https://boostorg.jfrog.io/artifactory/main/release/${boost.version}/source/boost_${boost.version.underline}.zip</boost.url>
                 <boost.bootstrap.executable>./bootstrap.sh</boost.bootstrap.executable>
@@ -150,8 +150,8 @@
             <properties>
                 <os.suffix>win</os.suffix>
                 <os.classifier>windows-x86_64</os.classifier>
-                <cmake.url>https://github.com/Kitware/CMake/releases/download/v${cmake-version}/cmake-${cmake-version}-win64-x64.zip</cmake.url>
-                <cmake.root.dir>${project.build.directory}/cmake-${cmake-version}-win64-x64/</cmake.root.dir>
+                <cmake.url>https://github.com/Kitware/CMake/releases/download/v${cmake-version}/cmake-${cmake-version}-windows-x86_64.zip</cmake.url>
+                <cmake.root.dir>${project.build.directory}/cmake-${cmake-version}-windows-x86_64/</cmake.root.dir>
                 <!--<cmake.generator>MinGW Makefiles</cmake.generator>-->
                 <cmake.generator>Visual Studio 16 2019</cmake.generator>
                 <cmake.build.type>Release</cmake.build.type>

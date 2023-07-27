@@ -50,7 +50,7 @@
             </activation>
             <properties>
                 <cmake.generator>Unix Makefiles</cmake.generator>
-                <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-${cmake-version}-Linux-x86_64/</cmake.root.dir>
+                <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-${cmake-version}-linux-x86_64/</cmake.root.dir>
             </properties>
         </profile>
         <profile>
@@ -90,7 +90,7 @@
             </activation>
             <properties>
                 <cmake.generator>Visual Studio 16 2019</cmake.generator>
-                <cmake.root.dir>${project.parent.basedir}/../iotdb-client/compile-tools/thrift/target/cmake-${cmake-version}-win64-x64/</cmake.root.dir>
+                <cmake.root.dir>${project.parent.basedir}/../iotdb-client/compile-tools/thrift/target/cmake-${cmake-version}-windows-x86_64/</cmake.root.dir>
                 <boost.include.dir/>
             </properties>
         </profile>
