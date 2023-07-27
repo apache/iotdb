@@ -241,9 +241,19 @@ public class CommonDescriptor {
   }
 
   private void loadPipeProps(Properties properties) {
+    config.setPipeHardlinkBaseDirName(
+        properties.getProperty("pipe_hardlink_base_dir_name", config.getPipeHardlinkBaseDirName()));
     config.setPipeHardlinkTsFileDirName(
         properties.getProperty(
             "pipe_hardlink_tsfile_dir_name", config.getPipeHardlinkTsFileDirName()));
+    config.setPipeHardlinkWALDirName(
+        properties.getProperty("pipe_hardlink_wal_dir_name", config.getPipeHardlinkWALDirName()));
+    config.setPipeHardLinkWALEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_hardlink_wal_enabled",
+                Boolean.toString(config.getPipeHardLinkWALEnabled()))));
+
     config.setPipeDataStructureTabletRowSize(
         Integer.parseInt(
             properties.getProperty(
