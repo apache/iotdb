@@ -37,6 +37,16 @@ class IoTDBContainer(DockerContainer):
             self.get_container_host_ip(), self.get_exposed_port(6667), "root", "root"
         )
         session.open(False)
+        with session.execute_statement(
+                "SHOW CLUSTER"
+        ) as session_data_set:
+            while session_data_set.has_next():
+                print(session_data_set.next())
+        with session.execute_statement(
+                "SHOW VERSION"
+        ) as session_data_set:
+            while session_data_set.has_next():
+                print(session_data_set.next())
         session.close()
 
     def __init__(self, image="apache/iotdb:latest", **kwargs):

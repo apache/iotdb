@@ -67,23 +67,13 @@ jobs:
       - name: Test with Maven
         run: mvn clean verify -pl iotdb-client/client-cpp -am -P compile-cpp -P cppTest
       - name: Show test result
+        if: failure()
         run: cat iotdb-client/client-cpp/target/build/test/Testing/Temporary/LastTest_*.log
 
   build-win:
-    strategy:
-      fail-fast: false
-      max-parallel: 20
-      matrix:
-        os: [windows-latest]
-    runs-on: ${{ matrix.os}}
+    runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v3
-      - name: Set up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v3
-        with:
-          distribution: liberica
-          java-version: 11
       - name: Cache Maven packages
         uses: actions/cache@v3
         with:
