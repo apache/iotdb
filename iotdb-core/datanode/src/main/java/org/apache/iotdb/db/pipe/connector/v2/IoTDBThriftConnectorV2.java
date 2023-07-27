@@ -196,7 +196,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
               pipeRawTabletInsertionEvent.isAligned());
       final PipeTransferRawTabletInsertionEventHandler pipeTransferTabletReqHandler =
           new PipeTransferRawTabletInsertionEventHandler(
-              requestCommitId, pipeTransferTabletReq, this);
+              requestCommitId, pipeRawTabletInsertionEvent, pipeTransferTabletReq, this);
 
       transfer(requestCommitId, pipeTransferTabletReqHandler);
     }

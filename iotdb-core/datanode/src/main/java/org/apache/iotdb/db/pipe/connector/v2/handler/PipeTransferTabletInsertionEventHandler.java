@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.connector.v2.handler;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.db.pipe.connector.v2.IoTDBThriftConnectorV2;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -32,8 +33,6 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nullable;
-
 import java.util.Optional;
 
 public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTransferResp>
@@ -43,16 +42,13 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
       LoggerFactory.getLogger(PipeTransferTabletInsertionEventHandler.class);
 
   private final long requestCommitId;
-  private final EnrichedEvent event;
+  private final Event event;
   private final TPipeTransferReq req;
 
   private final IoTDBThriftConnectorV2 connector;
 
   protected PipeTransferTabletInsertionEventHandler(
-      long requestCommitId,
-      @Nullable EnrichedEvent event,
-      TPipeTransferReq req,
-      IoTDBThriftConnectorV2 connector) {
+      long requestCommitId, Event event, TPipeTransferReq req, IoTDBThriftConnectorV2 connector) {
     this.requestCommitId = requestCommitId;
     this.event = event;
     this.req = req;
@@ -60,7 +56,13 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
 
     Optional.ofNullable(event)
         .ifPresent(
-            e -> e.increaseReferenceCount(PipeTransferTabletInsertionEventHandler.class.getName()));
+            e -> {
+              if (e instanceof EnrichedEvent) {
+                ((EnrichedEvent) e)
+                    .increaseReferenceCount(
+                        PipeTransferTabletInsertionEventHandler.class.getName());
+              }
+            });
   }
 
   public void transfer(AsyncPipeDataTransferServiceClient client) throws TException {
@@ -79,7 +81,8 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
     }
 
     if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      connector.commit(requestCommitId, event);
+      connector.commit(
+          requestCommitId, event instanceof EnrichedEvent ? (EnrichedEvent) event : null);
     } else {
       onError(new PipeException(response.getStatus().getMessage()));
     }
