@@ -218,7 +218,6 @@ class ForecastingTrainingTrial(BasicTrial):
             model_info.update(self.trial_configs)
             model_info['model_path'] = model_path
             self.configNode_client.update_model_info(self.model_id, self.trial_id, model_info)
-            self.configNode_client.update_model_state(self.model_id, TrainingState.FINISHED, self.trial_id)
             return best_loss
         except Exception as e:
             logger.warn(e)
