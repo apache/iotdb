@@ -45,8 +45,7 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
     long cost =
         config.getTargetChunkSize()
             * taskInfo.getFileInfoList().size()
-            * Math.max(config.getSubCompactionTaskNum(), taskInfo.getMaxConcurrentSeriesNum())
-            * compressionRatio;
+            * Math.max(config.getSubCompactionTaskNum(), taskInfo.getMaxConcurrentSeriesNum());
     cost += taskInfo.getModificationFileSize();
     return cost;
   }
