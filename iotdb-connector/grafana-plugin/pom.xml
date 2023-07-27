@@ -19,14 +19,13 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.apache.iotdb</groupId>
-        <artifactId>iotdb-parent</artifactId>
+        <artifactId>iotdb-connector</artifactId>
         <version>1.3.0-SNAPSHOT</version>
-        <relativePath>../../pom.xml</relativePath>
     </parent>
     <artifactId>iotdb-grafana-plugin</artifactId>
-    <name>IoTDB Grafana plugin</name>
-    <description>IoTDB Grafana plugin</description>
     <packaging>pom</packaging>
+    <name>IoTDB: Connector: Grafana (Plugin)</name>
+    <description>IoTDB Grafana plugin</description>
     <profiles>
         <profile>
             <id>compile-grafana-plugin</id>

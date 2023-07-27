@@ -23,12 +23,11 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.apache.iotdb</groupId>
-        <artifactId>iotdb-parent</artifactId>
+        <artifactId>iotdb-connector</artifactId>
         <version>1.3.0-SNAPSHOT</version>
-        <relativePath>../../pom.xml</relativePath>
     </parent>
     <artifactId>flink-tsfile-connector</artifactId>
-    <packaging>jar</packaging>
+    <name>IoTDB: Connector: Apache Flink TSFile</name>
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>

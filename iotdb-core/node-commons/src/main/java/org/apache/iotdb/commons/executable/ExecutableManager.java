@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.executable;
 
+import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.trigger.exception.TriggerJarTooLargeException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
@@ -227,6 +228,8 @@ public class ExecutableManager {
     try {
       Path path = Paths.get(destination);
       Files.deleteIfExists(path);
+      // Ensure the target directory exists.
+      SystemFileFactory.INSTANCE.makeDirIfNecessary(destination);
       Files.createFile(path);
       try (FileOutputStream outputStream = new FileOutputStream(destination)) {
         outputStream.getChannel().write(byteBuffer);

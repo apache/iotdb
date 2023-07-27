@@ -23,12 +23,11 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.apache.iotdb</groupId>
-        <artifactId>iotdb-parent</artifactId>
+        <artifactId>iotdb-client</artifactId>
         <version>1.3.0-SNAPSHOT</version>
-        <relativePath>../../pom.xml</relativePath>
     </parent>
     <artifactId>iotdb-jdbc</artifactId>
-    <name>IoTDB Jdbc</name>
+    <name>IoTDB: Client: Jdbc</name>
     <description>A jdbc driver for a time series database, IoTDB, which uses TsFile as its storage format on disk.</description>
     <properties>
         <jdbc.test.skip>false</jdbc.test.skip>
@@ -38,33 +37,6 @@
         <pax-jdbc-common.version>1.4.5</pax-jdbc-common.version>
         <org.osgi.core.version>6.0.0</org.osgi.core.version>
     </properties>
-    <dependencies>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>service-rpc</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.osgi</groupId>
-            <artifactId>osgi.cmpn</artifactId>
-            <version>${osgi.cmpn.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.ops4j.pax.jdbc</groupId>
-            <artifactId>pax-jdbc-common</artifactId>
-            <version>${pax-jdbc-common.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.osgi</groupId>
-            <artifactId>org.osgi.core</artifactId>
-            <version>${org.osgi.core.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
     <build>
         <resources>
             <resource>
@@ -182,6 +154,33 @@
             </plugin>
         </plugins>
     </build>
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>service-rpc</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>osgi.cmpn</artifactId>
+            <version>${osgi.cmpn.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.ops4j.pax.jdbc</groupId>
+            <artifactId>pax-jdbc-common</artifactId>
+            <version>${pax-jdbc-common.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.core</artifactId>
+            <version>${org.osgi.core.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
     <profiles>
         <profile>
             <id>only-eclipse</id>

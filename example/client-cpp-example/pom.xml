@@ -25,14 +25,21 @@
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-examples</artifactId>
         <version>1.3.0-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>client-cpp-example</artifactId>
-    <name>IoTDB-Client CPP Examples</name>
+    <name>IoTDB: Example: CPP Client</name>
     <properties>
         <cmake-version>3.17.3</cmake-version>
         <cmake.build.type>Release</cmake.build.type>
     </properties>
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>client-cpp</artifactId>
+            <version>${project.version}</version>
+            <type>pom</type>
+        </dependency>
+    </dependencies>
     <profiles>
         <profile>
             <id>os-unix</id>
@@ -187,12 +194,4 @@
             </build>
         </profile>
     </profiles>
-    <dependencies>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>client-cpp</artifactId>
-            <version>${project.version}</version>
-            <type>pom</type>
-        </dependency>
-    </dependencies>
 </project>

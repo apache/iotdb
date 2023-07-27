@@ -79,46 +79,13 @@
         </mailingList>
     </mailingLists>
     <modules>
-        <module>iotdb-core/tsfile</module>
-        <module>iotdb-core/antlr</module>
-        <module>iotdb-protocol/thrift</module>
-        <module>iotdb-protocol/thrift-commons</module>
-        <module>iotdb-protocol/thrift-confignode</module>
-        <module>iotdb-protocol/thrift-iot-consensus</module>
-        <module>iotdb-protocol/thrift-mlnode</module>
-        <module>iotdb-client/service-rpc</module>
-        <module>iotdb-client/jdbc</module>
-        <module>iotdb-client/session</module>
-        <module>iotdb-client/cli</module>
-        <module>iotdb-protocol/openapi</module>
-        <module>iotdb-core/datanode</module>
+        <module>iotdb-api</module>
+        <module>iotdb-client</module>
+        <module>iotdb-connector</module>
+        <module>iotdb-core</module>
+        <module>iotdb-protocol</module>
         <module>example</module>
-        <module>iotdb-connector/grafana-plugin</module>
-        <module>iotdb-connector/grafana-connector</module>
-        <module>iotdb-connector/spark-tsfile</module>
-        <module>iotdb-connector/hadoop</module>
-        <module>iotdb-connector/spark-iotdb-connector/scala_2.11</module>
-        <module>iotdb-connector/spark-iotdb-connector/scala_2.12</module>
-        <module>iotdb-connector/flink-tsfile-connector</module>
-        <module>iotdb-connector/flink-iotdb-connector</module>
-        <module>distribution</module>
-        <module>iotdb-connector/hive-connector</module>
-        <module>iotdb-core/node-commons</module>
-        <module>iotdb-core/confignode</module>
-        <module>iotdb-connector/zeppelin-interpreter</module>
-        <module>iotdb-client/client-py</module>
-        <module>iotdb-client/compile-tools</module>
-        <module>iotdb-client/client-cpp</module>
-        <module>iotdb-core/metrics</module>
-        <module>integration-test</module>
-        <module>iotdb-core/consensus</module>
         <module>library-udf</module>
-        <module>iotdb-api/udf-api</module>
-        <module>iotdb-api/trigger-api</module>
-        <module>iotdb-api/external-api</module>
-        <module>iotdb-client/isession</module>
-        <module>iotdb-core/mlnode</module>
-        <module>iotdb-api/pipe-api</module>
     </modules>
     <!-- Properties Management -->
     <properties>
@@ -1132,7 +1099,7 @@
           They are automatically activated depending on the OS you are using.
         -->
         <profile>
-            <id>windows</id>
+            <id>os-windows</id>
             <activation>
                 <os>
                     <family>windows</family>
@@ -1149,7 +1116,7 @@
         </profile>
         <!-- Has to be listed before "mac" as it seems a mac is both "mac" and "unix" -->
         <profile>
-            <id>unix</id>
+            <id>os-unix</id>
             <activation>
                 <os>
                     <family>unix</family>
@@ -1165,7 +1132,7 @@
             </properties>
         </profile>
         <profile>
-            <id>mac</id>
+            <id>os-mac</id>
             <activation>
                 <os>
                     <family>mac</family>
@@ -1184,8 +1151,7 @@
         <profile>
             <id>java-11-and-above</id>
             <activation>
-                <!-- This needs to be updated as soon as Java 20 is shipped -->
-                <jdk>[11,20)</jdk>
+                <jdk>[11,)</jdk>
             </activation>
             <properties>
                 <maven.compiler.release>8</maven.compiler.release>
@@ -1214,8 +1180,7 @@
         <profile>
             <id>java-16-and-above</id>
             <activation>
-                <!-- This needs to be updated as soon as Java 20 is shipped -->
-                <jdk>[16,20)</jdk>
+                <jdk>[16,)</jdk>
             </activation>
             <properties>
                 <maven.compiler.release>8</maven.compiler.release>
@@ -1330,6 +1295,13 @@
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+        <!-- Enable integration-testsuite on demand, as this takes quite a long time to run -->
+        <profile>
+            <id>with-integration-tests</id>
+            <modules>
+                <module>integration-test</module>
+            </modules>
         </profile>
         <!-- Make sure the source assembly has the right name -->
         <profile>
