@@ -136,6 +136,15 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
 
   @Override
   public void handshake() throws Exception {
+    if (retryConnector.get() != null) {
+      try {
+        retryConnector.get().close();
+      } catch (Exception e) {
+        LOGGER.warn("Failed to close connector to receiver when try to handshake.", e);
+      }
+      retryConnector.set(null);
+    }
+
     for (final TEndPoint endPoint : nodeUrls) {
       final IoTDBThriftConnectorV1 connector =
           new IoTDBThriftConnectorV1(endPoint.getIp(), endPoint.getPort());
