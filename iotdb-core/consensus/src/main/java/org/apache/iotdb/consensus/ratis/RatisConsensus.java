@@ -172,7 +172,8 @@ class RatisConsensus implements IConsensus {
                 raftGroupId ->
                     new ApplicationStateMachineProxy(
                         registry.apply(Utils.fromRaftGroupIdToConsensusGroupId(raftGroupId)),
-                        raftGroupId))
+                        raftGroupId,
+                        canServeStaleRead))
             .build();
   }
 
