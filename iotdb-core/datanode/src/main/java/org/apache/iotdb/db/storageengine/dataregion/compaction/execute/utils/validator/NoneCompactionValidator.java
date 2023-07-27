@@ -39,7 +39,7 @@ public class NoneCompactionValidator implements CompactionValidator {
       List<TsFileResource> targetTsFileList,
       String storageGroupName,
       long timePartition,
-      boolean isInnerSequenceSpaceTask) {
+      boolean isInnerUnSequenceSpaceTask) {
     return true;
   }
 
