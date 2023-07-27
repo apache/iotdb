@@ -78,7 +78,7 @@ public class LoadTsFileManager {
     this.loadDir = SystemFileFactory.INSTANCE.getFile(CONFIG.getLoadTsFileDir());
     this.uuid2WriterManager = new ConcurrentHashMap<>();
     this.cleanupExecutors =
-        IoTDBThreadPoolFactory.newScheduledThreadPool(0, LoadTsFileManager.class.getName());
+        IoTDBThreadPoolFactory.newScheduledThreadPool(1, LoadTsFileManager.class.getName());
     this.uuid2Future = new ConcurrentHashMap<>();
 
     recover();

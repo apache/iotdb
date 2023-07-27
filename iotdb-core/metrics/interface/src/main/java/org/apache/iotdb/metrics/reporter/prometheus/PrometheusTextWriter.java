@@ -68,23 +68,23 @@ class PrometheusTextWriter extends FilterWriter {
   public void writeSample(String name, Map<String, String> labels, Object value)
       throws IOException {
     write(name);
+    write('{');
+    write("cluster=\"");
+    write(METRIC_CONFIG.getClusterName());
+    write("\",nodeType=\"");
+    write(METRIC_CONFIG.getNodeType().toString());
+    write("\",nodeId=\"");
+    write(String.valueOf(METRIC_CONFIG.getNodeId()));
+    write("\",");
     if (labels.size() > 0) {
-      write('{');
-      write("cluster=\"");
-      write(METRIC_CONFIG.getClusterName());
-      write("\",nodeType=\"");
-      write(METRIC_CONFIG.getNodeType().toString());
-      write("\",nodeId=\"");
-      write(String.valueOf(METRIC_CONFIG.getNodeId()));
-      write("\",");
       for (Map.Entry<String, String> entry : labels.entrySet()) {
         write(entry.getKey());
         write("=\"");
         write(entry.getValue());
         write("\",");
       }
-      write('}');
     }
+    write('}');
     write(' ');
     write(value.toString());
     write('\n');

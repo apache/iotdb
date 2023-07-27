@@ -175,6 +175,7 @@ keyWords
     | QUOTA
     | RANGE
     | READONLY
+    | READ
     | REGEXP
     | REGIONID
     | REGIONS
@@ -250,4 +251,5 @@ keyWords
     | WITH
     | WITHOUT
     | WRITABLE
+    | WRITE
     ;

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.exchange;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
+import org.apache.iotdb.db.queryengine.exception.exchange.GetTsBlockFromClosedOrAbortedChannelException;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelIndex;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
@@ -115,6 +116,10 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           try {
             ByteBuffer serializedTsBlock = sinkChannel.getSerializedTsBlock(i);
             resp.addToTsBlocks(serializedTsBlock);
+          } catch (GetTsBlockFromClosedOrAbortedChannelException e) {
+            // Return an empty block list to indicate that getting data block failed this time.
+            // The SourceHandle will deal with this signal depending on its state.
+            return new TGetDataBlockResponse(new ArrayList<>());
           } catch (IllegalStateException | IOException e) {
             throw new TException(e);
           }

@@ -1078,7 +1078,8 @@ public class IoTDBConfig {
   private double maxMemoryRatioForQueue = 0.6;
 
   /** Pipe related */
-  private String pipeReceiveFileDir = systemDir + File.separator + "pipe";
+  private String pipeReceiveFileDir =
+      systemDir + File.separator + "pipe" + File.separator + "receiver";
 
   /** Resource control */
   private boolean quotaEnable = false;

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
+import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import com.google.common.util.concurrent.FutureCallback;
@@ -126,8 +127,12 @@ public abstract class PipeSubtask
       final String errorMessage =
           String.format(
               "Failed to execute subtask %s(%s), "
-                  + "retry count exceeds the max retry times %d, last exception: %s",
-              taskID, this.getClass().getSimpleName(), retryCount.get(), throwable.getMessage());
+                  + "retry count exceeds the max retry times %d, last exception: %s, root cause: %s",
+              taskID,
+              this.getClass().getSimpleName(),
+              retryCount.get(),
+              throwable.getMessage(),
+              ErrorHandlingUtils.getRootCause(throwable).getMessage());
       LOGGER.warn(errorMessage, throwable);
 
       if (lastEvent instanceof EnrichedEvent) {

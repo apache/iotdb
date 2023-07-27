@@ -261,4 +261,9 @@ public class RemoteCommonConfig implements CommonConfig {
   public CommonConfig setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold) {
     return this;
   }
+
+  @Override
+  public CommonConfig setDatabaseLimitThreshold(long databaseLimitThreshold) {
+    return this;
+  }
 }

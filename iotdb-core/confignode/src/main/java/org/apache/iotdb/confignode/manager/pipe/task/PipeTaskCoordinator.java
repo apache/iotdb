@@ -65,6 +65,7 @@ public class PipeTaskCoordinator {
    */
   public AtomicReference<PipeTaskInfo> lock() {
     pipeTaskCoordinatorLock.lock();
+    LOGGER.info("Pipe task coordinator locked.");
 
     pipeTaskInfoHolder = new AtomicReference<>(pipeTaskInfo);
     return pipeTaskInfoHolder;
@@ -73,24 +74,33 @@ public class PipeTaskCoordinator {
   /**
    * Unlock the pipe task coordinator. Calling this method will clear the pipe task info holder,
    * which means that the holder will be null after calling this method.
+   *
+   * @return true if successfully unlocked, false if current thread is not holding the lock.
    */
-  public void unlock() {
+  public boolean unlock() {
     if (pipeTaskInfoHolder != null) {
       pipeTaskInfoHolder.set(null);
       pipeTaskInfoHolder = null;
     }
 
-    pipeTaskCoordinatorLock.unlock();
+    try {
+      pipeTaskCoordinatorLock.unlock();
+      LOGGER.info("Pipe task coordinator unlocked.");
+      return true;
+    } catch (IllegalMonitorStateException ignored) {
+      // This is thrown if unlock() is called without lock() called first.
+      LOGGER.warn("This thread is not holding the lock.");
+      return false;
+    }
   }
 
-  /* Caller should ensure that the method is called in the lock {@link #lock()}. */
+  /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus createPipe(TCreatePipeReq req) {
     return configManager.getProcedureManager().createPipe(req);
   }
 
-  /* Caller should ensure that the method is called in the lock {@link #lock()}. */
+  /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus startPipe(String pipeName) {
-    // Whether there are exceptions to clear
     final boolean hasException = pipeTaskInfo.hasExceptions(pipeName);
     final TSStatus status = configManager.getProcedureManager().startPipe(pipeName);
     if (status == RpcUtils.SUCCESS_STATUS && hasException) {
@@ -100,12 +110,20 @@ public class PipeTaskCoordinator {
     return status;
   }
 
-  /* Caller should ensure that the method is called in the lock {@link #lock()}. */
+  /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus stopPipe(String pipeName) {
-    return configManager.getProcedureManager().stopPipe(pipeName);
+    final boolean isStoppedByRuntimeException = pipeTaskInfo.isStoppedByRuntimeException(pipeName);
+    final TSStatus status = configManager.getProcedureManager().stopPipe(pipeName);
+    if (status == RpcUtils.SUCCESS_STATUS && isStoppedByRuntimeException) {
+      LOGGER.info(
+          "Pipe {} has stopped successfully manually, stop its auto restart process.", pipeName);
+      pipeTaskInfo.setIsStoppedByRuntimeExceptionToFalse(pipeName);
+      configManager.getProcedureManager().pipeHandleMetaChange(true, true);
+    }
+    return status;
   }
 
-  /* Caller should ensure that the method is called in the lock {@link #lock()}. */
+  /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus dropPipe(String pipeName) {
     final boolean isPipeExistedBeforeDrop = pipeTaskInfo.isPipeExisted(pipeName);
     final TSStatus status = configManager.getProcedureManager().dropPipe(pipeName);

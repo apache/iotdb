@@ -50,13 +50,21 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.file.Files;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftReceiverV1.class);
 
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
-  private static final String RECEIVER_FILE_DIR = IOTDB_CONFIG.getPipeReceiverFileDir();
+  private static final String RECEIVER_FILE_BASE_DIR = IOTDB_CONFIG.getPipeReceiverFileDir();
+  private final AtomicReference<File> receiverFileDirWithIdSuffix = new AtomicReference<>();
+
+  // Used to generate transfer id, which is used to identify a receiver thread.
+  private static final AtomicLong RECEIVER_ID_GENERATOR = new AtomicLong(0);
+  private final AtomicLong receiverId = new AtomicLong(0);
 
   private File writingFile;
   private RandomAccessFile writingFileWriter;
@@ -87,10 +95,12 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
 
     // unknown request type, which means the request can not be handled by this receiver,
     // maybe the version of the receiver is not compatible with the sender
-    return new TPipeTransferResp(
+    final TSStatus status =
         RpcUtils.getStatus(
             TSStatusCode.PIPE_TYPE_ERROR,
-            String.format("Unknown transfer type %s.", rawRequestType)));
+            String.format("Unknown PipeRequestType %s.", rawRequestType));
+    LOGGER.warn("Unknown PipeRequestType, response status = {}.", status);
+    return new TPipeTransferResp(status);
   }
 
   private TPipeTransferResp handleTransferHandshake(PipeTransferHandshakeReq req) {
@@ -98,17 +108,59 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
         .getConfig()
         .getTimestampPrecision()
         .equals(req.getTimestampPrecision())) {
-      String msg =
-          String.format(
-              "IoTDB receiver's timestamp precision %s, "
-                  + "connector's timestamp precision %s. validation fails.",
-              CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
-              req.getTimestampPrecision());
-      LOGGER.warn(msg);
-      return new TPipeTransferResp(RpcUtils.getStatus(TSStatusCode.PIPE_HANDSHAKE_ERROR, msg));
+      final TSStatus status =
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_HANDSHAKE_ERROR,
+              String.format(
+                  "IoTDB receiver's timestamp precision %s, "
+                      + "connector's timestamp precision %s. Validation fails.",
+                  CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
+                  req.getTimestampPrecision()));
+      LOGGER.warn("Handshake failed, response status = {}.", status);
+      return new TPipeTransferResp(status);
     }
 
-    LOGGER.info("Handshake successfully.");
+    receiverId.set(RECEIVER_ID_GENERATOR.incrementAndGet());
+
+    // clear the original receiver file dir if exists
+    if (receiverFileDirWithIdSuffix.get() != null) {
+      if (receiverFileDirWithIdSuffix.get().exists()) {
+        try {
+          Files.delete(receiverFileDirWithIdSuffix.get().toPath());
+          LOGGER.info(
+              "Original receiver file dir {} was deleted.",
+              receiverFileDirWithIdSuffix.get().getPath());
+        } catch (IOException e) {
+          LOGGER.warn(
+              "Failed to delete original receiver file dir {}, because {}.",
+              receiverFileDirWithIdSuffix.get().getPath(),
+              e.getMessage());
+        }
+      } else {
+        LOGGER.info(
+            "Original receiver file dir {} is not existed. No need to delete.",
+            receiverFileDirWithIdSuffix.get().getPath());
+      }
+      receiverFileDirWithIdSuffix.set(null);
+    } else {
+      LOGGER.info("Current receiver file dir is null. No need to delete.");
+    }
+
+    // create a new receiver file dir
+    final File newReceiverDir = new File(RECEIVER_FILE_BASE_DIR, Long.toString(receiverId.get()));
+    if (!newReceiverDir.exists()) {
+      if (newReceiverDir.mkdirs()) {
+        LOGGER.info("Receiver file dir {} was created.", newReceiverDir.getPath());
+      } else {
+        LOGGER.error("Failed to create receiver file dir {}.", newReceiverDir.getPath());
+      }
+    }
+    receiverFileDirWithIdSuffix.set(newReceiverDir);
+
+    LOGGER.info(
+        "Handshake successfully, receiver id = {}, receiver file dir = {}.",
+        receiverId.get(),
+        newReceiverDir.getPath());
     return new TPipeTransferResp(RpcUtils.SUCCESS_STATUS);
   }
 
@@ -134,24 +186,25 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
       updateWritingFileIfNeeded(req.getFileName());
 
       if (!isWritingFileOffsetCorrect(req.getStartWritingOffset())) {
-        return PipeTransferFilePieceResp.toTPipeTransferResp(
+        final TSStatus status =
             RpcUtils.getStatus(
                 TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET,
                 String.format(
-                    "request sender reset file reader's offset from %s to %s.",
-                    req.getStartWritingOffset(), writingFileWriter.length())),
-            writingFileWriter.length());
+                    "Request sender to reset file reader's offset from %s to %s.",
+                    req.getStartWritingOffset(), writingFileWriter.length()));
+        LOGGER.warn("File offset reset requested by receiver, response status = {}.", status);
+        return PipeTransferFilePieceResp.toTPipeTransferResp(status, writingFileWriter.length());
       }
 
       writingFileWriter.write(req.getFilePiece());
       return PipeTransferFilePieceResp.toTPipeTransferResp(
           RpcUtils.SUCCESS_STATUS, writingFileWriter.length());
     } catch (Exception e) {
-      LOGGER.warn(String.format("failed to write file piece from req %s.", req), e);
+      LOGGER.warn(String.format("Failed to write file piece from req %s.", req), e);
       final TSStatus status =
           RpcUtils.getStatus(
               TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
-              String.format("failed to write file piece, because %s", e.getMessage()));
+              String.format("Failed to write file piece, because %s", e.getMessage()));
       try {
         return PipeTransferFilePieceResp.toTPipeTransferResp(
             status, PipeTransferFilePieceResp.ERROR_END_OFFSET);
@@ -166,38 +219,86 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
       return;
     }
 
-    if (writingFileWriter != null) {
-      writingFileWriter.close();
-      writingFileWriter = null;
-    }
-    if (writingFile != null && writingFile.exists()) {
-      if (writingFile.delete()) {
-        LOGGER.info("original file {} was deleted.", writingFile.getPath());
+    LOGGER.info(
+        "Writing file {} is not existed or name is not correct, try to create it. "
+            + "Current writing file is {}.",
+        fileName,
+        writingFile == null ? "null" : writingFile.getPath());
+
+    closeCurrentWritingFileWriter();
+    deleteCurrentWritingFile();
+
+    // make sure receiver file dir exists
+    // this may be useless, because receiver file dir is created when handshake. just in case.
+    if (!receiverFileDirWithIdSuffix.get().exists()) {
+      if (receiverFileDirWithIdSuffix.get().mkdirs()) {
+        LOGGER.info(
+            "Receiver file dir {} was created.", receiverFileDirWithIdSuffix.get().getPath());
       } else {
-        LOGGER.warn("failed to delete original file {}.", writingFile.getPath());
+        LOGGER.error(
+            "Failed to create receiver file dir {}.", receiverFileDirWithIdSuffix.get().getPath());
       }
-      writingFile = null;
     }
 
-    final File receiveDir = new File(RECEIVER_FILE_DIR);
-    if (!receiveDir.exists()) {
-      if (receiveDir.mkdirs()) {
-        LOGGER.info("receiver file dir {} was created.", receiveDir.getPath());
-      } else {
-        LOGGER.warn("failed to create receiver file dir {}.", receiveDir.getPath());
-      }
-    }
-    writingFile = new File(RECEIVER_FILE_DIR, fileName);
+    writingFile = new File(receiverFileDirWithIdSuffix.get(), fileName);
     writingFileWriter = new RandomAccessFile(writingFile, "rw");
-    LOGGER.info("start to write transferring file {}.", writingFile.getPath());
+    LOGGER.info("Writing file {} was created. Ready to write file pieces.", writingFile.getPath());
   }
 
   private boolean isFileExistedAndNameCorrect(String fileName) {
     return writingFile != null && writingFile.getName().equals(fileName);
   }
 
+  private void closeCurrentWritingFileWriter() {
+    if (writingFileWriter != null) {
+      try {
+        writingFileWriter.close();
+        LOGGER.info(
+            "Current writing file writer {} was closed.",
+            writingFile == null ? "null" : writingFile.getPath());
+      } catch (IOException e) {
+        LOGGER.warn(
+            "Failed to close current writing file writer {}, because {}.",
+            writingFile == null ? "null" : writingFile.getPath(),
+            e.getMessage());
+      }
+      writingFileWriter = null;
+    } else {
+      LOGGER.info("Current writing file writer is null. No need to close.");
+    }
+  }
+
+  private void deleteCurrentWritingFile() {
+    if (writingFile != null) {
+      if (writingFile.exists()) {
+        try {
+          Files.delete(writingFile.toPath());
+          LOGGER.info("Original writing file {} was deleted.", writingFile.getPath());
+        } catch (IOException e) {
+          LOGGER.warn(
+              "Failed to delete original writing file {}, because {}.",
+              writingFile.getPath(),
+              e.getMessage());
+        }
+      } else {
+        LOGGER.info("Original file {} is not existed. No need to delete.", writingFile.getPath());
+      }
+      writingFile = null;
+    } else {
+      LOGGER.info("Current writing file is null. No need to delete.");
+    }
+  }
+
   private boolean isWritingFileOffsetCorrect(long offset) throws IOException {
-    return writingFileWriter.length() == offset;
+    final boolean offsetCorrect = writingFileWriter.length() == offset;
+    if (!offsetCorrect) {
+      LOGGER.warn(
+          "Writing file {}'s offset is {}, but request sender's offset is {}.",
+          writingFile.getPath(),
+          writingFileWriter.length(),
+          offset);
+    }
+    return offsetCorrect;
   }
 
   private TPipeTransferResp handleTransferFileSeal(
@@ -206,61 +307,102 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
       ISchemaFetcher schemaFetcher) {
     try {
       if (!isWritingFileAvailable()) {
-        return new TPipeTransferResp(
+        final TSStatus status =
             RpcUtils.getStatus(
                 TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
                 String.format(
-                    "failed to seal file, because writing file %s is not available.",
-                    req.getFileName())));
+                    "Failed to seal file, because writing file %s is not available.",
+                    req.getFileName()));
+        LOGGER.warn(status.getMessage());
+        return new TPipeTransferResp(status);
       }
 
       if (!isFileExistedAndNameCorrect(req.getFileName())) {
-        return new TPipeTransferResp(
+        final TSStatus status =
             RpcUtils.getStatus(
                 TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
                 String.format(
-                    "failed to seal file %s, but writing file is %s.",
-                    req.getFileName(), writingFile)));
+                    "Failed to seal file %s, but writing file is %s.",
+                    req.getFileName(), writingFile));
+        LOGGER.warn(status.getMessage());
+        return new TPipeTransferResp(status);
       }
 
       if (!isWritingFileOffsetCorrect(req.getFileLength())) {
-        return new TPipeTransferResp(
+        final TSStatus status =
             RpcUtils.getStatus(
                 TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
                 String.format(
-                    "failed to seal file because the length of file is not correct. "
-                        + "the original file has length %s, but receiver file has length %s.",
-                    req.getFileLength(), writingFileWriter.length())));
+                    "Failed to seal file %s, because the length of file is not correct. "
+                        + "The original file has length %s, but receiver file has length %s.",
+                    req.getFileName(), req.getFileLength(), writingFileWriter.length()));
+        LOGGER.warn(status.getMessage());
+        return new TPipeTransferResp(status);
       }
 
-      final LoadTsFileStatement statement = new LoadTsFileStatement(writingFile.getAbsolutePath());
+      final String fileAbsolutePath = writingFile.getAbsolutePath();
+      final LoadTsFileStatement statement = new LoadTsFileStatement(fileAbsolutePath);
 
-      // 1.The writing file writer must be closed, otherwise it may cause concurrent errors during
+      // 1. The writing file writer must be closed, otherwise it may cause concurrent errors during
       // the process of loading tsfile when parsing tsfile.
       //
-      // 2.The writing file must be set to null, otherwise if the next passed tsfile has the same
+      // 2. The writing file must be set to null, otherwise if the next passed tsfile has the same
       // name as the current tsfile, it will bypass the judgment logic of
       // updateWritingFileIfNeeded#isFileExistedAndNameCorrect, and continue to write to the already
       // loaded file. Since the writing file writer has already been closed, it will throw a Stream
       // Close exception.
       writingFileWriter.close();
+      writingFileWriter = null;
+
+      // writingFile will be deleted after load if no exception occurs
       writingFile = null;
 
       statement.setDeleteAfterLoad(true);
       statement.setVerifySchema(true);
       statement.setAutoCreateDatabase(false);
-      return new TPipeTransferResp(executeStatement(statement, partitionFetcher, schemaFetcher));
+
+      final TSStatus status = executeStatement(statement, partitionFetcher, schemaFetcher);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.info(
+            "Seal file {} successfully. Receiver id is {}.", fileAbsolutePath, receiverId.get());
+      } else {
+        LOGGER.warn(
+            "Failed to seal file {}, because {}. Receiver id is {}.",
+            fileAbsolutePath,
+            status.getMessage(),
+            receiverId.get());
+      }
+      return new TPipeTransferResp(status);
     } catch (IOException e) {
-      LOGGER.warn(String.format("failed to seal file %s from req %s.", writingFile, req), e);
+      LOGGER.warn(
+          String.format(
+              "Failed to seal file %s from req %s. Receiver id is %d.",
+              writingFile, req, receiverId.get()),
+          e);
       return new TPipeTransferResp(
           RpcUtils.getStatus(
               TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
-              String.format("failed to seal file %s because %s", writingFile, e.getMessage())));
+              String.format("Failed to seal file %s because %s", writingFile, e.getMessage())));
+    } finally {
+      // If the writing file is not sealed successfully, the writing file will be deleted.
+      // All pieces of the writing file should be retransmitted by the sender.
+      closeCurrentWritingFileWriter();
+      deleteCurrentWritingFile();
     }
   }
 
   private boolean isWritingFileAvailable() {
-    return writingFile != null && writingFile.exists() && writingFileWriter != null;
+    final boolean isWritingFileAvailable =
+        writingFile != null && writingFile.exists() && writingFileWriter != null;
+    if (!isWritingFileAvailable) {
+      LOGGER.info(
+          "Writing file {} is not available. Writing file is null: {}, writing file exists: {}, writing file writer is null: {}.",
+          writingFile,
+          writingFile == null,
+          writingFile != null && writingFile.exists(),
+          writingFileWriter == null);
+    }
+    return isWritingFileAvailable;
   }
 
   private TSStatus executeStatement(
@@ -292,17 +434,59 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
 
   @Override
   public synchronized void handleExit() {
-    try {
-      if (writingFileWriter != null) {
+    if (writingFileWriter != null) {
+      try {
         writingFileWriter.close();
+        LOGGER.info("IoTDBThriftReceiverV1#handleExit: writing file writer was closed.");
+      } catch (Exception e) {
+        LOGGER.warn("IoTDBThriftReceiverV1#handleExit: close writing file writer error.", e);
       }
-      if (writingFile != null && !writingFile.delete()) {
+      writingFileWriter = null;
+    } else {
+      LOGGER.info(
+          "IoTDBThriftReceiverV1#handleExit: writing file writer is null. No need to close.");
+    }
+
+    if (writingFile != null) {
+      try {
+        Files.delete(writingFile.toPath());
+        LOGGER.info(
+            "IoTDBThriftReceiverV1#handleExit: writing file {} was deleted.",
+            writingFile.getPath());
+      } catch (Exception e) {
         LOGGER.warn(
             "IoTDBThriftReceiverV1#handleExit: delete file {} error.", writingFile.getPath());
       }
-    } catch (IOException e) {
-      LOGGER.warn("IoTDBThriftReceiverV1#handleExit: meeting errors on handleExit().", e);
+      writingFile = null;
+    } else {
+      LOGGER.info("IoTDBThriftReceiverV1#handleExit: writing file is null. No need to delete.");
     }
+
+    // clear the original receiver file dir if exists
+    if (receiverFileDirWithIdSuffix.get() != null) {
+      if (receiverFileDirWithIdSuffix.get().exists()) {
+        try {
+          Files.delete(receiverFileDirWithIdSuffix.get().toPath());
+          LOGGER.info(
+              "IoTDBThriftReceiverV1#handleExit: original receiver file dir {} was deleted.",
+              receiverFileDirWithIdSuffix.get().getPath());
+        } catch (IOException e) {
+          LOGGER.warn(
+              "IoTDBThriftReceiverV1#handleExit: delete original receiver file dir {} error.",
+              receiverFileDirWithIdSuffix.get().getPath());
+        }
+      } else {
+        LOGGER.info(
+            "IoTDBThriftReceiverV1#handleExit: original receiver file dir {} does not exist. No need to delete.",
+            receiverFileDirWithIdSuffix.get().getPath());
+      }
+      receiverFileDirWithIdSuffix.set(null);
+    } else {
+      LOGGER.info(
+          "IoTDBThriftReceiverV1#handleExit: original receiver file dir is null. No need to delete.");
+    }
+
+    LOGGER.info("IoTDBThriftReceiverV1#handleExit: receiver exited.");
   }
 
   @Override

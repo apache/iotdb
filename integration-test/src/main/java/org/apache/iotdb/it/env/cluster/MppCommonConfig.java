@@ -353,4 +353,10 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
     setProperty("cluster_schema_limit_threshold", String.valueOf(clusterSchemaLimitThreshold));
     return this;
   }
+
+  @Override
+  public CommonConfig setDatabaseLimitThreshold(long databaseLimitThreshold) {
+    setProperty("database_limit_threshold", String.valueOf(databaseLimitThreshold));
+    return this;
+  }
 }

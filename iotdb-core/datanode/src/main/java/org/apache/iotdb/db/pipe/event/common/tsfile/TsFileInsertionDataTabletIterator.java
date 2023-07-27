@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -114,7 +115,8 @@ public class TsFileInsertionDataTabletIterator implements Iterator<Tablet> {
           measurementDataTypeMap.get(deviceId + TsFileConstant.PATH_SEPARATOR + measurement);
       schemas.add(new MeasurementSchema(measurement, dataType));
     }
-    final Tablet tablet = new Tablet(deviceId, schemas);
+    final Tablet tablet =
+        new Tablet(deviceId, schemas, PipeConfig.getInstance().getPipeDataStructureTabletRowSize());
     tablet.initBitMaps();
 
     while (queryDataSet.hasNext()) {

@@ -157,4 +157,11 @@ public class IoTDBLastQueryLastCacheIT {
         };
     resultSetEqualTest("select last * from root.sg;", expectedHeader, retArray);
   }
+
+  @Test
+  public void cacheHitTest() {
+    testLastQuery();
+    testLastQueryOrderByTimeDesc();
+    testLastQuery1();
+  }
 }
