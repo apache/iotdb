@@ -63,8 +63,6 @@ public class JvmGcMonitorMetrics implements IMetricSet {
   private long startTime;
   // Container to hold collected GC data
   private final GcData curData = new GcData();
-  // Switch for GC monitor operation
-  private boolean shouldRun = true;
   // Hook function called with GC exception
   private final GcTimeAlertHandler alertHandler;
 
@@ -104,7 +102,6 @@ public class JvmGcMonitorMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    shouldRun = false;
     metricService.remove(
         MetricType.AUTO_GAUGE, SystemMetric.JVM_GC_ACCUMULATED_TIME_PERCENTAGE.toString());
     if (scheduledGcMonitorFuture != null) {
@@ -115,9 +112,7 @@ public class JvmGcMonitorMetrics implements IMetricSet {
   }
 
   private void scheduledMonitoring() {
-    if (shouldRun) {
-      calculateGCTimePercentageWithinObservedInterval();
-    }
+    calculateGCTimePercentageWithinObservedInterval();
     if (alertHandler != null && curData.gcTimePercentage.get() > maxGcTimePercentage) {
       alertHandler.alert(curData.clone());
     }

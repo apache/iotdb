@@ -39,9 +39,9 @@ public class GcTimeAlerter implements JvmGcMonitorMetrics.GcTimeAlertHandler {
     logger.warn(
         "Error metrics taken time: "
             + sdf.format(new Date(Long.parseLong(String.valueOf(gcData.getTimestamp())))));
-    logger.warn("Time since monitor has been started: " + gcData.getGcMonitorRunTime() + " ms");
     logger.warn("Gc Time Percentage: " + gcData.getGcTimePercentage() + "%");
     logger.warn("Accumulated GC time: " + gcData.getAccumulatedGcTime() + " ms");
     logger.warn("Accumulated GC count: " + gcData.getAccumulatedGcCount());
+    logger.warn("Detailed GC metrics can be accessed in Prometheus.");
   }
 }

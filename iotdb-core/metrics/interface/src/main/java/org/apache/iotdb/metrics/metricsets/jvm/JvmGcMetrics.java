@@ -58,7 +58,6 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
   private String oldGenPoolName;
   private String nonGenerationalMemoryPool;
   private final Map<String, AtomicLong> lastGcTotalDurationMap = new ConcurrentHashMap<>();
-  private final Map<String, AtomicLong> totalGcTimeSpendMap = new ConcurrentHashMap<>();
 
   public JvmGcMetrics() {
     for (MemoryPoolMXBean mbean : ManagementFactory.getMemoryPoolMXBeans()) {
@@ -189,16 +188,11 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
             // value by asking for and tracking cumulative time spent blocked in GC.
             if (isPartiallyConcurrentGC(mbean)) {
               AtomicLong previousTotal =
-                  lastGcTotalDurationMap.getOrDefault(mbean.getName(), new AtomicLong());
+                  lastGcTotalDurationMap.computeIfAbsent(mbean.getName(), k -> new AtomicLong());
               long total = mbean.getCollectionTime();
               duration = total - previousTotal.get(); // may be zero for a really fast collection
               previousTotal.set(total);
-              lastGcTotalDurationMap.put(mbean.getName(), previousTotal);
             }
-            AtomicLong totalGcTimeSpend =
-                totalGcTimeSpendMap.getOrDefault(mbean.getName(), new AtomicLong());
-            totalGcTimeSpend.set(totalGcTimeSpend.get() + duration);
-            totalGcTimeSpendMap.put(mbean.getName(), totalGcTimeSpend);
 
             String timerName;
             if (isConcurrentPhase(gcCause, notificationInfo.getGcName())) {
