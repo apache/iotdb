@@ -210,7 +210,7 @@ public class ModelManager {
       // consensus layer related errors
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(response.getException().toString());
-      return new TGetModelInfoResp(res, null);
+      return new TGetModelInfoResp(res);
     }
   }
 }

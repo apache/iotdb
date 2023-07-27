@@ -39,6 +39,8 @@ public class GetModelInfoResp implements DataSet {
   }
 
   public TGetModelInfoResp convertToThriftResponse() {
-    return new TGetModelInfoResp(status, serializedModelInformation);
+    TGetModelInfoResp resp = new TGetModelInfoResp(status);
+    resp.setModelInfo(serializedModelInformation);
+    return resp;
   }
 }

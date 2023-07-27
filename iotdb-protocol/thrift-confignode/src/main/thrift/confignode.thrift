@@ -768,7 +768,7 @@ struct TUpdateModelStateReq {
 
 struct TGetModelInfoResp {
   1: required common.TSStatus status
-  2: required binary modelInfo
+  2: optional binary modelInfo
 }
 
 // ====================================================
