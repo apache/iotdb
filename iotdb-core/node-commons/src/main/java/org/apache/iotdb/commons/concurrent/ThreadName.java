@@ -129,6 +129,8 @@ public enum ThreadName {
   PIPE_RUNTIME_META_SYNCER("Pipe-Runtime-Meta-Syncer"),
   PIPE_RUNTIME_HEARTBEAT("Pipe-Runtime-Heartbeat"),
   PIPE_RUNTIME_PROCEDURE_SUBMITTER("Pipe-Runtime-Procedure-Submitter"),
+  PIPE_ASYNC_CONNECTOR_CLIENT_POOL("Pipe-Async-Connector-Client-Pool"),
+  PIPE_ASYNC_CONNECTOR_RETRY_TRIGGER("Pipe-Async-Connector-Retry-Trigger"),
   PIPE_WAL_RESOURCE_TTL_CHECKER("Pipe-WAL-Resource-TTL-Checker"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
   STATEFUL_TRIGGER_INFORMATION_UPDATER("Stateful-Trigger-Information-Updater"),
@@ -261,6 +263,8 @@ public enum ThreadName {
               PIPE_RUNTIME_META_SYNCER,
               PIPE_RUNTIME_HEARTBEAT,
               PIPE_RUNTIME_PROCEDURE_SUBMITTER,
+              PIPE_ASYNC_CONNECTOR_CLIENT_POOL,
+              PIPE_ASYNC_CONNECTOR_RETRY_TRIGGER,
               PIPE_WAL_RESOURCE_TTL_CHECKER,
               WINDOW_EVALUATION_SERVICE,
               STATEFUL_TRIGGER_INFORMATION_UPDATER));

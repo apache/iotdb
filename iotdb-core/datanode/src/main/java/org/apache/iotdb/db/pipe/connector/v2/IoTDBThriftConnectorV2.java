@@ -522,7 +522,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
         if (RETRY_TRIGGER.get() == null) {
           RETRY_TRIGGER.set(
               IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-                  ThreadName.PIPE_RUNTIME_HEARTBEAT.getName()));
+                  ThreadName.PIPE_ASYNC_CONNECTOR_RETRY_TRIGGER.getName()));
         }
       }
     }
