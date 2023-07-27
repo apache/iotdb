@@ -27,6 +27,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.TimeSeriesMetadataCacheMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -151,9 +152,9 @@ public class TimeSeriesMetadataCache {
               "Cache miss: {}.{} in file: {}", key.device, key.measurement, key.filePath);
           DEBUG_LOGGER.info("Device: {}, all sensors: {}", key.device, allSensors);
         }
-        final String fullPath = key.device + SEPARATOR + key.filePath;
         // allow for the parallelism of different devices
-        synchronized (devices.computeIfAbsent(fullPath, WeakReference::new)) {
+        synchronized (
+            devices.computeIfAbsent(key.device + SEPARATOR + key.filePath, WeakReference::new)) {
           // double check
           timeseriesMetadata = lruCache.getIfPresent(key);
           if (timeseriesMetadata == null) {
@@ -163,7 +164,9 @@ public class TimeSeriesMetadataCache {
             BloomFilter bloomFilter =
                 BloomFilterCache.getInstance()
                     .get(new BloomFilterCache.BloomFilterCacheKey(key.filePath), debug);
-            if (bloomFilter != null && !bloomFilter.contains(fullPath)) {
+            if (bloomFilter != null
+                && !bloomFilter.contains(
+                    key.device + TsFileConstant.PATH_SEPARATOR + key.measurement)) {
               if (debug) {
                 DEBUG_LOGGER.info("TimeSeries meta data {} is filter by bloomFilter!", key);
               }
