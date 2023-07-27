@@ -31,10 +31,10 @@
     <name>IoTDB: Client: Client for CPP</name>
     <description>C++ client</description>
     <properties>
-        <boost.version>1.72.0</boost.version>
-        <boost.version.underline-short>1_72</boost.version.underline-short>
+        <boost.version>1.82.0</boost.version>
+        <boost.version.underline-short>1_82</boost.version.underline-short>
         <boost.version.underline>${boost.version.underline-short}_0</boost.version.underline>
-        <cmake-version>3.17.3</cmake-version>
+        <cmake-version>3.27.1</cmake-version>
         <!-- Default value of cmake root -->
         <cmake.root.dir>${project.build.directory}/dependency/cmake/</cmake.root.dir>
         <cmake.build.type>Release</cmake.build.type>
@@ -67,8 +67,8 @@
                 <os.suffix>linux</os.suffix>
                 <!-- use Makefile as default cmake generator, users may specify other generators -->
                 <cmake.generator>Unix Makefiles</cmake.generator>
-                <cmake.root.dir>${project.parent.basedir}/iotdb-client/compile-tools/thrift/target/cmake-${cmake-version}-Linux-x86_64/</cmake.root.dir>
-                <thrift.exec.absolute.path>${project.parent.basedir}/iotdb-client/compile-tools/thrift/target/build/compiler/cpp/bin/thrift</thrift.exec.absolute.path>
+                <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-${cmake-version}-Linux-x86_64/</cmake.root.dir>
+                <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/thrift</thrift.exec.absolute.path>
                 <iotdb.start.script>start-standalone.sh</iotdb.start.script>
                 <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
             </properties>
@@ -103,8 +103,8 @@
                 <os.suffix>mac</os.suffix>
                 <!-- use Makefile as default cmake generator, users may specify other generators -->
                 <cmake.generator>Unix Makefiles</cmake.generator>
-                <cmake.root.dir>${project.parent.basedir}/iotdb-client/compile-tools/thrift/target/cmake-${cmake-version}-Darwin-x86_64/CMake.app/Contents</cmake.root.dir>
-                <thrift.exec.absolute.path>${project.parent.basedir}/iotdb-client/compile-tools/thrift/target/build/compiler/cpp/bin/thrift</thrift.exec.absolute.path>
+                <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-${cmake-version}-macos-universal/CMake.app/Contents</cmake.root.dir>
+                <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/thrift</thrift.exec.absolute.path>
                 <iotdb.start.script>start-standalone.sh</iotdb.start.script>
                 <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
             </properties>
@@ -120,8 +120,8 @@
                 <os.suffix>win</os.suffix>
                 <!-- use MSVC 2019 as default cmake generator, users may specify other generators -->
                 <cmake.generator>Visual Studio 16 2019</cmake.generator>
-                <cmake.root.dir>${project.parent.basedir}/iotdb-client/compile-tools/thrift/target/cmake-${cmake-version}-win64-x64/</cmake.root.dir>
-                <thrift.exec.absolute.path>${project.parent.basedir}/iotdb-client/compile-tools/thrift/target/build/compiler/cpp/bin/${cmake.build.type}/thrift.exe</thrift.exec.absolute.path>
+                <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-${cmake-version}-win64-x64/</cmake.root.dir>
+                <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/${cmake.build.type}/thrift.exe</thrift.exec.absolute.path>
                 <iotdb.start.script>start-standalone.bat</iotdb.start.script>
                 <iotdb.stop.script>stop-standalone.bat</iotdb.stop.script>
                 <boost.include.dir/>

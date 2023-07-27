@@ -28,10 +28,10 @@
     <packaging>pom</packaging>
     <name>IoTDB: Client: Compile Tools</name>
     <properties>
-        <boost.version>1.72.0</boost.version>
-        <boost.version.underline-short>1_72</boost.version.underline-short>
+        <boost.version>1.82.0</boost.version>
+        <boost.version.underline-short>1_82</boost.version.underline-short>
         <boost.version.underline>${boost.version.underline-short}_0</boost.version.underline>
-        <cmake-version>3.17.3</cmake-version>
+        <cmake-version>3.27.1</cmake-version>
         <openssl.include.dir>-Dtrue1=true1</openssl.include.dir>
         <bison.executable.dir>-Dtrue1=true1</bison.executable.dir>
         <cmake.build.type/>
@@ -50,7 +50,7 @@
             <properties>
                 <os.suffix>linux</os.suffix>
                 <os.classifier>linux-x86_64</os.classifier>
-                <cmake.url>https://github.com/Kitware/CMake/releases/download/v${cmake-version}/cmake-${cmake-version}-Linux-x86_64.tar.gz</cmake.url>
+                <cmake.url>https://github.com/Kitware/CMake/releases/download/v${cmake-version}/cmake-${cmake-version}-linux-x86_64.tar.gz</cmake.url>
                 <cmake.root.dir>${project.build.directory}/cmake-${cmake-version}-Linux-x86_64/</cmake.root.dir>
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <boost.url>https://boostorg.jfrog.io/artifactory/main/release/${boost.version}/source/boost_${boost.version.underline}.zip</boost.url>
@@ -74,7 +74,7 @@
             <properties>
                 <os.suffix>linux</os.suffix>
                 <os.classifier>linux-arm_32</os.classifier>
-                <cmake.url>https://github.com/Kitware/CMake/releases/download/v3.21.2/cmake-3.21.2-linux-aarch64.tar.gz</cmake.url>
+                <cmake.url>https://github.com/Kitware/CMake/releases/download/v${cmake-version}/cmake-${cmake-version}-linux-aarch64.tar.gz</cmake.url>
                 <cmake.root.dir>${project.build.directory}/cmake-3.21.2-linux-aarch64/</cmake.root.dir>
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <boost.url>https://boostorg.jfrog.io/artifactory/main/release/${boost.version}/source/boost_${boost.version.underline}.zip</boost.url>
@@ -97,8 +97,8 @@
             <properties>
                 <os.suffix>mac</os.suffix>
                 <os.classifier>mac-x86_64</os.classifier>
-                <cmake.url>https://github.com/Kitware/CMake/releases/download/v${cmake-version}/cmake-${cmake-version}-Darwin-x86_64.tar.gz</cmake.url>
-                <cmake.root.dir>${project.build.directory}/cmake-${cmake-version}-Darwin-x86_64/CMake.app/Contents</cmake.root.dir>
+                <cmake.url>https://github.com/Kitware/CMake/releases/download/v${cmake-version}/cmake-${cmake-version}-macos-universal.tar.gz</cmake.url>
+                <cmake.root.dir>${project.build.directory}/cmake-${cmake-version}-macos-universal/CMake.app/Contents</cmake.root.dir>
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <boost.url>https://boostorg.jfrog.io/artifactory/main/release/${boost.version}/source/boost_${boost.version.underline}.zip</boost.url>
                 <boost.bootstrap.executable>./bootstrap.sh</boost.bootstrap.executable>
@@ -110,7 +110,34 @@
                 <gradlew.executable>./gradlew</gradlew.executable>
                 <openssl.include.default.path>/usr/local/opt/openssl/include</openssl.include.default.path>
                 <openssl.include.dir>-DCMAKE_CXX_FLAGS="-I${openssl.include.default.path}"</openssl.include.dir>
-                <bison.executable.dir>-DBISON_EXECUTABLE=/usr/local/opt/bison/bin/bison</bison.executable.dir>
+                <bison.executable.dir>-DBISON_EXECUTABLE=/opt/homebrew/opt/bison/bin/bison</bison.executable.dir>
+            </properties>
+        </profile>
+        <profile>
+            <id>os-mac-arm</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <os.suffix>mac</os.suffix>
+                <os.classifier>mac-x86_64</os.classifier>
+                <cmake.url>https://github.com/Kitware/CMake/releases/download/v${cmake-version}/cmake-${cmake-version}-macos-universal.tar.gz</cmake.url>
+                <cmake.root.dir>${project.build.directory}/cmake-${cmake-version}-macos-universal/CMake.app/Contents</cmake.root.dir>
+                <cmake.generator>Unix Makefiles</cmake.generator>
+                <boost.url>https://boostorg.jfrog.io/artifactory/main/release/${boost.version}/source/boost_${boost.version.underline}.zip</boost.url>
+                <boost.bootstrap.executable>./bootstrap.sh</boost.bootstrap.executable>
+                <boost.build.executable>./b2</boost.build.executable>
+                <thrift.bootstrap.executable>./bootstrap.sh</thrift.bootstrap.executable>
+                <thrift.configure.executable>./configure</thrift.configure.executable>
+                <thrift.make.executable>make</thrift.make.executable>
+                <thrift.compiler.executable>thrift</thrift.compiler.executable>
+                <gradlew.executable>./gradlew</gradlew.executable>
+                <openssl.include.default.path>/usr/local/opt/openssl/include</openssl.include.default.path>
+                <openssl.include.dir>-DCMAKE_CXX_FLAGS="-I${openssl.include.default.path}"</openssl.include.dir>
+                <bison.executable.dir>-DBISON_EXECUTABLE=/opt/homebrew/opt/bison/bin/bison</bison.executable.dir>
             </properties>
         </profile>
         <profile>
