@@ -1990,56 +1990,55 @@ public class DataRegion implements IDataRegionForQuery {
       ModificationFile modFile = tsFileResource.getModFile();
       if (tsFileResource.isClosed()) {
         long originSize = -1;
-        try {
-          tsFileResource.writeLock();
-          originSize = modFile.getSize();
-          // delete data in sealed file
-          if (tsFileResource.isCompacting()) {
-            // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
-            // change after compaction
-            deletion.setFileOffset(Long.MAX_VALUE);
-            // write deletion into compaction modification file
-            tsFileResource.getCompactionModFile().write(deletion);
-            // write deletion into modification file to enable read during compaction
-            modFile.write(deletion);
-            // remember to close mod file
-            tsFileResource.getCompactionModFile().close();
-            modFile.close();
-          } else {
-            deletion.setFileOffset(tsFileResource.getTsFileSize());
-            // write deletion into modification file
-            boolean modFileExists = modFile.exists();
+        synchronized (modFile) {
+          try {
+            originSize = modFile.getSize();
+            // delete data in sealed file
+            if (tsFileResource.isCompacting()) {
+              // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
+              // change after compaction
+              deletion.setFileOffset(Long.MAX_VALUE);
+              // write deletion into compaction modification file
+              tsFileResource.getCompactionModFile().write(deletion);
+              // write deletion into modification file to enable read during compaction
+              modFile.write(deletion);
+              // remember to close mod file
+              tsFileResource.getCompactionModFile().close();
+              modFile.close();
+            } else {
+              deletion.setFileOffset(tsFileResource.getTsFileSize());
+              // write deletion into modification file
+              boolean modFileExists = modFile.exists();
 
-            modFile.write(deletion);
+              modFile.write(deletion);
 
-            // remember to close mod file
-            modFile.close();
+              // remember to close mod file
+              modFile.close();
 
-            // if file length greater than 1M,execute compact.
-            modFile.compact();
+              // if file length greater than 1M,execute compact.
+              modFile.compact();
 
-            if (!modFileExists) {
-              FileMetrics.getInstance().increaseModFileNum(1);
+              if (!modFileExists) {
+                FileMetrics.getInstance().increaseModFileNum(1);
+              }
+
+              // The file size may be smaller than the original file, so the increment here may be
+              // negative
+              FileMetrics.getInstance().increaseModFileSize(modFile.getSize() - originSize);
             }
-
-            // The file size may be smaller than the original file, so the increment here may be
-            // negative
-            FileMetrics.getInstance().increaseModFileSize(modFile.getSize() - originSize);
+          } catch (Throwable t) {
+            if (originSize != -1) {
+              modFile.truncate(originSize);
+            }
+            throw t;
           }
-        } catch (Throwable t) {
-          if (originSize != -1) {
-            modFile.truncate(originSize);
-          }
-          throw t;
-        } finally {
-          tsFileResource.writeUnlock();
+          logger.info(
+              "[Deletion] Deletion with path:{}, time:{}-{} written into mods file:{}.",
+              deletion.getPath(),
+              deletion.getStartTime(),
+              deletion.getEndTime(),
+              modFile.getFilePath());
         }
-        logger.info(
-            "[Deletion] Deletion with path:{}, time:{}-{} written into mods file:{}.",
-            deletion.getPath(),
-            deletion.getStartTime(),
-            deletion.getEndTime(),
-            modFile.getFilePath());
       } else {
         // delete data in memory of unsealed file
         tsFileResource.getProcessor().deleteDataInMemory(deletion, devicePaths);
