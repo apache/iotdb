@@ -190,7 +190,8 @@ public class ConfigNodeTestUtils {
       String clusterName, ConfigNodeWrapper configNodeWrapper) {
     return new TConfigNodeRegisterReq()
         .setConfigNodeLocation(generateTConfigNodeLocation(-1, configNodeWrapper))
-        .setClusterParameters(generateClusterParameters().setClusterName(clusterName));
+        .setClusterParameters(generateClusterParameters().setClusterName(clusterName))
+        .setBuildInfo(IoTDBConstant.BUILD_INFO);
   }
 
   public static TClusterParameters generateClusterParameters() {

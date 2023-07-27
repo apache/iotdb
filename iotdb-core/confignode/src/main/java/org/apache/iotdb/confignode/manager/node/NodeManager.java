@@ -279,7 +279,8 @@ public class NodeManager {
     String recordBuildInfo = nodeInfo.getBuildInfo(nodeId);
     if (!req.getDataNodeConfiguration().equals(dataNodeConfiguration)) {
       // Update DataNodeConfiguration when modified during restart
-      UpdateDataNodePlan updateDataNodePlan = new UpdateDataNodePlan(dataNodeConfiguration);
+      UpdateDataNodePlan updateDataNodePlan =
+          new UpdateDataNodePlan(req.getDataNodeConfiguration());
       getConsensusManager().write(updateDataNodePlan);
     }
     if (!req.getBuildInfo().equals(recordBuildInfo)) {
