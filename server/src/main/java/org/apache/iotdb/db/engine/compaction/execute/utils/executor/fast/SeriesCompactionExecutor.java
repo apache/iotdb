@@ -339,7 +339,9 @@ public abstract class SeriesCompactionExecutor {
           currentPoint.getTimestamp() <= nextPageElement.pageHeader.getEndTime()
               || nextPageElement.pageHeader.getEndTime() >= nextPageStartTime
               || nextPageElement.pageHeader.getEndTime() >= nextChunkStartTime;
-      if (isNextPageOverlap || nextPageModifiedStatus == ModifiedStatus.PARTIAL_DELETED) {
+      if (isNextPageOverlap
+          || nextPageModifiedStatus == ModifiedStatus.PARTIAL_DELETED
+          || nextPageElement.needForceDecoding) {
         // next page is overlapped or modified, then deserialize it
         summary.PAGE_OVERLAP_OR_MODIFIED++;
         pointPriorityReader.addNewPage(nextPageElement);
