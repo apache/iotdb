@@ -76,10 +76,6 @@ public class RecoverReadTest {
       // allow no snapshot to ensure the raft log be replayed
       return false;
     }
-
-    void setStall() {
-      stallApply.set(true);
-    }
   }
 
   private TestUtils.MiniCluster miniCluster;
@@ -173,8 +169,18 @@ public class RecoverReadTest {
     // wait an active leader to serve linearizable read requests
     miniCluster.waitUntilActiveLeader();
 
+    // try max 3 minutes
+    final long startTs = System.currentTimeMillis();
     ConsensusReadResponse resp = TestUtils.doRead(miniCluster.getServer(0), gid);
     while (!resp.isSuccess()) {
+      final long timeElapsed = System.currentTimeMillis() - startTs;
+      if (timeElapsed > 1000 * 60 * 3) { // 3 min
+        Assert.fail(
+            "Linearizable read failed after 3 minutes, last exception seen: "
+                + resp.getException());
+      }
+      Thread.sleep(100);
+      logger.info("linearizable read failed  when restart, retrying: ", resp.getException());
       resp = TestUtils.doRead(miniCluster.getServer(0), gid);
     }
 
