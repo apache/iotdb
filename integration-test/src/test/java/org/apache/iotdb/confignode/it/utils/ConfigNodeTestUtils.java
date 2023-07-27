@@ -26,7 +26,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeResource;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -190,8 +189,7 @@ public class ConfigNodeTestUtils {
       String clusterName, ConfigNodeWrapper configNodeWrapper) {
     return new TConfigNodeRegisterReq()
         .setConfigNodeLocation(generateTConfigNodeLocation(-1, configNodeWrapper))
-        .setClusterParameters(generateClusterParameters().setClusterName(clusterName))
-        .setBuildInfo(IoTDBConstant.BUILD_INFO);
+        .setClusterParameters(generateClusterParameters().setClusterName(clusterName));
   }
 
   public static TClusterParameters generateClusterParameters() {
@@ -255,14 +253,12 @@ public class ConfigNodeTestUtils {
   public static TDataNodeRegisterReq generateTDataNodeRegisterReq(
       String clusterName, DataNodeWrapper dataNodeWrapper) {
     return new TDataNodeRegisterReq(
-        clusterName, generateTDataNodeConfiguration(-1, dataNodeWrapper), IoTDBConstant.BUILD_INFO);
+        clusterName, generateTDataNodeConfiguration(-1, dataNodeWrapper));
   }
 
   public static TDataNodeRestartReq generateTDataNodeRestartReq(
       String clusterName, int nodeId, DataNodeWrapper dataNodeWrapper) {
     return new TDataNodeRestartReq(
-        clusterName,
-        generateTDataNodeConfiguration(nodeId, dataNodeWrapper),
-        IoTDBConstant.BUILD_INFO);
+        clusterName, generateTDataNodeConfiguration(nodeId, dataNodeWrapper));
   }
 }
