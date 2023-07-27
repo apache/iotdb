@@ -154,7 +154,6 @@ public class JvmGcMonitorMetrics implements IMetricSet {
 
     curData.update(
         curTime,
-        gcMonitorRunTime,
         totalGcTime,
         totalGcCount,
         (int)
@@ -166,7 +165,6 @@ public class JvmGcMonitorMetrics implements IMetricSet {
   /** Encapsulates data about GC pauses measured at the specific timestamp. */
   public static class GcData implements Cloneable {
     private final AtomicLong timestamp = new AtomicLong();
-    private AtomicLong gcMonitorRunTime = new AtomicLong();
     private AtomicLong totalGcTime = new AtomicLong();
     private AtomicLong totalGcCount = new AtomicLong();
     private AtomicLong gcTimePercentage = new AtomicLong();
@@ -181,16 +179,7 @@ public class JvmGcMonitorMetrics implements IMetricSet {
     }
 
     /**
-     * Returns the time since the start of the associated GCTimeMonitor.
-     *
-     * @return GcMonitorRunTime.
-     */
-    public long getGcMonitorRunTime() {
-      return gcMonitorRunTime.get();
-    }
-
-    /**
-     * Returns accumulated GC time since this JVM started.
+     * Returns accumulated GC time since the start of the latest time window.
      *
      * @return AccumulatedGcTime.
      */
@@ -199,7 +188,7 @@ public class JvmGcMonitorMetrics implements IMetricSet {
     }
 
     /**
-     * Returns the accumulated number of GC pauses since this JVM started.
+     * Returns the accumulated number of GC pauses since the start of the latest time window.
      *
      * @return AccumulatedGcCount.
      */
@@ -218,13 +207,8 @@ public class JvmGcMonitorMetrics implements IMetricSet {
     }
 
     private synchronized void update(
-        long inTimestamp,
-        long inGcMonitorRunTime,
-        long inTotalGcTime,
-        long inTotalGcCount,
-        int inGcTimePercentage) {
+        long inTimestamp, long inTotalGcTime, long inTotalGcCount, int inGcTimePercentage) {
       this.timestamp.set(inTimestamp);
-      this.gcMonitorRunTime.set(inGcMonitorRunTime);
       this.totalGcTime.set(inTotalGcTime);
       this.totalGcCount.set(inTotalGcCount);
       this.gcTimePercentage.set(inGcTimePercentage);
