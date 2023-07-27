@@ -293,8 +293,9 @@ public class ConfigNode implements ConfigNodeMBean {
     TConfigNodeRegisterReq req =
         new TConfigNodeRegisterReq(
             configManager.getClusterParameters(),
-            generateConfigNodeLocation(INIT_NON_SEED_CONFIG_NODE_ID),
-            IoTDBConstant.BUILD_INFO);
+            generateConfigNodeLocation(INIT_NON_SEED_CONFIG_NODE_ID));
+
+    req.setBuildInfo(IoTDBConstant.BUILD_INFO);
 
     TEndPoint targetConfigNode = CONF.getTargetConfigNode();
     if (targetConfigNode == null) {
