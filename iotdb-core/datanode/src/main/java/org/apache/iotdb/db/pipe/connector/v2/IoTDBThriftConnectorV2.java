@@ -152,6 +152,8 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
       try {
         connector.handshake();
         retryConnector.set(connector);
+        LOGGER.info(
+            "Handshake successfully with receiver {}:{}.", endPoint.getIp(), endPoint.getPort());
         break;
       } catch (Exception e) {
         LOGGER.warn(
@@ -342,7 +344,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
       while (true) {
         final AsyncPipeDataTransferServiceClient client =
             asyncPipeDataTransferClientManager.borrowClient(targetNodeUrl);
-        if (handshakeIfNecessary(client)) {
+        if (handshakeIfNecessary(targetNodeUrl, client)) {
           return client;
         }
       }
@@ -362,7 +364,8 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
    *     and finished in this method
    * @throws Exception if an error occurs.
    */
-  private boolean handshakeIfNecessary(AsyncPipeDataTransferServiceClient client) throws Exception {
+  private boolean handshakeIfNecessary(
+      TEndPoint targetNodeUrl, AsyncPipeDataTransferServiceClient client) throws Exception {
     if (client.isHandshakeFinished()) {
       return true;
     }
@@ -376,18 +379,27 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
         new AsyncMethodCallback<TPipeTransferResp>() {
           @Override
           public void onComplete(TPipeTransferResp response) {
-            client.markHandshakeFinished();
-
             if (response.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               LOGGER.warn(
-                  "Handshake error, code: {}, message: {}.",
+                  "Handshake error with receiver {}:{}, code: {}, message: {}.",
+                  targetNodeUrl.getIp(),
+                  targetNodeUrl.getPort(),
                   response.getStatus().getCode(),
                   response.getStatus().getMessage());
               exception.set(
-                  new PipeException(
+                  new PipeConnectionException(
                       String.format(
-                          "Handshake error, code: %d, message: %s.",
-                          response.getStatus().getCode(), response.getStatus().getMessage())));
+                          "Handshake error with receiver %s:%s, code: %d, message: %s.",
+                          targetNodeUrl.getIp(),
+                          targetNodeUrl.getPort(),
+                          response.getStatus().getCode(),
+                          response.getStatus().getMessage())));
+            } else {
+              LOGGER.info(
+                  "Handshake successfully with receiver {}:{}.",
+                  targetNodeUrl.getIp(),
+                  targetNodeUrl.getPort());
+              client.markHandshakeFinished();
             }
 
             isHandshakeFinished.set(true);
@@ -395,7 +407,11 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
 
           @Override
           public void onError(Exception e) {
-            LOGGER.warn("Handshake error.", e);
+            LOGGER.warn(
+                "Handshake error with receiver {}:{}.",
+                targetNodeUrl.getIp(),
+                targetNodeUrl.getPort(),
+                e);
             exception.set(e);
 
             isHandshakeFinished.set(true);
@@ -404,7 +420,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
 
     try {
       while (!isHandshakeFinished.get()) {
-        Thread.sleep(100);
+        Thread.sleep(10);
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
