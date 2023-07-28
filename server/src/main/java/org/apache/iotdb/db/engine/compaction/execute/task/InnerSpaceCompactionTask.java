@@ -186,15 +186,24 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           compactionLogger.logFile(targetTsFileResource, CompactionLogger.STR_DELETED_TARGET_FILES);
         }
 
-        if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionValidation()
-            && (!CompactionUtils.validateTsFileResources(
-                    tsFileManager, storageGroupName, timePartition)
-                || !CompactionUtils.validateTsFiles(targetTsFileList))) {
-          LOGGER.error(
-              "Failed to pass compaction validation, source files is: {}, target files is {}",
-              selectedTsFileResourceList,
-              targetTsFileList);
-          throw new RuntimeException("Failed to pass compaction validation");
+        if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionValidation()) {
+          boolean passValidation = true;
+          if (sequence) {
+            passValidation =
+                CompactionUtils.validateTsFileResources(
+                        tsFileManager, storageGroupName, timePartition)
+                    && CompactionUtils.validateTsFiles(targetTsFileList);
+          } else {
+            // skip overlap validation if a task is unSequence inner space compaction task
+            passValidation = CompactionUtils.validateTsFiles(targetTsFileList);
+          }
+          if (!passValidation) {
+            LOGGER.error(
+                "Failed to pass compaction validation, source files is: {}, target files is {}",
+                selectedTsFileResourceList,
+                targetTsFileList);
+            throw new RuntimeException("Failed to pass compaction validation");
+          }
         }
 
         LOGGER.info(
