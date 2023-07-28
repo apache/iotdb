@@ -684,7 +684,7 @@ public class PipeTaskAgent {
     if (!req.isNeedPipeMetaList()) {
       return;
     }
-    // Try the lock to prevent the block of the cluster heartbeat
+    // Try the lock instead of directly acquire it to prevent the block of the cluster heartbeat
     // 10s is the half of the HEARTBEAT_TIMEOUT_TIME defined in class BaseNodeCache in ConfigNode
     if (!tryReadLockWithTimeOut(10)) {
       return;
