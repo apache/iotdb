@@ -36,8 +36,10 @@ import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 import org.junit.After;
@@ -47,6 +49,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -604,25 +607,13 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
         List<ChunkMetadata> chunkMetadataList = entry.getValue();
         for (ChunkMetadata chunkMetadata : chunkMetadataList) {
           Chunk chunk = reader.readMemChunk(chunkMetadata);
-          ChunkReader chunkReader = new ChunkReader(chunk);
           ChunkHeader chunkHeader = chunk.getHeader();
-          ByteBuffer chunkDataBuffer = chunk.getData();
           if (!compressionTypeMap.containsKey(series)) {
             compressionTypeMap.put(series, chunkHeader.getCompressionType());
           } else if (!compressionTypeMap.get(series).equals(chunkHeader.getCompressionType())) {
             Assert.fail();
           }
-          while (chunkDataBuffer.remaining() > 0) {
-            PageHeader pageHeader;
-            if (((byte) (chunkHeader.getChunkType() & 0x3F))
-                == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
-              pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunk.getChunkStatistic());
-            } else {
-              pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
-            }
-            chunkReader.readPageData(
-                pageHeader, chunkReader.readPageDataWithoutUncompressing(pageHeader));
-          }
+          validatePages(chunk);
         }
       }
     }
@@ -645,6 +636,8 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
             .equals(timeChunk.getHeader().getCompressionType())) {
           Assert.fail();
         }
+
+        List<Chunk> valueChunks = new ArrayList<>();
         for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
           Chunk valueChunk = reader.readMemChunk((ChunkMetadata) chunkMetadata);
           if (!compressionTypeMap.containsKey(valueChunk.getHeader().getMeasurementID())) {
@@ -656,8 +649,33 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
               .equals(valueChunk.getHeader().getCompressionType())) {
             Assert.fail();
           }
+          valueChunks.add(valueChunk);
         }
+        validatePages(timeChunk, valueChunks);
       }
+    }
+  }
+
+  private void validatePages(Chunk chunk) throws IOException {
+    ChunkHeader chunkHeader = chunk.getHeader();
+    ChunkReader chunkReader = new ChunkReader(chunk);
+    ByteBuffer chunkDataBuffer = chunk.getData();
+    while (chunkDataBuffer.remaining() > 0) {
+      PageHeader pageHeader;
+      if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+        pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunk.getChunkStatistic());
+      } else {
+        pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
+      }
+      chunkReader.readPageData(
+          pageHeader, chunkReader.readPageDataWithoutUncompressing(pageHeader));
+    }
+  }
+
+  private void validatePages(Chunk timeChunk, List<Chunk> valueChunks) throws IOException {
+    AlignedChunkReader chunkReader = new AlignedChunkReader(timeChunk, valueChunks);
+    while (chunkReader.hasNextSatisfiedPage()) {
+      BatchData batchData = chunkReader.nextPageData();
     }
   }
 }
