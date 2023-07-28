@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.connector.v2.handler;
 
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.db.pipe.connector.v2.IoTDBThriftConnectorV2;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
@@ -30,18 +31,16 @@ public class PipeTransferRawTabletInsertionEventHandler
     extends PipeTransferTabletInsertionEventHandler<TPipeTransferResp> {
 
   public PipeTransferRawTabletInsertionEventHandler(
-      long requestCommitId, TPipeTransferReq req, IoTDBThriftConnectorV2 connector) {
-    super(requestCommitId, null, req, connector);
+      long requestCommitId,
+      PipeRawTabletInsertionEvent event,
+      TPipeTransferReq req,
+      IoTDBThriftConnectorV2 connector) {
+    super(requestCommitId, event, req, connector);
   }
 
   @Override
   protected void doTransfer(AsyncPipeDataTransferServiceClient client, TPipeTransferReq req)
       throws TException {
     client.pipeTransfer(req, this);
-  }
-
-  @Override
-  protected void retryTransfer(IoTDBThriftConnectorV2 connector, long requestCommitId) {
-    connector.transfer(requestCommitId, this);
   }
 }
