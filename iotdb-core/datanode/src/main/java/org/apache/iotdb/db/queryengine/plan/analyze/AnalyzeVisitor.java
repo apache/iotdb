@@ -2658,7 +2658,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
               // check if the device has the same aligned definition in all tsfiles
               if (isDeviceAligned(device2IsAligned, device, tsFile, isAligned)) {
-                // if the tsfile has tsfile resource before loading, we should deserialize it only
+                // case 1: if the tsfile has tsfile resource before loading, we should deserialize
+                // it only
                 // once.
                 if (isAlreadyExistBeforeLoad) {
                   if (!isDeserializeDone) {
@@ -2667,13 +2668,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                     isDeserializeDone = true;
                   }
 
-                  // if the tsfile has no tsfile resource before loading, we should construct it.
                 } else if (!tsFileResource.resourceFileExists()) {
+                  // case 2: if the tsfile has no tsfile resource before loading, we should
+                  // construct it.
                   tsFileResource = constructTsFileResource(tsFile, device2Metadata, reader);
                   statement.addTsFileResource(tsFileResource);
-                  // the tsfile resource is created when loading, so we just need to update the
-                  // resource.
+
                 } else {
+                  // case 3: the tsfile resource is created when loading, so we just need to update
+                  // the
+                  // resource.
                   FileLoaderUtils.updateTsFileResource(device2Metadata, tsFileResource);
                 }
 
