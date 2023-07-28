@@ -1213,6 +1213,7 @@ public class IoTDBConfig {
     mqttDir = addDataHomeDir(mqttDir);
     extPipeDir = addDataHomeDir(extPipeDir);
     queryDir = addDataHomeDir(queryDir);
+    sortTmpDir = addDataHomeDir(sortTmpDir);
     formulateDataDirs(tierDataDirs);
   }
 
