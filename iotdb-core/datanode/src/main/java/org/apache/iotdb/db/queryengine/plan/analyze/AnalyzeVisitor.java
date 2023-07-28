@@ -2649,9 +2649,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             }
 
             // if the number of timeseries exceeds the threshold or loop to the last timeseries of
-            // the last device, we
-            // should create and verify schema , and clean the device2Schemas and device2IsAligned
-            // map.
+            // the last device, we should create and verify schema , and clean the device2Schemas
+            // and device2IsAligned map.
             if (timeseriesCount > CONFIG.getMaxLoadingTimeseriesNumber()
                 || (deviceCount == deviceSize
                     && timeseriesIndex == timeseriesMetadataListSize - 1)) {
@@ -2659,8 +2658,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               // check if the device has the same aligned definition in all tsfiles
               if (isDeviceAligned(device2IsAligned, device, tsFile, isAligned)) {
                 // case 1: if the tsfile has tsfile resource before loading, we should deserialize
-                // it only
-                // once.
+                // it only once.
                 if (isAlreadyExistBeforeLoad) {
                   if (!isDeserializeDone) {
                     tsFileResource.deserialize();
@@ -2676,8 +2674,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
                 } else {
                   // case 3: the tsfile resource is created when loading, so we just need to update
-                  // the
-                  // resource.
+                  // the resource.
                   FileLoaderUtils.updateTsFileResource(device2Metadata, tsFileResource);
                 }
 
