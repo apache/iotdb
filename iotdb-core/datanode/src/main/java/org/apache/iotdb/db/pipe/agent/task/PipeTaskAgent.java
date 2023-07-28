@@ -121,13 +121,13 @@ public class PipeTaskAgent {
       List<PipeMeta> pipeMetaListFromConfigNode) {
     acquireWriteLock();
     try {
-      return handlePipeMetaChangesWithoutLock(pipeMetaListFromConfigNode);
+      return handlePipeMetaChangesInternal(pipeMetaListFromConfigNode);
     } finally {
       releaseWriteLock();
     }
   }
 
-  private List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChangesWithoutLock(
+  private List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChangesInternal(
       List<PipeMeta> pipeMetaListFromConfigNode) {
     // Do nothing if data node is removing or removed
     if (PipeAgent.runtime().isShutdown()) {
