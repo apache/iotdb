@@ -354,6 +354,52 @@ public class TsFileSequenceReader implements AutoCloseable {
     return deviceMetadata;
   }
 
+  /** @deprecated Use {@link #readTimeseriesMetadata(String, String, boolean)} instead. */
+  @Deprecated
+  public TimeseriesMetadata readTimeseriesMetadata(Path path, boolean ignoreNotExists)
+      throws IOException {
+    readFileMetadata();
+    MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
+    Pair<MetadataIndexEntry, Long> metadataIndexPair =
+        getMetadataAndEndOffset(deviceMetadataIndexNode, path.getDevice(), true, true);
+    if (metadataIndexPair == null) {
+      if (ignoreNotExists) {
+        return null;
+      }
+      throw new IOException("Device {" + path.getDevice() + "} is not in tsFileMetaData");
+    }
+    ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
+    MetadataIndexNode metadataIndexNode = deviceMetadataIndexNode;
+    if (!metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
+      try {
+        metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
+      } catch (Exception e) {
+        logger.error(METADATA_INDEX_NODE_DESERIALIZE_ERROR, file);
+        throw e;
+      }
+      metadataIndexPair =
+          getMetadataAndEndOffset(metadataIndexNode, path.getMeasurement(), false, false);
+    }
+    if (metadataIndexPair == null) {
+      return null;
+    }
+    List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
+    buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
+    while (buffer.hasRemaining()) {
+      try {
+        timeseriesMetadataList.add(TimeseriesMetadata.deserializeFrom(buffer, true));
+      } catch (Exception e) {
+        logger.error(
+            "Something error happened while deserializing TimeseriesMetadata of file {}", file);
+        throw e;
+      }
+    }
+    // return null if path does not exist in the TsFile
+    int searchResult =
+        binarySearchInTimeseriesMetadataList(timeseriesMetadataList, path.getMeasurement());
+    return searchResult >= 0 ? timeseriesMetadataList.get(searchResult) : null;
+  }
+
   public TimeseriesMetadata readTimeseriesMetadata(
       String device, String measurement, boolean ignoreNotExists) throws IOException {
     readFileMetadata();
