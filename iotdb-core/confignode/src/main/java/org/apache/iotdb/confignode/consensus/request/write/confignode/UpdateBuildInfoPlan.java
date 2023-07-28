@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.confignode;
 
-import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -30,32 +28,40 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class ApplyConfigNodePlan extends ConfigPhysicalPlan {
+public class UpdateBuildInfoPlan extends ConfigPhysicalPlan {
 
-  private TConfigNodeLocation configNodeLocation;
+  private int nodeId;
+  private String buildInfo;
 
-  public ApplyConfigNodePlan() {
-    super(ConfigPhysicalPlanType.ApplyConfigNode);
+  public UpdateBuildInfoPlan() {
+    super(ConfigPhysicalPlanType.UpdateBuildInfo);
   }
 
-  public ApplyConfigNodePlan(TConfigNodeLocation configNodeLocation) {
+  public UpdateBuildInfoPlan(String buildInfo, int nodeId) {
     this();
-    this.configNodeLocation = configNodeLocation;
+    this.buildInfo = buildInfo;
+    this.nodeId = nodeId;
   }
 
-  public TConfigNodeLocation getConfigNodeLocation() {
-    return configNodeLocation;
+  public String getBuildInfo() {
+    return buildInfo;
+  }
+
+  public int getNodeId() {
+    return nodeId;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(getType().getPlanType(), stream);
-    ThriftConfigNodeSerDeUtils.serializeTConfigNodeLocation(configNodeLocation, stream);
+    ReadWriteIOUtils.write(nodeId, stream);
+    ReadWriteIOUtils.write(buildInfo, stream);
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    configNodeLocation = ThriftConfigNodeSerDeUtils.deserializeTConfigNodeLocation(buffer);
+  protected void deserializeImpl(ByteBuffer buffer) {
+    nodeId = ReadWriteIOUtils.readInt(buffer);
+    buildInfo = ReadWriteIOUtils.readString(buffer);
   }
 
   @Override
@@ -66,12 +72,15 @@ public class ApplyConfigNodePlan extends ConfigPhysicalPlan {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    ApplyConfigNodePlan that = (ApplyConfigNodePlan) o;
-    return configNodeLocation.equals(that.configNodeLocation);
+    if (!getType().equals(((UpdateBuildInfoPlan) o).getType())) {
+      return false;
+    }
+    UpdateBuildInfoPlan that = (UpdateBuildInfoPlan) o;
+    return nodeId == that.nodeId && buildInfo.equals(that.buildInfo);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(configNodeLocation);
+    return Objects.hash(nodeId, buildInfo);
   }
 }
