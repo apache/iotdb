@@ -21,24 +21,28 @@ package org.apache.iotdb.db.storageengine.dataregion.modification.io;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.utils.TracedBufferedReader;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 /**
  * LocalTextModificationAccessor uses a file on local file system to store the modifications in text
@@ -49,9 +53,10 @@ public class LocalTextModificationAccessor
 
   private static final Logger logger = LoggerFactory.getLogger(LocalTextModificationAccessor.class);
   private static final String SEPARATOR = ",";
-  private static final String ABORT_MARK = "aborted";
+  private static final String NO_MODIFICATION_MSG =
+      "No modification has been written to this file[{}]";
 
-  private String filePath;
+  private final String filePath;
   private BufferedWriter writer;
 
   /**
@@ -65,44 +70,82 @@ public class LocalTextModificationAccessor
 
   @Override
   public Collection<Modification> read() {
+    List<Modification> result = new ArrayList<>();
+    Iterator<Modification> iterator = getModificationIterator();
+    while (iterator.hasNext()) {
+      result.add(iterator.next());
+    }
+    return result;
+  }
+
+  // we need to hold the reader for the Iterator, cannot use auto close or close in finally block
+  @SuppressWarnings("java:S2095")
+  @Override
+  public Iterator<Modification> getModificationIterator() {
     File file = FSFactoryProducer.getFSFactory().getFile(filePath);
-    if (!file.exists()) {
-      logger.debug("No modification has been written to this file");
-      return new ArrayList<>();
-    }
+    final BufferedReader reader;
+    try {
+      reader = new BufferedReader(new FileReader(file));
+    } catch (FileNotFoundException e) {
+      logger.debug(NO_MODIFICATION_MSG, file);
 
-    String line;
-    long truncatedSize = 0;
-    boolean crashed = false;
-    List<Modification> modificationList = new ArrayList<>();
-    try (TracedBufferedReader reader = new TracedBufferedReader(new FileReader(file))) {
-      while ((line = reader.readLine()) != null) {
-        if (line.equals(ABORT_MARK) && !modificationList.isEmpty()) {
-          modificationList.remove(modificationList.size() - 1);
-        } else {
-          modificationList.add(decodeModification(line));
+      // return empty iterator
+      return new Iterator<Modification>() {
+        @Override
+        public boolean hasNext() {
+          return false;
         }
-        truncatedSize = reader.position();
-      }
-    } catch (IOException e) {
-      crashed = true;
-      logger.error(
-          "An error occurred when reading modifications, and the remaining modifications will be truncated to size {}.",
-          truncatedSize,
-          e);
+
+        @Override
+        public Modification next() {
+          throw new NoSuchElementException();
+        }
+      };
     }
 
-    if (crashed) {
-      try (FileOutputStream outputStream = new FileOutputStream(file, true)) {
-        outputStream.getChannel().truncate(truncatedSize);
-      } catch (FileNotFoundException e) {
-        logger.debug("No modification has been written to this file");
-      } catch (IOException e) {
-        logger.error(
-            "An error occurred when truncating modifications to size {}.", truncatedSize, e);
+    final Modification[] cachedModification = new Modification[1];
+    return new Iterator<Modification>() {
+      @Override
+      public boolean hasNext() {
+        try {
+          if (cachedModification[0] == null) {
+            String line = reader.readLine();
+            if (line == null) {
+              reader.close();
+              return false;
+            } else {
+              return decodeModificationAndCache(reader, cachedModification, line);
+            }
+          }
+        } catch (IOException e) {
+          logger.warn("An error occurred when reading modifications", e);
+        }
+        return true;
       }
+
+      @Override
+      public Modification next() {
+        if (cachedModification[0] == null) {
+          throw new NoSuchElementException();
+        }
+        Modification result = cachedModification[0];
+        cachedModification[0] = null;
+        return result;
+      }
+    };
+  }
+
+  private boolean decodeModificationAndCache(
+      BufferedReader reader, Modification[] cachedModification, String line) throws IOException {
+    try {
+      cachedModification[0] = decodeModification(line);
+      return true;
+    } catch (IOException e) {
+      logger.warn("An error occurred when decode line-[{}] to modification", line);
+      cachedModification[0] = null;
+      reader.close();
+      return false;
     }
-    return modificationList;
   }
 
   @Override
@@ -114,16 +157,6 @@ public class LocalTextModificationAccessor
   }
 
   @Override
-  public void abort() throws IOException {
-    if (writer == null) {
-      writer = FSFactoryProducer.getFSFactory().getBufferedWriter(filePath, true);
-    }
-    writer.write(ABORT_MARK);
-    writer.newLine();
-    writer.flush();
-  }
-
-  @Override
   public void write(Modification mod) throws IOException {
     if (writer == null) {
       writer = FSFactoryProducer.getFSFactory().getBufferedWriter(filePath, true);
@@ -131,6 +164,64 @@ public class LocalTextModificationAccessor
     writer.write(encodeModification(mod));
     writer.newLine();
     writer.flush();
+  }
+
+  @TestOnly
+  public void writeInComplete(Modification mod) throws IOException {
+    if (writer == null) {
+      writer = FSFactoryProducer.getFSFactory().getBufferedWriter(filePath, true);
+    }
+    String line = encodeModification(mod);
+    if (line != null) {
+      writer.write(line.substring(0, 2));
+    }
+  }
+
+  @TestOnly
+  public void writeMeetException(Modification mod) throws IOException {
+    if (writer == null) {
+      writer = FSFactoryProducer.getFSFactory().getBufferedWriter(filePath, true);
+    }
+    writeInComplete(mod);
+    throw new IOException();
+  }
+
+  @Override
+  public void truncate(long size) {
+    try (FileOutputStream outputStream =
+        new FileOutputStream(FSFactoryProducer.getFSFactory().getFile(filePath), true)) {
+      outputStream.getChannel().truncate(size);
+      logger.warn("The modifications[{}] will be truncated to size {}.", filePath, size);
+    } catch (FileNotFoundException e) {
+      logger.debug(NO_MODIFICATION_MSG, filePath);
+    } catch (IOException e) {
+      logger.error(
+          "An error occurred when truncating modifications[{}] to size {}.", filePath, size, e);
+    }
+  }
+
+  @Override
+  public void mayTruncateLastLine() {
+    try (RandomAccessFile file = new RandomAccessFile(filePath, "r")) {
+      long filePointer = file.length() - 1;
+      if (filePointer == 0) {
+        return;
+      }
+
+      file.seek(filePointer);
+      byte lastChar = file.readByte();
+      if (lastChar != '\n') {
+        while (filePointer > -1 && lastChar != '\n') {
+          file.seek(filePointer);
+          filePointer--;
+          lastChar = file.readByte();
+        }
+        logger.warn("The last line of Mods is incomplete, will be truncated");
+        truncate(filePointer + 2);
+      }
+    } catch (IOException e) {
+      logger.error("An error occurred when reading modifications", e);
+    }
   }
 
   private static String encodeModification(Modification mod) {

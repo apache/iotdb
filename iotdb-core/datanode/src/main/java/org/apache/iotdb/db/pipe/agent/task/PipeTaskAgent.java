@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.pipe.agent.task;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
@@ -119,13 +121,13 @@ public class PipeTaskAgent {
       List<PipeMeta> pipeMetaListFromConfigNode) {
     acquireWriteLock();
     try {
-      return handlePipeMetaChangesWithoutLock(pipeMetaListFromConfigNode);
+      return handlePipeMetaChangesInternal(pipeMetaListFromConfigNode);
     } finally {
       releaseWriteLock();
     }
   }
 
-  private List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChangesWithoutLock(
+  private List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChangesInternal(
       List<PipeMeta> pipeMetaListFromConfigNode) {
     // Do nothing if data node is removing or removed
     if (PipeAgent.runtime().isShutdown()) {
@@ -304,13 +306,13 @@ public class PipeTaskAgent {
   public synchronized void dropAllPipeTasks() {
     acquireWriteLock();
     try {
-      dropAllPipeTasksWithoutLock();
+      dropAllPipeTasksInternal();
     } finally {
       releaseWriteLock();
     }
   }
 
-  private void dropAllPipeTasksWithoutLock() {
+  private void dropAllPipeTasksInternal() {
     for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
       try {
         dropPipe(
@@ -323,6 +325,40 @@ public class PipeTaskAgent {
             e);
       }
     }
+  }
+
+  public synchronized void stopAllPipesWithCriticalException() {
+    acquireWriteLock();
+    try {
+      stopAllPipesWithCriticalExceptionInternal();
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  private void stopAllPipesWithCriticalExceptionInternal() {
+    pipeMetaKeeper
+        .getPipeMetaList()
+        .forEach(
+            pipeMeta -> {
+              final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+              final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+
+              if (runtimeMeta.getStatus().get() == PipeStatus.RUNNING) {
+                runtimeMeta
+                    .getConsensusGroupId2TaskMetaMap()
+                    .values()
+                    .forEach(
+                        pipeTaskMeta -> {
+                          for (final PipeRuntimeException e : pipeTaskMeta.getExceptionMessages()) {
+                            if (e instanceof PipeRuntimeCriticalException) {
+                              stopPipe(staticMeta.getPipeName(), staticMeta.getCreationTime());
+                              return;
+                            }
+                          }
+                        });
+              }
+            });
   }
 
   ////////////////////////// Manage by Pipe Name //////////////////////////
@@ -690,13 +726,14 @@ public class PipeTaskAgent {
       return;
     }
     try {
-      collectPipeMetaListWithoutLock(resp);
+      collectPipeMetaListInternal(req, resp);
     } finally {
       releaseReadLock();
     }
   }
 
-  private void collectPipeMetaListWithoutLock(THeartbeatResp resp) throws TException {
+  private void collectPipeMetaListInternal(THeartbeatReq req, THeartbeatResp resp)
+      throws TException {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
     if (PipeAgent.runtime().isShutdown()) {
       return;
@@ -718,13 +755,13 @@ public class PipeTaskAgent {
       throws TException {
     acquireReadLock();
     try {
-      collectPipeMetaListWithoutLock(req, resp);
+      collectPipeMetaListInternal(req, resp);
     } finally {
       releaseReadLock();
     }
   }
 
-  private void collectPipeMetaListWithoutLock(TPipeHeartbeatReq req, TPipeHeartbeatResp resp)
+  private void collectPipeMetaListInternal(TPipeHeartbeatReq req, TPipeHeartbeatResp resp)
       throws TException {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
     if (PipeAgent.runtime().isShutdown()) {
