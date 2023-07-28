@@ -119,12 +119,10 @@ public class JvmGcMonitorMetrics implements IMetricSet {
   }
 
   private void calculateGCTimePercentageWithinObservedInterval() {
-    long prevTotalGcTime = curData.totalGcTime.get();
+    long prevTotalGcTime = curData.getAccumulatedGcTime();
     long totalGcTime = 0;
-    long totalGcCount = 0;
     for (GarbageCollectorMXBean gcBean : ManagementFactory.getGarbageCollectorMXBeans()) {
       totalGcTime += gcBean.getCollectionTime();
-      totalGcCount += gcBean.getCollectionCount();
     }
     long gcTimeWithinSleepInterval = totalGcTime - prevTotalGcTime;
 
@@ -155,7 +153,7 @@ public class JvmGcMonitorMetrics implements IMetricSet {
     curData.update(
         curTime,
         totalGcTime,
-        totalGcCount,
+        gcTimeWithinObservationWindow,
         (int)
             (gcTimeWithinObservationWindow
                 * 100
@@ -165,10 +163,9 @@ public class JvmGcMonitorMetrics implements IMetricSet {
   /** Encapsulates data about GC pauses measured at the specific timestamp. */
   public static class GcData implements Cloneable {
     private final AtomicLong timestamp = new AtomicLong();
-    private AtomicLong totalGcTime = new AtomicLong();
-    private AtomicLong totalGcCount = new AtomicLong();
-    private AtomicLong gcTimePercentage = new AtomicLong();
-
+    private final AtomicLong totalGcTime = new AtomicLong();
+    private final AtomicLong gcTimePercentage = new AtomicLong();
+    private final AtomicLong gcTimeWithinObsWindow = new AtomicLong();
     /**
      * Returns the absolute timestamp when this measurement was taken.
      *
@@ -179,7 +176,7 @@ public class JvmGcMonitorMetrics implements IMetricSet {
     }
 
     /**
-     * Returns accumulated GC time since the start of the latest time window.
+     * Returns accumulated GC time since the start of IoTDB.
      *
      * @return AccumulatedGcTime.
      */
@@ -188,12 +185,12 @@ public class JvmGcMonitorMetrics implements IMetricSet {
     }
 
     /**
-     * Returns the accumulated number of GC pauses since the start of the latest time window.
+     * Returns accumulated GC time within the latest observation window.
      *
-     * @return AccumulatedGcCount.
+     * @return gcTimeWithinObsWindow.
      */
-    public long getAccumulatedGcCount() {
-      return totalGcCount.get();
+    public long getGcTimeWithinObsWindow() {
+      return gcTimeWithinObsWindow.get();
     }
 
     /**
@@ -207,10 +204,13 @@ public class JvmGcMonitorMetrics implements IMetricSet {
     }
 
     private synchronized void update(
-        long inTimestamp, long inTotalGcTime, long inTotalGcCount, int inGcTimePercentage) {
+        long inTimestamp,
+        long inTotalGcTime,
+        long inGcTimeWithinObsWindow,
+        int inGcTimePercentage) {
       this.timestamp.set(inTimestamp);
       this.totalGcTime.set(inTotalGcTime);
-      this.totalGcCount.set(inTotalGcCount);
+      this.gcTimeWithinObsWindow.set(inGcTimeWithinObsWindow);
       this.gcTimePercentage.set(inGcTimePercentage);
     }
 
