@@ -2497,7 +2497,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     int tsfileNum = loadTsFileStatement.getTsFiles().size();
 
     // analyze tsfile metadata
-    for (File tsFile : loadTsFileStatement.getTsFiles()) {
+    for (int i = 0; i < tsfileNum; i++) {
+      File tsFile = loadTsFileStatement.getTsFiles().get(i);
       if (tsFile.length() == 0) {
         if (logger.isWarnEnabled()) {
           logger.warn(String.format("TsFile %s is empty.", tsFile.getPath()));
@@ -2522,17 +2523,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             String.format("Parse file %s to resource error", tsFile.getPath()));
       }
 
-      int index = loadTsFileStatement.getTsFiles().indexOf(tsFile) + 1;
-
-      if (index == tsfileNum) {
+      if (i + 1 == tsfileNum) {
         break;
       }
 
-      double progressPercentage = index * 100.00 / tsfileNum;
+      double progressPercentage = (i + 1) * 100.00 / tsfileNum;
 
       logger.info(
           "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
-          index, tsfileNum, String.format("%.2f", progressPercentage));
+          i + 1, tsfileNum, String.format("%.2f", progressPercentage));
     }
 
     logger.info(
@@ -2898,19 +2897,19 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               originSchema.getType().name());
         }
         if (!tsFileSchema.getEncodingType().equals(originSchema.getEncodingType())) {
-          throw new VerifyMetadataException(
+          logger.warn(
+              "Encoding type not match, measurement: {}, TsFile: {}, TsFile encoding: {}, origin encoding: {}",
               measurementPath,
-              "Encoding",
-              tsFileSchema.getEncodingType().name(),
               entry.getValue().get(tsFileSchema).getPath(),
+              tsFileSchema.getEncodingType().name(),
               originSchema.getEncodingType().name());
         }
         if (!tsFileSchema.getCompressor().equals(originSchema.getCompressor())) {
-          throw new VerifyMetadataException(
+          logger.warn(
+              "Compression type not match, measurement: {}, TsFile: {}, TsFile compression: {}, origin compression: {}",
               measurementPath,
-              "Compress type",
-              tsFileSchema.getCompressor().name(),
               entry.getValue().get(tsFileSchema).getPath(),
+              tsFileSchema.getCompressor().name(),
               originSchema.getCompressor().name());
         }
       }
