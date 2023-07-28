@@ -93,9 +93,9 @@ public class PipeTaskAgent {
     pipeMetaKeeper.acquireReadLock();
   }
 
-  public boolean tryReadLockWithTimeOut(long timeOut) {
+  public boolean tryReadLockWithTimeOut(long timeOutInSeconds) {
     try {
-      return pipeMetaKeeper.tryReadLock(timeOut);
+      return pipeMetaKeeper.tryReadLock(timeOutInSeconds);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       LOGGER.warn("Interruption during requiring pipeMetaKeeper lock.", e);
