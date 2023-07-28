@@ -726,13 +726,13 @@ public class PipeTaskAgent {
       return;
     }
     try {
-      collectPipeMetaListInternal(req, resp);
+      collectPipeMetaListInternal(resp);
     } finally {
       releaseReadLock();
     }
   }
 
-  private void collectPipeMetaListInternal(THeartbeatReq req, THeartbeatResp resp)
+  private void collectPipeMetaListInternal(THeartbeatResp resp)
       throws TException {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
     if (PipeAgent.runtime().isShutdown()) {
