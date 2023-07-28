@@ -2897,19 +2897,19 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               originSchema.getType().name());
         }
         if (!tsFileSchema.getEncodingType().equals(originSchema.getEncodingType())) {
-          logger.warn(
-              "Encoding type not match, measurement: {}, TsFile: {}, TsFile encoding: {}, origin encoding: {}",
+          throw new VerifyMetadataException(
               measurementPath,
-              entry.getValue().get(tsFileSchema).getPath(),
+              "Encoding",
               tsFileSchema.getEncodingType().name(),
+              entry.getValue().get(tsFileSchema).getPath(),
               originSchema.getEncodingType().name());
         }
         if (!tsFileSchema.getCompressor().equals(originSchema.getCompressor())) {
-          logger.warn(
-              "Compression type not match, measurement: {}, TsFile: {}, TsFile compression: {}, origin compression: {}",
+          throw new VerifyMetadataException(
               measurementPath,
-              entry.getValue().get(tsFileSchema).getPath(),
+              "Compress type",
               tsFileSchema.getCompressor().name(),
+              entry.getValue().get(tsFileSchema).getPath(),
               originSchema.getCompressor().name());
         }
       }
