@@ -48,7 +48,7 @@ public class JvmGcMonitorMetrics implements IMetricSet {
   // Ring buffers containing GC timings and timestamps when timings were taken
   private final TsAndData[] gcDataBuf;
   // Max GC time threshold
-  private final long maxGcTimePercentage = 70L;
+  private final long maxGcTimePercentage = 40L;
   // Duration of observation window
   private final long observationWindowMs = TimeUnit.MINUTES.toMillis(1);
   // Interval for data collection
