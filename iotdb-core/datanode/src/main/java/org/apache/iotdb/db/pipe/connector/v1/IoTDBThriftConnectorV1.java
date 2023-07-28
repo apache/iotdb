@@ -80,8 +80,8 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
   }
 
   public IoTDBThriftConnectorV1(String ipAddress, int port) {
-    this.ipAddress = ipAddress;
-    this.port = port;
+    this.nodeUrls = new ArrayList<>();
+    nodeUrls.add(new TEndPoint(ipAddress, port));
   }
 
   @Override
