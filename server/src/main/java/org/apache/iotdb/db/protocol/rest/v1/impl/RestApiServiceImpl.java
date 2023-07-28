@@ -31,6 +31,7 @@ import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.protocol.rest.handler.AuthorizationHandler;
+import org.apache.iotdb.db.protocol.rest.utils.InsertTabletSortDataUtils;
 import org.apache.iotdb.db.protocol.rest.v1.RestApiService;
 import org.apache.iotdb.db.protocol.rest.v1.handler.ExceptionHandler;
 import org.apache.iotdb.db.protocol.rest.v1.handler.ExecuteStatementHandler;
@@ -190,6 +191,15 @@ public class RestApiServiceImpl extends RestApiService {
     Long queryId = null;
     try {
       RequestValidationHandler.validateInsertTabletRequest(insertTabletRequest);
+
+      if (!InsertTabletSortDataUtils.checkSorted(insertTabletRequest.getTimestamps())) {
+        int[] index =
+            InsertTabletSortDataUtils.sortTimeStampList(insertTabletRequest.getTimestamps());
+        insertTabletRequest.getTimestamps().sort(Long::compareTo);
+        insertTabletRequest.setValues(
+            InsertTabletSortDataUtils.sortList(
+                insertTabletRequest.getValues(), index, insertTabletRequest.getDataTypes().size()));
+      }
 
       InsertTabletStatement insertTabletStatement =
           StatementConstructionHandler.constructInsertTabletStatement(insertTabletRequest);
