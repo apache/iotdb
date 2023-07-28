@@ -62,7 +62,7 @@ public class ReplicateTest {
 
   private static final String CONFIGURATION_TMP_FILE_NAME = "configuration.dat.tmp";
 
-  private int basePort = 3000;
+  private int basePort = 9000;
 
   private final List<Peer> peers =
       Arrays.asList(
