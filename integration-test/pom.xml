@@ -38,6 +38,13 @@
         <integrationTest.testEnv/>
         <integrationTest.excludedGroups/>
         <integrationTest.includedGroups/>
+        <lightWeightStandaloneMode.configNodeNumber>1</lightWeightStandaloneMode.configNodeNumber>
+        <lightWeightStandaloneMode.dataNodeNumber>1</lightWeightStandaloneMode.dataNodeNumber>
+        <lightWeightStandaloneMode.configNodeConsensus>Simple</lightWeightStandaloneMode.configNodeConsensus>
+        <lightWeightStandaloneMode.schemaRegionConsensus>Simple</lightWeightStandaloneMode.schemaRegionConsensus>
+        <lightWeightStandaloneMode.dataRegionConsensus>Simple</lightWeightStandaloneMode.dataRegionConsensus>
+        <lightWeightStandaloneMode.schemaRegionReplicaNumber>1</lightWeightStandaloneMode.schemaRegionReplicaNumber>
+        <lightWeightStandaloneMode.dataRegionReplicaNumber>1</lightWeightStandaloneMode.dataRegionReplicaNumber>
     </properties>
     <dependencies>
         <dependency>
@@ -236,6 +243,7 @@
                                 <TestEnv>${integrationTest.testEnv}</TestEnv>
                                 <RandomSelectWriteNode>${integrationTest.randomSelectWriteNode}</RandomSelectWriteNode>
                                 <ReadAndVerifyWithMultiNode>${integrationTest.readAndVerifyWithMultiNode}</ReadAndVerifyWithMultiNode>
+                                <lightWeightStandalone.configNodeConsensus>${lightWeightStandalone.configNodeConsensus}</lightWeightStandalone.configNodeConsensus>
                             </systemPropertyVariables>
                             <summaryFile>target/failsafe-reports/failsafe-summary-IT.xml</summaryFile>
                         </configuration>

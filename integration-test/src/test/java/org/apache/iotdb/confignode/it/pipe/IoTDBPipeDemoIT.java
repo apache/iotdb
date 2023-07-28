@@ -57,6 +57,7 @@ public class IoTDBPipeDemoIT {
 
   @Before
   public void setUp() throws Exception {
+    System.out.println(System.getProperty("rest"));
     MultiEnvFactory.createEnv(2);
     sender_env = MultiEnvFactory.getEnv(0);
     receiver_env = MultiEnvFactory.getEnv(1);

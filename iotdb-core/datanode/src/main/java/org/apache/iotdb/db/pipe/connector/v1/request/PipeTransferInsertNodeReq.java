@@ -51,9 +51,6 @@ public class PipeTransferInsertNodeReq extends TPipeTransferReq {
 
       final InsertRowStatement statement = new InsertRowStatement();
       statement.setDevicePath(node.getDevicePath());
-      System.out.println("InsertRowNode: DevicePath:" + node.getDevicePath());
-      System.out.println(
-          "InsertRowNode: MeasurementSchemas:" + Arrays.toString(node.getMeasurementSchemas()));
       statement.setTime(node.getTime());
       statement.setMeasurements(node.getMeasurements());
       statement.setDataTypes(node.getDataTypes());
