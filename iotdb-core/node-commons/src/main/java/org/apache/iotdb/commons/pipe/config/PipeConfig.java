@@ -107,6 +107,22 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeConnectorPendingQueueSize();
   }
 
+  public boolean isPipeAsyncConnectorRPCThriftCompressionEnabled() {
+    return COMMON_CONFIG.isPipeAsyncConnectorRPCThriftCompressionEnabled();
+  }
+
+  public int getPipeAsyncConnectorSelectorNumber() {
+    return COMMON_CONFIG.getPipeAsyncConnectorSelectorNumber();
+  }
+
+  public int getPipeAsyncConnectorCoreClientNumber() {
+    return COMMON_CONFIG.getPipeAsyncConnectorCoreClientNumber();
+  }
+
+  public int getPipeAsyncConnectorMaxClientNumber() {
+    return COMMON_CONFIG.getPipeAsyncConnectorMaxClientNumber();
+  }
+
   /////////////////////////////// Meta Consistency ///////////////////////////////
 
   public boolean isSeperatedPipeHeartbeatEnabled() {
