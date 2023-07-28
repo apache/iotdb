@@ -144,8 +144,7 @@ public class CrossSpaceCompactionCandidate {
       boolean seqSpaceHasCurrentUnseqDeviceButNotOverlap =
           (!atLeastOneSelectedSeqFileContainsCurrentDevice
               && lastSeqFileWhoseDeviceTimeBeforeCurrentUnseqDevice != null);
-      if (!seqSpaceHasCurrentUnseqDeviceButNotOverlap
-          || lastSeqFileWhoseDeviceTimeBeforeCurrentUnseqDevice.selected) {
+      if (!seqSpaceHasCurrentUnseqDeviceButNotOverlap) {
         continue;
       }
       // If an invalid sequence file must be selected in current split, the selection should
@@ -153,8 +152,12 @@ public class CrossSpaceCompactionCandidate {
       if (!lastSeqFileWhoseDeviceTimeBeforeCurrentUnseqDevice.isValidCandidate) {
         return false;
       }
-      ret.add(lastSeqFileWhoseDeviceTimeBeforeCurrentUnseqDevice);
-      lastSeqFileWhoseDeviceTimeBeforeCurrentUnseqDevice.markAsSelected();
+      // a sequence file is selected, mark this split as hasOverlap
+      nextUnseqFileHasOverlap = true;
+      if (!lastSeqFileWhoseDeviceTimeBeforeCurrentUnseqDevice.selected) {
+        ret.add(lastSeqFileWhoseDeviceTimeBeforeCurrentUnseqDevice);
+        lastSeqFileWhoseDeviceTimeBeforeCurrentUnseqDevice.markAsSelected();
+      }
     }
     // mark candidates in next split as selected even though it may not be added to the final
     // TaskResource
