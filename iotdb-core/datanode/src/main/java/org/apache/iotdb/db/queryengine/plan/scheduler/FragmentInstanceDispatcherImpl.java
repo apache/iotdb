@@ -57,6 +57,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.DISPATCH_READ;
@@ -84,6 +85,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   private static final String DISPATCH_FAILED = "[DispatchFailed]";
 
   private static final String UNEXPECTED_ERRORS = "Unexpected errors: ";
+
+  private static final Semaphore SEMAPHORE = new Semaphore(48);
 
   public FragmentInstanceDispatcherImpl(
       QueryType type,
@@ -189,24 +192,37 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         new AsyncPlanNodeSender(asyncInternalServiceClientManager, remoteInstances);
     asyncPlanNodeSender.sendAll();
 
-    if (!localInstances.isEmpty()) {
-      // sync dispatch to local
-      long localScheduleStartTime = System.nanoTime();
-      for (FragmentInstance localInstance : localInstances) {
-        try (SetThreadName threadName = new SetThreadName(localInstance.getId().getFullId())) {
-          dispatchLocally(localInstance);
-        } catch (FragmentInstanceDispatchException e) {
-          dataNodeFailureList.add(e.getFailureStatus());
-        } catch (Throwable t) {
-          logger.warn(DISPATCH_FAILED, t);
-          dataNodeFailureList.add(
-              RpcUtils.getStatus(
-                  TSStatusCode.INTERNAL_SERVER_ERROR, UNEXPECTED_ERRORS + t.getMessage()));
+    try {
+      SEMAPHORE.acquire();
+      if (!localInstances.isEmpty()) {
+        // sync dispatch to local
+        long localScheduleStartTime = System.nanoTime();
+        for (FragmentInstance localInstance : localInstances) {
+          try (SetThreadName threadName = new SetThreadName(localInstance.getId().getFullId())) {
+            dispatchLocally(localInstance);
+          } catch (FragmentInstanceDispatchException e) {
+            dataNodeFailureList.add(e.getFailureStatus());
+          } catch (Throwable t) {
+            logger.warn(DISPATCH_FAILED, t);
+            dataNodeFailureList.add(
+                RpcUtils.getStatus(
+                    TSStatusCode.INTERNAL_SERVER_ERROR, UNEXPECTED_ERRORS + t.getMessage()));
+          }
         }
+        PERFORMANCE_OVERVIEW_METRICS.recordScheduleLocalCost(
+            System.nanoTime() - localScheduleStartTime);
       }
-      PERFORMANCE_OVERVIEW_METRICS.recordScheduleLocalCost(
-          System.nanoTime() - localScheduleStartTime);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.error("Interrupted when acquiring token");
+      return immediateFuture(
+          new FragInstanceDispatchResult(
+              RpcUtils.getStatus(
+                  TSStatusCode.INTERNAL_SERVER_ERROR, "Interrupted errors: " + e.getMessage())));
+    } finally {
+      SEMAPHORE.release();
     }
+
     // wait until remote dispatch done
     try {
       asyncPlanNodeSender.waitUntilCompleted();
