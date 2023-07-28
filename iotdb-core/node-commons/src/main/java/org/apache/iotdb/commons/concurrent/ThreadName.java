@@ -138,6 +138,7 @@ public enum ThreadName {
   // NOTICE: The thread name of jvm cannot be edited here!
   // We list the thread name here just for distinguishing what module the thread belongs to.
   JVM_PAUSE_MONITOR("JvmPauseMonitor"),
+  JVM_GC_STATISTICS_MONITOR("JVM-GC-Statistics-Monitor"),
   PARALLEL_GC("GC task thread"),
   G1_GC("GC Thread"),
   G1_MAIN_MARKER("G1 Main Marker"),
@@ -273,6 +274,7 @@ public enum ThreadName {
       new HashSet<>(
           Arrays.asList(
               JVM_PAUSE_MONITOR,
+              JVM_GC_STATISTICS_MONITOR,
               PARALLEL_GC,
               G1_GC,
               G1_MAIN_MARKER,
