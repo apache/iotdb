@@ -31,9 +31,6 @@ env:
 
 jobs:
   unix:
-    strategy:
-      fail-fast: false
-      max-parallel: 20
     runs-on: ubuntu-latest
 
     steps:
