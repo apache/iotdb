@@ -93,6 +93,16 @@ public class PipeTaskAgent {
     pipeMetaKeeper.acquireReadLock();
   }
 
+  public boolean tryReadLockWithTimeOut(long timeOut) {
+    try {
+      return pipeMetaKeeper.tryReadLock(timeOut);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn("Interruption during requiring pipeMetaKeeper lock.", e);
+      return false;
+    }
+  }
+
   private void releaseReadLock() {
     pipeMetaKeeper.releaseReadLock();
   }
@@ -716,13 +726,13 @@ public class PipeTaskAgent {
       return;
     }
     try {
-      collectPipeMetaListInternal(req, resp);
+      collectPipeMetaListInternal(resp);
     } finally {
       releaseReadLock();
     }
   }
 
-  private void collectPipeMetaListInternal(THeartbeatReq req, THeartbeatResp resp)
+  private void collectPipeMetaListInternal(THeartbeatResp resp)
       throws TException {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
     if (PipeAgent.runtime().isShutdown()) {

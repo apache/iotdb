@@ -48,7 +48,7 @@ public class PipeMetaKeeper {
   }
 
   public boolean tryReadLock(long timeOut) throws InterruptedException {
-    pipeMetaKeeperLock.readLock().tryLock(timeOut, TimeUnit.SECONDS);
+    return pipeMetaKeeperLock.readLock().tryLock(timeOut, TimeUnit.SECONDS);
   }
 
   public void releaseReadLock() {
