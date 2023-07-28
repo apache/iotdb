@@ -38,9 +38,8 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   private final Tablet tablet;
   private final boolean isAligned;
   private final boolean needToReport;
-  private final String pattern;
 
-  private PipeTsFileInsertionEvent sourceEvent;
+  private final EnrichedEvent sourceEvent;
   private TabletInsertionDataContainer dataContainer;
 
   public PipeRawTabletInsertionEvent(Tablet tablet, boolean isAligned) {
@@ -64,7 +63,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
       Tablet tablet,
       boolean isAligned,
       PipeTaskMeta pipeTaskMeta,
-      PipeTsFileInsertionEvent sourceEvent,
+      EnrichedEvent sourceEvent,
       boolean needToReport,
       String pattern) {
     super(pipeTaskMeta, pattern);
@@ -72,7 +71,6 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
     this.isAligned = isAligned;
     this.sourceEvent = sourceEvent;
     this.needToReport = needToReport;
-    this.pattern = pattern;
   }
 
   @Override
