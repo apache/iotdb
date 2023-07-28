@@ -122,12 +122,17 @@ public class ConfigNode implements ConfigNodeMBean {
       if (SystemPropertiesUtils.isRestarted()) {
         LOGGER.info("{} is in restarting process...", ConfigNodeConstant.GLOBAL_NAME);
 
+        int configNodeId;
         if (!SystemPropertiesUtils.isSeedConfigNode()) {
-          // The non-seed-ConfigNodes should send restart request
+          // The non-seed-ConfigNodes should send restart request and be checked (ip and port) by
+          // leader before initConsensusManager
           sendRestartConfigNodeRequest();
+          configNodeId = CONF.getConfigNodeId();
+        } else {
+          configNodeId = SEED_CONFIG_NODE_ID;
         }
-
         configManager.initConsensusManager();
+
         setUpMetricService();
         // Notice: We always set up Seed-ConfigNode's RPC service lastly to ensure
         // that the external service is not provided until ConfigNode is fully available
@@ -137,6 +142,20 @@ public class ConfigNode implements ConfigNodeMBean {
             "{} has successfully restarted and joined the cluster: {}.",
             ConfigNodeConstant.GLOBAL_NAME,
             CONF.getClusterName());
+
+        // Update item during restart
+        // This will always be executed until the consensus write succeeds
+        while (true) {
+          TSStatus status =
+              configManager
+                  .getNodeManager()
+                  .updateConfigNodeIfNecessary(configNodeId, IoTDBConstant.BUILD_INFO);
+          if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            break;
+          } else {
+            startUpSleep("restart ConfigNode failed! ");
+          }
+        }
         return;
       }
 
@@ -158,10 +177,7 @@ public class ConfigNode implements ConfigNodeMBean {
         configManager
             .getNodeManager()
             .applyConfigNode(
-                new TConfigNodeLocation(
-                    SEED_CONFIG_NODE_ID,
-                    new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
-                    new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())));
+                generateConfigNodeLocation(SEED_CONFIG_NODE_ID), IoTDBConstant.BUILD_INFO);
         setUpMetricService();
         // Notice: We always set up Seed-ConfigNode's RPC service lastly to ensure
         // that the external service is not provided until Seed-ConfigNode is fully initialized
@@ -200,13 +216,7 @@ public class ConfigNode implements ConfigNodeMBean {
           isJoinedCluster = true;
           break;
         }
-
-        try {
-          TimeUnit.MILLISECONDS.sleep(STARTUP_RETRY_INTERVAL_IN_MS);
-        } catch (InterruptedException e) {
-          LOGGER.warn("Waiting leader's scheduling is interrupted.");
-          Thread.currentThread().interrupt();
-        }
+        startUpSleep("Waiting leader's scheduling is interrupted.");
       }
 
       if (!isJoinedCluster) {
@@ -294,10 +304,9 @@ public class ConfigNode implements ConfigNodeMBean {
     TConfigNodeRegisterReq req =
         new TConfigNodeRegisterReq(
             configManager.getClusterParameters(),
-            new TConfigNodeLocation(
-                INIT_NON_SEED_CONFIG_NODE_ID,
-                new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
-                new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())));
+            generateConfigNodeLocation(INIT_NON_SEED_CONFIG_NODE_ID));
+
+    req.setBuildInfo(IoTDBConstant.BUILD_INFO);
 
     TEndPoint targetConfigNode = CONF.getTargetConfigNode();
     if (targetConfigNode == null) {
@@ -336,13 +345,7 @@ public class ConfigNode implements ConfigNodeMBean {
       } else {
         throw new StartupException(status.getMessage());
       }
-
-      try {
-        TimeUnit.MILLISECONDS.sleep(STARTUP_RETRY_INTERVAL_IN_MS);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new StartupException("Register ConfigNode failed!");
-      }
+      startUpSleep("Register ConfigNode failed!");
     }
 
     LOGGER.error(
@@ -351,13 +354,10 @@ public class ConfigNode implements ConfigNodeMBean {
   }
 
   private void sendRestartConfigNodeRequest() throws StartupException {
+
     TConfigNodeRestartReq req =
         new TConfigNodeRestartReq(
-            CONF.getClusterName(),
-            new TConfigNodeLocation(
-                CONF.getConfigNodeId(),
-                new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
-                new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort())));
+            CONF.getClusterName(), generateConfigNodeLocation(CONF.getConfigNodeId()));
 
     TEndPoint targetConfigNode = CONF.getTargetConfigNode();
     if (targetConfigNode == null) {
@@ -382,13 +382,23 @@ public class ConfigNode implements ConfigNodeMBean {
       } else {
         throw new StartupException(status.getMessage());
       }
+      startUpSleep("Register ConfigNode failed! ");
+    }
+  }
 
-      try {
-        TimeUnit.MILLISECONDS.sleep(STARTUP_RETRY_INTERVAL_IN_MS);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new StartupException("Register ConfigNode failed! ");
-      }
+  private TConfigNodeLocation generateConfigNodeLocation(int configNodeId) {
+    return new TConfigNodeLocation(
+        configNodeId,
+        new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
+        new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()));
+  }
+
+  private void startUpSleep(String errorMessage) throws StartupException {
+    try {
+      TimeUnit.MILLISECONDS.sleep(STARTUP_RETRY_INTERVAL_IN_MS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new StartupException(errorMessage);
     }
   }
 
