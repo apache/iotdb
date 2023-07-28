@@ -167,7 +167,6 @@ public class SystemMetrics implements IMetricSet {
       if (!FSUtils.isLocal(diskDir)) {
         continue;
       }
-      logger.info("diskDir: {}", diskDir);
       Path path = Paths.get(diskDir);
       FileStore fileStore = null;
       try {
