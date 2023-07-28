@@ -32,7 +32,21 @@ public class InsertTabletSortDataUtils {
     return true;
   }
 
-  public static <T> List<List<T>> sortList(List<List<T>> values, Integer[] index, int num) {
+  public static int[] sortTimeStampList(List<Long> list) {
+    int n = list.size();
+    long[] arr = new long[n];
+    for (int i = 0; i < n; i++) {
+      arr[i] = list.get(i);
+    }
+    Arrays.sort(arr);
+    int[] indices = new int[n];
+    for (int i = 0; i < n; i++) {
+      indices[i] = list.indexOf(arr[i]);
+    }
+    return indices;
+  }
+
+  public static <T> List<List<T>> sortList(List<List<T>> values, int[] index, int num) {
     List<List<T>> sortedValues = new ArrayList<>();
     for (int i = 0; i < num; i++) {
       sortedValues.add(sortValueList(values.get(i), index));
@@ -49,7 +63,7 @@ public class InsertTabletSortDataUtils {
    * @param <T> Input type
    * @return ordered list
    */
-  private static <T> List<T> sortValueList(List<T> source, Integer[] index) {
-    return Arrays.stream(index).map(source::get).collect(Collectors.toList());
+  private static <T> List<T> sortValueList(List<T> source, int[] index) {
+    return Arrays.stream(index).mapToObj(source::get).collect(Collectors.toList());
   }
 }
