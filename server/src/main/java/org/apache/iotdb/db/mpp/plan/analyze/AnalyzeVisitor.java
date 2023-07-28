@@ -2011,7 +2011,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     for (int i = 0; i < tsfileNum; i++) {
       File tsFile = loadTsFileStatement.getTsFiles().get(i);
       if (tsFile.length() == 0) {
-        logger.warn(String.format("TsFile %s is empty.", tsFile.getPath()));
+        if (logger.isWarnEnabled()) {
+          logger.warn(String.format("TsFile %s is empty.", tsFile.getPath()));
+        }
         throw new SemanticException(
             String.format(
                 "TsFile %s is empty, please check it be flushed to disk correctly.",
@@ -2136,7 +2138,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               timeseriesIndex < timeseriesMetadataListSize;
               timeseriesIndex++) {
             TimeseriesMetadata timeseriesMetadata = timeseriesMetadataList.get(timeseriesIndex);
-            TSDataType dataType = timeseriesMetadata.getTsDataType();
+            TSDataType dataType = timeseriesMetadata.getTSDataType();
             if (!dataType.equals(TSDataType.VECTOR)) {
               Pair<CompressionType, TSEncoding> pair =
                   reader.readTimeseriesCompressionTypeAndEncoding(timeseriesMetadata);
@@ -2242,9 +2244,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       resource.deserialize();
     }
 
-      resource.setStatus(TsFileResourceStatus.NORMAL);
-      return resource;
-    }
+    resource.setStatus(TsFileResourceStatus.NORMAL);
+    return resource;
   }
 
   private void autoCreateSg(int sgLevel, Map<String, Map<MeasurementSchema, File>> device2Schemas)
