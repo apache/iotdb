@@ -45,7 +45,7 @@ public class JvmGcMonitorMetrics implements IMetricSet {
   // Interval for data collection
   public static final long SLEEP_INTERVAL_MS = TimeUnit.SECONDS.toMillis(5);
   // Max GC time threshold
-  public static final long MAX_GC_TIME_PERCENTAGE = 2L;
+  public static final long MAX_GC_TIME_PERCENTAGE = 40L;
   // The time when IoTDB start running
   private static long startTime;
   private static final Logger logger = LoggerFactory.getLogger(JvmGcMonitorMetrics.class);
