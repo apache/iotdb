@@ -55,6 +55,8 @@ jobs:
           brew install bison
           echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> ~/.bash_profile
           source ~/.bash_profile && export LDFLAGS="-L/usr/local/opt/bison/lib"
+          # CMAKE 3.27 uses /opt/homebrew as homebrew home, we need to make a symlink here
+          ln -s /usr/local /opt/homebrew
           brew install openssl
       - name: Cache Maven packages
         uses: actions/cache@v3
