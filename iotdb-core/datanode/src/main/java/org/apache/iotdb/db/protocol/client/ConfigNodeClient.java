@@ -146,7 +146,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Function;
+import java.util.function.Predicate;
 
 public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClient, AutoCloseable {
 
@@ -155,7 +155,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   private static final int RETRY_NUM = 5;
 
   public static final String MSG_RECONNECTION_FAIL =
-      "Fail to connect to any config node. Please check status of ConfigNodes";
+      "Fail to connect to any config node. Please check status of ConfigNodes or logs of connected DataNode";
 
   private static final String MSG_RECONNECTION_DATANODE_FAIL =
       "Failed to connect to ConfigNode %s from DataNode %s when executing %s, Exception:";
@@ -324,12 +324,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
    * @param <T> the type of rpc result
    * @throws TException if fails more than RETRY_NUM times, throw TException(MSG_RECONNECTION_FAIL)
    */
-  private <T> T executeRemoteCallWithRetry(Operation<T> call, Function<T, Boolean> check)
+  private <T> T executeRemoteCallWithRetry(Operation<T> call, Predicate<T> check)
       throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         T result = call.execute();
-        if (check.apply(result)) {
+        if (check.test(result)) {
           return result;
         }
       } catch (TException e) {
