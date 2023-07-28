@@ -2670,7 +2670,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                   // if the tsfile has no tsfile resource before loading, we should construct it.
                 } else if (!tsFileResource.resourceFileExists()) {
                   tsFileResource = constructTsFileResource(tsFile, device2Metadata, reader);
-
+                  statement.addTsFileResource(tsFileResource);
                   // the tsfile resource is created when loading, so we just need to update the
                   // resource.
                 } else {
