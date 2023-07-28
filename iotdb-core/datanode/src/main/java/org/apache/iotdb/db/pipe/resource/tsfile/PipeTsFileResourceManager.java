@@ -17,11 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.resource.file;
+package org.apache.iotdb.db.pipe.resource.tsfile;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.utils.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -31,7 +30,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
-public class PipeFileResourceManager {
+public class PipeTsFileResourceManager {
 
   private final Map<String, Integer> hardlinkOrCopiedFileToReferenceMap = new HashMap<>();
 
@@ -98,11 +97,12 @@ public class PipeFileResourceManager {
 
   private static String getPipeTsFileDirPath(File file) throws IOException {
     while (!file.getName().equals(IoTDBConstant.SEQUENCE_FLODER_NAME)
-        && !file.getName().equals(IoTDBConstant.UNSEQUENCE_FLODER_NAME)
-        && !file.getName().equals(PipeConfig.getInstance().getPipeHardlinkTsFileDirName())) {
+        && !file.getName().equals(IoTDBConstant.UNSEQUENCE_FLODER_NAME)) {
       file = file.getParentFile();
     }
     return file.getParentFile().getCanonicalPath()
+        + File.separator
+        + PipeConfig.getInstance().getPipeHardlinkBaseDirName()
         + File.separator
         + PipeConfig.getInstance().getPipeHardlinkTsFileDirName();
   }
@@ -110,8 +110,7 @@ public class PipeFileResourceManager {
   private static String getRelativeFilePath(File file) {
     StringBuilder builder = new StringBuilder(file.getName());
     while (!file.getName().equals(IoTDBConstant.SEQUENCE_FLODER_NAME)
-        && !file.getName().equals(IoTDBConstant.UNSEQUENCE_FLODER_NAME)
-        && !file.getName().equals(PipeConfig.getInstance().getPipeHardlinkTsFileDirName())) {
+        && !file.getName().equals(IoTDBConstant.UNSEQUENCE_FLODER_NAME)) {
       file = file.getParentFile();
       builder =
           new StringBuilder(file.getName())
@@ -162,18 +161,6 @@ public class PipeFileResourceManager {
     if (updatedReference != null && updatedReference == 0) {
       Files.deleteIfExists(hardlinkOrCopiedFile.toPath());
       hardlinkOrCopiedFileToReferenceMap.remove(hardlinkOrCopiedFile.getPath());
-    }
-  }
-
-  /**
-   * clear all hardlink or copied files under pipe dir of the given data dir.
-   *
-   * <p>this method can be only invoked when the system is booting up.
-   */
-  public synchronized void clear(String dataDir) {
-    File pipeTsFileDir = new File(dataDir, PipeConfig.getInstance().getPipeHardlinkTsFileDirName());
-    if (pipeTsFileDir.exists()) {
-      FileUtils.deleteDirectory(pipeTsFileDir);
     }
   }
 

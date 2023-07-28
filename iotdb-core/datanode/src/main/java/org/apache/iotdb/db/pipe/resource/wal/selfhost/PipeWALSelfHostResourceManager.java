@@ -17,30 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.modification.io;
+package org.apache.iotdb.db.pipe.resource.wal.selfhost;
 
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.pipe.resource.wal.PipeWALResourceManager;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 
-import java.io.IOException;
+public class PipeWALSelfHostResourceManager extends PipeWALResourceManager {
 
-/**
- * ModificationWriter provides methods for writing a modification to a persistent medium like file
- * system.
- */
-public interface ModificationWriter {
+  @Override
+  protected void pinInternal(long memtableId, WALEntryHandler walEntryHandler) {
+    memtableIdToPipeWALResourceMap
+        .computeIfAbsent(memtableId, id -> new PipeWALSelfHostResource(walEntryHandler))
+        .pin();
+  }
 
-  /**
-   * Write a new modification to the persistent medium. Notice that after calling write(), a
-   * fileWriter is opened.
-   *
-   * @param mod the modification to be written.
-   */
-  void write(Modification mod) throws IOException;
-
-  void truncate(long size);
-
-  void mayTruncateLastLine();
-
-  /** Release resources like streams. */
-  void close() throws IOException;
+  @Override
+  protected void unpinInternal(long memtableId, WALEntryHandler walEntryHandler) {
+    memtableIdToPipeWALResourceMap.get(memtableId).unpin();
+  }
 }
