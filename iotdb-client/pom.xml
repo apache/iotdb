@@ -31,7 +31,6 @@
     <name>IoTDB: Client</name>
     <modules>
         <module>cli</module>
-        <module>client-cpp</module>
         <module>client-py</module>
         <module>compile-tools</module>
         <module>isession</module>
@@ -39,4 +38,12 @@
         <module>service-rpc</module>
         <module>session</module>
     </modules>
+    <profiles>
+        <profile>
+            <id>compile-cpp</id>
+            <modules>
+                <module>client-cpp</module>
+            </modules>
+        </profile>
+    </profiles>
 </project>

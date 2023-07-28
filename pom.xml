@@ -195,17 +195,19 @@
         <!-- codegen -->
         <drill.freemarker.maven.plugin.version>1.17.0</drill.freemarker.maven.plugin.version>
         <codegen.phase>generate-sources</codegen.phase>
+        <cmake-maven-plugin.version>3.26.3-b1</cmake-maven-plugin.version>
+        <cmake.build.type>Release</cmake.build.type>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
-        their version in sub-project's pom, but we have to claim themselves again
-        in sub-projects
+        their version in subproject's pom, but we have to claim themselves again
+        in subprojects
     -->
     <dependencyManagement>
         <dependencies>
             <!--
                 in the subprojects, you have to claim logback again, because maybe
-                someone in your dependences uses log4j lib.
+                someone in your dependencies uses log4j lib.
             -->
             <dependency>
                 <groupId>ch.qos.logback</groupId>
@@ -1121,6 +1123,7 @@
             <activation>
                 <os>
                     <family>unix</family>
+                    <arch>!aarch64</arch>
                 </os>
             </activation>
             <properties>
@@ -1133,14 +1136,51 @@
             </properties>
         </profile>
         <profile>
+            <id>os-unix-arm</id>
+            <activation>
+                <os>
+                    <family>unix</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <os.classifier>linux-aarch64</os.classifier>
+                <thrift.download-url>https://gitbox.apache.org/repos/asf?p=iotdb-bin-resources.git;a=blob_plain;f=compile-tools/thrift-0.14-ubuntu;hb=HEAD</thrift.download-url>
+                <thrift.executable>thrift_0.14.1_linux</thrift.executable>
+                <thrift.skip-making-executable>false</thrift.skip-making-executable>
+                <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
+                <thrift.exec-cmd.args>+x ${project.build.directory}/tools/${thrift.executable}</thrift.exec-cmd.args>
+            </properties>
+        </profile>
+        <profile>
             <id>os-mac</id>
             <activation>
                 <os>
                     <family>mac</family>
+                    <arch>!aarch64</arch>
                 </os>
             </activation>
             <properties>
                 <os.classifier>mac-x86_64</os.classifier>
+                <boost.include.dir>/usr/local/include</boost.include.dir>
+                <thrift.download-url>https://gitbox.apache.org/repos/asf?p=iotdb-bin-resources.git;a=blob_plain;f=compile-tools/thrift-0.14-MacOS;hb=HEAD</thrift.download-url>
+                <thrift.executable>thrift_0.14.1_mac</thrift.executable>
+                <thrift.skip-making-executable>false</thrift.skip-making-executable>
+                <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
+                <thrift.exec-cmd.args>+x ${project.build.directory}/tools/${thrift.executable}</thrift.exec-cmd.args>
+            </properties>
+        </profile>
+        <profile>
+            <id>os-mac-arm</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <os.classifier>mac-aarch64</os.classifier>
+                <boost.include.dir>/usr/local/include</boost.include.dir>
                 <thrift.download-url>https://gitbox.apache.org/repos/asf?p=iotdb-bin-resources.git;a=blob_plain;f=compile-tools/thrift-0.14-MacOS;hb=HEAD</thrift.download-url>
                 <thrift.executable>thrift_0.14.1_mac</thrift.executable>
                 <thrift.skip-making-executable>false</thrift.skip-making-executable>

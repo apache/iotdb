@@ -96,4 +96,12 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
+    <profiles>
+        <profile>
+            <id>compile-cpp</id>
+            <modules>
+                <module>client-cpp-example</module>
+            </modules>
+        </profile>
+    </profiles>
 </project>

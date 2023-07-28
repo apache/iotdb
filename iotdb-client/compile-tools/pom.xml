@@ -28,34 +28,60 @@
     <packaging>pom</packaging>
     <name>IoTDB: Client: Compile Tools</name>
     <properties>
-        <boost.version>1.82.0</boost.version>
-        <boost.version.underline-short>1_82</boost.version.underline-short>
-        <boost.version.underline>${boost.version.underline-short}_0</boost.version.underline>
-        <cmake-version>3.27.1</cmake-version>
-        <openssl.include.dir>-Dtrue1=true1</openssl.include.dir>
-        <bison.executable.dir>-Dtrue1=true1</bison.executable.dir>
+        <!-- Dummy values only overridden in the mac profiles -->
+        <openssl.include.dir/>
+        <bison.executable.dir/>
         <cmake.build.type/>
+        <mac.homebrew.bison.path/>
     </properties>
-    <modules>
-        <module>thrift</module>
-    </modules>
     <profiles>
+        <profile>
+            <id>compile-cpp</id>
+            <modules>
+                <module>thrift</module>
+            </modules>
+        </profile>
+        <!-- Homebrew changed the default to where it's installed -->
+        <profile>
+            <id>os-mac-old-homebrew</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                </os>
+                <file>
+                    <exists>/usr/local/opt/bison/bin</exists>
+                </file>
+            </activation>
+            <properties>
+                <mac.homebrew.bison.path>/usr/local/opt/bison/bin</mac.homebrew.bison.path>
+            </properties>
+        </profile>
+        <profile>
+            <id>os-mac-new-homebrew</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                </os>
+                <file>
+                    <exists>/opt/homebrew/opt/bison/bin</exists>
+                </file>
+            </activation>
+            <properties>
+                <mac.homebrew.bison.path>/opt/homebrew/opt/bison/bin</mac.homebrew.bison.path>
+            </properties>
+        </profile>
         <profile>
             <id>os-unix</id>
             <activation>
                 <os>
                     <family>unix</family>
+                    <arch>!aarch64</arch>
                 </os>
             </activation>
             <properties>
                 <os.suffix>linux</os.suffix>
                 <os.classifier>linux-x86_64</os.classifier>
-                <cmake.url>https://github.com/Kitware/CMake/releases/download/v${cmake-version}/cmake-${cmake-version}-linux-x86_64.tar.gz</cmake.url>
-                <cmake.root.dir>${project.build.directory}/cmake-${cmake-version}-linux-x86_64/</cmake.root.dir>
                 <cmake.generator>Unix Makefiles</cmake.generator>
-                <boost.url>https://boostorg.jfrog.io/artifactory/main/release/${boost.version}/source/boost_${boost.version.underline}.zip</boost.url>
-                <boost.bootstrap.executable>./bootstrap.sh</boost.bootstrap.executable>
-                <boost.build.executable>./b2</boost.build.executable>
                 <thrift.bootstrap.executable>./bootstrap.sh</thrift.bootstrap.executable>
                 <thrift.configure.executable>./configure</thrift.configure.executable>
                 <thrift.make.executable>make</thrift.make.executable>
@@ -73,13 +99,8 @@
             </activation>
             <properties>
                 <os.suffix>linux</os.suffix>
-                <os.classifier>linux-arm_32</os.classifier>
-                <cmake.url>https://github.com/Kitware/CMake/releases/download/v${cmake-version}/cmake-${cmake-version}-linux-aarch64.tar.gz</cmake.url>
-                <cmake.root.dir>${project.build.directory}/cmake-3.21.2-linux-aarch64/</cmake.root.dir>
+                <os.classifier>linux-aarch64</os.classifier>
                 <cmake.generator>Unix Makefiles</cmake.generator>
-                <boost.url>https://boostorg.jfrog.io/artifactory/main/release/${boost.version}/source/boost_${boost.version.underline}.zip</boost.url>
-                <boost.bootstrap.executable>./bootstrap.sh</boost.bootstrap.executable>
-                <boost.build.executable>./b2</boost.build.executable>
                 <thrift.bootstrap.executable>./bootstrap.sh</thrift.bootstrap.executable>
                 <thrift.configure.executable>./configure</thrift.configure.executable>
                 <thrift.make.executable>make</thrift.make.executable>
@@ -92,17 +113,13 @@
             <activation>
                 <os>
                     <family>mac</family>
+                    <arch>!aarch64</arch>
                 </os>
             </activation>
             <properties>
                 <os.suffix>mac</os.suffix>
                 <os.classifier>mac-x86_64</os.classifier>
-                <cmake.url>https://github.com/Kitware/CMake/releases/download/v${cmake-version}/cmake-${cmake-version}-macos-universal.tar.gz</cmake.url>
-                <cmake.root.dir>${project.build.directory}/cmake-${cmake-version}-macos-universal/CMake.app/Contents</cmake.root.dir>
                 <cmake.generator>Unix Makefiles</cmake.generator>
-                <boost.url>https://boostorg.jfrog.io/artifactory/main/release/${boost.version}/source/boost_${boost.version.underline}.zip</boost.url>
-                <boost.bootstrap.executable>./bootstrap.sh</boost.bootstrap.executable>
-                <boost.build.executable>./b2</boost.build.executable>
                 <thrift.bootstrap.executable>./bootstrap.sh</thrift.bootstrap.executable>
                 <thrift.configure.executable>./configure</thrift.configure.executable>
                 <thrift.make.executable>make</thrift.make.executable>
@@ -110,7 +127,7 @@
                 <gradlew.executable>./gradlew</gradlew.executable>
                 <openssl.include.default.path>/usr/local/opt/openssl/include</openssl.include.default.path>
                 <openssl.include.dir>-DCMAKE_CXX_FLAGS="-I${openssl.include.default.path}"</openssl.include.dir>
-                <bison.executable.dir>-DBISON_EXECUTABLE=/opt/homebrew/opt/bison/bin/bison</bison.executable.dir>
+                <bison.executable.dir>-DBISON_EXECUTABLE=${mac.homebrew.bison.path}/bison</bison.executable.dir>
             </properties>
         </profile>
         <profile>
@@ -123,13 +140,8 @@
             </activation>
             <properties>
                 <os.suffix>mac</os.suffix>
-                <os.classifier>mac-x86_64</os.classifier>
-                <cmake.url>https://github.com/Kitware/CMake/releases/download/v${cmake-version}/cmake-${cmake-version}-macos-universal.tar.gz</cmake.url>
-                <cmake.root.dir>${project.build.directory}/cmake-${cmake-version}-macos-universal/CMake.app/Contents</cmake.root.dir>
+                <os.classifier>mac-aarch64</os.classifier>
                 <cmake.generator>Unix Makefiles</cmake.generator>
-                <boost.url>https://boostorg.jfrog.io/artifactory/main/release/${boost.version}/source/boost_${boost.version.underline}.zip</boost.url>
-                <boost.bootstrap.executable>./bootstrap.sh</boost.bootstrap.executable>
-                <boost.build.executable>./b2</boost.build.executable>
                 <thrift.bootstrap.executable>./bootstrap.sh</thrift.bootstrap.executable>
                 <thrift.configure.executable>./configure</thrift.configure.executable>
                 <thrift.make.executable>make</thrift.make.executable>
@@ -137,7 +149,7 @@
                 <gradlew.executable>./gradlew</gradlew.executable>
                 <openssl.include.default.path>/usr/local/opt/openssl/include</openssl.include.default.path>
                 <openssl.include.dir>-DCMAKE_CXX_FLAGS="-I${openssl.include.default.path}"</openssl.include.dir>
-                <bison.executable.dir>-DBISON_EXECUTABLE=/opt/homebrew/opt/bison/bin/bison</bison.executable.dir>
+                <bison.executable.dir>-DBISON_EXECUTABLE=${mac.homebrew.bison.path}/bison</bison.executable.dir>
             </properties>
         </profile>
         <profile>
@@ -150,22 +162,14 @@
             <properties>
                 <os.suffix>win</os.suffix>
                 <os.classifier>windows-x86_64</os.classifier>
-                <cmake.url>https://github.com/Kitware/CMake/releases/download/v${cmake-version}/cmake-${cmake-version}-windows-x86_64.zip</cmake.url>
-                <cmake.root.dir>${project.build.directory}/cmake-${cmake-version}-windows-x86_64/</cmake.root.dir>
                 <!--<cmake.generator>MinGW Makefiles</cmake.generator>-->
                 <cmake.generator>Visual Studio 16 2019</cmake.generator>
                 <cmake.build.type>Release</cmake.build.type>
-                <boost.url>https://boostorg.jfrog.io/artifactory/main/release/${boost.version}/source/boost_${boost.version.underline}.zip</boost.url>
-                <boost.bootstrap.executable>bootstrap.bat</boost.bootstrap.executable>
-                <boost.build.executable>b2</boost.build.executable>
-                <boost.include-directory>libs/libs/boost/include/boost-${boost.version.underline-short}</boost.include-directory>
                 <thrift.bootstrap.executable>bootstrap.sh</thrift.bootstrap.executable>
                 <thrift.configure.executable>configure</thrift.configure.executable>
                 <thrift.make.executable>make</thrift.make.executable>
                 <thrift.compiler.executable>thrift.exe</thrift.compiler.executable>
                 <gradlew.executable>gradlew.bat</gradlew.executable>
-                <boost.include.dir/>
-                <boost.library.dir/>
             </properties>
         </profile>
     </profiles>
