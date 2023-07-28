@@ -44,6 +44,11 @@ public class GcTimeAlerter implements JvmGcMonitorMetrics.GcTimeAlertHandler {
         "Accumulated GC time within current observation window: "
             + gcData.getGcTimeWithinObsWindow()
             + " ms");
-    logger.warn("Detailed GC metrics can be accessed in Prometheus.");
+    logger.warn(
+        "The observation window is from: "
+            + sdf.format(new Date(Long.parseLong(String.valueOf(gcData.getStartObsWindowTs()))))
+            + " to: "
+            + sdf.format(new Date(Long.parseLong(String.valueOf(gcData.getTimestamp())))));
+    logger.warn("The observation window time is: " + gcData.getCurrentObsWindowTs() + " ms.");
   }
 }

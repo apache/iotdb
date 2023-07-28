@@ -40,6 +40,14 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class JvmGcMonitorMetrics implements IMetricSet {
+  // Duration of observation window
+  public static final long OBSERVATION_WINDOW_MS = TimeUnit.MINUTES.toMillis(1);
+  // Interval for data collection
+  public static final long SLEEP_INTERVAL_MS = TimeUnit.SECONDS.toMillis(5);
+  // Max GC time threshold
+  public static final long MAX_GC_TIME_PERCENTAGE = 2L;
+  // The time when IoTDB start running
+  private static long startTime;
   private static final Logger logger = LoggerFactory.getLogger(JvmGcMonitorMetrics.class);
   private final ScheduledExecutorService scheduledGCInfoMonitor =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
@@ -47,27 +55,19 @@ public class JvmGcMonitorMetrics implements IMetricSet {
   private Future<?> scheduledGcMonitorFuture;
   // Ring buffers containing GC timings and timestamps when timings were taken
   private final TsAndData[] gcDataBuf;
-  // Max GC time threshold
-  private final long maxGcTimePercentage = 40L;
-  // Duration of observation window
-  private final long observationWindowMs = TimeUnit.MINUTES.toMillis(1);
-  // Interval for data collection
-  private final long sleepIntervalMs = TimeUnit.SECONDS.toMillis(5);
   // Buffer size
   private final int bufSize;
   // Buffer start index
   private int startIdx;
   // Buffer end index
   private int endIdx;
-  // The time when jvm start running
-  private long startTime;
   // Container to hold collected GC data
   private final GcData curData = new GcData();
   // Hook function called with GC exception
   private final GcTimeAlertHandler alertHandler;
 
   public JvmGcMonitorMetrics() {
-    bufSize = (int) (observationWindowMs / sleepIntervalMs + 2);
+    bufSize = (int) (OBSERVATION_WINDOW_MS / SLEEP_INTERVAL_MS + 2);
     // Prevent the user from accidentally creating an abnormally big buffer, which will result in
     // slow calculations and likely inaccuracy.
     Preconditions.checkArgument(bufSize <= 128 * 1024);
@@ -89,14 +89,13 @@ public class JvmGcMonitorMetrics implements IMetricSet {
 
     startTime = System.currentTimeMillis();
     // current collect time: startTime + start delay(50ms)
-    curData.timestamp.set(startTime + TimeUnit.MILLISECONDS.toMillis(50));
-    gcDataBuf[startIdx].setValues(startTime, 0);
+    gcDataBuf[startIdx].setValues(startTime + TimeUnit.MILLISECONDS.toMillis(50), 0);
     scheduledGcMonitorFuture =
         ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
             scheduledGCInfoMonitor,
             this::scheduledMonitoring,
             TimeUnit.MILLISECONDS.toMillis(50), // to prevent / ZERO exception
-            sleepIntervalMs,
+            SLEEP_INTERVAL_MS,
             TimeUnit.MILLISECONDS);
   }
 
@@ -113,7 +112,7 @@ public class JvmGcMonitorMetrics implements IMetricSet {
 
   private void scheduledMonitoring() {
     calculateGCTimePercentageWithinObservedInterval();
-    if (alertHandler != null && curData.gcTimePercentage.get() > maxGcTimePercentage) {
+    if (alertHandler != null && curData.gcTimePercentage.get() > MAX_GC_TIME_PERCENTAGE) {
       alertHandler.alert(curData.clone());
     }
   }
@@ -134,7 +133,7 @@ public class JvmGcMonitorMetrics implements IMetricSet {
 
     // Move startIdx forward until we reach the first buffer entry with
     // timestamp within the observation window.
-    long startObsWindowTs = curTime - observationWindowMs;
+    long startObsWindowTs = curTime - OBSERVATION_WINDOW_MS;
     while (gcDataBuf[startIdx].ts < startObsWindowTs && startIdx != endIdx) {
       startIdx = (startIdx + 1) % bufSize;
     }
@@ -152,20 +151,40 @@ public class JvmGcMonitorMetrics implements IMetricSet {
 
     curData.update(
         curTime,
+        startObsWindowTs,
         totalGcTime,
         gcTimeWithinObservationWindow,
         (int)
             (gcTimeWithinObservationWindow
                 * 100
-                / Math.min(observationWindowMs, gcMonitorRunTime)));
+                / Math.min(OBSERVATION_WINDOW_MS, gcMonitorRunTime)));
   }
 
   /** Encapsulates data about GC pauses measured at the specific timestamp. */
   public static class GcData implements Cloneable {
+    // The time when this object get updated.
     private final AtomicLong timestamp = new AtomicLong();
-    private final AtomicLong totalGcTime = new AtomicLong();
+    // The theoretical start time of the observation window, usually equal to `timestamp -
+    // OBSERVATION_WINDOW_MS`
+    private final AtomicLong startObsWindowTs = new AtomicLong();
+    // Accumulated GC time since the start of IoTDB.
+    private final AtomicLong accumulatedGcTime = new AtomicLong();
+    // The percentage (0..100) of time that the JVM spent in GC pauses within the observation window
     private final AtomicLong gcTimePercentage = new AtomicLong();
+    // Accumulated GC time within the latest observation window.
     private final AtomicLong gcTimeWithinObsWindow = new AtomicLong();
+
+    /**
+     * Returns the length of current observation window, usually equal to OBSERVATION_WINDOW_MS. If
+     * IoTDB is started after the start of the theoretical time window, then IoTDB startup time is
+     * returned.
+     *
+     * @return current observation window time, millisecond.
+     */
+    public long getCurrentObsWindowTs() {
+      return Math.min(timestamp.get() - startTime, timestamp.get() - startObsWindowTs.get());
+    }
+
     /**
      * Returns the absolute timestamp when this measurement was taken.
      *
@@ -176,12 +195,21 @@ public class JvmGcMonitorMetrics implements IMetricSet {
     }
 
     /**
+     * Returns the start timestamp of the latest observation window.
+     *
+     * @return the actual start timestamp of the obs window.
+     */
+    public long getStartObsWindowTs() {
+      return Math.max(startObsWindowTs.get(), startTime);
+    }
+
+    /**
      * Returns accumulated GC time since the start of IoTDB.
      *
      * @return AccumulatedGcTime.
      */
     public long getAccumulatedGcTime() {
-      return totalGcTime.get();
+      return accumulatedGcTime.get();
     }
 
     /**
@@ -205,11 +233,13 @@ public class JvmGcMonitorMetrics implements IMetricSet {
 
     private synchronized void update(
         long inTimestamp,
+        long inStartObsWindowTs,
         long inTotalGcTime,
         long inGcTimeWithinObsWindow,
         int inGcTimePercentage) {
       this.timestamp.set(inTimestamp);
-      this.totalGcTime.set(inTotalGcTime);
+      this.startObsWindowTs.set(inStartObsWindowTs);
+      this.accumulatedGcTime.set(inTotalGcTime);
       this.gcTimeWithinObsWindow.set(inGcTimeWithinObsWindow);
       this.gcTimePercentage.set(inGcTimePercentage);
     }
