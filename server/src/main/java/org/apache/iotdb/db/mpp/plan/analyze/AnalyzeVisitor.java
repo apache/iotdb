@@ -2020,7 +2020,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                 tsFile.getPath()));
       }
       try {
-        analyzeTsFile(loadTsFileStatement, tsFile, device2Schemas, device2IsAligned, context);
+        analyzeTsFile(loadTsFileStatement, tsFile, device2Schemas, device2IsAligned);
       } catch (IllegalArgumentException e) {
         logger.warn(
             String.format(
@@ -2110,8 +2110,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       LoadTsFileStatement statement,
       File tsFile,
       Map<String, Map<MeasurementSchema, File>> device2Schemas,
-      Map<String, Pair<Boolean, File>> device2IsAligned,
-      MPPQueryContext context)
+      Map<String, Pair<Boolean, File>> device2IsAligned)
       throws IOException, VerifyMetadataException {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       TsFileResource tsFileResource = new TsFileResource(tsFile);
@@ -2188,7 +2187,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
                 tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
 
-                autoCreateAndVerifySchema(statement, device2Schemas, device2IsAligned, context);
+                autoCreateAndVerifySchema(statement, device2Schemas, device2IsAligned);
                 timeseriesCount = 0;
               } else {
                 throw new VerifyMetadataException(
