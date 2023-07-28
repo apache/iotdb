@@ -698,8 +698,7 @@ public class DataRegion implements IDataRegionForQuery {
             logger.warn("{} is not a directory.", partitionFolder.getAbsolutePath());
           } else if (!partitionFolder.getName().equals(IoTDBConstant.UPGRADE_FOLDER_NAME)) {
             // some TsFileResource may be being persisted when the system crashed, try recovering
-            // such
-            // resources
+            // such resources
             continueFailedRenames(partitionFolder, TEMP_SUFFIX);
 
             Collections.addAll(
@@ -1149,9 +1148,15 @@ public class DataRegion implements IDataRegionForQuery {
       // disable updating last cache on follower
       return;
     }
-    for (int i = 0; i < node.getColumns().length; i++) {
-      if (node.getColumns()[i] == null) {
-        continue;
+    String[] measurements = node.getMeasurements();
+    MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
+    String[] rawMeasurements = new String[measurements.length];
+    for (int i = 0; i < measurements.length; i++) {
+      if (measurementSchemas[i] != null) {
+        // get raw measurement rather than alias
+        rawMeasurements[i] = measurementSchemas[i].getMeasurementId();
+      } else {
+        rawMeasurements[i] = measurements[i];
       }
       // Update cached last value with high priority
       DataNodeSchemaCache.getInstance()
@@ -1888,8 +1893,6 @@ public class DataRegion implements IDataRegionForQuery {
     // mod files in mergingModification, sequenceFileList, and unsequenceFileList
     writeLock("delete");
 
-    // record files which are updated so that we can roll back them in case of exception
-    List<ModificationFile> updatedModFiles = new ArrayList<>();
     boolean hasReleasedLock = false;
 
     try {
@@ -1918,20 +1921,24 @@ public class DataRegion implements IDataRegionForQuery {
       separateTsFile(sealedTsFileResource, unsealedTsFileResource);
 
       deleteDataInFiles(
-          unsealedTsFileResource, deletion, devicePaths, updatedModFiles, timePartitionFilter);
+          unsealedTsFileResource,
+          deletion,
+          devicePaths,
+          updatedModFiles,
+          timePartitionFilter,
+          deviceMatchInfo);
       writeUnlock();
       hasReleasedLock = true;
 
       deleteDataInFiles(
-          sealedTsFileResource, deletion, devicePaths, updatedModFiles, timePartitionFilter);
+          sealedTsFileResource,
+          deletion,
+          devicePaths,
+          updatedModFiles,
+          timePartitionFilter,
+          deviceMatchInfo);
 
     } catch (Exception e) {
-      // roll back
-      for (ModificationFile modFile : updatedModFiles) {
-        modFile.abort();
-        // remember to close mod file
-        modFile.close();
-      }
       throw new IOException(e);
     } finally {
       if (!hasReleasedLock) {
@@ -2022,11 +2029,12 @@ public class DataRegion implements IDataRegionForQuery {
     return true;
   }
 
+  // suppress warn of Throwable catch
+  @SuppressWarnings("java:S1181")
   private void deleteDataInFiles(
       Collection<TsFileResource> tsFileResourceList,
       Deletion deletion,
       Set<PartialPath> devicePaths,
-      List<ModificationFile> updatedModFiles,
       TimePartitionFilter timePartitionFilter)
       throws IOException {
     for (TsFileResource tsFileResource : tsFileResourceList) {
@@ -2039,39 +2047,58 @@ public class DataRegion implements IDataRegionForQuery {
         continue;
       }
 
+      ModificationFile modFile = tsFileResource.getModFile();
       if (tsFileResource.isClosed()) {
-        // delete data in sealed file
-        if (tsFileResource.isCompacting()) {
-          // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
-          // change after compaction
-          deletion.setFileOffset(Long.MAX_VALUE);
-          // write deletion into compaction modification file
-          tsFileResource.getCompactionModFile().write(deletion);
-          // write deletion into modification file to enable query during compaction
-          tsFileResource.getModFile().write(deletion);
-          // remember to close mod file
-          tsFileResource.getCompactionModFile().close();
-          tsFileResource.getModFile().close();
-        } else {
-          deletion.setFileOffset(tsFileResource.getTsFileSize());
-          // write deletion into modification file
-          boolean modFileExists = tsFileResource.getModFile().exists();
-          long originSize = tsFileResource.getModFile().getSize();
-          tsFileResource.getModFile().write(deletion);
-          // remember to close mod file
-          tsFileResource.getModFile().close();
-          if (!modFileExists) {
-            TsFileMetricManager.getInstance().increaseModFileNum(1);
+        long originSize = -1;
+        synchronized (modFile) {
+          try {
+            originSize = modFile.getSize();
+            // delete data in sealed file
+            if (tsFileResource.isCompacting()) {
+              // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
+              // change after compaction
+              deletion.setFileOffset(Long.MAX_VALUE);
+              // write deletion into compaction modification file
+              tsFileResource.getCompactionModFile().write(deletion);
+              // write deletion into modification file to enable read during compaction
+              modFile.write(deletion);
+              // remember to close mod file
+              tsFileResource.getCompactionModFile().close();
+              modFile.close();
+            } else {
+              deletion.setFileOffset(tsFileResource.getTsFileSize());
+              // write deletion into modification file
+              boolean modFileExists = modFile.exists();
+
+              modFile.write(deletion);
+
+              // remember to close mod file
+              modFile.close();
+
+              // if file length greater than 1M,execute compact.
+              modFile.compact();
+
+              if (!modFileExists) {
+                FileMetrics.getInstance().increaseModFileNum(1);
+              }
+
+              // The file size may be smaller than the original file, so the increment here may be
+              // negative
+              FileMetrics.getInstance().increaseModFileSize(modFile.getSize() - originSize);
+            }
+          } catch (Throwable t) {
+            if (originSize != -1) {
+              modFile.truncate(originSize);
+            }
+            throw t;
           }
-          TsFileMetricManager.getInstance()
-              .increaseModFileSize(tsFileResource.getModFile().getSize() - originSize);
+          logger.info(
+              "[Deletion] Deletion with path:{}, time:{}-{} written into mods file:{}.",
+              deletion.getPath(),
+              deletion.getStartTime(),
+              deletion.getEndTime(),
+              modFile.getFilePath());
         }
-        logger.info(
-            "[Deletion] Deletion with path:{}, time:{}-{} written into mods file:{}.",
-            deletion.getPath(),
-            deletion.getStartTime(),
-            deletion.getEndTime(),
-            tsFileResource.getModFile().getFilePath());
       } else {
         // delete data in memory of unsealed file
         tsFileResource.getProcessor().deleteDataInMemory(deletion, devicePaths);
@@ -2081,9 +2108,6 @@ public class DataRegion implements IDataRegionForQuery {
           SyncService.getInstance().getOrCreateSyncManager(dataRegionId)) {
         syncManager.syncRealTimeDeletion(deletion);
       }
-
-      // add a record in case of rollback
-      updatedModFiles.add(tsFileResource.getModFile());
     }
   }
 
