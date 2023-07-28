@@ -35,12 +35,16 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncClient
     implements ThriftClient {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AsyncPipeDataTransferServiceClient.class);
+
+  private static final AtomicInteger idGenerator = new AtomicInteger(0);
+  private final int id = idGenerator.incrementAndGet();
 
   private final boolean printLogWhenEncounterException;
 
@@ -83,7 +87,7 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
   @Override
   public void invalidate() {
     if (!hasError()) {
-      super.onError(new Exception("This client has been invalidated"));
+      super.onError(new Exception(String.format("This client %d has been invalidated", id)));
     }
   }
 
@@ -134,11 +138,12 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
 
   public void markHandshakeFinished() {
     isHandshakeFinished.set(true);
+    LOGGER.info("Handshake finished for client {}", this);
   }
 
   @Override
   public String toString() {
-    return String.format("AsyncPipeDataTransferServiceClient{%s}", endpoint);
+    return String.format("AsyncPipeDataTransferServiceClient{%s}, id = {%d}", endpoint, id);
   }
 
   public static class Factory
