@@ -104,7 +104,7 @@ public class ReplicateTest {
       for (Peer peer : this.peers) {
         peer.serialize(outputStream);
       }
-      File storageDir = new File(peersStorage.get(i).getAbsolutePath(), "1_1");
+      File storageDir = new File(IoTConsensus.buildPeerDir(peersStorage.get(i), gid));
       Path tmpConfigurationPath =
           Paths.get(new File(storageDir, CONFIGURATION_TMP_FILE_NAME).getAbsolutePath());
       Path configurationPath =
