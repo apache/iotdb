@@ -49,8 +49,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 
 import java.time.ZoneId;
-import java.util.Arrays;
-import java.util.Comparator;
 
 public class RestApiServiceImpl extends RestApiService {
 
@@ -195,7 +193,8 @@ public class RestApiServiceImpl extends RestApiService {
       RequestValidationHandler.validateInsertTabletRequest(insertTabletRequest);
 
       if (!InsertTabletSortDataUtils.checkSorted(insertTabletRequest.getTimestamps())) {
-        int[] index = InsertTabletSortDataUtils.sortTimeStampList(insertTabletRequest.getTimestamps());
+        int[] index =
+            InsertTabletSortDataUtils.sortTimeStampList(insertTabletRequest.getTimestamps());
         insertTabletRequest.getTimestamps().sort(Long::compareTo);
         insertTabletRequest.setValues(
             InsertTabletSortDataUtils.sortList(
