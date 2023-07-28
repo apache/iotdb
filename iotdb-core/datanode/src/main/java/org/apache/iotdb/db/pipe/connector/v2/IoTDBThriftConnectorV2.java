@@ -59,6 +59,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
@@ -70,8 +71,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_NODE_URLS_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY;
 
 public class IoTDBThriftConnectorV2 implements PipeConnector {
 
@@ -100,6 +104,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
       new PriorityQueue<>(Comparator.comparing(o -> o.left));
 
   private List<TEndPoint> nodeUrls;
+  private List<Boolean> isNodeUrlAvailable;
 
   public IoTDBThriftConnectorV2() {
     if (ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get() == null) {
@@ -118,19 +123,40 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
     // node urls string should be like "localhost:6667,localhost:6668"
-    validator.validateRequiredAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY);
+    validator.validate(
+        args -> (boolean) args[0] || ((boolean) args[1] && (boolean) args[2]),
+        "Should use node urls or (ip and port) for connector-v2.",
+        validator.getParameters().hasAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY),
+        validator.getParameters().hasAttribute(CONNECTOR_IOTDB_IP_KEY),
+        validator.getParameters().hasAttribute(CONNECTOR_IOTDB_PORT_KEY));
   }
 
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
-    nodeUrls =
+    List<String> nodeUrlStrings = new ArrayList<>();
+    if (parameters.hasAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY)) {
+      nodeUrlStrings.addAll(
+          Arrays.asList(parameters.getString(CONNECTOR_IOTDB_NODE_URLS_KEY).split(",")));
+    }
+    if (parameters.hasAttribute(CONNECTOR_IOTDB_IP_KEY)
+        && parameters.hasAttribute(CONNECTOR_IOTDB_PORT_KEY)) {
+      nodeUrlStrings.add(
+          parameters.getString(CONNECTOR_IOTDB_IP_KEY)
+              + ":"
+              + parameters.getString(CONNECTOR_IOTDB_PORT_KEY));
+    }
+    this.nodeUrls =
         SessionUtils.parseSeedNodeUrls(
-            Arrays.asList(parameters.getString(CONNECTOR_IOTDB_NODE_URLS_KEY).split(",")));
+            nodeUrlStrings.stream().distinct().collect(Collectors.toList()));
     if (nodeUrls.isEmpty()) {
       throw new PipeException("Node urls is empty.");
     } else {
       LOGGER.info("Node urls: {}.", nodeUrls);
+    }
+    this.isNodeUrlAvailable = new ArrayList<>();
+    for (int i = 0; i < this.nodeUrls.size(); ++i) {
+      this.isNodeUrlAvailable.add(false);
     }
   }
 
@@ -146,20 +172,21 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
       retryConnector.set(null);
     }
 
-    for (final TEndPoint endPoint : nodeUrls) {
+    for (int i = 0; i < nodeUrls.size(); ++i) {
+      final TEndPoint endPoint = nodeUrls.get(i);
       final IoTDBThriftConnectorV1 connector =
           new IoTDBThriftConnectorV1(endPoint.getIp(), endPoint.getPort());
       try {
         connector.handshake();
-        retryConnector.set(connector);
+        retryConnector.compareAndSet(null, connector);
+        isNodeUrlAvailable.set(i, true);
         LOGGER.info(
             "Handshake successfully with receiver {}:{}.", endPoint.getIp(), endPoint.getPort());
-        break;
       } catch (Exception e) {
+        isNodeUrlAvailable.set(i, false);
         LOGGER.warn(
             String.format(
-                "Handshake error with receiver %s:%s, retrying...",
-                endPoint.getIp(), endPoint.getPort()),
+                "Handshake error with receiver %s:%s.", endPoint.getIp(), endPoint.getPort()),
             e);
         try {
           connector.close();
@@ -233,7 +260,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
   private void transfer(
       long requestCommitId,
       PipeTransferInsertNodeTabletInsertionEventHandler pipeTransferInsertNodeReqHandler) {
-    final TEndPoint targetNodeUrl = nodeUrls.get((int) (requestCommitId % nodeUrls.size()));
+    final TEndPoint targetNodeUrl = getEndPointByCommitId(requestCommitId);
 
     try {
       final AsyncPipeDataTransferServiceClient client = borrowClient(targetNodeUrl);
@@ -259,7 +286,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
   private void transfer(
       long requestCommitId,
       PipeTransferRawTabletInsertionEventHandler pipeTransferTabletReqHandler) {
-    final TEndPoint targetNodeUrl = nodeUrls.get((int) (requestCommitId % nodeUrls.size()));
+    final TEndPoint targetNodeUrl = getEndPointByCommitId(requestCommitId);
 
     try {
       final AsyncPipeDataTransferServiceClient client = borrowClient(targetNodeUrl);
@@ -308,7 +335,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
   private void transfer(
       long requestCommitId,
       PipeTransferTsFileInsertionEventHandler pipeTransferTsFileInsertionEventHandler) {
-    final TEndPoint targetNodeUrl = nodeUrls.get((int) (requestCommitId % nodeUrls.size()));
+    final TEndPoint targetNodeUrl = getEndPointByCommitId(requestCommitId);
 
     try {
       final AsyncPipeDataTransferServiceClient client = borrowClient(targetNodeUrl);
@@ -354,6 +381,16 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
               FAILED_TO_BORROW_CLIENT_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
           e);
     }
+  }
+
+  private TEndPoint getEndPointByCommitId(long requestCommitId) {
+    for (int shift = 0; shift < nodeUrls.size(); ++shift) {
+      int nodeUrlIndex = (int) ((requestCommitId + shift) % nodeUrls.size());
+      if (Boolean.TRUE.equals(isNodeUrlAvailable.get(nodeUrlIndex))) {
+        return nodeUrls.get(nodeUrlIndex);
+      }
+    }
+    return nodeUrls.get((int) (requestCommitId % nodeUrls.size()));
   }
 
   /**

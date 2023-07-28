@@ -348,7 +348,7 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
       throws TTransportException {
     for (int shift = 0; shift < nodeUrls.size(); ++shift) {
       int nodeUrlIndex = (int) ((requestCommitId + shift) % nodeUrls.size());
-      if (isNodeUrlAvailable.get(nodeUrlIndex)) {
+      if (Boolean.TRUE.equals(isNodeUrlAvailable.get(nodeUrlIndex))) {
         final TEndPoint targetNodeUrl = nodeUrls.get(nodeUrlIndex);
         return new IoTDBThriftConnectorClient(
             new ThriftClientProperty.Builder()
