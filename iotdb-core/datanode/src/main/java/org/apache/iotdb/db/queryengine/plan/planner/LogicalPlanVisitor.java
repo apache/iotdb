@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
+import org.apache.iotdb.commons.udf.builtin.ModelInferenceFunction;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
@@ -90,6 +91,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 
@@ -210,16 +212,17 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
 
     if (queryStatement.isModelInferenceQuery()) {
       ModelInferenceDescriptor modelInferenceDescriptor = analysis.getModelInferenceDescriptor();
-      switch (modelInferenceDescriptor.getFunctionType()) {
-        case FORECAST:
-          ForecastModelInferenceDescriptor forecastModelInferenceDescriptor =
-              (ForecastModelInferenceDescriptor) modelInferenceDescriptor;
-          planBuilder
-              .planLimit(forecastModelInferenceDescriptor.getModelInputLength())
-              .planForecast(forecastModelInferenceDescriptor);
-          break;
-        default:
-          throw new IllegalArgumentException();
+      if (Objects.requireNonNull(modelInferenceDescriptor.getFunctionType())
+          == ModelInferenceFunction.FORECAST) {
+        ForecastModelInferenceDescriptor forecastModelInferenceDescriptor =
+            (ForecastModelInferenceDescriptor) modelInferenceDescriptor;
+        planBuilder
+            .planLimit(forecastModelInferenceDescriptor.getModelInputLength())
+            .planForecast(forecastModelInferenceDescriptor);
+      } else {
+        throw new IllegalArgumentException(
+            "Unsupported model inference function type: "
+                + modelInferenceDescriptor.getFunctionType());
       }
     }
 

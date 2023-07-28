@@ -1441,48 +1441,53 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     if (queryStatement.isModelInferenceQuery()) {
       List<ColumnHeader> columnHeaders = new ArrayList<>();
-      boolean isIgnoreTimestamp;
 
       ModelInferenceDescriptor modelInferenceDescriptor = analysis.getModelInferenceDescriptor();
-      switch (modelInferenceDescriptor.getFunctionType()) {
-        case FORECAST:
-          isIgnoreTimestamp = false;
-          ForecastModelInferenceDescriptor forecastModelInferenceDescriptor =
-              (ForecastModelInferenceDescriptor) modelInferenceDescriptor;
+      if (Objects.requireNonNull(modelInferenceDescriptor.getFunctionType()) == FORECAST) {
+        ForecastModelInferenceDescriptor forecastModelInferenceDescriptor =
+            (ForecastModelInferenceDescriptor) modelInferenceDescriptor;
 
-          List<TSDataType> inputTypeList = forecastModelInferenceDescriptor.getInputTypeList();
-          if (outputExpressions.size() != inputTypeList.size()) {
-            throw new SemanticException("");
+        List<TSDataType> inputTypeList = forecastModelInferenceDescriptor.getInputTypeList();
+        if (outputExpressions.size() != inputTypeList.size()) {
+          throw new SemanticException(
+              String.format(
+                  "The number of input expressions does not match the number of input types [%d] when training",
+                  inputTypeList.size()));
+        }
+        for (int i = 0; i < inputTypeList.size(); i++) {
+          Expression inputExpression = outputExpressions.get(i).left;
+          TSDataType inputDataType = analysis.getType(inputExpression);
+          if (inputDataType != inputTypeList.get(i)) {
+            throw new SemanticException(
+                String.format(
+                    "The type of input expression [%s] does not match the type of input type [%s] when training",
+                    inputDataType, inputTypeList.get(i)));
           }
-          for (int i = 0; i < inputTypeList.size(); i++) {
-            Expression inputExpression = outputExpressions.get(i).left;
-            if (analysis.getType(inputExpression) != inputTypeList.get(i)) {
-              throw new SemanticException("");
-            }
-          }
+        }
 
-          List<FunctionExpression> modelInferenceOutputExpressions = new ArrayList<>();
-          for (int predictIndex : forecastModelInferenceDescriptor.getPredictIndexList()) {
-            Expression inputExpression = outputExpressions.get(predictIndex).left;
-            FunctionExpression modelInferenceOutputExpression =
-                new FunctionExpression(
-                    FORECAST.getFunctionName(),
-                    forecastModelInferenceDescriptor.getOutputAttributes(),
-                    Collections.singletonList(inputExpression));
-            analyzeExpression(analysis, modelInferenceOutputExpression);
-            modelInferenceOutputExpressions.add(modelInferenceOutputExpression);
-            columnHeaders.add(
-                new ColumnHeader(
-                    modelInferenceOutputExpression.toString(),
-                    analysis.getType(modelInferenceOutputExpression)));
-          }
-          forecastModelInferenceDescriptor.setModelInferenceOutputExpressions(
-              modelInferenceOutputExpressions);
-          break;
-        default:
-          throw new SemanticException("");
+        List<FunctionExpression> modelInferenceOutputExpressions = new ArrayList<>();
+        for (int predictIndex : forecastModelInferenceDescriptor.getPredictIndexList()) {
+          Expression inputExpression = outputExpressions.get(predictIndex).left;
+          FunctionExpression modelInferenceOutputExpression =
+              new FunctionExpression(
+                  FORECAST.getFunctionName(),
+                  forecastModelInferenceDescriptor.getOutputAttributes(),
+                  Collections.singletonList(inputExpression));
+          analyzeExpression(analysis, modelInferenceOutputExpression);
+          modelInferenceOutputExpressions.add(modelInferenceOutputExpression);
+          columnHeaders.add(
+              new ColumnHeader(
+                  modelInferenceOutputExpression.toString(),
+                  analysis.getType(modelInferenceOutputExpression)));
+        }
+        forecastModelInferenceDescriptor.setModelInferenceOutputExpressions(
+            modelInferenceOutputExpressions);
+      } else {
+        throw new SemanticException(
+            "Unsupported model inference function type "
+                + modelInferenceDescriptor.getFunctionType());
       }
-      analysis.setRespDatasetHeader(new DatasetHeader(columnHeaders, isIgnoreTimestamp));
+      analysis.setRespDatasetHeader(new DatasetHeader(columnHeaders, false));
       return;
     }
 

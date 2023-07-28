@@ -250,11 +250,12 @@ public abstract class ModelInformation {
       for (String hyperparameter : modelHyperparameterList) {
         ReadWriteIOUtils.write(hyperparameter, stream);
       }
-      ReadWriteIOUtils.write(" ", stream);
     } else {
-      ReadWriteIOUtils.write(1, stream);
+      ReadWriteIOUtils.write(2, stream);
       ReadWriteIOUtils.write("UNKNOWN", stream);
     }
+    // add extra blank line to make the result more readable in cli
+    ReadWriteIOUtils.write(" ", stream);
     return ByteBuffer.wrap(buffer.getBuf(), 0, buffer.size());
   }
 }

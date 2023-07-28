@@ -97,8 +97,9 @@ public class MLNodeClient implements AutoCloseable {
       return client.createTrainingTask(req);
     } catch (TException e) {
       logger.warn(
-          "Failed to connect to MLNode from ConfigNode when executing {}",
-          Thread.currentThread().getStackTrace()[1].getMethodName());
+          "Failed to connect to MLNode from ConfigNode when executing {}: {}",
+          Thread.currentThread().getStackTrace()[1].getMethodName(),
+          e.getMessage());
       throw new TException(MSG_CONNECTION_FAIL);
     }
   }
@@ -108,8 +109,9 @@ public class MLNodeClient implements AutoCloseable {
       return client.deleteModel(new TDeleteModelReq(modelId));
     } catch (TException e) {
       logger.warn(
-          "Failed to connect to MLNode from ConfigNode when executing {}",
-          Thread.currentThread().getStackTrace()[1].getMethodName());
+          "Failed to connect to MLNode from ConfigNode when executing {}: {}",
+          Thread.currentThread().getStackTrace()[1].getMethodName(),
+          e.getMessage());
       throw new TException(MSG_CONNECTION_FAIL);
     }
   }
@@ -138,8 +140,9 @@ public class MLNodeClient implements AutoCloseable {
       throw new TException("An exception occurred while serializing input tsblock", e);
     } catch (TException e) {
       logger.warn(
-          "Failed to connect to MLNode from DataNode when executing {}",
-          Thread.currentThread().getStackTrace()[1].getMethodName());
+          "Failed to connect to MLNode from DataNode when executing {}: {}",
+          Thread.currentThread().getStackTrace()[1].getMethodName(),
+          e.getMessage());
       throw new TException(MSG_CONNECTION_FAIL);
     }
   }
