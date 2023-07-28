@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.pipe.connector.v2.handler;
 
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.connector.v2.IoTDBThriftConnectorV2;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -33,10 +33,7 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nullable;
-
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 
 public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTransferResp>
     implements AsyncMethodCallback<E> {
@@ -45,20 +42,13 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
       LoggerFactory.getLogger(PipeTransferTabletInsertionEventHandler.class);
 
   private final long requestCommitId;
-  private final EnrichedEvent event;
+  private final Event event;
   private final TPipeTransferReq req;
 
   private final IoTDBThriftConnectorV2 connector;
 
-  private static final long MAX_RETRY_WAIT_TIME_MS =
-      (long) (PipeConfig.getInstance().getPipeConnectorRetryIntervalMs() * Math.pow(2, 5));
-  private int retryCount = 0;
-
   protected PipeTransferTabletInsertionEventHandler(
-      long requestCommitId,
-      @Nullable EnrichedEvent event,
-      TPipeTransferReq req,
-      IoTDBThriftConnectorV2 connector) {
+      long requestCommitId, Event event, TPipeTransferReq req, IoTDBThriftConnectorV2 connector) {
     this.requestCommitId = requestCommitId;
     this.event = event;
     this.req = req;
@@ -66,7 +56,13 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
 
     Optional.ofNullable(event)
         .ifPresent(
-            e -> e.increaseReferenceCount(PipeTransferTabletInsertionEventHandler.class.getName()));
+            e -> {
+              if (e instanceof EnrichedEvent) {
+                ((EnrichedEvent) e)
+                    .increaseReferenceCount(
+                        PipeTransferTabletInsertionEventHandler.class.getName());
+              }
+            });
   }
 
   public void transfer(AsyncPipeDataTransferServiceClient client) throws TException {
@@ -85,7 +81,8 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
     }
 
     if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      connector.commit(requestCommitId, event);
+      connector.commit(
+          requestCommitId, event instanceof EnrichedEvent ? (EnrichedEvent) event : null);
     } else {
       onError(new PipeException(response.getStatus().getMessage()));
     }
@@ -93,40 +90,12 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
 
   @Override
   public void onError(Exception exception) {
-    ++retryCount;
+    LOGGER.warn(
+        "Failed to transfer TabletInsertionEvent {} (requestCommitId={}).",
+        event,
+        requestCommitId,
+        exception);
 
-    CompletableFuture.runAsync(
-        () -> {
-          try {
-            Thread.sleep(
-                Math.min(
-                    (long)
-                        (PipeConfig.getInstance().getPipeConnectorRetryIntervalMs()
-                            * Math.pow(2d, retryCount - 1d)),
-                    MAX_RETRY_WAIT_TIME_MS));
-          } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            LOGGER.warn("Unexpected interruption during retrying", e);
-          }
-
-          if (connector.isClosed()) {
-            LOGGER.info(
-                "IoTDBThriftConnectorV2 has been stopped, "
-                    + "we will not retry this request {} after {} times",
-                req,
-                retryCount,
-                exception);
-          } else {
-            LOGGER.warn(
-                "IoTDBThriftConnectorV2 failed to transfer request {} after {} times, retrying...",
-                req,
-                retryCount,
-                exception);
-
-            retryTransfer(connector, requestCommitId);
-          }
-        });
+    connector.addFailureEventToRetryQueue(requestCommitId, event);
   }
-
-  protected abstract void retryTransfer(IoTDBThriftConnectorV2 connector, long requestCommitId);
 }
