@@ -25,7 +25,6 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.commons.partition.DataPartitionEntry;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
@@ -97,19 +96,6 @@ public class DatabasePartitionTable {
         replicaSet ->
             regionGroupMap.put(
                 replicaSet.getRegionId(), new RegionGroup(System.currentTimeMillis(), replicaSet)));
-  }
-
-  /**
-   * Delete RegionGroups' cache.
-   *
-   * @param replicaSets List<TRegionReplicaSet>
-   */
-  public void deleteRegionGroups(List<TRegionReplicaSet> replicaSets) {
-    replicaSets.forEach(replicaSet -> regionGroupMap.remove(replicaSet.getRegionId()));
-  }
-
-  public Set<TConsensusGroupId> getAllConsensusGroupId() {
-    return regionGroupMap.keySet();
   }
 
   /** @return Deep copy of all Regions' RegionReplicaSet within one StorageGroup */
@@ -270,11 +256,23 @@ public class DatabasePartitionTable {
    *
    * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
    * @param timePartitionSlot Corresponding TimePartitionSlot
-   * @return The specific DataPartition's predecessor if exists, null otherwise
+   * @return The specific DataPartition's successor if exists, null otherwise
    */
   public TConsensusGroupId getSuccessorDataPartition(
       TSeriesPartitionSlot seriesPartitionSlot, TTimePartitionSlot timePartitionSlot) {
     return dataPartitionTable.getSuccessorDataPartition(seriesPartitionSlot, timePartitionSlot);
+  }
+
+  /**
+   * Checks whether the specified DataPartition has a predecessor and returns if it does.
+   *
+   * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
+   * @param timePartitionSlot Corresponding TimePartitionSlot
+   * @return The specific DataPartition's predecessor if exists, null otherwise
+   */
+  public TConsensusGroupId getPredecessorDataPartition(
+      TSeriesPartitionSlot seriesPartitionSlot, TTimePartitionSlot timePartitionSlot) {
+    return dataPartitionTable.getPredecessorDataPartition(seriesPartitionSlot, timePartitionSlot);
   }
 
   /**
@@ -562,45 +560,6 @@ public class DatabasePartitionTable {
       }
     }
     return dataRegionIds;
-  }
-
-  /**
-   * Get the max TimePartitionSlot.
-   *
-   * @return The max TimePartitionSlot, null if there are no DataPartitions yet
-   */
-  public TTimePartitionSlot getMaxTimePartitionSlot() {
-    return dataPartitionTable.getMaxTimePartitionSlot();
-  }
-
-  /**
-   * Get the min TimePartitionSlot.
-   *
-   * @return The min TimePartitionSlot, null if there are no DataPartitions yet
-   */
-  public TTimePartitionSlot getMinTimePartitionSlot() {
-    return dataPartitionTable.getMinTimePartitionSlot();
-  }
-
-  /**
-   * Get the DataPartition with max TimePartition of the specified the SeriesPartitionSlot.
-   *
-   * @param seriesPartitionSlot The specified SeriesPartitionSlot
-   * @return The last DataPartitionEntry, null if there are no DataPartitions in the specified
-   *     SeriesPartitionSlot
-   */
-  public DataPartitionEntry getLastDataPartitionEntry(TSeriesPartitionSlot seriesPartitionSlot) {
-    return dataPartitionTable.getLastDataPartitionEntry(seriesPartitionSlot);
-  }
-
-  /**
-   * Count SeriesSlot in the specified TimePartitionSlot.
-   *
-   * @param timePartitionSlot The specified TimePartitionSlot
-   * @return The count of SeriesSlot
-   */
-  public int countSeriesSlot(TTimePartitionSlot timePartitionSlot) {
-    return dataPartitionTable.countSeriesSlot(timePartitionSlot);
   }
 
   /**

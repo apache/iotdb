@@ -206,13 +206,15 @@ public class CreateRegionGroupsProcedure
         break;
       case CREATE_REGION_GROUPS_FINISH:
         if (TConsensusGroupType.DataRegion.equals(consensusGroupType)) {
-          // Update all corresponding DataAllotTables
+          // Re-balance all corresponding DataPartitionPolicyTable
           persistPlan
               .getRegionGroupMap()
               .keySet()
               .forEach(
                   database ->
-                      env.getConfigManager().getLoadManager().updateDataAllotTable(database));
+                      env.getConfigManager()
+                          .getLoadManager()
+                          .reBalanceDataPartitionPolicy(database));
         }
         return Flow.NO_MORE_STATE;
     }

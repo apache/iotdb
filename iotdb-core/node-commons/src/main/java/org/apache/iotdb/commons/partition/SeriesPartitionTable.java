@@ -34,10 +34,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.TreeMap;
 import java.util.Vector;
@@ -137,6 +135,17 @@ public class SeriesPartitionTable {
   }
 
   /**
+   * Check and return the specified DataPartition's predecessor.
+   *
+   * @param timePartitionSlot Corresponding TimePartitionSlot
+   * @return The specified DataPartition's predecessor if exists, null otherwise
+   */
+  public TConsensusGroupId getPredecessorDataPartition(TTimePartitionSlot timePartitionSlot) {
+    TTimePartitionSlot predecessorSlot = seriesPartitionMap.lowerKey(timePartitionSlot);
+    return predecessorSlot == null ? null : seriesPartitionMap.get(predecessorSlot).get(0);
+  }
+
+  /**
    * Query a timePartition's corresponding dataRegionIds.
    *
    * @param timeSlotId Time partition's timeSlotId
@@ -217,61 +226,6 @@ public class SeriesPartitionTable {
   }
 
   /**
-   * Get the max TimePartitionSlot of the specified Database.
-   *
-   * @return The max TimePartitionSlot, null if there are no DataPartitions yet
-   */
-  public TTimePartitionSlot getMaxTimePartitionSlot() {
-    try {
-      return seriesPartitionMap.lastKey();
-    } catch (NoSuchElementException e) {
-      return null;
-    }
-  }
-
-  /**
-   * Get the min TimePartitionSlot of the specified Database.
-   *
-   * @return The min TimePartitionSlot, null if there are no DataPartitions yet
-   */
-  public TTimePartitionSlot getMinTimePartitionSlot() {
-    try {
-      return seriesPartitionMap.firstKey();
-    } catch (NoSuchElementException e) {
-      return null;
-    }
-  }
-
-  /**
-   * Get the DataPartition with max TimePartition of the specified Database and the
-   * SeriesPartitionSlot.
-   *
-   * @param seriesPartitionSlot The specified SeriesPartitionSlot
-   * @return The last DataPartitionEntry, null if there are no DataPartitions
-   */
-  public DataPartitionEntry getLastDataPartitionEntry(TSeriesPartitionSlot seriesPartitionSlot) {
-    Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>> lastEntry =
-        seriesPartitionMap.lastEntry();
-    if (lastEntry == null) {
-      return null;
-    }
-    return new DataPartitionEntry(
-        seriesPartitionSlot,
-        lastEntry.getKey(),
-        lastEntry.getValue().get(lastEntry.getValue().size() - 1));
-  }
-
-  /**
-   * Check whether the specified DataPartition exists.
-   *
-   * @param timePartitionSlot Corresponding TimePartitionSlot
-   * @return 1 if exists, 0 otherwise
-   */
-  public int isDataPartitionExist(TTimePartitionSlot timePartitionSlot) {
-    return seriesPartitionMap.containsKey(timePartitionSlot) ? 1 : 0;
-  }
-
-  /**
    * Get the last DataPartition's ConsensusGroupId.
    *
    * @return The last DataPartition's ConsensusGroupId, null if there are no DataPartitions yet
@@ -283,18 +237,6 @@ public class SeriesPartitionTable {
       return null;
     }
     return lastEntry.getValue().get(lastEntry.getValue().size() - 1);
-  }
-
-  /**
-   * Get the number of DataPartitions in each TimePartitionSlot.
-   *
-   * @return Map<TimePartitionSlot, the number of DataPartitions>
-   */
-  public Map<TTimePartitionSlot, Integer> getTimeSlotCountMap() {
-    Map<TTimePartitionSlot, Integer> result = new HashMap<>();
-    seriesPartitionMap.forEach(
-        (timePartitionSlot, consensusGroupIds) -> result.put(timePartitionSlot, 1));
-    return result;
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)

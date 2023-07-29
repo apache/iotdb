@@ -130,17 +130,8 @@ public class LoadManager {
     return partitionBalancer.allocateDataPartition(unassignedDataPartitionSlotsMap);
   }
 
-  /**
-   * Re-balance runtime status cached in the PartitionBalancer. This method may shift the
-   * currentTimePartition or update the DataAllotTable.
-   */
-  public void reBalancePartitionPolicyIfNecessary(
-      Map<String, DataPartitionTable> assignedDataPartition) {
-    partitionBalancer.reBalanceDataPartitionPolicyIfNecessary(assignedDataPartition);
-  }
-
-  public void updateDataAllotTable(String database) {
-    partitionBalancer.updateDataAllotTable(database);
+  public void reBalanceDataPartitionPolicy(String database) {
+    partitionBalancer.reBalanceDataPartitionPolicy(database);
   }
 
   public void broadcastLatestRegionRouteMap() {
@@ -158,6 +149,10 @@ public class LoadManager {
     heartbeatService.stopHeartbeatService();
     statisticsService.stopLoadStatisticsService();
     loadCache.clearHeartbeatCache();
+    partitionBalancer.clearPartitionBalancer();
+  }
+
+  public void clearPartitionBalancer() {
     partitionBalancer.clearPartitionBalancer();
   }
 
