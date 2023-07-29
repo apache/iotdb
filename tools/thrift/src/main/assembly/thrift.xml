@@ -38,7 +38,7 @@
         <!-- Include the config.h -->
         <fileSet>
             <directory>${project.build.directory}/thrift-${thrift.version}</directory>
-            <outputDirectory>src/includes</outputDirectory>
+            <outputDirectory>src/includes/thrift</outputDirectory>
             <includes>
                 <include>config.h</include>
             </includes>
