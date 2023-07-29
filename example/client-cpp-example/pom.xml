@@ -28,6 +28,7 @@
     </parent>
     <artifactId>client-cpp-example</artifactId>
     <name>IoTDB: Example: CPP Client</name>
+    <!-- TODO: Change the build so it doesn't copy the CMakeLists.txt into the target directory directly. -->
     <build>
         <plugins>
             <plugin>
@@ -69,6 +70,7 @@
                 <executions>
                     <execution>
                         <id>unpack-client</id>
+                        <phase>generate-sources</phase>
                         <goals>
                             <goal>unpack</goal>
                         </goals>
@@ -84,6 +86,26 @@
                                 </artifactItem>
                             </artifactItems>
                             <outputDirectory>${project.build.directory}/client</outputDirectory>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>unpack-thrift</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>unpack</goal>
+                        </goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>org.apache.iotdb</groupId>
+                                    <artifactId>iotdb-tools-thrift</artifactId>
+                                    <version>${project.version}</version>
+                                    <classifier>${os.classifier}</classifier>
+                                    <type>zip</type>
+                                    <overWrite>true</overWrite>
+                                    <outputDirectory>${project.build.directory}/thrift</outputDirectory>
+                                </artifactItem>
+                            </artifactItems>
                         </configuration>
                     </execution>
                 </executions>
