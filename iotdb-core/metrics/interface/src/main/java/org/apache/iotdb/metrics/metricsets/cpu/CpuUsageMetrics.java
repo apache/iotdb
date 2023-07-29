@@ -25,6 +25,8 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
+import org.apache.iotdb.metrics.utils.SystemMetric;
+import org.apache.iotdb.metrics.utils.SystemTag;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,12 +45,6 @@ import java.util.stream.Collectors;
 
 public class CpuUsageMetrics implements IMetricSet {
   private static final Logger logger = LoggerFactory.getLogger(CpuUsageMetrics.class);
-  private static final String MODULE_CPU_USAGE = "module_cpu_usage";
-  private static final String POOL_CPU_USAGE = "pool_cpu_usage";
-  private static final String POOL = "pool";
-  private static final String MODULE = "module";
-  private static final String MODULE_USER_TIME_PERCENTAGE = "module_user_time_percentage";
-  private static final String POOL_USER_TIME_PERCENTAGE = "user_time_percentage";
   private final List<String> modules;
   private final List<String> pools;
   private static final long UPDATE_INTERVAL = 10_000L;
@@ -84,34 +80,34 @@ public class CpuUsageMetrics implements IMetricSet {
     this.metricService = metricService;
     for (String moduleName : modules) {
       metricService.createAutoGauge(
-          MODULE_CPU_USAGE,
+          SystemMetric.MODULE_CPU_USAGE.toString(),
           MetricLevel.IMPORTANT,
           this,
           x -> x.getModuleCpuUsage().getOrDefault(moduleName, 0.0),
-          MODULE,
+          SystemTag.MODULE.toString(),
           moduleName);
       metricService.createAutoGauge(
-          MODULE_USER_TIME_PERCENTAGE,
+          SystemMetric.MODULE_USER_TIME_PERCENTAGE.toString(),
           MetricLevel.IMPORTANT,
           this,
           x -> x.getModuleUserTimePercentage().getOrDefault(moduleName, 0.0),
-          MODULE,
+          SystemTag.MODULE.toString(),
           moduleName);
     }
     for (String poolName : pools) {
       metricService.createAutoGauge(
-          POOL_CPU_USAGE,
+          SystemMetric.POOL_CPU_USAGE.toString(),
           MetricLevel.IMPORTANT,
           this,
           x -> x.getPoolCpuUsage().getOrDefault(poolName, 0.0),
-          POOL,
+          SystemTag.POOL.toString(),
           poolName);
       metricService.createAutoGauge(
-          POOL_USER_TIME_PERCENTAGE,
+          SystemMetric.POOL_USER_TIME_PERCENTAGE.toString(),
           MetricLevel.IMPORTANT,
           this,
           x -> x.getPoolUserCpuPercentage().getOrDefault(poolName, 0.0),
-          POOL,
+          SystemTag.POOL.toString(),
           poolName);
     }
   }
@@ -119,12 +115,28 @@ public class CpuUsageMetrics implements IMetricSet {
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
     for (String moduleName : modules) {
-      metricService.remove(MetricType.AUTO_GAUGE, MODULE_CPU_USAGE, MODULE, moduleName);
-      metricService.remove(MetricType.AUTO_GAUGE, MODULE_USER_TIME_PERCENTAGE, MODULE, moduleName);
+      metricService.remove(
+          MetricType.AUTO_GAUGE,
+          SystemMetric.MODULE_CPU_USAGE.toString(),
+          SystemTag.MODULE.toString(),
+          moduleName);
+      metricService.remove(
+          MetricType.AUTO_GAUGE,
+          SystemMetric.MODULE_USER_TIME_PERCENTAGE.toString(),
+          SystemTag.MODULE.toString(),
+          moduleName);
     }
     for (String poolName : pools) {
-      metricService.remove(MetricType.AUTO_GAUGE, POOL_CPU_USAGE, POOL, poolName);
-      metricService.remove(MetricType.AUTO_GAUGE, POOL_USER_TIME_PERCENTAGE, POOL, poolName);
+      metricService.remove(
+          MetricType.AUTO_GAUGE,
+          SystemMetric.POOL_CPU_USAGE.toString(),
+          SystemTag.POOL.toString(),
+          poolName);
+      metricService.remove(
+          MetricType.AUTO_GAUGE,
+          SystemMetric.POOL_USER_TIME_PERCENTAGE.toString(),
+          SystemTag.POOL.toString(),
+          poolName);
     }
   }
 

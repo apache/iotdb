@@ -24,6 +24,7 @@ import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
+import org.apache.iotdb.metrics.utils.SystemMetric;
 
 public class UpTimeMetrics implements IMetricSet {
   MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
@@ -31,7 +32,7 @@ public class UpTimeMetrics implements IMetricSet {
   @Override
   public void bindTo(AbstractMetricService metricService) {
     metricService.createAutoGauge(
-        "up_time",
+        SystemMetric.UP_TIME.toString(),
         MetricLevel.CORE,
         metricConfig,
         config -> System.nanoTime() - config.getUpTimeInNs());
@@ -39,6 +40,6 @@ public class UpTimeMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    metricService.remove(MetricType.AUTO_GAUGE, "up_time");
+    metricService.remove(MetricType.AUTO_GAUGE, SystemMetric.UP_TIME.toString());
   }
 }

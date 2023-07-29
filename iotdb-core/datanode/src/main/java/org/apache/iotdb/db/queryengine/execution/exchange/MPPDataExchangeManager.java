@@ -551,7 +551,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
   public void deRegisterFragmentInstanceFromMemoryPool(String queryId, String fragmentInstanceId) {
     localMemoryManager
         .getQueryPool()
-        .deRegisterFragmentInstanceToQueryMemoryMap(queryId, fragmentInstanceId);
+        .deRegisterFragmentInstanceFromQueryMemoryMap(queryId, fragmentInstanceId);
   }
 
   public LocalMemoryManager getLocalMemoryManager() {

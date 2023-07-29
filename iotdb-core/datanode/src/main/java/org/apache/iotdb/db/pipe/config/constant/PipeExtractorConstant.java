@@ -35,6 +35,7 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_REALTIME_MODE_HYBRID = "hybrid";
   public static final String EXTRACTOR_REALTIME_MODE_FILE = "file";
   public static final String EXTRACTOR_REALTIME_MODE_LOG = "log";
+  public static final String EXTRACTOR_REALTIME_MODE_FORCED_LOG = "forced-log";
 
   private PipeExtractorConstant() {
     throw new IllegalStateException("Utility class");

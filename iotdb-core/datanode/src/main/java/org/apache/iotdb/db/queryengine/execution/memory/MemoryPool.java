@@ -32,9 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -58,8 +56,6 @@ public class MemoryPool {
      */
     private final long maxBytesCanReserve;
 
-    private boolean isMarked = false;
-
     private MemoryReservationFuture(
         String queryId,
         String fragmentInstanceId,
@@ -78,14 +74,6 @@ public class MemoryPool {
 
     public String getQueryId() {
       return queryId;
-    }
-
-    public boolean isMarked() {
-      return isMarked;
-    }
-
-    public void setMarked(boolean marked) {
-      isMarked = marked;
     }
 
     public String getFragmentInstanceId() {
@@ -188,26 +176,27 @@ public class MemoryPool {
    *
    * @throws MemoryLeakException throw {@link MemoryLeakException}
    */
-  public void deRegisterFragmentInstanceToQueryMemoryMap(
+  public void deRegisterFragmentInstanceFromQueryMemoryMap(
       String queryId, String fragmentInstanceId) {
     Map<String, Map<String, Long>> queryRelatedMemory = queryMemoryReservations.get(queryId);
     if (queryRelatedMemory != null) {
       Map<String, Long> fragmentRelatedMemory = queryRelatedMemory.get(fragmentInstanceId);
+      boolean hasPotentialMemoryLeak = false;
       // fragmentRelatedMemory could be null if the FI has not reserved any memory(For example,
       // next() of root operator returns no data)
       if (fragmentRelatedMemory != null) {
-        for (Long memoryReserved : fragmentRelatedMemory.values()) {
-          if (memoryReserved != 0) {
-            throw new MemoryLeakException(
-                "PlanNode related memory is not zero when deregister FI from query memory pool.");
-          }
-        }
+        hasPotentialMemoryLeak =
+            fragmentRelatedMemory.values().stream().anyMatch(value -> value != 0);
       }
       synchronized (queryMemoryReservations) {
         queryRelatedMemory.remove(fragmentInstanceId);
         if (queryRelatedMemory.isEmpty()) {
           queryMemoryReservations.remove(queryId);
         }
+      }
+      if (hasPotentialMemoryLeak) {
+        throw new MemoryLeakException(
+            "PlanNode related memory is not zero when trying to deregister FI from query memory pool. QueryId is : {}, FragmentInstanceId is : {}, PlanNode related memory is : {}.");
       }
     }
   }
@@ -288,36 +277,21 @@ public class MemoryPool {
    * @return If the future has not complete, return the number of bytes being reserved. Otherwise,
    *     return 0.
    */
+  @SuppressWarnings("squid:S2445")
   public synchronized long tryCancel(ListenableFuture<Void> future) {
-    Validate.notNull(future);
-    // If the future is not a MemoryReservationFuture, it must have been completed.
-    if (future.isDone()) {
-      return 0L;
+    // add synchronized on the future to avoid that the future is concurrently completed by
+    // MemoryPool.free() which may lead to memory leak.
+    synchronized (future) {
+      Validate.notNull(future);
+      // If the future is not a MemoryReservationFuture, it must have been completed.
+      if (future.isDone()) {
+        return 0L;
+      }
+      Validate.isTrue(
+          future instanceof MemoryReservationFuture,
+          "invalid future type " + future.getClass().getSimpleName());
+      future.cancel(true);
     }
-    Validate.isTrue(
-        future instanceof MemoryReservationFuture,
-        "invalid future type " + future.getClass().getSimpleName());
-    future.cancel(true);
-    return ((MemoryReservationFuture<Void>) future).getBytesToReserve();
-  }
-
-  /**
-   * Complete the specified memory reservation. If the reservation has finished, do nothing.
-   *
-   * @param future The future returned from {@link #reserve(String, String, String, long, long)}
-   * @return If the future has not complete, return the number of bytes being reserved. Otherwise,
-   *     return 0.
-   */
-  public synchronized long tryComplete(ListenableFuture<Void> future) {
-    Validate.notNull(future);
-    // If the future is not a MemoryReservationFuture, it must have been completed.
-    if (future.isDone()) {
-      return 0L;
-    }
-    Validate.isTrue(
-        future instanceof MemoryReservationFuture,
-        "invalid future type " + future.getClass().getSimpleName());
-    ((MemoryReservationFuture<Void>) future).set(null);
     return ((MemoryReservationFuture<Void>) future).getBytesToReserve();
   }
 
@@ -343,7 +317,6 @@ public class MemoryPool {
 
     remainingBytes.addAndGet(bytes);
 
-    List<MemoryReservationFuture<Void>> futureList = new ArrayList<>();
     if (memoryReservationFutures.isEmpty()) {
       return;
     }
@@ -351,7 +324,7 @@ public class MemoryPool {
     while (iterator.hasNext()) {
       MemoryReservationFuture<Void> future = iterator.next();
       synchronized (future) {
-        if (future.isCancelled() || future.isDone() || future.isMarked()) {
+        if (future.isCancelled() || future.isDone()) {
           continue;
         }
         long bytesToReserve = future.getBytesToReserve();
@@ -361,29 +334,11 @@ public class MemoryPool {
         long maxBytesCanReserve = future.getMaxBytesCanReserve();
         if (tryReserve(
             curQueryId, curFragmentInstanceId, curPlanNodeId, bytesToReserve, maxBytesCanReserve)) {
-          futureList.add(future);
-          future.setMarked(true);
+          future.set(null);
           iterator.remove();
         } else {
           rollbackReserve(curQueryId, curFragmentInstanceId, curPlanNodeId, bytesToReserve);
         }
-      }
-    }
-
-    // why we need to put this outside MemoryPool's lock?
-    // If we put this block inside the MemoryPool's lock, we will get deadlock case like the
-    // following:
-    // Assuming that thread-A: LocalSourceHandle.receive() -> A-SharedTsBlockQueue.remove() ->
-    // MemoryPool.free() (hold future's lock) -> future.set(null) -> try to get
-    // B-SharedTsBlockQueue's lock
-    // thread-B: LocalSourceHandle.receive() -> B-SharedTsBlockQueue.remove() (hold
-    // B-SharedTsBlockQueue's lock) -> try to get future's lock
-    for (MemoryReservationFuture<Void> future : futureList) {
-      try {
-        future.set(null);
-      } catch (Throwable t) {
-        // ignore it, because we still need to notify other future
-        LOGGER.warn("error happened while trying to free memory: ", t);
       }
     }
   }
