@@ -150,7 +150,7 @@
                         <configuration>
                             <appendAssemblyId>true</appendAssemblyId>
                             <descriptors>
-                                <descriptor>src/main/assembly/${os.classifier}.xml</descriptor>
+                                <descriptor>src/main/assembly/thrift.xml</descriptor>
                             </descriptors>
                         </configuration>
                     </execution>

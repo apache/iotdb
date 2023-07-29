@@ -99,6 +99,39 @@ To use IoTDB, you need to have:
     ```
 ### Linux
 
+(This guide is based on an installation of Ubuntu 22.04)
+
+#### Git
+
+Make sure `Git` is installed, if it's missing, simply install it via:
+
+    sudo apt install git
+
+#### Java
+
+Make sure `Java` is installed, if it's missing, simply install it via:
+
+    sudo apt install default-jdk
+
+#### Flex
+
+    sudo apt install flex
+
+#### Bison
+
+    sudo apt install bison
+
+#### Boost
+
+    sudo apt install libboost-all-dev
+
+#### OpenSSL
+
+Usually OpenSSL is already installed, however it's missing the header files we need to compile.
+So ensure these are installed:
+
+    sudo apt install libssl-dev
+
 When enabling the `compile-cpp`:
 
 ### Mac OS
@@ -133,7 +166,6 @@ Mainly on the ARM-based models:
 
     sudo ln -sfn /opt/homebrew/opt/openjdk/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk.jdk
 
-
 #### CPP Prerequisites 
 
 Building `Thrift` requires us to add two more dependencies to the picture.
@@ -144,8 +176,25 @@ This however is only needed when enabling the `compile-cpp` profile:
     brew install bison
     brew install openssl
 
-
 ### Windows
+
+#### Git
+
+Ideally get and install `Git` from a page like this one:
+https://git-scm.com/download/win
+
+#### Java
+
+Install `Java` from the Oracle page:
+https://www.oracle.com/java/technologies/downloads/
+
+After `Java` is installed, be sure to add the installation directory in an environment variable called `JAVA_HOME` or the Maven-Wrapper will not be able to find it.
+
+#### NMake
+
+It seems that NMake is installed as part of Visual Studio or Visual Studio Code
+
+https://www.msys2.org/#installation
 
 When enabling the `compile-cpp`:
 

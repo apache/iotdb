@@ -32,8 +32,8 @@
     <build>
         <plugins>
             <!--
-        Generate an OSGI compatible MANIFEST file.
-      -->
+              Generate an OSGI compatible MANIFEST file.
+            -->
             <plugin>
                 <groupId>org.apache.felix</groupId>
                 <artifactId>maven-bundle-plugin</artifactId>
