@@ -17,31 +17,47 @@
   specific language governing permissions and limitations
   under the License.
   -->
-<component>
+<assembly xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2 http://maven.apache.org/xsd/assembly-1.1.2.xsd">
+    <id>${os.classifier}</id>
+    <formats>
+        <format>zip</format>
+        <format>dir</format>
+    </formats>
+    <includeBaseDirectory>false</includeBaseDirectory>
     <fileSets>
+        <!-- Include the executable -->
+        <fileSet>
+            <directory>${project.build.directory}/build/compiler/cpp/bin</directory>
+            <!-- Make the file executable -->
+            <fileMode>0755</fileMode>
+            <includes>
+                <include>**</include>
+            </includes>
+            <outputDirectory>bin</outputDirectory>
+        </fileSet>
         <!-- Include the shared-libraries -->
         <fileSet>
             <directory>${project.build.directory}/build</directory>
-            <outputDirectory>/</outputDirectory>
             <includes>
                 <include>lib/*.a</include>
             </includes>
+            <outputDirectory>/</outputDirectory>
         </fileSet>
         <!-- Include the header-files -->
         <fileSet>
             <directory>${project.build.directory}/thrift-${thrift.version}/lib/cpp/src</directory>
-            <outputDirectory>/src/includes</outputDirectory>
             <includes>
                 <include>**</include>
             </includes>
+            <outputDirectory>include</outputDirectory>
         </fileSet>
         <!-- Include the config.h -->
         <fileSet>
             <directory>${project.build.directory}/thrift-${thrift.version}</directory>
-            <outputDirectory>src/includes/thrift</outputDirectory>
             <includes>
                 <include>config.h</include>
             </includes>
+            <outputDirectory>include/thrift</outputDirectory>
         </fileSet>
     </fileSets>
-</component>
+</assembly>
