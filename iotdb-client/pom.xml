@@ -39,7 +39,7 @@
     </modules>
     <profiles>
         <profile>
-            <id>compile-cpp</id>
+            <id>with-cpp</id>
             <modules>
                 <module>client-cpp</module>
             </modules>
