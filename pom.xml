@@ -199,6 +199,7 @@
         <codegen.phase>generate-sources</codegen.phase>
         <cmake-maven-plugin.version>3.26.3-b1</cmake-maven-plugin.version>
         <cmake.build.type>Release</cmake.build.type>
+        <ctest.skip.tests>false</ctest.skip.tests>
         <thrift.exec.absolute.path/>
         <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
         <boost.include.dir/>
@@ -1240,6 +1241,18 @@
             <properties>
                 <maven.compiler.release>8</maven.compiler.release>
                 <argLine>--illegal-access=permit --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</argLine>
+            </properties>
+        </profile>
+        <!-- Little helper profile that will disable running the cmake tests when the maven tests are being skipped -->
+        <profile>
+            <id>.skipTests</id>
+            <activation>
+                <property>
+                    <name>skipTests</name>
+                </property>
+            </activation>
+            <properties>
+                <ctest.skip.tests>true</ctest.skip.tests>
             </properties>
         </profile>
         <!--

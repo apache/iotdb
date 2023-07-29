@@ -283,12 +283,13 @@
                 <executions>
                     <!-- Start a local IoTDB server to run integration test cases -->
                     <execution>
-                        <id>iotdb-process</id>
+                        <id>start-iotdb</id>
                         <phase>pre-integration-test</phase>
                         <goals>
                             <goal>start</goal>
                         </goals>
                         <configuration>
+                            <skip>${ctest.skip.tests}</skip>
                             <name>iotdb-server</name>
                             <waitForInterrupt>false</waitForInterrupt>
                             <!-- Maximum time in seconds to wait after launching IoTDB -->
@@ -309,6 +310,7 @@
                             <goal>stop-all</goal>
                         </goals>
                         <configuration>
+                            <skip>${ctest.skip.tests}</skip>
                             <name>iotdb-server</name>
                             <waitForInterrupt>false</waitForInterrupt>
                             <!-- Maximum time in seconds to wait after launching IoTDB -->
