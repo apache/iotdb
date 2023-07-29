@@ -1325,6 +1325,15 @@
                     </plugin>
                 </plugins>
             </build>
+            <dependencies>
+                <!-- This ensures the iotdb-tools-thift module is build first -->
+                <dependency>
+                    <groupId>org.apache.iotdb</groupId>
+                    <artifactId>iotdb-tools-thrift</artifactId>
+                    <version>1.3.0-SNAPSHOT</version>
+                    <scope>provided</scope>
+                </dependency>
+            </dependencies>
         </profile>
         <!-- Enable integration-testsuite on demand, as this takes quite a long time to run -->
         <profile>
