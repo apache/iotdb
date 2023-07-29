@@ -1331,6 +1331,7 @@
                     <groupId>org.apache.iotdb</groupId>
                     <artifactId>iotdb-tools-thrift</artifactId>
                     <version>1.3.0-SNAPSHOT</version>
+                    <type>pom</type>
                     <scope>provided</scope>
                 </dependency>
             </dependencies>

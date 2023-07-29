@@ -76,7 +76,6 @@
                                 <option>-DTHRIFT_COMPILER_C_GLIB=OFF</option>
                                 <option>-DTHRIFT_COMPILER_CL=OFF</option>
                                 <option>-DTHRIFT_COMPILER_CPP=${thrift.with.cpp}</option>
-                                <option>-DTHRIFT_COMPILER_CSHARP=OFF</option>
                                 <option>-DTHRIFT_COMPILER_D=OFF</option>
                                 <option>-DTHRIFT_COMPILER_DART=OFF</option>
                                 <option>-DTHRIFT_COMPILER_DELPHI=OFF</option>
@@ -88,12 +87,9 @@
                                 <option>-DTHRIFT_COMPILER_HTML=OFF</option>
                                 <option>-DTHRIFT_COMPILER_JAVA=ON</option>
                                 <option>-DTHRIFT_COMPILER_JAVAME=ON</option>
-                                <option>-DTHRIFT_COMPILER_JAVASCRIPT=OFF</option>
                                 <option>-DTHRIFT_COMPILER_JSON=OFF</option>
                                 <option>-DTHRIFT_COMPILER_LUA=OFF</option>
-                                <option>-DTHRIFT_COMPILER_NETCORE=ON</option>
                                 <option>-DTHRIFT_COMPILER_NETSTD=ON</option>
-                                <option>-DTHRIFT_COMPILER_NODEJS=OFF</option>
                                 <option>-DTHRIFT_COMPILER_OCAML=OFF</option>
                                 <option>-DTHRIFT_COMPILER_PERL=OFF</option>
                                 <option>-DTHRIFT_COMPILER_PHP=OFF</option>
@@ -107,7 +103,6 @@
                                 <!-- Enable and disable the building of libs for different languages -->
                                 <option>-DBUILD_C_GLIB=OFF</option>
                                 <option>-DBUILD_CPP=${thrift.with.cpp}</option>
-                                <option>-DBUILD_CSHARP=OFF</option>
                                 <!-- Don't build Java, as the libs are available via Maven -->
                                 <option>-DBUILD_JAVA=OFF</option>
                                 <option>-DBUILD_NODEJS=OFF</option>
