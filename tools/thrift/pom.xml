@@ -113,6 +113,8 @@
                                 <!-- Generate libthrift.a to compile IoTDB Session -->
                                 <option>-DWITH_STATIC_LIB=ON</option>
                                 <option>-DCMAKE_POSITION_INDEPENDENT_CODE=ON</option>
+                                <!-- Specify new version Bison path for Mac-OS, as the default version is too old -->
+                                <option>${bison.executable.dir}</option>
                             </options>
                         </configuration>
                     </execution>

@@ -202,6 +202,7 @@
         <thrift.exec.absolute.path/>
         <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
         <boost.include.dir/>
+        <bison.executable.dir/>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
@@ -1148,6 +1149,7 @@
                 <os.classifier>mac-x86_64</os.classifier>
                 <thrift.executable>thrift</thrift.executable>
                 <boost.include.dir>/usr/local/include</boost.include.dir>
+                <bison.executable.dir>-DBISON_EXECUTABLE=/usr/local/opt/bison/bin/bison</bison.executable.dir>
             </properties>
         </profile>
         <profile>
@@ -1162,6 +1164,7 @@
                 <os.classifier>mac-aarch64</os.classifier>
                 <thrift.executable>thrift</thrift.executable>
                 <boost.include.dir>/opt/homebrew/opt/boost/include</boost.include.dir>
+                <bison.executable.dir>-DBISON_EXECUTABLE=/opt/homebrew/opt/bison/bin/bison</bison.executable.dir>
             </properties>
         </profile>
         <profile>
@@ -1177,6 +1180,11 @@
                 <thrift.executable>thrift.exe</thrift.executable>
             </properties>
         </profile>
+        <!--
+            CMake currently doesn't have pre-compiled cmake executables for Windows running on ARM systems.
+            As this is currently only when running a Windows 11 on an M1 or M2 Mac (On the hardware itself
+            or inside a VM), I think we don't have to worry too much about this.
+        -->
         <profile>
             <id>.os-windows-arm</id>
             <activation>

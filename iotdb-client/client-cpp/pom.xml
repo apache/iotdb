@@ -210,7 +210,6 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <generator>${cmake.generator}</generator>
                             <sourcePath>${project.build.directory}/build/test</sourcePath>
                             <targetPath>${project.build.directory}/build/test</targetPath>
                             <options>
@@ -244,6 +243,7 @@
                         </configuration>
                     </execution>
                     <!-- Run the integration test cases -->
+                    <!-- TODO: This execution doesn't seem to respect the "skipTests" config -->
                     <execution>
                         <id>cmake-run-test</id>
                         <phase>integration-test</phase>
@@ -330,14 +330,6 @@
             <artifactId>iotdb-thrift-commons</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <!-- We need to ensure the distribution is built before the tests are run -->
-        <!-- TODO: This introduces a cycle in maven -->
-        <!---dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-distribution</artifactId>
-            <version>1.3.0-SNAPSHOT</version>
-            <scope>test</scope>
-        </dependency-->
     </dependencies>
     <profiles>
         <profile>
