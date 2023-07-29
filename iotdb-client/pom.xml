@@ -32,7 +32,6 @@
     <modules>
         <module>cli</module>
         <module>client-py</module>
-        <module>compile-tools</module>
         <module>isession</module>
         <module>jdbc</module>
         <module>service-rpc</module>

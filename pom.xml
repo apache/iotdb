@@ -145,6 +145,8 @@
         <!-- disable enforcer by default-->
         <enforcer.skip>true</enforcer.skip>
         <spotless.version>2.27.1</spotless.version>
+        <!-- Override this to `true`, if you want to disable spotless -->
+        <spotless.skip>false</spotless.skip>
         <httpclient.version>4.5.14</httpclient.version>
         <httpcore.version>4.4.16</httpcore.version>
         <!-- for REST service -->
@@ -197,6 +199,9 @@
         <codegen.phase>generate-sources</codegen.phase>
         <cmake-maven-plugin.version>3.26.3-b1</cmake-maven-plugin.version>
         <cmake.build.type>Release</cmake.build.type>
+        <thrift.exec.absolute.path/>
+        <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
+        <boost.include.dir/>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
@@ -771,9 +776,31 @@
                         </execution>
                     </executions>
                 </plugin>
+                <plugin>
+                    <groupId>com.googlecode.maven-download-plugin</groupId>
+                    <artifactId>download-maven-plugin</artifactId>
+                    <version>1.6.7</version>
+                </plugin>
+                <plugin>
+                    <groupId>com.googlecode.cmake-maven-project</groupId>
+                    <artifactId>cmake-maven-plugin</artifactId>
+                    <version>3.25.2-b1</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>3.3.0</version>
+                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <configuration>
+                    <skip>${spotless.skip}</skip>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.eluder.coveralls</groupId>
                 <artifactId>coveralls-maven-plugin</artifactId>
@@ -1079,47 +1106,12 @@
         </plugins>
     </build>
     <profiles>
-        <!-- spotless is too slow, so we put it into a profile to skip it if needed -->
-        <profile>
-            <id>spotless</id>
-            <activation>
-                <!-- activeByDefault does not take effect-->
-                <file>
-                    <exists>.</exists>
-                </file>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>com.diffplug.spotless</groupId>
-                        <artifactId>spotless-maven-plugin</artifactId>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
         <!--
           A set of profiles defining the different properties needed to download and run thrift
           They are automatically activated depending on the OS you are using.
         -->
         <profile>
-            <id>os-windows</id>
-            <activation>
-                <os>
-                    <family>windows</family>
-                </os>
-            </activation>
-            <properties>
-                <os.classifier>windows-x86_64</os.classifier>
-                <thrift.download-url>http://archive.apache.org/dist/thrift/${thrift.version}/thrift-${thrift.version}.exe</thrift.download-url>
-                <thrift.executable>thrift-${thrift.version}-win-x86_64.exe</thrift.executable>
-                <thrift.skip-making-executable>true</thrift.skip-making-executable>
-                <thrift.exec-cmd.executable>echo</thrift.exec-cmd.executable>
-                <thrift.exec-cmd.args>"Do nothing"</thrift.exec-cmd.args>
-            </properties>
-        </profile>
-        <!-- Has to be listed before "mac" as it seems a mac is both "mac" and "unix" -->
-        <profile>
-            <id>os-unix</id>
+            <id>.os-unix</id>
             <activation>
                 <os>
                     <family>unix</family>
@@ -1128,15 +1120,11 @@
             </activation>
             <properties>
                 <os.classifier>linux-x86_64</os.classifier>
-                <thrift.download-url>https://gitbox.apache.org/repos/asf?p=iotdb-bin-resources.git;a=blob_plain;f=compile-tools/thrift-0.14-ubuntu;hb=HEAD</thrift.download-url>
-                <thrift.executable>thrift_0.14.1_linux</thrift.executable>
-                <thrift.skip-making-executable>false</thrift.skip-making-executable>
-                <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
-                <thrift.exec-cmd.args>+x ${project.build.directory}/tools/${thrift.executable}</thrift.exec-cmd.args>
+                <thrift.executable>thrift</thrift.executable>
             </properties>
         </profile>
         <profile>
-            <id>os-unix-arm</id>
+            <id>.os-unix-arm</id>
             <activation>
                 <os>
                     <family>unix</family>
@@ -1145,15 +1133,11 @@
             </activation>
             <properties>
                 <os.classifier>linux-aarch64</os.classifier>
-                <thrift.download-url>https://gitbox.apache.org/repos/asf?p=iotdb-bin-resources.git;a=blob_plain;f=compile-tools/thrift-0.14-ubuntu;hb=HEAD</thrift.download-url>
-                <thrift.executable>thrift_0.14.1_linux</thrift.executable>
-                <thrift.skip-making-executable>false</thrift.skip-making-executable>
-                <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
-                <thrift.exec-cmd.args>+x ${project.build.directory}/tools/${thrift.executable}</thrift.exec-cmd.args>
+                <thrift.executable>thrift</thrift.executable>
             </properties>
         </profile>
         <profile>
-            <id>os-mac</id>
+            <id>.os-mac</id>
             <activation>
                 <os>
                     <family>mac</family>
@@ -1162,16 +1146,12 @@
             </activation>
             <properties>
                 <os.classifier>mac-x86_64</os.classifier>
+                <thrift.executable>thrift</thrift.executable>
                 <boost.include.dir>/usr/local/include</boost.include.dir>
-                <thrift.download-url>https://gitbox.apache.org/repos/asf?p=iotdb-bin-resources.git;a=blob_plain;f=compile-tools/thrift-0.14-MacOS;hb=HEAD</thrift.download-url>
-                <thrift.executable>thrift_0.14.1_mac</thrift.executable>
-                <thrift.skip-making-executable>false</thrift.skip-making-executable>
-                <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
-                <thrift.exec-cmd.args>+x ${project.build.directory}/tools/${thrift.executable}</thrift.exec-cmd.args>
             </properties>
         </profile>
         <profile>
-            <id>os-mac-arm</id>
+            <id>.os-mac-arm</id>
             <activation>
                 <os>
                     <family>mac</family>
@@ -1180,17 +1160,39 @@
             </activation>
             <properties>
                 <os.classifier>mac-aarch64</os.classifier>
-                <boost.include.dir>/usr/local/include</boost.include.dir>
-                <thrift.download-url>https://gitbox.apache.org/repos/asf?p=iotdb-bin-resources.git;a=blob_plain;f=compile-tools/thrift-0.14-MacOS;hb=HEAD</thrift.download-url>
-                <thrift.executable>thrift_0.14.1_mac</thrift.executable>
-                <thrift.skip-making-executable>false</thrift.skip-making-executable>
-                <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
-                <thrift.exec-cmd.args>+x ${project.build.directory}/tools/${thrift.executable}</thrift.exec-cmd.args>
+                <thrift.executable>thrift</thrift.executable>
+                <boost.include.dir>/opt/homebrew/opt/boost/include</boost.include.dir>
+            </properties>
+        </profile>
+        <profile>
+            <id>.os-windows</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                    <arch>!aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <os.classifier>windows-x86_64</os.classifier>
+                <thrift.executable>thrift.exe</thrift.executable>
+            </properties>
+        </profile>
+        <profile>
+            <id>.os-windows-arm</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <os.classifier>windows-aarch64</os.classifier>
+                <thrift.executable>thrift.exe</thrift.executable>
             </properties>
         </profile>
         <!-- Some APIs were removed in Java 11, so we need to add replacements -->
         <profile>
-            <id>java-11-and-above</id>
+            <id>.java-11-and-above</id>
             <activation>
                 <jdk>[11,)</jdk>
             </activation>
@@ -1219,7 +1221,7 @@
         <!-- Add argLine for Java 16 and above, due to [JEP 396: Strongly Encapsulate JDK Internals by Default]
           (https://openjdk.java.net/jeps/396) -->
         <profile>
-            <id>java-16-and-above</id>
+            <id>.java-16-and-above</id>
             <activation>
                 <jdk>[16,)</jdk>
             </activation>
@@ -1238,51 +1240,40 @@
           {maven local repo}/.cache/download-maven-plugin
         -->
         <profile>
-            <id>thrift-generation</id>
+            <id>.thrift-generation</id>
             <activation>
                 <file>
                     <exists>src/main/thrift</exists>
                 </file>
             </activation>
             <properties>
-                <thrift.exec.absolute.path>${project.build.directory}/tools/${thrift.executable}</thrift.exec.absolute.path>
+                <thrift.exec.absolute.path>${project.build.directory}/thrift/bin/${thrift.executable}</thrift.exec.absolute.path>
             </properties>
             <build>
                 <plugins>
                     <plugin>
-                        <groupId>com.googlecode.maven-download-plugin</groupId>
-                        <artifactId>download-maven-plugin</artifactId>
-                        <version>1.6.7</version>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <version>3.6.0</version>
                         <executions>
                             <execution>
-                                <id>get-thrift-executable</id>
+                                <id>get-thrift</id>
                                 <phase>generate-sources</phase>
                                 <goals>
-                                    <goal>wget</goal>
+                                    <goal>unpack</goal>
                                 </goals>
                                 <configuration>
-                                    <url>${thrift.download-url}</url>
-                                    <outputDirectory>${project.build.directory}/tools</outputDirectory>
-                                    <outputFileName>${thrift.executable}</outputFileName>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>exec-maven-plugin</artifactId>
-                        <version>1.6.0</version>
-                        <executions>
-                            <execution>
-                                <id>make-thrift-executable-executable</id>
-                                <phase>generate-sources</phase>
-                                <goals>
-                                    <goal>exec</goal>
-                                </goals>
-                                <configuration>
-                                    <skip>${thrift.skip-making-executable}</skip>
-                                    <executable>${thrift.exec-cmd.executable}</executable>
-                                    <commandlineArgs>${thrift.exec-cmd.args}</commandlineArgs>
+                                    <artifactItems>
+                                        <artifactItem>
+                                            <groupId>org.apache.iotdb</groupId>
+                                            <artifactId>iotdb-tools-thrift</artifactId>
+                                            <version>${project.version}</version>
+                                            <classifier>${os.classifier}</classifier>
+                                            <type>zip</type>
+                                            <overWrite>true</overWrite>
+                                            <outputDirectory>${project.build.directory}/thrift</outputDirectory>
+                                        </artifactItem>
+                                    </artifactItems>
                                 </configuration>
                             </execution>
                         </executions>
@@ -1300,8 +1291,6 @@
                                 </goals>
                                 <configuration>
                                     <generator>java</generator>
-                                    <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
-                                    <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
                                 </configuration>
                             </execution>
                             <execution>
@@ -1312,8 +1301,6 @@
                                 </goals>
                                 <configuration>
                                     <generator>py</generator>
-                                    <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
-                                    <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
                                     <includes>**/common.thrift,**/client.thrift,**/datanode.thrift,**/confignode.thrift,**/mlnode.thrift</includes>
                                     <outputDirectory>${project.build.directory}/generated-sources-python/</outputDirectory>
                                 </configuration>
@@ -1326,13 +1313,15 @@
                                 </goals>
                                 <configuration>
                                     <generator>go</generator>
-                                    <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
-                                    <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
                                     <includes>**/common.thrift,**/client.thrift</includes>
                                     <outputDirectory>${project.build.directory}/generated-sources-go</outputDirectory>
                                 </configuration>
                             </execution>
                         </executions>
+                        <configuration>
+                            <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
+                            <thriftSourceRoot>${project.basedir}/src/main/thrift</thriftSourceRoot>
+                        </configuration>
                     </plugin>
                 </plugins>
             </build>
@@ -1342,6 +1331,13 @@
             <id>with-integration-tests</id>
             <modules>
                 <module>integration-test</module>
+            </modules>
+        </profile>
+        <!-- Enable the building of the tools (Currently this only adds building of the Trift module) -->
+        <profile>
+            <id>with-tools</id>
+            <modules>
+                <module>tools</module>
             </modules>
         </profile>
         <!-- Make sure the source assembly has the right name -->

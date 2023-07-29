@@ -30,10 +30,12 @@
     <packaging>pom</packaging>
     <name>IoTDB: Client: Client for CPP</name>
     <description>C++ client</description>
+    <!-- TODO: The tests don't run, if distribution has not been built locally and fails without reasoning -->
     <properties>
         <!-- Default value of cmake root -->
         <cmake.root.dir>${project.build.directory}/dependency/cmake/</cmake.root.dir>
         <cmake.build.type>Release</cmake.build.type>
+        <thrift.exec.absolute.path>${project.build.directory}/thrift/bin/${thrift.executable}</thrift.exec.absolute.path>
         <catch2.url>https://github.com/catchorg/Catch2/releases/download/v2.13.7/catch.hpp</catch2.url>
     </properties>
     <build>
@@ -57,6 +59,33 @@
                                     <filtering>true</filtering>
                                 </resource>
                             </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.6.0</version>
+                <executions>
+                    <execution>
+                        <id>get-thrift</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>unpack</goal>
+                        </goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>org.apache.iotdb</groupId>
+                                    <artifactId>iotdb-tools-thrift</artifactId>
+                                    <version>${project.version}</version>
+                                    <classifier>${os.classifier}</classifier>
+                                    <type>zip</type>
+                                    <overWrite>true</overWrite>
+                                    <outputDirectory>${project.build.directory}/thrift</outputDirectory>
+                                </artifactItem>
+                            </artifactItems>
                         </configuration>
                     </execution>
                 </executions>
@@ -86,8 +115,9 @@
                 <artifactId>copy-rename-maven-plugin</artifactId>
                 <version>1.0.1</version>
                 <executions>
+                    <!-- TODO: Do this differently using the artifact downloader -->
                     <execution>
-                        <id>copy-thrift-source</id>
+                        <id>copy-protocol-thrift-source</id>
                         <goals>
                             <goal>copy</goal>
                         </goals>
@@ -95,15 +125,16 @@
                             <fileSets>
                                 <fileSet>
                                     <sourceFile>../../iotdb-protocol/thrift/src/main/thrift/client.thrift</sourceFile>
-                                    <destinationFile>${project.build.directory}/thrift/client.thrift</destinationFile>
+                                    <destinationFile>${project.build.directory}/protocols/client.thrift</destinationFile>
                                 </fileSet>
                                 <fileSet>
                                     <sourceFile>../../iotdb-protocol/thrift-commons/src/main/thrift/common.thrift</sourceFile>
-                                    <destinationFile>${project.build.directory}/thrift/common.thrift</destinationFile>
+                                    <destinationFile>${project.build.directory}/protocols/common.thrift</destinationFile>
                                 </fileSet>
                             </fileSets>
                         </configuration>
                     </execution>
+                    <!-- TODO: Do this differently using the maven-resources-plugin -->
                     <execution>
                         <!-- Copy source file and CmakeLists.txt into target directory -->
                         <id>copy-cmakelist-file</id>
@@ -145,7 +176,7 @@
                         <configuration>
                             <generator>cpp:no_skeleton</generator>
                             <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
-                            <thriftSourceRoot>${project.build.directory}/thrift</thriftSourceRoot>
+                            <thriftSourceRoot>${project.build.directory}/protocols</thriftSourceRoot>
                             <outputDirectory>${project.build.directory}/build/main/generated-sources-cpp</outputDirectory>
                         </configuration>
                     </execution>
@@ -168,7 +199,6 @@
                             <targetPath>${project.build.directory}/build/main</targetPath>
                             <options>
                                 <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
-                                <option>-DBOOST_LIBRARYDIR=${boost.library.dir}</option>
                             </options>
                         </configuration>
                     </execution>
@@ -185,7 +215,6 @@
                             <targetPath>${project.build.directory}/build/test</targetPath>
                             <options>
                                 <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
-                                <option>-DBOOST_LIBRARYDIR=${boost.library.dir}</option>
                             </options>
                         </configuration>
                     </execution>
@@ -267,6 +296,7 @@
                             <!-- Redirect IoTDB server log to /dev/null -->
                             <processLogFile>${project.build.directory}/build/test/test.log</processLogFile>
                             <arguments>
+                                <!-- TODO: This depends on distribution being build first and it being available in unpacked form ... unpacking the distribution locally will be the better option -->
                                 <argument>${project.basedir}/../../distribution/target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/sbin/${iotdb.start.script}</argument>
                             </arguments>
                         </configuration>
@@ -297,18 +327,21 @@
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>client-cpp-tools-thrift</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift-commons</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- We need to ensure the distribution is built before the tests are run -->
+        <!-- TODO: This introduces a cycle in maven -->
+        <!---dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-distribution</artifactId>
+            <version>1.3.0-SNAPSHOT</version>
+            <scope>test</scope>
+        </dependency-->
     </dependencies>
     <profiles>
         <profile>
-            <id>os-unix</id>
+            <id>.os-unix</id>
             <activation>
                 <os>
                     <family>unix</family>
@@ -317,15 +350,12 @@
             </activation>
             <properties>
                 <os.suffix>linux</os.suffix>
-                <!-- use Makefile as default cmake generator, users may specify other generators -->
-                <cmake.generator>Unix Makefiles</cmake.generator>
-                <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/thrift</thrift.exec.absolute.path>
                 <iotdb.start.script>start-standalone.sh</iotdb.start.script>
                 <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
             </properties>
         </profile>
         <profile>
-            <id>os-unix-arm</id>
+            <id>.os-unix-arm</id>
             <activation>
                 <os>
                     <family>unix</family>
@@ -334,15 +364,12 @@
             </activation>
             <properties>
                 <os.suffix>linux</os.suffix>
-                <!-- use Makefile as default cmake generator, users may specify other generators -->
-                <cmake.generator>Unix Makefiles</cmake.generator>
-                <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/thrift</thrift.exec.absolute.path>
                 <iotdb.start.script>start-standalone.sh</iotdb.start.script>
                 <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
             </properties>
         </profile>
         <profile>
-            <id>os-mac</id>
+            <id>.os-mac</id>
             <activation>
                 <os>
                     <family>mac</family>
@@ -351,15 +378,12 @@
             </activation>
             <properties>
                 <os.suffix>mac</os.suffix>
-                <!-- use Makefile as default cmake generator, users may specify other generators -->
-                <cmake.generator>Unix Makefiles</cmake.generator>
-                <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/thrift</thrift.exec.absolute.path>
                 <iotdb.start.script>start-standalone.sh</iotdb.start.script>
                 <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
             </properties>
         </profile>
         <profile>
-            <id>os-mac-arm</id>
+            <id>.os-mac-arm</id>
             <activation>
                 <os>
                     <family>mac</family>
@@ -368,15 +392,12 @@
             </activation>
             <properties>
                 <os.suffix>mac</os.suffix>
-                <!-- use Makefile as default cmake generator, users may specify other generators -->
-                <cmake.generator>Unix Makefiles</cmake.generator>
-                <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/thrift</thrift.exec.absolute.path>
                 <iotdb.start.script>start-standalone.sh</iotdb.start.script>
                 <iotdb.stop.script>stop-standalone.sh</iotdb.stop.script>
             </properties>
         </profile>
         <profile>
-            <id>os-windows</id>
+            <id>.os-windows</id>
             <activation>
                 <os>
                     <family>windows</family>
@@ -384,13 +405,8 @@
             </activation>
             <properties>
                 <os.suffix>win</os.suffix>
-                <!-- use MSVC 2019 as default cmake generator, users may specify other generators -->
-                <cmake.generator>Visual Studio 16 2019</cmake.generator>
-                <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/${cmake.build.type}/thrift.exe</thrift.exec.absolute.path>
                 <iotdb.start.script>start-standalone.bat</iotdb.start.script>
                 <iotdb.stop.script>stop-standalone.bat</iotdb.stop.script>
-                <boost.include.dir/>
-                <boost.library.dir/>
             </properties>
         </profile>
     </profiles>
