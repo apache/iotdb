@@ -32,7 +32,6 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.partition.DataPartitionEntry;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
@@ -398,9 +397,6 @@ public class PartitionManager {
         resp.setStatus(status);
         return resp;
       }
-
-      // Statistical allocation result and re-balance the DataPartitionPolicy if necessary
-      getLoadManager().reBalancePartitionPolicyIfNecessary(assignedDataPartition);
     }
 
     resp = (DataPartitionResp) getDataPartition(req);
@@ -618,13 +614,30 @@ public class PartitionManager {
    * @param database DatabaseName
    * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
    * @param timePartitionSlot Corresponding TimePartitionSlot
-   * @return The specific DataPartition's predecessor if exists, null otherwise
+   * @return The specific DataPartition's successor if exists, null otherwise
    */
   public TConsensusGroupId getSuccessorDataPartition(
       String database,
       TSeriesPartitionSlot seriesPartitionSlot,
       TTimePartitionSlot timePartitionSlot) {
     return partitionInfo.getSuccessorDataPartition(
+        database, seriesPartitionSlot, timePartitionSlot);
+  }
+
+  /**
+   * Only leader use this interface. Checks whether the specified DataPartition has a predecessor
+   * and returns if it does.
+   *
+   * @param database DatabaseName
+   * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
+   * @param timePartitionSlot Corresponding TimePartitionSlot
+   * @return The specific DataPartition's predecessor if exists, null otherwise
+   */
+  public TConsensusGroupId getPredecessorDataPartition(
+      String database,
+      TSeriesPartitionSlot seriesPartitionSlot,
+      TTimePartitionSlot timePartitionSlot) {
+    return partitionInfo.getPredecessorDataPartition(
         database, seriesPartitionSlot, timePartitionSlot);
   }
 
@@ -1282,53 +1295,6 @@ public class PartitionManager {
 
   public void getDataRegionIds(List<String> databases, Map<String, List<Integer>> dataRegionIds) {
     partitionInfo.getDataRegionIds(databases, dataRegionIds);
-  }
-
-  /**
-   * Get the max TimePartitionSlot of the specified Database.
-   *
-   * @param database The specified Database
-   * @return The max TimePartitionSlot, null if the Database doesn't exist or there are no
-   *     DataPartitions yet
-   */
-  public TTimePartitionSlot getMaxTimePartitionSlot(String database) {
-    return partitionInfo.getMaxTimePartitionSlot(database);
-  }
-
-  /**
-   * Get the min TimePartitionSlot of the specified Database.
-   *
-   * @param database The specified Database
-   * @return The last DataPartition, null if the Database doesn't exist or there are no
-   *     DataPartitions in the specified SeriesPartitionSlot
-   */
-  public TTimePartitionSlot getMinTimePartitionSlot(String database) {
-    return partitionInfo.getMinTimePartitionSlot(database);
-  }
-
-  /**
-   * Get the DataPartition with max TimePartition of the specified Database and the
-   * SeriesPartitionSlot.
-   *
-   * @param database The specified Database
-   * @param seriesPartitionSlot The specified SeriesPartitionSlot
-   * @return The last DataPartitionEntry, null if the Database doesn't exist or there are no
-   *     DataPartitions yet
-   */
-  public DataPartitionEntry getLastDataPartitionEntry(
-      String database, TSeriesPartitionSlot seriesPartitionSlot) {
-    return partitionInfo.getLastDataPartitionEntry(database, seriesPartitionSlot);
-  }
-
-  /**
-   * Count SeriesSlot in the specified TimePartitionSlot of the Database.
-   *
-   * @param database The specified Database
-   * @param timePartitionSlot The specified TimePartitionSlot
-   * @return The count of SeriesSlot
-   */
-  public int countSeriesSlot(String database, TTimePartitionSlot timePartitionSlot) {
-    return partitionInfo.countSeriesSlot(database, timePartitionSlot);
   }
 
   /**

@@ -40,9 +40,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 public class DataPartitionTable {
@@ -106,12 +104,30 @@ public class DataPartitionTable {
    *
    * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
    * @param timePartitionSlot Corresponding TimePartitionSlot
-   * @return The specific DataPartition's predecessor if exists, null otherwise
+   * @return The specific DataPartition's successor if exists, null otherwise
    */
   public TConsensusGroupId getSuccessorDataPartition(
       TSeriesPartitionSlot seriesPartitionSlot, TTimePartitionSlot timePartitionSlot) {
     if (dataPartitionMap.containsKey(seriesPartitionSlot)) {
       return dataPartitionMap.get(seriesPartitionSlot).getSuccessorDataPartition(timePartitionSlot);
+    } else {
+      return null;
+    }
+  }
+
+  /**
+   * Checks whether the specified DataPartition has a predecessor and returns if it does.
+   *
+   * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
+   * @param timePartitionSlot Corresponding TimePartitionSlot
+   * @return The specific DataPartition's predecessor if exists, null otherwise
+   */
+  public TConsensusGroupId getPredecessorDataPartition(
+      TSeriesPartitionSlot seriesPartitionSlot, TTimePartitionSlot timePartitionSlot) {
+    if (dataPartitionMap.containsKey(seriesPartitionSlot)) {
+      return dataPartitionMap
+          .get(seriesPartitionSlot)
+          .getPredecessorDataPartition(timePartitionSlot);
     } else {
       return null;
     }
@@ -234,82 +250,6 @@ public class DataPartitionTable {
   }
 
   /**
-   * Get the max TimePartitionSlot of the specified Database.
-   *
-   * @return The max TimePartitionSlot, null if there are no DataPartitions yet
-   */
-  public TTimePartitionSlot getMaxTimePartitionSlot() {
-    AtomicReference<TTimePartitionSlot> maxTimeSlot =
-        new AtomicReference<>(new TTimePartitionSlot(0));
-    dataPartitionMap
-        .values()
-        .forEach(
-            seriesPartitionTable -> {
-              TTimePartitionSlot timePartitionSlot = seriesPartitionTable.getMaxTimePartitionSlot();
-              if (timePartitionSlot != null
-                  && timePartitionSlot.getStartTime() > maxTimeSlot.get().getStartTime()) {
-                maxTimeSlot.set(timePartitionSlot);
-              }
-            });
-    return maxTimeSlot.get().getStartTime() > 0 ? maxTimeSlot.get() : null;
-  }
-
-  /**
-   * Get the min TimePartitionSlot of the specified Database.
-   *
-   * @return The min TimePartitionSlot, null if there are no DataPartitions yet
-   */
-  public TTimePartitionSlot getMinTimePartitionSlot() {
-    AtomicReference<TTimePartitionSlot> minTimeSlot =
-        new AtomicReference<>(new TTimePartitionSlot(Long.MAX_VALUE));
-    dataPartitionMap
-        .values()
-        .forEach(
-            seriesPartitionTable -> {
-              TTimePartitionSlot timePartitionSlot = seriesPartitionTable.getMinTimePartitionSlot();
-              if (timePartitionSlot != null
-                  && timePartitionSlot.getStartTime() < minTimeSlot.get().getStartTime()) {
-                minTimeSlot.set(timePartitionSlot);
-              }
-            });
-    return minTimeSlot.get().getStartTime() < Long.MAX_VALUE ? minTimeSlot.get() : null;
-  }
-
-  /**
-   * Get the DataPartition with max TimePartition of the specified Database and the
-   * SeriesPartitionSlot.
-   *
-   * @param seriesPartitionSlot The specified SeriesPartitionSlot
-   * @return The last DataPartitionEntry, null if there are no DataPartitions in the specified
-   *     SeriesPartitionSlot
-   */
-  public DataPartitionEntry getLastDataPartitionEntry(TSeriesPartitionSlot seriesPartitionSlot) {
-    if (dataPartitionMap.containsKey(seriesPartitionSlot)) {
-      return dataPartitionMap
-          .get(seriesPartitionSlot)
-          .getLastDataPartitionEntry(seriesPartitionSlot);
-    } else {
-      return null;
-    }
-  }
-
-  /**
-   * Count SeriesSlot in the specified TimePartitionSlot of the Database.
-   *
-   * @param timePartitionSlot The specified TimePartitionSlot
-   * @return The count of SeriesSlot
-   */
-  public int countSeriesSlot(TTimePartitionSlot timePartitionSlot) {
-    AtomicInteger count = new AtomicInteger(0);
-    dataPartitionMap
-        .values()
-        .forEach(
-            seriesPartitionTable ->
-                count.addAndGet(seriesPartitionTable.isDataPartitionExist(timePartitionSlot)));
-    return count.get();
-  }
-
-  /**
    * Get the last DataAllotTable.
    *
    * @return The last DataAllotTable
@@ -319,23 +259,6 @@ public class DataPartitionTable {
     dataPartitionMap.forEach(
         (seriesPartitionSlot, seriesPartitionTable) ->
             result.put(seriesPartitionSlot, seriesPartitionTable.getLastConsensusGroupId()));
-    return result;
-  }
-
-  /**
-   * Get the number of DataPartitions in each TimePartitionSlot
-   *
-   * @return Map<TimePartitionSlot, the number of DataPartitions>
-   */
-  public Map<TTimePartitionSlot, Integer> getTimeSlotCountMap() {
-    Map<TTimePartitionSlot, Integer> result = new ConcurrentHashMap<>();
-    dataPartitionMap.forEach(
-        (seriesPartitionSlot, seriesPartitionTable) ->
-            seriesPartitionTable
-                .getTimeSlotCountMap()
-                .forEach(
-                    (timePartitionSlot, count) ->
-                        result.merge(timePartitionSlot, count, Integer::sum)));
     return result;
   }
 

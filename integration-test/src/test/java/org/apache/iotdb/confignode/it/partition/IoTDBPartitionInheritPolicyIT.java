@@ -95,19 +95,7 @@ public class IoTDBPartitionInheritPolicyIT {
     Map<TSeriesPartitionSlot, TConsensusGroupId> dataAllotTable1 = new ConcurrentHashMap<>();
 
     // Test1: divide and inherit DataPartitions from scratch
-    // Notice: create all DataRegionGroups as soon as possible
-    // Otherwise, the allocation might be slightly unbalanced
-    ConfigNodeTestUtils.getOrCreateDataPartitionWithRetry(
-        database, 0, 10, baseStartTime, baseStartTime + 1, testTimePartitionInterval);
-    ConfigNodeTestUtils.getOrCreateDataPartitionWithRetry(
-        database,
-        10,
-        testSeriesSlotNum,
-        baseStartTime,
-        baseStartTime + 1,
-        testTimePartitionInterval);
-
-    for (long timePartitionSlot = baseStartTime + 1;
+    for (long timePartitionSlot = baseStartTime;
         timePartitionSlot < baseStartTime + testTimePartitionSlotsNum;
         timePartitionSlot++) {
       for (int seriesPartitionSlot = 0;

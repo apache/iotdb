@@ -23,18 +23,14 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.partition.DataPartitionEntry;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.commons.structure.BalanceTreeMap;
-import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.exception.NoAvailableRegionGroupException;
 import org.apache.iotdb.confignode.manager.IManager;
-import org.apache.iotdb.confignode.manager.load.balancer.partition.DataAllotTable;
+import org.apache.iotdb.confignode.manager.load.balancer.partition.DataPartitionPolicyTable;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
@@ -43,8 +39,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -56,17 +50,12 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class PartitionBalancer {
 
-  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
-  private static final int SERIES_SLOT_NUM = CONF.getSeriesSlotNum();
-  private static final long TIME_PARTITION_INTERVAL =
-      CommonDescriptor.getInstance().getConfig().getTimePartitionInterval();
-
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionBalancer.class);
 
   private final IManager configManager;
 
-  // Map<DatabaseName, DataAllotTable>
-  private final Map<String, DataAllotTable> dataAllotTableMap;
+  // Map<DatabaseName, DataPartitionPolicyTable>
+  private final Map<String, DataPartitionPolicyTable> dataAllotTableMap;
 
   public PartitionBalancer(IManager configManager) {
     this.configManager = configManager;
@@ -141,9 +130,8 @@ public class PartitionBalancer {
         counter.put(pair.getRight(), pair.getLeft().intValue());
       }
 
-      DataAllotTable allotTable = dataAllotTableMap.get(database);
-      allotTable.acquireReadLock();
-      TTimePartitionSlot currentTimePartition = allotTable.getCurrentTimePartition();
+      DataPartitionPolicyTable allotTable = dataAllotTableMap.get(database);
+      allotTable.acquireLock();
       DataPartitionTable dataPartitionTable = new DataPartitionTable();
 
       try {
@@ -161,26 +149,36 @@ public class PartitionBalancer {
           for (TTimePartitionSlot timePartitionSlot : timePartitionSlots) {
 
             // 1. The historical DataPartition will try to inherit successor DataPartition first
-            if (timePartitionSlot.getStartTime() < currentTimePartition.getStartTime()) {
-              TConsensusGroupId successor =
-                  getPartitionManager()
-                      .getSuccessorDataPartition(database, seriesPartitionSlot, timePartitionSlot);
-              if (successor != null && counter.containsKey(successor)) {
-                seriesPartitionTable.putDataPartition(timePartitionSlot, successor);
-                counter.put(successor, counter.get(successor) + 1);
-                continue;
-              }
+            TConsensusGroupId successor =
+                getPartitionManager()
+                    .getSuccessorDataPartition(database, seriesPartitionSlot, timePartitionSlot);
+            if (successor != null && counter.containsKey(successor)) {
+              seriesPartitionTable.putDataPartition(timePartitionSlot, successor);
+              counter.put(successor, counter.get(successor) + 1);
+              continue;
             }
 
             // 2. Assign DataPartition base on the DataAllotTable
-            TConsensusGroupId allotGroupId = allotTable.getRegionGroupId(seriesPartitionSlot);
+            TConsensusGroupId allotGroupId =
+                allotTable.getRegionGroupIdOrActivateIfNecessary(seriesPartitionSlot);
             if (counter.containsKey(allotGroupId)) {
               seriesPartitionTable.putDataPartition(timePartitionSlot, allotGroupId);
               counter.put(allotGroupId, counter.get(allotGroupId) + 1);
               continue;
             }
 
-            // 3. Assign the DataPartition to DataRegionGroup with the least DataPartitions
+            // 3. The allotDataRegionGroup is unavailable,
+            // try to inherit predecessor DataPartition
+            TConsensusGroupId predecessor =
+                getPartitionManager()
+                    .getPredecessorDataPartition(database, seriesPartitionSlot, timePartitionSlot);
+            if (predecessor != null && counter.containsKey(predecessor)) {
+              seriesPartitionTable.putDataPartition(timePartitionSlot, predecessor);
+              counter.put(predecessor, counter.get(predecessor) + 1);
+              continue;
+            }
+
+            // 4. Assign the DataPartition to DataRegionGroup with the least DataPartitions
             // If the above DataRegionGroups are unavailable
             TConsensusGroupId greedyGroupId = counter.getKeyWithMinValue();
             seriesPartitionTable.putDataPartition(timePartitionSlot, greedyGroupId);
@@ -192,7 +190,7 @@ public class PartitionBalancer {
               .put(seriesPartitionEntry.getKey(), seriesPartitionTable);
         }
       } finally {
-        allotTable.releaseReadLock();
+        allotTable.releaseLock();
       }
       result.put(database, dataPartitionTable);
     }
@@ -201,65 +199,16 @@ public class PartitionBalancer {
   }
 
   /**
-   * Try to re-balance the DataPartitionPolicy when new DataPartitions are created.
-   *
-   * @param assignedDataPartition new created DataPartitions
-   */
-  public void reBalanceDataPartitionPolicyIfNecessary(
-      Map<String, DataPartitionTable> assignedDataPartition) {
-    assignedDataPartition.forEach(
-        (database, dataPartitionTable) -> {
-          if (updateDataPartitionCount(database, dataPartitionTable)) {
-            // Update the DataAllotTable if the currentTimePartition is updated
-            updateDataAllotTable(database);
-          }
-        });
-  }
-
-  /**
-   * Update the DataPartitionCount in DataAllotTable.
-   *
-   * @param database Database name
-   * @param dataPartitionTable new created DataPartitionTable
-   * @return true if the currentTimePartition is updated, false otherwise
-   */
-  public boolean updateDataPartitionCount(String database, DataPartitionTable dataPartitionTable) {
-    try {
-      dataAllotTableMap
-          .get(database)
-          .addTimePartitionCount(dataPartitionTable.getTimeSlotCountMap());
-      return dataAllotTableMap
-          .get(database)
-          .updateCurrentTimePartition(
-              getPartitionManager().getRegionGroupCount(database, TConsensusGroupType.DataRegion));
-    } catch (DatabaseNotExistsException e) {
-      LOGGER.error("Database {} not exists when updateDataPartitionCount", database);
-      return false;
-    }
-  }
-
-  /**
-   * Update the DataAllotTable.
+   * Re-balance the DataPartitionPolicyTable.
    *
    * @param database Database name
    */
-  public void updateDataAllotTable(String database) {
-    List<DataPartitionEntry> lastDataPartitions = new ArrayList<>();
-    for (int i = 0; i < SERIES_SLOT_NUM; i++) {
-      TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(i);
-      DataPartitionEntry lastDataPartition =
-          getPartitionManager().getLastDataPartitionEntry(database, seriesPartitionSlot);
-      if (lastDataPartition != null) {
-        lastDataPartitions.add(lastDataPartition);
-      }
-    }
-
+  public void reBalanceDataPartitionPolicy(String database) {
     try {
       dataAllotTableMap
-          .computeIfAbsent(database, empty -> new DataAllotTable())
-          .updateDataAllotTable(
-              getPartitionManager().getAllRegionGroupIds(database, TConsensusGroupType.DataRegion),
-              lastDataPartitions);
+          .computeIfAbsent(database, empty -> new DataPartitionPolicyTable())
+          .reBalanceDataPartitionPolicy(
+              getPartitionManager().getAllRegionGroupIds(database, TConsensusGroupType.DataRegion));
     } catch (DatabaseNotExistsException e) {
       LOGGER.error("Database {} not exists when updateDataAllotTable", database);
     }
@@ -272,38 +221,18 @@ public class PartitionBalancer {
         .getDatabaseNames()
         .forEach(
             database -> {
-              dataAllotTableMap.put(database, new DataAllotTable());
-              DataAllotTable dataAllotTable = dataAllotTableMap.get(database);
-              dataAllotTable.acquireWriteLock();
+              dataAllotTableMap.put(database, new DataPartitionPolicyTable());
+              DataPartitionPolicyTable dataPartitionPolicyTable = dataAllotTableMap.get(database);
               try {
-                int threshold =
-                    DataAllotTable.timePartitionThreshold(
-                        getPartitionManager()
-                            .getRegionGroupCount(database, TConsensusGroupType.DataRegion));
-                TTimePartitionSlot maxTimePartitionSlot =
-                    getPartitionManager().getMaxTimePartitionSlot(database);
-                TTimePartitionSlot minTimePartitionSlot =
-                    getPartitionManager().getMinTimePartitionSlot(database);
-                TTimePartitionSlot currentTimePartition = maxTimePartitionSlot.deepCopy();
-                while (currentTimePartition.compareTo(minTimePartitionSlot) > 0) {
-                  int seriesSlotCount =
-                      getPartitionManager().countSeriesSlot(database, currentTimePartition);
-                  if (seriesSlotCount >= threshold) {
-                    dataAllotTable.setCurrentTimePartition(currentTimePartition.getStartTime());
-                    break;
-                  }
-                  dataAllotTable.addTimePartitionCount(
-                      Collections.singletonMap(currentTimePartition, seriesSlotCount));
-                  currentTimePartition.setStartTime(
-                      currentTimePartition.getStartTime() - TIME_PARTITION_INTERVAL);
-                }
-
-                dataAllotTable.setDataAllotMap(
+                // Put all DataRegionGroups into the DataPartitionPolicyTable
+                dataPartitionPolicyTable.reBalanceDataPartitionPolicy(
+                    getPartitionManager()
+                        .getAllRegionGroupIds(database, TConsensusGroupType.DataRegion));
+                // Load the last DataAllotTable
+                dataPartitionPolicyTable.setDataAllotMap(
                     getPartitionManager().getLastDataAllotTable(database));
               } catch (DatabaseNotExistsException e) {
                 LOGGER.error("Database {} not exists when setupPartitionBalancer", database);
-              } finally {
-                dataAllotTable.releaseWriteLock();
               }
             });
   }

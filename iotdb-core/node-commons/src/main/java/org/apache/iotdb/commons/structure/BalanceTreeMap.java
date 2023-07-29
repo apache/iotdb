@@ -75,6 +75,10 @@ public class BalanceTreeMap<K, V extends Comparable<V>> {
     return keyValueMap.containsKey(key);
   }
 
+  public int size() {
+    return keyValueMap.size();
+  }
+
   @TestOnly
   public void remove(K key) {
     V value = keyValueMap.getOrDefault(key, null);
