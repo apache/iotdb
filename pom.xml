@@ -202,7 +202,11 @@
         <thrift.exec.absolute.path/>
         <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
         <boost.include.dir/>
-        <bison.executable.dir/>
+        <!--
+            Setting some random property to some random value, as an empty maven
+            property produces a NullPointerException in the cmake plugin.
+        -->
+        <bison.executable.dir>-Dtrue1=true1</bison.executable.dir>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
