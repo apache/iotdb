@@ -1186,7 +1186,7 @@
             </activation>
             <properties>
                 <os.classifier>windows-x86_64</os.classifier>
-                <cmake.generator>MinGW Makefiles</cmake.generator>
+                <cmake.generator>Visual Studio 17 2022</cmake.generator>
                 <thrift.executable>thrift.exe</thrift.executable>
             </properties>
         </profile>
@@ -1205,7 +1205,7 @@
             </activation>
             <properties>
                 <os.classifier>windows-aarch64</os.classifier>
-                <cmake.generator>MinGW Makefiles</cmake.generator>
+                <cmake.generator>Visual Studio 17 2022</cmake.generator>
                 <thrift.executable>thrift.exe</thrift.executable>
             </properties>
         </profile>
