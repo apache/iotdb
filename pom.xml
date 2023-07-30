@@ -1181,32 +1181,12 @@
             <activation>
                 <os>
                     <family>windows</family>
-                    <arch>!aarch64</arch>
                 </os>
             </activation>
             <properties>
                 <os.classifier>windows-x86_64</os.classifier>
                 <cmake.generator>Visual Studio 17 2022</cmake.generator>
                 <thrift.executable>Release/thrift.exe</thrift.executable>
-            </properties>
-        </profile>
-        <!--
-            CMake currently doesn't have pre-compiled cmake executables for Windows running on ARM systems.
-            As this is currently only when running a Windows 11 on an M1 or M2 Mac (On the hardware itself
-            or inside a VM), I think we don't have to worry too much about this.
-        -->
-        <profile>
-            <id>.os-windows-arm</id>
-            <activation>
-                <os>
-                    <family>windows</family>
-                    <arch>aarch64</arch>
-                </os>
-            </activation>
-            <properties>
-                <os.classifier>windows-aarch64</os.classifier>
-                <cmake.generator>Visual Studio 17 2022</cmake.generator>
-                <thrift.executable>Release thrift.exe</thrift.executable>
             </properties>
         </profile>
         <!-- Some APIs were removed in Java 11, so we need to add replacements -->
