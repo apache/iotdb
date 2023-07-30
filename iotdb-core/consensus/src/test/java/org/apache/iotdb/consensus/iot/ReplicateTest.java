@@ -29,6 +29,7 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.iot.util.TestEntry;
 import org.apache.iotdb.consensus.iot.util.TestStateMachine;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.apache.ratis.util.FileUtils;
 import org.junit.After;
@@ -38,12 +39,17 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class ReplicateTest {
   private static final long CHECK_POINT_GAP = 500;
@@ -51,11 +57,19 @@ public class ReplicateTest {
 
   private final ConsensusGroupId gid = new DataRegionId(1);
 
+  private static final long timeout = TimeUnit.SECONDS.toMillis(300);
+
+  private static final String CONFIGURATION_FILE_NAME = "configuration.dat";
+
+  private static final String CONFIGURATION_TMP_FILE_NAME = "configuration.dat.tmp";
+
+  private int basePort = 9000;
+
   private final List<Peer> peers =
       Arrays.asList(
-          new Peer(gid, 1, new TEndPoint("127.0.0.1", 6000)),
-          new Peer(gid, 2, new TEndPoint("127.0.0.1", 6001)),
-          new Peer(gid, 3, new TEndPoint("127.0.0.1", 6002)));
+          new Peer(gid, 1, new TEndPoint("127.0.0.1", basePort - 2)),
+          new Peer(gid, 2, new TEndPoint("127.0.0.1", basePort - 1)),
+          new Peer(gid, 3, new TEndPoint("127.0.0.1", basePort)));
 
   private final List<File> peersStorage =
       Arrays.asList(
@@ -84,12 +98,35 @@ public class ReplicateTest {
     }
   }
 
+  public void changeConfiguration(int i) {
+    try (PublicBAOS publicBAOS = new PublicBAOS();
+        DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
+      outputStream.writeInt(this.peers.size());
+      for (Peer peer : this.peers) {
+        peer.serialize(outputStream);
+      }
+      File storageDir = new File(IoTConsensus.buildPeerDir(peersStorage.get(i), gid));
+      Path tmpConfigurationPath =
+          Paths.get(new File(storageDir, CONFIGURATION_TMP_FILE_NAME).getAbsolutePath());
+      Path configurationPath =
+          Paths.get(new File(storageDir, CONFIGURATION_FILE_NAME).getAbsolutePath());
+      Files.write(tmpConfigurationPath, publicBAOS.getBuf());
+      if (Files.exists(configurationPath)) {
+        Files.delete(configurationPath);
+      }
+      Files.move(tmpConfigurationPath, configurationPath);
+    } catch (IOException e) {
+      logger.error("Unexpected error occurs when persisting configuration", e);
+    }
+  }
+
   private void initServer() throws IOException {
-    for (Peer peer : peers) {
-      waitPortAvailable(peer.getEndpoint().port);
+    for (int i = 0; i < peers.size(); i++) {
+      findPortAvailable(i);
     }
     for (int i = 0; i < peers.size(); i++) {
       int finalI = i;
+      changeConfiguration(i);
       servers.add(
           (IoTConsensus)
               ConsensusFactory.getConsensusImpl(
@@ -251,20 +288,23 @@ public class ReplicateTest {
     Assert.assertEquals(stateMachines.get(2).getData(), stateMachines.get(1).getData());
   }
 
-  private static void waitPortAvailable(int port) {
+  private void findPortAvailable(int i) {
     long start = System.currentTimeMillis();
-    while (System.currentTimeMillis() - start < 60 * 1000) {
-      try (ServerSocket ignored = new ServerSocket(port)) {
+    while (System.currentTimeMillis() - start < timeout) {
+      try (ServerSocket ignored = new ServerSocket(this.peers.get(i).getEndpoint().port)) {
+        // success
         return;
       } catch (IOException e) {
         // Port is already in use, wait and retry
+        this.peers.set(i, new Peer(gid, i + 1, new TEndPoint("127.0.0.1", this.basePort)));
+        logger.info("try port {} for node {}.", this.basePort++, i + 1);
         try {
-          Thread.sleep(1000); // Wait for 1 second before retrying
+          Thread.sleep(50); // Wait for 1 second before retrying
         } catch (InterruptedException ex) {
           // Handle the interruption if needed
         }
       }
     }
-    Assert.fail(String.format("can not bind port %d after 60s", port));
+    Assert.fail(String.format("can not find port for node %d after 300s", i + 1));
   }
 }
