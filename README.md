@@ -178,26 +178,37 @@ This however is only needed when enabling the `compile-cpp` profile:
 
 ### Windows
 
+#### Chocolatey
+
+Then install `Chocolatey` - If this hasn't been installed yet, as we are going to be installing everything using `Chocolatey`.
+
+https://chocolatey.org/install
+
 #### Git
 
-Ideally get and install `Git` from a page like this one:
-https://git-scm.com/download/win
+    choco install git.install
 
 #### Java
 
-Install `Java` from the Oracle page:
-https://www.oracle.com/java/technologies/downloads/
+    choco install openjdk
 
-After `Java` is installed, be sure to add the installation directory in an environment variable called `JAVA_HOME` or the Maven-Wrapper will not be able to find it.
+#### Visual Studio 19 2022
 
-#### NMake
+    choco install visualstudio2022community
+    choco install visualstudio2022buildtools
+    choco install visualstudio2022-workload-nativedesktop
 
-It seems that NMake is installed as part of Visual Studio or Visual Studio Code
+#### FLex / Bison
 
-https://www.msys2.org/#installation
+    choco install winflexbison
 
-When enabling the `compile-cpp`:
+#### Boost
 
+    choco install boost-msvc-14.2
+
+#### OpenSSL
+
+    choco install openssl
 
 ## Installation
 
