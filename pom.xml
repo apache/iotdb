@@ -1187,7 +1187,7 @@
             <properties>
                 <os.classifier>windows-x86_64</os.classifier>
                 <cmake.generator>Visual Studio 17 2022</cmake.generator>
-                <thrift.executable>thrift.exe</thrift.executable>
+                <thrift.executable>Release/thrift.exe</thrift.executable>
             </properties>
         </profile>
         <!--
@@ -1206,7 +1206,7 @@
             <properties>
                 <os.classifier>windows-aarch64</os.classifier>
                 <cmake.generator>Visual Studio 17 2022</cmake.generator>
-                <thrift.executable>thrift.exe</thrift.executable>
+                <thrift.executable>Release thrift.exe</thrift.executable>
             </properties>
         </profile>
         <!-- Some APIs were removed in Java 11, so we need to add replacements -->
