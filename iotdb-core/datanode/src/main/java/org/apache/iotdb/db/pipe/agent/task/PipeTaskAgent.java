@@ -93,6 +93,16 @@ public class PipeTaskAgent {
     pipeMetaKeeper.acquireReadLock();
   }
 
+  public boolean tryReadLockWithTimeOut(long timeOutInSeconds) {
+    try {
+      return pipeMetaKeeper.tryReadLock(timeOutInSeconds);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn("Interruption during requiring pipeMetaKeeper lock.", e);
+      return false;
+    }
+  }
+
   private void releaseReadLock() {
     pipeMetaKeeper.releaseReadLock();
   }
@@ -705,18 +715,26 @@ public class PipeTaskAgent {
 
   public synchronized void collectPipeMetaList(THeartbeatReq req, THeartbeatResp resp)
       throws TException {
-    acquireReadLock();
+    // If the pipe heartbeat is separated from the cluster heartbeat, then the lock doesn't
+    // need to be acquired
+    if (!req.isNeedPipeMetaList()) {
+      return;
+    }
+    // Try the lock instead of directly acquire it to prevent the block of the cluster heartbeat
+    // 10s is the half of the HEARTBEAT_TIMEOUT_TIME defined in class BaseNodeCache in ConfigNode
+    if (!tryReadLockWithTimeOut(10)) {
+      return;
+    }
     try {
-      collectPipeMetaListInternal(req, resp);
+      collectPipeMetaListInternal(resp);
     } finally {
       releaseReadLock();
     }
   }
 
-  private void collectPipeMetaListInternal(THeartbeatReq req, THeartbeatResp resp)
-      throws TException {
+  private void collectPipeMetaListInternal(THeartbeatResp resp) throws TException {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
-    if (PipeAgent.runtime().isShutdown() || !req.isNeedPipeMetaList()) {
+    if (PipeAgent.runtime().isShutdown()) {
       return;
     }
 
