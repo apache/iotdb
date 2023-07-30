@@ -29,7 +29,7 @@ INCLUDE_DIRECTORIES(/usr/local/include)
 # Add Session related include files
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../main/generated-sources-cpp)
 # Add Thrift include directory
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../../thrift/src/include)
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../../thrift/include)
 
 find_package(Boost REQUIRED)
 IF (DEFINED BOOST_INCLUDEDIR)
