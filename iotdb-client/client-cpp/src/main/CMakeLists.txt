@@ -26,6 +26,10 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -g -O2 ")
 # Add Thrift include directory
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../../thrift/src/includes)
 
+# Add Boost include path for MacOS
+INCLUDE_DIRECTORIES(/usr/local/include)
+
+# Add Boost library headers for MaxOS
 FIND_PACKAGE(Boost REQUIRED)
 IF (DEFINED BOOST_INCLUDEDIR)
     INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
@@ -37,12 +41,8 @@ ELSE()
     SET(THRIFT_STATIC_LIB "${CMAKE_SOURCE_DIR}/../../thrift/lib/libthrift.a")
 ENDIF()
 
-# Add Boost include path for MacOS
-INCLUDE_DIRECTORIES(/usr/local/include)
-
-# Add ./generated-sources-cpp as a Cmake subdirectory
+# Add the generated source files to the sources for the library.
 AUX_SOURCE_DIRECTORY(./generated-sources-cpp SESSION_SRCS)
-
 IF(MSVC)
     ADD_LIBRARY(iotdb_session ${SESSION_SRCS})
 ELSE()
