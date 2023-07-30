@@ -35,6 +35,8 @@ import static org.apache.iotdb.db.queryengine.plan.statement.component.IntoCompo
 import static org.apache.iotdb.db.queryengine.plan.statement.component.IntoComponent.FORBID_PLACEHOLDER_ERROR_MSG;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.IntoComponent.PATH_NUM_MISMATCH_ERROR_MSG;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.IntoComponent.PLACEHOLDER_MISMATCH_ERROR_MSG;
+import static org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement.COUNT_TIME_NOT_SUPPORT_GROUP_BY_LEVEL;
+import static org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement.COUNT_TIME_NOT_SUPPORT_GROUP_BY_TAG;
 import static org.junit.Assert.fail;
 
 public class AnalyzeFailTest {
@@ -148,6 +150,17 @@ public class AnalyzeFailTest {
     assertAnalyzeSemanticException(
         "select s1, s2 into ::(s1_1, s2_2), root.backup_sg.::(s1, s2) from root.sg.* align by device;",
         PLACEHOLDER_MISMATCH_ERROR_MSG);
+  }
+
+  @Test
+  public void countTimeTest() {
+    assertAnalyzeSemanticException(
+        "select count_time(*) from root.sg.* group by level=1;",
+        COUNT_TIME_NOT_SUPPORT_GROUP_BY_LEVEL);
+
+    assertAnalyzeSemanticException(
+        "select count_time(*) from root.sg.* group by tags(key);",
+        COUNT_TIME_NOT_SUPPORT_GROUP_BY_TAG);
   }
 
   private void assertAnalyzeSemanticException(String sql, String message) {

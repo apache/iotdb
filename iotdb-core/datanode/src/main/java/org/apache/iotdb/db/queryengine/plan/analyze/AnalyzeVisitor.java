@@ -51,6 +51,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.NodeRef;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -68,6 +69,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.FillDescriptor;
@@ -197,6 +199,7 @@ import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.SCHE
 import static org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils.constructTargetDevice;
 import static org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils.constructTargetMeasurement;
 import static org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils.constructTargetPath;
+import static org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn.ColumnType.AGGREGATION;
 import static org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.GetSourcePathsVisitor.getSourcePaths;
 
 /** This visitor is used to analyze each type of Statement and returns the {@link Analysis}. */
@@ -516,6 +519,46 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
       List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
+
+      if (AGGREGATION.equals(resultColumn.getColumnType())) {
+        if (resultColumn.getExpression() instanceof FunctionExpression) {
+          FunctionExpression fc = (FunctionExpression) resultColumn.getExpression();
+          if ("count_time".equals(fc.getFunctionName())) {
+
+            List<Expression> resultExpressions =
+                ExpressionAnalyzer.bindSchemaForExpression(
+                    resultColumn.getExpression().getExpressions().get(0), schemaTree);
+
+            Set<Expression> source = analysis.getSourceExpressions();
+            if (source == null) {
+              source = new HashSet<>();
+            }
+            for (Expression e : resultExpressions) {
+              TimeSeriesOperand ts = (TimeSeriesOperand) e;
+              Expression normalizedExpression = ExpressionAnalyzer.normalizeExpression(e);
+              analyzeExpressionType(analysis, normalizedExpression);
+
+              checkAliasUniqueness(resultColumn.getAlias(), aliasSet);
+              source.add(normalizedExpression);
+            }
+            analysis.setSourceExpressions(source);
+
+            Expression expression =
+                new FunctionExpression(
+                    "count_time",
+                    new LinkedHashMap<>(),
+                    Collections.singletonList(new TimestampOperand()));
+
+            Map<NodeRef<Expression>, TSDataType> dataTypeMap = new HashMap<>();
+            dataTypeMap.put(new NodeRef<>(expression), TSDataType.INT64);
+            analysis.addTypes(dataTypeMap);
+
+            outputExpressions.add(new Pair<>(expression, resultColumn.getAlias()));
+            outputExpressionMap.put(columnIndex++, outputExpressions);
+            continue;
+          }
+        }
+      }
 
       List<Expression> resultExpressions =
           ExpressionAnalyzer.bindSchemaForExpression(resultColumn.getExpression(), schemaTree);
@@ -1187,7 +1230,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private void analyzeSource(Analysis analysis, QueryStatement queryStatement) {
-    Set<Expression> sourceExpressions = new HashSet<>();
+    Set<Expression> sourceExpressions = analysis.getSourceExpressions();
+    if (sourceExpressions == null) {
+      sourceExpressions = new HashSet<>();
+    }
     for (Expression expression : analysis.getSourceTransformExpressions()) {
       sourceExpressions.addAll(ExpressionAnalyzer.searchSourceExpressions(expression));
     }

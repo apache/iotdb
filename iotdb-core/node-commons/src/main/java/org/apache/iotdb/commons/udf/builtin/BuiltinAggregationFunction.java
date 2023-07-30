@@ -105,6 +105,7 @@ public enum BuiltinAggregationFunction {
       case "mode":
         return true;
       case "count_if":
+      case "count_time":
         return false;
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + name);

@@ -47,6 +47,7 @@ public class BindSchemaForExpressionVisitor extends CartesianProductVisitor<ISch
   @Override
   public List<Expression> visitFunctionExpression(
       FunctionExpression functionExpression, ISchemaTree schemaTree) {
+
     // One by one, remove the wildcards from the input expressions. In most cases, an expression
     // will produce multiple expressions after removing the wildcards. We use extendedExpressions
     // to collect the produced expressions.

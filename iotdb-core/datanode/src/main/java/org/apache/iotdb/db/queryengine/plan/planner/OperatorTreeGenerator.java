@@ -1561,7 +1561,14 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     for (List<String> inputColumnNamesOfOneInput : inputColumnNames) {
       // it may include double parts
       List<List<InputLocation>> inputLocationParts = new ArrayList<>();
-      inputColumnNamesOfOneInput.forEach(o -> inputLocationParts.add(layout.get(o)));
+      // inputColumnNamesOfOneInput.forEach(o -> inputLocationParts.add(layout.get(o)));
+      for (String input : inputColumnNamesOfOneInput) {
+        if ("Time".equals(input)) {
+          inputLocationParts.addAll(layout.values());
+        } else {
+          inputLocationParts.add(layout.get(input));
+        }
+      }
       for (int i = 0; i < inputLocationParts.get(0).size(); i++) {
         if (inputColumnNamesOfOneInput.size() == 1) {
           inputLocationList.add(new InputLocation[] {inputLocationParts.get(0).get(i)});
@@ -2392,11 +2399,12 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     Map<String, List<InputLocation>> outputMappings = new LinkedHashMap<>();
     int tsBlockIndex = 0;
     for (PlanNode childNode : node.getChildren()) {
-      outputMappings
-          .computeIfAbsent(TimestampOperand.TIMESTAMP_EXPRESSION_STRING, key -> new ArrayList<>())
-          .add(new InputLocation(tsBlockIndex, -1));
+      //      outputMappings
+      //          .computeIfAbsent(TimestampOperand.TIMESTAMP_EXPRESSION_STRING, key -> new
+      // ArrayList<>())
+      //          .add(new InputLocation(tsBlockIndex, -1));
       int valueColumnIndex = 0;
-      valueColumnIndex++;
+      // valueColumnIndex++;
       for (String columnName : childNode.getOutputColumnNames()) {
         outputMappings
             .computeIfAbsent(columnName, key -> new ArrayList<>())

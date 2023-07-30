@@ -468,6 +468,12 @@ public class QueryStatement extends Statement {
   public static final String RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG =
       "Raw data and aggregation hybrid query is not supported.";
 
+  public static final String COUNT_TIME_NOT_SUPPORT_GROUP_BY_LEVEL =
+      "Count_time aggregation function using with group by level is not supported.";
+
+  public static final String COUNT_TIME_NOT_SUPPORT_GROUP_BY_TAG =
+      "Count_time aggregation function using with group by tag is not supported.";
+
   @SuppressWarnings({"squid:S3776", "squid:S6541"}) // Suppress high Cognitive Complexity warning
   public void semanticCheck() {
     if (isAggregationQuery()) {
@@ -480,16 +486,33 @@ public class QueryStatement extends Statement {
       if (isGroupByTag() && isAlignByDevice()) {
         throw new SemanticException("GROUP BY TAGS does not support align by device now.");
       }
+      boolean hasCountTimeAggregation = false;
       Set<String> outputColumn = new HashSet<>();
       for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
         if (resultColumn.getColumnType() != ResultColumn.ColumnType.AGGREGATION) {
           throw new SemanticException(RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG);
+        }
+        if (resultColumn.getExpression() instanceof FunctionExpression
+            && "count_time"
+                .equalsIgnoreCase(
+                    ((FunctionExpression) resultColumn.getExpression()).getFunctionName())) {
+          hasCountTimeAggregation = true;
         }
         outputColumn.add(
             resultColumn.getAlias() != null
                 ? resultColumn.getAlias()
                 : resultColumn.getExpression().getExpressionString());
       }
+
+      if (hasCountTimeAggregation) {
+        if (isGroupByLevel()) {
+          throw new SemanticException(COUNT_TIME_NOT_SUPPORT_GROUP_BY_LEVEL);
+        }
+        if (isGroupByTag()) {
+          throw new SemanticException(COUNT_TIME_NOT_SUPPORT_GROUP_BY_TAG);
+        }
+      }
+
       for (Expression expression : getExpressionSortItemList()) {
         if (!hasAggregationFunction(expression)) {
           throw new SemanticException(RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG);
