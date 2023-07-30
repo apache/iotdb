@@ -185,7 +185,6 @@
             <plugin>
                 <groupId>com.googlecode.cmake-maven-project</groupId>
                 <artifactId>cmake-maven-plugin</artifactId>
-                <version>${cmake-maven-plugin.version}</version>
                 <executions>
                     <!-- Uses a CMake generator to generate the build using the build tool of choice -->
                     <execution>

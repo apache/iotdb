@@ -66,6 +66,7 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
+                            <generator>${cmake.generator}</generator>
                             <sourcePath>${project.build.directory}/thrift-${thrift.version}</sourcePath>
                             <targetPath>${project.build.directory}/build</targetPath>
                             <options>

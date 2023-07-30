@@ -113,7 +113,6 @@
             <plugin>
                 <groupId>com.googlecode.cmake-maven-project</groupId>
                 <artifactId>cmake-maven-plugin</artifactId>
-                <version>${cmake-maven-plugin.version}</version>
                 <executions>
                     <execution>
                         <id>cmake-generate</id>
@@ -122,6 +121,7 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
+                            <generator>${cmake.generator}</generator>
                             <sourcePath>${project.build.directory}</sourcePath>
                             <targetPath>${project.build.directory}</targetPath>
                             <options>
