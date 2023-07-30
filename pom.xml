@@ -1126,6 +1126,7 @@
             </activation>
             <properties>
                 <os.classifier>linux-x86_64</os.classifier>
+                <cmake.generator>Unix Makefiles</cmake.generator>
                 <thrift.executable>thrift</thrift.executable>
             </properties>
         </profile>
@@ -1139,6 +1140,7 @@
             </activation>
             <properties>
                 <os.classifier>linux-aarch64</os.classifier>
+                <cmake.generator>Unix Makefiles</cmake.generator>
                 <thrift.executable>thrift</thrift.executable>
             </properties>
         </profile>
@@ -1152,6 +1154,7 @@
             </activation>
             <properties>
                 <os.classifier>mac-x86_64</os.classifier>
+                <cmake.generator>Unix Makefiles</cmake.generator>
                 <thrift.executable>thrift</thrift.executable>
                 <boost.include.dir>/usr/local/include</boost.include.dir>
                 <bison.executable.dir>-DBISON_EXECUTABLE=/usr/local/opt/bison/bin/bison</bison.executable.dir>
@@ -1167,6 +1170,7 @@
             </activation>
             <properties>
                 <os.classifier>mac-aarch64</os.classifier>
+                <cmake.generator>Unix Makefiles</cmake.generator>
                 <thrift.executable>thrift</thrift.executable>
                 <boost.include.dir>/opt/homebrew/opt/boost/include</boost.include.dir>
                 <bison.executable.dir>-DBISON_EXECUTABLE=/opt/homebrew/opt/bison/bin/bison</bison.executable.dir>
@@ -1182,6 +1186,7 @@
             </activation>
             <properties>
                 <os.classifier>windows-x86_64</os.classifier>
+                <cmake.generator>MinGW Makefiles</cmake.generator>
                 <thrift.executable>thrift.exe</thrift.executable>
             </properties>
         </profile>
@@ -1200,6 +1205,7 @@
             </activation>
             <properties>
                 <os.classifier>windows-aarch64</os.classifier>
+                <cmake.generator>MinGW Makefiles</cmake.generator>
                 <thrift.executable>thrift.exe</thrift.executable>
             </properties>
         </profile>

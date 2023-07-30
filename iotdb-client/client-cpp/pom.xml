@@ -195,6 +195,7 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
+                            <generator>${cmake.generator}</generator>
                             <sourcePath>${project.build.directory}/build/main</sourcePath>
                             <targetPath>${project.build.directory}/build/main</targetPath>
                             <options>
@@ -210,6 +211,7 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
+                            <generator>${cmake.generator}</generator>
                             <sourcePath>${project.build.directory}/build/test</sourcePath>
                             <targetPath>${project.build.directory}/build/test</targetPath>
                             <options>
