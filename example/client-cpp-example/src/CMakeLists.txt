@@ -24,7 +24,7 @@ SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Add Thrift include directory
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/thrift/src/include)
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/thrift/include)
 # Add cpp-client include directory
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/client/include)
 

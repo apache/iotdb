@@ -24,7 +24,7 @@ SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -g -O2 ")
 
 # Add Thrift include directory
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../../thrift/src/include)
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../../thrift/include)
 
 # Add Boost include path for MacOS
 INCLUDE_DIRECTORIES(/usr/local/include)
