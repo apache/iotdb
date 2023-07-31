@@ -53,7 +53,7 @@
         </fileSet>
         <!-- Include the config.h -->
         <fileSet>
-            <directory>${project.build.directory}/thrift-${thrift.version}</directory>
+            <directory>${project.build.directory}/build/thrift</directory>
             <includes>
                 <include>config.h</include>
             </includes>
