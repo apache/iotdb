@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.consensus.request.write.confignode;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -28,23 +29,23 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class UpdateBuildInfoPlan extends ConfigPhysicalPlan {
+public class UpdateVersionInfoPlan extends ConfigPhysicalPlan {
 
   private int nodeId;
-  private String buildInfo;
+  private TNodeVersionInfo versionInfo;
 
-  public UpdateBuildInfoPlan() {
-    super(ConfigPhysicalPlanType.UpdateBuildInfo);
+  public UpdateVersionInfoPlan() {
+    super(ConfigPhysicalPlanType.UpdateVersionInfo);
   }
 
-  public UpdateBuildInfoPlan(String buildInfo, int nodeId) {
+  public UpdateVersionInfoPlan(TNodeVersionInfo versionInfo, int nodeId) {
     this();
-    this.buildInfo = buildInfo;
+    this.versionInfo = versionInfo;
     this.nodeId = nodeId;
   }
 
-  public String getBuildInfo() {
-    return buildInfo;
+  public TNodeVersionInfo getVersionInfo() {
+    return versionInfo;
   }
 
   public int getNodeId() {
@@ -55,13 +56,16 @@ public class UpdateBuildInfoPlan extends ConfigPhysicalPlan {
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(getType().getPlanType(), stream);
     ReadWriteIOUtils.write(nodeId, stream);
-    ReadWriteIOUtils.write(buildInfo, stream);
+    ReadWriteIOUtils.write(versionInfo.getVersion(), stream);
+    ReadWriteIOUtils.write(versionInfo.getBuildInfo(), stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
     nodeId = ReadWriteIOUtils.readInt(buffer);
-    buildInfo = ReadWriteIOUtils.readString(buffer);
+    versionInfo =
+        new TNodeVersionInfo(
+            ReadWriteIOUtils.readString(buffer), ReadWriteIOUtils.readString(buffer));
   }
 
   @Override
@@ -72,15 +76,15 @@ public class UpdateBuildInfoPlan extends ConfigPhysicalPlan {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    if (!getType().equals(((UpdateBuildInfoPlan) o).getType())) {
+    if (!getType().equals(((UpdateVersionInfoPlan) o).getType())) {
       return false;
     }
-    UpdateBuildInfoPlan that = (UpdateBuildInfoPlan) o;
-    return nodeId == that.nodeId && buildInfo.equals(that.buildInfo);
+    UpdateVersionInfoPlan that = (UpdateVersionInfoPlan) o;
+    return nodeId == that.nodeId && versionInfo.equals(that.versionInfo);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(nodeId, buildInfo);
+    return Objects.hash(nodeId, versionInfo);
   }
 }
