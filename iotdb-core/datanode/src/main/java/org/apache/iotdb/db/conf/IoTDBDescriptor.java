@@ -898,6 +898,12 @@ public class IoTDBDescriptor {
       conf.setIntoOperationExecutionThreadCount(2);
     }
 
+    conf.setMaxLoadingTimeseriesNumber(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_loading_timeseries_number",
+                String.valueOf(conf.getMaxLoadingTimeseriesNumber()))));
+
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
 
     // At the same time, set TSFileConfig

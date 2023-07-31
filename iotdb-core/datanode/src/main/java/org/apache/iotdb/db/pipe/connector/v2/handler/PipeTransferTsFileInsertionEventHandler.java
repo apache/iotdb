@@ -40,7 +40,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeTransferTsFileInsertionEventHandler
@@ -58,15 +57,11 @@ public class PipeTransferTsFileInsertionEventHandler
   private final byte[] readBuffer;
   private long position;
 
-  private RandomAccessFile reader;
+  private final RandomAccessFile reader;
 
   private final AtomicBoolean isSealSignalSent;
 
   private AsyncPipeDataTransferServiceClient client;
-
-  private static final long MAX_RETRY_WAIT_TIME_MS =
-      (long) (PipeConfig.getInstance().getPipeConnectorRetryIntervalMs() * Math.pow(2, 5));
-  private int retryCount = 0;
 
   public PipeTransferTsFileInsertionEventHandler(
       long requestCommitId, PipeTsFileInsertionEvent event, IoTDBThriftConnectorV2 connector)
@@ -127,14 +122,17 @@ public class PipeTransferTsFileInsertionEventHandler
           reader.close();
         }
       } catch (IOException e) {
-        LOGGER.warn("Failed to close file reader.", e);
+        LOGGER.warn("Failed to close file reader when successfully transferred file.", e);
       } finally {
+        connector.commit(requestCommitId, event);
+
+        LOGGER.info(
+            "Successfully transferred file {}. Request commit id is {}.", tsFile, requestCommitId);
+
         if (client != null) {
           client.setShouldReturnSelf(true);
           client.returnSelf();
         }
-
-        connector.commit(requestCommitId, event);
       }
       return;
     }
@@ -165,58 +163,22 @@ public class PipeTransferTsFileInsertionEventHandler
 
   @Override
   public void onError(Exception exception) {
+    LOGGER.warn(
+        "Failed to transfer tsfile {} (request commit id {}).", tsFile, requestCommitId, exception);
+
     try {
       if (reader != null) {
         reader.close();
       }
     } catch (IOException e) {
-      LOGGER.warn("Failed to close file reader.", e);
+      LOGGER.warn("Failed to close file reader when failed to transfer file.", e);
     } finally {
+      connector.addFailureEventToRetryQueue(requestCommitId, event);
+
       if (client != null) {
         client.setShouldReturnSelf(true);
         client.returnSelf();
       }
     }
-
-    ++retryCount;
-
-    CompletableFuture.runAsync(
-        () -> {
-          try {
-            Thread.sleep(
-                Math.min(
-                    (long)
-                        (PipeConfig.getInstance().getPipeConnectorRetryIntervalMs()
-                            * Math.pow(2d, retryCount - 1d)),
-                    MAX_RETRY_WAIT_TIME_MS));
-          } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            LOGGER.warn("Unexpected interruption during retrying", e);
-          }
-
-          if (connector.isClosed()) {
-            LOGGER.info(
-                "IoTDBThriftConnectorV2 has been stopped, we will not retry to transfer tsfile {}.",
-                tsFile,
-                exception);
-          } else {
-            LOGGER.warn(
-                "IoTDBThriftConnectorV2 failed to transfer tsfile {} after {} times, retrying...",
-                tsFile,
-                retryCount,
-                exception);
-
-            try {
-              position = 0;
-              reader = new RandomAccessFile(tsFile, "r");
-              isSealSignalSent.set(false);
-
-              connector.transfer(requestCommitId, this);
-            } catch (FileNotFoundException e) {
-              LOGGER.error("Exception occurred when retrying...", e);
-              onError(e);
-            }
-          }
-        });
   }
 }

@@ -167,6 +167,11 @@ public class CommonConfig {
   private long pipeConnectorRetryIntervalMs = 1000L;
   private int pipeConnectorPendingQueueSize = 1024;
 
+  private boolean pipeAsyncConnectorRPCThriftCompressionEnabled = false;
+  private int pipeAsyncConnectorSelectorNumber = 1;
+  private int pipeAsyncConnectorCoreClientNumber = 8;
+  private int pipeAsyncConnectorMaxClientNumber = 16;
+
   private boolean isSeperatedPipeHeartbeatEnabled = true;
   private int pipeHeartbeatIntervalSecondsForCollectingPipeMeta = 100;
   private long pipeMetaSyncerInitialSyncDelayMinutes = 3;
@@ -552,6 +557,40 @@ public class CommonConfig {
 
   public void setPipeConnectorReadFileBufferSize(int pipeConnectorReadFileBufferSize) {
     this.pipeConnectorReadFileBufferSize = pipeConnectorReadFileBufferSize;
+  }
+
+  public void setPipeAsyncConnectorRPCThriftCompressionEnabled(
+      boolean pipeAsyncConnectorRPCThriftCompressionEnabled) {
+    this.pipeAsyncConnectorRPCThriftCompressionEnabled =
+        pipeAsyncConnectorRPCThriftCompressionEnabled;
+  }
+
+  public boolean isPipeAsyncConnectorRPCThriftCompressionEnabled() {
+    return pipeAsyncConnectorRPCThriftCompressionEnabled;
+  }
+
+  public int getPipeAsyncConnectorSelectorNumber() {
+    return pipeAsyncConnectorSelectorNumber;
+  }
+
+  public void setPipeAsyncConnectorSelectorNumber(int pipeAsyncConnectorSelectorNumber) {
+    this.pipeAsyncConnectorSelectorNumber = pipeAsyncConnectorSelectorNumber;
+  }
+
+  public int getPipeAsyncConnectorCoreClientNumber() {
+    return pipeAsyncConnectorCoreClientNumber;
+  }
+
+  public void setPipeAsyncConnectorCoreClientNumber(int pipeAsyncConnectorCoreClientNumber) {
+    this.pipeAsyncConnectorCoreClientNumber = pipeAsyncConnectorCoreClientNumber;
+  }
+
+  public int getPipeAsyncConnectorMaxClientNumber() {
+    return pipeAsyncConnectorMaxClientNumber;
+  }
+
+  public void setPipeAsyncConnectorMaxClientNumber(int pipeAsyncConnectorMaxClientNumber) {
+    this.pipeAsyncConnectorMaxClientNumber = pipeAsyncConnectorMaxClientNumber;
   }
 
   public boolean isSeperatedPipeHeartbeatEnabled() {

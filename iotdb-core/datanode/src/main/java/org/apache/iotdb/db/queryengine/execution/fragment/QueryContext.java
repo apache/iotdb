@@ -95,7 +95,7 @@ public class QueryContext {
               fileModCache.get(modFile.getFilePath());
           if (allModifications == null) {
             allModifications = PatternTreeMapFactory.getModsPatternTreeMap();
-            for (Modification modification : modFile.getModifications()) {
+            for (Modification modification : modFile.getModificationsIter()) {
               allModifications.append(modification.getPath(), modification);
             }
             fileModCache.put(modFile.getFilePath(), allModifications);
