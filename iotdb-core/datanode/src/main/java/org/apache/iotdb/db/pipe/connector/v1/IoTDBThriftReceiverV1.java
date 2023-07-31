@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.receiver.IoTDBThriftReceiver;
 import org.apache.iotdb.db.pipe.connector.IoTDBThriftConnectorRequestVersion;
 import org.apache.iotdb.db.pipe.connector.v1.reponse.PipeTransferFilePieceResp;
+import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferBatchReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferHandshakeReq;
@@ -37,12 +38,15 @@ import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,6 +57,8 @@ import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
 
@@ -71,7 +77,8 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
 
   @Override
   public synchronized TPipeTransferResp receive(
-      TPipeTransferReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
+      TPipeTransferReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher)
+      throws IOException {
     final short rawRequestType = req.getType();
     if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
       switch (PipeRequestType.valueOf(rawRequestType)) {
@@ -83,6 +90,9 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
         case TRANSFER_TABLET:
           return handleTransferTablet(
               PipeTransferTabletReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
+        case TRANSFER_BATCH:
+          return handleTransferBatch(
+              PipeTransferBatchReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
         case TRANSFER_FILE_PIECE:
           return handleTransferFilePiece(PipeTransferFilePieceReq.fromTPipeTransferReq(req));
         case TRANSFER_FILE_SEAL:
@@ -179,6 +189,24 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
         statement.isEmpty()
             ? RpcUtils.SUCCESS_STATUS
             : executeStatement(statement, partitionFetcher, schemaFetcher));
+  }
+
+  private TPipeTransferResp handleTransferBatch(
+      PipeTransferBatchReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
+    Pair<InsertRowsStatement, InsertMultiTabletsStatement> statementPair =
+        req.constructStatementPair();
+    return new TPipeTransferResp(
+        RpcUtils.squashResponseStatusList(
+            Stream.of(
+                    statementPair.getLeft().isEmpty()
+                        ? RpcUtils.SUCCESS_STATUS
+                        : executeStatement(
+                            statementPair.getLeft(), partitionFetcher, schemaFetcher),
+                    statementPair.getRight().isEmpty()
+                        ? RpcUtils.SUCCESS_STATUS
+                        : executeStatement(
+                            statementPair.getRight(), partitionFetcher, schemaFetcher))
+                .collect(Collectors.toList())));
   }
 
   private TPipeTransferResp handleTransferFilePiece(PipeTransferFilePieceReq req) {

@@ -76,7 +76,14 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
 
   private IoTDBThriftConnectorClient client;
 
+  // For batch transfer
+  private final int MAX_DELAY_IN_MS = PipeConfig.getInstance().getPipeConnectorMaxDelay() * 1000;
+  private final long BATCH_SIZE_IN_BYTES =
+      (long) PipeConfig.getInstance().getPipeConnectorBatchSize() * 1024 * 1024;
+
   private List<TPipeTransferReq> tPipeTransferReqs;
+  private long lastSendTime = 0;
+  private long bufferSize = 0;
 
   public IoTDBThriftConnectorV1() {
     // Do nothing
@@ -155,15 +162,22 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
 
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
+    // Init last send time to record the first element
+    if (lastSendTime == 0) {
+      lastSendTime = System.currentTimeMillis();
+    }
     // PipeProcessor can change the type of TabletInsertionEvent
     try {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         PipeInsertNodeTabletInsertionEvent event =
             (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
         if (CONNECTOR_IOTDB_MODE_BATCH.equals(mode)) {
-          tPipeTransferReqs.add(
-              PipeTransferInsertNodeReq.toTPipeTransferReq(event.getInsertNode()));
-          if (tPipeTransferReqs.size() == 10) {
+          PipeTransferInsertNodeReq insertNodeReq =
+              PipeTransferInsertNodeReq.toTPipeTransferReq(event.getInsertNode());
+          tPipeTransferReqs.add(insertNodeReq);
+          bufferSize += insertNodeReq.body.position();
+          if (bufferSize >= BATCH_SIZE_IN_BYTES
+              || System.currentTimeMillis() - lastSendTime >= MAX_DELAY_IN_MS) {
             doTransferInBatch();
           }
         } else {
@@ -171,10 +185,13 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
         }
       } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
         PipeRawTabletInsertionEvent event = (PipeRawTabletInsertionEvent) tabletInsertionEvent;
-        if ("batch".equals(mode)) {
-          tPipeTransferReqs.add(
-              PipeTransferTabletReq.toTPipeTransferReq(event.convertToTablet(), event.isAligned()));
-          if (tPipeTransferReqs.size() == 10) {
+        if (CONNECTOR_IOTDB_MODE_BATCH.equals(mode)) {
+          PipeTransferTabletReq tabletReq =
+              PipeTransferTabletReq.toTPipeTransferReq(event.convertToTablet(), event.isAligned());
+          tPipeTransferReqs.add(tabletReq);
+          bufferSize += tabletReq.body.position();
+          if (bufferSize >= BATCH_SIZE_IN_BYTES
+              || System.currentTimeMillis() - lastSendTime >= MAX_DELAY_IN_MS) {
             doTransferInBatch();
           }
         } else {
@@ -224,13 +241,15 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
 
   private void doTransferInBatch() throws IOException, TException {
     final TPipeTransferResp resp =
-        client.pipeTransfer(PipeTransferBatchReq.toTPipeTransferBatchReq(tPipeTransferReqs));
+        client.pipeTransfer(PipeTransferBatchReq.toTPipeTransferReq(tPipeTransferReqs));
 
     if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
           String.format("Transfer in batch mode occurs error, result status %s", resp.status));
     }
     tPipeTransferReqs.clear();
+    bufferSize = 0;
+    lastSendTime = System.currentTimeMillis();
   }
 
   private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)

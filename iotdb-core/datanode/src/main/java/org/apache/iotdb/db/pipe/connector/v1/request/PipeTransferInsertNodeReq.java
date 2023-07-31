@@ -34,7 +34,7 @@ import java.util.Objects;
 
 public class PipeTransferInsertNodeReq extends TPipeTransferReq {
 
-  private InsertNode insertNode;
+  private transient InsertNode insertNode;
 
   private PipeTransferInsertNodeReq() {
     // Do nothing

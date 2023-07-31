@@ -46,13 +46,22 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Objects;
 
 public class PipeTransferTabletReq extends TPipeTransferReq {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferTabletReq.class);
 
-  private Tablet tablet;
+  private transient Tablet tablet;
   private boolean isAligned;
+
+  public Tablet getTablet() {
+    return tablet;
+  }
+
+  public boolean getIsAligned() {
+    return isAligned;
+  }
 
   public static PipeTransferTabletReq toTPipeTransferReq(Tablet tablet, boolean isAligned)
       throws IOException {
@@ -235,5 +244,26 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
       LOGGER.warn(String.format("Generate Statement from tablet %s error.", tablet), e);
       return null;
     }
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    PipeTransferTabletReq that = (PipeTransferTabletReq) obj;
+    return tablet.equals(that.tablet)
+        && isAligned == that.isAligned
+        && version == that.version
+        && type == that.type
+        && body.equals(that.body);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(tablet, isAligned, version, type, body);
   }
 }

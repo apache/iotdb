@@ -25,12 +25,15 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
+import java.io.IOException;
+
 public interface IoTDBThriftReceiver {
 
   IoTDBThriftConnectorRequestVersion getVersion();
 
   TPipeTransferResp receive(
-      TPipeTransferReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher);
+      TPipeTransferReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher)
+      throws IOException;
 
   void handleExit();
 }
