@@ -33,44 +33,47 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Optional;
 
-public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTransferResp>
-    implements AsyncMethodCallback<E> {
+public class PipeTransferTabletBatchInsertionEventHandler
+    implements AsyncMethodCallback<TPipeTransferResp> {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeTransferTabletInsertionEventHandler.class);
+      LoggerFactory.getLogger(PipeTransferTabletBatchInsertionEventHandler.class);
 
-  private final long requestCommitId;
-  private final Event event;
+  private final List<Long> requestCommitIds;
+  private final List<Event> events;
   private final TPipeTransferReq req;
 
   private final IoTDBThriftConnectorV2 connector;
 
-  protected PipeTransferTabletInsertionEventHandler(
-      long requestCommitId, Event event, TPipeTransferReq req, IoTDBThriftConnectorV2 connector) {
-    this.requestCommitId = requestCommitId;
-    this.event = event;
+  public PipeTransferTabletBatchInsertionEventHandler(
+      List<Long> requestCommitIds,
+      List<Event> events,
+      TPipeTransferReq req,
+      IoTDBThriftConnectorV2 connector) {
+    this.requestCommitIds = requestCommitIds;
+    this.events = events;
     this.req = req;
     this.connector = connector;
 
-    Optional.ofNullable(event)
-        .ifPresent(
-            e -> {
-              if (e instanceof EnrichedEvent) {
-                ((EnrichedEvent) e)
-                    .increaseReferenceCount(
-                        PipeTransferTabletInsertionEventHandler.class.getName());
-              }
-            });
+    for (Event event : events) {
+      Optional.ofNullable(event)
+          .ifPresent(
+              e -> {
+                if (e instanceof EnrichedEvent) {
+                  ((EnrichedEvent) e)
+                      .increaseReferenceCount(
+                          PipeTransferTabletInsertionEventHandler.class.getName());
+                }
+              });
+    }
   }
 
   public void transfer(AsyncPipeDataTransferServiceClient client) throws TException {
-    doTransfer(client, req);
+    client.pipeTransfer(req, this);
   }
-
-  protected abstract void doTransfer(
-      AsyncPipeDataTransferServiceClient client, TPipeTransferReq req) throws TException;
 
   @Override
   public void onComplete(TPipeTransferResp response) {
@@ -81,8 +84,11 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
     }
 
     if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      connector.commit(
-          requestCommitId, event instanceof EnrichedEvent ? (EnrichedEvent) event : null);
+      for (int i = 0; i < events.size(); ++i) {
+        connector.commit(
+            requestCommitIds.get(i),
+            events.get(i) instanceof EnrichedEvent ? (EnrichedEvent) events.get(i) : null);
+      }
     } else {
       onError(new PipeException(response.getStatus().getMessage()));
     }
@@ -92,10 +98,11 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
   public void onError(Exception exception) {
     LOGGER.warn(
         "Failed to transfer TabletInsertionEvent {} (requestCommitId={}).",
-        event,
-        requestCommitId,
+        events,
+        requestCommitIds,
         exception);
-
-    connector.addFailureEventToRetryQueue(requestCommitId, event);
+    for (int i = 0; i < events.size(); ++i) {
+      connector.addFailureEventToRetryQueue(requestCommitIds.get(i), events.get(i));
+    }
   }
 }

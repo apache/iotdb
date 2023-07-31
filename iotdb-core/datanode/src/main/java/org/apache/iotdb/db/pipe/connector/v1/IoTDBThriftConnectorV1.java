@@ -162,16 +162,16 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
 
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
-    // Init last send time to record the first element
-    if (lastSendTime == 0) {
-      lastSendTime = System.currentTimeMillis();
-    }
     // PipeProcessor can change the type of TabletInsertionEvent
     try {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         PipeInsertNodeTabletInsertionEvent event =
             (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
         if (CONNECTOR_IOTDB_MODE_BATCH.equals(mode)) {
+          // Init last send time to record the first element
+          if (lastSendTime == 0) {
+            lastSendTime = System.currentTimeMillis();
+          }
           PipeTransferInsertNodeReq insertNodeReq =
               PipeTransferInsertNodeReq.toTPipeTransferReq(event.getInsertNode());
           tPipeTransferReqs.add(insertNodeReq);
@@ -186,6 +186,10 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
       } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
         PipeRawTabletInsertionEvent event = (PipeRawTabletInsertionEvent) tabletInsertionEvent;
         if (CONNECTOR_IOTDB_MODE_BATCH.equals(mode)) {
+          // Init last send time to record the first element
+          if (lastSendTime == 0) {
+            lastSendTime = System.currentTimeMillis();
+          }
           PipeTransferTabletReq tabletReq =
               PipeTransferTabletReq.toTPipeTransferReq(event.convertToTablet(), event.isAligned());
           tPipeTransferReqs.add(tabletReq);

@@ -27,12 +27,15 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.connector.v1.IoTDBThriftConnectorV1;
+import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferBatchReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferTabletReq;
 import org.apache.iotdb.db.pipe.connector.v2.handler.PipeTransferInsertNodeTabletInsertionEventHandler;
 import org.apache.iotdb.db.pipe.connector.v2.handler.PipeTransferRawTabletInsertionEventHandler;
+import org.apache.iotdb.db.pipe.connector.v2.handler.PipeTransferTabletBatchInsertionEventHandler;
 import org.apache.iotdb.db.pipe.connector.v2.handler.PipeTransferTsFileInsertionEventHandler;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -48,6 +51,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -59,6 +63,8 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
@@ -71,6 +77,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_MODE_BATCH;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_MODE_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_MODE_SINGLE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_NODE_URLS_KEY;
 
 public class IoTDBThriftConnectorV2 implements PipeConnector {
@@ -100,6 +109,19 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
       new PriorityQueue<>(Comparator.comparing(o -> o.left));
 
   private List<TEndPoint> nodeUrls;
+  private String mode;
+
+  // For batch transfer
+  private final int MAX_DELAY_IN_MS = PipeConfig.getInstance().getPipeConnectorMaxDelay() * 1000;
+  private final long BATCH_SIZE_IN_BYTES =
+      (long) PipeConfig.getInstance().getPipeConnectorBatchSize() * 1024 * 1024;
+
+  private final AtomicLong batchCommitId = new AtomicLong(0);
+  private List<TPipeTransferReq> tPipeTransferReqs;
+  private List<Long> requestCommitIds;
+  private List<Event> events;
+  private final AtomicLong lastSendTime = new AtomicLong(0);
+  private final AtomicLong bufferSize = new AtomicLong(0);
 
   public IoTDBThriftConnectorV2() {
     if (ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get() == null) {
@@ -117,8 +139,14 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
-    // node urls string should be like "localhost:6667,localhost:6668"
-    validator.validateRequiredAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY);
+    // Node urls string should be like "localhost:6667,localhost:6668"
+    validator
+        .validateRequiredAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY)
+        .validateAttributeValueRange(
+            CONNECTOR_IOTDB_MODE_KEY,
+            true,
+            CONNECTOR_IOTDB_MODE_SINGLE,
+            CONNECTOR_IOTDB_MODE_BATCH);
   }
 
   @Override
@@ -132,10 +160,18 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
     } else {
       LOGGER.info("Node urls: {}.", nodeUrls);
     }
+
+    this.mode = parameters.getString(CONNECTOR_IOTDB_MODE_KEY);
+
+    if (CONNECTOR_IOTDB_MODE_BATCH.equals(this.mode)) {
+      tPipeTransferReqs = new ArrayList<>();
+      requestCommitIds = new ArrayList<>();
+      events = new ArrayList<>();
+    }
   }
 
   @Override
-  // synchronized to avoid close connector when transfer event
+  // Synchronized to avoid close connector when transfer event
   public synchronized void handshake() throws Exception {
     if (retryConnector.get() != null) {
       try {
@@ -186,7 +222,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
 
   @Override
   public void heartbeat() {
-    // do nothing
+    // Do nothing
   }
 
   @Override
@@ -210,11 +246,29 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
       final PipeTransferInsertNodeReq pipeTransferInsertNodeReq =
           PipeTransferInsertNodeReq.toTPipeTransferReq(
               pipeInsertNodeTabletInsertionEvent.getInsertNode());
-      final PipeTransferInsertNodeTabletInsertionEventHandler pipeTransferInsertNodeReqHandler =
-          new PipeTransferInsertNodeTabletInsertionEventHandler(
-              requestCommitId, pipeInsertNodeTabletInsertionEvent, pipeTransferInsertNodeReq, this);
+      if (CONNECTOR_IOTDB_MODE_BATCH.equals(mode)) {
+        // Init last send time to record the first element
+        if (lastSendTime.get() == 0) {
+          lastSendTime.set(System.currentTimeMillis());
+        }
+        tPipeTransferReqs.add(pipeTransferInsertNodeReq);
+        requestCommitIds.add(requestCommitId);
+        events.add(pipeInsertNodeTabletInsertionEvent);
+        bufferSize.addAndGet(pipeTransferInsertNodeReq.body.position());
+        if (bufferSize.get() >= BATCH_SIZE_IN_BYTES
+            || System.currentTimeMillis() - lastSendTime.get() >= MAX_DELAY_IN_MS) {
+          transferInBatch();
+        }
+      } else {
+        final PipeTransferInsertNodeTabletInsertionEventHandler pipeTransferInsertNodeReqHandler =
+            new PipeTransferInsertNodeTabletInsertionEventHandler(
+                requestCommitId,
+                pipeInsertNodeTabletInsertionEvent,
+                pipeTransferInsertNodeReq,
+                this);
 
-      transfer(requestCommitId, pipeTransferInsertNodeReqHandler);
+        transfer(requestCommitId, pipeTransferInsertNodeReqHandler);
+      }
     } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
       final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
           (PipeRawTabletInsertionEvent) tabletInsertionEvent;
@@ -222,12 +276,45 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
           PipeTransferTabletReq.toTPipeTransferReq(
               pipeRawTabletInsertionEvent.convertToTablet(),
               pipeRawTabletInsertionEvent.isAligned());
-      final PipeTransferRawTabletInsertionEventHandler pipeTransferTabletReqHandler =
-          new PipeTransferRawTabletInsertionEventHandler(
-              requestCommitId, pipeRawTabletInsertionEvent, pipeTransferTabletReq, this);
+      if (CONNECTOR_IOTDB_MODE_BATCH.equals(mode)) {
+        // Init last send time to record the first element
+        if (lastSendTime.get() == 0) {
+          lastSendTime.set(System.currentTimeMillis());
+        }
+        tPipeTransferReqs.add(pipeTransferTabletReq);
+        requestCommitIds.add(requestCommitId);
+        events.add(pipeRawTabletInsertionEvent);
+        bufferSize.addAndGet(pipeTransferTabletReq.body.position());
+        if (bufferSize.get() >= BATCH_SIZE_IN_BYTES
+            || System.currentTimeMillis() - lastSendTime.get() >= MAX_DELAY_IN_MS) {
+          transferInBatch();
+        }
+      } else {
+        final PipeTransferRawTabletInsertionEventHandler pipeTransferTabletReqHandler =
+            new PipeTransferRawTabletInsertionEventHandler(
+                requestCommitId, pipeRawTabletInsertionEvent, pipeTransferTabletReq, this);
 
-      transfer(requestCommitId, pipeTransferTabletReqHandler);
+        transfer(requestCommitId, pipeTransferTabletReqHandler);
+      }
     }
+  }
+
+  private void transferInBatch() throws IOException {
+
+    final PipeTransferTabletBatchInsertionEventHandler
+        pipeTransferTabletBatchInsertionEventHandler =
+            new PipeTransferTabletBatchInsertionEventHandler(
+                requestCommitIds,
+                events,
+                PipeTransferBatchReq.toTPipeTransferReq(tPipeTransferReqs),
+                this);
+    transfer(pipeTransferTabletBatchInsertionEventHandler);
+
+    tPipeTransferReqs.clear();
+    requestCommitIds.clear();
+    events.clear();
+    bufferSize.set(0);
+    lastSendTime.set(System.currentTimeMillis());
   }
 
   private void transfer(
@@ -275,6 +362,32 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
       }
     } catch (Exception ex) {
       pipeTransferTabletReqHandler.onError(ex);
+      LOGGER.warn(
+          String.format(
+              FAILED_TO_BORROW_CLIENT_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
+          ex);
+    }
+  }
+
+  private void transfer(
+      PipeTransferTabletBatchInsertionEventHandler pipeTransferTabletBatchInsertionEventHandler) {
+    final TEndPoint targetNodeUrl =
+        nodeUrls.get((int) (batchCommitId.getAndIncrement() % nodeUrls.size()));
+
+    try {
+      final AsyncPipeDataTransferServiceClient client = borrowClient(targetNodeUrl);
+
+      try {
+        pipeTransferTabletBatchInsertionEventHandler.transfer(client);
+      } catch (TException e) {
+        LOGGER.warn(
+            String.format(
+                "Transfer insert node to receiver %s:%s error, retrying...",
+                targetNodeUrl.getIp(), targetNodeUrl.getPort()),
+            e);
+      }
+    } catch (Exception ex) {
+      pipeTransferTabletBatchInsertionEventHandler.onError(ex);
       LOGGER.warn(
           String.format(
               FAILED_TO_BORROW_CLIENT_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
