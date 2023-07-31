@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 
+import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
@@ -63,14 +64,15 @@ public class ShowClusterTask implements IConfigTask {
       String nodeStatus,
       String hostAddress,
       int port,
-      String buildInfo) {
+      TNodeVersionInfo versionInfo) {
     builder.getTimeColumnBuilder().writeLong(0L);
     builder.getColumnBuilder(0).writeInt(nodeId);
     builder.getColumnBuilder(1).writeBinary(new Binary(nodeType));
     builder.getColumnBuilder(2).writeBinary(new Binary(nodeStatus));
     builder.getColumnBuilder(3).writeBinary(new Binary(hostAddress));
     builder.getColumnBuilder(4).writeInt(port);
-    builder.getColumnBuilder(5).writeBinary(new Binary(buildInfo));
+    builder.getColumnBuilder(5).writeBinary(new Binary(versionInfo.getVersion()));
+    builder.getColumnBuilder(6).writeBinary(new Binary(versionInfo.getBuildInfo()));
     builder.declarePosition();
   }
 
@@ -93,7 +95,7 @@ public class ShowClusterTask implements IConfigTask {
                     clusterNodeInfos.getNodeStatus().get(e.getConfigNodeId()),
                     e.getInternalEndPoint().getIp(),
                     e.getInternalEndPoint().getPort(),
-                    clusterNodeInfos.getNodeBuildInfo().get(e.getConfigNodeId())));
+                    clusterNodeInfos.getNodeVersionInfo().get(e.getConfigNodeId())));
 
     clusterNodeInfos
         .getDataNodeList()
@@ -106,7 +108,7 @@ public class ShowClusterTask implements IConfigTask {
                     clusterNodeInfos.getNodeStatus().get(e.getDataNodeId()),
                     e.getInternalEndPoint().getIp(),
                     e.getInternalEndPoint().getPort(),
-                    clusterNodeInfos.getNodeBuildInfo().get(e.getDataNodeId())));
+                    clusterNodeInfos.getNodeVersionInfo().get(e.getDataNodeId())));
 
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowClusterHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));

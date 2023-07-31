@@ -330,6 +330,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(STATUS, TSDataType.TEXT),
           new ColumnHeader(INTERNAL_ADDRESS, TSDataType.TEXT),
           new ColumnHeader(INTERNAL_PORT, TSDataType.INT32),
+          new ColumnHeader(VERSION, TSDataType.TEXT),
           new ColumnHeader(BUILD_INFO, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showClusterDetailsColumnHeaders =
@@ -344,7 +345,9 @@ public class ColumnHeaderConstant {
           new ColumnHeader(RPC_PORT, TSDataType.TEXT),
           new ColumnHeader(MPP_PORT, TSDataType.TEXT),
           new ColumnHeader(SCHEMA_CONSENSUS_PORT, TSDataType.TEXT),
-          new ColumnHeader(DATA_CONSENSUS_PORT, TSDataType.TEXT));
+          new ColumnHeader(DATA_CONSENSUS_PORT, TSDataType.TEXT),
+          new ColumnHeader(VERSION, TSDataType.TEXT),
+          new ColumnHeader(BUILD_INFO, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showVariablesColumnHeaders =
       ImmutableList.of(

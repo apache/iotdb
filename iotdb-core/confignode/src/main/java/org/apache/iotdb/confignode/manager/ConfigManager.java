@@ -144,6 +144,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
@@ -444,9 +445,9 @@ public class ConfigManager implements IManager {
               .sorted(Comparator.comparingInt(TDataNodeLocation::getDataNodeId))
               .collect(Collectors.toList());
       Map<Integer, String> nodeStatus = getLoadManager().getNodeStatusWithReason();
-      Map<Integer, String> nodeBuildInfo = getNodeManager().getNodeBuildInfo();
+      Map<Integer, TNodeVersionInfo> nodeVersionInfo = getNodeManager().getNodeVersionInfo();
       return new TShowClusterResp(
-          status, configNodeLocations, dataNodeInfoLocations, nodeStatus, nodeBuildInfo);
+          status, configNodeLocations, dataNodeInfoLocations, nodeStatus, nodeVersionInfo);
     } else {
       return new TShowClusterResp(
           status, new ArrayList<>(), new ArrayList<>(), new HashMap<>(), new HashMap<>());
