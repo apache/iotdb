@@ -166,6 +166,8 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
         versionInfo =
             new TNodeVersionInfo(
                 ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
+      } else {
+        versionInfo = new TNodeVersionInfo("Unknown", "Unknown");
       }
     } catch (ThriftSerDeException e) {
       LOG.error("Error in deserialize AddConfigNodeProcedure", e);
