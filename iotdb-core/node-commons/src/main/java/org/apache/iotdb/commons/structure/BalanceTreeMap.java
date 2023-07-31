@@ -26,14 +26,21 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.TreeMap;
 
+/**
+ * This class is used to store key-value pairs. It supports the following operations: 1. Put a
+ * key-value pair. 2. Get key with minimum value.
+ *
+ * @param <K> The type of Key
+ * @param <V> The type of Value, should be Comparable
+ */
 public class BalanceTreeMap<K, V extends Comparable<V>> {
 
   private final HashMap<K, V> keyValueMap;
-  private final TreeMap<V, Set<K>> valueKeyMap;
+  private final TreeMap<V, Set<K>> valueKeysMap;
 
   public BalanceTreeMap() {
     this.keyValueMap = new HashMap<>();
-    this.valueKeyMap = new TreeMap<>();
+    this.valueKeysMap = new TreeMap<>();
   }
 
   /**
@@ -43,19 +50,18 @@ public class BalanceTreeMap<K, V extends Comparable<V>> {
    * @param value Value
    */
   public void put(K key, V value) {
-    V oldValue = keyValueMap.getOrDefault(key, null);
-
     // Update keyValueMap
-    keyValueMap.put(key, value);
+    V oldValue = keyValueMap.put(key, value);
 
     // Update valueKeyMap
     if (oldValue != null) {
-      valueKeyMap.get(oldValue).remove(key);
-      if (valueKeyMap.get(oldValue).isEmpty()) {
-        valueKeyMap.remove(oldValue);
+      Set<K> keysSet = valueKeysMap.get(oldValue);
+      keysSet.remove(key);
+      if (keysSet.isEmpty()) {
+        valueKeysMap.remove(oldValue);
       }
     }
-    valueKeyMap.computeIfAbsent(value, empty -> new HashSet<>()).add(key);
+    valueKeysMap.computeIfAbsent(value, empty -> new HashSet<>()).add(key);
   }
 
   /**
@@ -64,7 +70,7 @@ public class BalanceTreeMap<K, V extends Comparable<V>> {
    * @return Key with minimum value
    */
   public K getKeyWithMinValue() {
-    return valueKeyMap.firstEntry().getValue().iterator().next();
+    return valueKeysMap.firstEntry().getValue().iterator().next();
   }
 
   public V get(K key) {
@@ -81,18 +87,18 @@ public class BalanceTreeMap<K, V extends Comparable<V>> {
 
   @TestOnly
   public void remove(K key) {
-    V value = keyValueMap.getOrDefault(key, null);
+    V value = keyValueMap.remove(key);
     if (value != null) {
-      keyValueMap.remove(key);
-      valueKeyMap.get(value).remove(key);
-      if (valueKeyMap.get(value).isEmpty()) {
-        valueKeyMap.remove(value);
+      Set<K> keysSet = valueKeysMap.get(value);
+      keysSet.remove(key);
+      if (keysSet.isEmpty()) {
+        valueKeysMap.remove(value);
       }
     }
   }
 
   @TestOnly
   public boolean isEmpty() {
-    return keyValueMap.isEmpty() && valueKeyMap.isEmpty();
+    return keyValueMap.isEmpty() && valueKeysMap.isEmpty();
   }
 }

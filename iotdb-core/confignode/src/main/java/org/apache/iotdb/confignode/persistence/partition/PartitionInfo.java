@@ -79,7 +79,6 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -832,7 +831,7 @@ public class PartitionInfo implements SnapshotProcessor {
     if (isDatabaseExisted(database)) {
       return databasePartitionTables.get(database).getLastDataAllotTable();
     }
-    return new HashMap<>();
+    return Collections.emptyMap();
   }
 
   @Override
