@@ -115,8 +115,8 @@ public class DataPartitionPolicyTable {
 
   /** Only use this interface when init PartitionBalancer. */
   public void setDataAllotMap(Map<TSeriesPartitionSlot, TConsensusGroupId> dataAllotMap) {
-    dataAllotTableLock.lock();
     try {
+      dataAllotTableLock.lock();
       int mu = SERIES_SLOT_NUM / seriesPartitionSlotCounter.size();
       dataAllotMap.forEach(
           (seriesPartitionSlot, regionGroupId) -> {

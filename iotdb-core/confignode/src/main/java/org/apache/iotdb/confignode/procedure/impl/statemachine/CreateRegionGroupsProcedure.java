@@ -275,7 +275,9 @@ public class CreateRegionGroupsProcedure
             ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(byteBuffer);
         failedRegionReplicaSets.put(groupId, replica);
       }
-      persistPlan.deserializeForProcedure(byteBuffer);
+      if (byteBuffer.hasRemaining()) {
+        persistPlan.deserializeForProcedure(byteBuffer);
+      }
     } catch (Exception e) {
       LOGGER.error("Deserialize meets error in CreateRegionGroupsProcedure", e);
       throw new RuntimeException(e);
