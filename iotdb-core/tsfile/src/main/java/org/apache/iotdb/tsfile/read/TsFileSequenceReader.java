@@ -354,17 +354,25 @@ public class TsFileSequenceReader implements AutoCloseable {
     return deviceMetadata;
   }
 
+  /** @deprecated Use {@link #readTimeseriesMetadata(String, String, boolean)} instead. */
+  @Deprecated
+  @SuppressWarnings("java:S1133") // suppress warn of deprecation
   public TimeseriesMetadata readTimeseriesMetadata(Path path, boolean ignoreNotExists)
       throws IOException {
+    return readTimeseriesMetadata(path.getDevice(), path.getMeasurement(), ignoreNotExists);
+  }
+
+  public TimeseriesMetadata readTimeseriesMetadata(
+      String device, String measurement, boolean ignoreNotExists) throws IOException {
     readFileMetadata();
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
     Pair<MetadataIndexEntry, Long> metadataIndexPair =
-        getMetadataAndEndOffset(deviceMetadataIndexNode, path.getDevice(), true, true);
+        getMetadataAndEndOffset(deviceMetadataIndexNode, device, true, true);
     if (metadataIndexPair == null) {
       if (ignoreNotExists) {
         return null;
       }
-      throw new IOException("Device {" + path.getDevice() + "} is not in tsFileMetaData");
+      throw new IOException("Device {" + device + "} is not in tsFileMetaData");
     }
     ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
     MetadataIndexNode metadataIndexNode = deviceMetadataIndexNode;
@@ -375,8 +383,7 @@ public class TsFileSequenceReader implements AutoCloseable {
         logger.error(METADATA_INDEX_NODE_DESERIALIZE_ERROR, file);
         throw e;
       }
-      metadataIndexPair =
-          getMetadataAndEndOffset(metadataIndexNode, path.getMeasurement(), false, false);
+      metadataIndexPair = getMetadataAndEndOffset(metadataIndexNode, measurement, false, false);
     }
     if (metadataIndexPair == null) {
       return null;
@@ -393,8 +400,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       }
     }
     // return null if path does not exist in the TsFile
-    int searchResult =
-        binarySearchInTimeseriesMetadataList(timeseriesMetadataList, path.getMeasurement());
+    int searchResult = binarySearchInTimeseriesMetadataList(timeseriesMetadataList, measurement);
     return searchResult >= 0 ? timeseriesMetadataList.get(searchResult) : null;
   }
 
@@ -456,9 +462,10 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /* Find the leaf node that contains path, return all the sensors in that leaf node which are also in allSensors set */
-  public List<TimeseriesMetadata> readTimeseriesMetadata(Path path, Set<String> allSensors)
-      throws IOException {
-    Pair<MetadataIndexEntry, Long> metadataIndexPair = getLeafMetadataIndexPair(path);
+  public List<TimeseriesMetadata> readTimeseriesMetadata(
+      String device, String measurement, Set<String> allSensors) throws IOException {
+    Pair<MetadataIndexEntry, Long> metadataIndexPair =
+        getLeafMetadataIndexPair(device, measurement);
     if (metadataIndexPair == null) {
       return Collections.emptyList();
     }
@@ -482,11 +489,12 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /* Get leaf MetadataIndexPair which contains path */
-  private Pair<MetadataIndexEntry, Long> getLeafMetadataIndexPair(Path path) throws IOException {
+  private Pair<MetadataIndexEntry, Long> getLeafMetadataIndexPair(String device, String measurement)
+      throws IOException {
     readFileMetadata();
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
     Pair<MetadataIndexEntry, Long> metadataIndexPair =
-        getMetadataAndEndOffset(deviceMetadataIndexNode, path.getDevice(), true, true);
+        getMetadataAndEndOffset(deviceMetadataIndexNode, device, true, true);
     if (metadataIndexPair == null) {
       return null;
     }
@@ -499,8 +507,7 @@ public class TsFileSequenceReader implements AutoCloseable {
         logger.error(METADATA_INDEX_NODE_DESERIALIZE_ERROR, file);
         throw e;
       }
-      metadataIndexPair =
-          getMetadataAndEndOffset(metadataIndexNode, path.getMeasurement(), false, false);
+      metadataIndexPair = getMetadataAndEndOffset(metadataIndexNode, measurement, false, false);
     }
     return metadataIndexPair;
   }
@@ -1912,7 +1919,8 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public List<ChunkMetadata> getChunkMetadataList(Path path, boolean ignoreNotExists)
       throws IOException {
-    TimeseriesMetadata timeseriesMetaData = readTimeseriesMetadata(path, ignoreNotExists);
+    TimeseriesMetadata timeseriesMetaData =
+        readTimeseriesMetadata(path.getDevice(), path.getMeasurement(), ignoreNotExists);
     if (timeseriesMetaData == null) {
       return Collections.emptyList();
     }

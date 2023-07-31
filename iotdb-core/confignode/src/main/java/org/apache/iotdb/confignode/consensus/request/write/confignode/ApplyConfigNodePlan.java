@@ -50,7 +50,6 @@ public class ApplyConfigNodePlan extends ConfigPhysicalPlan {
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(getType().getPlanType(), stream);
-
     ThriftConfigNodeSerDeUtils.serializeTConfigNodeLocation(configNodeLocation, stream);
   }
 

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.modification;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover.CompactionRecoverManager;
+import org.apache.iotdb.db.storageengine.dataregion.modification.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.junit.Assert;
@@ -72,31 +73,23 @@ public class ModificationFileTest {
   }
 
   @Test
-  public void testAbort() {
+  public void writeVerifyTest() {
     String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("mod.temp");
     Modification[] modifications =
         new Modification[] {
           new Deletion(new PartialPath(new String[] {"d1", "s1"}), 1, 1),
-          new Deletion(new PartialPath(new String[] {"d1", "s2"}), 2, 2),
-          new Deletion(new PartialPath(new String[] {"d1", "s3"}), 3, 3, 4),
-          new Deletion(new PartialPath(new String[] {"d1", "s4"}), 4, 4, 5),
+          new Deletion(new PartialPath(new String[] {"d1", "s2"}), 2, 2)
         };
     try (ModificationFile mFile = new ModificationFile(tempFileName)) {
-      for (int i = 0; i < 2; i++) {
-        mFile.write(modifications[i]);
+      mFile.write(modifications[0]);
+      try (LocalTextModificationAccessor accessor =
+          new LocalTextModificationAccessor(tempFileName)) {
+        accessor.writeInComplete(modifications[1]);
       }
+      mFile.write(modifications[1]);
       List<Modification> modificationList = (List<Modification>) mFile.getModifications();
+      assertEquals(2, modificationList.size());
       for (int i = 0; i < 2; i++) {
-        assertEquals(modifications[i], modificationList.get(i));
-      }
-
-      for (int i = 2; i < 4; i++) {
-        mFile.write(modifications[i]);
-      }
-      modificationList = (List<Modification>) mFile.getModifications();
-      mFile.abort();
-
-      for (int i = 0; i < 3; i++) {
         assertEquals(modifications[i], modificationList.get(i));
       }
     } catch (IOException e) {

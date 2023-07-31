@@ -109,7 +109,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   @Override
   public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
     try {
-      tsFile = PipeResourceManager.file().increaseFileReference(tsFile, true);
+      tsFile = PipeResourceManager.tsfile().increaseFileReference(tsFile, true);
       return true;
     } catch (Exception e) {
       LOGGER.warn(
@@ -124,7 +124,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   @Override
   public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
     try {
-      PipeResourceManager.file().decreaseFileReference(tsFile);
+      PipeResourceManager.tsfile().decreaseFileReference(tsFile);
       return true;
     } catch (Exception e) {
       LOGGER.warn(
