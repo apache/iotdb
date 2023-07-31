@@ -92,7 +92,6 @@
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-        <maven.compiler.release>8</maven.compiler.release>
         <maven.assembly.version>3.1.0</maven.assembly.version>
         <scala.library.version>2.12</scala.library.version>
         <scala.version>2.12.10</scala.version>
@@ -1203,6 +1202,15 @@
                 <thrift.executable>Release/thrift.exe</thrift.executable>
             </properties>
         </profile>
+        <profile>
+            <id>.java-9-and-above</id>
+            <activation>
+                <jdk>[9,)</jdk>
+            </activation>
+            <properties>
+                <maven.compiler.release>8</maven.compiler.release>
+            </properties>
+        </profile>
         <!-- Some APIs were removed in Java 11, so we need to add replacements -->
         <profile>
             <id>.java-11-and-above</id>
@@ -1211,7 +1219,7 @@
             </activation>
             <properties>
                 <!-- change to 1.15.0 will modify many codes (all are javadocs), we change it to 1.15.0
-                until: iotdb decides to do not support jdk8-->
+                    until: iotdb decides to do not support jdk8-->
                 <google.java.format.version>1.7</google.java.format.version>
             </properties>
             <dependencies>
