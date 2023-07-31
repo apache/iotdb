@@ -160,7 +160,7 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         PipeInsertNodeTabletInsertionEvent event =
             (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
-        if ("batch".equals(mode)) {
+        if (CONNECTOR_IOTDB_MODE_BATCH.equals(mode)) {
           tPipeTransferReqs.add(
               PipeTransferInsertNodeReq.toTPipeTransferReq(event.getInsertNode()));
           if (tPipeTransferReqs.size() == 10) {

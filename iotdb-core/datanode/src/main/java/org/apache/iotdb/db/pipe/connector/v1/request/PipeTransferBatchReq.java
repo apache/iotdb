@@ -1,8 +1,26 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.iotdb.db.pipe.connector.v1.request;
 
 import org.apache.iotdb.db.pipe.connector.IoTDBThriftConnectorRequestVersion;
 import org.apache.iotdb.db.pipe.connector.v1.PipeRequestType;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -11,12 +29,16 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 
 public class PipeTransferBatchReq extends TPipeTransferReq {
+
+  private InsertNode[] insertNodes = new InsertNode[1024];
+  private Tablet[] tablets;
+  private boolean[] isAlignedArray;
+
   private PipeTransferBatchReq() {
-    // do nothing
+    // Do nothing
   }
 
   public static PipeTransferBatchReq toTPipeTransferBatchReq(List<TPipeTransferReq> reqs)
@@ -28,6 +50,7 @@ public class PipeTransferBatchReq extends TPipeTransferReq {
     ReadWriteIOUtils.write(reqs.size(), stream);
 
     for (TPipeTransferReq tReq : reqs) {
+
       ReadWriteIOUtils.write(tReq.type, stream);
       stream.write(tReq.body.array());
       //      ReadWriteIOUtils.write(tReq.body, stream);
@@ -38,28 +61,5 @@ public class PipeTransferBatchReq extends TPipeTransferReq {
     req.body = ByteBuffer.wrap(stream.toByteArray());
 
     return req;
-  }
-
-  public static List<TPipeTransferReq> splitTPipeTransferReqs(TPipeTransferReq transferReq) {
-    ArrayList<TPipeTransferReq> tPipeTransferReqs = new ArrayList<>();
-
-    int batchSize = ReadWriteIOUtils.readInt(transferReq.body);
-    for (int i = 0; i < batchSize; i++) {
-      short type = ReadWriteIOUtils.readShort(transferReq.body);
-      int capacity = ReadWriteIOUtils.readInt(transferReq.body);
-      ByteBuffer body = ByteBuffer.wrap(ReadWriteIOUtils.readBytes(transferReq.body, capacity));
-
-      if (type == PipeRequestType.TRANSFER_INSERT_NODE.getType()) {
-        InsertNode insertNode = (InsertNode) PlanNodeType.deserialize(body);
-        PipeTransferInsertNodeReq insertNodeReq = new PipeTransferInsertNodeReq(insertNode, body);
-        tPipeTransferReqs.add(insertNodeReq);
-      } else {
-        Tablet tablet = Tablet.deserialize(body);
-        PipeTransferTabletReq tabletReq = new PipeTransferTabletReq(tablet, body);
-        tPipeTransferReqs.add(tabletReq);
-      }
-    }
-
-    return tPipeTransferReqs;
   }
 }
