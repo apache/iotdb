@@ -152,8 +152,8 @@ public class LoadManager {
     partitionBalancer.clearPartitionBalancer();
   }
 
-  public void clearPartitionBalancer() {
-    partitionBalancer.clearPartitionBalancer();
+  public void clearDataPartitionPolicyTable(String database) {
+    partitionBalancer.clearDataPartitionPolicyTable(database);
   }
 
   /**

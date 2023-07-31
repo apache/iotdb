@@ -45,6 +45,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
@@ -170,6 +171,7 @@ public class IoTDBPartitionInheritPolicyIT {
     counter.forEach((groupId, num) -> Assert.assertEquals(expectedPartitionNum2, num.intValue()));
 
     // Test DataPartition inherit policy
+    AtomicInteger inheritedSeriesSlotNum = new AtomicInteger(0);
     Map<TSeriesPartitionSlot, TConsensusGroupId> dataAllotTable2 = new ConcurrentHashMap<>();
     dataPartitionTableResp
         .getDataPartitionTable()
@@ -193,9 +195,12 @@ public class IoTDBPartitionInheritPolicyIT {
                 // The DataRegionGroup has been inherited
                 Assert.assertTrue(dataAllotTable1.containsKey(seriesPartitionSlot));
                 Assert.assertEquals(dataAllotTable1.get(seriesPartitionSlot), groupId);
+                inheritedSeriesSlotNum.incrementAndGet();
               }
               dataAllotTable2.put(seriesPartitionSlot, groupId);
             }));
+    // Exactly half of the SeriesSlots are inherited
+    Assert.assertEquals(testSeriesSlotNum / 2, inheritedSeriesSlotNum.get());
 
     // Test3: historical DataPartitions will inherit successor
     Random random = new Random();

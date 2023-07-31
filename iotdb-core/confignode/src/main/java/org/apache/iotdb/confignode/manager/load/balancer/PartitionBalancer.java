@@ -40,6 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -55,11 +56,11 @@ public class PartitionBalancer {
   private final IManager configManager;
 
   // Map<DatabaseName, DataPartitionPolicyTable>
-  private final Map<String, DataPartitionPolicyTable> dataAllotTableMap;
+  private final Map<String, DataPartitionPolicyTable> dataPartitionPolicyTableMap;
 
   public PartitionBalancer(IManager configManager) {
     this.configManager = configManager;
-    this.dataAllotTableMap = new ConcurrentHashMap<>();
+    this.dataPartitionPolicyTableMap = new ConcurrentHashMap<>();
   }
 
   /**
@@ -71,7 +72,7 @@ public class PartitionBalancer {
   public Map<String, SchemaPartitionTable> allocateSchemaPartition(
       Map<String, List<TSeriesPartitionSlot>> unassignedSchemaPartitionSlotsMap)
       throws NoAvailableRegionGroupException {
-    Map<String, SchemaPartitionTable> result = new ConcurrentHashMap<>();
+    Map<String, SchemaPartitionTable> result = new HashMap<>();
 
     for (Map.Entry<String, List<TSeriesPartitionSlot>> slotsMapEntry :
         unassignedSchemaPartitionSlotsMap.entrySet()) {
@@ -89,7 +90,7 @@ public class PartitionBalancer {
       }
 
       // Enumerate SeriesPartitionSlot
-      Map<TSeriesPartitionSlot, TConsensusGroupId> schemaPartitionMap = new ConcurrentHashMap<>();
+      Map<TSeriesPartitionSlot, TConsensusGroupId> schemaPartitionMap = new HashMap<>();
       for (TSeriesPartitionSlot seriesPartitionSlot : unassignedPartitionSlots) {
         // Greedy allocation: allocate the unassigned SchemaPartition to
         // the RegionGroup whose allocated SchemaPartitions is the least
@@ -112,7 +113,7 @@ public class PartitionBalancer {
   public Map<String, DataPartitionTable> allocateDataPartition(
       Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> unassignedDataPartitionSlotsMap)
       throws NoAvailableRegionGroupException {
-    Map<String, DataPartitionTable> result = new ConcurrentHashMap<>();
+    Map<String, DataPartitionTable> result = new HashMap<>();
 
     for (Map.Entry<String, Map<TSeriesPartitionSlot, TTimeSlotList>> slotsMapEntry :
         unassignedDataPartitionSlotsMap.entrySet()) {
@@ -130,7 +131,7 @@ public class PartitionBalancer {
         counter.put(pair.getRight(), pair.getLeft().intValue());
       }
 
-      DataPartitionPolicyTable allotTable = dataAllotTableMap.get(database);
+      DataPartitionPolicyTable allotTable = dataPartitionPolicyTableMap.get(database);
       allotTable.acquireLock();
       DataPartitionTable dataPartitionTable = new DataPartitionTable();
 
@@ -205,7 +206,7 @@ public class PartitionBalancer {
    */
   public void reBalanceDataPartitionPolicy(String database) {
     try {
-      dataAllotTableMap
+      dataPartitionPolicyTableMap
           .computeIfAbsent(database, empty -> new DataPartitionPolicyTable())
           .reBalanceDataPartitionPolicy(
               getPartitionManager().getAllRegionGroupIds(database, TConsensusGroupType.DataRegion));
@@ -216,13 +217,13 @@ public class PartitionBalancer {
 
   /** Set up the PartitionBalancer when the current ConfigNode becomes leader. */
   public void setupPartitionBalancer() {
-    dataAllotTableMap.clear();
+    dataPartitionPolicyTableMap.clear();
     getClusterSchemaManager()
         .getDatabaseNames()
         .forEach(
             database -> {
-              dataAllotTableMap.put(database, new DataPartitionPolicyTable());
-              DataPartitionPolicyTable dataPartitionPolicyTable = dataAllotTableMap.get(database);
+              DataPartitionPolicyTable dataPartitionPolicyTable = new DataPartitionPolicyTable();
+              dataPartitionPolicyTableMap.put(database, dataPartitionPolicyTable);
               try {
                 // Put all DataRegionGroups into the DataPartitionPolicyTable
                 dataPartitionPolicyTable.reBalanceDataPartitionPolicy(
@@ -239,7 +240,11 @@ public class PartitionBalancer {
 
   /** Clear the PartitionBalancer when the current ConfigNode is no longer the leader. */
   public void clearPartitionBalancer() {
-    dataAllotTableMap.clear();
+    dataPartitionPolicyTableMap.clear();
+  }
+
+  public void clearDataPartitionPolicyTable(String database) {
+    dataPartitionPolicyTableMap.remove(database);
   }
 
   private ClusterSchemaManager getClusterSchemaManager() {
