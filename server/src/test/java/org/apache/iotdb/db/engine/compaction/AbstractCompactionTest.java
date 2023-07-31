@@ -584,9 +584,16 @@ public class AbstractCompactionTest {
   }
 
   protected TsFileResource createEmptyFileAndResource(boolean isSeq) {
+    return createEmptyFileAndResource(isSeq, 0);
+  }
+
+  protected TsFileResource createEmptyFileAndResource(boolean isSeq, int innerCompactionCnt) {
     fileVersion = isSeq ? seqVersion[fileCount] : unseqVersion[fileCount];
     String fileName =
-        timestamp[fileCount++] + FilePathUtils.FILE_NAME_SEPARATOR + fileVersion + "-0-0.tsfile";
+        timestamp[fileCount++]
+            + FilePathUtils.FILE_NAME_SEPARATOR
+            + fileVersion
+            + String.format("-%d-0.tsfile", innerCompactionCnt);
     String filePath;
     if (isSeq) {
       filePath = SEQ_DIRS.getPath() + File.separator + fileName;

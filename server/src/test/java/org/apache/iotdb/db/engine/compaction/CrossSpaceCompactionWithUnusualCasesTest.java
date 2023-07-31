@@ -106,7 +106,7 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     // unSeq file 1
     // device: d1, time: [100, 300]
     // device: d2, time: [300, 400]
-    TsFileResource unSeqTsFileResource1 = createEmptyFileAndResource(false);
+    TsFileResource unSeqTsFileResource1 = createEmptyFileAndResource(false, 1);
     try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(unSeqTsFileResource1.getTsFile())) {
       createSimpleDevice(tsFileIOWriter, unSeqTsFileResource1, "d1", false, 100, 300);
       createSimpleDevice(tsFileIOWriter, unSeqTsFileResource1, "d2", false, 300, 400);
@@ -120,7 +120,6 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     tsFileManager.addAll(unseqResources, false);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector(COMPACTION_TEST_SG, "0", 0, tsFileManager);
-    selector.setStrictlyCheckSelectedFiles(false);
 
     List<CrossCompactionTaskResource> result =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
@@ -179,7 +178,7 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     // unSeq file 1
     // device: d1, time: [100, 300]
     // device: d2, time: [300, 400]
-    TsFileResource unSeqTsFileResource1 = createEmptyFileAndResource(false);
+    TsFileResource unSeqTsFileResource1 = createEmptyFileAndResource(false, 1);
     try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(unSeqTsFileResource1.getTsFile())) {
       createSimpleDevice(tsFileIOWriter, unSeqTsFileResource1, "d1", false, 100, 300);
       createSimpleDevice(tsFileIOWriter, unSeqTsFileResource1, "d2", false, 300, 400);
@@ -192,7 +191,6 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     tsFileManager.addAll(unseqResources, false);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector(COMPACTION_TEST_SG, "0", 0, tsFileManager);
-    selector.setStrictlyCheckSelectedFiles(false);
 
     List<CrossCompactionTaskResource> result =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
@@ -263,7 +261,7 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     // unSeq file 1
     // device: d1, time: [100, 300]
     // device: d2, time: [300, 400]
-    TsFileResource unSeqTsFileResource1 = createEmptyFileAndResource(false);
+    TsFileResource unSeqTsFileResource1 = createEmptyFileAndResource(false, 1);
     try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(unSeqTsFileResource1.getTsFile())) {
       createSimpleDevice(tsFileIOWriter, unSeqTsFileResource1, "d1", false, 100, 300);
       createSimpleDevice(tsFileIOWriter, unSeqTsFileResource1, "d2", false, 300, 400);
@@ -276,7 +274,6 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     tsFileManager.addAll(unseqResources, false);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector(COMPACTION_TEST_SG, "0", 0, tsFileManager);
-    selector.setStrictlyCheckSelectedFiles(false);
 
     List<CrossCompactionTaskResource> result =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
@@ -358,7 +355,7 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     // unSeq file 1
     // device: d1, time: [100, 300]
     // device: d2, time: [300, 400]
-    TsFileResource unSeqTsFileResource1 = createEmptyFileAndResource(false);
+    TsFileResource unSeqTsFileResource1 = createEmptyFileAndResource(false, 1);
     try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(unSeqTsFileResource1.getTsFile())) {
       createSimpleDevice(tsFileIOWriter, unSeqTsFileResource1, "d1", false, 100, 300);
       createSimpleDevice(tsFileIOWriter, unSeqTsFileResource1, "d2", false, 300, 400);
@@ -371,7 +368,6 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     tsFileManager.addAll(unseqResources, false);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector(COMPACTION_TEST_SG, "0", 0, tsFileManager);
-    selector.setStrictlyCheckSelectedFiles(false);
 
     List<CrossCompactionTaskResource> result =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
@@ -443,7 +439,7 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     // unSeq file 1
     // device: d1, time: [100, 300]
     // device: d2, time: [300, 400]
-    TsFileResource unSeqTsFileResource1 = createEmptyFileAndResource(false);
+    TsFileResource unSeqTsFileResource1 = createEmptyFileAndResource(false, 1);
     try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(unSeqTsFileResource1.getTsFile())) {
       createSimpleDevice(tsFileIOWriter, unSeqTsFileResource1, "d1", false, 100, 300);
       createSimpleDevice(tsFileIOWriter, unSeqTsFileResource1, "d2", false, 300, 400);
@@ -456,7 +452,7 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     // device: d1, time: [400, 500]
     // device: d2, time: [500, 600]
     // device: d3, time: [100, 200]
-    TsFileResource unSeqTsFileResource2 = createEmptyFileAndResource(false);
+    TsFileResource unSeqTsFileResource2 = createEmptyFileAndResource(false, 1);
     try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(unSeqTsFileResource2.getTsFile())) {
       createSimpleDevice(tsFileIOWriter, unSeqTsFileResource2, "d1", false, 400, 500);
       createSimpleDevice(tsFileIOWriter, unSeqTsFileResource2, "d2", false, 500, 600);
@@ -470,7 +466,6 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     tsFileManager.addAll(unseqResources, false);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector(COMPACTION_TEST_SG, "0", 0, tsFileManager);
-    selector.setStrictlyCheckSelectedFiles(false);
 
     List<CrossCompactionTaskResource> result =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
@@ -520,7 +515,7 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     // unSeq file 1
     // device: d1, time: [100, 300]
     // device: d2, time: [300, 400]
-    TsFileResource unSeqTsFileResource1 = createEmptyFileAndResource(false);
+    TsFileResource unSeqTsFileResource1 = createEmptyFileAndResource(false, 1);
     try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(unSeqTsFileResource1.getTsFile())) {
       createSimpleDevice(tsFileIOWriter, unSeqTsFileResource1, "d1", false, 100, 300);
       createSimpleDevice(tsFileIOWriter, unSeqTsFileResource1, "d2", false, 300, 400);
@@ -534,7 +529,6 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     tsFileManager.addAll(unseqResources, false);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector(COMPACTION_TEST_SG, "0", 0, tsFileManager);
-    selector.setStrictlyCheckSelectedFiles(false);
 
     List<CrossCompactionTaskResource> result =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
@@ -623,7 +617,7 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     // unSeq file 1
     // device: d1, time: [100, 300]
     // device: d2, time: [300, 400]
-    TsFileResource unSeqTsFileResource1 = createEmptyFileAndResource(false);
+    TsFileResource unSeqTsFileResource1 = createEmptyFileAndResource(false, 1);
     try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(unSeqTsFileResource1.getTsFile())) {
       createSimpleDevice(tsFileIOWriter, unSeqTsFileResource1, "d1", false, 100, 300);
       createSimpleDevice(tsFileIOWriter, unSeqTsFileResource1, "d2", false, 300, 400);
@@ -636,7 +630,6 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     tsFileManager.addAll(unseqResources, false);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector(COMPACTION_TEST_SG, "0", 0, tsFileManager);
-    selector.setStrictlyCheckSelectedFiles(false);
 
     List<CrossCompactionTaskResource> result =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
@@ -687,7 +680,7 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     // unSeq file 1
     // device: d1, time: [100, 300]
     // device: d2, time: [300, 400]
-    TsFileResource unSeqTsFileResource1 = createEmptyFileAndResource(false);
+    TsFileResource unSeqTsFileResource1 = createEmptyFileAndResource(false, 1);
     try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(unSeqTsFileResource1.getTsFile())) {
       createSimpleDevice(tsFileIOWriter, unSeqTsFileResource1, "d1", false, 100, 300);
       createSimpleDevice(tsFileIOWriter, unSeqTsFileResource1, "d2", false, 300, 400);
@@ -701,7 +694,6 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     tsFileManager.addAll(unseqResources, false);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector(COMPACTION_TEST_SG, "0", 0, tsFileManager);
-    selector.setStrictlyCheckSelectedFiles(false);
 
     List<CrossCompactionTaskResource> result =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
@@ -744,7 +736,7 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     // unSeq file 1
     // device: d1, time: [100, 300]
     // device: d2, time: [300, 400]
-    TsFileResource unSeqTsFileResource1 = createEmptyFileAndResource(false);
+    TsFileResource unSeqTsFileResource1 = createEmptyFileAndResource(false, 1);
     try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(unSeqTsFileResource1.getTsFile())) {
       createSimpleDevice(tsFileIOWriter, unSeqTsFileResource1, "d1", false, 100, 300);
       createSimpleDevice(tsFileIOWriter, unSeqTsFileResource1, "d2", false, 300, 400);
@@ -757,7 +749,6 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     tsFileManager.addAll(unseqResources, false);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector(COMPACTION_TEST_SG, "0", 0, tsFileManager);
-    selector.setStrictlyCheckSelectedFiles(false);
 
     List<CrossCompactionTaskResource> result =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
@@ -803,7 +794,7 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     // unSeq file 1
     // device: d1, time: [100, 300]
     // device: d2, time: [300, 400]
-    TsFileResource unSeqTsFileResource1 = createEmptyFileAndResource(false);
+    TsFileResource unSeqTsFileResource1 = createEmptyFileAndResource(false, 1);
     try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(unSeqTsFileResource1.getTsFile())) {
       createSimpleDevice(tsFileIOWriter, unSeqTsFileResource1, "d1", false, 100, 300);
       createSimpleDevice(tsFileIOWriter, unSeqTsFileResource1, "d2", false, 300, 400);
@@ -816,7 +807,6 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     tsFileManager.addAll(unseqResources, false);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector(COMPACTION_TEST_SG, "0", 0, tsFileManager);
-    selector.setStrictlyCheckSelectedFiles(false);
 
     List<CrossCompactionTaskResource> result =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
@@ -871,7 +861,7 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     // unSeq file 1
     // device: d1, time: [100, 300]
     // device: d2, time: [700, 800]
-    TsFileResource unSeqTsFileResource1 = createEmptyFileAndResource(false);
+    TsFileResource unSeqTsFileResource1 = createEmptyFileAndResource(false, 1);
     try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(unSeqTsFileResource1.getTsFile())) {
       createSimpleDevice(tsFileIOWriter, unSeqTsFileResource1, "d1", false, 100, 300);
       createSimpleDevice(tsFileIOWriter, unSeqTsFileResource1, "d2", false, 700, 800);
@@ -884,7 +874,6 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     tsFileManager.addAll(unseqResources, false);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector(COMPACTION_TEST_SG, "0", 0, tsFileManager);
-    selector.setStrictlyCheckSelectedFiles(false);
 
     List<CrossCompactionTaskResource> result =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
@@ -947,7 +936,7 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     // unSeq file 1
     // device: d1, time: [100, 300]
     // device: d2, time: [700, 800]
-    TsFileResource unSeqTsFileResource1 = createEmptyFileAndResource(false);
+    TsFileResource unSeqTsFileResource1 = createEmptyFileAndResource(false, 1);
     try (TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(unSeqTsFileResource1.getTsFile())) {
       createSimpleDevice(tsFileIOWriter, unSeqTsFileResource1, "d1", false, 100, 300);
       createSimpleDevice(tsFileIOWriter, unSeqTsFileResource1, "d2", false, 700, 800);
@@ -960,7 +949,6 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     tsFileManager.addAll(unseqResources, false);
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector(COMPACTION_TEST_SG, "0", 0, tsFileManager);
-    selector.setStrictlyCheckSelectedFiles(false);
 
     List<CrossCompactionTaskResource> result =
         selector.selectCrossSpaceTask(seqResources, unseqResources);

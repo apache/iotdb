@@ -54,7 +54,6 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   protected TsFileManager tsFileManager;
 
   private static boolean hasPrintedLog = false;
-  private boolean strictlyCheckSelectedFiles = true;
 
   private final long memoryBudget;
   private final int maxCrossCompactionFileNum;
@@ -84,10 +83,6 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     this.compactionEstimator =
         ICompactionSelector.getCompactionEstimator(
             IoTDBDescriptor.getInstance().getConfig().getCrossCompactionPerformer(), false);
-  }
-
-  public void setStrictlyCheckSelectedFiles(boolean strictlyCheckSelectedFiles) {
-    this.strictlyCheckSelectedFiles = strictlyCheckSelectedFiles;
   }
 
   /**
@@ -160,9 +155,9 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       List<TsFileResource> targetSeqFiles =
           split.seqFiles.stream().map(c -> c.resource).collect(Collectors.toList());
 
-      if (!split.hasOverlap) {
-        LOGGER.info("Unseq file {} does not overlap with any seq files.", unseqFile);
-        TsFileResourceCandidate latestSealedSeqFile =
+      if (!split.atLeastOneSeqFileSelected) {
+        LOGGER.debug("Unseq file {} does not overlap with any seq files.", unseqFile);
+        CrossSpaceCompactionCandidate.TsFileResourceCandidate latestSealedSeqFile =
             getLatestSealedSeqFile(candidate.getSeqFileCandidates());
         if (latestSealedSeqFile == null) {
           break;
@@ -175,8 +170,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
 
       long memoryCost =
           compactionEstimator.estimateCrossCompactionMemory(targetSeqFiles, unseqFile);
-      if (strictlyCheckSelectedFiles
-          && !canAddToTaskResource(taskResource, unseqFile, targetSeqFiles, memoryCost)) {
+      if (!canAddToTaskResource(taskResource, unseqFile, targetSeqFiles, memoryCost)) {
         break;
       }
       taskResource.putResources(unseqFile, targetSeqFiles, memoryCost);
