@@ -1429,7 +1429,7 @@
         </profile>
         <!-- code coverage for ut and it, and then merge them together.-->
         <profile>
-            <id>code-coverage</id>
+            <id>with-code-coverage</id>
             <modules>
                 <module>code-coverage</module>
             </modules>
