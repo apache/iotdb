@@ -77,40 +77,47 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
 
   @Override
   public synchronized TPipeTransferResp receive(
-      TPipeTransferReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher)
-      throws IOException {
-    final short rawRequestType = req.getType();
-    if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
-      switch (PipeRequestType.valueOf(rawRequestType)) {
-        case HANDSHAKE:
-          return handleTransferHandshake(PipeTransferHandshakeReq.fromTPipeTransferReq(req));
-        case TRANSFER_INSERT_NODE:
-          return handleTransferInsertNode(
-              PipeTransferInsertNodeReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
-        case TRANSFER_TABLET:
-          return handleTransferTablet(
-              PipeTransferTabletReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
-        case TRANSFER_BATCH:
-          return handleTransferBatch(
-              PipeTransferBatchReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
-        case TRANSFER_FILE_PIECE:
-          return handleTransferFilePiece(PipeTransferFilePieceReq.fromTPipeTransferReq(req));
-        case TRANSFER_FILE_SEAL:
-          return handleTransferFileSeal(
-              PipeTransferFileSealReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
-        default:
-          break;
+      TPipeTransferReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
+    try {
+      final short rawRequestType = req.getType();
+      if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
+        switch (PipeRequestType.valueOf(rawRequestType)) {
+          case HANDSHAKE:
+            return handleTransferHandshake(PipeTransferHandshakeReq.fromTPipeTransferReq(req));
+          case TRANSFER_INSERT_NODE:
+            return handleTransferInsertNode(
+                PipeTransferInsertNodeReq.fromTPipeTransferReq(req),
+                partitionFetcher,
+                schemaFetcher);
+          case TRANSFER_TABLET:
+            return handleTransferTablet(
+                PipeTransferTabletReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
+          case TRANSFER_BATCH:
+            return handleTransferBatch(
+                PipeTransferBatchReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
+          case TRANSFER_FILE_PIECE:
+            return handleTransferFilePiece(PipeTransferFilePieceReq.fromTPipeTransferReq(req));
+          case TRANSFER_FILE_SEAL:
+            return handleTransferFileSeal(
+                PipeTransferFileSealReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
+          default:
+            break;
+        }
       }
-    }
 
-    // unknown request type, which means the request can not be handled by this receiver,
-    // maybe the version of the receiver is not compatible with the sender
-    final TSStatus status =
-        RpcUtils.getStatus(
-            TSStatusCode.PIPE_TYPE_ERROR,
-            String.format("Unknown PipeRequestType %s.", rawRequestType));
-    LOGGER.warn("Unknown PipeRequestType, response status = {}.", status);
-    return new TPipeTransferResp(status);
+      // Unknown request type, which means the request can not be handled by this receiver,
+      // maybe the version of the receiver is not compatible with the sender
+      final TSStatus status =
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_TYPE_ERROR,
+              String.format("Unknown PipeRequestType %s.", rawRequestType));
+      LOGGER.warn("Unknown PipeRequestType, response status = {}.", status);
+      return new TPipeTransferResp(status);
+    } catch (IOException e) {
+      String error = String.format("Serialization error during pipe receiving, %s", e);
+      LOGGER.warn(error);
+      return new TPipeTransferResp(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, error));
+    }
   }
 
   private TPipeTransferResp handleTransferHandshake(PipeTransferHandshakeReq req) {
