@@ -40,6 +40,7 @@
             <directory>${project.build.directory}/build</directory>
             <includes>
                 <include>lib/*.a</include>
+                <include>lib/Release/*.lib</include>
             </includes>
             <outputDirectory>/</outputDirectory>
         </fileSet>
