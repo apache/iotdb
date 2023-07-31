@@ -116,7 +116,7 @@ public class PipeTaskCoordinator {
     final TSStatus status = configManager.getProcedureManager().stopPipe(pipeName);
     if (status == RpcUtils.SUCCESS_STATUS && isStoppedByRuntimeException) {
       LOGGER.info(
-        "Pipe {} has stopped successfully manually, stop its auto restart process.", pipeName);
+          "Pipe {} has stopped successfully manually, stop its auto restart process.", pipeName);
       pipeTaskInfo.setIsStoppedByRuntimeExceptionToFalse(pipeName);
       configManager.getProcedureManager().pipeHandleMetaChange(true, true);
     }
@@ -131,20 +131,20 @@ public class PipeTaskCoordinator {
       LOGGER.warn("Failed to drop pipe {}. Result status: {}.", pipeName, status);
     }
     return isPipeExistedBeforeDrop
-      ? status
-      : RpcUtils.getStatus(
-      TSStatusCode.PIPE_NOT_EXIST_ERROR,
-      String.format(
-        "Failed to drop pipe %s. Failures: %s does not exist.", pipeName, pipeName));
+        ? status
+        : RpcUtils.getStatus(
+            TSStatusCode.PIPE_NOT_EXIST_ERROR,
+            String.format(
+                "Failed to drop pipe %s. Failures: %s does not exist.", pipeName, pipeName));
   }
 
   public TShowPipeResp showPipes(TShowPipeReq req) {
     lock();
     try {
       return ((PipeTableResp)
-        configManager.getConsensusManager().read(new ShowPipePlanV2()).getDataset())
-        .filter(req.whereClause, req.pipeName)
-        .convertToTShowPipeResp();
+              configManager.getConsensusManager().read(new ShowPipePlanV2()).getDataset())
+          .filter(req.whereClause, req.pipeName)
+          .convertToTShowPipeResp();
     } finally {
       unlock();
     }
@@ -154,13 +154,13 @@ public class PipeTaskCoordinator {
     lock();
     try {
       return ((PipeTableResp)
-        configManager.getConsensusManager().read(new ShowPipePlanV2()).getDataset())
-        .convertToTGetAllPipeInfoResp();
+              configManager.getConsensusManager().read(new ShowPipePlanV2()).getDataset())
+          .convertToTGetAllPipeInfoResp();
     } catch (IOException e) {
       LOGGER.warn("Failed to get all pipe info.", e);
       return new TGetAllPipeInfoResp(
-        new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage()),
-        Collections.emptyList());
+          new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage()),
+          Collections.emptyList());
     } finally {
       unlock();
     }

@@ -41,7 +41,7 @@ public class LastCacheContainer implements ILastCacheContainer {
 
   @Override
   public synchronized int updateCachedLast(
-    TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
+      TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
     if (highPriorityUpdate) { // for write, we won't cache null value
       if (timeValuePair == null || timeValuePair.getValue() == null) {
         return 0;
@@ -61,7 +61,7 @@ public class LastCacheContainer implements ILastCacheContainer {
         return lastCacheValue.estimateSize();
       }
     } else if (timeValuePair.getTimestamp() > lastCacheValue.getTimestamp()
-      || (timeValuePair.getTimestamp() == lastCacheValue.getTimestamp() && highPriorityUpdate)) {
+        || (timeValuePair.getTimestamp() == lastCacheValue.getTimestamp() && highPriorityUpdate)) {
       TsPrimitiveType oldValue = lastCacheValue.getValue();
       lastCacheValue.setTimestamp(timeValuePair.getTimestamp());
       lastCacheValue.setValue(timeValuePair.getValue());

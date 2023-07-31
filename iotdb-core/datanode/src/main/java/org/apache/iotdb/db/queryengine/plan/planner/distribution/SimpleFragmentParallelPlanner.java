@@ -74,7 +74,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
   private final Map<TDataNodeLocation, List<FragmentInstance>> dataNodeFIMap;
 
   public SimpleFragmentParallelPlanner(
-    SubPlan subPlan, Analysis analysis, MPPQueryContext context) {
+      SubPlan subPlan, Analysis analysis, MPPQueryContext context) {
     this.subPlan = subPlan;
     this.analysis = analysis;
     this.queryContext = context;
@@ -98,24 +98,24 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
       produceFragmentInstance(fragment);
     }
     fragmentInstanceList.forEach(
-      fragmentInstance ->
-        fragmentInstance.setDataNodeFINum(
-          dataNodeFIMap.get(fragmentInstance.getHostDataNode()).size()));
+        fragmentInstance ->
+            fragmentInstance.setDataNodeFINum(
+                dataNodeFIMap.get(fragmentInstance.getHostDataNode()).size()));
 
     // compute dataNodeSeriesScanNum in LastQueryScanNode
     if (analysis.getStatement() instanceof QueryStatement
-      && ((QueryStatement) analysis.getStatement()).isLastQuery()) {
+        && ((QueryStatement) analysis.getStatement()).isLastQuery()) {
       final Map<Path, AtomicInteger> pathSumMap = new HashMap<>();
       dataNodeFIMap
-        .values()
-        .forEach(
-          fragmentInstances -> {
-            fragmentInstances.forEach(
-              fragmentInstance ->
-                updateScanNum(
-                  fragmentInstance.getFragment().getPlanNodeTree(), pathSumMap));
-            pathSumMap.clear();
-          });
+          .values()
+          .forEach(
+              fragmentInstances -> {
+                fragmentInstances.forEach(
+                    fragmentInstance ->
+                        updateScanNum(
+                            fragmentInstance.getFragment().getPlanNodeTree(), pathSumMap));
+                pathSumMap.clear();
+              });
     }
   }
 
@@ -123,12 +123,12 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     if (planNode instanceof LastSeriesSourceNode) {
       LastSeriesSourceNode lastSeriesSourceNode = (LastSeriesSourceNode) planNode;
       pathSumMap.merge(
-        lastSeriesSourceNode.getSeriesPath(),
-        lastSeriesSourceNode.getDataNodeSeriesScanNum(),
-        (k, v) -> {
-          v.incrementAndGet();
-          return v;
-        });
+          lastSeriesSourceNode.getSeriesPath(),
+          lastSeriesSourceNode.getDataNodeSeriesScanNum(),
+          (k, v) -> {
+            v.incrementAndGet();
+            return v;
+          });
     }
     planNode.getChildren().forEach(node -> updateScanNum(node, pathSumMap));
   }
@@ -136,14 +136,14 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
   private void produceFragmentInstance(PlanFragment fragment) {
     Filter timeFilter = analysis.getGlobalTimeFilter();
     FragmentInstance fragmentInstance =
-      new FragmentInstance(
-        fragment,
-        fragment.getId().genFragmentInstanceId(),
-        timeFilter,
-        queryContext.getQueryType(),
-        queryContext.getTimeOut(),
-        queryContext.getSession(),
-        fragment.isRoot());
+        new FragmentInstance(
+            fragment,
+            fragment.getId().genFragmentInstanceId(),
+            timeFilter,
+            queryContext.getQueryType(),
+            queryContext.getTimeOut(),
+            queryContext.getSession(),
+            fragment.isRoot());
 
     // Get the target region for origin PlanFragment, then its instance will be distributed one
     // of them.
@@ -162,10 +162,10 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
         // no data region && no dataNodeLocation, we need to execute this FI on local
         // now only the case AggregationQuery has schemaengine but no data region will enter here
         fragmentInstance.setExecutorAndHost(
-          new QueryExecutor(
-            new TDataNodeLocation()
-              .setInternalEndPoint(DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT)
-              .setMPPDataExchangeEndPoint(DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT)));
+            new QueryExecutor(
+                new TDataNodeLocation()
+                    .setInternalEndPoint(DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT)
+                    .setMPPDataExchangeEndPoint(DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT)));
       }
     } else {
       fragmentInstance.setExecutorAndHost(new StorageExecutor(regionReplicaSet));
@@ -173,17 +173,17 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     }
 
     dataNodeFIMap.compute(
-      fragmentInstance.getHostDataNode(),
-      (k, v) -> {
-        if (v == null) {
-          v = new ArrayList<>();
-        }
-        v.add(fragmentInstance);
-        return v;
-      });
+        fragmentInstance.getHostDataNode(),
+        (k, v) -> {
+          if (v == null) {
+            v = new ArrayList<>();
+          }
+          v.add(fragmentInstance);
+          return v;
+        });
 
     if (analysis.getStatement() instanceof QueryStatement
-      || analysis.getStatement() instanceof ShowQueriesStatement) {
+        || analysis.getStatement() instanceof ShowQueriesStatement) {
       fragmentInstance.getFragment().generateTypeProvider(queryContext.getTypeProvider());
     }
     instanceMap.putIfAbsent(fragment.getId(), fragmentInstance);
@@ -192,13 +192,13 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
 
   private TDataNodeLocation selectTargetDataNode(TRegionReplicaSet regionReplicaSet) {
     if (regionReplicaSet == null
-      || regionReplicaSet.getDataNodeLocations() == null
-      || regionReplicaSet.getDataNodeLocations().isEmpty()) {
+        || regionReplicaSet.getDataNodeLocations() == null
+        || regionReplicaSet.getDataNodeLocations().isEmpty()) {
       throw new IllegalArgumentException(
-        String.format("regionReplicaSet is invalid: %s", regionReplicaSet));
+          String.format("regionReplicaSet is invalid: %s", regionReplicaSet));
     }
     String readConsistencyLevel =
-      IoTDBDescriptor.getInstance().getConfig().getReadConsistencyLevel();
+        IoTDBDescriptor.getInstance().getConfig().getReadConsistencyLevel();
     // TODO: (Chen Rongzhao) need to make the values of ReadConsistencyLevel as static variable or
     // enums
     boolean selectRandomDataNode = "weak".equals(readConsistencyLevel);
@@ -206,12 +206,12 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     // When planning fragment onto specific DataNode, the DataNode whose endPoint is in
     // black list won't be considered because it may have connection issue now.
     List<TDataNodeLocation> availableDataNodes =
-      filterAvailableTDataNode(regionReplicaSet.getDataNodeLocations());
+        filterAvailableTDataNode(regionReplicaSet.getDataNodeLocations());
     if (availableDataNodes.isEmpty()) {
       String errorMsg =
-        String.format(
-          "all replicas for region[%s] are not available in these DataNodes[%s]",
-          regionReplicaSet.getRegionId(), regionReplicaSet.getDataNodeLocations());
+          String.format(
+              "all replicas for region[%s] are not available in these DataNodes[%s]",
+              regionReplicaSet.getRegionId(), regionReplicaSet.getDataNodeLocations());
       throw new IllegalArgumentException(errorMsg);
     }
     if (regionReplicaSet.getDataNodeLocationsSize() != availableDataNodes.size()) {
@@ -227,7 +227,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
   }
 
   private List<TDataNodeLocation> filterAvailableTDataNode(
-    List<TDataNodeLocation> originalDataNodeList) {
+      List<TDataNodeLocation> originalDataNodeList) {
     List<TDataNodeLocation> result = new LinkedList<>();
     for (TDataNodeLocation dataNodeLocation : originalDataNodeList) {
       if (isAvailableDataNode(dataNodeLocation)) {
@@ -252,26 +252,26 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
       if (rootNode instanceof MultiChildrenSinkNode) {
         MultiChildrenSinkNode sinkNode = (MultiChildrenSinkNode) rootNode;
         sinkNode
-          .getDownStreamChannelLocationList()
-          .forEach(
-            downStreamChannelLocation -> {
-              // Set target Endpoint for FragmentSinkNode
-              PlanNodeId downStreamNodeId =
-                new PlanNodeId(downStreamChannelLocation.getRemotePlanNodeId());
-              FragmentInstance downStreamInstance = findDownStreamInstance(downStreamNodeId);
-              downStreamChannelLocation.setRemoteEndpoint(
-                downStreamInstance.getHostDataNode().getMPPDataExchangeEndPoint());
-              downStreamChannelLocation.setRemoteFragmentInstanceId(
-                downStreamInstance.getId().toThrift());
+            .getDownStreamChannelLocationList()
+            .forEach(
+                downStreamChannelLocation -> {
+                  // Set target Endpoint for FragmentSinkNode
+                  PlanNodeId downStreamNodeId =
+                      new PlanNodeId(downStreamChannelLocation.getRemotePlanNodeId());
+                  FragmentInstance downStreamInstance = findDownStreamInstance(downStreamNodeId);
+                  downStreamChannelLocation.setRemoteEndpoint(
+                      downStreamInstance.getHostDataNode().getMPPDataExchangeEndPoint());
+                  downStreamChannelLocation.setRemoteFragmentInstanceId(
+                      downStreamInstance.getId().toThrift());
 
-              // Set upstream info for corresponding ExchangeNode in downstream FragmentInstance
-              PlanNode downStreamExchangeNode = planNodeMap.get(downStreamNodeId).right;
-              ((ExchangeNode) downStreamExchangeNode)
-                .setUpstream(
-                  instance.getHostDataNode().getMPPDataExchangeEndPoint(),
-                  instance.getId(),
-                  sinkNode.getPlanNodeId());
-            });
+                  // Set upstream info for corresponding ExchangeNode in downstream FragmentInstance
+                  PlanNode downStreamExchangeNode = planNodeMap.get(downStreamNodeId).right;
+                  ((ExchangeNode) downStreamExchangeNode)
+                      .setUpstream(
+                          instance.getHostDataNode().getMPPDataExchangeEndPoint(),
+                          instance.getId(),
+                          sinkNode.getPlanNodeId());
+                });
       }
     }
   }

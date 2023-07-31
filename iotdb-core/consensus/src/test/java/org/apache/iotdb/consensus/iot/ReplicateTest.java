@@ -66,16 +66,16 @@ public class ReplicateTest {
   private int basePort = 9000;
 
   private final List<Peer> peers =
-    Arrays.asList(
-      new Peer(gid, 1, new TEndPoint("127.0.0.1", basePort - 2)),
-      new Peer(gid, 2, new TEndPoint("127.0.0.1", basePort - 1)),
-      new Peer(gid, 3, new TEndPoint("127.0.0.1", basePort)));
+      Arrays.asList(
+          new Peer(gid, 1, new TEndPoint("127.0.0.1", basePort - 2)),
+          new Peer(gid, 2, new TEndPoint("127.0.0.1", basePort - 1)),
+          new Peer(gid, 3, new TEndPoint("127.0.0.1", basePort)));
 
   private final List<File> peersStorage =
-    Arrays.asList(
-      new File("target" + java.io.File.separator + "1"),
-      new File("target" + java.io.File.separator + "2"),
-      new File("target" + java.io.File.separator + "3"));
+      Arrays.asList(
+          new File("target" + java.io.File.separator + "1"),
+          new File("target" + java.io.File.separator + "2"),
+          new File("target" + java.io.File.separator + "3"));
 
   private final ConsensusGroup group = new ConsensusGroup(gid, peers);
   private final List<IoTConsensus> servers = new ArrayList<>();
@@ -100,16 +100,16 @@ public class ReplicateTest {
 
   public void changeConfiguration(int i) {
     try (PublicBAOS publicBAOS = new PublicBAOS();
-         DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
+        DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
       outputStream.writeInt(this.peers.size());
       for (Peer peer : this.peers) {
         peer.serialize(outputStream);
       }
       File storageDir = new File(IoTConsensus.buildPeerDir(peersStorage.get(i), gid));
       Path tmpConfigurationPath =
-        Paths.get(new File(storageDir, CONFIGURATION_TMP_FILE_NAME).getAbsolutePath());
+          Paths.get(new File(storageDir, CONFIGURATION_TMP_FILE_NAME).getAbsolutePath());
       Path configurationPath =
-        Paths.get(new File(storageDir, CONFIGURATION_FILE_NAME).getAbsolutePath());
+          Paths.get(new File(storageDir, CONFIGURATION_FILE_NAME).getAbsolutePath());
       Files.write(tmpConfigurationPath, publicBAOS.getBuf());
       if (Files.exists(configurationPath)) {
         Files.delete(configurationPath);
@@ -128,22 +128,22 @@ public class ReplicateTest {
       int finalI = i;
       changeConfiguration(i);
       servers.add(
-        (IoTConsensus)
-          ConsensusFactory.getConsensusImpl(
-              ConsensusFactory.IOT_CONSENSUS,
-              ConsensusConfig.newBuilder()
-                .setThisNodeId(peers.get(i).getNodeId())
-                .setThisNode(peers.get(i).getEndpoint())
-                .setStorageDir(peersStorage.get(i).getAbsolutePath())
-                .setConsensusGroupType(TConsensusGroupType.DataRegion)
-                .build(),
-              groupId -> stateMachines.get(finalI))
-            .orElseThrow(
-              () ->
-                new IllegalArgumentException(
-                  String.format(
-                    ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                    ConsensusFactory.IOT_CONSENSUS))));
+          (IoTConsensus)
+              ConsensusFactory.getConsensusImpl(
+                      ConsensusFactory.IOT_CONSENSUS,
+                      ConsensusConfig.newBuilder()
+                          .setThisNodeId(peers.get(i).getNodeId())
+                          .setThisNode(peers.get(i).getEndpoint())
+                          .setStorageDir(peersStorage.get(i).getAbsolutePath())
+                          .setConsensusGroupType(TConsensusGroupType.DataRegion)
+                          .build(),
+                      groupId -> stateMachines.get(finalI))
+                  .orElseThrow(
+                      () ->
+                          new IllegalArgumentException(
+                              String.format(
+                                  ConsensusFactory.CONSTRUCT_FAILED_MSG,
+                                  ConsensusFactory.IOT_CONSENSUS))));
       servers.get(i).start();
     }
   }
@@ -188,11 +188,11 @@ public class ReplicateTest {
     }
 
     Assert.assertEquals(
-      CHECK_POINT_GAP, servers.get(0).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
+        CHECK_POINT_GAP, servers.get(0).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
     Assert.assertEquals(
-      CHECK_POINT_GAP, servers.get(1).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
+        CHECK_POINT_GAP, servers.get(1).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
     Assert.assertEquals(
-      CHECK_POINT_GAP, servers.get(2).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
+        CHECK_POINT_GAP, servers.get(2).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
     Assert.assertEquals(CHECK_POINT_GAP * 3, stateMachines.get(0).getRequestSet().size());
     Assert.assertEquals(CHECK_POINT_GAP * 3, stateMachines.get(1).getRequestSet().size());
     Assert.assertEquals(CHECK_POINT_GAP * 3, stateMachines.get(2).getRequestSet().size());
@@ -222,11 +222,11 @@ public class ReplicateTest {
     }
 
     Assert.assertEquals(
-      CHECK_POINT_GAP, servers.get(0).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
+        CHECK_POINT_GAP, servers.get(0).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
     Assert.assertEquals(
-      CHECK_POINT_GAP, servers.get(1).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
+        CHECK_POINT_GAP, servers.get(1).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
     Assert.assertEquals(
-      CHECK_POINT_GAP, servers.get(2).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
+        CHECK_POINT_GAP, servers.get(2).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
   }
 
   /**
