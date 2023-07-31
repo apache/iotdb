@@ -132,10 +132,9 @@ public class PartitionBalancer {
       }
 
       DataPartitionPolicyTable allotTable = dataPartitionPolicyTableMap.get(database);
-      allotTable.acquireLock();
-      DataPartitionTable dataPartitionTable = new DataPartitionTable();
-
       try {
+        allotTable.acquireLock();
+        DataPartitionTable dataPartitionTable = new DataPartitionTable();
         // Enumerate SeriesPartitionSlot
         for (Map.Entry<TSeriesPartitionSlot, TTimeSlotList> seriesPartitionEntry :
             unassignedPartitionSlotsMap.entrySet()) {
