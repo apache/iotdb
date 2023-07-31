@@ -60,7 +60,9 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_MODE_BATCH;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_MODE_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_MODE_SINGLE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY;
 
 public class IoTDBThriftConnectorV1 implements PipeConnector {
@@ -83,7 +85,10 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
         .validateRequiredAttribute(CONNECTOR_IOTDB_IP_KEY)
         .validateRequiredAttribute(CONNECTOR_IOTDB_PORT_KEY)
         .validateAttributeValueRange(
-            CONNECTOR_IOTDB_MODE_KEY, true, new String[] {"single", "batch"});
+            CONNECTOR_IOTDB_MODE_KEY,
+            true,
+            CONNECTOR_IOTDB_MODE_SINGLE,
+            CONNECTOR_IOTDB_MODE_BATCH);
   }
 
   @Override
@@ -93,7 +98,7 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
     this.port = parameters.getInt(CONNECTOR_IOTDB_PORT_KEY);
     this.mode = parameters.getString(CONNECTOR_IOTDB_MODE_KEY);
 
-    if ("batch".equals(this.mode)) {
+    if (CONNECTOR_IOTDB_MODE_BATCH.equals(this.mode)) {
       tPipeTransferReqs = new ArrayList<>();
     }
   }

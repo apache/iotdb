@@ -28,6 +28,8 @@ public class PipeConnectorConstant {
   public static final String CONNECTOR_IOTDB_NODE_URLS_KEY = "connector.node-urls";
 
   public static final String CONNECTOR_IOTDB_MODE_KEY = "connector.mode";
+  public static final String CONNECTOR_IOTDB_MODE_SINGLE = "single";
+  public static final String CONNECTOR_IOTDB_MODE_BATCH = "batch";
 
   public static final String CONNECTOR_IOTDB_USER_KEY = "connector.user";
   public static final String CONNECTOR_IOTDB_USER_DEFAULT_VALUE = "root";
