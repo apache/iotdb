@@ -48,7 +48,7 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Compile IoTDB Server
-        run: mvn clean package -P with-tools -pl distribution -am -DskipTests
+        run: mvn clean package -pl distribution -am -DskipTests
       - name: Integration test
         shell: bash
         run: |

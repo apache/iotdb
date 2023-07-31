@@ -45,11 +45,11 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Test
-        run: mvn -B -P with-tools,with-code-coverage clean compile test -pl distribution,iotdb-client/cli,iotdb-client/session,iotdb-client/jdbc -am -Dtest.port.closed=true
+        run: mvn -B -P with-code-coverage clean compile test -pl distribution,iotdb-client/cli,iotdb-client/session,iotdb-client/jdbc -am -Dtest.port.closed=true
       - name: Coveralls
         # TODO: "post-integration-test" doesn't evaluate the outcome of the IT phase, this is done in "validate"
         run: |
-          mvn -B  -P with-tools,with-code-coverage post-integration-test -pl code-coverage
+          mvn -B -P with-code-coverage post-integration-test -pl code-coverage
           mvn -B coveralls:report \
           -DserviceName=travis_ci \
           -Dbranch=$BRANCH_NAME \
@@ -73,7 +73,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONARCLOUD_TOKEN }}
         run: |
-          mvn -B -P with-tools,with-integration-tests,with-code-coverage verify sonar:sonar \
+          mvn -B -P with-integration-tests,with-code-coverage verify sonar:sonar \
           -Dsonar.organization=apache \
           -Dsonar.projectKey=apache_iotdb \
           -Dsonar.host.url=https://sonarcloud.io \
