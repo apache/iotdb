@@ -1197,7 +1197,7 @@
                 </os>
             </activation>
             <properties>
-                <os.classifier>windows-x86_64</os.classifier>
+                <os.classifier>windows-aarch64</os.classifier>
                 <cmake.generator>Visual Studio 17 2022</cmake.generator>
                 <thrift.executable>Release/thrift.exe</thrift.executable>
             </properties>
