@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.procedure.impl.statemachine;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -52,6 +53,7 @@ public class CreateRegionGroupsProcedure
   private TConsensusGroupType consensusGroupType;
 
   private CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
+  private CreateRegionGroupsPlan persistPlan = new CreateRegionGroupsPlan();
 
   /** key: TConsensusGroupId value: Failed RegionReplicas */
   private Map<TConsensusGroupId, TRegionReplicaSet> failedRegionReplicaSets = new HashMap<>();
@@ -70,9 +72,11 @@ public class CreateRegionGroupsProcedure
   public CreateRegionGroupsProcedure(
       TConsensusGroupType consensusGroupType,
       CreateRegionGroupsPlan createRegionGroupsPlan,
+      CreateRegionGroupsPlan persistPlan,
       Map<TConsensusGroupId, TRegionReplicaSet> failedRegionReplicaSets) {
     this.consensusGroupType = consensusGroupType;
     this.createRegionGroupsPlan = createRegionGroupsPlan;
+    this.persistPlan = persistPlan;
     this.failedRegionReplicaSets = failedRegionReplicaSets;
   }
 
@@ -84,7 +88,7 @@ public class CreateRegionGroupsProcedure
         setNextState(CreateRegionGroupsState.SHUNT_REGION_REPLICAS);
         break;
       case SHUNT_REGION_REPLICAS:
-        CreateRegionGroupsPlan persistPlan = new CreateRegionGroupsPlan();
+        persistPlan = new CreateRegionGroupsPlan();
         OfferRegionMaintainTasksPlan offerPlan = new OfferRegionMaintainTasksPlan();
         // Filter those RegionGroups that created successfully
         createRegionGroupsPlan
@@ -201,6 +205,17 @@ public class CreateRegionGroupsProcedure
         setNextState(CreateRegionGroupsState.CREATE_REGION_GROUPS_FINISH);
         break;
       case CREATE_REGION_GROUPS_FINISH:
+        if (TConsensusGroupType.DataRegion.equals(consensusGroupType)) {
+          // Re-balance all corresponding DataPartitionPolicyTable
+          persistPlan
+              .getRegionGroupMap()
+              .keySet()
+              .forEach(
+                  database ->
+                      env.getConfigManager()
+                          .getLoadManager()
+                          .reBalanceDataPartitionPolicy(database));
+        }
         return Flow.NO_MORE_STATE;
     }
 
@@ -242,6 +257,7 @@ public class CreateRegionGroupsProcedure
           ThriftCommonsSerDeUtils.serializeTConsensusGroupId(groupId, stream);
           ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(replica, stream);
         });
+    persistPlan.serializeForProcedure(stream);
   }
 
   @Override
@@ -259,6 +275,9 @@ public class CreateRegionGroupsProcedure
             ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(byteBuffer);
         failedRegionReplicaSets.put(groupId, replica);
       }
+      if (byteBuffer.hasRemaining()) {
+        persistPlan.deserializeForProcedure(byteBuffer);
+      }
     } catch (Exception e) {
       LOGGER.error("Deserialize meets error in CreateRegionGroupsProcedure", e);
       throw new RuntimeException(e);
@@ -267,16 +286,22 @@ public class CreateRegionGroupsProcedure
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     CreateRegionGroupsProcedure that = (CreateRegionGroupsProcedure) o;
     return consensusGroupType == that.consensusGroupType
         && createRegionGroupsPlan.equals(that.createRegionGroupsPlan)
+        && persistPlan.equals(that.persistPlan)
         && failedRegionReplicaSets.equals(that.failedRegionReplicaSets);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(consensusGroupType, createRegionGroupsPlan, failedRegionReplicaSets);
+    return Objects.hash(
+        consensusGroupType, createRegionGroupsPlan, persistPlan, failedRegionReplicaSets);
   }
 }

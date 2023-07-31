@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.it.env.remote;
 
 import org.apache.iotdb.itbase.env.CommonConfig;
@@ -119,12 +120,6 @@ public class RemoteCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass) {
-    return this;
-  }
-
-  @Override
-  public CommonConfig setEnableDataPartitionInheritPolicy(
-      boolean enableDataPartitionInheritPolicy) {
     return this;
   }
 
@@ -264,6 +259,11 @@ public class RemoteCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setDatabaseLimitThreshold(long databaseLimitThreshold) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDataRegionPerDataNode(double dataRegionPerDataNode) {
     return this;
   }
 }
