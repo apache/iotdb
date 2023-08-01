@@ -21,7 +21,9 @@ package org.apache.iotdb.commons.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
@@ -66,12 +68,10 @@ public class PipeMetaDeSerTest {
               {
                 put(
                     new TConsensusGroupId(TConsensusGroupType.DataRegion, 456),
-                    new PipeTaskMeta(
-                        new MinimumProgressIndex(), 987)); // TODO: replace with IoTProgressIndex;
+                    new PipeTaskMeta(new MinimumProgressIndex(), 987));
                 put(
                     new TConsensusGroupId(TConsensusGroupType.DataRegion, 123),
-                    new PipeTaskMeta(
-                        new MinimumProgressIndex(), 789)); // TODO: replace with IoTProgressIndex;
+                    new PipeTaskMeta(new IoTProgressIndex(1, 2L), 789));
               }
             });
     ByteBuffer runtimeByteBuffer = pipeRuntimeMeta.serialize();
@@ -98,6 +98,10 @@ public class PipeMetaDeSerTest {
     pipeRuntimeMeta
         .getDataNodeId2PipeRuntimeExceptionMap()
         .put(345, new PipeRuntimeCriticalException("test345"));
+    pipeRuntimeMeta
+        .getConsensusGroupId2TaskMetaMap()
+        .get(new TConsensusGroupId(TConsensusGroupType.DataRegion, 456))
+        .trackExceptionMessage(new PipeRuntimeConnectorCriticalException("test456"));
 
     runtimeByteBuffer = pipeRuntimeMeta.serialize();
     pipeRuntimeMeta1 = PipeRuntimeMeta.deserialize(runtimeByteBuffer);
