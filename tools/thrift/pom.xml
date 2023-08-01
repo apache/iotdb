@@ -26,7 +26,7 @@
     </parent>
     <artifactId>iotdb-tools-thrift</artifactId>
     <packaging>pom</packaging>
-    <name>IoTDB: Client: Compile Tools: Thrift</name>
+    <name>IoTDB: Tools: Thrift</name>
     <description>Local build of the Apache Thrift compiler.</description>
     <properties>
         <thrift.with.cpp>ON</thrift.with.cpp>
