@@ -57,6 +57,7 @@ class IoTDBContainer(DockerContainer):
     def start(self):
         self._configure()
         super().start()
+        self._connect()
         return self
 
     def stop(self, force=True, delete_volume=True):
