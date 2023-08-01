@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 
+import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
@@ -53,14 +54,14 @@ public class ShowClusterDetailsTask implements IConfigTask {
   private static void buildConfigNodesTsBlock(
       TsBlockBuilder builder,
       int nodeId,
-      String nodeType,
       String nodeStatus,
       String internalAddress,
       int internalPort,
-      int configConsensusPort) {
+      int configConsensusPort,
+      TNodeVersionInfo versionInfo) {
     builder.getTimeColumnBuilder().writeLong(0L);
     builder.getColumnBuilder(0).writeInt(nodeId);
-    builder.getColumnBuilder(1).writeBinary(new Binary(nodeType));
+    builder.getColumnBuilder(1).writeBinary(new Binary(NODE_TYPE_CONFIG_NODE));
     builder.getColumnBuilder(2).writeBinary(new Binary(nodeStatus));
     builder.getColumnBuilder(3).writeBinary(new Binary(internalAddress));
     builder.getColumnBuilder(4).writeInt(internalPort);
@@ -70,6 +71,8 @@ public class ShowClusterDetailsTask implements IConfigTask {
     builder.getColumnBuilder(8).writeBinary(new Binary(""));
     builder.getColumnBuilder(9).writeBinary(new Binary(""));
     builder.getColumnBuilder(10).writeBinary(new Binary(""));
+    builder.getColumnBuilder(11).writeBinary(new Binary(versionInfo.getVersion()));
+    builder.getColumnBuilder(12).writeBinary(new Binary(versionInfo.getBuildInfo()));
     builder.declarePosition();
   }
 
@@ -77,7 +80,6 @@ public class ShowClusterDetailsTask implements IConfigTask {
   private static void buildDataNodesTsBlock(
       TsBlockBuilder builder,
       int nodeId,
-      String nodeType,
       String nodeStatus,
       String internalAddress,
       int internalPort,
@@ -85,10 +87,11 @@ public class ShowClusterDetailsTask implements IConfigTask {
       int rpcPort,
       int dataConsensusPort,
       int schemaConsensusPort,
-      int mppPort) {
+      int mppPort,
+      TNodeVersionInfo versionInfo) {
     builder.getTimeColumnBuilder().writeLong(0L);
     builder.getColumnBuilder(0).writeInt(nodeId);
-    builder.getColumnBuilder(1).writeBinary(new Binary(nodeType));
+    builder.getColumnBuilder(1).writeBinary(new Binary(NODE_TYPE_DATA_NODE));
     builder.getColumnBuilder(2).writeBinary(new Binary(nodeStatus));
     builder.getColumnBuilder(3).writeBinary(new Binary(internalAddress));
     builder.getColumnBuilder(4).writeInt(internalPort);
@@ -98,6 +101,8 @@ public class ShowClusterDetailsTask implements IConfigTask {
     builder.getColumnBuilder(8).writeBinary(new Binary(Integer.toString(dataConsensusPort)));
     builder.getColumnBuilder(9).writeBinary(new Binary(Integer.toString(schemaConsensusPort)));
     builder.getColumnBuilder(10).writeBinary(new Binary(Integer.toString(mppPort)));
+    builder.getColumnBuilder(11).writeBinary(new Binary(versionInfo.getVersion()));
+    builder.getColumnBuilder(12).writeBinary(new Binary(versionInfo.getBuildInfo()));
     builder.declarePosition();
   }
 
@@ -116,11 +121,11 @@ public class ShowClusterDetailsTask implements IConfigTask {
                 buildConfigNodesTsBlock(
                     builder,
                     e.getConfigNodeId(),
-                    NODE_TYPE_CONFIG_NODE,
                     clusterNodeInfos.getNodeStatus().get(e.getConfigNodeId()),
                     e.getInternalEndPoint().getIp(),
                     e.getInternalEndPoint().getPort(),
-                    e.getConsensusEndPoint().getPort()));
+                    e.getConsensusEndPoint().getPort(),
+                    clusterNodeInfos.getNodeVersionInfo().get(e.getConfigNodeId())));
 
     clusterNodeInfos
         .getDataNodeList()
@@ -129,7 +134,6 @@ public class ShowClusterDetailsTask implements IConfigTask {
                 buildDataNodesTsBlock(
                     builder,
                     e.getDataNodeId(),
-                    NODE_TYPE_DATA_NODE,
                     clusterNodeInfos.getNodeStatus().get(e.getDataNodeId()),
                     e.getInternalEndPoint().getIp(),
                     e.getInternalEndPoint().getPort(),
@@ -137,7 +141,8 @@ public class ShowClusterDetailsTask implements IConfigTask {
                     e.getClientRpcEndPoint().getPort(),
                     e.getMPPDataExchangeEndPoint().getPort(),
                     e.getSchemaRegionConsensusEndPoint().getPort(),
-                    e.getDataRegionConsensusEndPoint().getPort()));
+                    e.getDataRegionConsensusEndPoint().getPort(),
+                    clusterNodeInfos.getNodeVersionInfo().get(e.getDataNodeId())));
 
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowClusterDetailsHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));

@@ -19,27 +19,42 @@
 
 package org.apache.iotdb.db.pipe.resource;
 
-import org.apache.iotdb.db.pipe.resource.file.PipeFileResourceManager;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.pipe.resource.wal.PipeWALResourceManager;
+import org.apache.iotdb.db.pipe.resource.wal.hardlink.PipeWALHardlinkResourceManager;
+import org.apache.iotdb.db.pipe.resource.wal.selfhost.PipeWALSelfHostResourceManager;
+
+import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeResourceManager {
 
-  private final PipeFileResourceManager pipeFileResourceManager;
-  private final PipeWALResourceManager pipeWALResourceManager;
+  private final PipeTsFileResourceManager pipeTsFileResourceManager;
+  private final AtomicReference<PipeWALResourceManager> pipeWALResourceManager;
 
-  public static PipeFileResourceManager file() {
-    return PipeResourceManagerHolder.INSTANCE.pipeFileResourceManager;
+  public static PipeTsFileResourceManager tsfile() {
+    return PipeResourceManagerHolder.INSTANCE.pipeTsFileResourceManager;
   }
 
   public static PipeWALResourceManager wal() {
-    return PipeResourceManagerHolder.INSTANCE.pipeWALResourceManager;
+    if (PipeResourceManagerHolder.INSTANCE.pipeWALResourceManager.get() == null) {
+      synchronized (PipeResourceManagerHolder.INSTANCE) {
+        if (PipeResourceManagerHolder.INSTANCE.pipeWALResourceManager.get() == null) {
+          PipeResourceManagerHolder.INSTANCE.pipeWALResourceManager.set(
+              PipeConfig.getInstance().getPipeHardLinkWALEnabled()
+                  ? new PipeWALHardlinkResourceManager()
+                  : new PipeWALSelfHostResourceManager());
+        }
+      }
+    }
+    return PipeResourceManagerHolder.INSTANCE.pipeWALResourceManager.get();
   }
 
   ///////////////////////////// SINGLETON /////////////////////////////
 
   private PipeResourceManager() {
-    pipeFileResourceManager = new PipeFileResourceManager();
-    pipeWALResourceManager = new PipeWALResourceManager();
+    pipeTsFileResourceManager = new PipeTsFileResourceManager();
+    pipeWALResourceManager = new AtomicReference<>();
   }
 
   private static class PipeResourceManagerHolder {

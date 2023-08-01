@@ -51,6 +51,7 @@ import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerLoca
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateVersionInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
@@ -363,6 +364,8 @@ public class ConfigPlanExecutor {
         return nodeInfo.applyConfigNode((ApplyConfigNodePlan) physicalPlan);
       case RemoveConfigNode:
         return nodeInfo.removeConfigNode((RemoveConfigNodePlan) physicalPlan);
+      case UpdateVersionInfo:
+        return nodeInfo.updateVersionInfo((UpdateVersionInfoPlan) physicalPlan);
       case CreateFunction:
         return udfInfo.addUDFInTable((CreateFunctionPlan) physicalPlan);
       case DropFunction:

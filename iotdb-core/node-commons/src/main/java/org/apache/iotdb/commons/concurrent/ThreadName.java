@@ -129,6 +129,8 @@ public enum ThreadName {
   PIPE_RUNTIME_META_SYNCER("Pipe-Runtime-Meta-Syncer"),
   PIPE_RUNTIME_HEARTBEAT("Pipe-Runtime-Heartbeat"),
   PIPE_RUNTIME_PROCEDURE_SUBMITTER("Pipe-Runtime-Procedure-Submitter"),
+  PIPE_ASYNC_CONNECTOR_CLIENT_POOL("Pipe-Async-Connector-Client-Pool"),
+  PIPE_ASYNC_CONNECTOR_RETRY_TRIGGER("Pipe-Async-Connector-Retry-Trigger"),
   PIPE_WAL_RESOURCE_TTL_CHECKER("Pipe-WAL-Resource-TTL-Checker"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
   STATEFUL_TRIGGER_INFORMATION_UPDATER("Stateful-Trigger-Information-Updater"),
@@ -136,6 +138,7 @@ public enum ThreadName {
   // NOTICE: The thread name of jvm cannot be edited here!
   // We list the thread name here just for distinguishing what module the thread belongs to.
   JVM_PAUSE_MONITOR("JvmPauseMonitor"),
+  JVM_GC_STATISTICS_MONITOR("JVM-GC-Statistics-Monitor"),
   PARALLEL_GC("GC task thread"),
   G1_GC("GC Thread"),
   G1_MAIN_MARKER("G1 Main Marker"),
@@ -259,7 +262,10 @@ public enum ThreadName {
               PIPE_CONNECTOR_EXECUTOR_POOL,
               PIPE_SUBTASK_CALLBACK_EXECUTOR_POOL,
               PIPE_RUNTIME_META_SYNCER,
+              PIPE_RUNTIME_HEARTBEAT,
               PIPE_RUNTIME_PROCEDURE_SUBMITTER,
+              PIPE_ASYNC_CONNECTOR_CLIENT_POOL,
+              PIPE_ASYNC_CONNECTOR_RETRY_TRIGGER,
               PIPE_WAL_RESOURCE_TTL_CHECKER,
               WINDOW_EVALUATION_SERVICE,
               STATEFUL_TRIGGER_INFORMATION_UPDATER));
@@ -268,6 +274,7 @@ public enum ThreadName {
       new HashSet<>(
           Arrays.asList(
               JVM_PAUSE_MONITOR,
+              JVM_GC_STATISTICS_MONITOR,
               PARALLEL_GC,
               G1_GC,
               G1_MAIN_MARKER,
