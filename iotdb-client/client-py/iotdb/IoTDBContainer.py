@@ -61,6 +61,6 @@ class IoTDBContainer(DockerContainer):
         return self
 
     def stop(self, force=True, delete_volume=True):
-        super().stop(force, delete_volume)
         logger.info(self.get_wrapped_container().logs())
+        super().stop(force, delete_volume)
         return self
