@@ -19,7 +19,6 @@
 package org.apache.iotdb.commons.auth.role;
 
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.concurrent.HashLock;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -146,7 +145,7 @@ public abstract class BasicRoleManager implements IRoleManager {
         throw new AuthException(
             TSStatusCode.ROLE_NOT_EXIST, String.format("No such role %s", rolename));
       }
-      if (PrivilegeType.isStorable(privilegeId) && !role.hasPrivilege(path, privilegeId)) {
+      if (!role.hasPrivilege(path, privilegeId)) {
         return false;
       }
       role.removePrivilege(path, privilegeId);
