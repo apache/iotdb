@@ -22,9 +22,11 @@ package org.apache.iotdb.commons.pipe;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 
 import org.junit.Assert;
@@ -74,6 +76,31 @@ public class PipeMetaDeSerTest {
             });
     ByteBuffer runtimeByteBuffer = pipeRuntimeMeta.serialize();
     PipeRuntimeMeta pipeRuntimeMeta1 = PipeRuntimeMeta.deserialize(runtimeByteBuffer);
+    Assert.assertEquals(pipeRuntimeMeta, pipeRuntimeMeta1);
+
+    pipeRuntimeMeta.getStatus().set(PipeStatus.RUNNING);
+    pipeRuntimeMeta.setIsStoppedByRuntimeException(false);
+    pipeRuntimeMeta.setExceptionsClearTime(123456789L);
+    pipeRuntimeMeta
+        .getDataNodeId2PipeRuntimeExceptionMap()
+        .put(123, new PipeRuntimeCriticalException("test"));
+
+    runtimeByteBuffer = pipeRuntimeMeta.serialize();
+    pipeRuntimeMeta1 = PipeRuntimeMeta.deserialize(runtimeByteBuffer);
+    Assert.assertEquals(pipeRuntimeMeta, pipeRuntimeMeta1);
+
+    pipeRuntimeMeta.getStatus().set(PipeStatus.DROPPED);
+    pipeRuntimeMeta.setIsStoppedByRuntimeException(true);
+    pipeRuntimeMeta.setExceptionsClearTime(0);
+    pipeRuntimeMeta
+        .getDataNodeId2PipeRuntimeExceptionMap()
+        .put(123, new PipeRuntimeCriticalException("test123"));
+    pipeRuntimeMeta
+        .getDataNodeId2PipeRuntimeExceptionMap()
+        .put(345, new PipeRuntimeCriticalException("test345"));
+
+    runtimeByteBuffer = pipeRuntimeMeta.serialize();
+    pipeRuntimeMeta1 = PipeRuntimeMeta.deserialize(runtimeByteBuffer);
     Assert.assertEquals(pipeRuntimeMeta, pipeRuntimeMeta1);
 
     PipeMeta pipeMeta = new PipeMeta(pipeStaticMeta, pipeRuntimeMeta);
