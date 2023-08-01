@@ -31,7 +31,8 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../main/generated-sources-cpp)
 # Add Thrift include directory
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../../thrift/include)
 
-find_package(Boost REQUIRED)
+# Add Boost library headers for MaxOS
+FIND_PACKAGE(Boost REQUIRED)
 IF (DEFINED BOOST_INCLUDEDIR)
     include_directories("${Boost_INCLUDE_DIR}")
 ENDIF()
