@@ -200,14 +200,6 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEnableDataPartitionInheritPolicy(
-      boolean enableDataPartitionInheritPolicy) {
-    setProperty(
-        "enable_data_partition_inherit_policy", String.valueOf(enableDataPartitionInheritPolicy));
-    return this;
-  }
-
-  @Override
   public CommonConfig setDataReplicationFactor(int dataReplicationFactor) {
     setProperty("data_replication_factor", String.valueOf(dataReplicationFactor));
     return this;
@@ -357,6 +349,12 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setDatabaseLimitThreshold(long databaseLimitThreshold) {
     setProperty("database_limit_threshold", String.valueOf(databaseLimitThreshold));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDataRegionPerDataNode(double dataRegionPerDataNode) {
+    setProperty("data_region_per_data_node", String.valueOf(dataRegionPerDataNode));
     return this;
   }
 }

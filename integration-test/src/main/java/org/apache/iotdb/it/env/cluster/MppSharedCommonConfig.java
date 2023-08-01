@@ -173,14 +173,6 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEnableDataPartitionInheritPolicy(
-      boolean enableDataPartitionInheritPolicy) {
-    cnConfig.setEnableDataPartitionInheritPolicy(enableDataPartitionInheritPolicy);
-    dnConfig.setEnableDataPartitionInheritPolicy(enableDataPartitionInheritPolicy);
-    return this;
-  }
-
-  @Override
   public CommonConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy) {
     cnConfig.setSchemaRegionGroupExtensionPolicy(schemaRegionGroupExtensionPolicy);
     dnConfig.setSchemaRegionGroupExtensionPolicy(schemaRegionGroupExtensionPolicy);
@@ -370,6 +362,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setDatabaseLimitThreshold(long databaseLimitThreshold) {
     dnConfig.setDatabaseLimitThreshold(databaseLimitThreshold);
     cnConfig.setDatabaseLimitThreshold(databaseLimitThreshold);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDataRegionPerDataNode(double dataRegionPerDataNode) {
+    dnConfig.setDataRegionPerDataNode(dataRegionPerDataNode);
+    cnConfig.setDataRegionPerDataNode(dataRegionPerDataNode);
     return this;
   }
 }

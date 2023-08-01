@@ -40,7 +40,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateBuildInfoPlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateVersionInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
@@ -70,6 +70,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
+import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRuntimeConfiguration;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
@@ -251,10 +252,10 @@ public class NodeManager {
     registerDataNodePlan.getDataNodeConfiguration().getLocation().setDataNodeId(dataNodeId);
     getConsensusManager().write(registerDataNodePlan);
 
-    // update datanode's buildInfo
-    UpdateBuildInfoPlan updateBuildInfoPlan =
-        new UpdateBuildInfoPlan(req.getBuildInfo(), dataNodeId);
-    getConsensusManager().write(updateBuildInfoPlan);
+    // update datanode's versionInfo
+    UpdateVersionInfoPlan updateVersionInfoPlan =
+        new UpdateVersionInfoPlan(req.getVersionInfo(), dataNodeId);
+    getConsensusManager().write(updateVersionInfoPlan);
 
     // Bind DataNode metrics
     PartitionMetrics.bindDataNodePartitionMetrics(
@@ -282,11 +283,12 @@ public class NodeManager {
           new UpdateDataNodePlan(req.getDataNodeConfiguration());
       getConsensusManager().write(updateDataNodePlan);
     }
-    String recordBuildInfo = nodeInfo.getBuildInfo(nodeId);
-    if (!req.getBuildInfo().equals(recordBuildInfo)) {
-      // Update buildInfo when modified during restart
-      UpdateBuildInfoPlan updateBuildInfoPlan = new UpdateBuildInfoPlan(req.getBuildInfo(), nodeId);
-      getConsensusManager().write(updateBuildInfoPlan);
+    TNodeVersionInfo versionInfo = nodeInfo.getVersionInfo(nodeId);
+    if (!req.getVersionInfo().equals(versionInfo)) {
+      // Update versionInfo when modified during restart
+      UpdateVersionInfoPlan updateVersionInfoPlan =
+          new UpdateVersionInfoPlan(req.getVersionInfo(), nodeId);
+      getConsensusManager().write(updateVersionInfoPlan);
     }
 
     TDataNodeRestartResp resp = new TDataNodeRestartResp();
@@ -355,11 +357,12 @@ public class NodeManager {
         .setConfigNodeId(nodeId);
   }
 
-  public TSStatus updateConfigNodeIfNecessary(int configNodeId, String buildInfo) {
-    String recordBuildInfo = nodeInfo.getBuildInfo(configNodeId);
-    if (!recordBuildInfo.equals(buildInfo)) {
-      // Update buildInfo when modified during restart
-      UpdateBuildInfoPlan updateConfigNodePlan = new UpdateBuildInfoPlan(buildInfo, configNodeId);
+  public TSStatus updateConfigNodeIfNecessary(int configNodeId, TNodeVersionInfo versionInfo) {
+    TNodeVersionInfo recordVersionInfo = nodeInfo.getVersionInfo(configNodeId);
+    if (!recordVersionInfo.equals(versionInfo)) {
+      // Update versionInfo when modified during restart
+      UpdateVersionInfoPlan updateConfigNodePlan =
+          new UpdateVersionInfoPlan(versionInfo, configNodeId);
       ConsensusWriteResponse result = getConsensusManager().write(updateConfigNodePlan);
       return result.getStatus();
     }
@@ -484,8 +487,8 @@ public class NodeManager {
     return nodeInfo.getRegisteredConfigNodes();
   }
 
-  public Map<Integer, String> getNodeBuildInfo() {
-    return nodeInfo.getNodeBuildInfo();
+  public Map<Integer, TNodeVersionInfo> getNodeVersionInfo() {
+    return nodeInfo.getNodeVersionInfo();
   }
 
   public List<TConfigNodeInfo> getRegisteredConfigNodeInfoList() {
@@ -515,14 +518,15 @@ public class NodeManager {
    * Only leader use this interface, record the new ConfigNode's information.
    *
    * @param configNodeLocation The new ConfigNode.
-   * @param buildInfo The new ConfigNode's buildInfo.
+   * @param versionInfo The new ConfigNode's versionInfo.
    */
-  public void applyConfigNode(TConfigNodeLocation configNodeLocation, String buildInfo) {
+  public void applyConfigNode(
+      TConfigNodeLocation configNodeLocation, TNodeVersionInfo versionInfo) {
     ApplyConfigNodePlan applyConfigNodePlan = new ApplyConfigNodePlan(configNodeLocation);
     getConsensusManager().write(applyConfigNodePlan);
-    UpdateBuildInfoPlan updateBuildInfoPlan =
-        new UpdateBuildInfoPlan(buildInfo, configNodeLocation.getConfigNodeId());
-    getConsensusManager().write(updateBuildInfoPlan);
+    UpdateVersionInfoPlan updateVersionInfoPlan =
+        new UpdateVersionInfoPlan(versionInfo, configNodeLocation.getConfigNodeId());
+    getConsensusManager().write(updateVersionInfoPlan);
   }
 
   /**

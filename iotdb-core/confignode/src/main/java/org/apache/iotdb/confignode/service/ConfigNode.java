@@ -43,6 +43,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
+import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
 import org.apache.iotdb.db.service.metrics.ProcessMetrics;
@@ -150,7 +151,9 @@ public class ConfigNode implements ConfigNodeMBean {
           TSStatus status =
               configManager
                   .getNodeManager()
-                  .updateConfigNodeIfNecessary(configNodeId, IoTDBConstant.BUILD_INFO);
+                  .updateConfigNodeIfNecessary(
+                      configNodeId,
+                      new TNodeVersionInfo(IoTDBConstant.VERSION, IoTDBConstant.BUILD_INFO));
           if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             break;
           } else {
@@ -178,7 +181,8 @@ public class ConfigNode implements ConfigNodeMBean {
         configManager
             .getNodeManager()
             .applyConfigNode(
-                generateConfigNodeLocation(SEED_CONFIG_NODE_ID), IoTDBConstant.BUILD_INFO);
+                generateConfigNodeLocation(SEED_CONFIG_NODE_ID),
+                new TNodeVersionInfo(IoTDBConstant.VERSION, IoTDBConstant.BUILD_INFO));
         setUpMetricService();
         // Notice: We always set up Seed-ConfigNode's RPC service lastly to ensure
         // that the external service is not provided until Seed-ConfigNode is fully initialized
@@ -308,7 +312,7 @@ public class ConfigNode implements ConfigNodeMBean {
             configManager.getClusterParameters(),
             generateConfigNodeLocation(INIT_NON_SEED_CONFIG_NODE_ID));
 
-    req.setBuildInfo(IoTDBConstant.BUILD_INFO);
+    req.setVersionInfo(new TNodeVersionInfo(IoTDBConstant.VERSION, IoTDBConstant.BUILD_INFO));
 
     TEndPoint targetConfigNode = CONF.getTargetConfigNode();
     if (targetConfigNode == null) {
