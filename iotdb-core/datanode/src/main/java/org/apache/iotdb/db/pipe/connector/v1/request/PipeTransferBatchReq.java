@@ -34,7 +34,6 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
-import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -44,8 +43,8 @@ import java.util.Objects;
 
 public class PipeTransferBatchReq extends TPipeTransferReq {
 
-  private final List<PipeTransferInsertNodeReq> insertNodeReqs = new ArrayList<>();
-  private final List<PipeTransferTabletReq> tabletReqs = new ArrayList<>();
+  private final transient List<PipeTransferInsertNodeReq> insertNodeReqs = new ArrayList<>();
+  private final transient List<PipeTransferTabletReq> tabletReqs = new ArrayList<>();
 
   private PipeTransferBatchReq() {
     // Empty constructor
@@ -54,10 +53,6 @@ public class PipeTransferBatchReq extends TPipeTransferReq {
   public static PipeTransferBatchReq toTPipeTransferReq(List<TPipeTransferReq> reqs)
       throws IOException {
     final PipeTransferBatchReq batchReq = new PipeTransferBatchReq();
-
-    ByteArrayOutputStream stream = new ByteArrayOutputStream();
-
-    ReadWriteIOUtils.write(reqs.size(), stream);
 
     for (TPipeTransferReq tReq : reqs) {
       if (tReq instanceof PipeTransferInsertNodeReq) {
@@ -82,7 +77,8 @@ public class PipeTransferBatchReq extends TPipeTransferReq {
         ReadWriteIOUtils.write(tabletReq.getIsAligned(), outputStream);
       }
 
-      batchReq.body = ByteBuffer.wrap(stream.toByteArray());
+      batchReq.body =
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
 
     return batchReq;
@@ -92,19 +88,23 @@ public class PipeTransferBatchReq extends TPipeTransferReq {
       throws IOException {
     final PipeTransferBatchReq batchReq = new PipeTransferBatchReq();
 
-    int size = ReadWriteIOUtils.readInt(batchReq.body);
+    int size = ReadWriteIOUtils.readInt(transferReq.body);
     for (int i = 0; i < size; ++i) {
       batchReq.insertNodeReqs.add(
           PipeTransferInsertNodeReq.toTPipeTransferReq(
               (InsertNode) PlanNodeType.deserialize(transferReq.body)));
     }
 
-    size = ReadWriteIOUtils.readInt(batchReq.body);
+    size = ReadWriteIOUtils.readInt(transferReq.body);
     for (int i = 0; i < size; ++i) {
       batchReq.tabletReqs.add(
           PipeTransferTabletReq.toTPipeTransferReq(
-              Tablet.deserialize(batchReq.body), ReadWriteIOUtils.readBool(batchReq.body)));
+              Tablet.deserialize(transferReq.body), ReadWriteIOUtils.readBool(transferReq.body)));
     }
+
+    batchReq.version = transferReq.version;
+    batchReq.type = transferReq.type;
+    batchReq.body = transferReq.body;
 
     return batchReq;
   }

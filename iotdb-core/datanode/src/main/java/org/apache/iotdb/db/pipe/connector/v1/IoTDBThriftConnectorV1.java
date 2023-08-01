@@ -30,6 +30,7 @@ import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferTabletReq;
+import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -82,11 +83,12 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
       (long) PipeConfig.getInstance().getPipeConnectorBatchSize() * 1024 * 1024;
 
   private List<TPipeTransferReq> tPipeTransferReqs;
-  private long lastSendTime = 0;
+  private List<EnrichedEvent> events;
+  private long lastSuccessfullySendTime = 0;
   private long bufferSize = 0;
 
   public IoTDBThriftConnectorV1() {
-    // Do nothing
+    // Empty constructor
   }
 
   public IoTDBThriftConnectorV1(String ipAddress, int port) {
@@ -115,6 +117,7 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
 
     if (CONNECTOR_IOTDB_MODE_BATCH.equals(this.mode)) {
       tPipeTransferReqs = new ArrayList<>();
+      events = new ArrayList<>();
     }
   }
 
@@ -169,15 +172,21 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
             (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
         if (CONNECTOR_IOTDB_MODE_BATCH.equals(mode)) {
           // Init last send time to record the first element
-          if (lastSendTime == 0) {
-            lastSendTime = System.currentTimeMillis();
+          if (lastSuccessfullySendTime == 0) {
+            lastSuccessfullySendTime = System.currentTimeMillis();
           }
           PipeTransferInsertNodeReq insertNodeReq =
               PipeTransferInsertNodeReq.toTPipeTransferReq(event.getInsertNode());
-          tPipeTransferReqs.add(insertNodeReq);
-          bufferSize += insertNodeReq.body.position();
+
+          // To avoid redundant event when retrying
+          if (!events.get(events.size() - 1).equals(event)) {
+            tPipeTransferReqs.add(insertNodeReq);
+            events.add(event);
+            event.increaseReferenceCount(IoTDBThriftConnectorV1.class.getName());
+            bufferSize += insertNodeReq.body.array().length;
+          }
           if (bufferSize >= BATCH_SIZE_IN_BYTES
-              || System.currentTimeMillis() - lastSendTime >= MAX_DELAY_IN_MS) {
+              || System.currentTimeMillis() - lastSuccessfullySendTime >= MAX_DELAY_IN_MS) {
             doTransferInBatch();
           }
         } else {
@@ -187,15 +196,18 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
         PipeRawTabletInsertionEvent event = (PipeRawTabletInsertionEvent) tabletInsertionEvent;
         if (CONNECTOR_IOTDB_MODE_BATCH.equals(mode)) {
           // Init last send time to record the first element
-          if (lastSendTime == 0) {
-            lastSendTime = System.currentTimeMillis();
+          if (lastSuccessfullySendTime == 0) {
+            lastSuccessfullySendTime = System.currentTimeMillis();
           }
           PipeTransferTabletReq tabletReq =
               PipeTransferTabletReq.toTPipeTransferReq(event.convertToTablet(), event.isAligned());
+          // TODO: Add the !equals logic after PipeRawTabletInsertionEvent extending EnrichedEvent
           tPipeTransferReqs.add(tabletReq);
-          bufferSize += tabletReq.body.position();
+          // TODO: Add the event to events and increase the event reference count after
+          // PipeRawTabletInsertionEvent extending EnrichedEvent
+          bufferSize += tabletReq.body.array().length;
           if (bufferSize >= BATCH_SIZE_IN_BYTES
-              || System.currentTimeMillis() - lastSendTime >= MAX_DELAY_IN_MS) {
+              || System.currentTimeMillis() - lastSuccessfullySendTime >= MAX_DELAY_IN_MS) {
             doTransferInBatch();
           }
         } else {
@@ -253,7 +265,12 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
     }
     tPipeTransferReqs.clear();
     bufferSize = 0;
-    lastSendTime = System.currentTimeMillis();
+    lastSuccessfullySendTime = System.currentTimeMillis();
+    // Release the events to allow committing
+    for (EnrichedEvent event : events) {
+      event.decreaseReferenceCount(IoTDBThriftConnectorV1.class.getName());
+    }
+    events.clear();
   }
 
   private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)

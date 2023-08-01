@@ -53,7 +53,7 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferTabletReq.class);
 
   private transient Tablet tablet;
-  private boolean isAligned;
+  private transient boolean isAligned;
 
   public Tablet getTablet() {
     return tablet;

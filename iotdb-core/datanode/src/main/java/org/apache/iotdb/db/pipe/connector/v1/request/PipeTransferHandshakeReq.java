@@ -32,7 +32,7 @@ import java.util.Objects;
 
 public class PipeTransferHandshakeReq extends TPipeTransferReq {
 
-  private String timestampPrecision;
+  private transient String timestampPrecision;
 
   private PipeTransferHandshakeReq() {
     // Empty constructor

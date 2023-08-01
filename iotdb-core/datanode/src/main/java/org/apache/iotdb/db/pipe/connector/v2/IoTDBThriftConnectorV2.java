@@ -64,12 +64,12 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.PriorityQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -116,12 +116,14 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
   private final long BATCH_SIZE_IN_BYTES =
       (long) PipeConfig.getInstance().getPipeConnectorBatchSize() * 1024 * 1024;
 
-  private final AtomicLong batchCommitId = new AtomicLong(0);
+  private AtomicLong batchCommitId;
   private List<TPipeTransferReq> tPipeTransferReqs;
   private List<Long> requestCommitIds;
+  // TODO: replace it with List<EnrichedEvent> after PipeRawTabletInsertionEvent extending
+  // EnrichedEvent
   private List<Event> events;
-  private final AtomicLong lastSendTime = new AtomicLong(0);
-  private final AtomicLong bufferSize = new AtomicLong(0);
+  private AtomicLong lastSendTime;
+  private AtomicLong bufferSize;
 
   public IoTDBThriftConnectorV2() {
     if (ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get() == null) {
@@ -164,9 +166,12 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
     this.mode = parameters.getString(CONNECTOR_IOTDB_MODE_KEY);
 
     if (CONNECTOR_IOTDB_MODE_BATCH.equals(this.mode)) {
-      tPipeTransferReqs = new ArrayList<>();
-      requestCommitIds = new ArrayList<>();
-      events = new ArrayList<>();
+      batchCommitId = new AtomicLong(0);
+      tPipeTransferReqs = new CopyOnWriteArrayList<>();
+      requestCommitIds = new CopyOnWriteArrayList<>();
+      events = new CopyOnWriteArrayList<>();
+      lastSendTime = new AtomicLong(0);
+      bufferSize = new AtomicLong(0);
     }
   }
 
@@ -254,7 +259,9 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
         tPipeTransferReqs.add(pipeTransferInsertNodeReq);
         requestCommitIds.add(requestCommitId);
         events.add(pipeInsertNodeTabletInsertionEvent);
-        bufferSize.addAndGet(pipeTransferInsertNodeReq.body.position());
+        pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
+            PipeTransferTabletBatchInsertionEventHandler.class.getName());
+        bufferSize.addAndGet(pipeTransferInsertNodeReq.body.array().length);
         if (bufferSize.get() >= BATCH_SIZE_IN_BYTES
             || System.currentTimeMillis() - lastSendTime.get() >= MAX_DELAY_IN_MS) {
           transferInBatch();
@@ -284,7 +291,9 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
         tPipeTransferReqs.add(pipeTransferTabletReq);
         requestCommitIds.add(requestCommitId);
         events.add(pipeRawTabletInsertionEvent);
-        bufferSize.addAndGet(pipeTransferTabletReq.body.position());
+        // TODO: Increase the event reference count after PipeRawTabletInsertionEvent extending
+        // EnrichedEvent
+        bufferSize.addAndGet(pipeTransferTabletReq.body.array().length);
         if (bufferSize.get() >= BATCH_SIZE_IN_BYTES
             || System.currentTimeMillis() - lastSendTime.get() >= MAX_DELAY_IN_MS) {
           transferInBatch();
@@ -300,7 +309,6 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
   }
 
   private void transferInBatch() throws IOException {
-
     final PipeTransferTabletBatchInsertionEventHandler
         pipeTransferTabletBatchInsertionEventHandler =
             new PipeTransferTabletBatchInsertionEventHandler(

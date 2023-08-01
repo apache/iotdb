@@ -34,7 +34,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.Optional;
 
 public class PipeTransferTabletBatchInsertionEventHandler
     implements AsyncMethodCallback<TPipeTransferResp> {
@@ -57,18 +56,6 @@ public class PipeTransferTabletBatchInsertionEventHandler
     this.events = events;
     this.req = req;
     this.connector = connector;
-
-    for (Event event : events) {
-      Optional.ofNullable(event)
-          .ifPresent(
-              e -> {
-                if (e instanceof EnrichedEvent) {
-                  ((EnrichedEvent) e)
-                      .increaseReferenceCount(
-                          PipeTransferTabletInsertionEventHandler.class.getName());
-                }
-              });
-    }
   }
 
   public void transfer(AsyncPipeDataTransferServiceClient client) throws TException {
