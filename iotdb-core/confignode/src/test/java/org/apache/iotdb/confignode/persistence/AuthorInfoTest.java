@@ -89,13 +89,13 @@ public class AuthorInfoTest {
     TCheckUserPrivilegesReq checkUserPrivilegesReq;
 
     Set<Integer> privilegeList = new HashSet<>();
-    privilegeList.add(PrivilegeType.MANAGE_USER.ordinal());
+    privilegeList.add(PrivilegeType.USER_PRIVILEGE.ordinal());
 
     Set<Integer> revokePrivilege = new HashSet<>();
-    revokePrivilege.add(PrivilegeType.MANAGE_USER.ordinal());
+    revokePrivilege.add(PrivilegeType.USER_PRIVILEGE.ordinal());
 
     List<String> privilege = new ArrayList<>();
-    privilege.add("root.** : MANAGE_USER");
+    privilege.add("root.** : USER_PRIVILEGE");
 
     List<PartialPath> paths = new ArrayList<>();
     paths.add(new PartialPath("root.ln"));
@@ -122,7 +122,7 @@ public class AuthorInfoTest {
     // check user privileges
     status =
         authorInfo
-            .checkUserPrivileges("user0", paths, PrivilegeType.MANAGE_USER.ordinal())
+            .checkUserPrivileges("user0", paths, PrivilegeType.USER_PRIVILEGE.ordinal())
             .getStatus();
     Assert.assertEquals(TSStatusCode.NO_PERMISSION.getStatusCode(), status.getCode());
 
@@ -215,7 +215,7 @@ public class AuthorInfoTest {
     // check user privileges
     status =
         authorInfo
-            .checkUserPrivileges("user0", paths, PrivilegeType.MANAGE_USER.ordinal())
+            .checkUserPrivileges("user0", paths, PrivilegeType.USER_PRIVILEGE.ordinal())
             .getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -411,12 +411,10 @@ public class AuthorInfoTest {
     permissionInfoResp = authorInfo.executeListUserPrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    Set<PrivilegeType> allPrivilegeTypes = PrivilegeType.ALL.getStorablePrivilege();
-    List<String> resultPrivilegeTypes =
-        permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_PRIVILEGE);
-    Assert.assertEquals(allPrivilegeTypes.size(), resultPrivilegeTypes.size());
-    for (int i = 0; i < allPrivilegeTypes.size(); i++) {
-      Assert.assertTrue(resultPrivilegeTypes.contains(PrivilegeType.values()[i].toString()));
+    for (int i = 0; i < PrivilegeType.values().length; i++) {
+      Assert.assertEquals(
+          PrivilegeType.values()[i].toString(),
+          permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_PRIVILEGE).get(i));
     }
   }
 

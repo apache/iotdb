@@ -303,15 +303,13 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
    */
   private PathPrivilege toPathPrivilege(PartialPath path, String privilege) {
     PathPrivilege pathPrivilege = new PathPrivilege();
-    pathPrivilege.setPath(path);
+    String[] privileges = privilege.replace(" ", "").split(",");
     Set<Integer> privilegeIds = new HashSet<>();
-    pathPrivilege.setPrivileges(privilegeIds);
-    if (privilege.trim().length() != 0) {
-      String[] privileges = privilege.replace(" ", "").split(",");
-      for (String p : privileges) {
-        privilegeIds.add(Integer.parseInt(p));
-      }
+    for (String p : privileges) {
+      privilegeIds.add(Integer.parseInt(p));
     }
+    pathPrivilege.setPrivileges(privilegeIds);
+    pathPrivilege.setPath(path);
     return pathPrivilege;
   }
 

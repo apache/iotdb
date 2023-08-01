@@ -157,10 +157,9 @@ public class AuthorityChecker {
       case SHOW_PATH_SET_SCHEMA_TEMPLATE:
       case SHOW_PATH_USING_SCHEMA_TEMPLATE:
         return PrivilegeType.READ_SCHEMA.ordinal();
+      case TTL:
       case STORAGE_GROUP_SCHEMA:
       case DELETE_STORAGE_GROUP:
-        return PrivilegeType.MANAGE_DATABASE.ordinal();
-      case TTL:
       case CREATE_TIMESERIES:
       case CREATE_ALIGNED_TIMESERIES:
       case CREATE_MULTI_TIMESERIES:
@@ -207,13 +206,13 @@ public class AuthorityChecker {
       case LIST_USER:
       case LIST_USER_ROLES:
       case LIST_USER_PRIVILEGE:
-        return PrivilegeType.MANAGE_USER.ordinal();
+        return PrivilegeType.USER_PRIVILEGE.ordinal();
       case CREATE_ROLE:
       case DELETE_ROLE:
       case LIST_ROLE:
       case LIST_ROLE_USERS:
       case LIST_ROLE_PRIVILEGE:
-        return PrivilegeType.MANAGE_ROLE.ordinal();
+        return PrivilegeType.ROLE_PRIVILEGE.ordinal();
       case MODIFY_PASSWORD:
         return PrivilegeType.ALTER_PASSWORD.ordinal();
       case GRANT_USER_PRIVILEGE:
@@ -225,11 +224,11 @@ public class AuthorityChecker {
         return PrivilegeType.GRANT_PRIVILEGE.ordinal();
       case CREATE_TRIGGER:
       case DROP_TRIGGER:
-        return PrivilegeType.USE_TRIGGER.ordinal();
+        return PrivilegeType.TRIGGER_PRIVILEGE.ordinal();
       case CREATE_CONTINUOUS_QUERY:
       case DROP_CONTINUOUS_QUERY:
       case SHOW_CONTINUOUS_QUERIES:
-        return PrivilegeType.USE_CQ.ordinal();
+        return PrivilegeType.CONTINUOUS_QUERY_PRIVILEGE.ordinal();
       case CREATE_PIPEPLUGIN:
       case DROP_PIPEPLUGIN:
       case SHOW_PIPEPLUGINS:
@@ -238,7 +237,7 @@ public class AuthorityChecker {
       case STOP_PIPE:
       case DROP_PIPE:
       case SHOW_PIPES:
-        return PrivilegeType.USE_PIPE.ordinal();
+        return PrivilegeType.PIPE_PRIVILEGE.ordinal();
       default:
         logger.error("Unrecognizable operator type ({}) for AuthorityChecker.", type);
         return -1;

@@ -61,14 +61,6 @@ ALL
     : A L L
     ;
 
-READ
-    : R E A D
-    ;
-
-WRITE
-    : W R I T E
-    ;
-
 ALTER
     : A L T E R
     ;
@@ -909,14 +901,13 @@ PRIVILEGE_VALUE
     | WRITE_DATA
     | READ_SCHEMA
     | WRITE_SCHEMA
-    | MANAGE_USER
-    | MANAGE_ROLE
+    | USER_PRIVILEGE
+    | ROLE_PRIVILEGE
     | GRANT_PRIVILEGE
     | ALTER_PASSWORD
-    | USE_TRIGGER
-    | USE_CQ
-    | USE_PIPE
-    | MANAGE_DATABASE
+    | TRIGGER_PRIVILEGE
+    | CONTINUOUS_QUERY_PRIVILEGE
+    | PIPE_PRIVILEGE
     ;
 
 READ_DATA
@@ -935,12 +926,12 @@ WRITE_SCHEMA
     : W R I T E '_' S C H E M A
     ;
 
-MANAGE_USER
-    : M A N A G E '_' U S E R
+USER_PRIVILEGE
+    : U S E R '_' P R I V I L E G E
     ;
 
-MANAGE_ROLE
-    : M A N A G E '_' R O L E
+ROLE_PRIVILEGE
+    : R O L E '_' P R I V I L E G E
     ;
 
 GRANT_PRIVILEGE
@@ -951,20 +942,16 @@ ALTER_PASSWORD
     : A L T E R '_' P A S S W O R D
     ;
 
-USE_TRIGGER
-    : U S E '_' T R I G G E R
+TRIGGER_PRIVILEGE
+    : T R I G G E R '_' P R I V I L E G E
     ;
 
-USE_CQ
-    : U S E '_' C Q
+CONTINUOUS_QUERY_PRIVILEGE
+    : C O N T I N U O U S '_' Q U E R Y '_' P R I V I L E G E
     ;
 
-USE_PIPE
-    : U S E '_' P I P E
-    ;
-
-MANAGE_DATABASE
-    : M A N A G E '_' D A T A B A S E
+PIPE_PRIVILEGE
+    : P I P E '_' P R I V I L E G E
     ;
 
 SET_STORAGE_GROUP

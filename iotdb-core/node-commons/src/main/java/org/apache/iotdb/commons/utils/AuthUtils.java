@@ -179,8 +179,7 @@ public class AuthUtils {
         case WRITE_SCHEMA:
         case READ_DATA:
         case WRITE_DATA:
-        case USE_TRIGGER:
-        case MANAGE_DATABASE:
+        case TRIGGER_PRIVILEGE:
           return;
         default:
           throw new AuthException(
@@ -191,7 +190,6 @@ public class AuthUtils {
       switch (type) {
         case READ_SCHEMA:
         case WRITE_SCHEMA:
-        case MANAGE_DATABASE:
         case READ_DATA:
         case WRITE_DATA:
           validatePath(path);
@@ -317,8 +315,12 @@ public class AuthUtils {
       privilegeList.add(targetPathPrivilege);
     }
     // add privilegeId into targetPathPrivilege
-    for (PrivilegeType privilegeType : PrivilegeType.getStorablePrivilege(privilegeId)) {
-      targetPathPrivilege.getPrivileges().add(privilegeType.ordinal());
+    if (privilegeId != PrivilegeType.ALL.ordinal()) {
+      targetPathPrivilege.getPrivileges().add(privilegeId);
+    } else {
+      for (PrivilegeType privilegeType : PrivilegeType.values()) {
+        targetPathPrivilege.getPrivileges().add(privilegeType.ordinal());
+      }
     }
   }
 
@@ -339,11 +341,15 @@ public class AuthUtils {
       }
     }
     if (targetPathPrivilege != null) {
-      for (PrivilegeType privilegeType : PrivilegeType.getStorablePrivilege(privilegeId)) {
-        targetPathPrivilege.getPrivileges().remove(privilegeType.ordinal());
-      }
-      if (targetPathPrivilege.getPrivileges().isEmpty()) {
+      if (privilegeId == PrivilegeType.ALL.ordinal()) {
+        // remove all privileges on target path
         privilegeList.remove(targetPathPrivilege);
+      } else {
+        // remove privilege on target path
+        targetPathPrivilege.getPrivileges().remove(privilegeId);
+        if (targetPathPrivilege.getPrivileges().isEmpty()) {
+          privilegeList.remove(targetPathPrivilege);
+        }
       }
     }
   }

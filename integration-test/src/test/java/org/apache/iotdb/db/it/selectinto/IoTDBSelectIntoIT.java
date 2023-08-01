@@ -583,7 +583,7 @@ public class IoTDBSelectIntoIT {
         Assert.assertTrue(
             e.getMessage(),
             e.getMessage()
-                .contains("No permissions for this operation, please add privilege WRITE_DATA"));
+                .contains("No permissions for this operation, please add privilege READ_DATA"));
       }
     }
   }
