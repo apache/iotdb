@@ -244,6 +244,7 @@ import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNod
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.calculateMaxAggregationResultSize;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.calculateMaxAggregationResultSizeForLastQuery;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.initTimeRangeIterator;
+import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
 
 /** This Visitor is responsible for transferring PlanNode Tree to Operator Tree. */
@@ -1846,8 +1847,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   private List<OutputColumn> generateOutputColumnsFromChildren(MultiChildProcessNode node) {
     // TODO we should also sort the InputLocation for each column if they are not overlapped
-    return makeLayout(node).values().stream()
-        .map(inputLocations -> new OutputColumn(inputLocations, inputLocations.size() > 1))
+    return makeLayout(node).entrySet().stream()
+        .filter(entry -> !TIMESTAMP_EXPRESSION_STRING.equals(entry.getKey()))
+        .map(entry -> new OutputColumn(entry.getValue(), entry.getValue().size() > 1))
         .collect(Collectors.toList());
   }
 
@@ -2393,7 +2395,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     int tsBlockIndex = 0;
     for (PlanNode childNode : node.getChildren()) {
       outputMappings
-          .computeIfAbsent(TimestampOperand.TIMESTAMP_EXPRESSION_STRING, key -> new ArrayList<>())
+          .computeIfAbsent(TIMESTAMP_EXPRESSION_STRING, key -> new ArrayList<>())
           .add(new InputLocation(tsBlockIndex, -1));
       int valueColumnIndex = 0;
       valueColumnIndex++;
