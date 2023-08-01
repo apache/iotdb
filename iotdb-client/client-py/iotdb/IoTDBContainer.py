@@ -19,10 +19,10 @@
 from os import environ
 
 from testcontainers.core.container import DockerContainer
-from testcontainers.core.exceptions import ContainerStartException
-from testcontainers.core.waiting_utils import wait_container_is_ready
+from testcontainers.core.utils import setup_logger
+from testcontainers.core.waiting_utils import wait_container_is_ready, wait_for_logs
 
-from iotdb.Session import Session
+logger = setup_logger(__name__)
 
 
 class IoTDBContainer(DockerContainer):
@@ -33,18 +33,8 @@ class IoTDBContainer(DockerContainer):
         pass
 
     @wait_container_is_ready()
-    def _connect(self):
-        session = Session(
-            self.get_container_host_ip(), self.get_exposed_port(6667), "root", "root"
-        )
-        session.open(False)
-        with session.execute_statement(
-                "SHOW CLUSTER"
-        ) as session_data_set:
-            while session_data_set.has_next():
-                if session_data_set.next().get_fields()[2].get_string_value() != "Running":
-                    raise ContainerStartException("IoTDB is not started")
-        session.close()
+    def __connect(self):
+        wait_for_logs(self, "Now, enjoy yourself!", 60)
 
     def __init__(self, image="apache/iotdb:latest", **kwargs):
         super(IoTDBContainer, self).__init__(image)
@@ -54,5 +44,9 @@ class IoTDBContainer(DockerContainer):
     def start(self):
         self._configure()
         super().start()
-        self._connect()
+        return self
+
+    def stop(self, force=True, delete_volume=True):
+        super().stop(force, delete_volume)
+        logger.info(self.get_wrapped_container().logs())
         return self

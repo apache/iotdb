@@ -7,7 +7,7 @@ on:
     branches:
       - master
       - 'rel/*'
-      - "new_*"
+      - test_py1
     paths-ignore:
       - 'docs/**'
       - 'site/**'
