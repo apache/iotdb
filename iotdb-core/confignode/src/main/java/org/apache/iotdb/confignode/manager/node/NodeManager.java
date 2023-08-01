@@ -364,6 +364,9 @@ public class NodeManager {
       UpdateVersionInfoPlan updateConfigNodePlan =
           new UpdateVersionInfoPlan(versionInfo, configNodeId);
       ConsensusWriteResponse result = getConsensusManager().write(updateConfigNodePlan);
+      if (result.getException() != null) {
+        return new TSStatus(TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode());
+      }
       return result.getStatus();
     }
     return ClusterNodeStartUtils.ACCEPT_NODE_RESTART;
