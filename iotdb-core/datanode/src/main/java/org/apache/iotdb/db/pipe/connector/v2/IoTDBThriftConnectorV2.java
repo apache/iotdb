@@ -40,6 +40,9 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -83,7 +86,7 @@ public class IoTDBThriftConnectorV2 extends IoTDBThriftConnector {
       new AtomicReference<>();
   private static final int RETRY_TRIGGER_INTERVAL_MINUTES = 1;
   private final AtomicReference<Future<?>> retryTriggerFuture = new AtomicReference<>();
-  private final AtomicReference<IoTDBThriftConnectorV1> retryConnector = new AtomicReference<>();
+  private final IoTDBThriftConnectorV1 retryConnector = new IoTDBThriftConnectorV1();
   private final PriorityQueue<Pair<Long, Event>> retryEventQueue =
       new PriorityQueue<>(Comparator.comparing(o -> o.left));
 
@@ -107,59 +110,27 @@ public class IoTDBThriftConnectorV2 extends IoTDBThriftConnector {
   }
 
   @Override
+  public void validate(PipeParameterValidator validator) throws Exception {
+    super.validate(validator);
+    retryConnector.validate(validator);
+  }
+
+  @Override
+  public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
+      throws Exception {
+    super.customize(parameters, configuration);
+    retryConnector.customize(parameters, configuration);
+  }
+
+  @Override
   // synchronized to avoid close connector when transfer event
   public synchronized void handshake() throws Exception {
-    if (retryConnector.get() != null) {
-      try {
-        retryConnector.get().close();
-      } catch (Exception e) {
-        LOGGER.warn("Failed to close connector to receiver when try to handshake.", e);
-      }
-      retryConnector.set(null);
-    }
-
-    // TODO: replace
-    for (final TEndPoint endPoint : nodeUrls) {
-      final IoTDBThriftConnectorV1 connector =
-          new IoTDBThriftConnectorV1(endPoint.getIp(), endPoint.getPort());
-      try {
-        connector.handshake();
-        retryConnector.set(connector);
-        LOGGER.info(
-            "Handshake successfully with receiver {}:{}.", endPoint.getIp(), endPoint.getPort());
-        break;
-      } catch (Exception e) {
-        LOGGER.warn(
-            String.format(
-                "Handshake error with receiver %s:%s, retrying...",
-                endPoint.getIp(), endPoint.getPort()),
-            e);
-        try {
-          connector.close();
-        } catch (Exception ex) {
-          LOGGER.warn(
-              String.format(
-                  "Failed to close connector to receiver %s:%s when handshake error.",
-                  endPoint.getIp(), endPoint.getPort()),
-              ex);
-        }
-      }
-    }
-
-    if (retryConnector.get() == null) {
-      throw new PipeConnectionException(
-          String.format(
-              "Failed to connect to all receivers %s.",
-              nodeUrls.stream()
-                  .map(endPoint -> endPoint.getIp() + ":" + endPoint.getPort())
-                  .reduce((s1, s2) -> s1 + "," + s2)
-                  .orElse("")));
-    }
+    retryConnector.handshake();
   }
 
   @Override
   public void heartbeat() {
-    // do nothing
+    retryConnector.heartbeat();
   }
 
   @Override
@@ -423,19 +394,12 @@ public class IoTDBThriftConnectorV2 extends IoTDBThriftConnector {
       final long requestCommitId = queuedEventPair.getLeft();
       final Event event = queuedEventPair.getRight();
 
-      IoTDBThriftConnectorV1 connector = retryConnector.get();
-      if (connector == null) {
-        LOGGER.warn("Retry connector is broken. Will try to reconnect it by handshake.");
-        handshake();
-      }
-      connector = retryConnector.get();
-
       if (event instanceof PipeInsertNodeTabletInsertionEvent) {
-        connector.transfer((PipeInsertNodeTabletInsertionEvent) event);
+        retryConnector.transfer((PipeInsertNodeTabletInsertionEvent) event);
       } else if (event instanceof PipeRawTabletInsertionEvent) {
-        connector.transfer((PipeRawTabletInsertionEvent) event);
+        retryConnector.transfer((PipeRawTabletInsertionEvent) event);
       } else if (event instanceof PipeTsFileInsertionEvent) {
-        connector.transfer((PipeTsFileInsertionEvent) event);
+        retryConnector.transfer((PipeTsFileInsertionEvent) event);
       } else {
         LOGGER.warn("IoTDBThriftConnectorV2 does not support transfer generic event: {}.", event);
       }
@@ -530,8 +494,6 @@ public class IoTDBThriftConnectorV2 extends IoTDBThriftConnector {
       retryTriggerFuture.get().cancel(false);
     }
 
-    if (retryConnector.get() != null) {
-      retryConnector.get().close();
-    }
+    retryConnector.close();
   }
 }

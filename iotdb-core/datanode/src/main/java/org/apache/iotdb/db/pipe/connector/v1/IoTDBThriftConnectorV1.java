@@ -139,6 +139,14 @@ public class IoTDBThriftConnectorV1 extends IoTDBThriftConnector {
             e);
       }
     }
+
+    for (int i = 0; i < clients.size(); i++) {
+      if (isClientAlive.get(i)) {
+        return;
+      }
+    }
+    throw new PipeConnectionException(
+        String.format("All target servers %s are not available.", nodeUrls));
   }
 
   @Override
