@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.pipe.connector.base.IoTDBThriftConnector;
 import org.apache.iotdb.db.pipe.connector.v1.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFileSealReq;
@@ -33,9 +34,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
-import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -44,7 +43,6 @@ import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
-import org.apache.iotdb.session.util.SessionUtils;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -55,21 +53,14 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_NODE_URLS_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY;
-
-public class IoTDBThriftConnectorV1 implements PipeConnector {
+public class IoTDBThriftConnectorV1 extends IoTDBThriftConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftConnectorV1.class);
 
   private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 
-  private final List<TEndPoint> nodeUrls = new ArrayList<>();
   private final List<IoTDBThriftConnectorClient> clients = new ArrayList<>();
   private final List<Boolean> isClientAlive = new ArrayList<>();
 
@@ -84,39 +75,9 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
   }
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
-    final PipeParameters parameters = validator.getParameters();
-    validator.validate(
-        args -> (boolean) args[0] || ((boolean) args[1] && (boolean) args[2]),
-        String.format(
-            "Either %s or %s:%s must be specified",
-            CONNECTOR_IOTDB_NODE_URLS_KEY, CONNECTOR_IOTDB_IP_KEY, CONNECTOR_IOTDB_PORT_KEY),
-        parameters.hasAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY),
-        parameters.hasAttribute(CONNECTOR_IOTDB_IP_KEY),
-        parameters.hasAttribute(CONNECTOR_IOTDB_PORT_KEY));
-  }
-
-  @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
-    final Set<TEndPoint> givenNodeUrls = new HashSet<>(nodeUrls);
-
-    if (parameters.hasAttribute(CONNECTOR_IOTDB_IP_KEY)
-        && parameters.hasAttribute(CONNECTOR_IOTDB_PORT_KEY)) {
-      givenNodeUrls.add(
-          new TEndPoint(
-              parameters.getString(CONNECTOR_IOTDB_IP_KEY),
-              parameters.getInt(CONNECTOR_IOTDB_PORT_KEY)));
-    }
-
-    if (parameters.hasAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY)) {
-      givenNodeUrls.addAll(
-          SessionUtils.parseSeedNodeUrls(
-              Arrays.asList(parameters.getString(CONNECTOR_IOTDB_NODE_URLS_KEY).split(","))));
-    }
-
-    nodeUrls.clear();
-    nodeUrls.addAll(givenNodeUrls);
+    super.customize(parameters, configuration);
     for (int i = 0; i < nodeUrls.size(); i++) {
       isClientAlive.add(false);
       clients.add(null);

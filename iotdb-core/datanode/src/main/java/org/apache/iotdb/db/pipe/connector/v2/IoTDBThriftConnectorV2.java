@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.pipe.connector.base.IoTDBThriftConnector;
 import org.apache.iotdb.db.pipe.connector.v1.IoTDBThriftConnectorV1;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferInsertNodeReq;
@@ -39,9 +40,6 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.PipeConnector;
-import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -49,7 +47,6 @@ import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
-import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
@@ -59,9 +56,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
-import java.util.Arrays;
 import java.util.Comparator;
-import java.util.List;
 import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.concurrent.Future;
@@ -71,9 +66,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_NODE_URLS_KEY;
-
-public class IoTDBThriftConnectorV2 implements PipeConnector {
+public class IoTDBThriftConnectorV2 extends IoTDBThriftConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftConnectorV2.class);
 
@@ -99,8 +92,6 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
   private final PriorityQueue<Pair<Long, Runnable>> commitQueue =
       new PriorityQueue<>(Comparator.comparing(o -> o.left));
 
-  private List<TEndPoint> nodeUrls;
-
   public IoTDBThriftConnectorV2() {
     if (ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get() == null) {
       synchronized (IoTDBThriftConnectorV2.class) {
@@ -116,25 +107,6 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
   }
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
-    // node urls string should be like "localhost:6667,localhost:6668"
-    validator.validateRequiredAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY);
-  }
-
-  @Override
-  public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
-      throws Exception {
-    nodeUrls =
-        SessionUtils.parseSeedNodeUrls(
-            Arrays.asList(parameters.getString(CONNECTOR_IOTDB_NODE_URLS_KEY).split(",")));
-    if (nodeUrls.isEmpty()) {
-      throw new PipeException("Node urls is empty.");
-    } else {
-      LOGGER.info("Node urls: {}.", nodeUrls);
-    }
-  }
-
-  @Override
   // synchronized to avoid close connector when transfer event
   public synchronized void handshake() throws Exception {
     if (retryConnector.get() != null) {
@@ -146,6 +118,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
       retryConnector.set(null);
     }
 
+    // TODO: replace
     for (final TEndPoint endPoint : nodeUrls) {
       final IoTDBThriftConnectorV1 connector =
           new IoTDBThriftConnectorV1(endPoint.getIp(), endPoint.getPort());
