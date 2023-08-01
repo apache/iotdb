@@ -110,17 +110,13 @@ public class CrossSpaceCompactionCandidate {
           // When scanning the target seqFiles for unseqFile, we traverse them one by one no matter
           // whether it is selected or not. But we only add the unselected seqFiles to next split to
           // avoid duplication selection
-          if (!seqFile.selected) {
-            tmpSplit.addOneSeqFile(seqFile);
-            seqFile.markAsSelected();
-          }
+          tmpSplit.addSeqFileIfNotSelected(seqFile);
+          seqFile.markAsSelected();
           atLeastOneSeqFileSelected = true;
           break;
         } else if (unseqDeviceInfo.startTime <= seqDeviceInfo.endTime) {
-          if (!seqFile.selected) {
-            tmpSplit.addOneSeqFile(seqFile);
-            seqFile.markAsSelected();
-          }
+          tmpSplit.addSeqFileIfNotSelected(seqFile);
+          seqFile.markAsSelected();
           atLeastOneSeqFileSelected = true;
         } else {
           if (!seqFile.unsealed()) {
@@ -149,10 +145,8 @@ public class CrossSpaceCompactionCandidate {
       }
 
       // select the `previousSeqFile`
-      if (!previousSeqFile.selected) {
-        tmpSplit.addOneSeqFile(previousSeqFile);
-        previousSeqFile.markAsSelected();
-      }
+      tmpSplit.addSeqFileIfNotSelected(previousSeqFile);
+      previousSeqFile.markAsSelected();
     }
     // mark candidates in next split as selected even though it may not be added to the final
     // TaskResource
@@ -233,8 +227,10 @@ public class CrossSpaceCompactionCandidate {
       this.atLeastOneSeqFileSelected = atLeastOneSeqFileSelected;
     }
 
-    public void addOneSeqFile(TsFileResourceCandidate seqFile) {
-      this.seqFiles.add(seqFile);
+    public void addSeqFileIfNotSelected(TsFileResourceCandidate seqFile) {
+      if (!seqFile.selected) {
+        this.seqFiles.add(seqFile);
+      }
       this.atLeastOneSeqFileSelected = true;
     }
   }
