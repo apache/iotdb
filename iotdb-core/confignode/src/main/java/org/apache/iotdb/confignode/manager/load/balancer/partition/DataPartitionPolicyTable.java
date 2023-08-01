@@ -120,6 +120,10 @@ public class DataPartitionPolicyTable {
 
   /** Only use this interface when init PartitionBalancer. */
   public void setDataAllotMap(Map<TSeriesPartitionSlot, TConsensusGroupId> dataAllotMap) {
+    if (seriesPartitionSlotCounter.size() == 0) {
+      // No need to re-balance when there is no DataRegionGroup
+      return;
+    }
     try {
       dataAllotTableLock.lock();
       int mu = SERIES_SLOT_NUM / seriesPartitionSlotCounter.size();
