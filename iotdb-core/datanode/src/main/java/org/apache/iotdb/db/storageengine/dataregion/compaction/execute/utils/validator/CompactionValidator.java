@@ -32,7 +32,8 @@ public interface CompactionValidator {
       TsFileManager manager,
       List<TsFileResource> targetTsFileList,
       String storageGroupName,
-      long timePartition)
+      long timePartition,
+      boolean isInnerUnSequenceSpaceTask)
       throws IOException;
 
   static CompactionValidator getInstance() {
