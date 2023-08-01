@@ -78,6 +78,11 @@ public class DataPartitionPolicyTable {
    * @param dataRegionGroups All DataRegionGroups currently in the Database
    */
   public void reBalanceDataPartitionPolicy(List<TConsensusGroupId> dataRegionGroups) {
+    if (dataRegionGroups.isEmpty()) {
+      // No need to re-balance when there is no DataRegionGroup
+      return;
+    }
+
     dataAllotTableLock.lock();
     try {
       dataRegionGroups.forEach(
@@ -115,12 +120,16 @@ public class DataPartitionPolicyTable {
 
   /** Only use this interface when init PartitionBalancer. */
   public void setDataAllotMap(Map<TSeriesPartitionSlot, TConsensusGroupId> dataAllotMap) {
+    if (seriesPartitionSlotCounter.size() == 0) {
+      // No need to re-balance when there is no DataRegionGroup
+      return;
+    }
     try {
       dataAllotTableLock.lock();
       int mu = SERIES_SLOT_NUM / seriesPartitionSlotCounter.size();
       dataAllotMap.forEach(
           (seriesPartitionSlot, regionGroupId) -> {
-            if (seriesPartitionSlotCounter.get(regionGroupId) < mu) {
+            if (regionGroupId != null && seriesPartitionSlotCounter.get(regionGroupId) < mu) {
               // Put into dataAllotMap only when the number of SeriesSlots
               // allocated to the RegionGroup is less than mu
               this.dataAllotMap.put(seriesPartitionSlot, regionGroupId);
