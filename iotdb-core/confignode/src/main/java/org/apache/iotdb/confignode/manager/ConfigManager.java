@@ -61,7 +61,6 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetDataRepli
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
-import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
@@ -145,6 +144,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
@@ -348,11 +348,9 @@ public class ConfigManager implements IManager {
               req.getDataNodeConfiguration().getLocation(),
               this);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return nodeManager.registerDataNode(
-            new RegisterDataNodePlan(req.getDataNodeConfiguration()));
+        return nodeManager.registerDataNode(req);
       }
     }
-
     DataNodeRegisterResp resp = new DataNodeRegisterResp();
     resp.setStatus(status);
     resp.setConfigNodeList(getNodeManager().getRegisteredConfigNodes());
@@ -375,7 +373,7 @@ public class ConfigManager implements IManager {
               req.getDataNodeConfiguration().getLocation(),
               this);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return nodeManager.updateDataNodeIfNecessary(req.getDataNodeConfiguration());
+        return nodeManager.updateDataNodeIfNecessary(req);
       }
     }
 
@@ -447,9 +445,12 @@ public class ConfigManager implements IManager {
               .sorted(Comparator.comparingInt(TDataNodeLocation::getDataNodeId))
               .collect(Collectors.toList());
       Map<Integer, String> nodeStatus = getLoadManager().getNodeStatusWithReason();
-      return new TShowClusterResp(status, configNodeLocations, dataNodeInfoLocations, nodeStatus);
+      Map<Integer, TNodeVersionInfo> nodeVersionInfo = getNodeManager().getNodeVersionInfo();
+      return new TShowClusterResp(
+          status, configNodeLocations, dataNodeInfoLocations, nodeStatus, nodeVersionInfo);
     } else {
-      return new TShowClusterResp(status, new ArrayList<>(), new ArrayList<>(), new HashMap<>());
+      return new TShowClusterResp(
+          status, new ArrayList<>(), new ArrayList<>(), new HashMap<>(), new HashMap<>());
     }
   }
 
@@ -1032,7 +1033,7 @@ public class ConfigManager implements IManager {
               req.getConfigNodeLocation(),
               this);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return nodeManager.restartConfigNode(req.getConfigNodeLocation());
+        return ClusterNodeStartUtils.ACCEPT_NODE_RESTART;
       }
     }
     return status;

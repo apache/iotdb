@@ -45,7 +45,6 @@ import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
-import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
@@ -129,6 +128,7 @@ import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.SystemMetric;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterViewReq;
@@ -256,6 +256,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private final DataNodeThrottleQuotaManager throttleQuotaManager =
       DataNodeThrottleQuotaManager.getInstance();
+
+  private static final String SYSTEM = "system";
 
   public DataNodeInternalRPCServiceImpl() {
     super();
@@ -1134,7 +1136,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       double cpuLoad =
           MetricService.getInstance()
               .getAutoGauge(
-                  Metric.SYS_CPU_LOAD.toString(), MetricLevel.CORE, Tag.NAME.toString(), "system")
+                  SystemMetric.SYS_CPU_LOAD.toString(),
+                  MetricLevel.CORE,
+                  Tag.NAME.toString(),
+                  SYSTEM)
               .value();
       if (cpuLoad != 0) {
         loadSample.setCpuUsageRate(cpuLoad);
@@ -1244,18 +1249,18 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     double freeDisk =
         MetricService.getInstance()
             .getAutoGauge(
-                Metric.SYS_DISK_FREE_SPACE.toString(),
+                SystemMetric.SYS_DISK_FREE_SPACE.toString(),
                 MetricLevel.CORE,
                 Tag.NAME.toString(),
-                "system")
+                SYSTEM)
             .value();
     double totalDisk =
         MetricService.getInstance()
             .getAutoGauge(
-                Metric.SYS_DISK_TOTAL_SPACE.toString(),
+                SystemMetric.SYS_DISK_TOTAL_SPACE.toString(),
                 MetricLevel.CORE,
                 Tag.NAME.toString(),
-                "system")
+                SYSTEM)
             .value();
 
     if (freeDisk != 0 && totalDisk != 0) {
