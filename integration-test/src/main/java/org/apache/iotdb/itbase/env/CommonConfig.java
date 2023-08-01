@@ -62,8 +62,6 @@ public interface CommonConfig {
 
   CommonConfig setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass);
 
-  CommonConfig setEnableDataPartitionInheritPolicy(boolean enableDataPartitionInheritPolicy);
-
   CommonConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy);
 
   CommonConfig setDefaultSchemaRegionGroupNumPerDatabase(int schemaRegionGroupPerDatabase);
@@ -119,4 +117,6 @@ public interface CommonConfig {
   CommonConfig setSortBufferSize(long sortBufferSize);
 
   CommonConfig setMaxTsBlockSizeInByte(long maxTsBlockSizeInByte);
+
+  CommonConfig setDataRegionPerDataNode(double dataRegionPerDataNode);
 }

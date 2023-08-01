@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -33,10 +34,10 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -45,22 +46,26 @@ import java.util.stream.Collectors;
 
 public class SeriesPartitionTable {
 
-  private final Map<TTimePartitionSlot, List<TConsensusGroupId>> seriesPartitionMap;
+  private final TreeMap<TTimePartitionSlot, List<TConsensusGroupId>> seriesPartitionMap;
 
   public SeriesPartitionTable() {
-    this.seriesPartitionMap = new ConcurrentHashMap<>();
+    this.seriesPartitionMap = new TreeMap<>();
   }
 
   public SeriesPartitionTable(Map<TTimePartitionSlot, List<TConsensusGroupId>> seriesPartitionMap) {
-    this.seriesPartitionMap = seriesPartitionMap;
+    this.seriesPartitionMap = new TreeMap<>(seriesPartitionMap);
   }
 
   public Map<TTimePartitionSlot, List<TConsensusGroupId>> getSeriesPartitionMap() {
     return seriesPartitionMap;
   }
 
+  public void putDataPartition(TTimePartitionSlot timePartitionSlot, TConsensusGroupId groupId) {
+    seriesPartitionMap.computeIfAbsent(timePartitionSlot, empty -> new ArrayList<>()).add(groupId);
+  }
+
   /**
-   * Thread-safely get DataPartition within the specific StorageGroup
+   * Thread-safely get DataPartition within the specific Database.
    *
    * @param partitionSlotList TimePartitionSlotList
    * @param seriesPartitionTable Store the matched SeriesPartitions
@@ -119,34 +124,29 @@ public class SeriesPartitionTable {
   }
 
   /**
-   * Checks whether the specified DataPartition has a predecessor or successor and returns if it
-   * does
+   * Check and return the specified DataPartition's successor.
    *
    * @param timePartitionSlot Corresponding TimePartitionSlot
-   * @param timePartitionInterval Time partition interval
-   * @return The specific DataPartition's predecessor if exists, null otherwise
+   * @return The specified DataPartition's successor if exists, null otherwise
    */
-  public TConsensusGroupId getAdjacentDataPartition(
-      TTimePartitionSlot timePartitionSlot, long timePartitionInterval) {
-    if (timePartitionSlot.getStartTime() >= timePartitionInterval) {
-      // Check predecessor first
-      TTimePartitionSlot predecessorSlot =
-          new TTimePartitionSlot(timePartitionSlot.getStartTime() - timePartitionInterval);
-      TConsensusGroupId predecessor =
-          seriesPartitionMap.getOrDefault(predecessorSlot, Collections.singletonList(null)).get(0);
-      if (predecessor != null) {
-        return predecessor;
-      }
-    }
-
-    // Check successor
-    TTimePartitionSlot successorSlot =
-        new TTimePartitionSlot(timePartitionSlot.getStartTime() + timePartitionInterval);
-    return seriesPartitionMap.getOrDefault(successorSlot, Collections.singletonList(null)).get(0);
+  public TConsensusGroupId getSuccessorDataPartition(TTimePartitionSlot timePartitionSlot) {
+    TTimePartitionSlot successorSlot = seriesPartitionMap.higherKey(timePartitionSlot);
+    return successorSlot == null ? null : seriesPartitionMap.get(successorSlot).get(0);
   }
 
   /**
-   * Query a timePartition's corresponding dataRegionIds
+   * Check and return the specified DataPartition's predecessor.
+   *
+   * @param timePartitionSlot Corresponding TimePartitionSlot
+   * @return The specified DataPartition's predecessor if exists, null otherwise
+   */
+  public TConsensusGroupId getPredecessorDataPartition(TTimePartitionSlot timePartitionSlot) {
+    TTimePartitionSlot predecessorSlot = seriesPartitionMap.lowerKey(timePartitionSlot);
+    return predecessorSlot == null ? null : seriesPartitionMap.get(predecessorSlot).get(0);
+  }
+
+  /**
+   * Query a timePartition's corresponding dataRegionIds.
    *
    * @param timeSlotId Time partition's timeSlotId
    * @return the timePartition's corresponding dataRegionIds
@@ -179,7 +179,7 @@ public class SeriesPartitionTable {
   }
 
   /**
-   * Create DataPartition within the specific SeriesPartitionSlot
+   * Create DataPartition within the specific SeriesPartitionSlot.
    *
    * @param assignedSeriesPartitionTable Assigned result
    * @param seriesPartitionSlot Corresponding TSeriesPartitionSlot
@@ -206,7 +206,7 @@ public class SeriesPartitionTable {
 
   /**
    * Only Leader use this interface. And this interface is synchronized. Thread-safely filter no
-   * assigned DataPartitionSlots within the specific SeriesPartitionSlot
+   * assigned DataPartitionSlots within the specific SeriesPartitionSlot.
    *
    * @param partitionSlots TimePartitionSlots
    * @return Unassigned PartitionSlots
@@ -225,6 +225,20 @@ public class SeriesPartitionTable {
     return result;
   }
 
+  /**
+   * Get the last DataPartition's ConsensusGroupId.
+   *
+   * @return The last DataPartition's ConsensusGroupId, null if there are no DataPartitions yet
+   */
+  public TConsensusGroupId getLastConsensusGroupId() {
+    Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>> lastEntry =
+        seriesPartitionMap.lastEntry();
+    if (lastEntry == null) {
+      return null;
+    }
+    return lastEntry.getValue().get(lastEntry.getValue().size() - 1);
+  }
+
   public void serialize(OutputStream outputStream, TProtocol protocol)
       throws IOException, TException {
     ReadWriteIOUtils.write(seriesPartitionMap.size(), outputStream);
@@ -238,7 +252,7 @@ public class SeriesPartitionTable {
     }
   }
 
-  /** Only for ConsensusRequest */
+  /** Only for ConsensusRequest. */
   public void deserialize(ByteBuffer buffer) {
     int timePartitionSlotNum = buffer.getInt();
     for (int i = 0; i < timePartitionSlotNum; i++) {
@@ -255,7 +269,7 @@ public class SeriesPartitionTable {
     }
   }
 
-  /** Only for Snapshot */
+  /** Only for Snapshot. */
   public void deserialize(InputStream inputStream, TProtocol protocol)
       throws IOException, TException {
     int timePartitionSlotNum = ReadWriteIOUtils.readInt(inputStream);
