@@ -64,7 +64,9 @@ jobs:
           restore-keys: ${{ runner.os }}-m2-
       - name: Build IoTDB server
         # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
-        run: ./mvnw clean package -P with-tools,with-cpp -pl distribution -am -DskipTests
+        # Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
+        # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
+        run: ./mvnw clean install -P with-tools,with-cpp -pl distribution -am -DskipTests
       - name: Test with Maven
         # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
         run: ./mvnw clean verify -P with-tools,with-cpp -pl iotdb-client/client-cpp -am
@@ -92,7 +94,8 @@ jobs:
       - name: Build IoTDB server
         shell: bash
         # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
-        # Explicitly using "install" instead of package in order to make the build use the currently built version as it seems the windows binaries are not portable.
+        # Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
+        # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
         run: ./mvnw clean install -P with-tools,with-cpp -pl distribution -am -DskipTests
       - name: Test with Maven
         shell: bash
