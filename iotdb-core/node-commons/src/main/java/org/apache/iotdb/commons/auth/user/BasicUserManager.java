@@ -82,8 +82,7 @@ public abstract class BasicUserManager implements IUserManager {
     if (admin == null) {
       createUser(
           CommonDescriptor.getInstance().getConfig().getAdminName(),
-          CommonDescriptor.getInstance().getConfig().getAdminPassword(),
-          true);
+          CommonDescriptor.getInstance().getConfig().getAdminPassword());
       setUserUseWaterMark(CommonDescriptor.getInstance().getConfig().getAdminName(), false);
     }
     logger.info("Admin initialized");
@@ -112,12 +111,9 @@ public abstract class BasicUserManager implements IUserManager {
   }
 
   @Override
-  public boolean createUser(String username, String password, boolean firstInit)
-      throws AuthException {
-    if (!firstInit) {
-      AuthUtils.validateUsername(username);
-      AuthUtils.validatePassword(password);
-    }
+  public boolean createUser(String username, String password) throws AuthException {
+    AuthUtils.validateUsername(username);
+    AuthUtils.validatePassword(password);
 
     User user = getUser(username);
     if (user != null) {

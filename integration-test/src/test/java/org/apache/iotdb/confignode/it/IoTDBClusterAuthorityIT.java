@@ -68,7 +68,8 @@ public class IoTDBClusterAuthorityIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  private void cleanUserAndRole(IConfigNodeRPCService.Iface client) throws TException {
+  private void cleanUserAndRole(IConfigNodeRPCService.Iface client)
+      throws TException, IllegalPathException {
     TSStatus status;
 
     // clean user
@@ -120,13 +121,15 @@ public class IoTDBClusterAuthorityIT {
     TCheckUserPrivilegesReq checkUserPrivilegesReq;
 
     Set<Integer> privilegeList = new HashSet<>();
-    privilegeList.add(PrivilegeType.USER_PRIVILEGE.ordinal());
+    privilegeList.add(PrivilegeType.DELETE_USER.ordinal());
+    privilegeList.add(PrivilegeType.CREATE_USER.ordinal());
 
     Set<Integer> revokePrivilege = new HashSet<>();
-    revokePrivilege.add(PrivilegeType.USER_PRIVILEGE.ordinal());
+    revokePrivilege.add(PrivilegeType.DELETE_USER.ordinal());
 
     List<String> privilege = new ArrayList<>();
-    privilege.add("root.** : USER_PRIVILEGE");
+    privilege.add("root.** : CREATE_USER");
+    privilege.add("root.** : CREATE_USER");
 
     List<PartialPath> paths = new ArrayList<>();
     paths.add(new PartialPath("root.ln.**"));
@@ -156,7 +159,7 @@ public class IoTDBClusterAuthorityIT {
           new TCheckUserPrivilegesReq(
               "tempuser0",
               AuthUtils.serializePartialPathList(paths),
-              PrivilegeType.USER_PRIVILEGE.ordinal());
+              PrivilegeType.DELETE_USER.ordinal());
       status = client.checkUserPrivileges(checkUserPrivilegesReq).getStatus();
       assertEquals(TSStatusCode.NO_PERMISSION.getStatusCode(), status.getCode());
 
@@ -267,7 +270,7 @@ public class IoTDBClusterAuthorityIT {
           new TCheckUserPrivilegesReq(
               "tempuser0",
               AuthUtils.serializePartialPathList(paths),
-              PrivilegeType.USER_PRIVILEGE.ordinal());
+              PrivilegeType.DELETE_USER.ordinal());
       status = client.checkUserPrivileges(checkUserPrivilegesReq).getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -353,7 +356,6 @@ public class IoTDBClusterAuthorityIT {
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      privilege.remove(0);
       Assert.assertEquals(
           privilege, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE));
 
@@ -386,6 +388,7 @@ public class IoTDBClusterAuthorityIT {
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      privilege.remove(0);
       assertEquals(
           0, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE).size());
 
