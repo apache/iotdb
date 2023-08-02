@@ -47,11 +47,15 @@ public class EnvFactory {
             env = new SimpleEnv();
             break;
           case Cluster1:
-          case MultiCluster:
             env = new Cluster1Env();
             break;
           case Remote:
             env = new RemoteServerEnv();
+            break;
+          case MultiCluster:
+            logger.warn(
+                "EnvFactory only supports EnvType Simple, Cluster1 and Remote, please use MultiEnvFactory instead.");
+            System.exit(-1);
             break;
           default:
             logger.warn("Unknown env type: {}", envType);

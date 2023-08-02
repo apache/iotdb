@@ -38,6 +38,7 @@
         <integrationTest.testEnv/>
         <integrationTest.excludedGroups/>
         <integrationTest.includedGroups/>
+        <!-- -DClusterConfigurations values configured here -->
         <lightWeightStandaloneMode.configNodeNumber>1</lightWeightStandaloneMode.configNodeNumber>
         <lightWeightStandaloneMode.dataNodeNumber>1</lightWeightStandaloneMode.dataNodeNumber>
         <lightWeightStandaloneMode.configNodeConsensus>Simple</lightWeightStandaloneMode.configNodeConsensus>
@@ -45,6 +46,27 @@
         <lightWeightStandaloneMode.dataRegionConsensus>Simple</lightWeightStandaloneMode.dataRegionConsensus>
         <lightWeightStandaloneMode.schemaRegionReplicaNumber>1</lightWeightStandaloneMode.schemaRegionReplicaNumber>
         <lightWeightStandaloneMode.dataRegionReplicaNumber>1</lightWeightStandaloneMode.dataRegionReplicaNumber>
+        <scalableSingleNodeMode.configNodeNumber>1</scalableSingleNodeMode.configNodeNumber>
+        <scalableSingleNodeMode.dataNodeNumber>1</scalableSingleNodeMode.dataNodeNumber>
+        <scalableSingleNodeMode.configNodeConsensus>Ratis</scalableSingleNodeMode.configNodeConsensus>
+        <scalableSingleNodeMode.schemaRegionConsensus>Ratis</scalableSingleNodeMode.schemaRegionConsensus>
+        <scalableSingleNodeMode.dataRegionConsensus>IoT</scalableSingleNodeMode.dataRegionConsensus>
+        <scalableSingleNodeMode.schemaRegionReplicaNumber>1</scalableSingleNodeMode.schemaRegionReplicaNumber>
+        <scalableSingleNodeMode.dataRegionReplicaNumber>1</scalableSingleNodeMode.dataRegionReplicaNumber>
+        <highPerformanceMode.configNodeNumber>1</highPerformanceMode.configNodeNumber>
+        <highPerformanceMode.dataNodeNumber>3</highPerformanceMode.dataNodeNumber>
+        <highPerformanceMode.configNodeConsensus>Ratis</highPerformanceMode.configNodeConsensus>
+        <highPerformanceMode.schemaRegionConsensus>Ratis</highPerformanceMode.schemaRegionConsensus>
+        <highPerformanceMode.dataRegionConsensus>IoT</highPerformanceMode.dataRegionConsensus>
+        <highPerformanceMode.schemaRegionReplicaNumber>3</highPerformanceMode.schemaRegionReplicaNumber>
+        <highPerformanceMode.dataRegionReplicaNumber>2</highPerformanceMode.dataRegionReplicaNumber>
+        <strongConsistencyClusterMode.configNodeNumber>3</strongConsistencyClusterMode.configNodeNumber>
+        <strongConsistencyClusterMode.dataNodeNumber>3</strongConsistencyClusterMode.dataNodeNumber>
+        <strongConsistencyClusterMode.configNodeConsensus>Ratis</strongConsistencyClusterMode.configNodeConsensus>
+        <strongConsistencyClusterMode.schemaRegionConsensus>Ratis</strongConsistencyClusterMode.schemaRegionConsensus>
+        <strongConsistencyClusterMode.dataRegionConsensus>Ratis</strongConsistencyClusterMode.dataRegionConsensus>
+        <strongConsistencyClusterMode.schemaRegionReplicaNumber>3</strongConsistencyClusterMode.schemaRegionReplicaNumber>
+        <strongConsistencyClusterMode.dataRegionReplicaNumber>3</strongConsistencyClusterMode.dataRegionReplicaNumber>
     </properties>
     <dependencies>
         <dependency>
@@ -243,7 +265,34 @@
                                 <TestEnv>${integrationTest.testEnv}</TestEnv>
                                 <RandomSelectWriteNode>${integrationTest.randomSelectWriteNode}</RandomSelectWriteNode>
                                 <ReadAndVerifyWithMultiNode>${integrationTest.readAndVerifyWithMultiNode}</ReadAndVerifyWithMultiNode>
-                                <lightWeightStandalone.configNodeConsensus>${lightWeightStandalone.configNodeConsensus}</lightWeightStandalone.configNodeConsensus>
+                                <lightWeightStandaloneMode.configNodeNumber>${lightWeightStandaloneMode.configNodeNumber}</lightWeightStandaloneMode.configNodeNumber>
+                                <lightWeightStandaloneMode.dataNodeNumber>${lightWeightStandaloneMode.dataNodeNumber}</lightWeightStandaloneMode.dataNodeNumber>
+                                <lightWeightStandaloneMode.configNodeConsensus>${lightWeightStandaloneMode.configNodeConsensus}</lightWeightStandaloneMode.configNodeConsensus>
+                                <lightWeightStandaloneMode.schemaRegionConsensus>${lightWeightStandaloneMode.schemaRegionConsensus}</lightWeightStandaloneMode.schemaRegionConsensus>
+                                <lightWeightStandaloneMode.dataRegionConsensus>${lightWeightStandaloneMode.dataRegionConsensus}</lightWeightStandaloneMode.dataRegionConsensus>
+                                <lightWeightStandaloneMode.schemaRegionReplicaNumber>${lightWeightStandaloneMode.schemaRegionReplicaNumber}</lightWeightStandaloneMode.schemaRegionReplicaNumber>
+                                <lightWeightStandaloneMode.dataRegionReplicaNumber>${lightWeightStandaloneMode.dataRegionReplicaNumber}</lightWeightStandaloneMode.dataRegionReplicaNumber>
+                                <scalableSingleNodeMode.configNodeNumber>${scalableSingleNodeMode.configNodeNumber}</scalableSingleNodeMode.configNodeNumber>
+                                <scalableSingleNodeMode.dataNodeNumber>${scalableSingleNodeMode.dataNodeNumber}</scalableSingleNodeMode.dataNodeNumber>
+                                <scalableSingleNodeMode.configNodeConsensus>${scalableSingleNodeMode.configNodeConsensus}</scalableSingleNodeMode.configNodeConsensus>
+                                <scalableSingleNodeMode.schemaRegionConsensus>${scalableSingleNodeMode.schemaRegionConsensus}</scalableSingleNodeMode.schemaRegionConsensus>
+                                <scalableSingleNodeMode.dataRegionConsensus>${scalableSingleNodeMode.dataRegionConsensus}</scalableSingleNodeMode.dataRegionConsensus>
+                                <scalableSingleNodeMode.schemaRegionReplicaNumber>${scalableSingleNodeMode.schemaRegionReplicaNumber}</scalableSingleNodeMode.schemaRegionReplicaNumber>
+                                <scalableSingleNodeMode.dataRegionReplicaNumber>${scalableSingleNodeMode.dataRegionReplicaNumber}</scalableSingleNodeMode.dataRegionReplicaNumber>
+                                <highPerformanceMode.configNodeNumber>${highPerformanceMode.configNodeNumber}</highPerformanceMode.configNodeNumber>
+                                <highPerformanceMode.dataNodeNumber>${highPerformanceMode.dataNodeNumber}</highPerformanceMode.dataNodeNumber>
+                                <highPerformanceMode.configNodeConsensus>${highPerformanceMode.configNodeConsensus}</highPerformanceMode.configNodeConsensus>
+                                <highPerformanceMode.schemaRegionConsensus>${highPerformanceMode.schemaRegionConsensus}</highPerformanceMode.schemaRegionConsensus>
+                                <highPerformanceMode.dataRegionConsensus>${highPerformanceMode.dataRegionConsensus}</highPerformanceMode.dataRegionConsensus>
+                                <highPerformanceMode.schemaRegionReplicaNumber>${highPerformanceMode.schemaRegionReplicaNumber}</highPerformanceMode.schemaRegionReplicaNumber>
+                                <highPerformanceMode.dataRegionReplicaNumber>${highPerformanceMode.dataRegionReplicaNumber}</highPerformanceMode.dataRegionReplicaNumber>
+                                <strongConsistencyClusterMode.configNodeNumber>${strongConsistencyClusterMode.configNodeNumber}</strongConsistencyClusterMode.configNodeNumber>
+                                <strongConsistencyClusterMode.dataNodeNumber>${strongConsistencyClusterMode.dataNodeNumber}</strongConsistencyClusterMode.dataNodeNumber>
+                                <strongConsistencyClusterMode.configNodeConsensus>${strongConsistencyClusterMode.configNodeConsensus}</strongConsistencyClusterMode.configNodeConsensus>
+                                <strongConsistencyClusterMode.schemaRegionConsensus>${strongConsistencyClusterMode.schemaRegionConsensus}</strongConsistencyClusterMode.schemaRegionConsensus>
+                                <strongConsistencyClusterMode.dataRegionConsensus>${strongConsistencyClusterMode.dataRegionConsensus}</strongConsistencyClusterMode.dataRegionConsensus>
+                                <strongConsistencyClusterMode.schemaRegionReplicaNumber>${strongConsistencyClusterMode.schemaRegionReplicaNumber}</strongConsistencyClusterMode.schemaRegionReplicaNumber>
+                                <strongConsistencyClusterMode.dataRegionReplicaNumber>${strongConsistencyClusterMode.dataRegionReplicaNumber}</strongConsistencyClusterMode.dataRegionReplicaNumber>
                             </systemPropertyVariables>
                             <summaryFile>target/failsafe-reports/failsafe-summary-IT.xml</summaryFile>
                         </configuration>
@@ -310,7 +359,7 @@
         <profile>
             <id>MultiClusterIT</id>
             <properties>
-                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT2,org.apache.iotdb.itbase.category.MultiClusterIT1</integrationTest.includedGroups>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT1,org.apache.iotdb.itbase.category.MultiClusterIT2,org.apache.iotdb.itbase.category.MultiClusterIT3</integrationTest.includedGroups>
                 <integrationTest.excludedGroups/>
                 <integrationTest.testEnv>MultiCluster</integrationTest.testEnv>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
@@ -339,6 +388,20 @@
             <id>MultiClusterIT2</id>
             <properties>
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT2</integrationTest.includedGroups>
+                <integrationTest.excludedGroups/>
+                <integrationTest.testEnv>MultiCluster</integrationTest.testEnv>
+                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
+                <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
+                <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
+            </properties>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+        </profile>
+        <profile>
+            <id>MultiClusterIT3</id>
+            <properties>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT3</integrationTest.includedGroups>
                 <integrationTest.excludedGroups/>
                 <integrationTest.testEnv>MultiCluster</integrationTest.testEnv>
                 <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>

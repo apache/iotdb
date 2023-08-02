@@ -31,10 +31,15 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class EnvUtils {
+
   private static final String lockFilePath =
       System.getProperty("user.dir") + File.separator + "target" + File.separator + "lock-";
   private static final String sysVarDefaultConfigNodeNum = "DefaultConfigNodeNum";
   private static final String sysVarDefaultDataNodeNum = "DefaultDataNodeNum";
+
+  private EnvUtils() {
+    // Empty constructor
+  }
 
   public static int[] searchAvailablePorts() {
     while (true) {

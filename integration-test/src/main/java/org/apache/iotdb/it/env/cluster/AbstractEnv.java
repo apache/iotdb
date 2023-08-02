@@ -92,7 +92,7 @@ public abstract class AbstractEnv implements BaseEnv {
    */
   private MppClusterConfig clusterConfig;
 
-  public AbstractEnv() {
+  protected AbstractEnv() {
     clusterConfig = new MppClusterConfig();
   }
 

@@ -30,7 +30,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
-import java.util.Arrays;
 import java.util.Objects;
 
 public class PipeTransferInsertNodeReq extends TPipeTransferReq {

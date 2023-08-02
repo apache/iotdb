@@ -39,7 +39,6 @@ public class IoTDBTestRunner extends BlockJUnit4ClassRunner {
 
   @Override
   public void run(RunNotifier notifier) {
-    System.out.println("Run!");
     listener = new IoTDBTestListener(this.getName());
     notifier.addListener(listener);
     super.run(notifier);

@@ -45,15 +45,15 @@ public class MultiEnvFactory {
   /** Create several environments according to the specific number. */
   public static void createEnv(int num) {
     EnvType envType = EnvType.getSystemEnvType();
+    if (envType != EnvType.MultiCluster) {
+      logger.warn(
+          "MultiEnvFactory only supports EnvType MultiCluster, please use EnvFactory instead.");
+      System.exit(-1);
+    }
     for (int i = 0; i < num; ++i) {
       try {
         Class.forName(Config.JDBC_DRIVER_NAME);
-        if (envType == EnvType.MultiCluster) {
-          envList.add(new Cluster1Env());
-        } else {
-          logger.warn("Unknown env type: {}", envType);
-          System.exit(-1);
-        }
+        envList.add(new Cluster1Env());
       } catch (ClassNotFoundException e) {
         logger.error("Create env error", e);
         System.exit(-1);
