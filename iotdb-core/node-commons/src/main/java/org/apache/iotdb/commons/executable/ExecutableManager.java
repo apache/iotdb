@@ -228,8 +228,6 @@ public class ExecutableManager {
     try {
       Path path = Paths.get(destination);
       Files.deleteIfExists(path);
-      // Ensure the target directory exists.
-      SystemFileFactory.INSTANCE.makeDirIfNecessary(destination);
       Files.createFile(path);
       try (FileOutputStream outputStream = new FileOutputStream(destination)) {
         outputStream.getChannel().write(byteBuffer);
