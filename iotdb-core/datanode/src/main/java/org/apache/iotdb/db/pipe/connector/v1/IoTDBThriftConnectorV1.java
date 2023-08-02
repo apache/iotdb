@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.pipe.connector.v1;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
-import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.pipe.connector.base.IoTDBThriftConnector;
 import org.apache.iotdb.db.pipe.connector.v1.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferBatchReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFilePieceReq;
@@ -35,7 +36,6 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
-import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -65,17 +65,18 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CON
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_MODE_SINGLE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY;
 
-public class IoTDBThriftConnectorV1 implements PipeConnector {
+public class IoTDBThriftConnectorV1 extends IoTDBThriftConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftConnectorV1.class);
 
-  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+  private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 
-  private String ipAddress;
-  private int port;
+  private final List<IoTDBThriftConnectorClient> clients = new ArrayList<>();
+  private final List<Boolean> isClientAlive = new ArrayList<>();
+
   private String mode;
 
-  private IoTDBThriftConnectorClient client;
+  private long currentClientIndex = 0;
 
   // For batch transfer
   private final int MAX_DELAY_IN_MS = PipeConfig.getInstance().getPipeConnectorMaxDelay() * 1000;
@@ -91,30 +92,14 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
     // Empty constructor
   }
 
-  public IoTDBThriftConnectorV1(String ipAddress, int port) {
-    this.ipAddress = ipAddress;
-    this.port = port;
-  }
-
-  @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
-    validator
-        .validateRequiredAttribute(CONNECTOR_IOTDB_IP_KEY)
-        .validateRequiredAttribute(CONNECTOR_IOTDB_PORT_KEY)
-        .validateAttributeValueRange(
-            CONNECTOR_IOTDB_MODE_KEY,
-            true,
-            CONNECTOR_IOTDB_MODE_SINGLE,
-            CONNECTOR_IOTDB_MODE_BATCH);
-  }
-
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
-    this.ipAddress = parameters.getString(CONNECTOR_IOTDB_IP_KEY);
-    this.port = parameters.getInt(CONNECTOR_IOTDB_PORT_KEY);
-    this.mode = parameters.getString(CONNECTOR_IOTDB_MODE_KEY);
-
+    super.customize(parameters, configuration);
+    for (int i = 0; i < nodeUrls.size(); i++) {
+      isClientAlive.add(false);
+      clients.add(null);
+    }
     if (CONNECTOR_IOTDB_MODE_BATCH.equals(this.mode)) {
       tPipeTransferReqs = new ArrayList<>();
       events = new ArrayList<>();
@@ -123,49 +108,88 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
 
   @Override
   public void handshake() throws Exception {
-    if (client != null) {
+    for (int i = 0; i < clients.size(); i++) {
+      if (Boolean.TRUE.equals(isClientAlive.get(i))) {
+        continue;
+      }
+
+      final String ip = nodeUrls.get(i).getIp();
+      final int port = nodeUrls.get(i).getPort();
+
+      // close the client if necessary
+      if (clients.get(i) != null) {
+        try {
+          clients.set(i, null).close();
+        } catch (Exception e) {
+          LOGGER.warn(
+              "Failed to close client with target server ip: {}, port: {}, because: {}. Ignore it.",
+              ip,
+              port,
+              e.getMessage());
+        }
+      }
+
+      clients.set(
+          i,
+          new IoTDBThriftConnectorClient(
+              new ThriftClientProperty.Builder()
+                  .setConnectionTimeoutMs((int) PIPE_CONFIG.getPipeConnectorTimeoutMs())
+                  .setRpcThriftCompressionEnabled(
+                      PIPE_CONFIG.isPipeAsyncConnectorRPCThriftCompressionEnabled())
+                  .build(),
+              ip,
+              port));
+
       try {
-        client.close();
-      } catch (Exception e) {
-        LOGGER.warn("Close client error, because: {}", e.getMessage(), e);
+        final TPipeTransferResp resp =
+            clients
+                .get(i)
+                .pipeTransfer(
+                    PipeTransferHandshakeReq.toTPipeTransferReq(
+                        CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
+        if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          throw new PipeException(String.format("Handshake error, result status %s.", resp.status));
+        } else {
+          isClientAlive.set(i, true);
+          LOGGER.info("Handshake success. Target server ip: {}, port: {}", ip, port);
+        }
+      } catch (TException e) {
+        throw new PipeConnectionException(
+            String.format(
+                "Handshake error with target server ip: %s, port: %s, because: %s",
+                ip, port, e.getMessage()),
+            e);
       }
     }
 
-    client =
-        new IoTDBThriftConnectorClient(
-            new ThriftClientProperty.Builder()
-                .setConnectionTimeoutMs(COMMON_CONFIG.getConnectionTimeoutInMS())
-                .setRpcThriftCompressionEnabled(COMMON_CONFIG.isRpcThriftCompressionEnabled())
-                .build(),
-            ipAddress,
-            port);
-
-    try {
-      final TPipeTransferResp resp =
-          client.pipeTransfer(
-              PipeTransferHandshakeReq.toTPipeTransferReq(
-                  CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
-      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new PipeException(String.format("Handshake error, result status %s.", resp.status));
-      } else {
-        LOGGER.info("Handshake success. Target server ip: {}, port: {}", ipAddress, port);
+    for (int i = 0; i < clients.size(); i++) {
+      if (Boolean.TRUE.equals(isClientAlive.get(i))) {
+        return;
       }
-    } catch (TException e) {
-      throw new PipeConnectionException(
-          String.format(
-              "Connect to receiver %s:%s error, because: %s", ipAddress, port, e.getMessage()),
+    }
+    throw new PipeConnectionException(
+        String.format("All target servers %s are not available.", nodeUrls));
+  }
+
+  @Override
+  public void heartbeat() {
+    try {
+      handshake();
+    } catch (Exception e) {
+      LOGGER.warn(
+          "Failed to reconnect to target server, because: {}. Try to reconnect later.",
+          e.getMessage(),
           e);
     }
   }
 
   @Override
-  public void heartbeat() throws Exception {
-    // Do nothing
-  }
-
-  @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
     // PipeProcessor can change the type of TabletInsertionEvent
+
+    final int clientIndex = nextClientIndex();
+    final IoTDBThriftConnectorClient client = clients.get(clientIndex);
+
     try {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         PipeInsertNodeTabletInsertionEvent event =
@@ -187,10 +211,10 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
           }
           if (bufferSize >= BATCH_SIZE_IN_BYTES
               || System.currentTimeMillis() - lastSuccessfullySendTime >= MAX_DELAY_IN_MS) {
-            doTransferInBatch();
+            doTransferInBatch(client);
           }
         } else {
-          doTransfer(event);
+          doTransfer(client, event);
         }
       } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
         PipeRawTabletInsertionEvent event = (PipeRawTabletInsertionEvent) tabletInsertionEvent;
@@ -208,10 +232,10 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
           bufferSize += tabletReq.body.array().length;
           if (bufferSize >= BATCH_SIZE_IN_BYTES
               || System.currentTimeMillis() - lastSuccessfullySendTime >= MAX_DELAY_IN_MS) {
-            doTransferInBatch();
+            doTransferInBatch(client);
           }
         } else {
-          doTransfer(event);
+          doTransfer(client, event);
         }
       } else {
         LOGGER.warn(
@@ -221,6 +245,8 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
             tabletInsertionEvent);
       }
     } catch (TException e) {
+      isClientAlive.set(clientIndex, false);
+
       throw new PipeConnectionException(
           String.format(
               "Network error when transfer tablet insertion event %s, because %s.",
@@ -239,9 +265,14 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
       return;
     }
 
+    final int clientIndex = nextClientIndex();
+    final IoTDBThriftConnectorClient client = clients.get(clientIndex);
+
     try {
-      doTransfer((PipeTsFileInsertionEvent) tsFileInsertionEvent);
+      doTransfer(client, (PipeTsFileInsertionEvent) tsFileInsertionEvent);
     } catch (TException e) {
+
+      isClientAlive.set(clientIndex, false);
       throw new PipeConnectionException(
           String.format(
               "Network error when transfer tsfile insertion event %s, because %s.",
@@ -255,7 +286,7 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
     LOGGER.warn("IoTDBThriftConnectorV1 does not support transfer generic event: {}.", event);
   }
 
-  private void doTransferInBatch() throws IOException, TException {
+  private void doTransferInBatch(IoTDBThriftConnectorClient client) throws IOException, TException {
     final TPipeTransferResp resp =
         client.pipeTransfer(PipeTransferBatchReq.toTPipeTransferReq(tPipeTransferReqs));
 
@@ -273,7 +304,9 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
     events.clear();
   }
 
-  private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
+  private void doTransfer(
+      IoTDBThriftConnectorClient client,
+      PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, TException, WALPipeException {
     final TPipeTransferResp resp =
         client.pipeTransfer(
@@ -288,7 +321,8 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
     }
   }
 
-  private void doTransfer(PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
+  private void doTransfer(
+      IoTDBThriftConnectorClient client, PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException, TException, IOException {
     final TPipeTransferResp resp =
         client.pipeTransfer(
@@ -304,7 +338,8 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
     }
   }
 
-  private void doTransfer(PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
+  private void doTransfer(
+      IoTDBThriftConnectorClient client, PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
       throws PipeException, TException, InterruptedException, IOException {
     pipeTsFileInsertionEvent.waitForTsFileClose();
 
@@ -361,10 +396,31 @@ public class IoTDBThriftConnectorV1 implements PipeConnector {
     }
   }
 
+  private int nextClientIndex() {
+    final int clientSize = clients.size();
+    // Round-robin, find the next alive client
+    for (int tryCount = 0; tryCount < clientSize; ++tryCount) {
+      final int clientIndex = (int) (currentClientIndex++ % clientSize);
+      if (Boolean.TRUE.equals(isClientAlive.get(clientIndex))) {
+        return clientIndex;
+      }
+    }
+    throw new PipeConnectionException(
+        "All clients are dead, please check the connection to the receiver.");
+  }
+
   @Override
-  public void close() throws Exception {
-    if (client != null) {
-      client.close();
+  public void close() {
+    for (int i = 0; i < clients.size(); ++i) {
+      try {
+        if (clients.get(i) != null) {
+          clients.set(i, null).close();
+        }
+      } catch (Exception e) {
+        LOGGER.warn("Failed to close client {}.", i, e);
+      } finally {
+        isClientAlive.set(i, false);
+      }
     }
   }
 }

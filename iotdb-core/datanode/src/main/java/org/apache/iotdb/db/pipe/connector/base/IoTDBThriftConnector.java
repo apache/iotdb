@@ -36,6 +36,9 @@ import java.util.List;
 import java.util.Set;
 
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_MODE_BATCH;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_MODE_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_MODE_SINGLE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_NODE_URLS_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY;
 
@@ -44,6 +47,8 @@ public abstract class IoTDBThriftConnector implements PipeConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftConnector.class);
 
   protected final List<TEndPoint> nodeUrls = new ArrayList<>();
+
+  private String mode;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -55,7 +60,12 @@ public abstract class IoTDBThriftConnector implements PipeConnector {
             CONNECTOR_IOTDB_NODE_URLS_KEY, CONNECTOR_IOTDB_IP_KEY, CONNECTOR_IOTDB_PORT_KEY),
         parameters.hasAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY),
         parameters.hasAttribute(CONNECTOR_IOTDB_IP_KEY),
-        parameters.hasAttribute(CONNECTOR_IOTDB_PORT_KEY));
+        parameters.hasAttribute(CONNECTOR_IOTDB_PORT_KEY))
+            .validateAttributeValueRange(
+                    CONNECTOR_IOTDB_MODE_KEY,
+                    true,
+                    CONNECTOR_IOTDB_MODE_SINGLE,
+                    CONNECTOR_IOTDB_MODE_BATCH);
   }
 
   @Override
@@ -81,5 +91,7 @@ public abstract class IoTDBThriftConnector implements PipeConnector {
     nodeUrls.addAll(givenNodeUrls);
 
     LOGGER.info("IoTDBThriftConnector nodeUrls: {}", nodeUrls);
+
+    this.mode = parameters.getString(CONNECTOR_IOTDB_MODE_KEY);
   }
 }

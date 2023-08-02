@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.pipe.connector.base.IoTDBThriftConnector;
 import org.apache.iotdb.db.pipe.connector.v1.IoTDBThriftConnectorV1;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferBatchReq;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferHandshakeReq;
@@ -53,7 +54,6 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
-import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
@@ -64,7 +64,6 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -80,9 +79,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_MODE_BATCH;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_MODE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_MODE_SINGLE;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_NODE_URLS_KEY;
 
-public class IoTDBThriftConnectorV2 implements PipeConnector {
+public class IoTDBThriftConnectorV2 extends IoTDBThriftConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftConnectorV2.class);
 
@@ -99,7 +97,7 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
       new AtomicReference<>();
   private static final int RETRY_TRIGGER_INTERVAL_MINUTES = 1;
   private final AtomicReference<Future<?>> retryTriggerFuture = new AtomicReference<>();
-  private final AtomicReference<IoTDBThriftConnectorV1> retryConnector = new AtomicReference<>();
+  private final IoTDBThriftConnectorV1 retryConnector = new IoTDBThriftConnectorV1();
   private final PriorityQueue<Pair<Long, Event>> retryEventQueue =
       new PriorityQueue<>(Comparator.comparing(o -> o.left));
 
@@ -108,7 +106,6 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
   private final PriorityQueue<Pair<Long, Runnable>> commitQueue =
       new PriorityQueue<>(Comparator.comparing(o -> o.left));
 
-  private List<TEndPoint> nodeUrls;
   private String mode;
 
   // For batch transfer
@@ -142,28 +139,17 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
     // Node urls string should be like "localhost:6667,localhost:6668"
-    validator
-        .validateRequiredAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY)
-        .validateAttributeValueRange(
-            CONNECTOR_IOTDB_MODE_KEY,
-            true,
-            CONNECTOR_IOTDB_MODE_SINGLE,
-            CONNECTOR_IOTDB_MODE_BATCH);
+    super.validate(validator);
+    retryConnector.validate(validator);
+    validator.validateAttributeValueRange(
+        CONNECTOR_IOTDB_MODE_KEY, true, CONNECTOR_IOTDB_MODE_SINGLE, CONNECTOR_IOTDB_MODE_BATCH);
   }
 
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
-    nodeUrls =
-        SessionUtils.parseSeedNodeUrls(
-            Arrays.asList(parameters.getString(CONNECTOR_IOTDB_NODE_URLS_KEY).split(",")));
-    if (nodeUrls.isEmpty()) {
-      throw new PipeException("Node urls is empty.");
-    } else {
-      LOGGER.info("Node urls: {}.", nodeUrls);
-    }
-
-    this.mode = parameters.getString(CONNECTOR_IOTDB_MODE_KEY);
+    super.customize(parameters, configuration);
+    retryConnector.customize(parameters, configuration);
 
     if (CONNECTOR_IOTDB_MODE_BATCH.equals(this.mode)) {
       batchCommitId = new AtomicLong(0);
@@ -178,56 +164,12 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
   @Override
   // Synchronized to avoid close connector when transfer event
   public synchronized void handshake() throws Exception {
-    if (retryConnector.get() != null) {
-      try {
-        retryConnector.get().close();
-      } catch (Exception e) {
-        LOGGER.warn("Failed to close connector to receiver when try to handshake.", e);
-      }
-      retryConnector.set(null);
-    }
-
-    for (final TEndPoint endPoint : nodeUrls) {
-      final IoTDBThriftConnectorV1 connector =
-          new IoTDBThriftConnectorV1(endPoint.getIp(), endPoint.getPort());
-      try {
-        connector.handshake();
-        retryConnector.set(connector);
-        LOGGER.info(
-            "Handshake successfully with receiver {}:{}.", endPoint.getIp(), endPoint.getPort());
-        break;
-      } catch (Exception e) {
-        LOGGER.warn(
-            String.format(
-                "Handshake error with receiver %s:%s, retrying...",
-                endPoint.getIp(), endPoint.getPort()),
-            e);
-        try {
-          connector.close();
-        } catch (Exception ex) {
-          LOGGER.warn(
-              String.format(
-                  "Failed to close connector to receiver %s:%s when handshake error.",
-                  endPoint.getIp(), endPoint.getPort()),
-              ex);
-        }
-      }
-    }
-
-    if (retryConnector.get() == null) {
-      throw new PipeConnectionException(
-          String.format(
-              "Failed to connect to all receivers %s.",
-              nodeUrls.stream()
-                  .map(endPoint -> endPoint.getIp() + ":" + endPoint.getPort())
-                  .reduce((s1, s2) -> s1 + "," + s2)
-                  .orElse("")));
-    }
+    retryConnector.handshake();
   }
 
   @Override
   public void heartbeat() {
-    // Do nothing
+    retryConnector.heartbeat();
   }
 
   @Override
@@ -571,19 +513,12 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
       final long requestCommitId = queuedEventPair.getLeft();
       final Event event = queuedEventPair.getRight();
 
-      IoTDBThriftConnectorV1 connector = retryConnector.get();
-      if (connector == null) {
-        LOGGER.warn("Retry connector is broken. Will try to reconnect it by handshake.");
-        handshake();
-      }
-      connector = retryConnector.get();
-
       if (event instanceof PipeInsertNodeTabletInsertionEvent) {
-        connector.transfer((PipeInsertNodeTabletInsertionEvent) event);
+        retryConnector.transfer((PipeInsertNodeTabletInsertionEvent) event);
       } else if (event instanceof PipeRawTabletInsertionEvent) {
-        connector.transfer((PipeRawTabletInsertionEvent) event);
+        retryConnector.transfer((PipeRawTabletInsertionEvent) event);
       } else if (event instanceof PipeTsFileInsertionEvent) {
-        connector.transfer((PipeTsFileInsertionEvent) event);
+        retryConnector.transfer((PipeTsFileInsertionEvent) event);
       } else {
         LOGGER.warn("IoTDBThriftConnectorV2 does not support transfer generic event: {}.", event);
       }
@@ -678,8 +613,6 @@ public class IoTDBThriftConnectorV2 implements PipeConnector {
       retryTriggerFuture.get().cancel(false);
     }
 
-    if (retryConnector.get() != null) {
-      retryConnector.get().close();
-    }
+    retryConnector.close();
   }
 }
