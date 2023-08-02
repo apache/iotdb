@@ -1563,13 +1563,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       // it may include double parts
       List<List<InputLocation>> inputLocationParts = new ArrayList<>();
       inputColumnNamesOfOneInput.forEach(o -> inputLocationParts.add(layout.get(o)));
-      //      for (String input : inputColumnNamesOfOneInput) {
-      //        if ("Time".equals(input)) {
-      //          inputLocationParts.addAll(layout.values());
-      //        } else {
-      //          inputLocationParts.add(layout.get(input));
-      //        }
-      //      }
       for (int i = 0; i < inputLocationParts.get(0).size(); i++) {
         if (inputColumnNamesOfOneInput.size() == 1) {
           inputLocationList.add(new InputLocation[] {inputLocationParts.get(0).get(i)});

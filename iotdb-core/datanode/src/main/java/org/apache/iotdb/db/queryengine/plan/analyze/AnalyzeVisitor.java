@@ -201,6 +201,7 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils.const
 import static org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils.constructTargetPath;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn.ColumnType.AGGREGATION;
 import static org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.GetSourcePathsVisitor.getSourcePaths;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 
 /** This visitor is used to analyze each type of Statement and returns the {@link Analysis}. */
 public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> {
@@ -520,44 +521,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
       List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
 
-      if (AGGREGATION.equals(resultColumn.getColumnType())) {
-        if (resultColumn.getExpression() instanceof FunctionExpression) {
-          FunctionExpression fc = (FunctionExpression) resultColumn.getExpression();
-          if ("count_time".equals(fc.getFunctionName())) {
-
-            List<Expression> resultExpressions =
-                ExpressionAnalyzer.bindSchemaForExpression(
-                    resultColumn.getExpression().getExpressions().get(0), schemaTree);
-
-            Set<Expression> source = analysis.getSourceExpressions();
-            if (source == null) {
-              source = new HashSet<>();
-            }
-            for (Expression e : resultExpressions) {
-              TimeSeriesOperand ts = (TimeSeriesOperand) e;
-              Expression normalizedExpression = ExpressionAnalyzer.normalizeExpression(e);
-              analyzeExpressionType(analysis, normalizedExpression);
-
-              checkAliasUniqueness(resultColumn.getAlias(), aliasSet);
-              source.add(normalizedExpression);
-            }
-            analysis.setSourceExpressions(source);
-
-            Expression expression =
-                new FunctionExpression(
-                    "count_time",
-                    new LinkedHashMap<>(),
-                    Collections.singletonList(new TimestampOperand()));
-
-            Map<NodeRef<Expression>, TSDataType> dataTypeMap = new HashMap<>();
-            dataTypeMap.put(new NodeRef<>(expression), TSDataType.INT64);
-            analysis.addTypes(dataTypeMap);
-
-            outputExpressions.add(new Pair<>(expression, resultColumn.getAlias()));
-            outputExpressionMap.put(columnIndex++, outputExpressions);
-            continue;
-          }
-        }
+      if (AGGREGATION.equals(resultColumn.getColumnType())
+          && (resultColumn.getExpression() instanceof FunctionExpression)
+          && (COUNT_TIME.equals(
+              ((FunctionExpression) resultColumn.getExpression()).getFunctionName()))) {
+        outputExpressions = analyzeCountTime(resultColumn, analysis, schemaTree, aliasSet);
+        outputExpressionMap.put(columnIndex++, outputExpressions);
+        continue;
       }
 
       List<Expression> resultExpressions =
@@ -591,6 +561,51 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       outputExpressionMap.put(columnIndex++, outputExpressions);
     }
     return outputExpressionMap;
+  }
+
+  private List<Pair<Expression, String>> analyzeCountTime(
+      ResultColumn resultColumn, Analysis analysis, ISchemaTree schemaTree, Set<String> aliasSet) {
+
+    Set<Expression> sourceExpression = analysis.getSourceExpressions();
+    if (sourceExpression == null) {
+      sourceExpression = new HashSet<>();
+    }
+
+    List<Expression> resultExpressions =
+        ExpressionAnalyzer.bindSchemaForExpression(
+            resultColumn.getExpression().getExpressions().get(0), schemaTree);
+    for (Expression e : resultExpressions) {
+      Expression normalizedExpression = ExpressionAnalyzer.normalizeExpression(e);
+      analyzeExpressionType(analysis, normalizedExpression);
+      checkAliasUniqueness(resultColumn.getAlias(), aliasSet);
+      if (normalizedExpression instanceof TimeSeriesOperand) {
+        sourceExpression.add(normalizedExpression);
+      } else {
+        Set<Expression> sourceTransformExpressions = analysis.getSourceTransformExpressions();
+        if (sourceTransformExpressions == null) {
+          sourceTransformExpressions = new HashSet<>();
+        }
+        sourceTransformExpressions.add(normalizedExpression);
+        analysis.setSourceTransformExpressions(sourceTransformExpressions);
+      }
+    }
+    analysis.setSourceExpressions(sourceExpression);
+
+    Expression expression =
+        new FunctionExpression(
+            COUNT_TIME, new LinkedHashMap<>(), Collections.singletonList(new TimestampOperand()));
+
+    Map<NodeRef<Expression>, TSDataType> dataTypeMap = new HashMap<>();
+    dataTypeMap.put(new NodeRef<>(expression), TSDataType.INT64);
+    analysis.addTypes(dataTypeMap);
+
+    List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
+    if (resultColumn.getAlias() != null) {
+      outputExpressions.add(new Pair<>(expression, resultColumn.getAlias()));
+    } else {
+      outputExpressions.add(new Pair<>(expression, resultColumn.getExpression().toString()));
+    }
+    return outputExpressions;
   }
 
   private Set<PartialPath> analyzeFrom(QueryStatement queryStatement, ISchemaTree schemaTree) {
