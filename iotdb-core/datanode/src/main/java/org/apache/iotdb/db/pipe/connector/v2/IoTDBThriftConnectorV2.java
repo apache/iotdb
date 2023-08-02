@@ -136,11 +136,8 @@ public class IoTDBThriftConnectorV2 extends IoTDBThriftConnector {
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
-    // Node urls string should be like "localhost:6667,localhost:6668"
     super.validate(validator);
     retryConnector.validate(validator);
-    validator.validateAttributeValueRange(
-        CONNECTOR_IOTDB_MODE_KEY, true, CONNECTOR_IOTDB_MODE_SINGLE, CONNECTOR_IOTDB_MODE_BATCH);
   }
 
   @Override

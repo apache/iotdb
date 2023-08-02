@@ -263,7 +263,6 @@ public class IoTDBThriftConnectorV1 extends IoTDBThriftConnector {
     try {
       doTransfer(client, (PipeTsFileInsertionEvent) tsFileInsertionEvent);
     } catch (TException e) {
-
       isClientAlive.set(clientIndex, false);
       throw new PipeConnectionException(
           String.format(
