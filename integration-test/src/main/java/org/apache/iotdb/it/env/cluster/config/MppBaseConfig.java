@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.it.env.cluster;
+package org.apache.iotdb.it.env.cluster.config;
 
 import javax.annotation.Nullable;
 import javax.validation.constraints.NotNull;

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.it.env;
 
-import org.apache.iotdb.it.env.cluster.Cluster1Env;
+import org.apache.iotdb.it.env.cluster.env.MultiClusterEnv;
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.Config;
@@ -53,7 +53,7 @@ public class MultiEnvFactory {
     for (int i = 0; i < num; ++i) {
       try {
         Class.forName(Config.JDBC_DRIVER_NAME);
-        envList.add(new Cluster1Env());
+        envList.add(new MultiClusterEnv(i));
       } catch (ClassNotFoundException e) {
         logger.error("Create env error", e);
         System.exit(-1);

@@ -17,9 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.it.env.cluster;
+package org.apache.iotdb.it.env.cluster.node;
 
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.config.MppBaseConfig;
+import org.apache.iotdb.it.env.cluster.config.MppCommonConfig;
+import org.apache.iotdb.it.env.cluster.config.MppJVMConfig;
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.itbase.env.BaseNodeWrapper;
 
@@ -59,6 +62,15 @@ import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.INFLUXDB_RPC_PORT;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.MQTT_HOST;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.MQTT_PORT;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_LIB_DIR;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.REST_SERVICE_PORT;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.TEMPLATE_NODE_LIB_PATH;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.TEMPLATE_NODE_PATH;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.TRIGGER_LIB_DIR;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.UDF_LIB_DIR;
 import static org.junit.Assert.fail;
 
 public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
@@ -69,27 +81,6 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
           + "bin"
           + File.separator
           + (SystemUtils.IS_OS_WINDOWS ? "java.exe" : "java");
-  public static final String templateNodePath =
-      System.getProperty("user.dir") + File.separator + "target" + File.separator + "template-node";
-  public static final String templateNodeLibPath =
-      System.getProperty("user.dir")
-          + File.separator
-          + "target"
-          + File.separator
-          + "template-node-share"
-          + File.separator
-          + "lib"
-          + File.separator
-          + "*";
-
-  protected static final String propertyKeyConfigNodeConsensusProtocolClass =
-      "config_node_consensus_protocol_class";
-  protected static final String propertyKeySchemaRegionConsensusProtocolClass =
-      "schema_region_consensus_protocol_class";
-  protected static final String propertyKeyDataRegionConsensusProtocolClass =
-      "data_region_consensus_protocol_class";
-  protected static final String propertyKeySchemaReplicationFactor = "schema_replication_factor";
-  protected static final String propertyKeyDataReplicationFactor = "data_replication_factor";
 
   protected final String testClassName;
   protected final String testMethodName;
@@ -117,7 +108,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
 
   protected final Properties immutableCommonProperties = new Properties();
 
-  public AbstractNodeWrapper(String testClassName, String testMethodName, int[] portList) {
+  protected AbstractNodeWrapper(String testClassName, String testMethodName, int[] portList) {
     this.testClassName = testClassName;
     this.testMethodName = testMethodName;
     this.portList = portList;
@@ -125,13 +116,13 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     this.nodePort = portList[0];
     jmxPort = this.portList[portList.length - 1];
     // these properties can't be mutated.
-    immutableCommonProperties.setProperty("udf_lib_dir", MppBaseConfig.NULL_VALUE);
-    immutableCommonProperties.setProperty("trigger_lib_dir", MppBaseConfig.NULL_VALUE);
-    immutableCommonProperties.setProperty("pipe_lib_dir", MppBaseConfig.NULL_VALUE);
-    immutableCommonProperties.setProperty("mqtt_host", MppBaseConfig.NULL_VALUE);
-    immutableCommonProperties.setProperty("mqtt_port", MppBaseConfig.NULL_VALUE);
-    immutableCommonProperties.setProperty("rest_service_port", MppBaseConfig.NULL_VALUE);
-    immutableCommonProperties.setProperty("influxdb_rpc_port", MppBaseConfig.NULL_VALUE);
+    immutableCommonProperties.setProperty(UDF_LIB_DIR, MppBaseConfig.NULL_VALUE);
+    immutableCommonProperties.setProperty(TRIGGER_LIB_DIR, MppBaseConfig.NULL_VALUE);
+    immutableCommonProperties.setProperty(PIPE_LIB_DIR, MppBaseConfig.NULL_VALUE);
+    immutableCommonProperties.setProperty(MQTT_HOST, MppBaseConfig.NULL_VALUE);
+    immutableCommonProperties.setProperty(MQTT_PORT, MppBaseConfig.NULL_VALUE);
+    immutableCommonProperties.setProperty(REST_SERVICE_PORT, MppBaseConfig.NULL_VALUE);
+    immutableCommonProperties.setProperty(INFLUXDB_RPC_PORT, MppBaseConfig.NULL_VALUE);
     this.jvmConfig = initVMConfig();
   }
 
@@ -146,11 +137,11 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
         // ignored
       }
       // Here we need to copy without follow symbolic links, so we can't use FileUtils directly.
-      try (Stream<Path> s = Files.walk(Paths.get(templateNodePath))) {
+      try (Stream<Path> s = Files.walk(Paths.get(TEMPLATE_NODE_PATH))) {
         s.forEach(
             source -> {
               Path destination =
-                  Paths.get(destPath, source.toString().substring(templateNodePath.length()));
+                  Paths.get(destPath, source.toString().substring(TEMPLATE_NODE_PATH.length()));
               try {
                 Files.copy(
                     source,
@@ -272,7 +263,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
               "-XX:MaxDirectMemorySize=" + jvmConfig.getMaxDirectMemorySize() + "m",
               "-Djdk.nio.maxCachedBufferSize=262144",
               "-cp",
-              templateNodeLibPath));
+              TEMPLATE_NODE_LIB_PATH));
       addStartCmdParams(startCmd);
       FileUtils.write(
           stdoutFile, String.join(" ", startCmd) + "\n\n", StandardCharsets.UTF_8, true);
@@ -280,7 +271,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
           new ProcessBuilder(startCmd)
               .redirectOutput(ProcessBuilder.Redirect.appendTo(stdoutFile))
               .redirectError(ProcessBuilder.Redirect.appendTo(stdoutFile));
-      processBuilder.environment().put("CLASSPATH", templateNodeLibPath);
+      processBuilder.environment().put("CLASSPATH", TEMPLATE_NODE_LIB_PATH);
       this.instance = processBuilder.start();
       logger.info("In test {} {} started.", getTestLogDirName(), getId());
     } catch (IOException ex) {
@@ -299,7 +290,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
         this.instance.destroyForcibly().waitFor(10, TimeUnit.SECONDS);
       }
     } catch (InterruptedException e) {
-      logger.error("Waiting node to shutdown error." + e);
+      logger.error("Waiting node to shutdown error. %s", e);
     }
   }
 

@@ -30,16 +30,26 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.CLUSTER_CONFIGURATIONS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_CONFIG_NODE_NUM;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_DATA_NODE_NUM;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.DELIMITER;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.HIGH_PERFORMANCE_MODE;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.HIGH_PERFORMANCE_MODE_CONFIG_NODE_NUM;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.HIGH_PERFORMANCE_MODE_DATA_NODE_NUM;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE_CONFIG_NODE_NUM;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE_DATA_NODE_NUM;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.LOCK_FILE_PATH;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCALABLE_SINGLE_NODE_MODE;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCALABLE_SINGLE_NODE_MODE_CONFIG_NODE_NUM;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCALABLE_SINGLE_NODE_MODE_DATA_NODE_NUM;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.STRONG_CONSISTENCY_CLUSTER_MODE;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.STRONG_CONSISTENCY_CLUSTER_MODE_CONFIG_NODE_NUM;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.STRONG_CONSISTENCY_CLUSTER_MODE_DATA_NODE_NUM;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.USER_DIR;
+
 public class EnvUtils {
-
-  private static final String lockFilePath =
-      System.getProperty("user.dir") + File.separator + "target" + File.separator + "lock-";
-  private static final String sysVarDefaultConfigNodeNum = "DefaultConfigNodeNum";
-  private static final String sysVarDefaultDataNodeNum = "DefaultDataNodeNum";
-
-  private EnvUtils() {
-    // Empty constructor
-  }
 
   public static int[] searchAvailablePorts() {
     while (true) {
@@ -101,30 +111,91 @@ public class EnvUtils {
     return cmd + ports.stream().map(String::valueOf).collect(Collectors.joining("|")) + "\"";
   }
 
+  public static Pair<Integer, Integer> getClusterNodesNum(int index) {
+    String valueStr = System.getProperty(CLUSTER_CONFIGURATIONS);
+    if (valueStr == null) {
+      return null;
+    }
+
+    try {
+      switch (getValueOfIndex(valueStr, index)) {
+        case LIGHT_WEIGHT_STANDALONE_MODE:
+          return new Pair<>(
+              Integer.parseInt(System.getProperty(LIGHT_WEIGHT_STANDALONE_MODE_CONFIG_NODE_NUM)),
+              Integer.parseInt(System.getProperty(LIGHT_WEIGHT_STANDALONE_MODE_DATA_NODE_NUM)));
+        case SCALABLE_SINGLE_NODE_MODE:
+          return new Pair<>(
+              Integer.parseInt(System.getProperty(SCALABLE_SINGLE_NODE_MODE_CONFIG_NODE_NUM)),
+              Integer.parseInt(System.getProperty(SCALABLE_SINGLE_NODE_MODE_DATA_NODE_NUM)));
+        case HIGH_PERFORMANCE_MODE:
+          return new Pair<>(
+              Integer.parseInt(System.getProperty(HIGH_PERFORMANCE_MODE_CONFIG_NODE_NUM)),
+              Integer.parseInt(System.getProperty(HIGH_PERFORMANCE_MODE_DATA_NODE_NUM)));
+        case STRONG_CONSISTENCY_CLUSTER_MODE:
+          return new Pair<>(
+              Integer.parseInt(System.getProperty(STRONG_CONSISTENCY_CLUSTER_MODE_CONFIG_NODE_NUM)),
+              Integer.parseInt(System.getProperty(STRONG_CONSISTENCY_CLUSTER_MODE_DATA_NODE_NUM)));
+        default:
+          // Print nothing to avoid polluting test outputs
+          return null;
+      }
+    } catch (NumberFormatException ignore) {
+      return null;
+    }
+  }
+
   public static String getLockFilePath(int port) {
-    return lockFilePath + port;
+    return LOCK_FILE_PATH + port;
   }
 
   public static Pair<Integer, Integer> getNodeNum() {
+    Pair<Integer, Integer> nodesNum = getClusterNodesNum(0);
+    if (nodesNum != null) {
+      return nodesNum;
+    }
     return new Pair<>(
-        getIntFromSysVar(sysVarDefaultConfigNodeNum, 1),
-        getIntFromSysVar(sysVarDefaultDataNodeNum, 3));
+        getIntFromSysVar(DEFAULT_CONFIG_NODE_NUM, 1, 0),
+        getIntFromSysVar(DEFAULT_DATA_NODE_NUM, 3, 0));
   }
 
-  public static String getFilePathFromSysVar(String key) {
-    String value = System.getProperty(key);
-    if (value == null) {
+  public static Pair<Integer, Integer> getNodeNum(int index) {
+    Pair<Integer, Integer> nodesNum = getClusterNodesNum(index);
+    if (nodesNum != null) {
+      return nodesNum;
+    }
+    return new Pair<>(
+        getIntFromSysVar(DEFAULT_CONFIG_NODE_NUM, 1, index),
+        getIntFromSysVar(DEFAULT_DATA_NODE_NUM, 3, index));
+  }
+
+  public static String getFilePathFromSysVar(String key, int index) {
+    String valueStr = System.getProperty(key);
+    if (valueStr == null) {
       return null;
     }
-    return System.getProperty("user.dir") + File.separator + value;
+    return System.getProperty(USER_DIR) + getValueOfIndex(valueStr, index);
   }
 
-  public static int getIntFromSysVar(String key, int defaultValue) {
-    String value = System.getProperty(key, String.valueOf(defaultValue));
+  public static int getIntFromSysVar(String key, int defaultValue, int index) {
+    String valueStr = System.getProperty(key);
+    if (valueStr == null) {
+      return defaultValue;
+    }
+
+    String value = getValueOfIndex(valueStr, index);
     try {
       return Integer.parseInt(value);
     } catch (NumberFormatException e) {
       throw new IllegalArgumentException("Invalid property value: " + value + " of key " + key);
     }
+  }
+
+  private static String getValueOfIndex(String valueStr, int index) {
+    String[] values = valueStr.split(DELIMITER);
+    return index <= values.length - 1 ? values[index] : values[values.length - 1];
+  }
+
+  private EnvUtils() {
+    throw new IllegalStateException("Utility class");
   }
 }

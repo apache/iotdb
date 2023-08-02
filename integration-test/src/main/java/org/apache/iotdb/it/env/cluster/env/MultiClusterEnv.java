@@ -17,22 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.it.env.cluster;
+package org.apache.iotdb.it.env.cluster.env;
 
+import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 public class MultiClusterEnv extends AbstractEnv {
 
-  int index;
-
   public MultiClusterEnv(int index) {
-    super();
     this.index = index;
   }
 
   @Override
   public void initClusterEnvironment() {
-    Pair<Integer, Integer> nodeNum = EnvUtils.getNodeNum();
+    Pair<Integer, Integer> nodeNum = EnvUtils.getNodeNum(index);
     super.initEnvironment(nodeNum.getLeft(), nodeNum.getRight());
   }
 

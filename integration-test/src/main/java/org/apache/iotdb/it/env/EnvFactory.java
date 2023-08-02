@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.it.env;
 
-import org.apache.iotdb.it.env.cluster.Cluster1Env;
-import org.apache.iotdb.it.env.cluster.SimpleEnv;
+import org.apache.iotdb.it.env.cluster.env.Cluster1Env;
+import org.apache.iotdb.it.env.cluster.env.SimpleEnv;
 import org.apache.iotdb.it.env.remote.RemoteServerEnv;
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.itbase.env.BaseEnv;

@@ -17,8 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.it.env.cluster;
+package org.apache.iotdb.it.env.cluster.env;
 
+import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 public class Cluster1Env extends AbstractEnv {
