@@ -26,4 +26,4 @@ trap 'on_stop' SIGTERM SIGKILL SIGQUIT SIGINT
 bash /iotdb/sbin/start-confignode.sh -d
 sleep 5
 bash /iotdb/sbin/start-datanode.sh -d
-tail -f /iotdb/logs/log_confignode_all.log
+tail -f /iotdb/logs/log_datanode_all.log

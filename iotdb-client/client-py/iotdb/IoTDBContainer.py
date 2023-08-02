@@ -16,6 +16,7 @@
 # under the License.
 #
 
+import time
 from os import environ
 
 from testcontainers.core.container import DockerContainer
@@ -57,6 +58,8 @@ class IoTDBContainer(DockerContainer):
     def start(self):
         self._configure()
         super().start()
+        # sleep 2s to make sure the confignode cached the datanode info
+        time.sleep(2)
         self._connect()
         return self
 

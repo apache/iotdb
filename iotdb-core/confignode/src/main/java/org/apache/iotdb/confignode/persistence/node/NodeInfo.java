@@ -276,13 +276,9 @@ public class NodeInfo implements SnapshotProcessor {
   public List<TDataNodeConfiguration> getRegisteredDataNodes(List<Integer> dataNodeIds) {
     List<TDataNodeConfiguration> result = new ArrayList<>();
     dataNodeInfoReadWriteLock.readLock().lock();
-    for (Integer registeredId : registeredDataNodes.keySet()) {
-      LOGGER.info("RegisteredDataNodeId: {}", registeredId);
-    }
     try {
       dataNodeIds.forEach(
           dataNodeId -> {
-            LOGGER.info("FilteredDataNodeId: {}", dataNodeId);
             if (registeredDataNodes.containsKey(dataNodeId)) {
               result.add(registeredDataNodes.get(dataNodeId).deepCopy());
             }

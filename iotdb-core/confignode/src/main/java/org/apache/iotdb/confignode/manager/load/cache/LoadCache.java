@@ -295,11 +295,6 @@ public class LoadCache {
    * @return Filtered DataNodes with the specified NodeStatus
    */
   public List<Integer> filterDataNodeThroughStatus(NodeStatus... status) {
-    for (Map.Entry<Integer, BaseNodeCache> entry : nodeCacheMap.entrySet()) {
-      if (entry.getValue() instanceof DataNodeHeartbeatCache) {
-        LOGGER.info("DataNodeId {}, status {}", entry.getKey(), entry.getValue().getNodeStatus());
-      }
-    }
     return nodeCacheMap.entrySet().stream()
         .filter(
             nodeCacheEntry ->

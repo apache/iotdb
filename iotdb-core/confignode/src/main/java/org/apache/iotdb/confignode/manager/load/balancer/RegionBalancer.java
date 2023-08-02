@@ -48,8 +48,6 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class RegionBalancer {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(RegionBalancer.class);
-
   private final IManager configManager;
   private final IRegionGroupAllocator regionGroupAllocator;
 
@@ -92,10 +90,6 @@ public class RegionBalancer {
       int replicationFactor =
           getClusterSchemaManager().getReplicationFactor(storageGroup, consensusGroupType);
       if (availableDataNodes.size() < replicationFactor) {
-        LOGGER.error(
-            "availableDataNodes is {}, replicationFactor is {}",
-            availableDataNodes.size(),
-            replicationFactor);
         throw new NotEnoughDataNodeException();
       }
     }
