@@ -66,9 +66,7 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableCompactionValidation(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnableCompactionValidation(true);
     IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(10);
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(3);
