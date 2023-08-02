@@ -26,6 +26,8 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.AddConfigNodeState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,13 +44,17 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
 
   private TConfigNodeLocation tConfigNodeLocation;
 
+  private TNodeVersionInfo versionInfo;
+
   public AddConfigNodeProcedure() {
     super();
   }
 
-  public AddConfigNodeProcedure(TConfigNodeLocation tConfigNodeLocation) {
+  public AddConfigNodeProcedure(
+      TConfigNodeLocation tConfigNodeLocation, TNodeVersionInfo versionInfo) {
     super();
     this.tConfigNodeLocation = tConfigNodeLocation;
+    this.versionInfo = versionInfo;
   }
 
   @Override
@@ -75,7 +81,7 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
           break;
         case REGISTER_SUCCESS:
           env.notifyRegisterSuccess(tConfigNodeLocation);
-          env.applyConfigNode(tConfigNodeLocation);
+          env.applyConfigNode(tConfigNodeLocation, versionInfo);
           env.broadCastTheLatestConfigNodeGroup();
           LOG.info("The ConfigNode: {} is successfully added to the cluster", tConfigNodeLocation);
           return Flow.NO_MORE_STATE;
@@ -145,6 +151,8 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
     stream.writeShort(ProcedureType.ADD_CONFIG_NODE_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ThriftConfigNodeSerDeUtils.serializeTConfigNodeLocation(tConfigNodeLocation, stream);
+    ReadWriteIOUtils.write(versionInfo.getVersion(), stream);
+    ReadWriteIOUtils.write(versionInfo.getBuildInfo(), stream);
   }
 
   @Override
@@ -152,6 +160,15 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
     super.deserialize(byteBuffer);
     try {
       tConfigNodeLocation = ThriftConfigNodeSerDeUtils.deserializeTConfigNodeLocation(byteBuffer);
+      // old version may not have version info,
+      // thus we need to check inputStream before deserialize.
+      if (byteBuffer.hasRemaining()) {
+        versionInfo =
+            new TNodeVersionInfo(
+                ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
+      } else {
+        versionInfo = new TNodeVersionInfo("Unknown", "Unknown");
+      }
     } catch (ThriftSerDeException e) {
       LOG.error("Error in deserialize AddConfigNodeProcedure", e);
     }
@@ -163,13 +180,14 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
       AddConfigNodeProcedure thatProc = (AddConfigNodeProcedure) that;
       return thatProc.getProcId() == this.getProcId()
           && thatProc.getState() == this.getState()
-          && thatProc.tConfigNodeLocation.equals(this.tConfigNodeLocation);
+          && thatProc.tConfigNodeLocation.equals(this.tConfigNodeLocation)
+          && thatProc.versionInfo.equals(this.versionInfo);
     }
     return false;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(this.tConfigNodeLocation);
+    return Objects.hash(this.tConfigNodeLocation, this.versionInfo);
   }
 }

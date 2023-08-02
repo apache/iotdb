@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.agent.runtime;
 
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
@@ -107,6 +108,13 @@ public class PipeRuntimeAgent implements IService {
         pipeTaskMeta,
         pipeRuntimeException.getMessage(),
         pipeRuntimeException);
+
     pipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
+
+    // Quick stop all pipes locally if critical exception occurs,
+    // no need to wait for the next heartbeat cycle.
+    if (pipeRuntimeException instanceof PipeRuntimeCriticalException) {
+      PipeAgent.task().stopAllPipesWithCriticalException();
+    }
   }
 }
