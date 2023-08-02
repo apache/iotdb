@@ -94,9 +94,9 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
   private static final String UNEXPECTED_ERRORS = "Unexpected errors: ";
 
-  private static final Lock QUEUE_LOCK = new ReentrantLock();
+  private static final Lock queueLock = new ReentrantLock();
 
-  private static final Map<Integer, ExecutorService> DATA_REGION_QUEUE_MAP = new HashMap<>();
+  private static final Map<Integer, ExecutorService> dataRegionQueueMap = new HashMap<>();
 
   public FragmentInstanceDispatcherImpl(
       QueryType type,
@@ -208,17 +208,17 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       if (localInstances.get(0).getRegionReplicaSet().regionId.type
           == TConsensusGroupType.DataRegion) {
         List<Future<Void>> resList = new ArrayList<>(localInstances.size());
-        QUEUE_LOCK.lock();
+        queueLock.lock();
         try {
           for (FragmentInstance localInstance : localInstances) {
             try {
               int regionId = localInstance.getRegionReplicaSet().getRegionId().id;
-              ExecutorService executorService = DATA_REGION_QUEUE_MAP.get(regionId);
+              ExecutorService executorService = dataRegionQueueMap.get(regionId);
               if (executorService == null) {
                 executorService =
                     IoTDBThreadPoolFactory.newFixedThreadPool(
                         1, ThreadName.DATA_REGION_CONSUMER.getName() + "-" + regionId);
-                DATA_REGION_QUEUE_MAP.put(regionId, executorService);
+                dataRegionQueueMap.put(regionId, executorService);
               }
               resList.add(executorService.submit(new writeFITask(localInstance)));
             } catch (Throwable t) {
@@ -229,7 +229,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
             }
           }
         } finally {
-          QUEUE_LOCK.unlock();
+          queueLock.unlock();
         }
 
         for (Future<Void> future : resList) {
