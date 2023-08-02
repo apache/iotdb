@@ -1155,31 +1155,30 @@ public class IoTDBDescriptor {
   }
 
   private void loadCompactionIsEnabledHotModifiedProps(Properties properties) {
-    boolean isCompactionEnabled = conf.isEnableSeqSpaceCompaction()
-        || conf.isEnableUnseqSpaceCompaction()
-        || conf.isEnableCrossSpaceCompaction();
+    boolean isCompactionEnabled =
+        conf.isEnableSeqSpaceCompaction()
+            || conf.isEnableUnseqSpaceCompaction()
+            || conf.isEnableCrossSpaceCompaction();
 
-    boolean newConfigEnableCrossSpaceCompaction = Boolean.parseBoolean(
-        properties.getProperty(
-            "enable_cross_space_compaction",
-            Boolean.toString(conf.isEnableCrossSpaceCompaction())
-        )
-    );
-    boolean newConfigEnableSeqSpaceCompaction = Boolean.parseBoolean(
-        properties.getProperty(
-            "enable_seq_space_compaction",
-            Boolean.toString(conf.isEnableSeqSpaceCompaction())
-        )
-    );
-    boolean newConfigEnableUnseqSpaceCompaction = Boolean.parseBoolean(
-        properties.getProperty(
-            "enable_unseq_space_compaction",
-            Boolean.toString(conf.isEnableUnseqSpaceCompaction())
-        )
-    );
-    boolean compactionEnabledInNewConfig = newConfigEnableCrossSpaceCompaction
-        || newConfigEnableSeqSpaceCompaction
-        || newConfigEnableUnseqSpaceCompaction;
+    boolean newConfigEnableCrossSpaceCompaction =
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_cross_space_compaction",
+                Boolean.toString(conf.isEnableCrossSpaceCompaction())));
+    boolean newConfigEnableSeqSpaceCompaction =
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_seq_space_compaction",
+                Boolean.toString(conf.isEnableSeqSpaceCompaction())));
+    boolean newConfigEnableUnseqSpaceCompaction =
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_unseq_space_compaction",
+                Boolean.toString(conf.isEnableUnseqSpaceCompaction())));
+    boolean compactionEnabledInNewConfig =
+        newConfigEnableCrossSpaceCompaction
+            || newConfigEnableSeqSpaceCompaction
+            || newConfigEnableUnseqSpaceCompaction;
 
     if (!isCompactionEnabled && compactionEnabledInNewConfig) {
       logger.error("Compaction cannot start in current status.");
