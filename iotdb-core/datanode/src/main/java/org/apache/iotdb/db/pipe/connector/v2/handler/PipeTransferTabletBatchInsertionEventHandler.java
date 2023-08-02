@@ -33,6 +33,7 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class PipeTransferTabletBatchInsertionEventHandler
@@ -52,8 +53,9 @@ public class PipeTransferTabletBatchInsertionEventHandler
       List<Event> events,
       TPipeTransferReq req,
       IoTDBThriftConnectorV2 connector) {
-    this.requestCommitIds = requestCommitIds;
-    this.events = events;
+    // Deep copy to keep Ids' and events' reference
+    this.requestCommitIds = new ArrayList<>(requestCommitIds);
+    this.events = new ArrayList<>(events);
     this.req = req;
     this.connector = connector;
   }

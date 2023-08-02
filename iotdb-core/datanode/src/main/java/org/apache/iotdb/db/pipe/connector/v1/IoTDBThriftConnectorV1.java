@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.connector.v1;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -37,7 +36,6 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -59,11 +57,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_MODE_BATCH;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_MODE_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_MODE_SINGLE;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY;
 
 public class IoTDBThriftConnectorV1 extends IoTDBThriftConnector {
 
@@ -73,8 +67,6 @@ public class IoTDBThriftConnectorV1 extends IoTDBThriftConnector {
 
   private final List<IoTDBThriftConnectorClient> clients = new ArrayList<>();
   private final List<Boolean> isClientAlive = new ArrayList<>();
-
-  private String mode;
 
   private long currentClientIndex = 0;
 
@@ -100,7 +92,7 @@ public class IoTDBThriftConnectorV1 extends IoTDBThriftConnector {
       isClientAlive.add(false);
       clients.add(null);
     }
-    if (CONNECTOR_IOTDB_MODE_BATCH.equals(this.mode)) {
+    if (CONNECTOR_IOTDB_MODE_BATCH.equals(mode)) {
       tPipeTransferReqs = new ArrayList<>();
       events = new ArrayList<>();
     }
@@ -203,7 +195,7 @@ public class IoTDBThriftConnectorV1 extends IoTDBThriftConnector {
               PipeTransferInsertNodeReq.toTPipeTransferReq(event.getInsertNode());
 
           // To avoid redundant event when retrying
-          if (!events.get(events.size() - 1).equals(event)) {
+          if (events.isEmpty() || !events.get(events.size() - 1).equals(event)) {
             tPipeTransferReqs.add(insertNodeReq);
             events.add(event);
             event.increaseReferenceCount(IoTDBThriftConnectorV1.class.getName());

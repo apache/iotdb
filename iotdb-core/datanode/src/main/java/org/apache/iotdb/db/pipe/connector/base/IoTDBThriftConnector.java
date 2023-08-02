@@ -48,24 +48,25 @@ public abstract class IoTDBThriftConnector implements PipeConnector {
 
   protected final List<TEndPoint> nodeUrls = new ArrayList<>();
 
-  private String mode;
+  protected String mode;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
     final PipeParameters parameters = validator.getParameters();
-    validator.validate(
-        args -> (boolean) args[0] || ((boolean) args[1] && (boolean) args[2]),
-        String.format(
-            "Either %s or %s:%s must be specified",
-            CONNECTOR_IOTDB_NODE_URLS_KEY, CONNECTOR_IOTDB_IP_KEY, CONNECTOR_IOTDB_PORT_KEY),
-        parameters.hasAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY),
-        parameters.hasAttribute(CONNECTOR_IOTDB_IP_KEY),
-        parameters.hasAttribute(CONNECTOR_IOTDB_PORT_KEY))
-            .validateAttributeValueRange(
-                    CONNECTOR_IOTDB_MODE_KEY,
-                    true,
-                    CONNECTOR_IOTDB_MODE_SINGLE,
-                    CONNECTOR_IOTDB_MODE_BATCH);
+    validator
+        .validate(
+            args -> (boolean) args[0] || ((boolean) args[1] && (boolean) args[2]),
+            String.format(
+                "Either %s or %s:%s must be specified",
+                CONNECTOR_IOTDB_NODE_URLS_KEY, CONNECTOR_IOTDB_IP_KEY, CONNECTOR_IOTDB_PORT_KEY),
+            parameters.hasAttribute(CONNECTOR_IOTDB_NODE_URLS_KEY),
+            parameters.hasAttribute(CONNECTOR_IOTDB_IP_KEY),
+            parameters.hasAttribute(CONNECTOR_IOTDB_PORT_KEY))
+        .validateAttributeValueRange(
+            CONNECTOR_IOTDB_MODE_KEY,
+            true,
+            CONNECTOR_IOTDB_MODE_SINGLE,
+            CONNECTOR_IOTDB_MODE_BATCH);
   }
 
   @Override
@@ -92,6 +93,6 @@ public abstract class IoTDBThriftConnector implements PipeConnector {
 
     LOGGER.info("IoTDBThriftConnector nodeUrls: {}", nodeUrls);
 
-    this.mode = parameters.getString(CONNECTOR_IOTDB_MODE_KEY);
+    mode = parameters.getStringOrDefault(CONNECTOR_IOTDB_MODE_KEY, CONNECTOR_IOTDB_MODE_SINGLE);
   }
 }

@@ -106,8 +106,6 @@ public class IoTDBThriftConnectorV2 extends IoTDBThriftConnector {
   private final PriorityQueue<Pair<Long, Runnable>> commitQueue =
       new PriorityQueue<>(Comparator.comparing(o -> o.left));
 
-  private String mode;
-
   // For batch transfer
   private final int MAX_DELAY_IN_MS = PipeConfig.getInstance().getPipeConnectorMaxDelay() * 1000;
   private final long BATCH_SIZE_IN_BYTES =
@@ -151,7 +149,7 @@ public class IoTDBThriftConnectorV2 extends IoTDBThriftConnector {
     super.customize(parameters, configuration);
     retryConnector.customize(parameters, configuration);
 
-    if (CONNECTOR_IOTDB_MODE_BATCH.equals(this.mode)) {
+    if (CONNECTOR_IOTDB_MODE_BATCH.equals(mode)) {
       batchCommitId = new AtomicLong(0);
       tPipeTransferReqs = new CopyOnWriteArrayList<>();
       requestCommitIds = new CopyOnWriteArrayList<>();

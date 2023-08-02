@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.connector.v1.request;
 
 import org.apache.iotdb.db.pipe.connector.IoTDBThriftConnectorRequestVersion;
 import org.apache.iotdb.db.pipe.connector.v1.PipeRequestType;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
@@ -92,7 +92,7 @@ public class PipeTransferBatchReq extends TPipeTransferReq {
     for (int i = 0; i < size; ++i) {
       batchReq.insertNodeReqs.add(
           PipeTransferInsertNodeReq.toTPipeTransferReq(
-              (InsertNode) PlanNodeType.deserialize(transferReq.body)));
+              (InsertNode) PlanFragment.deserializeHelper(transferReq.body)));
     }
 
     size = ReadWriteIOUtils.readInt(transferReq.body);
