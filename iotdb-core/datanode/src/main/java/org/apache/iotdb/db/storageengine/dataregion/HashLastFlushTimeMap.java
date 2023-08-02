@@ -231,8 +231,8 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
         tsFileManager.getOrCreateSequenceListByTimePartition(partitionId);
 
     for (int i = tsFileResourceList.size() - 1; i >= 0; i--) {
-      if (tsFileResourceList.get(i).timeIndex.mayContainsDevice(devicePath)) {
-        return tsFileResourceList.get(i).timeIndex.getEndTime(devicePath);
+      if (tsFileResourceList.get(i).mayContainsDevice(devicePath)) {
+        return tsFileResourceList.get(i).getEndTime(devicePath);
       }
     }
 

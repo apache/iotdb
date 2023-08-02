@@ -96,7 +96,7 @@ public class TsFileResource {
   protected TsFileResource next;
 
   /** time index */
-  public ITimeIndex timeIndex;
+  private ITimeIndex timeIndex;
 
   @SuppressWarnings("squid:S3077")
   private volatile ModificationFile modFile;
