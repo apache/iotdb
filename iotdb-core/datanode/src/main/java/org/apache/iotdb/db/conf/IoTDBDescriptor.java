@@ -1101,6 +1101,28 @@ public class IoTDBDescriptor {
     loadWALHotModifiedProps(properties);
   }
 
+  private void loadCompactionHotModifiedProps(Properties properties) {
+    conf.setCompactionValidationLevel(
+        CompactionValidationLevel.valueOf(
+            properties.getProperty(
+                "compaction_validation_level", conf.getCompactionValidationLevel().toString())));
+    conf.setEnableCrossSpaceCompaction(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_cross_space_compaction",
+                Boolean.toString(conf.isEnableCrossSpaceCompaction()))));
+    conf.setEnableSeqSpaceCompaction(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_seq_space_compaction",
+                Boolean.toString(conf.isEnableSeqSpaceCompaction()))));
+    conf.setEnableUnseqSpaceCompaction(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_unseq_space_compaction",
+                Boolean.toString(conf.isEnableUnseqSpaceCompaction()))));
+  }
+
   private void loadWALHotModifiedProps(Properties properties) {
     long walAsyncModeFsyncDelayInMs =
         Long.parseLong(
@@ -1524,6 +1546,9 @@ public class IoTDBDescriptor {
       if (prevDeleteWalFilesPeriodInMs != conf.getDeleteWalFilesPeriodInMs()) {
         WALManager.getInstance().rebootWALDeleteThread();
       }
+
+      // update compaction config
+      loadCompactionHotModifiedProps(properties);
 
       // update schema quota configuration
       conf.setClusterSchemaLimitLevel(
