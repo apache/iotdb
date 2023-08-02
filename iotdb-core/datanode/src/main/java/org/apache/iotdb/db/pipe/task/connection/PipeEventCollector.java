@@ -22,25 +22,14 @@ package org.apache.iotdb.db.pipe.task.connection;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
-
-import java.util.LinkedList;
-import java.util.Queue;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 public class PipeEventCollector implements EventCollector {
 
   private final BoundedBlockingPendingQueue<Event> pendingQueue;
 
-  // buffer queue is used to store events that are not offered to pending queue
-  // because the pending queue is full. when pending queue is full, pending queue
-  // will notify tasks to stop extracting events, and buffer queue will be used to store
-  // events before tasks are stopped. when pending queue is not full and tasks are
-  // notified by the pending queue to start extracting events, buffer queue will be used to store
-  // events before events in buffer queue are offered to pending queue.
-  private final Queue<Event> bufferQueue;
-
   public PipeEventCollector(BoundedBlockingPendingQueue<Event> pendingQueue) {
     this.pendingQueue = pendingQueue;
-    bufferQueue = new LinkedList<>();
   }
 
   @Override
@@ -49,18 +38,8 @@ public class PipeEventCollector implements EventCollector {
       ((EnrichedEvent) event).increaseReferenceCount(PipeEventCollector.class.getName());
     }
 
-    while (!bufferQueue.isEmpty()) {
-      final Event bufferedEvent = bufferQueue.peek();
-      if (pendingQueue.offer(bufferedEvent)) {
-        bufferQueue.poll();
-      } else {
-        bufferQueue.offer(event);
-        return;
-      }
-    }
-
-    if (!pendingQueue.offer(event)) {
-      bufferQueue.offer(event);
+    if (!pendingQueue.directOffer(event)) {
+      throw new PipeException("Unexpected error: interrupted while offering event to queue");
     }
   }
 }
