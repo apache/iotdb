@@ -37,6 +37,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -229,7 +230,9 @@ public class InsertRowsNode extends InsertNode {
     }
     analysis.setRedirectNodeList(redirectInfo);
 
-    return new ArrayList<>(splitMap.values());
+    List<WritePlanNode> res = new ArrayList<>(splitMap.values());
+    Collections.shuffle(res);
+    return res;
   }
 
   @Override
