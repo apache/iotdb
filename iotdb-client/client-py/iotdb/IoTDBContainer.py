@@ -58,9 +58,9 @@ class IoTDBContainer(DockerContainer):
     def start(self):
         self._configure()
         super().start()
+        self._connect()
         # sleep 2s to make sure the confignode cached the datanode info
         time.sleep(2)
-        self._connect()
         return self
 
     def stop(self, force=True, delete_volume=True):
