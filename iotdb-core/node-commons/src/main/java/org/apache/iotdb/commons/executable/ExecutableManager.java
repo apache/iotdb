@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.commons.executable;
 
-import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.trigger.exception.TriggerJarTooLargeException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
