@@ -55,6 +55,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushL
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -223,17 +224,21 @@ public class WALNode implements IWALNode {
     // recursion time of calling deletion
     private int recursionTime = 0;
 
+    private List<Long> pinnedMemTableIds = new ArrayList<>();
+
+    private boolean endFileIndexLessThanSafelyIndex = false;
+
     @Override
     public void run() {
       // init firstValidVersionId
-      firstValidVersionId = checkpointManager.getFirstValidWALVersionId();
+      firstValidVersionId = getFirstValidWALVersionId();
       if (firstValidVersionId == Long.MIN_VALUE) {
         // roll wal log writer to delete current wal file
         if (buffer.getCurrentWALFileSize() > 0) {
           rollWALFile();
         }
         // update firstValidVersionId
-        firstValidVersionId = checkpointManager.getFirstValidWALVersionId();
+        firstValidVersionId = getFirstValidWALVersionId();
         if (firstValidVersionId == Long.MIN_VALUE) {
           firstValidVersionId = buffer.getCurrentWALFileVersion();
         }
@@ -245,7 +250,10 @@ public class WALNode implements IWALNode {
           identifier,
           firstValidVersionId,
           safelyDeletedSearchIndex);
-      deleteOutdatedFiles();
+      endFileIndexLessThanSafelyIndex = deleteOutdatedFiles();
+      if (shouldLogDeleteSummary()) {
+        logger.info(getSummary());
+      }
 
       // calculate effective information ratio
       long costOfActiveMemTables = checkpointManager.getTotalCostOfActiveMemTables();
@@ -498,7 +506,50 @@ public class WALNode implements IWALNode {
         dataRegion.writeUnlock();
       }
     }
+
+    /**
+     * Get version id of first valid .wal file
+     *
+     * @return Return {@link Long#MIN_VALUE} if no file is valid
+     */
+    public long getFirstValidWALVersionId() {
+      List<MemTableInfo> memTableInfos = checkpointManager.snapshotMemTableInfos();
+      long firstValidVersionId = memTableInfos.isEmpty() ? Long.MIN_VALUE : Long.MAX_VALUE;
+      for (MemTableInfo memTableInfo : memTableInfos) {
+        firstValidVersionId = Math.min(firstValidVersionId, memTableInfo.getFirstFileVersionId());
+        if (memTableInfo.isFlushed() && memTableInfo.isPinned()) {
+          pinnedMemTableIds.add(memTableInfo.getMemTableId());
+        }
+      }
+      return firstValidVersionId;
+    }
+
+    private boolean shouldLogDeleteSummary() {
+      return !pinnedMemTableIds.isEmpty() || endFileIndexLessThanSafelyIndex;
+    }
+
+    private String getSummary() {
+      StringBuilder summaryMessage =
+          new StringBuilder(
+              String.format(
+                  " WAL node-%s outdated files are not completely deleted for the following reasons: %s",
+                  identifier, System.getProperty("line.separator")));
+      if (!pinnedMemTableIds.isEmpty()) {
+        summaryMessage
+            .append("- MemTable has been flushed but pinned by PIPE,the MemTableId list is : ")
+            .append(StringUtils.join(pinnedMemTableIds, ","))
+            .append(".");
+      }
+      if (endFileIndexLessThanSafelyIndex) {
+        summaryMessage.append(
+            String.format(
+                "- MemTable contained in the wal file was flushed, but the data in the file was not consumed by the consensus group,currentSearchIndex:%s,safelyDeletedSearchIndex:%s,wal file:",
+                getCurrentSearchIndex(), safelyDeletedSearchIndex));
+      }
+      return summaryMessage.toString();
+    }
   }
+
   // endregion
 
   // region Search interfaces for consensus group
