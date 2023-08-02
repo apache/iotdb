@@ -38,7 +38,16 @@ public class CountTimeAccumulator implements Accumulator {
   // Column should be like: | Time | Time |
   @Override
   public void addInput(Column[] column, BitMap bitMap, int lastIndex) {
-    countValue += column[0].getPositionCount();
+
+    if ((bitMap == null) || bitMap.isAllMarked()) {
+      countValue += (lastIndex + 1);
+    } else {
+      for (int i = 0; i <= lastIndex; i++) {
+        if (bitMap.isMarked(i)) {
+          countValue++;
+        }
+      }
+    }
   }
 
   // partialResult should be like: | partialCountValue1 |
