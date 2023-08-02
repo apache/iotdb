@@ -23,6 +23,7 @@ function on_stop(){
 
 trap 'on_stop' SIGTERM SIGKILL SIGQUIT SIGINT
 
-bash /iotdb/sbin/start-confignode.sh
+bash /iotdb/sbin/start-confignode.sh -d
 sleep 5
-bash /iotdb/sbin/start-datanode.sh
+bash /iotdb/sbin/start-datanode.sh -d
+tail -f /iotdb/logs/log_confignode_all.log
