@@ -36,6 +36,9 @@ import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -44,6 +47,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * The RegionBalancer provides interfaces to generate optimal Region allocation and migration plans
  */
 public class RegionBalancer {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(RegionBalancer.class);
 
   private final IManager configManager;
   private final IRegionGroupAllocator regionGroupAllocator;
@@ -87,6 +92,10 @@ public class RegionBalancer {
       int replicationFactor =
           getClusterSchemaManager().getReplicationFactor(storageGroup, consensusGroupType);
       if (availableDataNodes.size() < replicationFactor) {
+        LOGGER.error(
+            "availableDataNodes is {}, replicationFactor is {}",
+            availableDataNodes.size(),
+            replicationFactor);
         throw new NotEnoughDataNodeException();
       }
     }
