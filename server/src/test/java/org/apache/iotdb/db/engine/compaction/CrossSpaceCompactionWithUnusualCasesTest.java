@@ -17,23 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.compaction;
+package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.execute.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.compaction.execute.task.CrossSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.selector.utils.CrossCompactionTaskResource;
+import org.apache.iotdb.db.engine.compaction.utils.TsFileGeneratorUtils;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionValidationLevel;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossCompactionTaskResource;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.TsFileGeneratorUtils;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -69,7 +68,7 @@ public class CrossSpaceCompactionWithUnusualCasesTest extends AbstractCompaction
     super.setUp();
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setCompactionValidationLevel(CompactionValidationLevel.RESOURCE_AND_TSFILE);
+        .setEnableCompactionValidation(true);
     IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(10);
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(3);
