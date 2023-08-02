@@ -67,9 +67,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class IoTConsensus implements IConsensus {
-
   private final Logger logger = LoggerFactory.getLogger(IoTConsensus.class);
-
   private final TEndPoint thisNode;
   private final int thisNodeId;
   private final File storageDir;

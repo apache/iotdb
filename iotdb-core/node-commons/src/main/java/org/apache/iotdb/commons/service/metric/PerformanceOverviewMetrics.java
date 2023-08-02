@@ -31,8 +31,10 @@ import org.apache.iotdb.metrics.utils.MetricType;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.LongAdder;
 
 public class PerformanceOverviewMetrics implements IMetricSet {
+
   private static final Map<String, MetricInfo> metricInfoMap = new HashMap<>();
 
   private PerformanceOverviewMetrics() {
@@ -194,15 +196,21 @@ public class PerformanceOverviewMetrics implements IMetricSet {
   private static final String PERFORMANCE_OVERVIEW_STORAGE_DETAIL =
       Metric.PERFORMANCE_OVERVIEW_STORAGE_DETAIL.toString();
   private static final String ENGINE = "engine";
+  private static final String CONCURRENT_WRITE_IOT_REGIONS_NUM = "concurrent_write_iot_regions_num";
 
   static {
     metricInfoMap.put(
         ENGINE,
         new MetricInfo(
             MetricType.TIMER, PERFORMANCE_OVERVIEW_STORAGE_DETAIL, Tag.STAGE.toString(), ENGINE));
+    metricInfoMap.put(
+        CONCURRENT_WRITE_IOT_REGIONS_NUM,
+        new MetricInfo(MetricType.AUTO_GAUGE, CONCURRENT_WRITE_IOT_REGIONS_NUM));
   }
 
   private Timer engineTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+
+  public final LongAdder CONCURRENT_WRITE_IOT_REGIONS_COUNTER = new LongAdder();
 
   public void recordEngineCost(long costTimeInNanos) {
     engineTimer.updateNanos(costTimeInNanos);
@@ -347,7 +355,12 @@ public class PerformanceOverviewMetrics implements IMetricSet {
             MetricLevel.CORE,
             Tag.STAGE.toString(),
             PerformanceOverviewMetrics.ENGINE);
-    // bind storageengine metrics
+    metricService.createAutoGauge(
+        CONCURRENT_WRITE_IOT_REGIONS_NUM,
+        MetricLevel.CORE,
+        this.CONCURRENT_WRITE_IOT_REGIONS_COUNTER,
+        LongAdder::doubleValue);
+    // bind storage engine metrics
     lockTimer =
         metricService.getOrCreateTimer(
             PERFORMANCE_OVERVIEW_ENGINE_DETAIL, MetricLevel.CORE, Tag.STAGE.toString(), LOCK);

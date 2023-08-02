@@ -88,7 +88,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 
 public class IoTConsensusServerImpl {
-
   private static final String CONFIGURATION_FILE_NAME = "configuration.dat";
   private static final String CONFIGURATION_TMP_FILE_NAME = "configuration.dat.tmp";
   public static final String SNAPSHOT_DIR_NAME = "snapshot";
@@ -168,8 +167,9 @@ public class IoTConsensusServerImpl {
    */
   public TSStatus write(IConsensusRequest request) {
     long consensusWriteStartTime = System.nanoTime();
-    stateMachineLock.lock();
     try {
+      stateMachineLock.lock();
+      PERFORMANCE_OVERVIEW_METRICS.CONCURRENT_WRITE_IOT_REGIONS_COUNTER.increment();
       long getStateMachineLockTime = System.nanoTime();
       // statistic the time of acquiring stateMachine lock
       ioTConsensusServerMetrics.recordGetStateMachineLockTime(
@@ -245,6 +245,7 @@ public class IoTConsensusServerImpl {
           System.nanoTime() - consensusWriteStartTime);
       return result;
     } finally {
+      PERFORMANCE_OVERVIEW_METRICS.CONCURRENT_WRITE_IOT_REGIONS_COUNTER.decrement();
       stateMachineLock.unlock();
     }
   }
