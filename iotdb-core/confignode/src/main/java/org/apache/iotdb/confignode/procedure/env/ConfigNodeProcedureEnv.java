@@ -57,6 +57,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipePluginInstanceReq;
@@ -324,10 +325,11 @@ public class ConfigNodeProcedureEnv {
    * Leader will record the new ConfigNode's information.
    *
    * @param configNodeLocation The new ConfigNode
-   * @param buildInfo The new ConfigNode's buildInfo
+   * @param versionInfo The new ConfigNode's versionInfo
    */
-  public void applyConfigNode(TConfigNodeLocation configNodeLocation, String buildInfo) {
-    configManager.getNodeManager().applyConfigNode(configNodeLocation, buildInfo);
+  public void applyConfigNode(
+      TConfigNodeLocation configNodeLocation, TNodeVersionInfo versionInfo) {
+    configManager.getNodeManager().applyConfigNode(configNodeLocation, versionInfo);
   }
 
   /**
