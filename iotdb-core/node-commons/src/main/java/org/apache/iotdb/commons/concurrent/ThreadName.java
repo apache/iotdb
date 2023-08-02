@@ -45,6 +45,7 @@ public enum ThreadName {
   DATANODE_INTERNAL_RPC_PROCESSOR("DataNodeInternalRPC-Processor"),
   MPP_COORDINATOR_WRITE_EXECUTOR("MPP-Coordinator-Write-Executor"),
   ASYNC_DATANODE_MPP_DATA_EXCHANGE_CLIENT_POOL("AsyncDataNodeMPPDataExchangeServiceClientPool"),
+  DATA_REGION_CONSUMER("Data-Region-Consumer"),
 
   // -------------------------- Compaction --------------------------
   COMPACTION_WORKER("Compaction-Worker"),
@@ -198,7 +199,8 @@ public enum ThreadName {
               DATANODE_INTERNAL_RPC_SERVICE,
               DATANODE_INTERNAL_RPC_PROCESSOR,
               MPP_COORDINATOR_WRITE_EXECUTOR,
-              ASYNC_DATANODE_MPP_DATA_EXCHANGE_CLIENT_POOL));
+              ASYNC_DATANODE_MPP_DATA_EXCHANGE_CLIENT_POOL,
+              DATA_REGION_CONSUMER));
   private static final Set<ThreadName> compactionThreadNames =
       new HashSet<>(Arrays.asList(COMPACTION_WORKER, COMPACTION_SUB_TASK, COMPACTION_SCHEDULE));
 
