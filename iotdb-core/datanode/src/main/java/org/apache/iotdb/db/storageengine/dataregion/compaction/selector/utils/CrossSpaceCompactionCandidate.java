@@ -74,10 +74,8 @@ public class CrossSpaceCompactionCandidate {
 
   @SuppressWarnings({"squid:S3776", "squid:S135"})
   private boolean prepareNextSplit() throws IOException {
-    boolean nextUnseqFileHasOverlap = false;
     TsFileResourceCandidate unseqFile = unseqFiles.get(nextUnseqFileIndex);
-    List<TsFileResourceCandidate> ret = new ArrayList<>();
-
+    CrossCompactionTaskResourceSplit tmpSplit = new CrossCompactionTaskResourceSplit(unseqFile);
     // The startTime and endTime of each device are different in one TsFile. So we need to do the
     // check one by one. And we cannot skip any device in the unseq file because it may lead to
     // omission of target seq file
@@ -86,6 +84,11 @@ public class CrossSpaceCompactionCandidate {
       return false;
     }
     for (DeviceInfo unseqDeviceInfo : unseqFile.getDevices()) {
+      String deviceId = unseqDeviceInfo.deviceId;
+      boolean atLeastOneSeqFileSelected = false;
+      // The `previousSeqFile` means the seqFile which contains the device and its endTime is just
+      // be smaller than startTime of the device in unseqFile
+      TsFileResourceCandidate previousSeqFile = null;
       for (TsFileResourceCandidate seqFile : seqFiles) {
         // If the seqFile may need to be selected but its invalid, the selection should be
         // terminated.
@@ -93,10 +96,10 @@ public class CrossSpaceCompactionCandidate {
             && seqFile.mayHasOverlapWithUnseqFile(unseqDeviceInfo)) {
           return false;
         }
-        if (!seqFile.containsDevice(unseqDeviceInfo.deviceId)) {
+        if (!seqFile.containsDevice(deviceId)) {
           continue;
         }
-        DeviceInfo seqDeviceInfo = seqFile.getDeviceInfoById(unseqDeviceInfo.deviceId);
+        DeviceInfo seqDeviceInfo = seqFile.getDeviceInfoById(deviceId);
 
         // If the unsealed file is unclosed, the file should not be selected only when its startTime
         // is larger than endTime of unseqFile. Or, the selection should be terminated.
@@ -107,26 +110,48 @@ public class CrossSpaceCompactionCandidate {
           // When scanning the target seqFiles for unseqFile, we traverse them one by one no matter
           // whether it is selected or not. But we only add the unselected seqFiles to next split to
           // avoid duplication selection
-          if (!seqFile.selected) {
-            ret.add(seqFile);
-            seqFile.markAsSelected();
-          }
-          nextUnseqFileHasOverlap = true;
-          // if this condition is satisfied, all subsequent seq files is unnecessary to check
+          tmpSplit.addSeqFileIfNotSelected(seqFile);
+          seqFile.markAsSelected();
+          atLeastOneSeqFileSelected = true;
           break;
         } else if (unseqDeviceInfo.startTime <= seqDeviceInfo.endTime) {
-          if (!seqFile.selected) {
-            ret.add(seqFile);
-            seqFile.markAsSelected();
+          tmpSplit.addSeqFileIfNotSelected(seqFile);
+          seqFile.markAsSelected();
+          atLeastOneSeqFileSelected = true;
+        } else {
+          if (!seqFile.unsealed()) {
+            previousSeqFile = seqFile;
           }
-          nextUnseqFileHasOverlap = true;
         }
       }
+      // Most of cases, one unsetFile should have at least one conresponding seqFile whose startTime
+      // is larger than unseqFiles's endTime for each device in unseqFile. But some scenario will
+      // break this rule such as:
+      // 1. Delete or TTL operation deletes the seqFile
+      // 2. the unseqFile is created by load operation
+      // In these scenario, the data for soem device in unseqFile will be written to wrong seqFile,
+      // which lead to failed overlap check after compaction. The following changes ensure the
+      // correct seqFile won't be lost in this selection.
+
+      // That this judgement is true indicates `previousSeqFile` is unnecessary.
+      if (atLeastOneSeqFileSelected || previousSeqFile == null) {
+        continue;
+      }
+
+      // That this judgement is ture indicates the `previousSeqFile` is necessary, but it cannot be
+      // selected as a candidate so the selection should be terminated.
+      if (!previousSeqFile.isValidCandidate) {
+        return false;
+      }
+
+      // select the `previousSeqFile`
+      tmpSplit.addSeqFileIfNotSelected(previousSeqFile);
+      previousSeqFile.markAsSelected();
     }
     // mark candidates in next split as selected even though it may not be added to the final
     // TaskResource
     unseqFile.markAsSelected();
-    nextSplit = new CrossCompactionTaskResourceSplit(unseqFile, ret, nextUnseqFileHasOverlap);
+    nextSplit = tmpSplit;
     nextUnseqFileIndex++;
     return true;
   }
@@ -185,15 +210,28 @@ public class CrossSpaceCompactionCandidate {
     public List<TsFileResourceCandidate> seqFiles;
 
     @SuppressWarnings("squid:S1104")
-    public boolean hasOverlap;
+    public boolean atLeastOneSeqFileSelected;
+
+    public CrossCompactionTaskResourceSplit(TsFileResourceCandidate unseqFile) {
+      this.unseqFile = unseqFile;
+      this.seqFiles = new ArrayList<>();
+      this.atLeastOneSeqFileSelected = false;
+    }
 
     public CrossCompactionTaskResourceSplit(
         TsFileResourceCandidate unseqFile,
         List<TsFileResourceCandidate> seqFiles,
-        boolean hasOverlap) {
+        boolean atLeastOneSeqFileSelected) {
       this.unseqFile = unseqFile;
       this.seqFiles = seqFiles;
-      this.hasOverlap = hasOverlap;
+      this.atLeastOneSeqFileSelected = atLeastOneSeqFileSelected;
+    }
+
+    public void addSeqFileIfNotSelected(TsFileResourceCandidate seqFile) {
+      if (!seqFile.selected) {
+        this.seqFiles.add(seqFile);
+      }
+      this.atLeastOneSeqFileSelected = true;
     }
   }
 

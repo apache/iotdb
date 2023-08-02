@@ -160,7 +160,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       List<TsFileResource> targetSeqFiles =
           split.seqFiles.stream().map(c -> c.resource).collect(Collectors.toList());
 
-      if (!split.hasOverlap) {
+      if (!split.atLeastOneSeqFileSelected) {
         LOGGER.debug("Unseq file {} does not overlap with any seq files.", unseqFile);
         CrossSpaceCompactionCandidate.TsFileResourceCandidate latestSealedSeqFile =
             getLatestSealedSeqFile(candidate.getSeqFileCandidates());

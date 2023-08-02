@@ -196,7 +196,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
         CompactionValidator validator = CompactionValidator.getInstance();
         if (!validator.validateCompaction(
-            tsFileManager, targetTsFileList, storageGroupName, timePartition)) {
+            tsFileManager, targetTsFileList, storageGroupName, timePartition, !sequence)) {
           LOGGER.error(
               "Failed to pass compaction validation, source files is: {}, target files is {}",
               selectedTsFileResourceList,

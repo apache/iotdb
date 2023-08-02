@@ -130,6 +130,11 @@ public class LoadManager {
     return partitionBalancer.allocateDataPartition(unassignedDataPartitionSlotsMap);
   }
 
+  /**
+   * Re-balance the DataPartitionPolicyTable.
+   *
+   * @param database Database name
+   */
   public void reBalanceDataPartitionPolicy(String database) {
     partitionBalancer.reBalanceDataPartitionPolicy(database);
   }
