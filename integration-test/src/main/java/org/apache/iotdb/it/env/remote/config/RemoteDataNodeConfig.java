@@ -16,23 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.it.env.remote;
+package org.apache.iotdb.it.env.remote.config;
 
-import org.apache.iotdb.itbase.env.JVMConfig;
+import org.apache.iotdb.itbase.env.DataNodeConfig;
 
-public class RemoteJVMConfig implements JVMConfig {
-  @Override
-  public JVMConfig setInitHeapSize(int initSize) {
-    return this;
-  }
-
-  @Override
-  public JVMConfig setMaxHeapSize(int maxSize) {
-    return this;
-  }
-
-  @Override
-  public JVMConfig setMaxDirectMemorySize(int maxSize) {
-    return this;
-  }
-}
+public class RemoteDataNodeConfig implements DataNodeConfig {}

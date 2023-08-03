@@ -498,7 +498,7 @@ public abstract class AbstractEnv implements BaseEnv {
    * <p>Notice: The caller should always use try-with-resource to invoke this interface in order to
    * return client to ClientPool automatically
    *
-   * @return SyncConfigNodeIServiceClient that connects to the ConfigNode-Leader
+   * @return {@link SyncConfigNodeIServiceClient} that connects to the ConfigNode-Leader
    */
   @Override
   public IConfigNodeRPCService.Iface getLeaderConfigNodeConnection()

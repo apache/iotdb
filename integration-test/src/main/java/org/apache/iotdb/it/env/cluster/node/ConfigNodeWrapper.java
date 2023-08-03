@@ -55,7 +55,6 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
   private final boolean isSeed;
   private final String defaultNodePropertiesFile;
   private final String defaultCommonPropertiesFile;
-  private final int clusterIndex;
 
   public ConfigNodeWrapper(
       boolean isSeed,
@@ -64,7 +63,7 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
       String testMethodName,
       int[] portList,
       int clusterIndex) {
-    super(testClassName, testMethodName, portList);
+    super(testClassName, testMethodName, portList, clusterIndex);
     this.consensusPort = portList[1];
     this.isSeed = isSeed;
     String targetConfigNodes;
@@ -73,7 +72,6 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
     } else {
       targetConfigNodes = targetCNs;
     }
-    this.clusterIndex = clusterIndex;
     this.defaultNodePropertiesFile =
         EnvUtils.getFilePathFromSysVar(DEFAULT_CONFIG_NODE_PROPERTIES, clusterIndex);
     this.defaultCommonPropertiesFile =

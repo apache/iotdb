@@ -34,6 +34,7 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_CONSEN
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATANODE_INIT_HEAP_SIZE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATANODE_MAX_DIRECT_MEMORY_SIZE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATANODE_MAX_HEAP_SIZE;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_NODE_NAME;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_NODE_PROPERTIES_FILE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REPLICATION_FACTOR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_DATA_NODE_COMMON_PROPERTIES;
@@ -73,15 +74,13 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
   private final String defaultCommonPropertiesFile;
 
-  private final int clusterIndex;
-
   public DataNodeWrapper(
       String targetConfigNode,
       String testClassName,
       String testMethodName,
       int[] portList,
       int clusterIndex) {
-    super(testClassName, testMethodName, portList);
+    super(testClassName, testMethodName, portList, clusterIndex);
     this.internalAddress = super.getIp();
     this.mppDataExchangePort = portList[1];
     this.internalPort = portList[2];
@@ -150,7 +149,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
   @Override
   public final String getId() {
-    return "DataNode" + getPort();
+    return DATA_NODE_NAME + getPort();
   }
 
   @Override
@@ -199,9 +198,9 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
   @Override
   public void renameFile() {
-    String dataNodeName = "DataNode";
-    // rename log file
-    String oldLogFilePath = getLogDirPath() + File.separator + dataNodeName + portList[0] + ".log";
+    // Rename log file
+    String oldLogFilePath =
+        getLogDirPath() + File.separator + DATA_NODE_NAME + portList[0] + ".log";
     String newLogFilePath = getLogDirPath() + File.separator + getId() + ".log";
     File oldLogFile = new File(oldLogFilePath);
     oldLogFile.renameTo(new File(newLogFilePath));
@@ -212,7 +211,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
             + File.separator
             + "target"
             + File.separator
-            + dataNodeName
+            + DATA_NODE_NAME
             + portList[0];
     String newNodeDirPath = getNodePath();
     File oldNodeDir = new File(oldNodeDirPath);

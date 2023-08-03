@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.it.env.cluster;
 
+import org.apache.commons.lang3.SystemUtils;
+
 import java.io.File;
 
 public class ClusterConstant {
@@ -175,7 +177,9 @@ public class ClusterConstant {
 
   // Paths
   public static final String USER_DIR = "user.dir";
-  private static final String TARGET = "target";
+  public static final String TARGET = "target";
+
+  public static final String DATA_NODE_NAME = "DataNode";
 
   public static final String LOCK_FILE_PATH =
       System.getProperty(USER_DIR) + File.separator + TARGET + File.separator + "lock-";
@@ -198,6 +202,15 @@ public class ClusterConstant {
   public static final int NODE_NETWORK_TIMEOUT_MS = 65_000;
 
   public static final String DELIMITER = ",";
+  public static final String TAB = "  ";
+  public static final String LOG_DIR_REPLACEMENT = ".";
+
+  public static final String JAVA_CMD =
+      System.getProperty("java.home")
+          + File.separator
+          + "bin"
+          + File.separator
+          + (SystemUtils.IS_OS_WINDOWS ? "java.exe" : "java");
 
   private ClusterConstant() {
     throw new IllegalStateException("Utility class");

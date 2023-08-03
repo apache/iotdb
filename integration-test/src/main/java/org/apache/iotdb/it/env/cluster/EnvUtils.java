@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static org.apache.iotdb.db.utils.DateTimeUtils.convertLongToDate;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CLUSTER_CONFIGURATIONS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_CONFIG_NODE_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_DATA_NODE_NUM;
@@ -41,6 +42,7 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STAND
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE_CONFIG_NODE_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE_DATA_NODE_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.LOCK_FILE_PATH;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.LOG_DIR_REPLACEMENT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCALABLE_SINGLE_NODE_MODE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCALABLE_SINGLE_NODE_MODE_CONFIG_NODE_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCALABLE_SINGLE_NODE_MODE_DATA_NODE_NUM;
@@ -111,7 +113,7 @@ public class EnvUtils {
     return cmd + ports.stream().map(String::valueOf).collect(Collectors.joining("|")) + "\"";
   }
 
-  public static Pair<Integer, Integer> getClusterNodesNum(int index) {
+  private static Pair<Integer, Integer> getClusterNodesNum(int index) {
     String valueStr = System.getProperty(CLUSTER_CONFIGURATIONS);
     if (valueStr == null) {
       return null;
@@ -190,9 +192,13 @@ public class EnvUtils {
     }
   }
 
-  private static String getValueOfIndex(String valueStr, int index) {
+  public static String getValueOfIndex(String valueStr, int index) {
     String[] values = valueStr.split(DELIMITER);
     return index <= values.length - 1 ? values[index] : values[values.length - 1];
+  }
+
+  public static String getTimeForLogDirectory() {
+    return convertLongToDate(System.currentTimeMillis(), "ms").replace(":", LOG_DIR_REPLACEMENT);
   }
 
   private EnvUtils() {
