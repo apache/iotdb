@@ -443,11 +443,12 @@ public class TsFileResource {
   }
 
   /**
-   * Whether this TsFileResource contains this device, if false, it must not contain this device, if
-   * true, it may or may not contain this device
+   * Whether this TsFile definitely not contains this device, if ture, it must not contain this
+   * device, if false, it may or may not contain this device Notice: using method be CAREFULLY and
+   * you really understand the meaning!!!!!
    */
-  public boolean mayContainsDevice(String device) {
-    return timeIndex.mayContainsDevice(device);
+  public boolean definitelyNotContains(String device) {
+    return timeIndex.definitelyNotContains(device);
   }
 
   /**
@@ -750,7 +751,7 @@ public class TsFileResource {
 
   /** @return true if the device is contained in the TsFile */
   public boolean isSatisfied(String deviceId, Filter timeFilter, boolean isSeq, boolean debug) {
-    if (!mayContainsDevice(deviceId)) {
+    if (definitelyNotContains(deviceId)) {
       if (debug) {
         DEBUG_LOGGER.info(
             "Path: {} file {} is not satisfied because of no device!", deviceId, file);
