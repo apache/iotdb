@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.it.pipe;
+package org.apache.iotdb.pipe.it;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
@@ -57,7 +57,6 @@ public class IoTDBPipeDemoIT {
 
   @Before
   public void setUp() throws Exception {
-    System.out.println(System.getProperty("rest"));
     MultiEnvFactory.createEnv(2);
     sender_env = MultiEnvFactory.getEnv(0);
     receiver_env = MultiEnvFactory.getEnv(1);
@@ -65,8 +64,8 @@ public class IoTDBPipeDemoIT {
     sender_env.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
     receiver_env.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
 
-    sender_env.initClusterEnvironment(1, 1);
-    receiver_env.initClusterEnvironment(1, 1);
+    sender_env.initClusterEnvironment();
+    receiver_env.initClusterEnvironment();
   }
 
   @After

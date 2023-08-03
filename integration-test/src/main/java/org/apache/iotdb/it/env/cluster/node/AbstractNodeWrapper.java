@@ -72,6 +72,7 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.HIGH_PERFORMANCE_M
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.HIGH_PERFORMANCE_MODE_DATA_REGION_REPLICA_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.HIGH_PERFORMANCE_MODE_SCHEMA_REGION_CONSENSUS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.HIGH_PERFORMANCE_MODE_SCHEMA_REGION_REPLICA_NUM;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.HYPHEN;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.INFLUXDB_RPC_PORT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.JAVA_CMD;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE;
@@ -117,7 +118,8 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   protected final int[] portList;
   protected final int jmxPort;
   protected final MppJVMConfig jvmConfig;
-  protected int clusterIndex;
+  protected final int clusterIndex;
+  protected final boolean isMultiCluster;
   private Process instance;
   private final String nodeAddress;
   private int nodePort;
@@ -147,7 +149,11 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   protected final MppCommonConfig outputCommonConfig = new MppCommonConfig();
 
   protected AbstractNodeWrapper(
-      String testClassName, String testMethodName, int[] portList, int clusterIndex) {
+      String testClassName,
+      String testMethodName,
+      int[] portList,
+      int clusterIndex,
+      boolean isMultiCluster) {
     this.testClassName = testClassName;
     this.testMethodName = testMethodName;
     this.portList = portList;
@@ -164,6 +170,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     immutableCommonProperties.setProperty(INFLUXDB_RPC_PORT, MppBaseConfig.NULL_VALUE);
     this.jvmConfig = initVMConfig();
     this.clusterIndex = clusterIndex;
+    this.isMultiCluster = isMultiCluster;
   }
 
   @Override
@@ -452,11 +459,15 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
         + File.separator
         + getTimeForLogDirectory()
         + File.separator
-        + clusterIndex;
+        + getClusterIdStr();
+  }
+
+  private String getClusterIdStr() {
+    return clusterIndex + HYPHEN + outputCommonConfig.getClusterConfigStr();
   }
 
   protected String getNodePath() {
-    return System.getProperty(USER_DIR) + File.separator + "target" + File.separator + getId();
+    return System.getProperty(USER_DIR) + File.separator + TARGET + File.separator + getId();
   }
 
   @Override

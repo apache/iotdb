@@ -172,9 +172,6 @@ public class ClusterConstant {
   public static final String DN_CONNECTION_TIMEOUT_MS = "dn_connection_timeout_ms";
   public static final String DN_METRIC_INTERNAL_REPORTER_TYPE = "dn_metric_internal_reporter_type";
 
-  // Properties' values
-  public static final String SIMPLE_CONSENSUS = "org.apache.iotdb.consensus.simple.SimpleConsensus";
-
   // Paths
   public static final String USER_DIR = "user.dir";
   public static final String TARGET = "target";
@@ -203,7 +200,12 @@ public class ClusterConstant {
 
   public static final String DELIMITER = ",";
   public static final String TAB = "  ";
-  public static final String LOG_DIR_REPLACEMENT = ".";
+  public static final String DIR_TIME_REPLACEMENT = ".";
+  public static final String HYPHEN = "-";
+
+  public static final String SIMPLE_CONSENSUS_STR = "Simple";
+  public static final String RATIS_CONSENSUS_STR = "Ratis";
+  public static final String IOT_CONSENSUS_STR = "IoT";
 
   public static final String JAVA_CMD =
       System.getProperty("java.home")

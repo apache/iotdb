@@ -28,6 +28,7 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CN_CONNECTION_TIMEOUT_MS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CN_CONSENSUS_DIR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CN_METRIC_IOTDB_REPORTER_HOST;
@@ -47,7 +48,8 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_CONFIG_NOD
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_CONFIG_NODE_PROPERTIES;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCHEMA_REPLICATION_FACTOR;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.SIMPLE_CONSENSUS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.TARGET;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.USER_DIR;
 
 public class ConfigNodeWrapper extends AbstractNodeWrapper {
 
@@ -62,8 +64,9 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
       String testClassName,
       String testMethodName,
       int[] portList,
-      int clusterIndex) {
-    super(testClassName, testMethodName, portList, clusterIndex);
+      int clusterIndex,
+      boolean isMultiCluster) {
+    super(testClassName, testMethodName, portList, clusterIndex, isMultiCluster);
     this.consensusPort = portList[1];
     this.isSeed = isSeed;
     String targetConfigNodes;
@@ -178,9 +181,9 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
     // rename node dir
     File oldNodeDir =
         new File(
-            System.getProperty("user.dir")
+            System.getProperty(USER_DIR)
                 + File.separator
-                + "target"
+                + TARGET
                 + File.separator
                 + configNodeName
                 + portList[0]);

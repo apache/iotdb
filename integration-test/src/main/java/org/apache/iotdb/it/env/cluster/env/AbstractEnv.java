@@ -120,16 +120,21 @@ public abstract class AbstractEnv implements BaseEnv {
             .createClientManager(new ClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
 
     final String testClassName = getTestClassName();
-    final String testMethodName = getTestMethodName();
 
     ConfigNodeWrapper seedConfigNodeWrapper =
         new ConfigNodeWrapper(
-            true, "", testClassName, testMethodName, EnvUtils.searchAvailablePorts(), index);
-    seedConfigNodeWrapper.createDir();
+            true,
+            "",
+            testClassName,
+            testMethodName,
+            EnvUtils.searchAvailablePorts(),
+            index,
+            this instanceof MultiClusterEnv);
     seedConfigNodeWrapper.changeConfig(
         (MppConfigNodeConfig) clusterConfig.getConfigNodeConfig(),
         (MppCommonConfig) clusterConfig.getConfigNodeCommonConfig(),
         (MppJVMConfig) clusterConfig.getConfigNodeJVMConfig());
+    seedConfigNodeWrapper.createDir();
     seedConfigNodeWrapper.start();
     String targetConfigNode = seedConfigNodeWrapper.getIpAndPortString();
     this.configNodeWrapperList.add(seedConfigNodeWrapper);
@@ -153,14 +158,15 @@ public abstract class AbstractEnv implements BaseEnv {
               testClassName,
               testMethodName,
               EnvUtils.searchAvailablePorts(),
-              index);
+              index,
+              this instanceof MultiClusterEnv);
       this.configNodeWrapperList.add(configNodeWrapper);
       configNodeEndpoints.add(configNodeWrapper.getIpAndPortString());
-      configNodeWrapper.createDir();
       configNodeWrapper.changeConfig(
           (MppConfigNodeConfig) clusterConfig.getConfigNodeConfig(),
           (MppCommonConfig) clusterConfig.getConfigNodeCommonConfig(),
           (MppJVMConfig) clusterConfig.getConfigNodeJVMConfig());
+      configNodeWrapper.createDir();
       configNodesDelegate.addRequest(
           () -> {
             configNodeWrapper.start();
@@ -184,14 +190,15 @@ public abstract class AbstractEnv implements BaseEnv {
               testClassName,
               testMethodName,
               EnvUtils.searchAvailablePorts(),
-              index);
+              index,
+              this instanceof MultiClusterEnv);
       this.dataNodeWrapperList.add(dataNodeWrapper);
       dataNodeEndpoints.add(dataNodeWrapper.getIpAndPortString());
-      dataNodeWrapper.createDir();
       dataNodeWrapper.changeConfig(
           (MppDataNodeConfig) clusterConfig.getDataNodeConfig(),
           (MppCommonConfig) clusterConfig.getDataNodeCommonConfig(),
           (MppJVMConfig) clusterConfig.getDataNodeJVMConfig());
+      dataNodeWrapper.createDir();
       dataNodesDelegate.addRequest(
           () -> {
             dataNodeWrapper.start();
@@ -616,13 +623,14 @@ public abstract class AbstractEnv implements BaseEnv {
             getTestClassName(),
             getTestMethodName(),
             EnvUtils.searchAvailablePorts(),
-            index);
+            index,
+            this instanceof MultiClusterEnv);
     configNodeWrapperList.add(newConfigNodeWrapper);
-    newConfigNodeWrapper.createDir();
     newConfigNodeWrapper.changeConfig(
         (MppConfigNodeConfig) clusterConfig.getConfigNodeConfig(),
         (MppCommonConfig) clusterConfig.getConfigNodeCommonConfig(),
         (MppJVMConfig) clusterConfig.getConfigNodeJVMConfig());
+    newConfigNodeWrapper.createDir();
     return newConfigNodeWrapper;
   }
 
@@ -634,13 +642,14 @@ public abstract class AbstractEnv implements BaseEnv {
             getTestClassName(),
             getTestMethodName(),
             EnvUtils.searchAvailablePorts(),
-            index);
+            index,
+            this instanceof MultiClusterEnv);
     dataNodeWrapperList.add(newDataNodeWrapper);
-    newDataNodeWrapper.createDir();
     newDataNodeWrapper.changeConfig(
         (MppDataNodeConfig) clusterConfig.getDataNodeConfig(),
         (MppCommonConfig) clusterConfig.getDataNodeCommonConfig(),
         (MppJVMConfig) clusterConfig.getDataNodeJVMConfig());
+    newDataNodeWrapper.createDir();
     return newDataNodeWrapper;
   }
 

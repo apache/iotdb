@@ -28,6 +28,7 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DATA_REGION_CONSENSUS_PROTOCOL_CLASS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.COMMON_PROPERTIES_FILE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS;
@@ -59,8 +60,9 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.MQTT_PORT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.PAGE_SIZE_IN_BYTE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCHEMA_REPLICATION_FACTOR;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.SIMPLE_CONSENSUS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SYSTEM_PROPERTIES_FILE;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.TARGET;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.USER_DIR;
 
 public class DataNodeWrapper extends AbstractNodeWrapper {
   private int mppDataExchangePort;
@@ -79,15 +81,15 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
       String testClassName,
       String testMethodName,
       int[] portList,
-      int clusterIndex) {
-    super(testClassName, testMethodName, portList, clusterIndex);
+      int clusterIndex,
+      boolean isMultiCluster) {
+    super(testClassName, testMethodName, portList, clusterIndex, isMultiCluster);
     this.internalAddress = super.getIp();
     this.mppDataExchangePort = portList[1];
     this.internalPort = portList[2];
     this.dataRegionConsensusPort = portList[3];
     this.schemaRegionConsensusPort = portList[4];
     this.mqttPort = portList[5];
-    this.clusterIndex = clusterIndex;
     this.defaultNodePropertiesFile =
         EnvUtils.getFilePathFromSysVar(DEFAULT_DATA_NODE_PROPERTIES, clusterIndex);
     this.defaultCommonPropertiesFile =
@@ -207,9 +209,9 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
     // Rename node dir
     String oldNodeDirPath =
-        System.getProperty("user.dir")
+        System.getProperty(USER_DIR)
             + File.separator
-            + "target"
+            + TARGET
             + File.separator
             + DATA_NODE_NAME
             + portList[0];

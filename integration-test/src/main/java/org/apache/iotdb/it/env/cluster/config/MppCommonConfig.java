@@ -23,6 +23,19 @@ import org.apache.iotdb.itbase.env.CommonConfig;
 
 import java.io.IOException;
 
+import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS;
+import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
+import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REGION_CONSENSUS_PROTOCOL_CLASS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REPLICATION_FACTOR;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.HYPHEN;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.IOT_CONSENSUS_STR;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.RATIS_CONSENSUS_STR;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCHEMA_REPLICATION_FACTOR;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.SIMPLE_CONSENSUS_STR;
+
 public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
 
   public MppCommonConfig() {
@@ -356,5 +369,31 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   public CommonConfig setDataRegionPerDataNode(double dataRegionPerDataNode) {
     setProperty("data_region_per_data_node", String.valueOf(dataRegionPerDataNode));
     return this;
+  }
+
+  // For part of the log directory
+  public String getClusterConfigStr() {
+    return getConsensusProtocolStr(properties.getProperty(CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS))
+        + HYPHEN
+        + getConsensusProtocolStr(properties.getProperty(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS))
+        + HYPHEN
+        + getConsensusProtocolStr(properties.getProperty(DATA_REGION_CONSENSUS_PROTOCOL_CLASS))
+        + HYPHEN
+        + properties.getProperty(SCHEMA_REPLICATION_FACTOR)
+        + HYPHEN
+        + properties.getProperty(DATA_REPLICATION_FACTOR);
+  }
+
+  private String getConsensusProtocolStr(String consensus) {
+    switch (consensus) {
+      case SIMPLE_CONSENSUS:
+        return SIMPLE_CONSENSUS_STR;
+      case RATIS_CONSENSUS:
+        return RATIS_CONSENSUS_STR;
+      case IOT_CONSENSUS:
+        return IOT_CONSENSUS_STR;
+      default:
+        throw new IllegalArgumentException("Unknown consensus type: " + consensus);
+    }
   }
 }

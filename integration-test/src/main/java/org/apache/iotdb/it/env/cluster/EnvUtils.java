@@ -35,6 +35,7 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.CLUSTER_CONFIGURAT
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_CONFIG_NODE_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_DATA_NODE_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DELIMITER;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.DIR_TIME_REPLACEMENT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.HIGH_PERFORMANCE_MODE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.HIGH_PERFORMANCE_MODE_CONFIG_NODE_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.HIGH_PERFORMANCE_MODE_DATA_NODE_NUM;
@@ -42,7 +43,6 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STAND
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE_CONFIG_NODE_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE_DATA_NODE_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.LOCK_FILE_PATH;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.LOG_DIR_REPLACEMENT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCALABLE_SINGLE_NODE_MODE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCALABLE_SINGLE_NODE_MODE_CONFIG_NODE_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCALABLE_SINGLE_NODE_MODE_DATA_NODE_NUM;
@@ -198,7 +198,7 @@ public class EnvUtils {
   }
 
   public static String getTimeForLogDirectory() {
-    return convertLongToDate(System.currentTimeMillis(), "ms").replace(":", LOG_DIR_REPLACEMENT);
+    return convertLongToDate(System.currentTimeMillis(), "ms").replace(":", DIR_TIME_REPLACEMENT);
   }
 
   private EnvUtils() {
