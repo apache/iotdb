@@ -30,6 +30,8 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.util.Collections;
+
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 
@@ -39,11 +41,58 @@ public class IoTDBCountTimeIT {
 
   protected static final String[] SQL_LIST =
       new String[] {
-        "create database root.db;",
-        "insert into root.db.d1(time, s1) values(1, 1);",
-        "insert into root.db.d1(time, s2) values(2, 2);",
-        "insert into root.db.d2(time, s2) values(1, 1);",
-        "flush"
+        // test normal query
+        "CREATE DATABASE root.db;",
+        "CREATE TIMESERIES root.db.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;",
+        "CREATE TIMESERIES root.db.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN;",
+        "CREATE TIMESERIES root.db.d2.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;",
+        "CREATE TIMESERIES root.db.d2.s2 WITH DATATYPE=INT32, ENCODING=PLAIN;",
+        "INSERT INTO root.db.d1(time, s1) VALUES(1, 1);",
+        "INSERT INTO root.db.d1(time, s2) VALUES(2, 2);",
+        "INSERT INTO root.db.d2(time, s2) VALUES(1, 1);",
+        // test group by time
+        "CREATE DATABASE root.downsampling;",
+        "CREATE TIMESERIES root.downsampling.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;",
+        "CREATE TIMESERIES root.downsampling.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN;",
+        "CREATE TIMESERIES root.downsampling.d2.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;",
+        "CREATE TIMESERIES root.downsampling.d2.s2 WITH DATATYPE=INT32, ENCODING=PLAIN;",
+        "INSERT INTO root.downsampling.d1(time, s1) VALUES(0, 0), (4,4), (5,5), (8,8);",
+        "INSERT INTO root.downsampling.d1(time, s2) VALUES(1, 1), (2,2), (5,5), (7,7), (8,8), (9,9);",
+        "INSERT INTO root.downsampling.d2(time, s1) VALUES(1, 1), (2,2), (5,5), (7,7), (8,8);",
+        "INSERT INTO root.downsampling.d2(time, s2) VALUES(0, 0), (4,4), (5,5), (8,8);",
+        // test group by variation
+        "CREATE DATABASE root.variation;",
+        "CREATE TIMESERIES root.variation.d1.state WITH DATATYPE=INT32, ENCODING=PLAIN;",
+        "CREATE TIMESERIES root.variation.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;",
+        "CREATE TIMESERIES root.variation.d2.state WITH DATATYPE=INT32, ENCODING=PLAIN;",
+        "CREATE TIMESERIES root.variation.d2.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;",
+        "INSERT INTO root.variation.d1(time, state) VALUES(0,0), (1,0), (3,0), (4,0),(5,1),(6,1);",
+        "INSERT INTO root.variation.d1(time, s1) VALUES(0,0), (2,2), (3,3), (6,6);",
+        "INSERT INTO root.variation.d2(time, state) VALUES(0,0), (2,1), (3,1), (4,1), (6,1);",
+        "INSERT INTO root.variation.d2(time, s1) VALUES(1,1), (2,2), (3,3);",
+        // test group by session
+        "CREATE DATABASE root.session;",
+        "CREATE TIMESERIES root.session.d1.state WITH DATATYPE=INT32, ENCODING=PLAIN;",
+        "CREATE TIMESERIES root.session.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;",
+        "CREATE TIMESERIES root.session.d2.state WITH DATATYPE=INT32, ENCODING=PLAIN;",
+        "CREATE TIMESERIES root.session.d2.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;",
+        "INSERT INTO root.session.d1(time, state) VALUES(0,0), (1,0), (20,0), (23,0),(40,0),(55,1),(56,1);",
+        "INSERT INTO root.session.d1(time, s1) VALUES(0,0), (20,2), (23,3), (56,6);",
+        "INSERT INTO root.session.d2(time, state) VALUES(0,0), (20,1), (23,1), (40,1), (56,1);",
+        "INSERT INTO root.session.d2(time, s1) VALUES(1,1), (20,2), (23,3);",
+        // test group by condition
+        "CREATE DATABASE root.condition;",
+        "CREATE TIMESERIES root.condition.d1.state WITH DATATYPE=INT32, ENCODING=PLAIN;",
+        "CREATE TIMESERIES root.condition.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;",
+        "CREATE TIMESERIES root.condition.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN;",
+        "CREATE TIMESERIES root.condition.d2.state WITH DATATYPE=INT32, ENCODING=PLAIN;",
+        "CREATE TIMESERIES root.condition.d2.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;",
+        "INSERT INTO root.condition.d1(time, state) VALUES(0,0), (1,1), (23,1),(40,0),(55,1),(56,1);",
+        "INSERT INTO root.condition.d1(time, s1) VALUES(0,0), (23,3), (56,6);",
+        "INSERT INTO root.condition.d1(time, s2) VALUES(0,0), (1,1), (20,2), (23,3);",
+        "INSERT INTO root.condition.d2(time, state) VALUES(0,0), (20,1), (23,1), (40,1), (56,1);",
+        "INSERT INTO root.condition.d2(time, s1) VALUES(1,1), (20,2), (23,3);",
+        "FLUSH"
       };
 
   @BeforeClass
@@ -62,11 +111,240 @@ public class IoTDBCountTimeIT {
   @Test
   public void normalQueryTest() {
     // align by time
-    String[] expectedHeader = new String[] {"count_time(*)"};
+    String[] expectedHeader = new String[] {"COUNT_TIME(*)"};
     String[] retArray = new String[] {"2,"};
     resultSetEqualTest(
-        "select count_time(*) from root.db.d1, root.db.d2;", expectedHeader, retArray);
+        "SELECT COUNT_TIME(*) FROM root.db.d1, root.db.d2;", expectedHeader, retArray);
+
+    expectedHeader = new String[] {"count_time(s1)"};
+    retArray = new String[] {"1,"};
+    resultSetEqualTest("select count_time(s1) from root.db.**;", expectedHeader, retArray);
 
     // align by device
+    expectedHeader = new String[] {"Device,count_time(*)"};
+    retArray = new String[] {"root.db.d1,2,", "root.db.d2,1,"};
+    resultSetEqualTest(
+        "select count_time(*) from root.db.** align by device;", expectedHeader, retArray);
+
+    expectedHeader = new String[] {"Device,count_time(s1)"};
+    retArray = new String[] {"root.db.d1,1,", "root.db.d2,0,"};
+    resultSetEqualTest(
+        "select count_time(s1) from root.db.** align by device;", expectedHeader, retArray);
+  }
+
+  @Test
+  public void groupByTimeTest() {
+    // align by time
+    String[] expectedHeader = new String[] {"Time,count_time(*)"};
+    String[] retArray = new String[] {"0,2,", "2,1,", "4,2,", "6,1,", "8,2,"};
+    resultSetEqualTest(
+        "SELECT count_time(*) FROM root.downsampling.** GROUP BY([0, 10), 2ms);",
+        expectedHeader,
+        retArray);
+
+    expectedHeader = new String[] {"Time,count_time(s1)"};
+    retArray = new String[] {"0,2,", "2,1,", "4,2,", "6,1,", "8,1,"};
+    resultSetEqualTest(
+        "SELECT count_time(s1) FROM root.downsampling.** GROUP BY([0, 10), 2ms);",
+        expectedHeader,
+        retArray);
+
+    // align by device
+    expectedHeader = new String[] {"Time,Device,count_time(*)"};
+    retArray =
+        new String[] {
+          "0,root.downsampling.d1,2,",
+          "2,root.downsampling.d1,1,",
+          "4,root.downsampling.d1,2,",
+          "6,root.downsampling.d1,1,",
+          "8,root.downsampling.d1,2,",
+          "0,root.downsampling.d2,2,",
+          "2,root.downsampling.d2,1,",
+          "4,root.downsampling.d2,2,",
+          "6,root.downsampling.d2,1,",
+          "8,root.downsampling.d2,1,",
+        };
+    resultSetEqualTest(
+        "SELECT count_time(*) FROM root.downsampling.** GROUP BY([0, 10), 2ms) ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    expectedHeader = new String[] {"Time,Device,count_time(s1)"};
+    retArray =
+        new String[] {
+          "0,root.downsampling.d1,1,",
+          "2,root.downsampling.d1,0,",
+          "4,root.downsampling.d1,2,",
+          "6,root.downsampling.d1,0,",
+          "8,root.downsampling.d1,1,",
+          "0,root.downsampling.d2,1,",
+          "2,root.downsampling.d2,1,",
+          "4,root.downsampling.d2,1,",
+          "6,root.downsampling.d2,1,",
+          "8,root.downsampling.d2,1,",
+        };
+    resultSetEqualTest(
+        "SELECT count_time(s1) FROM root.downsampling.** GROUP BY([0, 10), 2ms) ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+  }
+
+  @Test
+  public void groupByVariationTest() {
+    // align by time
+    String[] expectedHeader = new String[] {"Time,__endTime,count_time(*)"};
+    String[] retArray = new String[] {"0,1,2,", "2,2,1,", "3,4,2,", "5,6,2,"};
+    resultSetEqualTest(
+        "select __endTime, count_time(*) from root.variation.d1 group by variation(state, 0, ignoreNull=False);",
+        expectedHeader,
+        retArray);
+
+    // TODO set `0,4,4` to `0,4,5` when the impl of ignoreNull changed
+    expectedHeader = new String[] {"Time,__endTime,count_time(s1)"};
+    retArray = new String[] {"0,4,4,", "5,6,2,"};
+    resultSetEqualTest(
+        "select __endTime, count_time(s1) from root.variation.d1 group by variation(state, 0, ignoreNull=True);",
+        expectedHeader,
+        retArray);
+
+    // align by device
+    expectedHeader = new String[] {"Time,Device,__endTime,count_time(*)"};
+    retArray =
+        new String[] {
+          "0,root.variation.d1,1,2,",
+          "2,root.variation.d1,2,1,",
+          "3,root.variation.d1,4,2,",
+          "5,root.variation.d1,6,2,",
+          "0,root.variation.d2,0,1,",
+          "1,root.variation.d2,1,1,",
+          "2,root.variation.d2,6,4,",
+        };
+    resultSetEqualTest(
+        "select __endTime, count_time(*) from root.variation.** "
+            + "group by variation(state, 0, ignoreNull=False) align by device;",
+        expectedHeader,
+        retArray);
+
+    expectedHeader = new String[] {"Time,Device,__endTime,count_time(s1)"};
+    retArray =
+        new String[] {
+          "0,root.variation.d1,4,4,",
+          "5,root.variation.d1,6,2,",
+          "0,root.variation.d2,0,1,",
+          "2,root.variation.d2,6,4,",
+        };
+    resultSetEqualTest(
+        "select __endTime, count_time(s1) from root.variation.** "
+            + "group by variation(state, 0, ignoreNull=True) align by device;",
+        expectedHeader,
+        retArray);
+  }
+
+  @Test
+  public void groupBySessionTest() {
+    // align by time
+    String[] expectedHeader = new String[] {"Time,__endTime,count_time(*)"};
+    String[] retArray = new String[] {"0,1,2,", "20,23,2,", "40,40,1,", "55,56,2,"};
+    resultSetEqualTest(
+        "select __endTime, count_time(*) from root.session.** group by session(10ms);",
+        expectedHeader,
+        retArray);
+
+    expectedHeader = new String[] {"Time,__endTime,count_time(s1)"};
+    retArray = new String[] {"0,1,2,", "20,23,2,", "56,56,1,"};
+    resultSetEqualTest(
+        "select __endTime, count_time(s1) from root.session.** group by session(10ms);",
+        expectedHeader,
+        retArray);
+
+    // align by device
+    expectedHeader = new String[] {"Time,Device,__endTime,count_time(*)"};
+    retArray =
+        new String[] {
+          "0,root.session.d1,1,2,",
+          "20,root.session.d1,23,2,",
+          "40,root.session.d1,40,1,",
+          "55,root.session.d1,56,2,",
+          "0,root.session.d2,1,2,",
+          "20,root.session.d2,23,2,",
+          "40,root.session.d2,40,1,",
+          "56,root.session.d2,56,1,",
+        };
+    resultSetEqualTest(
+        "select __endTime, count_time(*) from root.session.** group by session(10ms) align by device;",
+        expectedHeader,
+        retArray);
+
+    expectedHeader = new String[] {"Time,Device,__endTime,count_time(s1)"};
+    retArray =
+        new String[] {
+          "0,root.session.d1,0,1,",
+          "20,root.session.d1,23,2,",
+          "56,root.session.d1,56,1,",
+          "1,root.session.d2,1,1,",
+          "20,root.session.d2,23,2,",
+        };
+    resultSetEqualTest(
+        "select __endTime, count_time(s1) from root.session.** group by session(10ms) align by device;",
+        expectedHeader,
+        retArray);
+  }
+
+  @Test
+  public void groupByConditionTest() {
+    // align by time
+    String[] expectedHeader = new String[] {"Time,count_time(*)"};
+    String[] retArray = new String[] {"55,2,"};
+    resultSetEqualTest(
+        "select count_time(*) from root.condition.d1 group by condition(state=1, KEEP>=2, ignoreNull=false);",
+        expectedHeader,
+        retArray);
+
+    expectedHeader = new String[] {"Time,__endTime,count_time(s1)"};
+    retArray = new String[] {"1,23,2,", "55,56,2,"};
+    resultSetEqualTest(
+        "select __endTime, count_time(s1) from root.condition.d1 group by condition(state=1, KEEP>=2, ignoreNull=true);",
+        expectedHeader,
+        retArray);
+
+    // align by device
+    expectedHeader = new String[] {"Time,Device,count_time(*)"};
+    retArray = new String[] {"55,root.condition.d1,2,", "20,root.condition.d2,4,"};
+    resultSetEqualTest(
+        "select count_time(*) from root.condition.** group by condition(state=1, KEEP>=2, ignoreNull=false) align by device;",
+        expectedHeader,
+        retArray);
+
+    expectedHeader = new String[] {"Time,Device,__endTime,count_time(s1)"};
+    retArray =
+        new String[] {
+          "1,root.condition.d1,23,2,", "55,root.condition.d1,56,2,", "20,root.condition.d2,56,4,"
+        };
+    resultSetEqualTest(
+        "select __endTime, count_time(s1) from root.condition.** group by condition(state=1, KEEP>=2, ignoreNull=true) align by device;",
+        expectedHeader,
+        retArray);
+  }
+
+  @Test
+  public void havingTest() {
+    prepareData(
+        Collections.singletonList("INSERT INTO root.downsampling.d2(time, s1) VALUES(9,9);"));
+
+    // align by time
+    String[] expectedHeader = new String[] {"Time,count_time(s1),count(root.downsampling.d1.s1)"};
+    String[] retArray = new String[] {"4,2,2,"};
+    resultSetEqualTest(
+        "select count_time(s1), count(s1) from root.downsampling.d1 group by([0, 10), 2ms) having count_time(s1) > 1;",
+        expectedHeader,
+        retArray);
+
+    // align by device
+    expectedHeader = new String[] {"Time,Device,count_time(s1),count(s1)"};
+    retArray = new String[] {"4,root.downsampling.d1,2,2,", "8,root.downsampling.d2,2,2,"};
+    resultSetEqualTest(
+        "select count_time(s1), count(s1) from root.downsampling.** group by([0, 10), 2ms) having count_time(s1) > 1 align by device;",
+        expectedHeader,
+        retArray);
   }
 }

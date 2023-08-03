@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.expression.visitor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
@@ -61,27 +62,30 @@ public class GetMeasurementExpressionVisitor extends ReconstructVisitor<Analysis
   @Override
   public Expression visitTimeSeriesOperand(TimeSeriesOperand timeSeriesOperand, Analysis analysis) {
 
-    // only used for count_time query currently
-    if (timeSeriesOperand.getPath() != null) {
-      String measurementName = (timeSeriesOperand.getPath()).getMeasurement();
-      MeasurementPath measurementPath = null;
-      try {
-        measurementPath = new MeasurementPath(measurementName);
-      } catch (IllegalPathException e) {
-        throw new RuntimeException(e);
-      }
+    if (timeSeriesOperand.getPath() instanceof MeasurementPath) {
+      MeasurementPath rawPath = (MeasurementPath) timeSeriesOperand.getPath();
+      String measurementName =
+          rawPath.isMeasurementAliasExists()
+              ? rawPath.getMeasurementAlias()
+              : rawPath.getMeasurement();
+      MeasurementPath measurementPath =
+          new MeasurementPath(
+              new PartialPath(measurementName, false), rawPath.getMeasurementSchema());
+      measurementPath.setTagMap(rawPath.getTagMap());
       return new TimeSeriesOperand(measurementPath);
     }
 
-    MeasurementPath rawPath = (MeasurementPath) timeSeriesOperand.getPath();
-    String measurementName =
-        rawPath.isMeasurementAliasExists()
-            ? rawPath.getMeasurementAlias()
-            : rawPath.getMeasurement();
-    MeasurementPath measurementPath =
-        new MeasurementPath(
-            new PartialPath(measurementName, false), rawPath.getMeasurementSchema());
-    measurementPath.setTagMap(rawPath.getTagMap());
+    // only used for count_time query currently
+    String measurementName = (timeSeriesOperand.getPath()).getMeasurement();
+    MeasurementPath measurementPath = null;
+    try {
+      measurementPath = new MeasurementPath(measurementName);
+    } catch (IllegalPathException e) {
+      throw new SemanticException(
+          String.format(
+              "MeasurementName %s of PartialPath %s is illegal",
+              measurementName, timeSeriesOperand.getPath()));
+    }
     return new TimeSeriesOperand(measurementPath);
   }
 }

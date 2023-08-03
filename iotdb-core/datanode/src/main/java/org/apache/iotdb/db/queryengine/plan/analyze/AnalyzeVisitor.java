@@ -1205,13 +1205,18 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           analysis.getDeviceToSourceTransformExpressions();
       Map<String, Set<Expression>> deviceToAggregationExpressions =
           analysis.getDeviceToAggregationExpressions();
+
       for (Map.Entry<String, Set<Expression>> entry : deviceToAggregationExpressions.entrySet()) {
         String deviceName = entry.getKey();
         Set<Expression> aggregationExpressions = entry.getValue();
 
-        // Set<Expression> sourceTransformExpressions = new LinkedHashSet<>();
+        Set<Expression> sourceTransformExpressions =
+            deviceToSourceTransformExpressions.computeIfAbsent(
+                deviceName, k -> new LinkedHashSet<>());
+
         for (Expression expression : aggregationExpressions) {
-          // count_time aggregation not need transform
+
+          // count_time aggregation do not need to put in transformExpression
           if (expression instanceof FunctionExpression
               && COUNT_TIME.equalsIgnoreCase(((FunctionExpression) expression).getFunctionName())) {
             continue;
@@ -1221,17 +1226,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           // keep other input Expressions as origin
           // If AggregationFunction need more than one input series,
           // we need to reconsider the process of it
-          deviceToSourceTransformExpressions
-              .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
-              .add(expression.getExpressions().get(0));
-          // sourceTransformExpressions.add(expression.getExpressions().get(0));
+          sourceTransformExpressions.add(expression.getExpressions().get(0));
         }
+
         if (queryStatement.hasGroupByExpression()) {
-          deviceToSourceTransformExpressions
-              .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
-              .add(analysis.getDeviceToGroupByExpression().get(deviceName));
+          sourceTransformExpressions.add(analysis.getDeviceToGroupByExpression().get(deviceName));
         }
-        // deviceToSourceTransformExpressions.put(deviceName, sourceTransformExpressions);
       }
     } else {
       updateDeviceToSourceTransformAndOutputExpressions(
