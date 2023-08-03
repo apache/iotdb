@@ -207,14 +207,6 @@ public class DataNode implements DataNodeMBean {
     // Notice: Consider this DataNode as first start if the system.properties file doesn't exist
     boolean isFirstStart = IoTDBStartCheck.getInstance().checkIsFirstStart();
 
-    // Check target ConfigNodes
-    for (TEndPoint endPoint : config.getTargetConfigNodeList()) {
-      if (endPoint.getIp().equals("0.0.0.0")) {
-        throw new StartupException(
-            "The ip address of any target_config_node_list couldn't be 0.0.0.0");
-      }
-    }
-
     // Set this node
     thisNode.setIp(config.getInternalAddress());
     thisNode.setPort(config.getInternalPort());
