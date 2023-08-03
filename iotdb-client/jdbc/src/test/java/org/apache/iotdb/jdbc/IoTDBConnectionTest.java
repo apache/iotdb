@@ -55,6 +55,10 @@ public class IoTDBConnectionTest {
 
   @Mock private IoTDBConnection connectionMock;
 
+  @Mock private Properties properties;
+
+  @Mock private TSOpenSessionResp tsOpenSessionResp;
+
   private IoTDBConnection connection = new IoTDBConnection();
   private TSStatus successStatus = RpcUtils.SUCCESS_STATUS;
   private long sessionId;
@@ -299,10 +303,6 @@ public class IoTDBConnectionTest {
   public void releaseSavepoint() throws SQLException {
     connection.releaseSavepoint(null);
   }
-
-  @Mock private Properties properties;
-
-  @Mock private TSOpenSessionResp tsOpenSessionResp;
 
   @Test(expected = IoTDBSQLException.class)
   public void create() throws SQLException, TException {
