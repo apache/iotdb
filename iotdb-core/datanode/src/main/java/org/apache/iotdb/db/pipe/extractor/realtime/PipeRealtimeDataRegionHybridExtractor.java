@@ -81,7 +81,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     }
 
     if (!event.getTsFileEpoch().getState(this).equals(TsFileEpoch.State.USING_TSFILE)
-        && !pendingQueue.offer(event)) {
+        && !pendingQueue.waitedOffer(event)) {
       LOGGER.warn(
           "extractTabletInsertion: pending queue of PipeRealtimeDataRegionHybridExtractor {} "
               + "has reached capacity, discard tablet event {}, current state {}",
@@ -101,7 +101,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
             state ->
                 state.equals(TsFileEpoch.State.EMPTY) ? TsFileEpoch.State.USING_TSFILE : state);
 
-    if (!pendingQueue.offer(event)) {
+    if (!pendingQueue.waitedOffer(event)) {
       LOGGER.warn(
           "extractTsFileInsertion: pending queue of PipeRealtimeDataRegionHybridExtractor {} "
               + "has reached capacity, discard TsFile event {}, current state {}",
