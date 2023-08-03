@@ -35,13 +35,13 @@ public class StringUtilsTest {
   public void tearDown() {}
 
   @Test
-  public void testFixDecimalExponent() throws IoTDBURLException {
+  public void testFixDecimalExponent() {
     String s = StringUtils.fixDecimalExponent("7.894561225674126e19");
     assertEquals(s, "7.894561225674126e+19");
   }
 
   @Test
-  public void testConsistentToString() throws IoTDBURLException {
+  public void testConsistentToString() {
     BigDecimal bigDecimal = null;
     String s = StringUtils.consistentToString(bigDecimal);
     assertEquals(s, null);

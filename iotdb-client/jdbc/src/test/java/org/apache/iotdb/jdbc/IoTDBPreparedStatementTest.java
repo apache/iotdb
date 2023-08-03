@@ -22,9 +22,11 @@ package org.apache.iotdb.jdbc;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Iface;
+import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 
+import org.apache.thrift.TException;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -32,9 +34,12 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.sql.SQLException;
+import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.ZoneId;
+import java.util.Calendar;
+import java.util.TimeZone;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -51,6 +56,10 @@ public class IoTDBPreparedStatementTest {
   @Mock private IoTDBConnection connection;
   @Mock private Iface client;
   @Mock private TSStatus successStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  @Mock private Calendar calendar;
+  @Mock private ServerProperties serverProperties;
+  @Mock private TimeZone timeZone;
+
   private TSStatus Status_SUCCESS = new TSStatus(successStatus);
   private long queryId;
   private long sessionId;
@@ -374,5 +383,38 @@ public class IoTDBPreparedStatementTest {
     assertEquals(
         "INSERT INTO root.ln.wf01.wt02(time,a,b,c,d,e,f) VALUES(2020-01-01T10:10:10,false,123,123234345,123.423,-1323.0,\"abc\")",
         argument.getValue().getStatement());
+  }
+
+  @Test
+  public void setTime() throws SQLException, TException {
+    String sql = "INSERT INTO root.ln.wf01.wt02(time,a,b,c,d,e,f) VALUES(?,?,?,?,?,?,?)";
+    IoTDBPreparedStatement ps =
+        new IoTDBPreparedStatement(connection, client, sessionId, sql, zoneId);
+    when(client.getProperties()).thenReturn(serverProperties);
+    when(serverProperties.getTimestampPrecision()).thenReturn("ms");
+    when(calendar.getTimeZone()).thenReturn(timeZone);
+    when(calendar.getTimeZone().getID()).thenReturn("Asia/Shanghai");
+    ps.setTime(1, new Time(1));
+    ps.setTime(1, new Time(1), calendar);
+    when(client.getProperties()).thenReturn(serverProperties);
+    when(serverProperties.getTimestampPrecision()).thenReturn("us");
+    ps.setTime(1, new Time(1));
+    ps.setTime(1, new Time(1), calendar);
+    when(client.getProperties()).thenReturn(serverProperties);
+    when(serverProperties.getTimestampPrecision()).thenReturn("ns");
+    ps.setTime(1, new Time(1));
+    ps.setTime(1, new Time(1), calendar);
+  }
+
+  @Test
+  public void setTimestamp() throws SQLException, TException {
+    String sql = "INSERT INTO root.ln.wf01.wt02(time,a,b,c,d,e,f) VALUES(?,?,?,?,?,?,?)";
+    IoTDBPreparedStatement ps =
+        new IoTDBPreparedStatement(connection, client, sessionId, sql, zoneId);
+    when(client.getProperties()).thenReturn(serverProperties);
+    when(serverProperties.getTimestampPrecision()).thenReturn("ms");
+    when(calendar.getTimeZone()).thenReturn(timeZone);
+    when(calendar.getTimeZone().getID()).thenReturn("Asia/Shanghai");
+    ps.setTime(1, new Time(1), calendar);
   }
 }

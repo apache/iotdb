@@ -120,7 +120,6 @@ public class IoTDBJDBCResultSetTest {
   @Mock private Statement statement;
   @Mock private TSFetchMetadataResp fetchMetadataResp;
   @Mock private TSFetchResultsResp fetchResultsResp;
-  @Mock private IoTDBJDBCResultSet ioTDBJDBCResultSet;
   private IoTDBJDBCResultSet result;
 
   private TSStatus successStatus = RpcUtils.SUCCESS_STATUS;

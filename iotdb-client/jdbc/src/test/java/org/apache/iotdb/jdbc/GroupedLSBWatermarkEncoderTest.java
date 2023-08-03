@@ -18,18 +18,49 @@
  */
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.junit.Test;
+
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
 
 public class GroupedLSBWatermarkEncoderTest {
 
   @Test
   public void testEncodeRecord() {
     RowRecord rowRecord = new RowRecord(1000);
-    //        rowRecord.setField(0,new Field("","a","INT32","a"));
+    Field field1 = new Field(TSDataType.INT32);
+    field1.setIntV(1);
+    rowRecord.addField(field1);
+    Field field2 = new Field(TSDataType.INT64);
+    field2.setLongV(1);
+    rowRecord.addField(field2);
+    Field field3 = new Field(TSDataType.FLOAT);
+    field3.setFloatV(1.0f);
+    rowRecord.addField(field3);
+    Field field4 = new Field(TSDataType.DOUBLE);
+    field4.setDoubleV(1.0d);
+    rowRecord.addField(field4);
+    Field field5 = new Field(TSDataType.BOOLEAN);
+    field5.setBoolV(true);
+    rowRecord.addField(field5);
+    Field field6 = new Field(TSDataType.TEXT);
+    field6.setBinaryV(new Binary("a"));
+    rowRecord.addField(field6);
     GroupedLSBWatermarkEncoder groupedLSBWatermarkEncoder =
         new GroupedLSBWatermarkEncoder("a", "b", 1, 2);
-    //        groupedLSBWatermarkEncoder.encodeRecord();
+    RowRecord record = groupedLSBWatermarkEncoder.encodeRecord(rowRecord);
+    List<Field> fields = record.getFields();
+    assertEquals(fields.get(0).getIntV(), 1);
+    assertEquals(fields.get(1).getLongV(), 1);
+    assertEquals(fields.get(2).getFloatV(), 1.0f, 0.1f);
+    assertEquals(fields.get(3).getDoubleV(), 1.0d, 0.1d);
+    assertEquals(fields.get(4).getBoolV(), true);
+    assertEquals(fields.get(5).getBinaryV().getStringValue(), "a");
   }
 }

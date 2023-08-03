@@ -182,9 +182,6 @@ public class IoTDBStatementTest {
             (long) 60 * 1000,
             false);
     when(statement.executeQuery(any(String.class))).thenReturn(result);
-    //    when(statement.execute(any(String.class))).thenReturn(true);
-    //    when(client.executeStatementV2(any())).thenReturn(execResp);
-    //    execResp.setQueryDataSet(tsQueryDataSet);
     IoTDBJDBCResultSet resultSet = (IoTDBJDBCResultSet) statement.executeQuery("");
 
     when(curTsBlock.getColumn(any(Integer.class))).thenReturn(longColumn);
@@ -269,11 +266,5 @@ public class IoTDBStatementTest {
     assertEquals(a7, true);
     a7 = resultSet.getBoolean(2);
     assertEquals(a7, true);
-
-    //
-    //    statement.cancel();
-    //
-    //    boolean execute = statement.execute("");
-    //    assertEquals(true,execute);
   }
 }
