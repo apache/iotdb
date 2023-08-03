@@ -229,7 +229,6 @@ public class WALNode implements IWALNode {
 
     private int fileIndexAfterFilterSafelyDeleteIndex = Integer.MAX_VALUE;
     private List<String> successfullyDeleted = new ArrayList<>();
-    private List<String> failDeleted = new ArrayList<>();
     private long deleteFileSize = 0;
 
     public DeleteOutdatedFileTask() {
@@ -361,7 +360,6 @@ public class WALNode implements IWALNode {
           deleteFileSize += fileSize;
           successfullyDeleted.add(filesShouldDelete[i].getName());
         } else {
-          failDeleted.add(filesShouldDelete[i].getName());
           logger.info(
               "Fail to delete outdated wal file {} of wal node-{}.",
               filesShouldDelete[i],
