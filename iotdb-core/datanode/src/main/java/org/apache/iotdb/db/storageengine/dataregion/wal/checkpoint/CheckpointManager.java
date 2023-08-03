@@ -316,6 +316,20 @@ public class CheckpointManager implements AutoCloseable {
     return oldestMemTableInfo;
   }
 
+  /**
+   * Get version id of first valid .wal file
+   *
+   * @return Return {@link Long#MIN_VALUE} if no file is valid
+   */
+  public long getFirstValidWALVersionId() {
+    List<MemTableInfo> memTableInfos = snapshotMemTableInfos();
+    long firstValidVersionId = memTableInfos.isEmpty() ? Long.MIN_VALUE : Long.MAX_VALUE;
+    for (MemTableInfo memTableInfo : memTableInfos) {
+      firstValidVersionId = Math.min(firstValidVersionId, memTableInfo.getFirstFileVersionId());
+    }
+    return firstValidVersionId;
+  }
+
   /** Get total cost of active memTables. */
   public long getTotalCostOfActiveMemTables() {
     List<MemTableInfo> memTableInfos = snapshotMemTableInfos();
