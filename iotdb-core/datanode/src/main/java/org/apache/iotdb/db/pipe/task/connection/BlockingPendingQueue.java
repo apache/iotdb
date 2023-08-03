@@ -52,11 +52,15 @@ public abstract class BlockingPendingQueue<E extends Event> {
   }
 
   public boolean directOffer(E event) {
+    return pendingQueue.offer(event);
+  }
+
+  public boolean put(E event) {
     try {
       pendingQueue.put(event);
       return true;
     } catch (InterruptedException e) {
-      LOGGER.info("pending queue offer is interrupted.", e);
+      LOGGER.info("pending queue put is interrupted.", e);
       Thread.currentThread().interrupt();
       return false;
     }
