@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.visitor;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
@@ -59,6 +60,19 @@ public class GetMeasurementExpressionVisitor extends ReconstructVisitor<Analysis
 
   @Override
   public Expression visitTimeSeriesOperand(TimeSeriesOperand timeSeriesOperand, Analysis analysis) {
+
+    // only used for count_time query currently
+    if (timeSeriesOperand.getPath() != null) {
+      String measurementName = (timeSeriesOperand.getPath()).getMeasurement();
+      MeasurementPath measurementPath = null;
+      try {
+        measurementPath = new MeasurementPath(measurementName);
+      } catch (IllegalPathException e) {
+        throw new RuntimeException(e);
+      }
+      return new TimeSeriesOperand(measurementPath);
+    }
+
     MeasurementPath rawPath = (MeasurementPath) timeSeriesOperand.getPath();
     String measurementName =
         rawPath.isMeasurementAliasExists()

@@ -520,6 +520,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             queryStatement.isLastQuery() || isGroupByLevel);
 
     Set<String> aliasSet = new HashSet<>();
+    Set<String> countTimeHeaderSet = new HashSet<>();
 
     int columnIndex = 0;
 
@@ -531,8 +532,17 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           && (COUNT_TIME.equalsIgnoreCase(
               ((FunctionExpression) resultColumn.getExpression()).getFunctionName()))) {
         outputExpressions =
-            analyzeCountTimeForAlignTime(resultColumn, analysis, schemaTree, aliasSet);
-        outputExpressionMap.put(columnIndex++, outputExpressions);
+            analyzeCountTimeForAlignTime(
+                resultColumn,
+                analysis,
+                schemaTree,
+                aliasSet,
+                outputExpressionMap,
+                columnIndex,
+                countTimeHeaderSet);
+        if (!outputExpressions.isEmpty()) {
+          columnIndex++;
+        }
         continue;
       }
 
@@ -571,7 +581,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   /** process count_time aggregation query particularly */
   private List<Pair<Expression, String>> analyzeCountTimeForAlignTime(
-      ResultColumn resultColumn, Analysis analysis, ISchemaTree schemaTree, Set<String> aliasSet) {
+      ResultColumn resultColumn,
+      Analysis analysis,
+      ISchemaTree schemaTree,
+      Set<String> aliasSet,
+      Map<Integer, List<Pair<Expression, String>>> outputExpressionMap,
+      int columnIndex,
+      Set<String> countTimeHeaderSet) {
     // TODO limit, offset may have error?
     Set<Expression> sourceExpression = analysis.getSourceExpressions();
     if (sourceExpression == null) {
@@ -598,20 +614,27 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       }
     }
 
-    Expression expression =
+    Expression countTimeExpression =
         new FunctionExpression(
             COUNT_TIME, new LinkedHashMap<>(), Collections.singletonList(new TimestampOperand()));
 
     Map<NodeRef<Expression>, TSDataType> dataTypeMap = new HashMap<>();
-    dataTypeMap.put(new NodeRef<>(expression), TSDataType.INT64);
+    dataTypeMap.put(new NodeRef<>(countTimeExpression), TSDataType.INT64);
     analysis.addTypes(dataTypeMap);
 
+    Expression measurementExpression =
+        getMeasurementExpression(resultColumn.getExpression(), analysis);
+    if (countTimeHeaderSet.contains(measurementExpression.toString())) {
+      return Collections.emptyList();
+    }
+    countTimeHeaderSet.add(measurementExpression.toString());
     List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
     if (resultColumn.getAlias() != null) {
-      outputExpressions.add(new Pair<>(expression, resultColumn.getAlias()));
+      outputExpressions.add(new Pair<>(countTimeExpression, resultColumn.getAlias()));
     } else {
-      outputExpressions.add(new Pair<>(expression, resultColumn.getExpression().toString()));
+      outputExpressions.add(new Pair<>(countTimeExpression, measurementExpression.toString()));
     }
+    outputExpressionMap.put(columnIndex, outputExpressions);
     return outputExpressions;
   }
 
@@ -708,7 +731,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         // process count_time aggregation query particularly
         if (AGGREGATION.equals(resultColumn.getColumnType())
             && (resultColumn.getExpression() instanceof FunctionExpression)
-            && (COUNT_TIME.equals(
+            && (COUNT_TIME.equalsIgnoreCase(
                 ((FunctionExpression) resultColumn.getExpression()).getFunctionName()))) {
 
           analyzeCountTimeForAlignDevice(

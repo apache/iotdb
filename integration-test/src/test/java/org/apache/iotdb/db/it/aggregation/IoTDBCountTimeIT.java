@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.iotdb.db.it.aggregation;
 
 import org.apache.iotdb.it.env.EnvFactory;
@@ -7,16 +26,25 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBCountTimeIT {
 
-  protected static final String[] SQL_LIST = new String[] {"CREATE DATABASE root.db", "flush"};
+  protected static final String[] SQL_LIST =
+      new String[] {
+        "create database root.db;",
+        "insert into root.db.d1(time, s1) values(1, 1);",
+        "insert into root.db.d1(time, s2) values(2, 2);",
+        "insert into root.db.d2(time, s2) values(1, 1);",
+        "flush"
+      };
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -29,5 +57,16 @@ public class IoTDBCountTimeIT {
   @AfterClass
   public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+  }
+
+  @Test
+  public void normalQueryTest() {
+    // align by time
+    String[] expectedHeader = new String[] {"count_time(*)"};
+    String[] retArray = new String[] {"2,"};
+    resultSetEqualTest(
+        "select count_time(*) from root.db.d1, root.db.d2;", expectedHeader, retArray);
+
+    // align by device
   }
 }
