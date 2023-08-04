@@ -23,16 +23,21 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.apache.iotdb</groupId>
-        <artifactId>iotdb-examples</artifactId>
+        <artifactId>iotdb-parent</artifactId>
         <version>1.3.0-SNAPSHOT</version>
     </parent>
-    <artifactId>tsfile-example</artifactId>
-    <name>IoTDB: Example: TSFile</name>
-    <dependencies>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>tsfile</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-    </dependencies>
+    <artifactId>iotdb-connector</artifactId>
+    <packaging>pom</packaging>
+    <name>IoTDB: Connector</name>
+    <modules>
+        <module>flink-iotdb-connector</module>
+        <module>flink-tsfile-connector</module>
+        <module>grafana-connector</module>
+        <module>grafana-plugin</module>
+        <module>hadoop</module>
+        <module>hive-connector</module>
+        <module>spark-iotdb-connector</module>
+        <module>spark-tsfile</module>
+        <module>zeppelin-interpreter</module>
+    </modules>
 </project>
