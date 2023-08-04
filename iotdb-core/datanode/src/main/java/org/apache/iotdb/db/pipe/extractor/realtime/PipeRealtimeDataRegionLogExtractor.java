@@ -51,7 +51,7 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
       return;
     }
 
-    if (!pendingQueue.offer(event)) {
+    if (!pendingQueue.waitedOffer(event)) {
       LOGGER.warn(
           "extract: pending queue of PipeRealtimeDataRegionLogExtractor {} "
               + "has reached capacity, discard tablet event {}, current state {}",

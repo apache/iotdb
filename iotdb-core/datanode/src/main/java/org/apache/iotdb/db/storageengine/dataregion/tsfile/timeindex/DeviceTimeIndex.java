@@ -362,8 +362,8 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public boolean mayContainsDevice(String device) {
-    return deviceToIndex.containsKey(device);
+  public boolean definitelyNotContains(String device) {
+    return !deviceToIndex.containsKey(device);
   }
 
   @Override
