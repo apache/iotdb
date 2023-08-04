@@ -189,6 +189,19 @@ public abstract class Expression extends StatementNode {
   private String expressionStringCache;
 
   /**
+   * This method is used for count_time FunctionExpression specially. The return value of
+   * `getTransformedOutput()` and `getOutputSymbol()` is different only when Expression is
+   * count_time FunctionExpression. We cannot change the return value of `getOutputSymbolInternal()`
+   * because `getOutputSymbolInternal()` has used to generate hashcode.
+   */
+  public String getTransformedOutputSymbol() {
+    return viewPath != null ? viewPath.getFullPath() : getTransformedOutputInternal();
+  }
+
+  /** This method is only used in `getTransformedOutput()` for count_time FunctionExpression. */
+  public abstract String getTransformedOutputInternal();
+
+  /**
    * Get the representation of the expression in string. Compared to output symbol, it does not
    * consider logical views.
    */

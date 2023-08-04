@@ -168,4 +168,9 @@ public abstract class BinaryExpression extends Expression {
 
     return builder.toString();
   }
+
+  @Override
+  public String getTransformedOutputInternal() {
+    return this.getOutputSymbolInternal();
+  }
 }

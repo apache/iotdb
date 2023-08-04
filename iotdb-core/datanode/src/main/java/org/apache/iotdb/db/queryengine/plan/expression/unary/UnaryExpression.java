@@ -94,6 +94,11 @@ public abstract class UnaryExpression extends Expression {
     return expression.isMappable(expressionTypes);
   }
 
+  @Override
+  public String getTransformedOutputInternal() {
+    return this.getOutputSymbolInternal();
+  }
+
   protected abstract Expression constructExpression(Expression childExpression);
 
   @Override

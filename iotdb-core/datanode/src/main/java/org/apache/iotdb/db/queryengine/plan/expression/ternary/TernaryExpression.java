@@ -147,4 +147,9 @@ public abstract class TernaryExpression extends Expression {
     Expression.serialize(secondExpression, stream);
     Expression.serialize(thirdExpression, stream);
   }
+
+  @Override
+  public String getTransformedOutputInternal() {
+    return this.getOutputSymbolInternal();
+  }
 }

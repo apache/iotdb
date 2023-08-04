@@ -47,7 +47,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 
 public class FunctionExpression extends Expression {
 
@@ -65,6 +68,14 @@ public class FunctionExpression extends Expression {
 
   private List<PartialPath> paths;
 
+  private Set<Expression> countTimeExpressions;
+
+  /**
+   * for count_time aggregation query, e.g. count_time(s1), returns count_time(s1) but not
+   * count_time(Time) in response header
+   */
+  private String countTimeAlias;
+
   private String parametersString;
 
   public FunctionExpression(String functionName) {
@@ -80,6 +91,18 @@ public class FunctionExpression extends Expression {
     this.functionName = functionName;
     this.functionAttributes = functionAttributes;
     this.expressions = expressions;
+  }
+
+  public FunctionExpression(
+      String functionName,
+      List<Expression> expressions,
+      Set<Expression> countTimeExpressions,
+      String countTimeAlias) {
+    this.functionName = functionName;
+    this.functionAttributes = new LinkedHashMap<>();
+    this.expressions = expressions;
+    this.countTimeExpressions = countTimeExpressions;
+    this.countTimeAlias = countTimeAlias;
   }
 
   public FunctionExpression(ByteBuffer byteBuffer) {
@@ -197,6 +220,15 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
+  public String getTransformedOutputInternal() {
+    if (COUNT_TIME.equalsIgnoreCase(functionName)) {
+      return String.format("count_time(%s)", countTimeAlias);
+    }
+
+    return this.getOutputSymbolInternal();
+  }
+
+  @Override
   public void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
     String expressionString = getExpressionString();
@@ -276,6 +308,14 @@ public class FunctionExpression extends Expression {
     return paths;
   }
 
+  public Set<Expression> getCountTimeExpressions() {
+    return this.countTimeExpressions;
+  }
+
+  public String getCountTimeAlias() {
+    return this.countTimeAlias;
+  }
+
   @Override
   public String getExpressionStringInternal() {
     return functionName + "(" + getParametersString() + ")";
@@ -291,6 +331,10 @@ public class FunctionExpression extends Expression {
    * <p>The parameter part -> root.sg.d.s1, sin(root.sg.d.s1), 'key1'='value1', 'key2'='value2'
    */
   private String getParametersString() {
+    //    if (COUNT_TIME.equalsIgnoreCase(functionName)) {
+    //      return countTimeAlias;
+    //    }
+
     if (parametersString == null) {
       StringBuilder builder = new StringBuilder();
       if (!expressions.isEmpty()) {
