@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.BinaryExpression;
@@ -34,14 +35,18 @@ import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.getMeasurementExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.cartesianProduct;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructBinaryExpressions;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructFunctionExpressions;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperands;
 import static org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForExpressionVisitor.transformViewPath;
 import static org.apache.iotdb.db.utils.TypeInferenceUtils.bindTypeForAggregationNonSeriesInputExpressions;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 
 public class BindSchemaForPredicateVisitor
     extends CartesianProductVisitor<BindSchemaForPredicateVisitor.Context> {
@@ -63,6 +68,25 @@ public class BindSchemaForPredicateVisitor
 
   @Override
   public List<Expression> visitFunctionExpression(FunctionExpression predicate, Context context) {
+    if (COUNT_TIME.equalsIgnoreCase(predicate.getFunctionName())) {
+      Set<Expression> usedExpressions = new HashSet<>();
+      for (Expression originExpression : predicate.getExpressions()) {
+        List<Expression> actualExpressions = process(originExpression, context);
+        usedExpressions.addAll(actualExpressions);
+      }
+
+      // for count_time aggregation, set the measurement as final response header
+      Expression measurementExpressionAlias =
+          getMeasurementExpression(predicate.getExpressions().get(0), new Analysis());
+      Expression countTimeExpression =
+          new FunctionExpression(
+              COUNT_TIME,
+              Collections.singletonList(new TimestampOperand()),
+              usedExpressions,
+              measurementExpressionAlias.getOutputSymbol());
+      return Collections.singletonList(countTimeExpression);
+    }
+
     List<List<Expression>> extendedExpressions = new ArrayList<>();
     for (Expression suffixExpression : predicate.getExpressions()) {
       extendedExpressions.add(

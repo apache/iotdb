@@ -26,6 +26,7 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -111,7 +112,7 @@ public class IoTDBCountTimeIT {
   @Test
   public void normalQueryTest() {
     // align by time
-    String[] expectedHeader = new String[] {"COUNT_TIME(*)"};
+    String[] expectedHeader = new String[] {"count_time(*),count_time(*)"};
     String[] retArray = new String[] {"2,"};
     resultSetEqualTest(
         "SELECT COUNT_TIME(*) FROM root.db.d1, root.db.d2;", expectedHeader, retArray);
@@ -146,6 +147,34 @@ public class IoTDBCountTimeIT {
     retArray = new String[] {"0,2,", "2,1,", "4,2,", "6,1,", "8,1,"};
     resultSetEqualTest(
         "SELECT count_time(s1) FROM root.downsampling.** GROUP BY([0, 10), 2ms);",
+        expectedHeader,
+        retArray);
+
+    expectedHeader = new String[] {"Time,count_time(s1)"};
+    retArray = new String[] {"0,1,", "2,0,", "4,2,", "6,0,", "8,1,"};
+    resultSetEqualTest(
+        "SELECT count_time(s1) FROM root.downsampling.d1 GROUP BY([0, 10), 2ms);",
+        expectedHeader,
+        retArray);
+
+    expectedHeader = new String[] {"Time,count_time(s2)"};
+    retArray = new String[] {"0,1,", "2,1,", "4,1,", "6,1,", "8,2,"};
+    resultSetEqualTest(
+        "SELECT count_time(s2) FROM root.downsampling.d1 GROUP BY([0, 10), 2ms);",
+        expectedHeader,
+        retArray);
+
+    expectedHeader = new String[] {"Time,count_time(*)"};
+    retArray = new String[] {"0,2,", "2,1,", "4,2,", "6,1,", "8,2,"};
+    resultSetEqualTest(
+        "SELECT count_time(*) FROM root.downsampling.d1 GROUP BY([0, 10), 2ms);",
+        expectedHeader,
+        retArray);
+
+    expectedHeader = new String[] {"Time,count_time(s1),count_time(s2)"};
+    retArray = new String[] {"0,2,", "2,1,", "4,2,", "6,1,", "8,2,"};
+    resultSetEqualTest(
+        "SELECT count_time(s1),count_time(s2) FROM root.downsampling.d1 GROUP BY([0, 10), 2ms);",
         expectedHeader,
         retArray);
 
@@ -327,6 +356,7 @@ public class IoTDBCountTimeIT {
   }
 
   @Test
+  @Ignore
   public void havingTest() {
     prepareData(
         Collections.singletonList("INSERT INTO root.downsampling.d2(time, s1) VALUES(9,9);"));

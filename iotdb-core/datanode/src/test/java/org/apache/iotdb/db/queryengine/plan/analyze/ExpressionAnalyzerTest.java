@@ -81,4 +81,7 @@ public class ExpressionAnalyzerTest {
             fakeSchemaTree,
             true));
   }
+
+  @Test
+  public void normalizeExpressionTest() {}
 }

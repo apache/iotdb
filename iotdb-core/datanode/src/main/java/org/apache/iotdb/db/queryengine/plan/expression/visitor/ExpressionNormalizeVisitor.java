@@ -43,8 +43,9 @@ public class ExpressionNormalizeVisitor extends ReconstructVisitor<Void> {
     functionExpression.getExpressions().forEach(child -> childResult.add(process(child, null)));
     return new FunctionExpression(
         functionExpression.getFunctionName().toLowerCase(),
-        functionExpression.getFunctionAttributes(),
-        childResult);
+        childResult,
+        functionExpression.getCountTimeExpressions(),
+        functionExpression.getCountTimeAlias());
   }
 
   @Override

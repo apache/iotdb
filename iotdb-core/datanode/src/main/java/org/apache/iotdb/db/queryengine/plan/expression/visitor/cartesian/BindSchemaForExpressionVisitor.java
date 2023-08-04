@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
@@ -36,17 +37,40 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.getMeasurementExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.cartesianProduct;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructFunctionExpressions;
 import static org.apache.iotdb.db.utils.TypeInferenceUtils.bindTypeForAggregationNonSeriesInputExpressions;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 
 public class BindSchemaForExpressionVisitor extends CartesianProductVisitor<ISchemaTree> {
 
   @Override
   public List<Expression> visitFunctionExpression(
       FunctionExpression functionExpression, ISchemaTree schemaTree) {
+
+    if (COUNT_TIME.equalsIgnoreCase(functionExpression.getFunctionName())) {
+      Set<Expression> usedExpressions = new HashSet<>();
+      for (Expression originExpression : functionExpression.getExpressions()) {
+        List<Expression> actualExpressions = process(originExpression, schemaTree);
+        usedExpressions.addAll(actualExpressions);
+      }
+
+      // for count_time aggregation, set the measurement as final response header
+      Expression measurementExpressionAlias =
+          getMeasurementExpression(functionExpression.getExpressions().get(0), new Analysis());
+      Expression countTimeExpression =
+          new FunctionExpression(
+              COUNT_TIME,
+              Collections.singletonList(new TimestampOperand()),
+              usedExpressions,
+              measurementExpressionAlias.getOutputSymbol());
+      return Collections.singletonList(countTimeExpression);
+    }
 
     // One by one, remove the wildcards from the input expressions. In most cases, an expression
     // will produce multiple expressions after removing the wildcards. We use extendedExpressions
