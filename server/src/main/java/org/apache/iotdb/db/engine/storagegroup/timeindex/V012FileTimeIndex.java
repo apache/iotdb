@@ -180,9 +180,9 @@ public class V012FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public boolean mayContainsDevice(String device) {
+  public boolean definitelyNotContains(String device) {
     throw new UnsupportedOperationException(
-        "V012FileTimeIndex should be rewritten while upgrading and containsDevice() method should not be called any more.");
+        "V012FileTimeIndex should be rewritten while upgrading and definitelyNotContains() method should not be called any more.");
   }
 
   @Override

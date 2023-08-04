@@ -224,8 +224,8 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public boolean mayContainsDevice(String device) {
-    return true;
+  public boolean definitelyNotContains(String device) {
+    return false;
   }
 
   @Override
