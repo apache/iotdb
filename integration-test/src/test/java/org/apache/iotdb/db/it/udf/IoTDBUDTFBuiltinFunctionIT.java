@@ -1237,6 +1237,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
     // query tests
     test_M4_firstWindowEmpty();
     test_M4_slidingTimeWindow();
+    test_M4_slidingTimeWindow_2();
     test_M4_slidingSizeWindow();
     test_M4_constantTimeSeries();
   }
@@ -1296,6 +1297,63 @@ public class IoTDBUDTFBuiltinFunctionIT {
       int count = 0;
       while (resultSet.next()) {
         String str = resultSet.getString(1) + "," + resultSet.getString(2);
+        Assert.assertEquals(res[count], str);
+        count++;
+      }
+      Assert.assertEquals(res.length, count);
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  private void test_M4_slidingTimeWindow_2() {
+    String[] res =
+        new String[] {
+          "0,null,1",
+          "1,5.0,null",
+          "10,30.0,null",
+          "20,20.0,null",
+          "24,null,1",
+          "25,8.0,1",
+          "30,40.0,null",
+          "45,30.0,null",
+          "49,null,1",
+          "50,null,1",
+          "52,8.0,null",
+          "54,18.0,null",
+          "74,null,1",
+          "75,null,1",
+          "99,null,1",
+          "120,8.0,null"
+        };
+
+    String sql =
+        String.format(
+            "select M4(s1, '%s'='%s','%s'='%s','%s'='%s','%s'='%s'), M4(s2, '%s'='%s','%s'='%s','%s'='%s','%s'='%s') from root.m4.d1",
+            TIME_INTERVAL_KEY,
+            25,
+            SLIDING_STEP_KEY,
+            25,
+            DISPLAY_WINDOW_BEGIN_KEY,
+            0,
+            DISPLAY_WINDOW_END_KEY,
+            150,
+            TIME_INTERVAL_KEY,
+            25,
+            SLIDING_STEP_KEY,
+            25,
+            DISPLAY_WINDOW_BEGIN_KEY,
+            0,
+            DISPLAY_WINDOW_END_KEY,
+            150);
+
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sql);
+      int count = 0;
+      while (resultSet.next()) {
+        String str =
+            resultSet.getString(1) + "," + resultSet.getString(2) + "," + resultSet.getString(3);
         Assert.assertEquals(res[count], str);
         count++;
       }
