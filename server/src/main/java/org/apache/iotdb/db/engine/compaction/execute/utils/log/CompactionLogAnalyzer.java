@@ -132,12 +132,14 @@ public class CompactionLogAnalyzer {
     } else {
       sourceFileInfos.add(TsFileIdentifier.getFileIdentifierFromFilePath(oldFilePath));
     }
+
+    int pos = oldFilePath.lastIndexOf(TsFileConstant.TSFILE_SUFFIX);
     if (isSeqSource) {
       String targetFilePath =
-          oldFilePath.replaceFirst(
-              TsFileConstant.TSFILE_SUFFIX,
-              TsFileConstant.TSFILE_SUFFIX
-                  + IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX_FROM_OLD);
+          oldFilePath.substring(0, pos)
+          + TsFileConstant.TSFILE_SUFFIX
+          + IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX_FROM_OLD
+          + oldFilePath.substring(pos + TsFileConstant.TSFILE_SUFFIX.length());
       if (oldFilePath.startsWith("root")) {
         targetFileInfos.add(TsFileIdentifier.getFileIdentifierFromOldInfoString(targetFilePath));
       } else {
