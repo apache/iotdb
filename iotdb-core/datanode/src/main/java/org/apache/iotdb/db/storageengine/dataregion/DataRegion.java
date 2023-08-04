@@ -1943,7 +1943,7 @@ public class DataRegion implements IDataRegionForQuery {
         deviceEndTime = startAndEndTime.getRight();
       } else {
         String deviceId = device.getFullPath();
-        if (!tsFileResource.mayContainsDevice(deviceId)) {
+        if (tsFileResource.definitelyNotContains(deviceId)) {
           // resource does not contain this device
           continue;
         }
