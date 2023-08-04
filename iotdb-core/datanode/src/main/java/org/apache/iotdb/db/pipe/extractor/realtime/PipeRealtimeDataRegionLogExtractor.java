@@ -102,8 +102,9 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
         PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
       }
 
+      realtimeEvent.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
+
       if (suppliedEvent != null) {
-        realtimeEvent.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
         return suppliedEvent;
       }
 

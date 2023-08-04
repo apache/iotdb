@@ -77,31 +77,37 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       // all the data represented by the tablet events should be carried by the following tsfile
       // event.
       event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
-      LOGGER.info(
-          "extractTabletInsertion: pending queue of PipeRealtimeDataRegionHybridExtractor "
-              + "is approaching capacity, discard tablet event {}, change state of tsfile epoch to {}",
-          event,
-          event.getTsFileEpoch().getState(this));
-
-      // Ignore the tablet event.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
-      return;
     }
 
-    if (!event.getTsFileEpoch().getState(this).equals(TsFileEpoch.State.USING_TSFILE)
-        && !pendingQueue.waitedOffer(event)) {
-      // this would not happen, but just in case.
-      // pendingQueue is unbounded, so it should never reach capacity.
-      final String errorMessage =
-          String.format(
-              "extractTabletInsertion: pending queue of PipeRealtimeDataRegionHybridExtractor %s "
-                  + "has reached capacity, discard tablet event %s, current state %s",
-              this, event, event.getTsFileEpoch().getState(this));
-      LOGGER.error(errorMessage);
-      PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+    final TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
+    switch (state) {
+      case USING_TSFILE:
+        // Ignore the tablet event.
+        event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
+        break;
+      case EMPTY:
+      case USING_TABLET:
+        if (!pendingQueue.waitedOffer(event)) {
+          // this would not happen, but just in case.
+          // pendingQueue is unbounded, so it should never reach capacity.
+          final String errorMessage =
+              String.format(
+                  "extractTabletInsertion: pending queue of PipeRealtimeDataRegionHybridExtractor %s "
+                      + "has reached capacity, discard tablet event %s, current state %s",
+                  this, event, event.getTsFileEpoch().getState(this));
+          LOGGER.error(errorMessage);
+          PipeAgent.runtime()
+              .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
 
-      // Ignore the tablet event.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
+          // Ignore the tablet event.
+          event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
+        }
+        break;
+      default:
+        throw new UnsupportedOperationException(
+            String.format(
+                "Unsupported state %s for hybrid realtime extractor %s",
+                state, PipeRealtimeDataRegionHybridExtractor.class.getName()));
     }
   }
 
@@ -113,19 +119,35 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
             state ->
                 state.equals(TsFileEpoch.State.EMPTY) ? TsFileEpoch.State.USING_TSFILE : state);
 
-    if (!pendingQueue.waitedOffer(event)) {
-      // this would not happen, but just in case.
-      // pendingQueue is unbounded, so it should never reach capacity.
-      final String errorMessage =
-          String.format(
-              "extractTsFileInsertion: pending queue of PipeRealtimeDataRegionHybridExtractor %s "
-                  + "has reached capacity, discard TsFile event %s, current state %s",
-              this, event, event.getTsFileEpoch().getState(this));
-      LOGGER.error(errorMessage);
-      PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+    final TsFileEpoch.State state = event.getTsFileEpoch().getState(this);
+    switch (state) {
+      case EMPTY:
+      case USING_TSFILE:
+        if (!pendingQueue.waitedOffer(event)) {
+          // this would not happen, but just in case.
+          // pendingQueue is unbounded, so it should never reach capacity.
+          final String errorMessage =
+              String.format(
+                  "extractTsFileInsertion: pending queue of PipeRealtimeDataRegionHybridExtractor %s "
+                      + "has reached capacity, discard TsFile event %s, current state %s",
+                  this, event, event.getTsFileEpoch().getState(this));
+          LOGGER.error(errorMessage);
+          PipeAgent.runtime()
+              .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
 
-      // Ignore the tsfile event.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
+          // Ignore the tsfile event.
+          event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
+        }
+        break;
+      case USING_TABLET:
+        // All the tablet events have been extracted, so we can ignore the tsfile event.
+        event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
+        break;
+      default:
+        throw new UnsupportedOperationException(
+            String.format(
+                "Unsupported state %s for hybrid realtime extractor %s",
+                state, PipeRealtimeDataRegionHybridExtractor.class.getName()));
     }
   }
 
@@ -154,8 +176,9 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
                 eventToSupply.getClass(), this));
       }
 
+      realtimeEvent.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
+
       if (suppliedEvent != null) {
-        realtimeEvent.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
         return suppliedEvent;
       }
 

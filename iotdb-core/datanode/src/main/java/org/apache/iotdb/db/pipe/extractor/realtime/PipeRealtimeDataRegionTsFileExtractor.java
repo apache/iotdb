@@ -102,8 +102,9 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
         PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
       }
 
+      realtimeEvent.decreaseReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName());
+
       if (suppliedEvent != null) {
-        realtimeEvent.decreaseReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName());
         return suppliedEvent;
       }
 
