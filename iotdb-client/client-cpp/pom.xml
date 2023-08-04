@@ -93,7 +93,7 @@
             <plugin>
                 <groupId>com.googlecode.maven-download-plugin</groupId>
                 <artifactId>download-maven-plugin</artifactId>
-                <version>1.6.7</version>
+                <version>1.6.8</version>
                 <executions>
                     <!-- Download the Catch2 header file. -->
                     <execution>
