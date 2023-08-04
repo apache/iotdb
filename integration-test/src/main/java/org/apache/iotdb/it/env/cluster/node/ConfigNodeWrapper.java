@@ -65,8 +65,9 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
       String testMethodName,
       int[] portList,
       int clusterIndex,
-      boolean isMultiCluster) {
-    super(testClassName, testMethodName, portList, clusterIndex, isMultiCluster);
+      boolean isMultiCluster,
+      long startTime) {
+    super(testClassName, testMethodName, portList, clusterIndex, isMultiCluster, startTime);
     this.consensusPort = portList[1];
     this.isSeed = isSeed;
     String targetConfigNodes;

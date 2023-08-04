@@ -197,8 +197,8 @@ public class EnvUtils {
     return index <= values.length - 1 ? values[index] : values[values.length - 1];
   }
 
-  public static String getTimeForLogDirectory() {
-    return convertLongToDate(System.currentTimeMillis(), "ms").replace(":", DIR_TIME_REPLACEMENT);
+  public static String getTimeForLogDirectory(long startTime) {
+    return convertLongToDate(startTime, "ms").replace(":", DIR_TIME_REPLACEMENT);
   }
 
   private EnvUtils() {

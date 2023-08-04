@@ -213,6 +213,7 @@ public class ClusterConstant {
           + "bin"
           + File.separator
           + (SystemUtils.IS_OS_WINDOWS ? "java.exe" : "java");
+  public static final String MAIN_CLASS_NAME = "org.apache.iotdb.db.service.DataNode";
 
   private ClusterConstant() {
     throw new IllegalStateException("Utility class");

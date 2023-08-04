@@ -29,7 +29,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
-import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DATA_REGION_CONSENSUS_PROTOCOL_CLASS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.COMMON_PROPERTIES_FILE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATANODE_INIT_HEAP_SIZE;
@@ -37,6 +36,7 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATANODE_MAX_DIREC
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATANODE_MAX_HEAP_SIZE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_NODE_NAME;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_NODE_PROPERTIES_FILE;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REGION_CONSENSUS_PROTOCOL_CLASS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REPLICATION_FACTOR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_DATA_NODE_COMMON_PROPERTIES;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_DATA_NODE_PROPERTIES;
@@ -54,6 +54,7 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_SYNC_DIR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_SYSTEM_DIR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_TRACING_DIR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DN_WAL_DIRS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.MAIN_CLASS_NAME;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.MAX_TSBLOCK_SIZE_IN_BYTES;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.MQTT_HOST;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.MQTT_PORT;
@@ -82,8 +83,9 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
       String testMethodName,
       int[] portList,
       int clusterIndex,
-      boolean isMultiCluster) {
-    super(testClassName, testMethodName, portList, clusterIndex, isMultiCluster);
+      boolean isMultiCluster,
+      long startTime) {
+    super(testClassName, testMethodName, portList, clusterIndex, isMultiCluster, startTime);
     this.internalAddress = super.getIp();
     this.mppDataExchangePort = portList[1];
     this.internalPort = portList[2];
@@ -165,7 +167,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
             "-DTSFILE_HOME=" + workDir,
             "-DIOTDB_CONF=" + confDir,
             "-DTSFILE_CONF=" + confDir,
-            mainClassName(),
+            MAIN_CLASS_NAME,
             "-s"));
   }
 
@@ -218,10 +220,6 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     String newNodeDirPath = getNodePath();
     File oldNodeDir = new File(oldNodeDirPath);
     oldNodeDir.renameTo(new File(newNodeDirPath));
-  }
-
-  protected String mainClassName() {
-    return "org.apache.iotdb.db.service.DataNode";
   }
 
   public int getMppDataExchangePort() {

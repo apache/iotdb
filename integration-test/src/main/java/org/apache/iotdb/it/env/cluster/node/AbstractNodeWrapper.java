@@ -123,6 +123,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   private Process instance;
   private final String nodeAddress;
   private int nodePort;
+  private long startTime;
 
   /**
    * Mutable properties are always hardcoded default values to make the cluster be set up
@@ -153,7 +154,8 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       String testMethodName,
       int[] portList,
       int clusterIndex,
-      boolean isMultiCluster) {
+      boolean isMultiCluster,
+      long startTime) {
     this.testClassName = testClassName;
     this.testMethodName = testMethodName;
     this.portList = portList;
@@ -171,10 +173,12 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     this.jvmConfig = initVMConfig();
     this.clusterIndex = clusterIndex;
     this.isMultiCluster = isMultiCluster;
+    this.startTime = startTime;
   }
 
+  /** CreateNodeDir must be called before changeConfig for persistent. */
   @Override
-  public void createDir() {
+  public void createNodeDir() {
     // Copy templateNodePath to nodePath
     String destPath = getNodePath();
     try {
@@ -200,6 +204,16 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
               }
             });
       }
+    } catch (IOException ex) {
+      logger.error("Copy node dir failed", ex);
+      fail();
+    }
+  }
+
+  /** CreateLogDir must be called after changeConfig for correct log directory. */
+  @Override
+  public void createLogDir() {
+    try {
       // Make sure the log dir exist, as the first file is output by starting script directly.
       FileUtils.createParentDirectories(new File(getLogPath()));
     } catch (IOException ex) {
@@ -449,17 +463,21 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   }
 
   protected String getLogDirPath() {
-    return System.getProperty(USER_DIR)
-        + File.separator
-        + TARGET
-        + File.separator
-        + "cluster-logs"
-        + File.separator
-        + getTestLogDirName()
-        + File.separator
-        + getTimeForLogDirectory()
-        + File.separator
-        + getClusterIdStr();
+    String baseDir =
+        System.getProperty(USER_DIR)
+            + File.separator
+            + TARGET
+            + File.separator
+            + "cluster-logs"
+            + File.separator
+            + getTestLogDirName()
+            + File.separator
+            + getTimeForLogDirectory(startTime);
+    if (!isMultiCluster) {
+      return baseDir;
+    } else {
+      return baseDir + File.separator + getClusterIdStr();
+    }
   }
 
   private String getClusterIdStr() {

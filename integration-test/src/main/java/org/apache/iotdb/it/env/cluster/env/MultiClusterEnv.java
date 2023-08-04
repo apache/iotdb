@@ -24,7 +24,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 public class MultiClusterEnv extends AbstractEnv {
 
-  public MultiClusterEnv(int index) {
+  public MultiClusterEnv(long startTime, int index) {
+    super(startTime);
     this.index = index;
   }
 

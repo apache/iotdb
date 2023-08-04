@@ -373,6 +373,7 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
 
   // For part of the log directory
   public String getClusterConfigStr() {
+    System.out.println(properties);
     return getConsensusProtocolStr(properties.getProperty(CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS))
         + HYPHEN
         + getConsensusProtocolStr(properties.getProperty(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS))
