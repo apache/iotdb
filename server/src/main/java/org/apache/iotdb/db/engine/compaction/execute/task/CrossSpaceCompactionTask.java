@@ -380,7 +380,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       LOGGER.error("Interrupted when allocating memory for compaction", e);
       return false;
     } catch (CompactionMemoryNotEnoughException e) {
-      LOGGER.error("No enough memory for current compaction task {}", this, e);
+      LOGGER.info("No enough memory for current compaction task {}", this);
       return false;
     }
     boolean addReadLockSuccess =
