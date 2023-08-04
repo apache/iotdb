@@ -115,8 +115,7 @@ public class ReplicateTest {
         Files.delete(configurationPath);
       }
       Files.move(tmpConfigurationPath, configurationPath);
-    } catch (IOException e) {
-      logger.error("Unexpected error occurs when persisting configuration", e);
+    } catch (IOException ignored) {
     }
   }
 
@@ -291,7 +290,8 @@ public class ReplicateTest {
   private void findPortAvailable(int i) {
     long start = System.currentTimeMillis();
     while (System.currentTimeMillis() - start < timeout) {
-      try (ServerSocket ignored = new ServerSocket(this.peers.get(i).getEndpoint().port)) {
+      try (ServerSocket socket = new ServerSocket(this.peers.get(i).getEndpoint().port)) {
+        socket.setReuseAddress(true);
         // success
         return;
       } catch (IOException e) {
