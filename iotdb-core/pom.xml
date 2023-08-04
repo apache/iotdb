@@ -23,16 +23,20 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.apache.iotdb</groupId>
-        <artifactId>iotdb-examples</artifactId>
+        <artifactId>iotdb-parent</artifactId>
         <version>1.3.0-SNAPSHOT</version>
     </parent>
-    <artifactId>tsfile-example</artifactId>
-    <name>IoTDB: Example: TSFile</name>
-    <dependencies>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>tsfile</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-    </dependencies>
+    <artifactId>iotdb-core</artifactId>
+    <packaging>pom</packaging>
+    <name>IoTDB: Core</name>
+    <modules>
+        <module>antlr</module>
+        <module>confignode</module>
+        <module>consensus</module>
+        <module>datanode</module>
+        <module>metrics</module>
+        <module>mlnode</module>
+        <module>node-commons</module>
+        <module>tsfile</module>
+    </modules>
 </project>

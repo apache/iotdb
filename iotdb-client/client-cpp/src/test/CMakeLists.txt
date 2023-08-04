@@ -21,7 +21,6 @@ INCLUDE( CTest )
 SET(CMAKE_CXX_STANDARD 11)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(TARGET_NAME session_tests)
-SET(TOOLS_DIR "${CMAKE_SOURCE_DIR}/../../../../compile-tools")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -g -O2")
 ENABLE_TESTING()
 
@@ -30,9 +29,10 @@ INCLUDE_DIRECTORIES(/usr/local/include)
 # Add Session related include files
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../main/generated-sources-cpp)
 # Add Thrift include directory
-INCLUDE_DIRECTORIES(${TOOLS_DIR}/thrift/target/thrift-0.14.1/lib/cpp/src)
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../../thrift/include)
 
-find_package(Boost REQUIRED)
+# Add Boost library headers for MaxOS
+FIND_PACKAGE(Boost REQUIRED)
 IF (DEFINED BOOST_INCLUDEDIR)
     include_directories("${Boost_INCLUDE_DIR}")
 ENDIF()
@@ -40,9 +40,10 @@ ENDIF()
 # Link directories are different for Windows and Linux/Mac
 IF(MSVC)
     LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/../main/Release)
-    SET(THRIFT_STATIC_LIB "${TOOLS_DIR}/thrift/target/build/lib/Release/thriftmd.lib")
+    SET(THRIFT_STATIC_LIB "${CMAKE_SOURCE_DIR}/../../thrift/lib/Release/thriftmd.lib")
 ELSE()
     LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/../main)
+    SET(THRIFT_STATIC_LIB "${CMAKE_SOURCE_DIR}/../../thrift/lib/libthrift.a")
 ENDIF()
 
 ADD_EXECUTABLE(${TARGET_NAME} main.cpp cpp/sessionIT.cpp)
