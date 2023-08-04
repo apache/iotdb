@@ -51,7 +51,7 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
       return;
     }
 
-    if (!pendingQueue.offer(event)) {
+    if (!pendingQueue.waitedOffer(event)) {
       LOGGER.warn(
           "extract: pending queue of PipeRealtimeDataRegionTsFileExtractor {} "
               + "has reached capacity, discard TsFile event {}, current state {}",

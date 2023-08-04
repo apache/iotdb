@@ -163,12 +163,6 @@ public class ConfigNodeStartupCheck extends StartupChecks {
           "an unrecognized route_priority_policy is set");
     }
 
-    // The ip of target ConfigNode couldn't be 0.0.0.0
-    if (CONF.getTargetConfigNode().getIp().equals("0.0.0.0")) {
-      throw new ConfigurationException(
-          "The ip address of any target_config_node_list couldn't be 0.0.0.0");
-    }
-
     // The default RegionGroupNum should be positive
     if (CONF.getDefaultSchemaRegionGroupNumPerDatabase() <= 0) {
       throw new ConfigurationException("The default_schema_region_group_num should be positive");

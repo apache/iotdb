@@ -83,7 +83,11 @@ public class LayerPointReaderBackedSingleColumnRow implements Row {
 
   @Override
   public boolean isNull(int columnIndex) {
-    return false;
+    try {
+      return layerPointReader.isCurrentNull();
+    } catch (IOException e) {
+      throw new IllegalStateException(e);
+    }
   }
 
   @Override
