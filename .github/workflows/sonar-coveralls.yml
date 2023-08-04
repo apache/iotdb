@@ -8,7 +8,6 @@ on:
     branches:
       - master
       - "rel/*"
-      - "new_*"
     paths-ignore:
       - "docs/**"
       - 'site/**'
@@ -61,6 +60,11 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'apache/iotdb' || github.event_name == 'push'
     steps:
       - uses: actions/checkout@v3
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: corretto
+          java-version: 17
       - name: Cache Maven packages
         uses: actions/cache@v3
         with:
