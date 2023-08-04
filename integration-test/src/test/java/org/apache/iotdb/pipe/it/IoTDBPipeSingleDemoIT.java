@@ -53,7 +53,7 @@ public class IoTDBPipeSingleDemoIT {
   }
 
   @Test
-  public void testEnv() throws Exception {
+  public void testSingleEnv() throws Exception {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) MultiEnvFactory.getEnv(0).getLeaderConfigNodeConnection()) {
       Map<String, String> extractorAttributes = new HashMap<>();

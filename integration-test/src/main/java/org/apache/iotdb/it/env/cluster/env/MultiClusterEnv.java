@@ -24,9 +24,10 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 public class MultiClusterEnv extends AbstractEnv {
 
-  public MultiClusterEnv(long startTime, int index) {
+  public MultiClusterEnv(long startTime, int index, String currentMethodName) {
     super(startTime);
     this.index = index;
+    this.testMethodName = currentMethodName;
   }
 
   @Override

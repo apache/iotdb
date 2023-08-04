@@ -106,6 +106,7 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.TEMPLATE_NODE_PATH
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.TRIGGER_LIB_DIR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.UDF_LIB_DIR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.USER_DIR;
+import static org.apache.iotdb.it.env.cluster.EnvUtils.fromConsensusAbbrToFullName;
 import static org.apache.iotdb.it.env.cluster.EnvUtils.getTimeForLogDirectory;
 import static org.apache.iotdb.it.env.cluster.EnvUtils.getValueOfIndex;
 import static org.junit.Assert.fail;
@@ -313,60 +314,82 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
         case LIGHT_WEIGHT_STANDALONE_MODE:
           clusterConfigProperties.setProperty(
               CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS,
-              LIGHT_WEIGHT_STANDALONE_MODE_CONFIG_NODE_CONSENSUS);
+              fromConsensusAbbrToFullName(
+                  System.getProperty(LIGHT_WEIGHT_STANDALONE_MODE_CONFIG_NODE_CONSENSUS)));
           clusterConfigProperties.setProperty(
               SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS,
-              LIGHT_WEIGHT_STANDALONE_MODE_SCHEMA_REGION_CONSENSUS);
+              fromConsensusAbbrToFullName(
+                  System.getProperty(LIGHT_WEIGHT_STANDALONE_MODE_SCHEMA_REGION_CONSENSUS)));
           clusterConfigProperties.setProperty(
               DATA_REGION_CONSENSUS_PROTOCOL_CLASS,
-              LIGHT_WEIGHT_STANDALONE_MODE_DATA_REGION_CONSENSUS);
+              fromConsensusAbbrToFullName(
+                  System.getProperty(LIGHT_WEIGHT_STANDALONE_MODE_DATA_REGION_CONSENSUS)));
           clusterConfigProperties.setProperty(
-              SCHEMA_REPLICATION_FACTOR, LIGHT_WEIGHT_STANDALONE_MODE_SCHEMA_REGION_REPLICA_NUM);
+              SCHEMA_REPLICATION_FACTOR,
+              System.getProperty(LIGHT_WEIGHT_STANDALONE_MODE_SCHEMA_REGION_REPLICA_NUM));
           clusterConfigProperties.setProperty(
-              DATA_REPLICATION_FACTOR, LIGHT_WEIGHT_STANDALONE_MODE_DATA_REGION_REPLICA_NUM);
+              DATA_REPLICATION_FACTOR,
+              System.getProperty(LIGHT_WEIGHT_STANDALONE_MODE_DATA_REGION_REPLICA_NUM));
           break;
         case SCALABLE_SINGLE_NODE_MODE:
           clusterConfigProperties.setProperty(
               CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS,
-              SCALABLE_SINGLE_NODE_MODE_CONFIG_NODE_CONSENSUS);
+              fromConsensusAbbrToFullName(
+                  System.getProperty(SCALABLE_SINGLE_NODE_MODE_CONFIG_NODE_CONSENSUS)));
           clusterConfigProperties.setProperty(
               SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS,
-              SCALABLE_SINGLE_NODE_MODE_SCHEMA_REGION_CONSENSUS);
+              fromConsensusAbbrToFullName(
+                  System.getProperty(SCALABLE_SINGLE_NODE_MODE_SCHEMA_REGION_CONSENSUS)));
           clusterConfigProperties.setProperty(
               DATA_REGION_CONSENSUS_PROTOCOL_CLASS,
-              SCALABLE_SINGLE_NODE_MODE_DATA_REGION_CONSENSUS);
+              fromConsensusAbbrToFullName(
+                  System.getProperty(SCALABLE_SINGLE_NODE_MODE_DATA_REGION_CONSENSUS)));
           clusterConfigProperties.setProperty(
-              SCHEMA_REPLICATION_FACTOR, SCALABLE_SINGLE_NODE_MODE_SCHEMA_REGION_REPLICA_NUM);
+              SCHEMA_REPLICATION_FACTOR,
+              System.getProperty(SCALABLE_SINGLE_NODE_MODE_SCHEMA_REGION_REPLICA_NUM));
           clusterConfigProperties.setProperty(
-              DATA_REPLICATION_FACTOR, SCALABLE_SINGLE_NODE_MODE_DATA_REGION_REPLICA_NUM);
+              DATA_REPLICATION_FACTOR,
+              System.getProperty(SCALABLE_SINGLE_NODE_MODE_DATA_REGION_REPLICA_NUM));
           break;
         case HIGH_PERFORMANCE_MODE:
           clusterConfigProperties.setProperty(
-              CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS, HIGH_PERFORMANCE_MODE_CONFIG_NODE_CONSENSUS);
+              CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS,
+              fromConsensusAbbrToFullName(
+                  System.getProperty(HIGH_PERFORMANCE_MODE_CONFIG_NODE_CONSENSUS)));
           clusterConfigProperties.setProperty(
               SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS,
-              HIGH_PERFORMANCE_MODE_SCHEMA_REGION_CONSENSUS);
+              fromConsensusAbbrToFullName(
+                  System.getProperty(HIGH_PERFORMANCE_MODE_SCHEMA_REGION_CONSENSUS)));
           clusterConfigProperties.setProperty(
-              DATA_REGION_CONSENSUS_PROTOCOL_CLASS, HIGH_PERFORMANCE_MODE_DATA_REGION_CONSENSUS);
+              DATA_REGION_CONSENSUS_PROTOCOL_CLASS,
+              fromConsensusAbbrToFullName(
+                  System.getProperty(HIGH_PERFORMANCE_MODE_DATA_REGION_CONSENSUS)));
           clusterConfigProperties.setProperty(
-              SCHEMA_REPLICATION_FACTOR, HIGH_PERFORMANCE_MODE_SCHEMA_REGION_REPLICA_NUM);
+              SCHEMA_REPLICATION_FACTOR,
+              System.getProperty(HIGH_PERFORMANCE_MODE_SCHEMA_REGION_REPLICA_NUM));
           clusterConfigProperties.setProperty(
-              DATA_REPLICATION_FACTOR, HIGH_PERFORMANCE_MODE_DATA_REGION_REPLICA_NUM);
+              DATA_REPLICATION_FACTOR,
+              System.getProperty(HIGH_PERFORMANCE_MODE_DATA_REGION_REPLICA_NUM));
           break;
         case STRONG_CONSISTENCY_CLUSTER_MODE:
           clusterConfigProperties.setProperty(
               CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS,
-              STRONG_CONSISTENCY_CLUSTER_MODE_CONFIG_NODE_CONSENSUS);
+              fromConsensusAbbrToFullName(
+                  System.getProperty(STRONG_CONSISTENCY_CLUSTER_MODE_CONFIG_NODE_CONSENSUS)));
           clusterConfigProperties.setProperty(
               SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS,
-              STRONG_CONSISTENCY_CLUSTER_MODE_SCHEMA_REGION_CONSENSUS);
+              fromConsensusAbbrToFullName(
+                  System.getProperty(STRONG_CONSISTENCY_CLUSTER_MODE_SCHEMA_REGION_CONSENSUS)));
           clusterConfigProperties.setProperty(
               DATA_REGION_CONSENSUS_PROTOCOL_CLASS,
-              STRONG_CONSISTENCY_CLUSTER_MODE_DATA_REGION_CONSENSUS);
+              fromConsensusAbbrToFullName(
+                  System.getProperty(STRONG_CONSISTENCY_CLUSTER_MODE_DATA_REGION_CONSENSUS)));
           clusterConfigProperties.setProperty(
-              SCHEMA_REPLICATION_FACTOR, STRONG_CONSISTENCY_CLUSTER_MODE_SCHEMA_REGION_REPLICA_NUM);
+              SCHEMA_REPLICATION_FACTOR,
+              System.getProperty(STRONG_CONSISTENCY_CLUSTER_MODE_SCHEMA_REGION_REPLICA_NUM));
           clusterConfigProperties.setProperty(
-              DATA_REPLICATION_FACTOR, STRONG_CONSISTENCY_CLUSTER_MODE_DATA_REGION_REPLICA_NUM);
+              DATA_REPLICATION_FACTOR,
+              System.getProperty(STRONG_CONSISTENCY_CLUSTER_MODE_DATA_REGION_REPLICA_NUM));
           break;
         default:
           // Print nothing to avoid polluting test outputs
