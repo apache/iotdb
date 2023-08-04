@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.extractor.realtime.assigner;
 
+import org.apache.iotdb.commons.concurrent.IoTDBDaemonThreadFactory;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 
@@ -27,9 +28,13 @@ import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
-import com.lmax.disruptor.util.DaemonThreadFactory;
+
+import static org.apache.iotdb.commons.concurrent.ThreadName.PIPE_EXTRACTOR_DISRUPTOR;
 
 public class DisruptorQueue {
+
+  private static final IoTDBDaemonThreadFactory THREAD_FACTORY =
+      new IoTDBDaemonThreadFactory(PIPE_EXTRACTOR_DISRUPTOR.getName());
 
   private final Disruptor<EventContainer> disruptor;
   private final RingBuffer<EventContainer> ringBuffer;
@@ -39,7 +44,7 @@ public class DisruptorQueue {
         new Disruptor<>(
             EventContainer::new,
             PipeConfig.getInstance().getPipeExtractorAssignerDisruptorRingBufferSize(),
-            DaemonThreadFactory.INSTANCE, // TODO
+            THREAD_FACTORY,
             ProducerType.MULTI,
             new BlockingWaitStrategy());
     disruptor.handleEventsWith(
