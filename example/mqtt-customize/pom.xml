@@ -25,11 +25,9 @@
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-examples</artifactId>
         <version>1.3.0-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>customize-mqtt-example</artifactId>
-    <name>Customized IoTDB-MQTT Examples</name>
-    <packaging>jar</packaging>
+    <name>IoTDB: Example: Customized MQTT</name>
     <dependencies>
         <!-- used by the server-->
         <dependency>

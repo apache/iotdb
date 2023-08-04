@@ -25,10 +25,9 @@
         <artifactId>iotdb-examples</artifactId>
         <groupId>org.apache.iotdb</groupId>
         <version>1.3.0-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>hadoop-example</artifactId>
-    <name>hadoop-example</name>
+    <name>IoTDB: Example: Apache Hadoop</name>
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>

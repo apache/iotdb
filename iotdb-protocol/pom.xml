@@ -23,16 +23,18 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.apache.iotdb</groupId>
-        <artifactId>iotdb-examples</artifactId>
+        <artifactId>iotdb-parent</artifactId>
         <version>1.3.0-SNAPSHOT</version>
     </parent>
-    <artifactId>tsfile-example</artifactId>
-    <name>IoTDB: Example: TSFile</name>
-    <dependencies>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>tsfile</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-    </dependencies>
+    <artifactId>iotdb-protocol</artifactId>
+    <packaging>pom</packaging>
+    <name>IoTDB: Protocol</name>
+    <modules>
+        <module>openapi</module>
+        <module>thrift</module>
+        <module>thrift-commons</module>
+        <module>thrift-confignode</module>
+        <module>thrift-iot-consensus</module>
+        <module>thrift-mlnode</module>
+    </modules>
 </project>
