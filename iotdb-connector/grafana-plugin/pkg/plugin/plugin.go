@@ -94,7 +94,6 @@ func (d *IoTDBDataSource) Dispose() {
 // The QueryDataResponse contains a map of RefID to the response for each query, and each response
 // contains Frames ([]*Frame).
 func (d *IoTDBDataSource) QueryData(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
-	log.DefaultLogger.Info("QueryData called", "request", req)
 	// create response struct
 	response := backend.NewQueryDataResponse()
 
@@ -376,7 +375,6 @@ func DataSourceUrlHandler(url string) string {
 // datasource configuration page which allows users to verify that
 // a datasource is working as expected.
 func (d *IoTDBDataSource) CheckHealth(_ context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
-	log.DefaultLogger.Info("CheckHealth called", "request", req)
 
 	var status = backend.HealthStatusOk
 	var message = "Data source is working"
