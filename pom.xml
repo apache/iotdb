@@ -1379,7 +1379,7 @@
                 <module>integration-test</module>
             </modules>
         </profile>
-        <!-- Enable the building of the tools (Currently this only adds building of the Trift module) -->
+        <!-- Enable the building of the tools (Currently this only adds building of the Thrift module) -->
         <profile>
             <id>with-tools</id>
             <modules>
