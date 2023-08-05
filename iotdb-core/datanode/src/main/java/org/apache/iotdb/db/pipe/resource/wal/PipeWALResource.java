@@ -162,4 +162,8 @@ public abstract class PipeWALResource implements Closeable {
 
     referenceCount.set(0);
   }
+
+  public int getReferenceCount() {
+    return referenceCount.get();
+  }
 }
