@@ -266,11 +266,18 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       TSStatus tsStatus = configNodeClient.setDatabase(databaseSchema);
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn(
-            "Failed to execute create database {} in config node, status is {}.",
-            databaseSchemaStatement.getDatabasePath(),
-            tsStatus);
-        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+        // If database already exists when loading, we do not throw exceptions to avoid printing too
+        // many logs
+        if ((TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()
+            && databaseSchemaStatement.getEnablePrintExceptionLog())) {
+          LOGGER.warn(
+              "Failed to execute create database {} in config node, status is {}.",
+              databaseSchemaStatement.getDatabasePath(),
+              tsStatus);
+          future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+        } else {
+          future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+        }
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
@@ -293,10 +300,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       TSStatus tsStatus = configNodeClient.alterDatabase(databaseSchema);
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.warn(
-            "Failed to execute create database {} in config node, status is {}.",
-            databaseSchemaStatement.getDatabasePath(),
-            tsStatus);
+        if (databaseSchemaStatement.getEnablePrintExceptionLog()) {
+          LOGGER.warn(
+              "Failed to execute alter database {} in config node, status is {}.",
+              databaseSchemaStatement.getDatabasePath(),
+              tsStatus);
+        }
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
