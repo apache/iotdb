@@ -24,23 +24,17 @@ import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtract
 import org.apache.iotdb.db.pipe.extractor.realtime.matcher.CachedSchemaPatternMatcher;
 import org.apache.iotdb.db.pipe.extractor.realtime.matcher.PipeDataRegionMatcher;
 
-import com.lmax.disruptor.dsl.ProducerType;
-
 public class PipeDataRegionAssigner {
 
   /** The matcher is used to match the event with the extractor based on the pattern. */
   private final PipeDataRegionMatcher matcher;
 
   /** The disruptor is used to assign the event to the extractor. */
-  private final DisruptorQueue<PipeRealtimeEvent> disruptor;
+  private final DisruptorQueue disruptor;
 
   public PipeDataRegionAssigner() {
     this.matcher = new CachedSchemaPatternMatcher();
-    this.disruptor =
-        new DisruptorQueue.Builder<PipeRealtimeEvent>()
-            .setProducerType(ProducerType.SINGLE)
-            .addEventHandler(this::assignToExtractor)
-            .build();
+    this.disruptor = new DisruptorQueue(this::assignToExtractor);
   }
 
   public void publishToAssign(PipeRealtimeEvent event) {
