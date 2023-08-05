@@ -125,6 +125,10 @@ Make sure `Java` is installed, if it's missing, simply install it via:
 
     sudo apt install libboost-all-dev
 
+#### OpenSSL header files
+
+    sudo apt -y install libssl-dev
+
 #### OpenSSL
 
 Usually OpenSSL is already installed, however it's missing the header files we need to compile.

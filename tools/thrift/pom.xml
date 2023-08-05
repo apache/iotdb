@@ -114,8 +114,6 @@
                                 <!-- Generate libthrift.a to compile IoTDB Session -->
                                 <option>-DWITH_STATIC_LIB=ON</option>
                                 <option>-DCMAKE_POSITION_INDEPENDENT_CODE=ON</option>
-                                <!-- Specify new version Bison path for Mac-OS, as the default version is too old -->
-                                <option>${bison.executable.dir}</option>
                             </options>
                         </configuration>
                     </execution>
@@ -159,4 +157,156 @@
             </plugin>
         </plugins>
     </build>
+    <profiles>
+        <profile>
+            <id>.os-unix</id>
+            <activation>
+                <os>
+                    <family>unix</family>
+                    <name>Linux</name>
+                    <arch>!aarch64</arch>
+                </os>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.googlecode.cmake-maven-project</groupId>
+                        <artifactId>cmake-maven-plugin</artifactId>
+                        <executions>
+                            <!-- Uses a CMake generator to generate the build using the build tool of choice -->
+                            <execution>
+                                <id>cmake-generate</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>generate</goal>
+                                </goals>
+                                <configuration>
+                                    <generator>${cmake.generator}</generator>
+                                    <sourcePath>${project.build.directory}/thrift-${thrift.version}</sourcePath>
+                                    <targetPath>${project.build.directory}/build</targetPath>
+                                    <options combine.children="append">
+                                        <!-- Tell the linker to build statically linked binaries -->
+                                        <option>-DCMAKE_EXE_LINKER_FLAGS=-static</option>
+                                        <option>-DZLIB_USE_STATIC_LIBS=ON</option>
+                                        <option>-DOPENSSL_USE_STATIC_LIBS=ON</option>
+                                    </options>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>.os-unix-arm</id>
+            <activation>
+                <os>
+                    <family>unix</family>
+                    <name>Linux</name>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.googlecode.cmake-maven-project</groupId>
+                        <artifactId>cmake-maven-plugin</artifactId>
+                        <executions>
+                            <!-- Uses a CMake generator to generate the build using the build tool of choice -->
+                            <execution>
+                                <id>cmake-generate</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>generate</goal>
+                                </goals>
+                                <configuration>
+                                    <generator>${cmake.generator}</generator>
+                                    <sourcePath>${project.build.directory}/thrift-${thrift.version}</sourcePath>
+                                    <targetPath>${project.build.directory}/build</targetPath>
+                                    <options combine.children="append">
+                                        <!-- Tell the linker to build statically linked binaries -->
+                                        <option>-DCMAKE_EXE_LINKER_FLAGS=-static</option>
+                                        <option>-DZLIB_USE_STATIC_LIBS=ON</option>
+                                        <option>-DOPENSSL_USE_STATIC_LIBS=ON</option>
+                                    </options>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>.os-mac</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                    <arch>!aarch64</arch>
+                </os>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.googlecode.cmake-maven-project</groupId>
+                        <artifactId>cmake-maven-plugin</artifactId>
+                        <executions>
+                            <!-- Uses a CMake generator to generate the build using the build tool of choice -->
+                            <execution>
+                                <id>cmake-generate</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>generate</goal>
+                                </goals>
+                                <configuration>
+                                    <generator>${cmake.generator}</generator>
+                                    <sourcePath>${project.build.directory}/thrift-${thrift.version}</sourcePath>
+                                    <targetPath>${project.build.directory}/build</targetPath>
+                                    <options combine.children="append">
+                                        <!-- Specify new version Bison path for Mac-OS, as the default version is too old -->
+                                        <option>-DBISON_EXECUTABLE=/usr/local/opt/bison/bin/bison</option>
+                                    </options>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>.os-mac-arm</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.googlecode.cmake-maven-project</groupId>
+                        <artifactId>cmake-maven-plugin</artifactId>
+                        <executions>
+                            <!-- Uses a CMake generator to generate the build using the build tool of choice -->
+                            <execution>
+                                <id>cmake-generate</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>generate</goal>
+                                </goals>
+                                <configuration>
+                                    <generator>${cmake.generator}</generator>
+                                    <sourcePath>${project.build.directory}/thrift-${thrift.version}</sourcePath>
+                                    <targetPath>${project.build.directory}/build</targetPath>
+                                    <options combine.children="append">
+                                        <!-- Specify new version Bison path for Mac-OS, as the default version is too old -->
+                                        <option>-DBISON_EXECUTABLE=/opt/homebrew/opt/bison/bin/bison</option>
+                                    </options>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
