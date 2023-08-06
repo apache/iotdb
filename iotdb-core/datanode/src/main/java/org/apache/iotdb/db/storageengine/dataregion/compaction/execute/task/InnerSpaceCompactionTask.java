@@ -486,13 +486,21 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         LOGGER.warn("Interrupted when allocating memory for compaction", e);
         Thread.currentThread().interrupt();
       } else if (e instanceof CompactionMemoryNotEnoughException) {
-        LOGGER.info("No enough memory for current compaction task {}", this, e);
+        LOGGER.warn("No enough memory for current compaction task {}", this, e);
       } else if (e instanceof CompactionFileCountExceededException) {
-        LOGGER.info("No enough file num for current compaction task {}", this, e);
+        LOGGER.warn("No enough file num for current compaction task {}", this, e);
         SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
       }
       releaseAllLocksAndResetStatus();
       return false;
+    } finally {
+      try {
+        if (innerSpaceEstimator != null) {
+          innerSpaceEstimator.close();
+        }
+      } catch (IOException e) {
+        LOGGER.warn("Failed to close InnerSpaceCompactionMemoryEstimator");
+      }
     }
     return true;
   }
