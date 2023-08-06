@@ -25,11 +25,9 @@
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
         <version>1.3.0-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>iotdb-distribution</artifactId>
-    <name>IoTDB Distribution</name>
-    <modules/>
+    <name>IoTDB: Distribution</name>
     <build>
         <plugins>
             <plugin>
@@ -50,7 +48,6 @@
                                 <descriptor>src/assembly/datanode.xml</descriptor>
                                 <descriptor>src/assembly/confignode.xml</descriptor>
                                 <descriptor>src/assembly/cli.xml</descriptor>
-                                <descriptor>src/assembly/client-cpp.xml</descriptor>
                                 <descriptor>src/assembly/grafana-plugin.xml</descriptor>
                                 <descriptor>src/assembly/library-udf.xml</descriptor>
                                 <descriptor>src/assembly/spark-connector.xml</descriptor>
@@ -87,7 +84,6 @@
                                         <include>apache-iotdb-${project.version}-datanode-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-cli-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-confignode-bin.zip</include>
-                                        <include>apache-iotdb-${project.version}-client-cpp-${os.classifier}-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-grafana-plugin-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-library-udf-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-spark-connector-bin.zip</include>
@@ -157,4 +153,59 @@
             <type>jar</type>
         </dependency>
     </dependencies>
+    <profiles>
+        <profile>
+            <id>with-cpp</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <version>${maven.assembly.version}</version>
+                        <executions>
+                            <!-- Package binaries-->
+                            <execution>
+                                <id>all-bin</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                                <configuration>
+                                    <descriptors combine.children="append">
+                                        <descriptor>src/assembly/client-cpp.xml</descriptor>
+                                    </descriptors>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!--
+                      Create SHA512 checksum files for the release artifacts.
+                    -->
+                    <plugin>
+                        <groupId>net.nicoulaj.maven.plugins</groupId>
+                        <artifactId>checksum-maven-plugin</artifactId>
+                        <version>1.8</version>
+                        <executions>
+                            <execution>
+                                <id>sign-source-release</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>files</goal>
+                                </goals>
+                                <configuration>
+                                    <fileSets>
+                                        <fileSet>
+                                            <includes combine.children="append">
+                                                <include>apache-iotdb-${project.version}-client-cpp-${os.classifier}-bin.zip</include>
+                                            </includes>
+                                        </fileSet>
+                                    </fileSets>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

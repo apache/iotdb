@@ -48,18 +48,23 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
     event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TABLET);
 
     if (!(event.getEvent() instanceof TabletInsertionEvent)) {
+      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
       return;
     }
 
-    if (!pendingQueue.offer(event)) {
-      LOGGER.warn(
-          "extract: pending queue of PipeRealtimeDataRegionLogExtractor {} "
-              + "has reached capacity, discard tablet event {}, current state {}",
-          this,
-          event,
-          event.getTsFileEpoch().getState(this));
+    if (!pendingQueue.waitedOffer(event)) {
       // this would not happen, but just in case.
-      // ListenableUnblockingPendingQueue is unbounded, so it should never reach capacity.
+      // pendingQueue is unbounded, so it should never reach capacity.
+      final String errorMessage =
+          String.format(
+              "extract: pending queue of PipeRealtimeDataRegionLogExtractor %s "
+                  + "has reached capacity, discard tablet event %s, current state %s",
+              this, event, event.getTsFileEpoch().getState(this));
+      LOGGER.error(errorMessage);
+      PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+
+      // ignore this event.
+      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
     }
   }
 
@@ -93,11 +98,12 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
                     + "the reference count can not be increased, "
                     + "the data represented by this event is lost",
                 realtimeEvent.getEvent());
-        LOGGER.warn(errorMessage);
+        LOGGER.error(errorMessage);
         PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
       }
 
       realtimeEvent.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
+
       if (suppliedEvent != null) {
         return suppliedEvent;
       }

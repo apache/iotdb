@@ -21,8 +21,11 @@ package org.apache.iotdb.commons.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
@@ -62,16 +65,31 @@ public class PipeMetaDeSerTest {
     PipeStaticMeta pipeStaticMeta1 = PipeStaticMeta.deserialize(staticByteBuffer);
     Assert.assertEquals(pipeStaticMeta, pipeStaticMeta1);
 
+    HybridProgressIndex hybridProgressIndex = new HybridProgressIndex();
+    hybridProgressIndex.updateToMinimumIsAfterProgressIndex(new SimpleProgressIndex(1, 2));
+    hybridProgressIndex.updateToMinimumIsAfterProgressIndex(new SimpleProgressIndex(2, 4));
+    hybridProgressIndex.updateToMinimumIsAfterProgressIndex(new IoTProgressIndex(3, 6L));
+
     PipeRuntimeMeta pipeRuntimeMeta =
         new PipeRuntimeMeta(
             new HashMap() {
               {
                 put(
-                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 456),
+                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 123),
                     new PipeTaskMeta(new MinimumProgressIndex(), 987));
                 put(
-                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 123),
+                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 234),
                     new PipeTaskMeta(new IoTProgressIndex(1, 2L), 789));
+                put(
+                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 345),
+                    new PipeTaskMeta(new SimpleProgressIndex(3, 4), 789));
+                put(
+                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 456),
+                    new PipeTaskMeta(hybridProgressIndex, 789));
+                put(
+                    new TConsensusGroupId(TConsensusGroupType.DataRegion, 567),
+                    new PipeTaskMeta(
+                        new RecoverProgressIndex(1, new SimpleProgressIndex(1, 9)), 123));
               }
             });
     ByteBuffer runtimeByteBuffer = pipeRuntimeMeta.serialize();

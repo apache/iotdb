@@ -48,8 +48,6 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
-      - name: Check Apache Rat
-        run: mvn -B apache-rat:check -P site -P code-coverage
       - name: Adjust network dynamic TCP ports range
         if: ${{ runner.os == 'Windows' }}
         shell: pwsh
@@ -72,6 +70,7 @@ jobs:
         # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
         run: |
           mvn clean verify \
+          -P with-integration-tests \
           -DskipUTs \
           -DintegrationTest.forkCount=2 \
           -pl integration-test \
