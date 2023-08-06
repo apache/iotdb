@@ -47,6 +47,7 @@ import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
+import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
@@ -2221,6 +2222,9 @@ public class DataRegion implements IDataRegionForQuery {
       }
       loadTsFileToUnSequence(
           tsfileToBeInserted, newTsFileResource, newFilePartitionId, deleteOriginFile);
+
+      PipeInsertionDataNodeListener.getInstance().listenToTsFile(dataRegionId, newTsFileResource);
+
       FileMetrics.getInstance()
           .addFile(
               newTsFileResource.getTsFile().length(),
@@ -2429,6 +2433,7 @@ public class DataRegion implements IDataRegionForQuery {
       } else {
         Files.copy(resourceFileToLoad.toPath(), targetResourceFile.toPath());
       }
+
     } catch (IOException e) {
       logger.error(
           "File renaming failed when loading .resource file. Origin: {}, Target: {}",
