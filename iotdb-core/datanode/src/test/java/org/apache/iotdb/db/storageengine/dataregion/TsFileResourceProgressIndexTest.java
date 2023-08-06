@@ -100,7 +100,7 @@ public class TsFileResourceProgressIndexTest {
     hybridProgressIndex.updateToMinimumIsAfterProgressIndex(
         new RecoverProgressIndex(2, new SimpleProgressIndex(4, 3)));
     hybridProgressIndex.updateToMinimumIsAfterProgressIndex(
-        new RecoverProgressIndex(3, new SimpleProgressIndex(5, 3)));
+        new RecoverProgressIndex(3, new SimpleProgressIndex(5, 5)));
     Assert.assertTrue(hybridProgressIndex.isAfter(new SimpleProgressIndex(6, 5)));
     Assert.assertTrue(
         hybridProgressIndex.isAfter(new RecoverProgressIndex(3, new SimpleProgressIndex(5, 4))));
