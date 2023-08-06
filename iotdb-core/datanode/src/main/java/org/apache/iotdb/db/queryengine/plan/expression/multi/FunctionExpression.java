@@ -95,11 +95,12 @@ public class FunctionExpression extends Expression {
 
   public FunctionExpression(
       String functionName,
+      LinkedHashMap<String, String> functionAttributes,
       List<Expression> expressions,
       Set<Expression> countTimeExpressions,
       String countTimeAlias) {
     this.functionName = functionName;
-    this.functionAttributes = new LinkedHashMap<>();
+    this.functionAttributes = functionAttributes;
     this.expressions = expressions;
     this.countTimeExpressions = countTimeExpressions;
     this.countTimeAlias = countTimeAlias;
