@@ -201,6 +201,8 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.bi
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.concatDeviceAndBindSchemaForExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.getMeasurementExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.normalizeExpression;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.searchAggregationExpressions;
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.searchSourceExpressions;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.toLowerCaseExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils.constructTargetDevice;
 import static org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils.constructTargetMeasurement;
@@ -521,54 +523,42 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             queryStatement.isLastQuery() || isGroupByLevel);
 
     Set<String> aliasSet = new HashSet<>();
-    Set<String> countTimeHeaderSet = new HashSet<>();
 
     int columnIndex = 0;
 
     for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
       List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
-
-      //      if (AGGREGATION.equals(resultColumn.getColumnType())
-      //          && (resultColumn.getExpression() instanceof FunctionExpression)
-      //          && (COUNT_TIME.equalsIgnoreCase(
-      //              ((FunctionExpression) resultColumn.getExpression()).getFunctionName()))) {
-      //        outputExpressions =
-      //            analyzeCountTimeForAlignTime(
-      //                resultColumn,
-      //                analysis,
-      //                schemaTree,
-      //                aliasSet,
-      //                outputExpressionMap,
-      //                columnIndex,
-      //                countTimeHeaderSet);
-      //        if (!outputExpressions.isEmpty()) {
-      //          columnIndex++;
-      //        }
-      //        continue;
-      //      }
-
       List<Expression> resultExpressions =
           bindSchemaForExpression(resultColumn.getExpression(), schemaTree);
-      for (Expression expression : resultExpressions) {
+
+      for (Expression resultExpression : resultExpressions) {
         if (paginationController.hasCurOffset()) {
           paginationController.consumeOffset();
         } else if (paginationController.hasCurLimit()) {
           if (isGroupByLevel) {
-            analyzeExpressionType(analysis, expression);
-            outputExpressions.add(new Pair<>(expression, resultColumn.getAlias()));
+            analyzeExpressionType(analysis, resultExpression);
+            outputExpressions.add(new Pair<>(resultExpression, resultColumn.getAlias()));
             queryStatement
                 .getGroupByLevelComponent()
                 .updateIsCountStar(resultColumn.getExpression());
           } else {
-            Expression normalizedExpression = normalizeExpression(expression);
+            Expression normalizedExpression = normalizeExpression(resultExpression);
             analyzeExpressionType(analysis, normalizedExpression);
 
-            checkAliasUniqueness(resultColumn.getAlias(), aliasSet);
+            if (queryStatement.isAggregationQuery()
+                && normalizedExpression.getOutputSymbol().contains(COUNT_TIME)) {
+              analyzeSelectOfCountTimeAggregation(analysis, resultExpression);
+            }
 
+            checkAliasUniqueness(resultColumn.getAlias(), aliasSet);
             outputExpressions.add(
                 new Pair<>(
                     normalizedExpression,
-                    analyzeAlias(resultColumn.getAlias(), expression, normalizedExpression)));
+                    analyzeAlias(
+                        resultColumn.getAlias(),
+                        resultExpression,
+                        normalizedExpression,
+                        queryStatement)));
           }
           paginationController.consumeLimit();
         } else {
@@ -581,62 +571,33 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return outputExpressionMap;
   }
 
-  /** process count_time aggregation query particularly */
-  private List<Pair<Expression, String>> analyzeCountTimeForAlignTime(
-      ResultColumn resultColumn,
-      Analysis analysis,
-      ISchemaTree schemaTree,
-      Set<String> aliasSet,
-      Map<Integer, List<Pair<Expression, String>>> outputExpressionMap,
-      int columnIndex,
-      Set<String> countTimeHeaderSet) {
-    // TODO limit, offset may have error?
-    Set<Expression> sourceExpression = analysis.getSourceExpressions();
-    if (sourceExpression == null) {
-      sourceExpression = new HashSet<>();
-      analysis.setSourceExpressions(sourceExpression);
+  /**
+   * process for count_time aggregation particularly, resultExpression can be `count_time(s1)`,
+   * `count_time(*)`, count_time(s1+s2), sum(s1)/count_time(*), etc.
+   */
+  private void analyzeSelectOfCountTimeAggregation(Analysis analysis, Expression resultExpression) {
+    Set<Expression> sourceTransformExpressions = analysis.getSourceTransformExpressions();
+    if (sourceTransformExpressions == null) {
+      sourceTransformExpressions = new HashSet<>();
+      analysis.setSourceTransformExpressions(sourceTransformExpressions);
     }
 
-    List<Expression> resultExpressions =
-        bindSchemaForExpression(resultColumn.getExpression().getExpressions().get(0), schemaTree);
-    for (Expression e : resultExpressions) {
-      Expression normalizedExpression = normalizeExpression(e);
-      analyzeExpressionType(analysis, normalizedExpression);
-      checkAliasUniqueness(resultColumn.getAlias(), aliasSet);
-      if (normalizedExpression instanceof TimeSeriesOperand) {
-        sourceExpression.add(normalizedExpression);
-      } else {
-        Set<Expression> sourceTransformExpressions = analysis.getSourceTransformExpressions();
-        if (sourceTransformExpressions == null) {
-          sourceTransformExpressions = new HashSet<>();
-          analysis.setSourceTransformExpressions(sourceTransformExpressions);
+    List<Expression> allAggregationExpressions = searchAggregationExpressions(resultExpression);
+    for (Expression subAggregationExpression : allAggregationExpressions) {
+      if (subAggregationExpression instanceof FunctionExpression
+          && COUNT_TIME.equalsIgnoreCase(
+              ((FunctionExpression) subAggregationExpression).getFunctionName())) {
+
+        // variable countTimeExpressions of FunctionExpression stores all the expressions that
+        // count_time aggregation used
+        for (Expression countTimeSourceExpression :
+            ((FunctionExpression) subAggregationExpression).getCountTimeExpressions()) {
+          analyzeExpressionType(analysis, countTimeSourceExpression);
+          sourceTransformExpressions.add(countTimeSourceExpression);
+          // sourceTransformExpressions.addAll(searchSourceExpressions(countTimeSourceExpression));
         }
-        sourceTransformExpressions.add(normalizedExpression);
       }
     }
-
-    Expression countTimeExpression =
-        new FunctionExpression(
-            COUNT_TIME, new LinkedHashMap<>(), Collections.singletonList(new TimestampOperand()));
-
-    Map<NodeRef<Expression>, TSDataType> dataTypeMap = new HashMap<>();
-    dataTypeMap.put(new NodeRef<>(countTimeExpression), TSDataType.INT64);
-    analysis.addTypes(dataTypeMap);
-
-    Expression measurementExpression =
-        getMeasurementExpression(resultColumn.getExpression(), analysis);
-    if (countTimeHeaderSet.contains(measurementExpression.toString())) {
-      return Collections.emptyList();
-    }
-    countTimeHeaderSet.add(measurementExpression.toString());
-    List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
-    if (resultColumn.getAlias() != null) {
-      outputExpressions.add(new Pair<>(countTimeExpression, resultColumn.getAlias()));
-    } else {
-      outputExpressions.add(new Pair<>(countTimeExpression, measurementExpression.toString()));
-    }
-    outputExpressionMap.put(columnIndex, outputExpressions);
-    return outputExpressions;
   }
 
   private void analyzeCountTimeForAlignDevice(
@@ -853,8 +814,25 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return rawExpression.getOutputSymbol();
     }
 
-    // the response header of count_time aggregation should be count_time(measurement)
-    if (normalizedExpression.getOutputSymbol().contains(COUNT_TIME)) {
+    return null;
+  }
+
+  private String analyzeAlias(
+      String resultColumnAlias,
+      Expression rawExpression,
+      Expression normalizedExpression,
+      QueryStatement queryStatement) {
+    if (resultColumnAlias != null) {
+      // use alias as output symbol
+      return resultColumnAlias;
+    }
+
+    if (!Objects.equals(normalizedExpression, rawExpression)) {
+      return rawExpression.getOutputSymbol();
+    }
+
+    if (queryStatement.isAggregationQuery()
+        && normalizedExpression.getOutputSymbol().contains(COUNT_TIME)) {
       return normalizedExpression.getTransformedOutputSymbol();
     }
 
@@ -918,8 +896,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       for (Expression expression : expressionsInHaving) {
         Set<Expression> aggregationExpressions = new LinkedHashSet<>();
         Set<Expression> normalizedAggregationExpressions = new LinkedHashSet<>();
-        for (Expression aggregationExpression :
-            ExpressionAnalyzer.searchAggregationExpressions(expression)) {
+        for (Expression aggregationExpression : searchAggregationExpressions(expression)) {
           Expression normalizedAggregationExpression = normalizeExpression(aggregationExpression);
 
           analyzeExpressionType(analysis, aggregationExpression);
@@ -1045,8 +1022,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Expression expression,
       Map<Expression, Set<Expression>> groupByLevelExpressions,
       Map<Expression, Set<Expression>> groupedExpressionToRawExpressionsMap) {
-    for (Expression groupedAggregationExpression :
-        ExpressionAnalyzer.searchAggregationExpressions(expression)) {
+    for (Expression groupedAggregationExpression : searchAggregationExpressions(expression)) {
       Set<Expression> groupedExpressionSet =
           groupedExpressionToRawExpressionsMap.get(groupedAggregationExpression).stream()
               .map(ExpressionAnalyzer::normalizeExpression)
@@ -1155,8 +1131,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Set<Expression> aggregationExpressions = new LinkedHashSet<>();
       Set<Expression> normalizedAggregationExpressions = new LinkedHashSet<>();
       for (Expression expression : expressionSet) {
-        for (Expression aggregationExpression :
-            ExpressionAnalyzer.searchAggregationExpressions(expression)) {
+        for (Expression aggregationExpression : searchAggregationExpressions(expression)) {
           Expression normalizedAggregationExpression = normalizeExpression(aggregationExpression);
           analyzeExpressionType(analysis, normalizedAggregationExpression);
 
@@ -1187,16 +1162,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     } else {
       Set<Expression> aggregationExpressions = new HashSet<>();
       for (Expression expression : analysis.getSelectExpressions()) {
-        aggregationExpressions.addAll(ExpressionAnalyzer.searchAggregationExpressions(expression));
+        aggregationExpressions.addAll(searchAggregationExpressions(expression));
       }
       if (queryStatement.hasHaving()) {
-        aggregationExpressions.addAll(
-            ExpressionAnalyzer.searchAggregationExpressions(analysis.getHavingExpression()));
+        aggregationExpressions.addAll(searchAggregationExpressions(analysis.getHavingExpression()));
       }
       if (queryStatement.hasOrderByExpression()) {
         for (Expression expression : analysis.getOrderByExpressions()) {
-          aggregationExpressions.addAll(
-              ExpressionAnalyzer.searchAggregationExpressions(expression));
+          aggregationExpressions.addAll(searchAggregationExpressions(expression));
         }
       }
       analysis.setAggregationExpressions(aggregationExpressions);
@@ -1277,22 +1250,24 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private void analyzeSourceTransform(Analysis analysis, QueryStatement queryStatement) {
-    Set<Expression> sourceTransformExpressions =
-        Optional.ofNullable(analysis.getSourceTransformExpressions()).orElse(new HashSet<>());
+    Set<Expression> sourceTransformExpressions = analysis.getSourceTransformExpressions();
+    if (sourceTransformExpressions == null) {
+      sourceTransformExpressions = new HashSet<>();
+      analysis.setSourceTransformExpressions(sourceTransformExpressions);
+    }
+
     if (queryStatement.isAggregationQuery()) {
-      for (Expression expression : analysis.getAggregationExpressions()) {
-        // count_time aggregation does not need transform
-        if (expression instanceof FunctionExpression
-            && COUNT_TIME.equalsIgnoreCase(((FunctionExpression) expression).getFunctionName())) {
-          FunctionExpression fx = (FunctionExpression) expression;
-          for (Expression e : fx.getCountTimeExpressions()) {
-            analyzeExpressionType(analysis, e);
-            sourceTransformExpressions.add(e);
-          }
-        } else {
-          // for AggregationExpression, only the first Expression of input need to transform
-          sourceTransformExpressions.add(expression.getExpressions().get(0));
+      for (Expression aggregationExpression : analysis.getAggregationExpressions()) {
+        // the expressions in count_time aggregation has been put in sourceTransformExpressions in
+        // the stage of analyzeSelect
+        if (aggregationExpression instanceof FunctionExpression
+            && COUNT_TIME.equalsIgnoreCase(
+                ((FunctionExpression) aggregationExpression).getFunctionName())) {
+          continue;
         }
+
+        // for AggregationExpression, only the first Expression of input need to transform
+        sourceTransformExpressions.add(aggregationExpression.getExpressions().get(0));
       }
       if (queryStatement.hasGroupByExpression()) {
         sourceTransformExpressions.add(analysis.getGroupByExpression());
@@ -1303,7 +1278,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         sourceTransformExpressions.addAll(analysis.getOrderByExpressions());
       }
     }
-    analysis.setSourceTransformExpressions(sourceTransformExpressions);
   }
 
   private void analyzeDeviceToSource(Analysis analysis, QueryStatement queryStatement) {
@@ -1318,7 +1292,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       Set<Expression> sourceExpressions = new LinkedHashSet<>();
       for (Expression expression : sourceTransformExpressions) {
-        sourceExpressions.addAll(ExpressionAnalyzer.searchSourceExpressions(expression));
+        sourceExpressions.addAll(searchSourceExpressions(expression));
       }
       deviceToSourceExpressions
           .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
@@ -1333,7 +1307,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         Expression whereExpression = deviceWhereExpressionEntry.getValue();
         deviceToSourceExpressions
             .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
-            .addAll(ExpressionAnalyzer.searchSourceExpressions(whereExpression));
+            .addAll(searchSourceExpressions(whereExpression));
       }
     }
 
@@ -1360,15 +1334,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Set<Expression> sourceExpressions = analysis.getSourceExpressions();
     if (sourceExpressions == null) {
       sourceExpressions = new HashSet<>();
+      analysis.setSourceExpressions(sourceExpressions);
     }
+
     for (Expression expression : analysis.getSourceTransformExpressions()) {
-      sourceExpressions.addAll(ExpressionAnalyzer.searchSourceExpressions(expression));
+      sourceExpressions.addAll(searchSourceExpressions(expression));
     }
     if (queryStatement.hasWhere()) {
-      sourceExpressions.addAll(
-          ExpressionAnalyzer.searchSourceExpressions(analysis.getWhereExpression()));
+      sourceExpressions.addAll(searchSourceExpressions(analysis.getWhereExpression()));
     }
-    analysis.setSourceExpressions(sourceExpressions);
   }
 
   private static final String WHERE_WRONG_TYPE_ERROR_MSG =
@@ -1450,17 +1424,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         deviceViewOutputExpressions.add(END_TIME_EXPRESSION);
       }
       for (Expression selectExpression : selectExpressions) {
-        deviceViewOutputExpressions.addAll(
-            ExpressionAnalyzer.searchAggregationExpressions(selectExpression));
+        deviceViewOutputExpressions.addAll(searchAggregationExpressions(selectExpression));
       }
       if (queryStatement.hasHaving()) {
         deviceViewOutputExpressions.addAll(
-            ExpressionAnalyzer.searchAggregationExpressions(analysis.getHavingExpression()));
+            searchAggregationExpressions(analysis.getHavingExpression()));
       }
       if (queryStatement.hasOrderByExpression()) {
         for (Expression orderByExpression : analysis.getOrderByExpressions()) {
-          deviceViewOutputExpressions.addAll(
-              ExpressionAnalyzer.searchAggregationExpressions(orderByExpression));
+          deviceViewOutputExpressions.addAll(searchAggregationExpressions(orderByExpression));
         }
       }
     } else {
@@ -1778,8 +1750,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                 groupByExpression.getExpressionString()));
       }
       // Aggregation expression shouldn't exist in group by clause.
-      List<Expression> aggregationExpression =
-          ExpressionAnalyzer.searchAggregationExpressions(expressions.get(0));
+      List<Expression> aggregationExpression = searchAggregationExpressions(expressions.get(0));
       if (aggregationExpression != null && !aggregationExpression.isEmpty()) {
         throw new SemanticException("Aggregation expression shouldn't exist in group by clause");
       }

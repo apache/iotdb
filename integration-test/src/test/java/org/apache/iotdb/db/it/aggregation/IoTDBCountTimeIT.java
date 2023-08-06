@@ -113,7 +113,7 @@ public class IoTDBCountTimeIT {
   public void normalQueryTest() {
     // align by time
     String[] expectedHeader = new String[] {"count_time(*),count_time(*)"};
-    String[] retArray = new String[] {"2,"};
+    String[] retArray = new String[] {"2,2,"};
     resultSetEqualTest(
         "SELECT COUNT_TIME(*) FROM root.db.d1, root.db.d2;", expectedHeader, retArray);
 
@@ -172,11 +172,31 @@ public class IoTDBCountTimeIT {
         retArray);
 
     expectedHeader = new String[] {"Time,count_time(s1),count_time(s2)"};
-    retArray = new String[] {"0,2,", "2,1,", "4,2,", "6,1,", "8,2,"};
+    retArray = new String[] {"0,2,2,", "2,1,1,", "4,2,2,", "6,1,1,", "8,2,2,"};
     resultSetEqualTest(
         "SELECT count_time(s1),count_time(s2) FROM root.downsampling.d1 GROUP BY([0, 10), 2ms);",
         expectedHeader,
         retArray);
+
+    expectedHeader = new String[] {"count_time(s1 + 1)"};
+    retArray = new String[] {"4,"};
+    resultSetEqualTest(
+        "SELECT count_time(s1+1) FROM root.downsampling.d1;", expectedHeader, retArray);
+
+    expectedHeader = new String[] {"count_time(s1 + 1)"};
+    retArray = new String[] {"7,"};
+    resultSetEqualTest(
+        "SELECT count_time(s1+1) FROM root.downsampling.*;", expectedHeader, retArray);
+
+    expectedHeader = new String[] {"count_time(s1 + s2)"};
+    retArray = new String[] {"8,"};
+    resultSetEqualTest(
+        "SELECT count_time(s1+s2) FROM root.downsampling.d1;", expectedHeader, retArray);
+
+    expectedHeader = new String[] {"count_time(s1 + s2)"};
+    retArray = new String[] {"8,"};
+    resultSetEqualTest(
+        "SELECT count_time(s1+s2) FROM root.downsampling.*;", expectedHeader, retArray);
 
     // align by device
     expectedHeader = new String[] {"Time,Device,count_time(*)"};
