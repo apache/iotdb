@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
+import org.apache.iotdb.db.service.metrics.PipeMetrics;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -42,6 +43,8 @@ public abstract class PipeSubtask
     implements FutureCallback<Boolean>, Callable<Boolean>, AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeSubtask.class);
+
+  private static final PipeMetrics PIPE_METRICS = PipeMetrics.getInstance();
 
   // Used for identifying the subtask
   protected final String taskID;
@@ -197,11 +200,13 @@ public abstract class PipeSubtask
   }
 
   protected void releaseLastEvent() {
+    long start = System.nanoTime();
     if (lastEvent != null) {
       if (lastEvent instanceof EnrichedEvent) {
         ((EnrichedEvent) lastEvent).decreaseReferenceCount(this.getClass().getName());
       }
       lastEvent = null;
+      PIPE_METRICS.recordEventCost(System.nanoTime() - start);
     }
   }
 
