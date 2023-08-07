@@ -59,6 +59,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
 
   private final List<IMeasurementSchema> measurementSchemas;
   private final IMeasurementSchema timeColumnMeasurementSchema;
+  private final Map<String, IMeasurementSchema> measurementSchemaMap;
 
   public AlignedSeriesCompactionExecutor(
       AbstractCompactionWriter compactionWriter,
@@ -75,6 +76,9 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
     this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
     this.measurementSchemas = measurementSchemas;
     this.timeColumnMeasurementSchema = measurementSchemas.get(0);
+    this.measurementSchemaMap = new HashMap<>();
+    this.measurementSchemas.forEach(
+        schema -> measurementSchemaMap.put(schema.getMeasurementId(), schema));
     // get source files which are sorted by the startTime of current device from old to new,
     // files that do not contain the current device have been filtered out as well.
     sortedSourceFiles.forEach(x -> fileList.add(new FileElement(x)));
@@ -325,11 +329,6 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
       chunkMetadataElement.needForceDecoding = true;
       return;
     }
-    Map<String, IMeasurementSchema> measurementSchemaMap = new HashMap<>();
-    measurementSchemas.forEach(
-        schema -> {
-          measurementSchemaMap.put(schema.getMeasurementId(), schema);
-        });
     for (Chunk chunk : chunkMetadataElement.valueChunks) {
       if (chunk == null) {
         continue;
