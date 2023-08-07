@@ -59,6 +59,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
   private final Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap;
 
   private final List<IMeasurementSchema> measurementSchemas;
+  private final IMeasurementSchema timeColumnMeasurementSchema;
 
   @SuppressWarnings("squid:S107")
   public AlignedSeriesCompactionExecutor(
@@ -75,6 +76,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
         compactionWriter, readerCacheMap, modificationCacheMap, deviceId, true, subTaskId, summary);
     this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
     this.measurementSchemas = measurementSchemas;
+    this.timeColumnMeasurementSchema = measurementSchemas.get(0);
     // get source files which are sorted by the startTime of current device from old to new,
     // files that do not contain the current device have been filtered out as well.
     sortedSourceFiles.forEach(x -> fileList.add(new FileElement(x)));
@@ -349,18 +351,25 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
   }
 
   void setForceDecoding(ChunkMetadataElement chunkMetadataElement) {
-    IMeasurementSchema timeChunkSchema = measurementSchemas.get(0);
-    if (timeChunkSchema.getCompressor()
+    if (timeColumnMeasurementSchema.getCompressor()
             != chunkMetadataElement.chunk.getHeader().getCompressionType()
-        || timeChunkSchema.getEncodingType()
+        || timeColumnMeasurementSchema.getEncodingType()
             != chunkMetadataElement.chunk.getHeader().getEncodingType()) {
       chunkMetadataElement.needForceDecoding = true;
       return;
     }
-    for (int i = 1; i < measurementSchemas.size(); i++) {
-      ChunkHeader header = chunkMetadataElement.valueChunks.get(i - 1).getHeader();
-      if (header.getCompressionType() != measurementSchemas.get(i).getCompressor()
-          || header.getEncodingType() != measurementSchemas.get(i).getEncodingType()) {
+    int currentValueChunkIndex = 0;
+    for (IMeasurementSchema currentMeasurementSchema : measurementSchemas) {
+      ChunkHeader currentValueChunk =
+          chunkMetadataElement.valueChunks.get(currentValueChunkIndex).getHeader();
+      if (!currentMeasurementSchema
+          .getMeasurementId()
+          .equals(currentValueChunk.getMeasurementID())) {
+        continue;
+      }
+      currentValueChunkIndex++;
+      if (currentValueChunk.getCompressionType() != currentMeasurementSchema.getCompressor()
+          || currentValueChunk.getEncodingType() != currentMeasurementSchema.getEncodingType()) {
         chunkMetadataElement.needForceDecoding = true;
         return;
       }
