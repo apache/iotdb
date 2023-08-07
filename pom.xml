@@ -1372,7 +1372,7 @@
             </dependencies>
         </profile>
         <profile>
-            <id>.thrift-generation</id>
+            <id>.thrift-generation-win</id>
             <activation>
                 <os>
                     <family>windows</family>
