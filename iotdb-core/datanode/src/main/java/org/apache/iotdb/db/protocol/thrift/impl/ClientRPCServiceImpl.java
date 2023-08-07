@@ -952,7 +952,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       paths.add(req.deviceId + "." + sensor);
     }
     TSLastDataQueryReq tsLastDataQueryReq =
-        new TSLastDataQueryReq(req.sessionId, paths, 0, req.statementId);
+        new TSLastDataQueryReq(req.sessionId, paths, Long.MIN_VALUE, req.statementId);
     tsLastDataQueryReq.setFetchSize(req.fetchSize);
     tsLastDataQueryReq.setEnableRedirectQuery(req.enableRedirectQuery);
     tsLastDataQueryReq.setLegalPathNodes(req.legalPathNodes);

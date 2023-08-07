@@ -197,18 +197,21 @@ public class StatementGenerator {
         new ResultColumn(
             new TimeSeriesOperand(new PartialPath("", false)), ResultColumn.ColumnType.RAW));
 
-    // set query filter
-    WhereCondition whereCondition = new WhereCondition();
-    GreaterEqualExpression predicate =
-        new GreaterEqualExpression(
-            new TimestampOperand(),
-            new ConstantOperand(TSDataType.INT64, Long.toString(lastDataQueryReq.getTime())));
-    whereCondition.setPredicate(predicate);
-
     QueryStatement lastQueryStatement = new QueryStatement();
+
+    if (lastDataQueryReq.getTime() != Long.MIN_VALUE) {
+      // set query filter
+      WhereCondition whereCondition = new WhereCondition();
+      GreaterEqualExpression predicate =
+          new GreaterEqualExpression(
+              new TimestampOperand(),
+              new ConstantOperand(TSDataType.INT64, Long.toString(lastDataQueryReq.getTime())));
+      whereCondition.setPredicate(predicate);
+      lastQueryStatement.setWhereCondition(whereCondition);
+    }
+
     lastQueryStatement.setSelectComponent(selectComponent);
     lastQueryStatement.setFromComponent(fromComponent);
-    lastQueryStatement.setWhereCondition(whereCondition);
     PERFORMANCE_OVERVIEW_METRICS.recordParseCost(System.nanoTime() - startTime);
 
     return lastQueryStatement;
