@@ -326,6 +326,9 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
     }
     int currentValueChunkIndex = 0;
     for (IMeasurementSchema currentMeasurementSchema : measurementSchemas) {
+      if (currentValueChunkIndex >= chunkMetadataElement.valueChunks.size()) {
+        return;
+      }
       ChunkHeader currentValueChunk =
           chunkMetadataElement.valueChunks.get(currentValueChunkIndex).getHeader();
       if (!currentMeasurementSchema
