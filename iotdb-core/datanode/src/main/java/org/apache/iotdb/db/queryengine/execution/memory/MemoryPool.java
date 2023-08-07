@@ -188,7 +188,7 @@ public class MemoryPool {
       // next() of root operator returns no data)
       if (fragmentRelatedMemory != null) {
         hasPotentialMemoryLeak =
-            fragmentRelatedMemory.values().stream().anyMatch(value -> value != 0);
+            fragmentRelatedMemory.values().stream().anyMatch(value -> value != 0L);
       }
       synchronized (queryMemoryReservations) {
         queryRelatedMemory.remove(fragmentInstanceId);
@@ -197,9 +197,10 @@ public class MemoryPool {
         }
       }
       if (hasPotentialMemoryLeak) {
+        // hasPotentialMemoryLeak means that fragmentRelatedMemory is not null
         List<Map.Entry<String, Long>> invalidEntryList =
             fragmentRelatedMemory.entrySet().stream()
-                .filter(entry -> entry.getValue() != 0)
+                .filter(entry -> entry.getValue() != 0L)
                 .collect(Collectors.toList());
         throw new MemoryLeakException(
             String.format(
