@@ -1184,6 +1184,7 @@
             </activation>
             <properties>
                 <os.classifier>windows-x86_64</os.classifier>
+                <thrift.download-url>https://archive.apache.org/dist/thrift/${thrift.version}/thrift-${thrift.version}.exe</thrift.download-url>
                 <cmake.generator>Visual Studio 17 2022</cmake.generator>
                 <thrift.executable>Release/thrift.exe</thrift.executable>
             </properties>
@@ -1273,6 +1274,9 @@
         <profile>
             <id>.thrift-generation</id>
             <activation>
+                <os>
+                    <family>unix</family>
+                </os>
                 <file>
                     <exists>src/main/thrift</exists>
                 </file>
@@ -1305,6 +1309,98 @@
                                             <outputDirectory>${project.build.directory}/thrift</outputDirectory>
                                         </artifactItem>
                                     </artifactItems>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.thrift.tools</groupId>
+                        <artifactId>maven-thrift-plugin</artifactId>
+                        <version>0.1.11</version>
+                        <executions>
+                            <execution>
+                                <id>generate-thrift-sources-java</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>compile</goal>
+                                </goals>
+                                <configuration>
+                                    <generator>java</generator>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>generate-thrift-sources-python</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>compile</goal>
+                                </goals>
+                                <configuration>
+                                    <generator>py</generator>
+                                    <includes>**/common.thrift,**/client.thrift,**/datanode.thrift,**/confignode.thrift,**/mlnode.thrift</includes>
+                                    <outputDirectory>${project.build.directory}/generated-sources-python/</outputDirectory>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>generate-thrift-sources-go</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>compile</goal>
+                                </goals>
+                                <configuration>
+                                    <generator>go</generator>
+                                    <includes>**/common.thrift,**/client.thrift</includes>
+                                    <outputDirectory>${project.build.directory}/generated-sources-go</outputDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
+                            <thriftSourceRoot>${project.basedir}/src/main/thrift</thriftSourceRoot>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+            <dependencies>
+                <!-- This ensures the iotdb-tools-thift module is build first -->
+                <dependency>
+                    <groupId>org.apache.iotdb</groupId>
+                    <artifactId>iotdb-tools-thrift</artifactId>
+                    <version>1.3.0-SNAPSHOT</version>
+                    <type>pom</type>
+                    <scope>provided</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>.thrift-generation</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                </os>
+                <file>
+                    <exists>src/main/thrift</exists>
+                </file>
+            </activation>
+            <properties>
+                <thrift.exec.absolute.path>${project.build.directory}/thrift/${thrift.executable}</thrift.exec.absolute.path>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.googlecode.maven-download-plugin</groupId>
+                        <artifactId>download-maven-plugin</artifactId>
+                        <version>1.6.7</version>
+                        <executions>
+                            <execution>
+                                <id>get-thrift-executable</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>wget</goal>
+                                </goals>
+                                <configuration>
+                                    <url>${thrift.download-url}</url>
+                                    <outputDirectory>${project.build.directory}/thrift</outputDirectory>
+                                    <outputFileName>${thrift.executable}</outputFileName>
                                 </configuration>
                             </execution>
                         </executions>
