@@ -63,7 +63,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -76,7 +75,6 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 /**
  * This class encapsulates {@link IWALBuffer} and {@link CheckpointManager}. If search is enabled,
@@ -187,6 +185,7 @@ public class WALNode implements IWALNode {
   }
 
   // region methods for pipe
+
   /**
    * Pin the wal files of the given memory table. Notice: cannot pin one memTable too long,
    * otherwise the wal disk usage may too large.
@@ -208,6 +207,7 @@ public class WALNode implements IWALNode {
   // endregion
 
   // region Task to delete outdated .wal files
+
   /** Delete outdated .wal files. */
   public void deleteOutdatedFiles() {
     try {
@@ -218,22 +218,23 @@ public class WALNode implements IWALNode {
   }
 
   private class DeleteOutdatedFileTask implements Runnable {
+    private static final int MAX_RECURSION_TIME = 5;
     // .wal files whose version ids are less than first valid version id should be deleted
     private long firstValidVersionId;
     // the effective information ratio
-    private double effectiveInfoRatio = 1d;
+    private double effectiveInfoRatio = 0d;
 
     private List<Long> pinnedMemTableIds;
 
     private File[] filesShouldDelete;
 
     private int fileIndexAfterFilterSafelyDeleteIndex = Integer.MAX_VALUE;
-    private List<String> successfullyDeleted = new ArrayList<>();
-    private long deleteFileSize = 0;
+    private List<Long> successfullyDeleted;
+    private long deleteFileSize;
 
-    public DeleteOutdatedFileTask() {
-      init();
-    }
+    private int recursionTime = 0;
+
+    public DeleteOutdatedFileTask() {}
 
     private void init() {
       this.firstValidVersionId = initFirstValidWALVersionId();
@@ -244,6 +245,8 @@ public class WALNode implements IWALNode {
       this.pinnedMemTableIds = initPinnedMemTableIds();
       WALFileUtils.ascSortByVersionId(filesShouldDelete);
       this.fileIndexAfterFilterSafelyDeleteIndex = initFileIndexAfterFilterSafelyDeleteIndex();
+      this.successfullyDeleted = new ArrayList<>();
+      this.deleteFileSize = 0;
     }
 
     private List<Long> initPinnedMemTableIds() {
@@ -262,17 +265,29 @@ public class WALNode implements IWALNode {
 
     @Override
     public void run() {
-      // delete outdated WAL files and record which delete successfully and which delete failed.
-      deleteOutdatedFiles();
+      // The intent of the loop execution here is to try to get as many memTable flush or snapshot
+      // as possible when the valid information ratio is less than the configured value.
+      while (recursionTime < MAX_RECURSION_TIME) {
+        // init delete outdated file task fields
+        init();
 
-      // update current effective info ration
-      updateEffectiveInfoRationAndUpdateMetric();
+        // delete outdated WAL files and record which delete successfully and which delete failed.
+        deleteOutdatedFilesAndUpdateMetric();
 
-      // decide whether to snapshot or flush based on the effective info ration
-      snapshotOrFlushMemTable();
+        // summary the execution result and output a log
+        summarizeExecuteResult();
 
-      // summary the execution result and output a log
-      summarizeExecuteResult();
+        // update current effective info ration
+        updateEffectiveInfoRationAndUpdateMetric();
+
+        // decide whether to snapshot or flush based on the effective info ration and throttle
+        // threshold
+        if (!snapshotOrFlushMemTable()
+            && safelyDeletedSearchIndex != DEFAULT_SAFELY_DELETED_SEARCH_INDEX) {
+          return;
+        }
+        recursionTime++;
+      }
     }
 
     private void updateEffectiveInfoRationAndUpdateMetric() {
@@ -301,45 +316,38 @@ public class WALNode implements IWALNode {
         return;
       }
 
-      buffer.subtractDiskUsage(deleteFileSize);
-      buffer.subtractFileNum(successfullyDeleted.size());
-      for (int i = 0; i < successfullyDeleted.size(); i++) {
-        long versionId = WALFileUtils.parseVersionId(successfullyDeleted.get(i));
-        Long memTableRamCostSum = walFileVersionId2MemTablesTotalCost.remove(versionId);
-        if (memTableRamCostSum != null) {
-          totalCostOfFlushedMemTables.addAndGet(-memTableRamCostSum);
-        }
-      }
-
       if (!pinnedMemTableIds.isEmpty()
           || fileIndexAfterFilterSafelyDeleteIndex < filesShouldDelete.length) {
-        StringBuilder summary =
-            new StringBuilder(
-                String.format(
-                    "wal node-%s delete outdated summary:the files that should be deleted is: [ %s ],successfully deleted file is: [ %s ],firstValidVersionId is %s .The following reasons influenced the result: %s",
-                    identifier,
-                    Arrays.stream(filesShouldDelete)
-                        .map(File::getName)
-                        .collect(Collectors.joining(",")),
-                    StringUtils.join(successfullyDeleted, ","),
-                    firstValidVersionId,
-                    System.getProperty("line.separator")));
+        if (logger.isDebugEnabled()) {
+          StringBuilder summary =
+              new StringBuilder(
+                  String.format(
+                      "wal node-%s delete outdated files summary:the range that should be removed is: [%d,%d],delete successful is [%s],end file index is: [%s].The following reasons influenced the result: %s",
+                      identifier,
+                      WALFileUtils.parseVersionId(filesShouldDelete[0].getName()),
+                      WALFileUtils.parseVersionId(
+                          filesShouldDelete[filesShouldDelete.length - 1].getName()),
+                      StringUtils.join(successfullyDeleted, ","),
+                      fileIndexAfterFilterSafelyDeleteIndex,
+                      System.getProperty("line.separator")));
 
-        if (!pinnedMemTableIds.isEmpty()) {
-          summary
-              .append("- MemTable has been flushed but pinned by PIPE,the MemTableId list is : ")
-              .append(StringUtils.join(pinnedMemTableIds, ","))
-              .append(".")
-              .append(System.getProperty("line.separator"));
+          if (!pinnedMemTableIds.isEmpty()) {
+            summary
+                .append("- MemTable has been flushed but pinned by PIPE,the MemTableId list is : ")
+                .append(StringUtils.join(pinnedMemTableIds, ","))
+                .append(".")
+                .append(System.getProperty("line.separator"));
+          }
+          if (fileIndexAfterFilterSafelyDeleteIndex < filesShouldDelete.length) {
+            summary.append(
+                String.format(
+                    "- The data in the wal file was not consumed by the consensus group,current search index is %d,safely delete index is %d",
+                    getCurrentSearchIndex(), safelyDeletedSearchIndex));
+          }
+          String summaryLog = summary.toString();
+          logger.debug(summaryLog);
         }
-        if (fileIndexAfterFilterSafelyDeleteIndex < filesShouldDelete.length) {
-          summary.append(
-              String.format(
-                  "- MemTable contained in the wal file was flushed, but the data in the file was not consumed by the consensus group.current searchIndex is %d,safelyDeleteIndex is %d",
-                  getCurrentSearchIndex(), safelyDeletedSearchIndex));
-        }
-        String summaryLog = summary.toString();
-        logger.warn(summaryLog);
+
       } else {
         logger.debug(
             "Successfully delete {} outdated wal files for wal node-{},first valid version id is {}",
@@ -350,15 +358,20 @@ public class WALNode implements IWALNode {
     }
 
     /** Delete obsolete wal files while recording which succeeded or failed */
-    private void deleteOutdatedFiles() {
+    private void deleteOutdatedFilesAndUpdateMetric() {
       if (filesShouldDelete.length == 0) {
         return;
       }
       for (int i = 0; i < fileIndexAfterFilterSafelyDeleteIndex; ++i) {
         long fileSize = filesShouldDelete[i].length();
+        long versionId = WALFileUtils.parseVersionId(filesShouldDelete[i].getName());
         if (filesShouldDelete[i].delete()) {
           deleteFileSize += fileSize;
-          successfullyDeleted.add(filesShouldDelete[i].getName());
+          Long memTableRamCostSum = walFileVersionId2MemTablesTotalCost.remove(versionId);
+          if (memTableRamCostSum != null) {
+            totalCostOfFlushedMemTables.addAndGet(-memTableRamCostSum);
+          }
+          successfullyDeleted.add(versionId);
         } else {
           logger.info(
               "Fail to delete outdated wal file {} of wal node-{}.",
@@ -366,6 +379,8 @@ public class WALNode implements IWALNode {
               identifier);
         }
       }
+      buffer.subtractDiskUsage(deleteFileSize);
+      buffer.subtractFileNum(successfullyDeleted.size());
     }
 
     private int initFileIndexAfterFilterSafelyDeleteIndex() {
@@ -410,14 +425,14 @@ public class WALNode implements IWALNode {
      *
      * @return true if snapshot or flush is executed successfully
      */
-    private void snapshotOrFlushMemTable() {
+    private boolean snapshotOrFlushMemTable() {
       if (!shouldSnapshotOrFlush()) {
-        return;
+        return false;
       }
       // find oldest memTable
       MemTableInfo oldestMemTableInfo = checkpointManager.getOldestMemTableInfo();
       if (oldestMemTableInfo == null) {
-        return;
+        return false;
       }
       if (oldestMemTableInfo.isPinned()) {
         logger.warn(
@@ -427,7 +442,7 @@ public class WALNode implements IWALNode {
             config.getWalMinEffectiveInfoRatio(),
             oldestMemTableInfo.getMemTableId(),
             oldestMemTableInfo.getPinCount());
-        return;
+        return false;
       }
       IMemTable oldestMemTable = oldestMemTableInfo.getMemTable();
 
@@ -441,7 +456,7 @@ public class WALNode implements IWALNode {
                 .getDataRegion(new DataRegionId(TsFileUtils.getDataRegionId(oldestTsFile)));
       } catch (Exception e) {
         logger.error("Fail to get data region processor for {}", oldestTsFile, e);
-        return;
+        return false;
       }
 
       // snapshot or flush memTable, flush memTable when it belongs to an old time partition, or
@@ -459,6 +474,7 @@ public class WALNode implements IWALNode {
         WRITING_METRICS.recordMemTableRamWhenCauseSnapshot(
             identifier, oldestMemTableTVListsRamCost);
       }
+      return true;
     }
 
     private void flushMemTable(DataRegion dataRegion, File tsFile, IMemTable memTable) {
