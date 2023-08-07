@@ -33,11 +33,13 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 /** A thread-safe memory pool. */
 public class MemoryPool {
@@ -195,8 +197,14 @@ public class MemoryPool {
         }
       }
       if (hasPotentialMemoryLeak) {
+        List<Map.Entry<String, Long>> invalidEntryList =
+            fragmentRelatedMemory.entrySet().stream()
+                .filter(entry -> entry.getValue() != 0)
+                .collect(Collectors.toList());
         throw new MemoryLeakException(
-            "PlanNode related memory is not zero when trying to deregister FI from query memory pool. QueryId is : {}, FragmentInstanceId is : {}, PlanNode related memory is : {}.");
+            String.format(
+                "PlanNode related memory is not zero when trying to deregister FI from query memory pool. QueryId is : %s, FragmentInstanceId is : %s, Non-zero PlanNode related memory is : %s.",
+                queryId, fragmentInstanceId, invalidEntryList));
       }
     }
   }
