@@ -2398,7 +2398,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           .computeIfAbsent(TIMESTAMP_EXPRESSION_STRING, key -> new ArrayList<>())
           .add(new InputLocation(tsBlockIndex, -1));
       int valueColumnIndex = 0;
-      valueColumnIndex++;
       for (String columnName : childNode.getOutputColumnNames()) {
         outputMappings
             .computeIfAbsent(columnName, key -> new ArrayList<>())
