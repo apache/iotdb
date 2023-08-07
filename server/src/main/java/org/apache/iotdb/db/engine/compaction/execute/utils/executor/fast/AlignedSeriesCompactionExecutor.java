@@ -333,12 +333,12 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
           .equals(currentValueChunk.getMeasurementID())) {
         continue;
       }
-      currentValueChunkIndex++;
       if (currentValueChunk.getCompressionType() != currentMeasurementSchema.getCompressor()
           || currentValueChunk.getEncodingType() != currentMeasurementSchema.getEncodingType()) {
         chunkMetadataElement.needForceDecoding = true;
         return;
       }
+      currentValueChunkIndex++;
     }
   }
 
