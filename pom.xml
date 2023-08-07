@@ -1153,7 +1153,6 @@
                 </os>
             </activation>
             <properties>
-                <os.classifier>mac-x86_64</os.classifier>
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <thrift.executable>thrift</thrift.executable>
                 <boost.include.dir>/usr/local/include</boost.include.dir>
