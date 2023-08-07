@@ -2492,8 +2492,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitLoadFile(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
 
-    Map<String, Map<MeasurementSchema, File>> device2Schemas = new HashMap<>();
-    Map<String, Pair<Boolean, File>> device2IsAligned = new HashMap<>();
     int tsfileNum = loadTsFileStatement.getTsFiles().size();
 
     // analyze tsfile metadata
@@ -2509,7 +2507,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                 tsFile.getPath()));
       }
       try {
-        analyzeTsFile(loadTsFileStatement, tsFile, device2Schemas, device2IsAligned, context);
+        analyzeTsFile(loadTsFileStatement, tsFile, context);
       } catch (IllegalArgumentException e) {
         logger.warn(
             String.format(
@@ -2598,21 +2596,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return analysis;
   }
 
-  private void analyzeTsFile(
-      LoadTsFileStatement statement,
-      File tsFile,
-      Map<String, Map<MeasurementSchema, File>> device2Schemas,
-      Map<String, Pair<Boolean, File>> device2IsAligned,
-      MPPQueryContext context)
+  private void analyzeTsFile(LoadTsFileStatement statement, File tsFile, MPPQueryContext context)
       throws IOException, VerifyMetadataException {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
-      TsFileResource tsFileResource = new TsFileResource(tsFile);
-      final boolean isAlreadyExistBeforeLoad = tsFileResource.resourceFileExists();
-      boolean isDeserializeDone = false;
+      Map<String, List<TimeseriesMetadata>> device2Metadata = null;
 
-      Map<String, List<TimeseriesMetadata>> device2Metadata = reader.getAllTimeseriesMetadata(true);
       if (IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
           || statement.isVerifySchema()) {
+        device2Metadata = reader.getAllTimeseriesMetadata(true);
+        Map<String, Map<MeasurementSchema, File>> device2Schemas = new HashMap<>();
+        Map<String, Pair<Boolean, File>> device2IsAligned = new HashMap<>();
         // construct schema
         int deviceSize = device2Metadata.size();
         int deviceCount = 0;
@@ -2656,30 +2649,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                     && timeseriesIndex == timeseriesMetadataListSize - 1)) {
 
               // check if the device has the same aligned definition in all tsfiles
-              if (isDeviceAligned(device2IsAligned, device, tsFile, isAligned)) {
-                // case 1: if the tsfile has tsfile resource before loading, we should deserialize
-                // it only once.
-                if (isAlreadyExistBeforeLoad) {
-                  if (!isDeserializeDone) {
-                    tsFileResource.deserialize();
-                    statement.addTsFileResource(tsFileResource);
-                    isDeserializeDone = true;
-                  }
-
-                } else if (!tsFileResource.resourceFileExists()) {
-                  // case 2: if the tsfile has no tsfile resource before loading, we should
-                  // construct it.
-                  tsFileResource = constructTsFileResource(tsFile, device2Metadata, reader);
-                  statement.addTsFileResource(tsFileResource);
-
-                } else {
-                  // case 3: the tsfile resource is created when loading, so we just need to update
-                  // the resource.
-                  FileLoaderUtils.updateTsFileResource(device2Metadata, tsFileResource);
-                }
-
-                tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
-
+              if (hasDeviceSameDefinition(device2IsAligned, device, tsFile, isAligned)) {
                 autoCreateAndVerifySchema(statement, device2Schemas, device2IsAligned, context);
                 timeseriesCount = 0;
               } else {
@@ -2699,7 +2669,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           // when the number of devices does not exceed the threshold and it's not the last
           // timeseries of the last device, we also need to check if the device has the same aligned
           // definition in all tsfiles before going to the next device loop.
-          if (!isDeviceAligned(device2IsAligned, device, tsFile, isAligned)) {
+          if (!hasDeviceSameDefinition(device2IsAligned, device, tsFile, isAligned)) {
             throw new VerifyMetadataException(
                 String.format(
                     "Device %s has different aligned definition in tsFile %s and other TsFile.",
@@ -2707,10 +2677,28 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           }
         }
       }
+
+      // construct TsFileResource
+      TsFileResource tsFileResource = new TsFileResource(tsFile);
+
+      if (!tsFileResource.resourceFileExists()) {
+        if (device2Metadata == null) {
+          device2Metadata = reader.getAllTimeseriesMetadata(true);
+        }
+        FileLoaderUtils.updateTsFileResource(
+            device2Metadata, tsFileResource); // serialize it in LoadSingleTsFileNode
+        tsFileResource.updatePlanIndexes(reader.getMinPlanIndex());
+        tsFileResource.updatePlanIndexes(reader.getMaxPlanIndex());
+      } else {
+        tsFileResource.deserialize();
+      }
+
+      tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
+      statement.addTsFileResource(tsFileResource);
     }
   }
 
-  private boolean isDeviceAligned(
+  private boolean hasDeviceSameDefinition(
       Map<String, Pair<Boolean, File>> device2IsAligned,
       String device,
       File tsFile,
@@ -2719,25 +2707,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         .computeIfAbsent(device, o -> new Pair<>(isAligned, tsFile))
         .left
         .equals(isAligned);
-  }
-
-  private TsFileResource constructTsFileResource(
-      File tsFile,
-      Map<String, List<TimeseriesMetadata>> device2Metadata,
-      TsFileSequenceReader reader)
-      throws IOException {
-    TsFileResource resource = new TsFileResource(tsFile);
-    if (!resource.resourceFileExists()) {
-      FileLoaderUtils.updateTsFileResource(
-          device2Metadata, resource); // serialize it in LoadSingleTsFileNode
-      resource.updatePlanIndexes(reader.getMinPlanIndex());
-      resource.updatePlanIndexes(reader.getMaxPlanIndex());
-    } else {
-      resource.deserialize();
-    }
-
-    resource.setStatus(TsFileResourceStatus.NORMAL);
-    return resource;
   }
 
   private void autoCreateSg(int sgLevel, Map<String, Map<MeasurementSchema, File>> device2Schemas)
@@ -2762,11 +2731,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       DatabaseSchemaStatement statement =
           new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
       statement.setDatabasePath(sgPath);
-      executeSetStorageGroupStatement(statement);
+      // load doesn't print exception log
+      statement.setEnablePrintExceptionLog(false);
+      executeSetDatabaseStatement(statement);
     }
   }
 
-  private void executeSetStorageGroupStatement(Statement statement) throws LoadFileException {
+  private void executeSetDatabaseStatement(Statement statement) throws LoadFileException {
     long queryId = SessionManager.getInstance().requestQueryId();
     ExecutionResult result =
         Coordinator.getInstance()
