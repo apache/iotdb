@@ -48,6 +48,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -358,28 +359,26 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
       chunkMetadataElement.needForceDecoding = true;
       return;
     }
-    int currentValueChunkIndex = 0;
-    for (IMeasurementSchema currentMeasurementSchema : measurementSchemas) {
-      if (currentValueChunkIndex >= chunkMetadataElement.valueChunks.size()) {
-        return;
-      }
-      Chunk chunk = chunkMetadataElement.valueChunks.get(currentValueChunkIndex);
+    Map<String, IMeasurementSchema> measurementSchemaMap = new HashMap<>();
+    measurementSchemas.forEach(
+        schema -> {
+          measurementSchemaMap.put(schema.getMeasurementId(), schema);
+        });
+    for (Chunk chunk : chunkMetadataElement.valueChunks) {
       if (chunk == null) {
-        currentValueChunkIndex++;
         continue;
       }
-      ChunkHeader currentValueChunk = chunk.getHeader();
-      if (!currentMeasurementSchema
-          .getMeasurementId()
-          .equals(currentValueChunk.getMeasurementID())) {
+      ChunkHeader header = chunk.getHeader();
+      String measurementId = header.getMeasurementID();
+      IMeasurementSchema measurementSchema = measurementSchemaMap.get(measurementId);
+      if (measurementSchema == null) {
         continue;
       }
-      if (currentValueChunk.getCompressionType() != currentMeasurementSchema.getCompressor()
-          || currentValueChunk.getEncodingType() != currentMeasurementSchema.getEncodingType()) {
+      if (measurementSchema.getCompressor() != header.getCompressionType()
+          || measurementSchema.getEncodingType() != header.getEncodingType()) {
         chunkMetadataElement.needForceDecoding = true;
         return;
       }
-      currentValueChunkIndex++;
     }
   }
 
