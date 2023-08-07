@@ -26,14 +26,15 @@ env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
 
 jobs:
-  Simple:
+  MultiClusterIT2:
     strategy:
       fail-fast: false
       max-parallel: 20
       matrix:
         java: [11]
-        cluster1: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode, StrongConsistencyClusterMode]
-        cluster2: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode, StrongConsistencyClusterMode]
+        # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
+        cluster1: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode]
+        cluster2: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode]
     runs-on: [self-hosted, iotdb]
     #      group: self-hosted
     #      labels: iotdb
@@ -52,7 +53,7 @@ jobs:
           mvn clean verify \
           -P with-integration-tests \
           -DskipUTs \
-          -DintegrationTest.forkCount=6 -DConfigNodeMaxHeapSize=1024 -DDataNodeMaxHeapSize=1024 \
+          -DintegrationTest.forkCount=6 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=256 \
           -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
           -pl integration-test \
           -am -PMultiClusterIT2
