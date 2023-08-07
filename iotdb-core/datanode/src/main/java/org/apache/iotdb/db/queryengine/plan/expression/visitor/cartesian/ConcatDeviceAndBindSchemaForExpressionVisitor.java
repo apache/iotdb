@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
@@ -32,12 +33,17 @@ import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Set;
 
+import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.getMeasurementExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.cartesianProduct;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructFunctionExpressions;
 import static org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForExpressionVisitor.transformViewPath;
 import static org.apache.iotdb.db.utils.TypeInferenceUtils.bindTypeForAggregationNonSeriesInputExpressions;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 
 public class ConcatDeviceAndBindSchemaForExpressionVisitor
     extends CartesianProductVisitor<ConcatDeviceAndBindSchemaForExpressionVisitor.Context> {
@@ -66,6 +72,26 @@ public class ConcatDeviceAndBindSchemaForExpressionVisitor
 
     List<List<Expression>> childExpressionsList = new ArrayList<>();
     cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
+
+    if (COUNT_TIME.equalsIgnoreCase(functionExpression.getFunctionName())) {
+      Set<Expression> usedExpressions = new HashSet<>();
+      List<Expression> expressions =
+          reconstructFunctionExpressions(functionExpression, childExpressionsList);
+      usedExpressions.addAll(expressions);
+
+      // for count_time aggregation, set the measurement as final response header
+      Expression measurementExpressionAlias =
+          getMeasurementExpression(functionExpression.getExpressions().get(0), new Analysis());
+      Expression countTimeExpression =
+          new FunctionExpression(
+              COUNT_TIME,
+              new LinkedHashMap<>(),
+              Collections.singletonList(new TimestampOperand()),
+              usedExpressions,
+              measurementExpressionAlias.getOutputSymbol());
+      return Collections.singletonList(countTimeExpression);
+    }
+
     return reconstructFunctionExpressions(functionExpression, childExpressionsList);
   }
 

@@ -26,7 +26,6 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -376,7 +375,6 @@ public class IoTDBCountTimeIT {
   }
 
   @Test
-  @Ignore
   public void havingTest() {
     prepareData(
         Collections.singletonList("INSERT INTO root.downsampling.d2(time, s1) VALUES(9,9);"));
