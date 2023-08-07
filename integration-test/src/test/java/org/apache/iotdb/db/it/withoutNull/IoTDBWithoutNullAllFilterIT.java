@@ -434,8 +434,7 @@ public class IoTDBWithoutNullAllFilterIT {
       int cnt;
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.sg1 " +
-                      "where s2 is not null && s4 is not null && s2 + s4 is not null")) {
+              "select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.sg1 where s2 is not null && s4 is not null && s2 + s4 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -466,8 +465,7 @@ public class IoTDBWithoutNullAllFilterIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.sg1 " +
-                      "where s2 is not null || s4 is not null || s2 / s4 is not null")) {
+              "select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.sg1 where s2 is not null || s4 is not null || s2 / s4 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
