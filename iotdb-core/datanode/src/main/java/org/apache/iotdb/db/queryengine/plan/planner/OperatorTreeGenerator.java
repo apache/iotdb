@@ -1158,7 +1158,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               filterExpressionColumnTransformerMap,
               commonTransformerList,
               filterOutputDataTypes,
-              inputLocations.size());
+              inputLocations.size() - 1);
 
       for (Expression expression : projectExpressions) {
         projectOutputTransformerList.add(
