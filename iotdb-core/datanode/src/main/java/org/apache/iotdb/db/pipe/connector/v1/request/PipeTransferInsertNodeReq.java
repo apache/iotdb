@@ -65,7 +65,6 @@ public class PipeTransferInsertNodeReq extends TPipeTransferReq {
 
       final InsertTabletStatement statement = new InsertTabletStatement();
       statement.setDevicePath(node.getDevicePath());
-      System.out.println("InsertTabletNode: DevicePath:" + node.getDevicePath());
       statement.setMeasurements(node.getMeasurements());
       statement.setTimes(node.getTimes());
       statement.setColumns(node.getColumns());
