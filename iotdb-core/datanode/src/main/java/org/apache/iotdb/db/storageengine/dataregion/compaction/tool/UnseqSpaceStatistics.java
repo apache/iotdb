@@ -19,16 +19,32 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public class UnseqSpaceStatistics {
   // 设备 -> 序列 -> 时间范围
-  private Map<String, Map<String, ITimeRange>> deviceStatisticMap;
+  private Map<String, Map<String, ITimeRange>> deviceStatisticMap = new HashMap<>();
 
   // 更新某个设备的某个序列的时间范围
-  public void update(String device, String measurementUID, Interval interval) {}
+  public void update(String device, String measurementUID, Interval interval) {
+    deviceStatisticMap
+        .computeIfAbsent(device, key -> new HashMap<>())
+        .computeIfAbsent(measurementUID, key -> new ListTimeRangeImpl())
+        .addInterval(interval);
+  }
 
   public boolean hasOverlap(String device, String measurementUID, Interval interval) {
-    return false;
+    if (!deviceStatisticMap.containsKey(device)) {
+      return false;
+    }
+    if (!deviceStatisticMap.get(device).containsKey(measurementUID)) {
+      return false;
+    }
+    return deviceStatisticMap.get(device).get(measurementUID).isOverlapped(interval);
+  }
+
+  public Map<String, Map<String, ITimeRange>> getDeviceStatisticMap() {
+    return deviceStatisticMap;
   }
 }

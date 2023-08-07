@@ -85,7 +85,6 @@ public class OverlapStatisticTool {
         throw new RuntimeException(e);
       }
     }
-
     return overlapStatistic;
   }
 
