@@ -1,4 +1,4 @@
-name: MultiClusterIT
+name: Multi-Cluster IT
 
 on:
   push:
