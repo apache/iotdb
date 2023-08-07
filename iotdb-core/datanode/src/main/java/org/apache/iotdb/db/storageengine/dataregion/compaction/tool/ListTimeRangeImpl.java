@@ -19,8 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 public class ListTimeRangeImpl implements ITimeRange {
 
@@ -30,10 +29,57 @@ public class ListTimeRangeImpl implements ITimeRange {
   // 0-10. 20-70
 
   @Override
-  public void addInterval(Interval interval) {}
+  public void addInterval(Interval interval) {
+    List<Interval> mergedIntervals = new ArrayList<>();
+    int index = 0;
 
+    // 1. elements that do not overlap with the newly added element are placed directly in the
+    // result
+    while (index < intervalList.size() && intervalList.get(index).getEnd() < interval.getStart()) {
+      mergedIntervals.add(intervalList.get(index));
+      index++;
+    }
+
+    // 2. if the element overlaps with an existing element, start equals the minimum value of the
+    // overlap and end equals the maximum value of the overlap
+    while (index < intervalList.size() && intervalList.get(index).getStart() <= interval.getEnd()) {
+      interval.setStart(Math.min(intervalList.get(index).getStart(), interval.getStart()));
+      interval.setEnd(Math.max(intervalList.get(index).getEnd(), interval.getEnd()));
+      index++;
+    }
+    mergedIntervals.add(interval);
+
+    // 3. add the remaining elements to the result set
+    while (index < intervalList.size()) {
+      mergedIntervals.add(intervalList.get(index));
+      index++;
+    }
+
+    intervalList.clear();
+    intervalList.addAll(mergedIntervals);
+  }
+
+  public List<Interval> getIntervalList() {
+    return intervalList;
+  }
+
+  /**
+   * case 1: interval.getStart() <= currentInterval.getEnd()
+   *
+   * <p>currentInterval: [5,10], interval: [6,15],[1,7],[0,5],[10,15]
+   *
+   * <p>case 2: interval.getEnd() <= currentInterval.getEnd()
+   *
+   * <p>currentInterval: [5,10], interval:[1,9],[0,9],[1,10]
+   */
   @Override
   public boolean isOverlapped(Interval interval) {
+    for (Interval currentInterval : intervalList) {
+      if (interval.getStart() <= currentInterval.getEnd()
+          || interval.getEnd() <= currentInterval.getEnd()) {
+        return true;
+      }
+    }
     return false;
   }
 }
