@@ -17,27 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.itbase.env;
+package org.apache.iotdb.it.env.cluster.env;
 
-public interface BaseNodeWrapper {
+public class SimpleEnv extends AbstractEnv {
 
-  void createNodeDir();
+  @Override
+  public void initClusterEnvironment() {
+    initClusterEnvironment(1, 1);
+  }
 
-  void createLogDir();
-
-  void destroyDir();
-
-  void start();
-
-  void stop();
-
-  String getIp();
-
-  int getPort();
-
-  String getId();
-
-  String getIpAndPortString();
-
-  void dumpJVMSnapshot(String testCaseName);
+  @Override
+  public void initClusterEnvironment(int configNodesNum, int dataNodesNum) {
+    super.initEnvironment(configNodesNum, dataNodesNum);
+  }
 }

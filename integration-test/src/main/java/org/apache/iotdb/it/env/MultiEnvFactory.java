@@ -19,54 +19,46 @@
 
 package org.apache.iotdb.it.env;
 
-import org.apache.iotdb.it.env.cluster.env.Cluster1Env;
-import org.apache.iotdb.it.env.cluster.env.SimpleEnv;
-import org.apache.iotdb.it.env.remote.env.RemoteServerEnv;
+import org.apache.iotdb.it.env.cluster.env.MultiClusterEnv;
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.Config;
 
 import org.slf4j.Logger;
 
-public class EnvFactory {
-  private static BaseEnv env;
-  private static final Logger logger = IoTDBTestLogger.logger;
+import java.util.ArrayList;
+import java.util.List;
 
-  private EnvFactory() {
+public class MultiEnvFactory {
+  private static final List<BaseEnv> envList = new ArrayList<>();
+  private static final Logger logger = IoTDBTestLogger.logger;
+  private static String currentMethodName;
+
+  private MultiEnvFactory() {
     // Empty constructor
   }
 
-  public static BaseEnv getEnv() {
-    if (env == null) {
+  public static void setTestMethodName(String testMethodName) {
+    currentMethodName = testMethodName;
+  }
+
+  /** Get an environment with the specific index. */
+  public static BaseEnv getEnv(int index) throws IndexOutOfBoundsException {
+    return envList.get(index);
+  }
+
+  /** Create several environments according to the specific number. */
+  public static void createEnv(int num) {
+    // Not judge EnvType for individual test convenience
+    long startTime = System.currentTimeMillis();
+    for (int i = 0; i < num; ++i) {
       try {
         Class.forName(Config.JDBC_DRIVER_NAME);
-        logger.debug(">>>>>>>{}", System.getProperty("TestEnv"));
-        EnvType envType = EnvType.getSystemEnvType();
-        switch (envType) {
-          case Simple:
-            env = new SimpleEnv();
-            break;
-          case Cluster1:
-            env = new Cluster1Env();
-            break;
-          case Remote:
-            env = new RemoteServerEnv();
-            break;
-          case MultiCluster:
-            logger.warn(
-                "EnvFactory only supports EnvType Simple, Cluster1 and Remote, please use MultiEnvFactory instead.");
-            System.exit(-1);
-            break;
-          default:
-            logger.warn("Unknown env type: {}", envType);
-            System.exit(-1);
-            break;
-        }
+        envList.add(new MultiClusterEnv(startTime, i, currentMethodName));
       } catch (ClassNotFoundException e) {
-        logger.error("Get env error", e);
+        logger.error("Create env error", e);
         System.exit(-1);
       }
     }
-    return env;
   }
 }

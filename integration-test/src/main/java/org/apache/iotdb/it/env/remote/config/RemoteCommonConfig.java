@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.it.env.remote;
+package org.apache.iotdb.it.env.remote.config;
 
 import org.apache.iotdb.itbase.env.CommonConfig;
 

@@ -16,28 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.it.env.remote.config;
 
-package org.apache.iotdb.itbase.env;
+import org.apache.iotdb.itbase.env.DataNodeConfig;
 
-public interface BaseNodeWrapper {
-
-  void createNodeDir();
-
-  void createLogDir();
-
-  void destroyDir();
-
-  void start();
-
-  void stop();
-
-  String getIp();
-
-  int getPort();
-
-  String getId();
-
-  String getIpAndPortString();
-
-  void dumpJVMSnapshot(String testCaseName);
-}
+public class RemoteDataNodeConfig implements DataNodeConfig {}

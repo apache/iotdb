@@ -17,9 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.it.env.cluster;
+package org.apache.iotdb.it.env.cluster.node;
 
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.config.MppBaseConfig;
+import org.apache.iotdb.it.env.cluster.config.MppCommonConfig;
+import org.apache.iotdb.it.env.cluster.config.MppJVMConfig;
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.itbase.env.BaseNodeWrapper;
 
@@ -59,47 +62,69 @@ import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.CLUSTER_CONFIGURATIONS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REGION_CONSENSUS_PROTOCOL_CLASS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REPLICATION_FACTOR;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.HIGH_PERFORMANCE_MODE;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.HIGH_PERFORMANCE_MODE_CONFIG_NODE_CONSENSUS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.HIGH_PERFORMANCE_MODE_DATA_REGION_CONSENSUS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.HIGH_PERFORMANCE_MODE_DATA_REGION_REPLICA_NUM;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.HIGH_PERFORMANCE_MODE_SCHEMA_REGION_CONSENSUS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.HIGH_PERFORMANCE_MODE_SCHEMA_REGION_REPLICA_NUM;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.HYPHEN;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.INFLUXDB_RPC_PORT;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.JAVA_CMD;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE_CONFIG_NODE_CONSENSUS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE_DATA_REGION_CONSENSUS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE_DATA_REGION_REPLICA_NUM;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE_SCHEMA_REGION_CONSENSUS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE_SCHEMA_REGION_REPLICA_NUM;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.MQTT_HOST;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.MQTT_PORT;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_LIB_DIR;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.REST_SERVICE_PORT;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCALABLE_SINGLE_NODE_MODE;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCALABLE_SINGLE_NODE_MODE_CONFIG_NODE_CONSENSUS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCALABLE_SINGLE_NODE_MODE_DATA_REGION_CONSENSUS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCALABLE_SINGLE_NODE_MODE_DATA_REGION_REPLICA_NUM;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCALABLE_SINGLE_NODE_MODE_SCHEMA_REGION_CONSENSUS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCALABLE_SINGLE_NODE_MODE_SCHEMA_REGION_REPLICA_NUM;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCHEMA_REPLICATION_FACTOR;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.STRONG_CONSISTENCY_CLUSTER_MODE;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.STRONG_CONSISTENCY_CLUSTER_MODE_CONFIG_NODE_CONSENSUS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.STRONG_CONSISTENCY_CLUSTER_MODE_DATA_REGION_CONSENSUS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.STRONG_CONSISTENCY_CLUSTER_MODE_DATA_REGION_REPLICA_NUM;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.STRONG_CONSISTENCY_CLUSTER_MODE_SCHEMA_REGION_CONSENSUS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.STRONG_CONSISTENCY_CLUSTER_MODE_SCHEMA_REGION_REPLICA_NUM;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.TAB;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.TARGET;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.TEMPLATE_NODE_LIB_PATH;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.TEMPLATE_NODE_PATH;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.TRIGGER_LIB_DIR;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.UDF_LIB_DIR;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.USER_DIR;
+import static org.apache.iotdb.it.env.cluster.EnvUtils.fromConsensusAbbrToFullName;
+import static org.apache.iotdb.it.env.cluster.EnvUtils.getTimeForLogDirectory;
+import static org.apache.iotdb.it.env.cluster.EnvUtils.getValueOfIndex;
 import static org.junit.Assert.fail;
 
 public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   private static final Logger logger = IoTDBTestLogger.logger;
-  private static final String javaCmd =
-      System.getProperty("java.home")
-          + File.separator
-          + "bin"
-          + File.separator
-          + (SystemUtils.IS_OS_WINDOWS ? "java.exe" : "java");
-  public static final String templateNodePath =
-      System.getProperty("user.dir") + File.separator + "target" + File.separator + "template-node";
-  public static final String templateNodeLibPath =
-      System.getProperty("user.dir")
-          + File.separator
-          + "target"
-          + File.separator
-          + "template-node-share"
-          + File.separator
-          + "lib"
-          + File.separator
-          + "*";
-
-  protected static final String propertyKeyConfigNodeConsensusProtocolClass =
-      "config_node_consensus_protocol_class";
-  protected static final String propertyKeySchemaRegionConsensusProtocolClass =
-      "schema_region_consensus_protocol_class";
-  protected static final String propertyKeyDataRegionConsensusProtocolClass =
-      "data_region_consensus_protocol_class";
-  protected static final String propertyKeySchemaReplicationFactor = "schema_replication_factor";
-  protected static final String propertyKeyDataReplicationFactor = "data_replication_factor";
 
   protected final String testClassName;
   protected final String testMethodName;
   protected final int[] portList;
   protected final int jmxPort;
   protected final MppJVMConfig jvmConfig;
-  private final String TAB = "  ";
+  protected final int clusterIndex;
+  protected final boolean isMultiCluster;
   private Process instance;
   private final String nodeAddress;
   private int nodePort;
+  private long startTime;
 
   /**
    * Mutable properties are always hardcoded default values to make the cluster be set up
@@ -110,6 +135,12 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   protected final Properties mutableCommonProperties = new Properties();
 
   /**
+   * Specified by -DClusterConfigurations in commandLine. A name of ClusterConfigurations can be
+   * interpreted to a set of configurations below.
+   */
+  protected final Properties clusterConfigProperties = new Properties();
+
+  /**
    * Immutable values are connection configurations, such as ip, ports which are generated randomly
    * during cluster initialization. Their lifecycles are the same with this node wrapper instance.
    */
@@ -117,7 +148,15 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
 
   protected final Properties immutableCommonProperties = new Properties();
 
-  public AbstractNodeWrapper(String testClassName, String testMethodName, int[] portList) {
+  protected final MppCommonConfig outputCommonConfig = new MppCommonConfig();
+
+  protected AbstractNodeWrapper(
+      String testClassName,
+      String testMethodName,
+      int[] portList,
+      int clusterIndex,
+      boolean isMultiCluster,
+      long startTime) {
     this.testClassName = testClassName;
     this.testMethodName = testMethodName;
     this.portList = portList;
@@ -125,18 +164,22 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     this.nodePort = portList[0];
     jmxPort = this.portList[portList.length - 1];
     // these properties can't be mutated.
-    immutableCommonProperties.setProperty("udf_lib_dir", MppBaseConfig.NULL_VALUE);
-    immutableCommonProperties.setProperty("trigger_lib_dir", MppBaseConfig.NULL_VALUE);
-    immutableCommonProperties.setProperty("pipe_lib_dir", MppBaseConfig.NULL_VALUE);
-    immutableCommonProperties.setProperty("mqtt_host", MppBaseConfig.NULL_VALUE);
-    immutableCommonProperties.setProperty("mqtt_port", MppBaseConfig.NULL_VALUE);
-    immutableCommonProperties.setProperty("rest_service_port", MppBaseConfig.NULL_VALUE);
-    immutableCommonProperties.setProperty("influxdb_rpc_port", MppBaseConfig.NULL_VALUE);
+    immutableCommonProperties.setProperty(UDF_LIB_DIR, MppBaseConfig.NULL_VALUE);
+    immutableCommonProperties.setProperty(TRIGGER_LIB_DIR, MppBaseConfig.NULL_VALUE);
+    immutableCommonProperties.setProperty(PIPE_LIB_DIR, MppBaseConfig.NULL_VALUE);
+    immutableCommonProperties.setProperty(MQTT_HOST, MppBaseConfig.NULL_VALUE);
+    immutableCommonProperties.setProperty(MQTT_PORT, MppBaseConfig.NULL_VALUE);
+    immutableCommonProperties.setProperty(REST_SERVICE_PORT, MppBaseConfig.NULL_VALUE);
+    immutableCommonProperties.setProperty(INFLUXDB_RPC_PORT, MppBaseConfig.NULL_VALUE);
     this.jvmConfig = initVMConfig();
+    this.clusterIndex = clusterIndex;
+    this.isMultiCluster = isMultiCluster;
+    this.startTime = startTime;
   }
 
+  /** CreateNodeDir must be called before changeConfig for persistent. */
   @Override
-  public void createDir() {
+  public void createNodeDir() {
     // Copy templateNodePath to nodePath
     String destPath = getNodePath();
     try {
@@ -146,11 +189,11 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
         // ignored
       }
       // Here we need to copy without follow symbolic links, so we can't use FileUtils directly.
-      try (Stream<Path> s = Files.walk(Paths.get(templateNodePath))) {
+      try (Stream<Path> s = Files.walk(Paths.get(TEMPLATE_NODE_PATH))) {
         s.forEach(
             source -> {
               Path destination =
-                  Paths.get(destPath, source.toString().substring(templateNodePath.length()));
+                  Paths.get(destPath, source.toString().substring(TEMPLATE_NODE_PATH.length()));
               try {
                 Files.copy(
                     source,
@@ -162,6 +205,16 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
               }
             });
       }
+    } catch (IOException ex) {
+      logger.error("Copy node dir failed", ex);
+      fail();
+    }
+  }
+
+  /** CreateLogDir must be called after changeConfig for correct log directory. */
+  @Override
+  public void createLogDir() {
+    try {
       // Make sure the log dir exist, as the first file is output by starting script directly.
       FileUtils.createParentDirectories(new File(getLogPath()));
     } catch (IOException ex) {
@@ -184,6 +237,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
         try {
           TimeUnit.SECONDS.sleep(1);
         } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
           fail("Delete node dir failed. " + e);
         }
       }
@@ -215,7 +269,6 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       // 1. Read directly from assembled property files
       // In a config-node, the files should be iotdb-confignode.properties and
       // iotdb-common.properties.
-      MppBaseConfig outputCommonConfig = commonConfig.emptyClone();
       MppBaseConfig outputNodeConfig = nodeConfig.emptyClone();
 
       // 2. Override by values which are hardcoded in mutable properties fields.
@@ -228,11 +281,16 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       outputCommonConfig.updateProperties(getDefaultCommonConfigPath());
       outputNodeConfig.updateProperties(getDefaultNodeConfigPath());
 
-      // 4. Override by values mutated by developers
+      // 4. Override by values specified from the command line option -DClusterConfigProperties.
+      // Mainly used for streaming module to simplify testing process.
+      reloadClusterConfigurations();
+      outputCommonConfig.updateProperties(clusterConfigProperties);
+
+      // 5. Override by values mutated by developers
       outputCommonConfig.updateProperties(commonConfig);
       outputNodeConfig.updateProperties(nodeConfig);
 
-      // 5. Restore immutable properties
+      // 6. Restore immutable properties
       outputCommonConfig.updateProperties(immutableCommonProperties);
       outputNodeConfig.updateProperties(immutableNodeProperties);
 
@@ -245,12 +303,108 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     this.jvmConfig.override(jvmConfig);
   }
 
+  private void reloadClusterConfigurations() {
+    String valueStr = System.getProperty(CLUSTER_CONFIGURATIONS);
+    if (valueStr == null) {
+      return;
+    }
+
+    try {
+      switch (getValueOfIndex(valueStr, clusterIndex)) {
+        case LIGHT_WEIGHT_STANDALONE_MODE:
+          clusterConfigProperties.setProperty(
+              CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS,
+              fromConsensusAbbrToFullName(
+                  System.getProperty(LIGHT_WEIGHT_STANDALONE_MODE_CONFIG_NODE_CONSENSUS)));
+          clusterConfigProperties.setProperty(
+              SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS,
+              fromConsensusAbbrToFullName(
+                  System.getProperty(LIGHT_WEIGHT_STANDALONE_MODE_SCHEMA_REGION_CONSENSUS)));
+          clusterConfigProperties.setProperty(
+              DATA_REGION_CONSENSUS_PROTOCOL_CLASS,
+              fromConsensusAbbrToFullName(
+                  System.getProperty(LIGHT_WEIGHT_STANDALONE_MODE_DATA_REGION_CONSENSUS)));
+          clusterConfigProperties.setProperty(
+              SCHEMA_REPLICATION_FACTOR,
+              System.getProperty(LIGHT_WEIGHT_STANDALONE_MODE_SCHEMA_REGION_REPLICA_NUM));
+          clusterConfigProperties.setProperty(
+              DATA_REPLICATION_FACTOR,
+              System.getProperty(LIGHT_WEIGHT_STANDALONE_MODE_DATA_REGION_REPLICA_NUM));
+          break;
+        case SCALABLE_SINGLE_NODE_MODE:
+          clusterConfigProperties.setProperty(
+              CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS,
+              fromConsensusAbbrToFullName(
+                  System.getProperty(SCALABLE_SINGLE_NODE_MODE_CONFIG_NODE_CONSENSUS)));
+          clusterConfigProperties.setProperty(
+              SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS,
+              fromConsensusAbbrToFullName(
+                  System.getProperty(SCALABLE_SINGLE_NODE_MODE_SCHEMA_REGION_CONSENSUS)));
+          clusterConfigProperties.setProperty(
+              DATA_REGION_CONSENSUS_PROTOCOL_CLASS,
+              fromConsensusAbbrToFullName(
+                  System.getProperty(SCALABLE_SINGLE_NODE_MODE_DATA_REGION_CONSENSUS)));
+          clusterConfigProperties.setProperty(
+              SCHEMA_REPLICATION_FACTOR,
+              System.getProperty(SCALABLE_SINGLE_NODE_MODE_SCHEMA_REGION_REPLICA_NUM));
+          clusterConfigProperties.setProperty(
+              DATA_REPLICATION_FACTOR,
+              System.getProperty(SCALABLE_SINGLE_NODE_MODE_DATA_REGION_REPLICA_NUM));
+          break;
+        case HIGH_PERFORMANCE_MODE:
+          clusterConfigProperties.setProperty(
+              CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS,
+              fromConsensusAbbrToFullName(
+                  System.getProperty(HIGH_PERFORMANCE_MODE_CONFIG_NODE_CONSENSUS)));
+          clusterConfigProperties.setProperty(
+              SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS,
+              fromConsensusAbbrToFullName(
+                  System.getProperty(HIGH_PERFORMANCE_MODE_SCHEMA_REGION_CONSENSUS)));
+          clusterConfigProperties.setProperty(
+              DATA_REGION_CONSENSUS_PROTOCOL_CLASS,
+              fromConsensusAbbrToFullName(
+                  System.getProperty(HIGH_PERFORMANCE_MODE_DATA_REGION_CONSENSUS)));
+          clusterConfigProperties.setProperty(
+              SCHEMA_REPLICATION_FACTOR,
+              System.getProperty(HIGH_PERFORMANCE_MODE_SCHEMA_REGION_REPLICA_NUM));
+          clusterConfigProperties.setProperty(
+              DATA_REPLICATION_FACTOR,
+              System.getProperty(HIGH_PERFORMANCE_MODE_DATA_REGION_REPLICA_NUM));
+          break;
+        case STRONG_CONSISTENCY_CLUSTER_MODE:
+          clusterConfigProperties.setProperty(
+              CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS,
+              fromConsensusAbbrToFullName(
+                  System.getProperty(STRONG_CONSISTENCY_CLUSTER_MODE_CONFIG_NODE_CONSENSUS)));
+          clusterConfigProperties.setProperty(
+              SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS,
+              fromConsensusAbbrToFullName(
+                  System.getProperty(STRONG_CONSISTENCY_CLUSTER_MODE_SCHEMA_REGION_CONSENSUS)));
+          clusterConfigProperties.setProperty(
+              DATA_REGION_CONSENSUS_PROTOCOL_CLASS,
+              fromConsensusAbbrToFullName(
+                  System.getProperty(STRONG_CONSISTENCY_CLUSTER_MODE_DATA_REGION_CONSENSUS)));
+          clusterConfigProperties.setProperty(
+              SCHEMA_REPLICATION_FACTOR,
+              System.getProperty(STRONG_CONSISTENCY_CLUSTER_MODE_SCHEMA_REGION_REPLICA_NUM));
+          clusterConfigProperties.setProperty(
+              DATA_REPLICATION_FACTOR,
+              System.getProperty(STRONG_CONSISTENCY_CLUSTER_MODE_DATA_REGION_REPLICA_NUM));
+          break;
+        default:
+          // Print nothing to avoid polluting test outputs
+      }
+    } catch (NumberFormatException ignore) {
+      // Ignore the exception
+    }
+  }
+
   @Override
   public void start() {
     try {
       File stdoutFile = new File(getLogPath());
       List<String> startCmd = new ArrayList<>();
-      startCmd.add(javaCmd);
+      startCmd.add(JAVA_CMD);
       if (!SystemUtils.IS_JAVA_1_8) {
         startCmd.add("--add-opens=java.base/java.util.concurrent=ALL-UNNAMED");
         startCmd.add("--add-opens=java.base/java.lang=ALL-UNNAMED");
@@ -272,7 +426,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
               "-XX:MaxDirectMemorySize=" + jvmConfig.getMaxDirectMemorySize() + "m",
               "-Djdk.nio.maxCachedBufferSize=262144",
               "-cp",
-              templateNodeLibPath));
+              TEMPLATE_NODE_LIB_PATH));
       addStartCmdParams(startCmd);
       FileUtils.write(
           stdoutFile, String.join(" ", startCmd) + "\n\n", StandardCharsets.UTF_8, true);
@@ -280,7 +434,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
           new ProcessBuilder(startCmd)
               .redirectOutput(ProcessBuilder.Redirect.appendTo(stdoutFile))
               .redirectError(ProcessBuilder.Redirect.appendTo(stdoutFile));
-      processBuilder.environment().put("CLASSPATH", templateNodeLibPath);
+      processBuilder.environment().put("CLASSPATH", TEMPLATE_NODE_LIB_PATH);
       this.instance = processBuilder.start();
       logger.info("In test {} {} started.", getTestLogDirName(), getId());
     } catch (IOException ex) {
@@ -299,7 +453,8 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
         this.instance.destroyForcibly().waitFor(10, TimeUnit.SECONDS);
       }
     } catch (InterruptedException e) {
-      logger.error("Waiting node to shutdown error." + e);
+      Thread.currentThread().interrupt();
+      logger.error("Waiting node to shutdown error. %s", e);
     }
   }
 
@@ -331,17 +486,29 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   }
 
   protected String getLogDirPath() {
-    return System.getProperty("user.dir")
-        + File.separator
-        + "target"
-        + File.separator
-        + "cluster-logs"
-        + File.separator
-        + getTestLogDirName();
+    String baseDir =
+        System.getProperty(USER_DIR)
+            + File.separator
+            + TARGET
+            + File.separator
+            + "cluster-logs"
+            + File.separator
+            + getTestLogDirName()
+            + File.separator
+            + getTimeForLogDirectory(startTime);
+    if (!isMultiCluster) {
+      return baseDir;
+    } else {
+      return baseDir + File.separator + getClusterIdStr();
+    }
+  }
+
+  private String getClusterIdStr() {
+    return clusterIndex + HYPHEN + outputCommonConfig.getClusterConfigStr();
   }
 
   protected String getNodePath() {
-    return System.getProperty("user.dir") + File.separator + "target" + File.separator + getId();
+    return System.getProperty(USER_DIR) + File.separator + TARGET + File.separator + getId();
   }
 
   @Override
@@ -367,13 +534,13 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       try (PrintWriter output =
           new PrintWriter(
               getLogDirPath() + File.separator + testCaseName + "_" + getId() + "-threads.dump")) {
-        output.printf("# Captured at %s\n", currentTime);
+        output.printf("# Captured at %s%n", currentTime);
         output.println("==================\n");
         if (deadlockIds != null && deadlockIds.length > 0) {
-          output.printf("Detect DEADLOCK threads!\n");
+          output.printf("Detect DEADLOCK threads!%n");
           for (long deadlockId : deadlockIds) {
             ThreadInfo ti = tmbean.getThreadInfo(deadlockId);
-            output.printf("%s #%d\n", ti.getThreadName(), ti.getThreadId());
+            output.printf("%s #%d%n", ti.getThreadName(), ti.getThreadId());
           }
           output.println("==================\n");
         }

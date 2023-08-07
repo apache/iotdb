@@ -16,8 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.it.env.remote;
 
-import org.apache.iotdb.itbase.env.ConfigNodeConfig;
+package org.apache.iotdb.itbase.category;
 
-public class RemoteConfigNodeConfig implements ConfigNodeConfig {}
+public interface MultiClusterIT1 {}

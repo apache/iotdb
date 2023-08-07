@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.it.env.remote;
+package org.apache.iotdb.it.env.cluster.config;
 
 import org.apache.iotdb.itbase.env.ClusterConfig;
 import org.apache.iotdb.itbase.env.CommonConfig;
@@ -25,12 +25,27 @@ import org.apache.iotdb.itbase.env.ConfigNodeConfig;
 import org.apache.iotdb.itbase.env.DataNodeConfig;
 import org.apache.iotdb.itbase.env.JVMConfig;
 
-public class RemoteClusterConfig implements ClusterConfig {
+/** MppClusterConfig stores a whole cluster config items. */
+public class MppClusterConfig implements ClusterConfig {
 
-  private final CommonConfig commonConfig = new RemoteCommonConfig();
-  private final ConfigNodeConfig configNodeConfig = new RemoteConfigNodeConfig();
-  private final DataNodeConfig dataNodeConfig = new RemoteDataNodeConfig();
-  private final RemoteJVMConfig jvmConfig = new RemoteJVMConfig();
+  private final MppConfigNodeConfig configNodeConfig;
+  private final MppDataNodeConfig dataNodeConfig;
+  private final MppCommonConfig configNodeCommonConfig;
+  private final MppCommonConfig dataNodeCommonConfig;
+  private final MppSharedCommonConfig sharedCommonConfig;
+  private final MppJVMConfig configNodeJVMConfig;
+  private final MppJVMConfig dataNodeJVMConfig;
+
+  public MppClusterConfig() {
+    this.configNodeConfig = new MppConfigNodeConfig();
+    this.dataNodeConfig = new MppDataNodeConfig();
+    this.configNodeCommonConfig = new MppCommonConfig();
+    this.dataNodeCommonConfig = new MppCommonConfig();
+    this.sharedCommonConfig =
+        new MppSharedCommonConfig(configNodeCommonConfig, dataNodeCommonConfig);
+    this.configNodeJVMConfig = new MppJVMConfig();
+    this.dataNodeJVMConfig = new MppJVMConfig();
+  }
 
   @Override
   public DataNodeConfig getDataNodeConfig() {
@@ -39,7 +54,7 @@ public class RemoteClusterConfig implements ClusterConfig {
 
   @Override
   public CommonConfig getDataNodeCommonConfig() {
-    return commonConfig;
+    return dataNodeCommonConfig;
   }
 
   @Override
@@ -49,21 +64,21 @@ public class RemoteClusterConfig implements ClusterConfig {
 
   @Override
   public CommonConfig getConfigNodeCommonConfig() {
-    return commonConfig;
+    return configNodeCommonConfig;
   }
 
   @Override
   public CommonConfig getCommonConfig() {
-    return commonConfig;
+    return sharedCommonConfig;
   }
 
   @Override
   public JVMConfig getConfigNodeJVMConfig() {
-    return jvmConfig;
+    return configNodeJVMConfig;
   }
 
   @Override
   public JVMConfig getDataNodeJVMConfig() {
-    return jvmConfig;
+    return dataNodeJVMConfig;
   }
 }

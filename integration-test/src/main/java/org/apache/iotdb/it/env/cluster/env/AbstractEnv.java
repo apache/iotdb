@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.it.env.cluster;
+package org.apache.iotdb.it.env.cluster.env;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -33,6 +33,15 @@ import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.pool.ISessionPool;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.EnvUtils;
+import org.apache.iotdb.it.env.cluster.config.MppClusterConfig;
+import org.apache.iotdb.it.env.cluster.config.MppCommonConfig;
+import org.apache.iotdb.it.env.cluster.config.MppConfigNodeConfig;
+import org.apache.iotdb.it.env.cluster.config.MppDataNodeConfig;
+import org.apache.iotdb.it.env.cluster.config.MppJVMConfig;
+import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
+import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.itbase.env.BaseNodeWrapper;
@@ -68,21 +77,23 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.apache.iotdb.it.env.cluster.AbstractNodeWrapper.templateNodeLibPath;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.NODE_NETWORK_TIMEOUT_MS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.NODE_START_TIMEOUT;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.PROBE_TIMEOUT_MS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.TEMPLATE_NODE_LIB_PATH;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.TEMPLATE_NODE_PATH;
 import static org.apache.iotdb.jdbc.Config.VERSION;
 import static org.junit.Assert.fail;
 
 public abstract class AbstractEnv implements BaseEnv {
   private static final Logger logger = IoTDBTestLogger.logger;
-  private final int NODE_START_TIMEOUT = 100;
-  private final int PROBE_TIMEOUT_MS = 2000;
-  private final int NODE_NETWORK_TIMEOUT_MS = 65_000;
+
   private final Random rand = new Random();
   protected List<ConfigNodeWrapper> configNodeWrapperList = Collections.emptyList();
   protected List<DataNodeWrapper> dataNodeWrapperList = Collections.emptyList();
   protected String testMethodName = null;
-  public static final String templateNodePath =
-      System.getProperty("user.dir") + File.separator + "target" + File.separator + "template-node";
+  protected int index = 0;
+  protected long startTime;
 
   private IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
 
@@ -92,8 +103,16 @@ public abstract class AbstractEnv implements BaseEnv {
    */
   private MppClusterConfig clusterConfig;
 
-  public AbstractEnv() {
-    clusterConfig = new MppClusterConfig();
+  // For single environment ITs, time can be unified in this level.
+  protected AbstractEnv() {
+    this.startTime = System.currentTimeMillis();
+    this.clusterConfig = new MppClusterConfig();
+  }
+
+  // For multiple environment ITs, time must be consistent across environments.
+  protected AbstractEnv(long startTime) {
+    this.startTime = startTime;
+    this.clusterConfig = new MppClusterConfig();
   }
 
   @Override
@@ -110,16 +129,23 @@ public abstract class AbstractEnv implements BaseEnv {
             .createClientManager(new ClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
 
     final String testClassName = getTestClassName();
-    final String testMethodName = getTestMethodName();
 
     ConfigNodeWrapper seedConfigNodeWrapper =
         new ConfigNodeWrapper(
-            true, "", testClassName, testMethodName, EnvUtils.searchAvailablePorts());
-    seedConfigNodeWrapper.createDir();
+            true,
+            "",
+            testClassName,
+            testMethodName,
+            EnvUtils.searchAvailablePorts(),
+            index,
+            this instanceof MultiClusterEnv,
+            startTime);
+    seedConfigNodeWrapper.createNodeDir();
     seedConfigNodeWrapper.changeConfig(
         (MppConfigNodeConfig) clusterConfig.getConfigNodeConfig(),
         (MppCommonConfig) clusterConfig.getConfigNodeCommonConfig(),
         (MppJVMConfig) clusterConfig.getConfigNodeJVMConfig());
+    seedConfigNodeWrapper.createLogDir();
     seedConfigNodeWrapper.start();
     String targetConfigNode = seedConfigNodeWrapper.getIpAndPortString();
     this.configNodeWrapperList.add(seedConfigNodeWrapper);
@@ -142,14 +168,18 @@ public abstract class AbstractEnv implements BaseEnv {
               targetConfigNode,
               testClassName,
               testMethodName,
-              EnvUtils.searchAvailablePorts());
+              EnvUtils.searchAvailablePorts(),
+              index,
+              this instanceof MultiClusterEnv,
+              startTime);
       this.configNodeWrapperList.add(configNodeWrapper);
       configNodeEndpoints.add(configNodeWrapper.getIpAndPortString());
-      configNodeWrapper.createDir();
+      configNodeWrapper.createNodeDir();
       configNodeWrapper.changeConfig(
           (MppConfigNodeConfig) clusterConfig.getConfigNodeConfig(),
           (MppCommonConfig) clusterConfig.getConfigNodeCommonConfig(),
           (MppJVMConfig) clusterConfig.getConfigNodeJVMConfig());
+      configNodeWrapper.createLogDir();
       configNodesDelegate.addRequest(
           () -> {
             configNodeWrapper.start();
@@ -169,14 +199,21 @@ public abstract class AbstractEnv implements BaseEnv {
     for (int i = 0; i < dataNodesNum; i++) {
       DataNodeWrapper dataNodeWrapper =
           new DataNodeWrapper(
-              targetConfigNode, testClassName, testMethodName, EnvUtils.searchAvailablePorts());
+              targetConfigNode,
+              testClassName,
+              testMethodName,
+              EnvUtils.searchAvailablePorts(),
+              index,
+              this instanceof MultiClusterEnv,
+              startTime);
       this.dataNodeWrapperList.add(dataNodeWrapper);
       dataNodeEndpoints.add(dataNodeWrapper.getIpAndPortString());
-      dataNodeWrapper.createDir();
+      dataNodeWrapper.createNodeDir();
       dataNodeWrapper.changeConfig(
           (MppDataNodeConfig) clusterConfig.getDataNodeConfig(),
           (MppCommonConfig) clusterConfig.getDataNodeCommonConfig(),
           (MppJVMConfig) clusterConfig.getDataNodeJVMConfig());
+      dataNodeWrapper.createLogDir();
       dataNodesDelegate.addRequest(
           () -> {
             dataNodeWrapper.start();
@@ -483,7 +520,7 @@ public abstract class AbstractEnv implements BaseEnv {
    * <p>Notice: The caller should always use try-with-resource to invoke this interface in order to
    * return client to ClientPool automatically
    *
-   * @return SyncConfigNodeIServiceClient that connects to the ConfigNode-Leader
+   * @return {@link SyncConfigNodeIServiceClient} that connects to the ConfigNode-Leader
    */
   @Override
   public IConfigNodeRPCService.Iface getLeaderConfigNodeConnection()
@@ -600,13 +637,17 @@ public abstract class AbstractEnv implements BaseEnv {
             configNodeWrapperList.get(0).getIpAndPortString(),
             getTestClassName(),
             getTestMethodName(),
-            EnvUtils.searchAvailablePorts());
+            EnvUtils.searchAvailablePorts(),
+            index,
+            this instanceof MultiClusterEnv,
+            startTime);
     configNodeWrapperList.add(newConfigNodeWrapper);
-    newConfigNodeWrapper.createDir();
+    newConfigNodeWrapper.createNodeDir();
     newConfigNodeWrapper.changeConfig(
         (MppConfigNodeConfig) clusterConfig.getConfigNodeConfig(),
         (MppCommonConfig) clusterConfig.getConfigNodeCommonConfig(),
         (MppJVMConfig) clusterConfig.getConfigNodeJVMConfig());
+    newConfigNodeWrapper.createLogDir();
     return newConfigNodeWrapper;
   }
 
@@ -617,13 +658,17 @@ public abstract class AbstractEnv implements BaseEnv {
             configNodeWrapperList.get(0).getIpAndPortString(),
             getTestClassName(),
             getTestMethodName(),
-            EnvUtils.searchAvailablePorts());
+            EnvUtils.searchAvailablePorts(),
+            index,
+            this instanceof MultiClusterEnv,
+            startTime);
     dataNodeWrapperList.add(newDataNodeWrapper);
-    newDataNodeWrapper.createDir();
+    newDataNodeWrapper.createNodeDir();
     newDataNodeWrapper.changeConfig(
         (MppDataNodeConfig) clusterConfig.getDataNodeConfig(),
         (MppCommonConfig) clusterConfig.getDataNodeCommonConfig(),
         (MppJVMConfig) clusterConfig.getDataNodeJVMConfig());
+    newDataNodeWrapper.createLogDir();
     return newDataNodeWrapper;
   }
 
@@ -770,16 +815,16 @@ public abstract class AbstractEnv implements BaseEnv {
 
   @Override
   public String getSbinPath() {
-    return templateNodePath + File.separator + "sbin";
+    return TEMPLATE_NODE_PATH + File.separator + "sbin";
   }
 
   @Override
   public String getToolsPath() {
-    return templateNodePath + File.separator + "tools";
+    return TEMPLATE_NODE_PATH + File.separator + "tools";
   }
 
   @Override
   public String getLibPath() {
-    return templateNodeLibPath;
+    return TEMPLATE_NODE_LIB_PATH;
   }
 }

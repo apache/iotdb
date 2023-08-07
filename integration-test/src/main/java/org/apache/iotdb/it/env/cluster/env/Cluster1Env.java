@@ -16,23 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.it.env.remote;
 
-import org.apache.iotdb.itbase.env.JVMConfig;
+package org.apache.iotdb.it.env.cluster.env;
 
-public class RemoteJVMConfig implements JVMConfig {
+import org.apache.iotdb.it.env.cluster.EnvUtils;
+import org.apache.iotdb.tsfile.utils.Pair;
+
+public class Cluster1Env extends AbstractEnv {
+
   @Override
-  public JVMConfig setInitHeapSize(int initSize) {
-    return this;
+  public void initClusterEnvironment() {
+    Pair<Integer, Integer> nodeNum = EnvUtils.getNodeNum();
+    super.initEnvironment(nodeNum.getLeft(), nodeNum.getRight());
   }
 
   @Override
-  public JVMConfig setMaxHeapSize(int maxSize) {
-    return this;
-  }
-
-  @Override
-  public JVMConfig setMaxDirectMemorySize(int maxSize) {
-    return this;
+  public void initClusterEnvironment(int configNodesNum, int dataNodesNum) {
+    super.initEnvironment(configNodesNum, dataNodesNum);
   }
 }
