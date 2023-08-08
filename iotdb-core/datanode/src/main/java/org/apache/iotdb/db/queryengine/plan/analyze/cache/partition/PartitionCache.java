@@ -67,6 +67,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -625,44 +626,47 @@ public class PartitionCache {
     }
   }
 
-  public List<TRegionReplicaSet> getAllDataPartitionsForOneDevice(
+  public Optional<List<TRegionReplicaSet>> getAllDataPartitionsForOneDevice(
       String database, String deviceId) {
-    DataPartitionTable dataPartitionTable = dataPartitionCache.getIfPresent(database);
-    if (dataPartitionTable != null) {
-      Map<TSeriesPartitionSlot, SeriesPartitionTable> cachedDatabasePartitionMap =
-          dataPartitionTable.getDataPartitionMap();
+    dataPartitionCacheLock.readLock().lock();
+    try {
+      DataPartitionTable dataPartitionTable = dataPartitionCache.getIfPresent(database);
+      if (dataPartitionTable != null) {
+        Map<TSeriesPartitionSlot, SeriesPartitionTable> cachedDatabasePartitionMap =
+            dataPartitionTable.getDataPartitionMap();
 
-      TSeriesPartitionSlot seriesPartitionSlot = partitionExecutor.getSeriesPartitionSlot(deviceId);
-      SeriesPartitionTable cachedSeriesPartitionTable =
-          cachedDatabasePartitionMap.get(seriesPartitionSlot);
+        TSeriesPartitionSlot seriesPartitionSlot =
+            partitionExecutor.getSeriesPartitionSlot(deviceId);
+        SeriesPartitionTable cachedSeriesPartitionTable =
+            cachedDatabasePartitionMap.get(seriesPartitionSlot);
 
-      if (cachedSeriesPartitionTable != null) {
-        List<TRegionReplicaSet> regionReplicaSets = new LinkedList<>();
-        TTimePartitionSlot current =
-            TimePartitionUtils.getTimePartition(System.currentTimeMillis());
-        MutableBoolean hasLatest = new MutableBoolean(false);
-        cachedSeriesPartitionTable
-            .getSeriesPartitionMap()
-            .forEach(
-                (slot, value) -> {
-                  for (TConsensusGroupId consensusGroupId : value) {
-                    regionReplicaSets.add(getRegionReplicaSet(consensusGroupId));
-                  }
-                  hasLatest.setValue(
-                      hasLatest.booleanValue() || (slot.startTime == current.startTime));
-                });
-        if (hasLatest.booleanValue()) {
-          // cache hit
-          cacheMetrics.record(true, CacheMetrics.DATA_PARTITION_CACHE_NAME);
-          return regionReplicaSets;
+        if (cachedSeriesPartitionTable != null) {
+          List<TRegionReplicaSet> regionReplicaSets = new LinkedList<>();
+          TTimePartitionSlot current =
+              TimePartitionUtils.getTimePartition(System.currentTimeMillis());
+          MutableBoolean hasLatest = new MutableBoolean(false);
+          cachedSeriesPartitionTable
+              .getSeriesPartitionMap()
+              .forEach(
+                  (slot, value) -> {
+                    for (TConsensusGroupId consensusGroupId : value) {
+                      regionReplicaSets.add(getRegionReplicaSet(consensusGroupId));
+                    }
+                    hasLatest.setValue(
+                        hasLatest.booleanValue() || (slot.startTime == current.startTime));
+                  });
+          if (hasLatest.booleanValue()) {
+            // cache hit
+            cacheMetrics.record(true, CacheMetrics.DATA_PARTITION_CACHE_NAME);
+            return Optional.of(regionReplicaSets);
+          }
         }
       }
+    } finally {
+      dataPartitionCacheLock.readLock().unlock();
     }
-    DataPartitionQueryParam queryParam =
-        new DataPartitionQueryParam(deviceId, Collections.emptyList(), true, true);
-    return getDataPartition(
-            Collections.singletonMap(database, Collections.singletonList(queryParam)))
-        .getDataRegionReplicaSet(deviceId, Collections.emptyList());
+
+    return Optional.empty();
   }
 
   /**

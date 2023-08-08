@@ -58,11 +58,13 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 public class ClusterPartitionFetcher implements IPartitionFetcher {
@@ -227,7 +229,17 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   @Override
   public List<TRegionReplicaSet> getAllDataPartitionsForOneDevice(
       String database, String deviceId) {
-    return partitionCache.getAllDataPartitionsForOneDevice(database, deviceId);
+    Optional<List<TRegionReplicaSet>> res =
+        partitionCache.getAllDataPartitionsForOneDevice(database, deviceId);
+    if (res.isPresent()) {
+      return res.get();
+    } else {
+      DataPartitionQueryParam queryParam =
+          new DataPartitionQueryParam(deviceId, Collections.emptyList(), true, true);
+      return getDataPartitionWithUnclosedTimeRange(
+              Collections.singletonMap(database, Collections.singletonList(queryParam)))
+          .getDataRegionReplicaSet(deviceId, Collections.emptyList());
+    }
   }
 
   @Override

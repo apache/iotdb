@@ -23,10 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.SessionDataSet.DataIterator;
 import org.apache.iotdb.isession.template.Template;
-import org.apache.iotdb.isession.util.Version;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -56,8 +54,8 @@ public class SessionExample {
   private static final String ROOT_SG1_D1_S3 = "root.sg1.d1.s3";
   private static final String ROOT_SG1_D1_S4 = "root.sg1.d1.s4";
   private static final String ROOT_SG1_D1_S5 = "root.sg1.d1.s5";
-  private static final String ROOT_SG1_D1 = "root.sg1.d1";
-  private static final String ROOT_SG1 = "root.sg1";
+  private static final String ROOT_SG1_D1 = "root.db.d1";
+  private static final String ROOT_SG1 = "root.db";
   private static final String LOCAL_HOST = "127.0.0.1";
   public static final String SELECT_D1 = "select * from root.sg1.d1";
 
@@ -65,45 +63,45 @@ public class SessionExample {
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
-    session =
-        new Session.Builder()
-            .host(LOCAL_HOST)
-            .port(6667)
-            .username("root")
-            .password("root")
-            .version(Version.V_1_0)
-            .build();
-    session.open(false);
-
-    // set session fetchSize
-    session.setFetchSize(10000);
-
-    try {
-      session.createDatabase("root.sg1");
-    } catch (StatementExecutionException e) {
-      if (e.getStatusCode() != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
-        throw e;
-      }
-    }
-
-    //     createTemplate();
-    createTimeseries();
-    createMultiTimeseries();
-    insertRecord();
-    insertTablet();
-    //    insertTabletWithNullValues();
-    //    insertTablets();
-    //    insertRecords();
+    //    session =
+    //        new Session.Builder()
+    //            .host(LOCAL_HOST)
+    //            .port(6667)
+    //            .username("root")
+    //            .password("root")
+    //            .version(Version.V_1_0)
+    //            .build();
+    //    session.open(false);
+    //
+    //     set session fetchSize
+    //    session.setFetchSize(10000);
+    //
+    //    try {
+    //      session.createDatabase("root.sg1");
+    //    } catch (StatementExecutionException e) {
+    //      if (e.getStatusCode() != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
+    //        throw e;
+    //      }
+    //    }
+    //
+    //         createTemplate();
+    //    createTimeseries();
+    //    createMultiTimeseries();
+    //    insertRecord();
+    //    insertTablet();
+    //        insertTabletWithNullValues();
+    //        insertTablets();
+    //        insertRecords();
     //    insertText();
     //    selectInto();
     //    createAndDropContinuousQueries();
     //    nonQuery();
-    query();
+    //    query();
     //    queryWithTimeout();
-    rawDataQuery();
-    lastDataQuery();
-    aggregationQuery();
-    groupByQuery();
+    //    rawDataQuery();
+    //    lastDataQuery();
+    //    aggregationQuery();
+    //    groupByQuery();
     //    queryByIterator();
     //    deleteData();
     //    deleteTimeseries();
@@ -117,10 +115,10 @@ public class SessionExample {
     sessionEnableRedirect.setFetchSize(10000);
 
     fastLastDataQueryForOneDevice();
-    insertRecord4Redirect();
-    query4Redirect();
+    //    insertRecord4Redirect();
+    //    query4Redirect();
     sessionEnableRedirect.close();
-    session.close();
+    //    session.close();
   }
 
   private static void createAndDropContinuousQueries()
@@ -803,7 +801,6 @@ public class SessionExample {
     List<String> paths = new ArrayList<>();
     paths.add("s1");
     paths.add("s2");
-    paths.add("s3");
     try (SessionDataSet sessionDataSet =
         sessionEnableRedirect.executeLastDataQueryForOneDevice(
             ROOT_SG1, ROOT_SG1_D1, paths, true)) {
