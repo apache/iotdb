@@ -332,10 +332,6 @@ public class FunctionExpression extends Expression {
    * <p>The parameter part -> root.sg.d.s1, sin(root.sg.d.s1), 'key1'='value1', 'key2'='value2'
    */
   private String getParametersString() {
-    //    if (COUNT_TIME.equalsIgnoreCase(functionName)) {
-    //      return countTimeAlias;
-    //    }
-
     if (parametersString == null) {
       StringBuilder builder = new StringBuilder();
       if (!expressions.isEmpty()) {

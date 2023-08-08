@@ -128,6 +128,8 @@ public class IoTDBCountTimeIT {
     retArray = new String[] {"1,"};
     resultSetEqualTest("select count_time(s1) from root.db.**;", expectedHeader, retArray);
 
+    // TODO how to represent count_time(d1.s1)
+
     // align by device
     expectedHeader = new String[] {"Device,count_time(*)"};
     retArray = new String[] {"root.db.d1,2,", "root.db.d2,1,"};
@@ -225,6 +227,26 @@ public class IoTDBCountTimeIT {
         expectedHeader,
         retArray);
 
+    // test sort
+    expectedHeader = new String[] {"Time,Device,count_time(*)"};
+    retArray =
+        new String[] {
+          "2,root.downsampling.d1,1,",
+          "6,root.downsampling.d1,1,",
+          "2,root.downsampling.d2,1,",
+          "6,root.downsampling.d2,1,",
+          "8,root.downsampling.d2,1,",
+          "0,root.downsampling.d1,2,",
+          "4,root.downsampling.d1,2,",
+          "8,root.downsampling.d1,2,",
+          "0,root.downsampling.d2,2,",
+          "4,root.downsampling.d2,2,",
+        };
+    resultSetEqualTest(
+        "SELECT count_time(*) FROM root.downsampling.** GROUP BY([0, 10), 2ms) ORDER BY count_time(*) ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
     expectedHeader = new String[] {"Time,Device,count_time(s1)"};
     retArray =
         new String[] {
@@ -241,6 +263,25 @@ public class IoTDBCountTimeIT {
         };
     resultSetEqualTest(
         "SELECT count_time(s1) FROM root.downsampling.** GROUP BY([0, 10), 2ms) ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
+    // test sort + offset, limit
+    expectedHeader = new String[] {"Time,Device,count_time(s1)"};
+    retArray =
+        new String[] {
+          "6,root.downsampling.d1,0,",
+          "0,root.downsampling.d1,1,",
+          "8,root.downsampling.d1,1,",
+          "0,root.downsampling.d2,1,",
+          "2,root.downsampling.d2,1,",
+          "4,root.downsampling.d2,1,",
+          "6,root.downsampling.d2,1,",
+          "8,root.downsampling.d2,1,",
+          "4,root.downsampling.d1,2,",
+        };
+    resultSetEqualTest(
+        "SELECT count_time(s1) FROM root.downsampling.** GROUP BY([0, 10), 2ms) ORDER BY count_time(s1) OFFSET 1 LIMIT 9 ALIGN BY DEVICE;",
         expectedHeader,
         retArray);
   }
@@ -393,7 +434,29 @@ public class IoTDBCountTimeIT {
         expectedHeader,
         retArray);
 
+    expectedHeader = new String[] {"Time,avg(root.having.d1.s1),avg_1"};
+    retArray = new String[] {"0,0.0,0.0,", "4,4.5,4.5,", "8,8.0,4.0,"};
+    resultSetEqualTest(
+        "select avg(s1), sum(s1) / count_time(*) as avg_1 from root.having.d1 group by([0, 10), 2ms) having count_time(*) > 1;",
+        expectedHeader,
+        retArray);
+
     // align by device
+    expectedHeader = new String[] {"Time,Device,avg(s1),avg_1"};
+    retArray =
+        new String[] {
+          "0,root.having.d1,0.0,0.0,",
+          "4,root.having.d1,4.5,4.5,",
+          "8,root.having.d1,8.0,4.0,",
+          "0,root.having.d2,1.0,0.5,",
+          "4,root.having.d2,5.0,2.5,",
+          "8,root.having.d2,8.5,8.5,",
+        };
+    resultSetEqualTest(
+        "select avg(s1), sum(s1) / count_time(*) as avg_1 from root.having.* group by([0, 10), 2ms) having count_time(*) > 1 align by device;",
+        expectedHeader,
+        retArray);
+
     expectedHeader = new String[] {"Time,Device,count_time(s1),count(s1)"};
     retArray = new String[] {"4,root.having.d1,2,2,", "8,root.having.d2,2,2,"};
     resultSetEqualTest(

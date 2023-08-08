@@ -64,7 +64,7 @@ import java.util.Objects;
 public class ResultColumn extends StatementNode {
 
   private final Expression expression;
-  private String alias;
+  private final String alias;
 
   private final ColumnType columnType;
 
@@ -90,10 +90,6 @@ public class ResultColumn extends StatementNode {
 
   public String getAlias() {
     return alias;
-  }
-
-  public void setAlias(String alias) {
-    this.alias = alias;
   }
 
   public ColumnType getColumnType() {
