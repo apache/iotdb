@@ -77,6 +77,8 @@ public class OverlapStatisticTool {
       // 更新并打印进度
       updateProcessAndPrint(timePartition, partialRet);
     }
+    System.out.println("--------------------" + "final result" + "--------------------");
+    printOneStatistics(statistic);
   }
 
   private void updateProcessAndPrint(String timePartition, OverlapStatistic partialRet) {
@@ -84,41 +86,46 @@ public class OverlapStatisticTool {
     processedSeqFileCount += partialRet.totalFiles;
 
     // 打印进度
+
+    System.out.println("--------------------" + timePartition + "--------------------");
+    printOneStatistics(partialRet);
+  }
+
+  private void printOneStatistics(OverlapStatistic overlapStatistic) {
     double overlappedSeqFilePercentage;
-    if (partialRet.totalFiles == 0) {
+    if (overlapStatistic.totalFiles == 0) {
       overlappedSeqFilePercentage = 0;
     } else {
       overlappedSeqFilePercentage =
-          (double) partialRet.overlappedFiles / partialRet.totalFiles * 100;
+          (double) overlapStatistic.overlappedFiles / overlapStatistic.totalFiles * 100;
     }
 
     double overlappedChunkGroupPercentage;
-    if (partialRet.totalChunkGroups == 0) {
+    if (overlapStatistic.totalChunkGroups == 0) {
       overlappedChunkGroupPercentage = 0;
     } else {
       overlappedChunkGroupPercentage =
-          (double) partialRet.overlappedChunkGroups / partialRet.totalChunkGroups * 100;
+          (double) overlapStatistic.overlappedChunkGroups / overlapStatistic.totalChunkGroups * 100;
     }
 
     double overlappedChunkPercentage;
-    if (partialRet.totalChunks == 0) {
+    if (overlapStatistic.totalChunks == 0) {
       overlappedChunkPercentage = 0;
     } else {
       overlappedChunkPercentage =
-          (double) partialRet.overlappedChunks / partialRet.totalChunks * 100;
+          (double) overlapStatistic.overlappedChunks / overlapStatistic.totalChunks * 100;
     }
-    System.out.println("--------------------" + timePartition + "--------------------");
     System.out.printf(
         "overlapped_seq_file is %d, total seq file is %d, overlapped_seq_file_percentage is %.2f%%\n",
-        partialRet.overlappedFiles, partialRet.totalFiles, overlappedSeqFilePercentage);
+        overlapStatistic.overlappedFiles, overlapStatistic.totalFiles, overlappedSeqFilePercentage);
     System.out.printf(
         "overlapped_chunk_group is %d, total chunk group is %d, overlapped_chunk_group_percentage is %.2f%%\n",
-        partialRet.overlappedChunkGroups,
-        partialRet.totalChunkGroups,
+        overlapStatistic.overlappedChunkGroups,
+        overlapStatistic.totalChunkGroups,
         overlappedChunkGroupPercentage);
     System.out.printf(
         "overlapped_chunk is %d, total chunk is %d, overlapped_chunk_percentage is %.2f%%\n",
-        partialRet.overlappedChunks, partialRet.totalChunks, overlappedChunkPercentage);
+        overlapStatistic.overlappedChunks, overlapStatistic.totalChunks, overlappedChunkPercentage);
     System.out.printf("processed time partition count: %d\n", processedTimePartitionCount);
     System.out.printf(
         "processed seq file count: %d, total seq file count: %d\n",
