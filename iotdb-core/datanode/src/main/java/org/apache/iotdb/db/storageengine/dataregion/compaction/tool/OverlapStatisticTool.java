@@ -108,10 +108,17 @@ public class OverlapStatisticTool {
           (double) partialRet.overlappedChunks / partialRet.totalChunks * 100;
     }
     System.out.println("--------------------" + timePartition + "--------------------");
-    System.out.printf("overlapped_seq_file_percentage is %.2f%%\n", overlappedSeqFilePercentage);
     System.out.printf(
-        "overlapped_chunk_group_percentage is %.2f%%\n", overlappedChunkGroupPercentage);
-    System.out.printf("overlapped_chunk_percentage is %.2f%%\n", overlappedChunkPercentage);
+        "overlapped_seq_file is %d, total seq file is %d, overlapped_seq_file_percentage is %.2f%%\n",
+        partialRet.overlappedFiles, partialRet.totalFiles, overlappedSeqFilePercentage);
+    System.out.printf(
+        "overlapped_chunk_group is %d, total chunk group is %d, overlapped_chunk_group_percentage is %.2f%%\n",
+        partialRet.overlappedChunkGroups,
+        partialRet.totalChunkGroups,
+        overlappedChunkGroupPercentage);
+    System.out.printf(
+        "overlapped_chunk is %d, total chunk is %d, overlapped_chunk_percentage is %.2f%%\n",
+        partialRet.overlappedChunks, partialRet.totalChunks, overlappedChunkPercentage);
     System.out.printf("processed time partition count: %d\n", processedTimePartitionCount);
     System.out.printf(
         "processed seq file count: %d, total seq file count: %d\n",
