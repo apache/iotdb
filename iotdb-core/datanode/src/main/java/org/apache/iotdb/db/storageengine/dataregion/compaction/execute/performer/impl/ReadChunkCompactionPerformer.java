@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionTargetFileCountExceededException;
@@ -164,7 +163,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     while (seriesIterator.hasNextSeries()) {
       checkThreadInterrupted();
       // TODO: we can provide a configuration item to enable concurrent between each series
-      PartialPath p = new PartialPath(device, seriesIterator.nextSeries());
+      String measurementUID = seriesIterator.nextSeries();
       // TODO: seriesIterator needs to be refactor.
       // This statement must be called before next hasNextSeries() called, or it may be trapped in a
       // dead-loop.
@@ -172,7 +171,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
           seriesIterator.getMetadataListForCurrentSeries();
       SingleSeriesCompactionExecutor compactionExecutorOfCurrentTimeSeries =
           new SingleSeriesCompactionExecutor(
-              p, readerAndChunkMetadataList, writer, targetResource, summary);
+              device, measurementUID, readerAndChunkMetadataList, writer, targetResource, summary);
       compactionExecutorOfCurrentTimeSeries.execute();
     }
     writer.endChunkGroup();

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk;
 
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
@@ -45,7 +44,7 @@ import java.util.List;
 @SuppressWarnings("squid:S1319")
 public class SingleSeriesCompactionExecutor {
   private String device;
-  private PartialPath series;
+  private String measurementUID;
   private LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList;
   private CompactionTsFileWriter fileWriter;
   private TsFileResource targetResource;
@@ -70,13 +69,14 @@ public class SingleSeriesCompactionExecutor {
       IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
 
   public SingleSeriesCompactionExecutor(
-      PartialPath series,
+      String device,
+      String measurementUID,
       IMeasurementSchema measurementSchema,
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList,
       CompactionTsFileWriter fileWriter,
       TsFileResource targetResource) {
-    this.device = series.getDevice();
-    this.series = series;
+    this.device = device;
+    this.measurementUID = measurementUID;
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
     this.fileWriter = fileWriter;
     this.schema = measurementSchema;
@@ -88,13 +88,14 @@ public class SingleSeriesCompactionExecutor {
   }
 
   public SingleSeriesCompactionExecutor(
-      PartialPath series,
+      String device,
+      String measurementUID,
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList,
       CompactionTsFileWriter fileWriter,
       TsFileResource targetResource,
       CompactionTaskSummary summary) {
-    this.device = series.getDevice();
-    this.series = series;
+    this.device = device;
+    this.measurementUID = measurementUID;
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
     this.fileWriter = fileWriter;
     this.schema = null;
@@ -162,7 +163,7 @@ public class SingleSeriesCompactionExecutor {
     ChunkHeader chunkHeader = chunk.getHeader();
     this.schema =
         new MeasurementSchema(
-            series.getMeasurement(),
+            measurementUID,
             chunkHeader.getDataType(),
             chunkHeader.getEncodingType(),
             chunkHeader.getCompressionType());
