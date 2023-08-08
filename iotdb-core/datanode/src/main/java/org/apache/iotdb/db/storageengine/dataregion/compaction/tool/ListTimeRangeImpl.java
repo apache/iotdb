@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
-
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
