@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
@@ -55,6 +56,8 @@ public interface IPartitionFetcher {
    */
   DataPartition getDataPartitionWithUnclosedTimeRange(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
+
+  List<TRegionReplicaSet> getAllDataPartitionsForOneDevice(String database, String deviceId);
 
   /**
    * Get or create data partition, used in standalone write scenarios. if enableAutoCreateSchema is

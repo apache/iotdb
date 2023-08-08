@@ -119,17 +119,17 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   public List<TTimePartitionSlot> getTimePartitionSlots() {
     List<TTimePartitionSlot> result = new ArrayList<>();
     long startTime =
-        (times[0] / TimePartitionUtils.timePartitionInterval)
-            * TimePartitionUtils.timePartitionInterval; // included
-    long endTime = startTime + TimePartitionUtils.timePartitionInterval; // excluded
+        (times[0] / TimePartitionUtils.TIME_PARTITION_INTERVAL)
+            * TimePartitionUtils.TIME_PARTITION_INTERVAL; // included
+    long endTime = startTime + TimePartitionUtils.TIME_PARTITION_INTERVAL; // excluded
     TTimePartitionSlot timePartitionSlot = TimePartitionUtils.getTimePartition(times[0]);
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
       if (times[i] >= endTime) {
         result.add(timePartitionSlot);
         // next init
         endTime =
-            (times[i] / TimePartitionUtils.timePartitionInterval + 1)
-                * TimePartitionUtils.timePartitionInterval;
+            (times[i] / TimePartitionUtils.TIME_PARTITION_INTERVAL + 1)
+                * TimePartitionUtils.TIME_PARTITION_INTERVAL;
         timePartitionSlot = TimePartitionUtils.getTimePartition(times[i]);
       }
     }

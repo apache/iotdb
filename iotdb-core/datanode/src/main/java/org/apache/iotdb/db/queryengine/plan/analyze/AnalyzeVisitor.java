@@ -1804,15 +1804,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (timeRangeList.get(0).getMin() == Long.MIN_VALUE) {
       needLeftAll = true;
       startTime =
-          (timeRangeList.get(0).getMax() / TimePartitionUtils.timePartitionInterval)
-              * TimePartitionUtils.timePartitionInterval; // included
-      endTime = startTime + TimePartitionUtils.timePartitionInterval; // excluded
+          (timeRangeList.get(0).getMax() / TimePartitionUtils.TIME_PARTITION_INTERVAL)
+              * TimePartitionUtils.TIME_PARTITION_INTERVAL; // included
+      endTime = startTime + TimePartitionUtils.TIME_PARTITION_INTERVAL; // excluded
       timePartitionSlot = TimePartitionUtils.getTimePartition(timeRangeList.get(0).getMax());
     } else {
       startTime =
-          (timeRangeList.get(0).getMin() / TimePartitionUtils.timePartitionInterval)
-              * TimePartitionUtils.timePartitionInterval; // included
-      endTime = startTime + TimePartitionUtils.timePartitionInterval; // excluded
+          (timeRangeList.get(0).getMin() / TimePartitionUtils.TIME_PARTITION_INTERVAL)
+              * TimePartitionUtils.TIME_PARTITION_INTERVAL; // included
+      endTime = startTime + TimePartitionUtils.TIME_PARTITION_INTERVAL; // excluded
       timePartitionSlot = TimePartitionUtils.getTimePartition(timeRangeList.get(0).getMin());
       needLeftAll = false;
     }
@@ -1832,14 +1832,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         result.add(timePartitionSlot);
         // next init
         endTime =
-            (curLeft / TimePartitionUtils.timePartitionInterval + 1)
-                * TimePartitionUtils.timePartitionInterval;
+            (curLeft / TimePartitionUtils.TIME_PARTITION_INTERVAL + 1)
+                * TimePartitionUtils.TIME_PARTITION_INTERVAL;
         timePartitionSlot = TimePartitionUtils.getTimePartition(curLeft);
       } else if (curRight >= endTime) {
         result.add(timePartitionSlot);
         // next init
         timePartitionSlot = new TTimePartitionSlot(endTime);
-        endTime = endTime + TimePartitionUtils.timePartitionInterval;
+        endTime = endTime + TimePartitionUtils.TIME_PARTITION_INTERVAL;
       } else {
         index++;
       }

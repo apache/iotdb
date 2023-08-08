@@ -225,6 +225,12 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   @Override
+  public List<TRegionReplicaSet> getAllDataPartitionsForOneDevice(
+      String database, String deviceId) {
+    return partitionCache.getAllDataPartitionsForOneDevice(database, deviceId);
+  }
+
+  @Override
   public DataPartition getOrCreateDataPartition(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
     DataPartition dataPartition = partitionCache.getDataPartition(sgNameToQueryParamsMap);

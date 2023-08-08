@@ -778,13 +778,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         deviceId = devicePath.getFullPath();
       }
 
-      DataPartitionQueryParam queryParam =
-          new DataPartitionQueryParam(deviceId, Collections.emptyList(), true, true);
-      DataPartition dataPartition =
-          partitionFetcher.getDataPartitionWithUnclosedTimeRange(
-              Collections.singletonMap(db, Collections.singletonList(queryParam)));
       List<TRegionReplicaSet> regionReplicaSets =
-          dataPartition.getDataRegionReplicaSet(deviceId, Collections.emptyList());
+          partitionFetcher.getAllDataPartitionsForOneDevice(db, deviceId);
 
       // no valid DataRegion
       if (regionReplicaSets.isEmpty()

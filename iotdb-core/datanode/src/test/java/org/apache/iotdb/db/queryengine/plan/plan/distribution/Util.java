@@ -379,6 +379,14 @@ public class Util {
       }
 
       @Override
+      public List<TRegionReplicaSet> getAllDataPartitionsForOneDevice(
+          String database, String deviceId) {
+        return ANALYSIS
+            .getDataPartitionInfo()
+            .getDataRegionReplicaSet(deviceId, Collections.emptyList());
+      }
+
+      @Override
       public DataPartition getOrCreateDataPartition(
           Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
         return ANALYSIS.getDataPartitionInfo();

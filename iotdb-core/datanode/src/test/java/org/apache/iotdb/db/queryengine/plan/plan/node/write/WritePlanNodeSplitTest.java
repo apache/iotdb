@@ -104,7 +104,7 @@ public class WritePlanNodeSplitTest {
     for (int i = 0; i < seriesSlotPartitionNum; i++) {
       Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotMap = new HashMap<>();
       for (int t = 0; t < 5; t++) {
-        long startTime = t * TimePartitionUtils.timePartitionInterval;
+        long startTime = t * TimePartitionUtils.TIME_PARTITION_INTERVAL;
         timePartitionSlotMap.put(
             new TTimePartitionSlot(startTime),
             Collections.singletonList(
@@ -125,7 +125,7 @@ public class WritePlanNodeSplitTest {
       Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotMap = new HashMap<>();
       for (int t = 0; t < 5; t++) {
         timePartitionSlotMap.put(
-            new TTimePartitionSlot(t * TimePartitionUtils.timePartitionInterval),
+            new TTimePartitionSlot(t * TimePartitionUtils.TIME_PARTITION_INTERVAL),
             Collections.singletonList(
                 new TRegionReplicaSet(
                     new TConsensusGroupId(TConsensusGroupType.DataRegion, 99), locationList)));
@@ -150,7 +150,7 @@ public class WritePlanNodeSplitTest {
   }
 
   private int getRegionIdByTime(long startTime) {
-    return (int) (4 - (startTime / TimePartitionUtils.timePartitionInterval));
+    return (int) (4 - (startTime / TimePartitionUtils.TIME_PARTITION_INTERVAL));
   }
 
   protected DataPartition getDataPartition(
@@ -288,7 +288,7 @@ public class WritePlanNodeSplitTest {
     for (int i = 0; i < 5; i++) {
       InsertRowNode insertRowNode = new InsertRowNode(new PlanNodeId("plan node 3"));
       insertRowNode.setDevicePath(new PartialPath(String.format("root.sg1.d%d", i)));
-      insertRowNode.setTime(i * TimePartitionUtils.timePartitionInterval);
+      insertRowNode.setTime(i * TimePartitionUtils.TIME_PARTITION_INTERVAL);
       insertRowsNode.addOneInsertRowNode(insertRowNode, 2 * i);
 
       insertRowNode = new InsertRowNode(new PlanNodeId("plan node 3"));

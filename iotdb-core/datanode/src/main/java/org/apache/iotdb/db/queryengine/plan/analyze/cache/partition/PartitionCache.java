@@ -49,10 +49,12 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaUtils;
 import org.apache.iotdb.db.service.metrics.CacheMetrics;
+import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -621,6 +623,46 @@ public class PartitionCache {
     } finally {
       dataPartitionCacheLock.readLock().unlock();
     }
+  }
+
+  public List<TRegionReplicaSet> getAllDataPartitionsForOneDevice(
+      String database, String deviceId) {
+    DataPartitionTable dataPartitionTable = dataPartitionCache.getIfPresent(database);
+    if (dataPartitionTable != null) {
+      Map<TSeriesPartitionSlot, SeriesPartitionTable> cachedDatabasePartitionMap =
+          dataPartitionTable.getDataPartitionMap();
+
+      TSeriesPartitionSlot seriesPartitionSlot = partitionExecutor.getSeriesPartitionSlot(deviceId);
+      SeriesPartitionTable cachedSeriesPartitionTable =
+          cachedDatabasePartitionMap.get(seriesPartitionSlot);
+
+      if (cachedSeriesPartitionTable != null) {
+        List<TRegionReplicaSet> regionReplicaSets = new LinkedList<>();
+        TTimePartitionSlot current =
+            TimePartitionUtils.getTimePartition(System.currentTimeMillis());
+        MutableBoolean hasLatest = new MutableBoolean(false);
+        cachedSeriesPartitionTable
+            .getSeriesPartitionMap()
+            .forEach(
+                (slot, value) -> {
+                  for (TConsensusGroupId consensusGroupId : value) {
+                    regionReplicaSets.add(getRegionReplicaSet(consensusGroupId));
+                  }
+                  hasLatest.setValue(
+                      hasLatest.booleanValue() || (slot.startTime == current.startTime));
+                });
+        if (hasLatest.booleanValue()) {
+          // cache hit
+          cacheMetrics.record(true, CacheMetrics.DATA_PARTITION_CACHE_NAME);
+          return regionReplicaSets;
+        }
+      }
+    }
+    DataPartitionQueryParam queryParam =
+        new DataPartitionQueryParam(deviceId, Collections.emptyList(), true, true);
+    return getDataPartition(
+            Collections.singletonMap(database, Collections.singletonList(queryParam)))
+        .getDataRegionReplicaSet(deviceId, Collections.emptyList());
   }
 
   /**
