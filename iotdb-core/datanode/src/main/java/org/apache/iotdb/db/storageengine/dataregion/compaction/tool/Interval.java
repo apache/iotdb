@@ -26,6 +26,9 @@ public class Interval {
   public Interval(long start, long end) {
     this.start = start;
     this.end = end;
+    if (end < start) {
+      throw new IllegalArgumentException("end must greater than start");
+    }
   }
 
   public long getStart() {
@@ -34,5 +37,13 @@ public class Interval {
 
   public long getEnd() {
     return end;
+  }
+
+  public void setStart(long start) {
+    this.start = start;
+  }
+
+  public void setEnd(long end) {
+    this.end = end;
   }
 }
