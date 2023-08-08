@@ -86,16 +86,24 @@ public class FileReaderManager {
     return FileReaderManagerHelper.INSTANCE;
   }
 
-  public synchronized void closeFileAndRemoveReader(String filePath) throws IOException {
+  public synchronized void closeFileAndRemoveReader(String filePath) {
     closedReferenceMap.remove(filePath);
     TsFileSequenceReader reader = closedFileReaderMap.remove(filePath);
     if (reader != null) {
-      reader.close();
+      try {
+        reader.close();
+      } catch (IOException e) {
+        // ignored
+      }
     }
     unclosedReferenceMap.remove(filePath);
     reader = unclosedFileReaderMap.remove(filePath);
     if (reader != null) {
-      reader.close();
+      try {
+        reader.close();
+      } catch (IOException e) {
+        // ignored
+      }
     }
   }
 

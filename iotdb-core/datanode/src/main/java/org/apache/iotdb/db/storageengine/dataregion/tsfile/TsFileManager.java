@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
+import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 
 import java.io.IOException;
@@ -109,6 +110,7 @@ public class TsFileManager {
         if (entry.getValue().contains(tsFileResource)) {
           entry.getValue().remove(tsFileResource);
           TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
+          FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
           break;
         }
       }
@@ -202,11 +204,13 @@ public class TsFileManager {
       for (TsFileResource tsFileResource : seqFileResources) {
         if (sequenceFiles.get(timePartition).remove(tsFileResource)) {
           TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
+          FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
         }
       }
       for (TsFileResource tsFileResource : unseqFileResources) {
         if (unsequenceFiles.get(timePartition).remove(tsFileResource)) {
           TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
+          FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
         }
       }
       if (isTargetSequence) {
