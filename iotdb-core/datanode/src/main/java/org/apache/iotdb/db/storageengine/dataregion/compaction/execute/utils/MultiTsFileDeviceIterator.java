@@ -543,10 +543,9 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       if (currentCompactingSeries == null) {
         return new LinkedList<>();
       }
-
+      PartialPath path = null;
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>>
           readerAndChunkMetadataForThisSeries = new LinkedList<>();
-      PartialPath path = new PartialPath(device, currentCompactingSeries);
 
       for (TsFileResource resource : tsFileResourcesSortedByAsc) {
         TsFileSequenceReader reader = readerMap.get(resource);
@@ -563,6 +562,9 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
                   resource,
                   r -> new LinkedList<>(ModificationFile.getNormalMods(r).getModifications()));
           LinkedList<Modification> modificationForCurrentSeries = new LinkedList<>();
+          if (modificationsInThisResource.size() > 0 && path == null) {
+            path = new PartialPath(device, currentCompactingSeries);
+          }
           // collect the modifications for current series
           for (Modification modification : modificationsInThisResource) {
             if (modification.getPath().matchFullPath(path)) {

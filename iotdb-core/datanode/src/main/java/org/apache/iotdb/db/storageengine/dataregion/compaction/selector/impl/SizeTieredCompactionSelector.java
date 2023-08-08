@@ -189,7 +189,7 @@ public class SizeTieredCompactionSelector
     //    int maxLevel = searchMaxFileLevel();
     // In order to verify the impaction of L2 compaction, we disable the other levels' compaction
     // except L0
-    int maxLevel = 1;
+    int maxLevel = 0;
     for (int currentLevel = 0; currentLevel <= maxLevel; currentLevel++) {
       List<Pair<List<TsFileResource>, Long>> singleLevelTask = selectSingleLevel(currentLevel);
       if (!singleLevelTask.isEmpty()) {
