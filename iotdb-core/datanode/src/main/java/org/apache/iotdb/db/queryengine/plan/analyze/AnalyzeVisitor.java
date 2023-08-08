@@ -722,6 +722,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis, Map<String, Expression> deviceToSelectExpressionsOfOneMeasurement) {
     Map<String, Set<Expression>> deviceToSourceTransformExpressions =
         analysis.getDeviceToSourceTransformExpressions();
+    Map<String, Set<Expression>> deviceToAggregationExpressions =
+        analysis.getDeviceToAggregationExpressions();
+    Map<String, Set<Expression>> deviceToOutputExpressions =
+        analysis.getDeviceToOutputExpressions();
 
     for (Map.Entry<String, Expression> entry :
         deviceToSelectExpressionsOfOneMeasurement.entrySet()) {
@@ -740,10 +744,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
             analyzeExpressionType(analysis, countTimeSourceExpression);
 
-            Set<Expression> sourceTransformExpressions =
-                deviceToSourceTransformExpressions.computeIfAbsent(
-                    deviceName, k -> new LinkedHashSet<>());
-            sourceTransformExpressions.add(countTimeSourceExpression);
+            deviceToSourceTransformExpressions
+                .computeIfAbsent(deviceName, k -> new LinkedHashSet<>())
+                .add(countTimeSourceExpression);
           }
         }
       }
@@ -1075,6 +1078,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     updateDeviceToAggregationAndOutputExpressions(
         analysis, analysis.getDeviceToSelectExpressions());
+
     if (queryStatement.hasOrderByExpression()) {
       updateDeviceToAggregationAndOutputExpressions(
           analysis, analysis.getDeviceToOrderByExpressions());
@@ -1094,30 +1098,20 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       String deviceName = deviceExpressionsEntry.getKey();
       Set<Expression> expressionSet = deviceExpressionsEntry.getValue();
 
-      Set<Expression> aggregationExpressions = new LinkedHashSet<>();
-      Set<Expression> normalizedAggregationExpressions = new LinkedHashSet<>();
       for (Expression expression : expressionSet) {
         for (Expression aggregationExpression : searchAggregationExpressions(expression)) {
           Expression normalizedAggregationExpression = normalizeExpression(aggregationExpression);
-          // count_time aggregation do not need to put in transformExpression
-          if (normalizedAggregationExpression instanceof FunctionExpression
-              && COUNT_TIME.equalsIgnoreCase(
-                  ((FunctionExpression) normalizedAggregationExpression).getFunctionName())) {
-            continue;
-          }
 
           analyzeExpressionType(analysis, normalizedAggregationExpression);
 
-          aggregationExpressions.add(aggregationExpression);
-          normalizedAggregationExpressions.add(normalizedAggregationExpression);
+          deviceToOutputExpressions
+              .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
+              .add(aggregationExpression);
+          deviceToAggregationExpressions
+              .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
+              .add(normalizedAggregationExpression);
         }
       }
-      deviceToOutputExpressions
-          .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
-          .addAll(aggregationExpressions);
-      deviceToAggregationExpressions
-          .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
-          .addAll(normalizedAggregationExpressions);
     }
   }
 
@@ -1166,7 +1160,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
         for (Expression expression : aggregationExpressions) {
 
-          // count_time aggregation do not need to put in transformExpression
+          // do not put "TimestampOperand" into sourceTransformExpression
           if (expression instanceof FunctionExpression
               && COUNT_TIME.equalsIgnoreCase(((FunctionExpression) expression).getFunctionName())) {
             continue;
@@ -1183,13 +1177,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           sourceTransformExpressions.add(analysis.getDeviceToGroupByExpression().get(deviceName));
         }
       }
-    } else {
+
+      return;
+    }
+
+    updateDeviceToSourceTransformAndOutputExpressions(
+        analysis, analysis.getDeviceToSelectExpressions());
+    if (queryStatement.hasOrderByExpression()) {
       updateDeviceToSourceTransformAndOutputExpressions(
-          analysis, analysis.getDeviceToSelectExpressions());
-      if (queryStatement.hasOrderByExpression()) {
-        updateDeviceToSourceTransformAndOutputExpressions(
-            analysis, analysis.getDeviceToOrderByExpressions());
-      }
+          analysis, analysis.getDeviceToOrderByExpressions());
     }
   }
 
@@ -1231,8 +1227,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     if (queryStatement.isAggregationQuery()) {
       for (Expression aggregationExpression : analysis.getAggregationExpressions()) {
-        // the expressions in count_time aggregation has been put in sourceTransformExpressions in
-        // the stage of analyzeSelect
+        // do not put "TimestampOperand" into sourceTransformExpression
         if (aggregationExpression instanceof FunctionExpression
             && COUNT_TIME.equalsIgnoreCase(
                 ((FunctionExpression) aggregationExpression).getFunctionName())) {
@@ -1242,14 +1237,17 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         // for AggregationExpression, only the first Expression of input need to transform
         sourceTransformExpressions.add(aggregationExpression.getExpressions().get(0));
       }
+
       if (queryStatement.hasGroupByExpression()) {
         sourceTransformExpressions.add(analysis.getGroupByExpression());
       }
-    } else {
-      sourceTransformExpressions.addAll(analysis.getSelectExpressions());
-      if (queryStatement.hasOrderByExpression()) {
-        sourceTransformExpressions.addAll(analysis.getOrderByExpressions());
-      }
+
+      return;
+    }
+
+    sourceTransformExpressions.addAll(analysis.getSelectExpressions());
+    if (queryStatement.hasOrderByExpression()) {
+      sourceTransformExpressions.addAll(analysis.getOrderByExpressions());
     }
   }
 
