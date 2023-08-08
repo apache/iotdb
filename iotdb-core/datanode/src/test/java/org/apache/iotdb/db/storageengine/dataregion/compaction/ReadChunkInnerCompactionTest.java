@@ -197,9 +197,9 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
             0);
     task.start();
     Assert.assertEquals(
-            FileReaderManager.getInstance().getUnclosedFileReaderMap().size()
-                    + FileReaderManager.getInstance().getClosedFileReaderMap().size(),
-            0);
+        FileReaderManager.getInstance().getUnclosedFileReaderMap().size()
+            + FileReaderManager.getInstance().getClosedFileReaderMap().size(),
+        0);
 
     validateSeqFiles(true);
 
