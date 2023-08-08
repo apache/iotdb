@@ -68,4 +68,27 @@ public class ListTimeRangeImplTest {
     Assert.assertTrue(listTimeRange.isOverlapped(new Interval(1, 1)));
     Assert.assertFalse(listTimeRange.isOverlapped(new Interval(101, 103)));
   }
+
+  @Test
+  public void test05() {
+    listTimeRange.addInterval(new Interval(30, 40));
+    listTimeRange.addInterval(new Interval(10, 20));
+    listTimeRange.addInterval(new Interval(20, 30));
+    Assert.assertEquals(1, listTimeRange.getIntervalList().size());
+  }
+
+  @Test
+  public void test06() {
+    listTimeRange.addInterval(new Interval(1, 100));
+    listTimeRange.addInterval(new Interval(1, 2000));
+    Assert.assertEquals(1, listTimeRange.getIntervalList().size());
+  }
+
+  @Test
+  public void test07() {
+    listTimeRange.addInterval(new Interval(1, 10));
+    listTimeRange.addInterval(new Interval(60, 70));
+    listTimeRange.addInterval(new Interval(51, 55));
+    Assert.assertEquals(51, listTimeRange.getIntervalList().get(1).getStart());
+  }
 }
