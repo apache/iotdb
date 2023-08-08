@@ -682,7 +682,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                   analyzeAlias(
                       resultColumn.getAlias(),
                       measurementExpression,
-                      lowerCaseMeasurementExpression)));
+                      lowerCaseMeasurementExpression,
+                      queryStatement)));
 
           // add deviceToSelectExpressions
           updateDeviceToSelectExpressions(
@@ -746,7 +747,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
             deviceToSourceTransformExpressions
                 .computeIfAbsent(deviceName, k -> new LinkedHashSet<>())
-                .add(countTimeSourceExpression);
+                .add(countTimeSourceExpression.getExpressions().get(0));
           }
         }
       }
