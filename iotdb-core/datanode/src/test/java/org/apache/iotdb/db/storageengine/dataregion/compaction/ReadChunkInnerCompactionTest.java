@@ -40,6 +40,7 @@ import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -181,6 +182,10 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
 
     Map<PartialPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, false), tsDataTypes);
+    Assert.assertEquals(
+        FileReaderManager.getInstance().getUnclosedFileReaderMap().size()
+            + FileReaderManager.getInstance().getClosedFileReaderMap().size(),
+        2);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
             0,
@@ -191,10 +196,19 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
             new AtomicInteger(0),
             0);
     task.start();
+    Assert.assertEquals(
+            FileReaderManager.getInstance().getUnclosedFileReaderMap().size()
+                    + FileReaderManager.getInstance().getClosedFileReaderMap().size(),
+            0);
 
     validateSeqFiles(true);
 
     validateTargetDatas(sourceDatas, tsDataTypes);
+
+    Assert.assertEquals(
+        FileReaderManager.getInstance().getUnclosedFileReaderMap().size()
+            + FileReaderManager.getInstance().getClosedFileReaderMap().size(),
+        1);
   }
 
   @Test
