@@ -266,6 +266,25 @@ public class IoTDBCountTimeIT {
         expectedHeader,
         retArray);
 
+    expectedHeader = new String[] {"Time,Device,sum(s1) / count_time(*)"};
+    retArray =
+        new String[] {
+          "0,root.downsampling.d1,0.0,",
+          "2,root.downsampling.d1,null,",
+          "4,root.downsampling.d1,4.5,",
+          "6,root.downsampling.d1,null,",
+          "8,root.downsampling.d1,4.0,",
+          "0,root.downsampling.d2,0.5,",
+          "2,root.downsampling.d2,2.0,",
+          "4,root.downsampling.d2,2.5,",
+          "6,root.downsampling.d2,7.0,",
+          "8,root.downsampling.d2,8.0,",
+        };
+    resultSetEqualTest(
+        "SELECT sum(s1) / count_time(*)  FROM root.downsampling.* GROUP BY([0, 10), 2ms) ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+
     // test sort + offset, limit
     expectedHeader = new String[] {"Time,Device,count_time(s1)"};
     retArray =

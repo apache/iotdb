@@ -507,7 +507,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
   }
 
-  /** process select component for align by time */
+  /** process select component for align by time. */
   private Map<Integer, List<Pair<Expression, String>>> analyzeSelect(
       Analysis analysis, QueryStatement queryStatement, ISchemaTree schemaTree) {
     Map<Integer, List<Pair<Expression, String>>> outputExpressionMap = new HashMap<>();
@@ -611,7 +611,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return deviceSet;
   }
 
-  /** process select component for align by device */
+  /** process select component for align by device. */
   private List<Pair<Expression, String>> analyzeSelect(
       Analysis analysis,
       QueryStatement queryStatement,
@@ -723,10 +723,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis, Map<String, Expression> deviceToSelectExpressionsOfOneMeasurement) {
     Map<String, Set<Expression>> deviceToSourceTransformExpressions =
         analysis.getDeviceToSourceTransformExpressions();
-    Map<String, Set<Expression>> deviceToAggregationExpressions =
-        analysis.getDeviceToAggregationExpressions();
-    Map<String, Set<Expression>> deviceToOutputExpressions =
-        analysis.getDeviceToOutputExpressions();
 
     for (Map.Entry<String, Expression> entry :
         deviceToSelectExpressionsOfOneMeasurement.entrySet()) {

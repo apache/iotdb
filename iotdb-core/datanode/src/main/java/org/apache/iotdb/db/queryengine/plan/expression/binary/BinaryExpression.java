@@ -152,6 +152,18 @@ public abstract class BinaryExpression extends Expression {
     String left = this.getLeftExpression().getOutputSymbol();
     String right = this.getRightExpression().getOutputSymbol();
 
+    return buildExpression(left, right);
+  }
+
+  @Override
+  public String getTransformedOutputInternal() {
+    String left = this.getLeftExpression().getTransformedOutputInternal();
+    String right = this.getRightExpression().getTransformedOutputInternal();
+
+    return buildExpression(left, right);
+  }
+
+  private String buildExpression(String left, String right) {
     StringBuilder builder = new StringBuilder();
     if (leftExpression.getExpressionType().getPriority() < this.getExpressionType().getPriority()) {
       builder.append("(").append(left).append(")");
@@ -167,10 +179,5 @@ public abstract class BinaryExpression extends Expression {
     }
 
     return builder.toString();
-  }
-
-  @Override
-  public String getTransformedOutputInternal() {
-    return this.getOutputSymbolInternal();
   }
 }
