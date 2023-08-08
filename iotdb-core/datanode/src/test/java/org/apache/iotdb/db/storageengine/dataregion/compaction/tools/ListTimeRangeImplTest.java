@@ -65,7 +65,7 @@ public class ListTimeRangeImplTest {
     listTimeRange.addInterval(new Interval(15, 20));
     listTimeRange.addInterval(new Interval(50, 60));
     listTimeRange.addInterval(new Interval(5, 100));
-    Assert.assertTrue(listTimeRange.isOverlapped(new Interval(1, 1)));
+    Assert.assertFalse(listTimeRange.isOverlapped(new Interval(1, 1)));
     Assert.assertFalse(listTimeRange.isOverlapped(new Interval(101, 103)));
   }
 
