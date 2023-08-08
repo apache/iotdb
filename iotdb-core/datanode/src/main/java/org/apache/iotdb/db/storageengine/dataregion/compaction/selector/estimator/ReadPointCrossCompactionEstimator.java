@@ -119,9 +119,15 @@ public class ReadPointCrossCompactionEstimator extends AbstractCrossSpaceEstimat
       return 0;
     }
     // it means the max size of a timeseries in this file when reading all of its chunk into memory.
-    return compressionRatio
-        * concurrentSeriesNum
-        * (unseqResource.getTsFileSize() * fileInfo.maxSeriesChunkNum / fileInfo.totalChunkNum);
+
+    long resourceFileSize =
+        compressionRatio
+            * concurrentSeriesNum
+            * (unseqResource.getTsFileSize() * fileInfo.maxSeriesChunkNum / fileInfo.totalChunkNum);
+
+    // add mod file size
+    long modFileSize = unseqResource.getModFile().getSize();
+    return resourceFileSize + modFileSize;
   }
 
   /**
@@ -167,6 +173,9 @@ public class ReadPointCrossCompactionEstimator extends AbstractCrossSpaceEstimat
         cost += seqFileCost;
         maxCostOfReadingSeqFile = seqFileCost;
       }
+
+      // add mod file size
+      cost += seqResource.getModFile().getSize();
     }
     return cost;
   }

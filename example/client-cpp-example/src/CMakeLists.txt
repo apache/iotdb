@@ -23,17 +23,24 @@ SET(CMAKE_CXX_STANDARD 11)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../target/client/include)
+# Add Thrift include directory
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/thrift/include)
+# Add cpp-client include directory
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/client/include)
 
 FIND_PACKAGE(Boost REQUIRED)
 IF (DEFINED BOOST_INCLUDEDIR)
     INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
 ENDIF()
 
+# Add the libs for thrift
 IF(MSVC)
-    LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/../target/client/lib/Release)
+    SET(THRIFT_STATIC_LIB "${CMAKE_SOURCE_DIR}/thrift/lib/Release/thriftmd.lib")
+ELSE()
+    SET(THRIFT_STATIC_LIB "${CMAKE_SOURCE_DIR}/thrift/lib/libthrift.a")
 ENDIF()
-LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/../target/client/lib)
+# Add the libs for the cpp-client
+LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/client/lib)
 
 ADD_EXECUTABLE(SessionExample SessionExample.cpp)
 ADD_EXECUTABLE(AlignedTimeseriesSessionExample AlignedTimeseriesSessionExample.cpp)

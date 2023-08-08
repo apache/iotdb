@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.it.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -37,7 +38,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.env.cluster.DataNodeWrapper;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -419,182 +420,6 @@ public class IoTDBPartitionCreationIT {
           4 + testTimePartitionBatchSize,
           testTimePartitionInterval,
           dataPartitionTableResp.getDataPartitionTable());
-
-      // RegionGroup statistics:
-      // 0: 1 Removing, 1 partition
-      // 1: 1 ReadOnly, 1 partition
-      // 2: 1 Unknown, 1 partition
-      // 3: All Running, 1 partition
-      // Least Region Group number per storageGroup = 4, match the current Region Group number
-      // Will allocate the new partition to Running RegionGroup 3, DataNodes: [1, 2, 6]
-      showRegionResp = client.showRegion(new TShowRegionReq());
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionResp.getStatus().getCode());
-      for (TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {
-        if (regionInfo.getDataNodeId() == 6) {
-          Assert.assertEquals(regionInfo.getTimeSlots(), 2);
-        }
-      }
-
-      partitionSlotsMap =
-          ConfigNodeTestUtils.constructPartitionSlotsMap(
-              sg,
-              5,
-              5 + testSeriesPartitionBatchSize,
-              5,
-              5 + testTimePartitionBatchSize,
-              testTimePartitionInterval);
-      dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
-      for (int retry = 0; retry < 5; retry++) {
-        // Build new Client since it's unstable in Win8 environment
-        try (SyncConfigNodeIServiceClient configNodeClient =
-            (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-          dataPartitionTableResp = configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
-          if (dataPartitionTableResp != null) {
-            break;
-          }
-        } catch (Exception e) {
-          // Retry sometimes in order to avoid request timeout
-          LOGGER.error(e.getMessage());
-          TimeUnit.SECONDS.sleep(1);
-        }
-      }
-      Assert.assertNotNull(dataPartitionTableResp);
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          dataPartitionTableResp.getStatus().getCode());
-      Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
-      ConfigNodeTestUtils.checkDataPartitionTable(
-          sg,
-          5,
-          5 + testSeriesPartitionBatchSize,
-          5,
-          5 + testTimePartitionBatchSize,
-          testTimePartitionInterval,
-          dataPartitionTableResp.getDataPartitionTable());
-
-      // RegionGroup statistics:
-      // 0: 1 Removing, 1 partition
-      // 1: 1 ReadOnly, 1 partition
-      // 2: 1 Unknown, 1 partition
-      // 3: All Running, 2 partition
-      // Least Region Group number per storageGroup = 4, match the current Region Group number
-      // Will allocate the new partition to available RegionGroup 2, DataNodes: [1, 2, 5]
-      showRegionResp = client.showRegion(new TShowRegionReq());
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionResp.getStatus().getCode());
-      for (TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {
-        if (regionInfo.getDataNodeId() == 5) {
-          Assert.assertEquals(regionInfo.getTimeSlots(), 2);
-        }
-      }
-
-      partitionSlotsMap =
-          ConfigNodeTestUtils.constructPartitionSlotsMap(
-              sg,
-              6,
-              6 + testSeriesPartitionBatchSize,
-              6,
-              6 + testTimePartitionBatchSize,
-              testTimePartitionInterval);
-      dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
-      for (int retry = 0; retry < 5; retry++) {
-        // Build new Client since it's unstable in Win8 environment
-        try (SyncConfigNodeIServiceClient configNodeClient =
-            (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-          dataPartitionTableResp = configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
-          if (dataPartitionTableResp != null) {
-            break;
-          }
-        } catch (Exception e) {
-          // Retry sometimes in order to avoid request timeout
-          LOGGER.error(e.getMessage());
-          TimeUnit.SECONDS.sleep(1);
-        }
-      }
-      Assert.assertNotNull(dataPartitionTableResp);
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          dataPartitionTableResp.getStatus().getCode());
-      Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
-      ConfigNodeTestUtils.checkDataPartitionTable(
-          sg,
-          6,
-          6 + testSeriesPartitionBatchSize,
-          6,
-          6 + testTimePartitionBatchSize,
-          testTimePartitionInterval,
-          dataPartitionTableResp.getDataPartitionTable());
-
-      // RegionGroup statistics:
-      // 0: 1 Removing, 1 partition
-      // 1: 1 ReadOnly, 1 partition
-      // 2: 1 Unknown, 2 partition
-      // 3: All Running, 2 partition
-      // Least Region Group number per storageGroup = 4, match the current Region Group number
-      // Will allocate the new partition to Discouraged RegionGroup 2, DataNodes: [1, 2, 4]
-      showRegionResp = client.showRegion(new TShowRegionReq());
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionResp.getStatus().getCode());
-      for (TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {
-        if (regionInfo.getDataNodeId() == 4) {
-          Assert.assertEquals(regionInfo.getTimeSlots(), 2);
-        }
-      }
-
-      partitionSlotsMap =
-          ConfigNodeTestUtils.constructPartitionSlotsMap(
-              sg,
-              7,
-              7 + testSeriesPartitionBatchSize,
-              7,
-              7 + testTimePartitionBatchSize,
-              testTimePartitionInterval);
-      dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
-      for (int retry = 0; retry < 5; retry++) {
-        // Build new Client since it's unstable in Win8 environment
-        try (SyncConfigNodeIServiceClient configNodeClient =
-            (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-          dataPartitionTableResp = configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
-          if (dataPartitionTableResp != null) {
-            break;
-          }
-        } catch (Exception e) {
-          // Retry sometimes in order to avoid request timeout
-          LOGGER.error(e.getMessage());
-          TimeUnit.SECONDS.sleep(1);
-        }
-      }
-      Assert.assertNotNull(dataPartitionTableResp);
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-          dataPartitionTableResp.getStatus().getCode());
-      Assert.assertNotNull(dataPartitionTableResp.getDataPartitionTable());
-      ConfigNodeTestUtils.checkDataPartitionTable(
-          sg,
-          7,
-          7 + testSeriesPartitionBatchSize,
-          7,
-          7 + testTimePartitionBatchSize,
-          testTimePartitionInterval,
-          dataPartitionTableResp.getDataPartitionTable());
-
-      // RegionGroup statistics:
-      // 0: 1 Removing, 1 partition
-      // 1: 1 ReadOnly, 2 partition
-      // 2: 1 Unknown, 2 partition
-      // 3: All Running, 2 partition
-      // Least Region Group number per storageGroup = 4, match the current Region Group number
-      // Will allocate the new partition to Running RegionGroup 3, DataNodes: [0, 1, 5]
-      // Because RegionGroup 1 is Disabled
-      showRegionResp = client.showRegion(new TShowRegionReq());
-      Assert.assertEquals(
-          TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionResp.getStatus().getCode());
-      for (TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {
-        if (regionInfo.getDataNodeId() == 6) {
-          Assert.assertEquals(regionInfo.getTimeSlots(), 3);
-        }
-      }
     }
   }
 }

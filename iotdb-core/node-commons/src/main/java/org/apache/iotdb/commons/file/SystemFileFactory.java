@@ -33,11 +33,11 @@ public enum SystemFileFactory {
 
   private static FSType fsType =
       CommonDescriptor.getInstance().getConfig().getSystemFileStorageFs();
-  private static final String UNSUPPORT_FILE_SYSTEM = "Unsupported file system: ";
+  private static final String UNSUPPORTED_FILE_SYSTEM = "Unsupported file system: ";
 
   public File getFile(String pathname) {
     if (fsType.equals(FSType.HDFS)) {
-      throw new UnsupportedOperationException(UNSUPPORT_FILE_SYSTEM + fsType.name());
+      throw new UnsupportedOperationException(UNSUPPORTED_FILE_SYSTEM + fsType.name());
       // return new HDFSFile(pathname);
     } else {
       return new File(pathname);
@@ -46,7 +46,7 @@ public enum SystemFileFactory {
 
   public File getFile(String parent, String child) {
     if (fsType.equals(FSType.HDFS)) {
-      throw new UnsupportedOperationException(UNSUPPORT_FILE_SYSTEM + fsType.name());
+      throw new UnsupportedOperationException(UNSUPPORTED_FILE_SYSTEM + fsType.name());
       // return new HDFSFile(parent, child);
     } else {
       return new File(parent, child);
@@ -55,7 +55,7 @@ public enum SystemFileFactory {
 
   public File getFile(File parent, String child) {
     if (fsType.equals(FSType.HDFS)) {
-      throw new UnsupportedOperationException(UNSUPPORT_FILE_SYSTEM + fsType.name());
+      throw new UnsupportedOperationException(UNSUPPORTED_FILE_SYSTEM + fsType.name());
       // return new HDFSFile(parent, child);
     } else {
       return new File(parent, child);
@@ -64,7 +64,7 @@ public enum SystemFileFactory {
 
   public File getFile(URI uri) {
     if (fsType.equals(FSType.HDFS)) {
-      throw new UnsupportedOperationException(UNSUPPORT_FILE_SYSTEM + fsType.name());
+      throw new UnsupportedOperationException(UNSUPPORTED_FILE_SYSTEM + fsType.name());
       // return new HDFSFile(uri);
     } else {
       return new File(uri);
@@ -72,10 +72,13 @@ public enum SystemFileFactory {
   }
 
   public void makeDirIfNecessary(String dir) throws IOException {
-    File file = getFile(dir);
-    if (file.exists() && file.isDirectory()) {
+    File directory = getFile(dir);
+    if (directory.isFile()) {
+      directory = directory.getParentFile();
+    }
+    if (directory.exists()) {
       return;
     }
-    FileUtils.forceMkdir(file);
+    FileUtils.forceMkdir(directory);
   }
 }

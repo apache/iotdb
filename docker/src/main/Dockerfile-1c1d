@@ -32,9 +32,11 @@ RUN apt update \
   && mv /start-1c1d.sh /iotdb/sbin \
   && sed -i 's/dn_internal_address=127.0.0.1/dn_internal_address=0.0.0.0/g' /iotdb/conf/iotdb-datanode.properties \
   && sed -i 's/cn_internal_address=127.0.0.1/cn_internal_address=0.0.0.0/g' /iotdb/conf/iotdb-confignode.properties \
-  && sed -i 's/config_node_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus/config_node_consensus_protocol_class=org.apache.iotdb.consensus.simple.SimpleConsensus/g' /iotdb/conf/iotdb-common.properties \
-  && sed -i 's/schema_region_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus/schema_region_consensus_protocol_class=org.apache.iotdb.consensus.simple.SimpleConsensus/g' /iotdb/conf/iotdb-common.properties \
-  && sed -i 's/data_region_consensus_protocol_class=org.apache.iotdb.consensus.iot.IoTConsensus/data_region_consensus_protocol_class=org.apache.iotdb.consensus.simple.SimpleConsensus/g' /iotdb/conf/iotdb-common.properties \
+  && sed -i 's/cn_target_config_node_list=127.0.0.1:10710/cn_target_config_node_list=0.0.0.0:10710/g' /iotdb/conf/iotdb-confignode.properties \
+  && sed -i 's/dn_target_config_node_list=127.0.0.1:10710/dn_target_config_node_list=0.0.0.0:10710/g' /iotdb/conf/iotdb-datanode.properties \
+  && sed -i 's/# config_node_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus/config_node_consensus_protocol_class=org.apache.iotdb.consensus.simple.SimpleConsensus/g' /iotdb/conf/iotdb-common.properties \
+  && sed -i 's/# schema_region_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus/schema_region_consensus_protocol_class=org.apache.iotdb.consensus.simple.SimpleConsensus/g' /iotdb/conf/iotdb-common.properties \
+  && sed -i 's/# data_region_consensus_protocol_class=org.apache.iotdb.consensus.iot.IoTConsensus/data_region_consensus_protocol_class=org.apache.iotdb.consensus.simple.SimpleConsensus/g' /iotdb/conf/iotdb-common.properties \
   && apt remove unzip -y \
   && apt autoremove -y \
   && apt purge --auto-remove -y \
@@ -42,8 +44,8 @@ RUN apt update \
 RUN dos2unix /iotdb/sbin/start-1c1d.sh
 RUN dos2unix /iotdb/sbin/iotdb-common.sh
 RUN dos2unix /iotdb/sbin/start-confignode.sh
-RUN dos2unix /iotdb/sbin/stop-confignode.sh
 RUN dos2unix /iotdb/sbin/../conf/confignode-env.sh
+RUN dos2unix /iotdb/sbin/stop-confignode.sh
 RUN dos2unix /iotdb/sbin/start-datanode.sh
 RUN dos2unix /iotdb/sbin/../conf/datanode-env.sh
 EXPOSE 6667

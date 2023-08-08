@@ -40,6 +40,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateVersionInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
@@ -65,14 +66,18 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
+import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRuntimeConfiguration;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
+import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -234,16 +239,23 @@ public class NodeManager {
   /**
    * Register DataNode.
    *
-   * @param registerDataNodePlan RegisterDataNodeReq
+   * @param req TDataNodeRegisterReq
    * @return DataNodeConfigurationDataSet. The {@link TSStatus} will be set to {@link
    *     TSStatusCode#SUCCESS_STATUS} when register success.
    */
-  public DataSet registerDataNode(RegisterDataNodePlan registerDataNodePlan) {
+  public DataSet registerDataNode(TDataNodeRegisterReq req) {
     int dataNodeId = nodeInfo.generateNextNodeId();
 
+    RegisterDataNodePlan registerDataNodePlan =
+        new RegisterDataNodePlan(req.getDataNodeConfiguration());
     // Register new DataNode
     registerDataNodePlan.getDataNodeConfiguration().getLocation().setDataNodeId(dataNodeId);
     getConsensusManager().write(registerDataNodePlan);
+
+    // update datanode's versionInfo
+    UpdateVersionInfoPlan updateVersionInfoPlan =
+        new UpdateVersionInfoPlan(req.getVersionInfo(), dataNodeId);
+    getConsensusManager().write(updateVersionInfoPlan);
 
     // Bind DataNode metrics
     PartitionMetrics.bindDataNodePartitionMetrics(
@@ -262,14 +274,21 @@ public class NodeManager {
     return resp;
   }
 
-  public TDataNodeRestartResp updateDataNodeIfNecessary(
-      TDataNodeConfiguration dataNodeConfiguration) {
-    TDataNodeConfiguration recordConfiguration =
-        getRegisteredDataNode(dataNodeConfiguration.getLocation().getDataNodeId());
-    if (!recordConfiguration.equals(dataNodeConfiguration)) {
+  public TDataNodeRestartResp updateDataNodeIfNecessary(TDataNodeRestartReq req) {
+    int nodeId = req.getDataNodeConfiguration().getLocation().getDataNodeId();
+    TDataNodeConfiguration dataNodeConfiguration = getRegisteredDataNode(nodeId);
+    if (!req.getDataNodeConfiguration().equals(dataNodeConfiguration)) {
       // Update DataNodeConfiguration when modified during restart
-      UpdateDataNodePlan updateDataNodePlan = new UpdateDataNodePlan(dataNodeConfiguration);
+      UpdateDataNodePlan updateDataNodePlan =
+          new UpdateDataNodePlan(req.getDataNodeConfiguration());
       getConsensusManager().write(updateDataNodePlan);
+    }
+    TNodeVersionInfo versionInfo = nodeInfo.getVersionInfo(nodeId);
+    if (!req.getVersionInfo().equals(versionInfo)) {
+      // Update versionInfo when modified during restart
+      UpdateVersionInfoPlan updateVersionInfoPlan =
+          new UpdateVersionInfoPlan(req.getVersionInfo(), nodeId);
+      getConsensusManager().write(updateVersionInfoPlan);
     }
 
     TDataNodeRestartResp resp = new TDataNodeRestartResp();
@@ -338,8 +357,18 @@ public class NodeManager {
         .setConfigNodeId(nodeId);
   }
 
-  public TSStatus restartConfigNode(TConfigNodeLocation configNodeLocation) {
-    // TODO: @Itami-Sho, update peer if necessary
+  public TSStatus updateConfigNodeIfNecessary(int configNodeId, TNodeVersionInfo versionInfo) {
+    TNodeVersionInfo recordVersionInfo = nodeInfo.getVersionInfo(configNodeId);
+    if (!recordVersionInfo.equals(versionInfo)) {
+      // Update versionInfo when modified during restart
+      UpdateVersionInfoPlan updateConfigNodePlan =
+          new UpdateVersionInfoPlan(versionInfo, configNodeId);
+      ConsensusWriteResponse result = getConsensusManager().write(updateConfigNodePlan);
+      if (result.getException() != null) {
+        return new TSStatus(TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode());
+      }
+      return result.getStatus();
+    }
     return ClusterNodeStartUtils.ACCEPT_NODE_RESTART;
   }
 
@@ -461,6 +490,10 @@ public class NodeManager {
     return nodeInfo.getRegisteredConfigNodes();
   }
 
+  public Map<Integer, TNodeVersionInfo> getNodeVersionInfo() {
+    return nodeInfo.getNodeVersionInfo();
+  }
+
   public List<TConfigNodeInfo> getRegisteredConfigNodeInfoList() {
     List<TConfigNodeInfo> configNodeInfoList = new ArrayList<>();
     List<TConfigNodeLocation> registeredConfigNodes = this.getRegisteredConfigNodes();
@@ -487,11 +520,16 @@ public class NodeManager {
   /**
    * Only leader use this interface, record the new ConfigNode's information.
    *
-   * @param configNodeLocation The new ConfigNode
+   * @param configNodeLocation The new ConfigNode.
+   * @param versionInfo The new ConfigNode's versionInfo.
    */
-  public void applyConfigNode(TConfigNodeLocation configNodeLocation) {
+  public void applyConfigNode(
+      TConfigNodeLocation configNodeLocation, TNodeVersionInfo versionInfo) {
     ApplyConfigNodePlan applyConfigNodePlan = new ApplyConfigNodePlan(configNodeLocation);
     getConsensusManager().write(applyConfigNodePlan);
+    UpdateVersionInfoPlan updateVersionInfoPlan =
+        new UpdateVersionInfoPlan(versionInfo, configNodeLocation.getConfigNodeId());
+    getConsensusManager().write(updateVersionInfoPlan);
   }
 
   /**

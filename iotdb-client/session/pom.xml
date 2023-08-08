@@ -20,15 +20,14 @@
 
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <parent>
-        <artifactId>iotdb-parent</artifactId>
-        <groupId>org.apache.iotdb</groupId>
-        <version>1.3.0-SNAPSHOT</version>
-        <relativePath>../../pom.xml</relativePath>
-    </parent>
     <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.apache.iotdb</groupId>
+        <artifactId>iotdb-client</artifactId>
+        <version>1.3.0-SNAPSHOT</version>
+    </parent>
     <artifactId>iotdb-session</artifactId>
-    <name>IoTDB Session</name>
+    <name>IoTDB: Client: Session</name>
     <properties>
         <session.test.skip>false</session.test.skip>
         <session.it.skip>${session.test.skip}</session.it.skip>
@@ -90,6 +89,11 @@
             <artifactId>isession</artifactId>
             <version>${project.version}</version>
             <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
     <profiles>

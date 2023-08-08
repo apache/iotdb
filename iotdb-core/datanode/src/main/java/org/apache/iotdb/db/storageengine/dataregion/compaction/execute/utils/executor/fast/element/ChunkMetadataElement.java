@@ -40,6 +40,8 @@ public class ChunkMetadataElement {
 
   public List<Chunk> valueChunks;
 
+  public boolean needForceDecoding;
+
   public ChunkMetadataElement(
       IChunkMetadata chunkMetadata, long priority, boolean isLastChunk, FileElement fileElement) {
     this.chunkMetadata = chunkMetadata;

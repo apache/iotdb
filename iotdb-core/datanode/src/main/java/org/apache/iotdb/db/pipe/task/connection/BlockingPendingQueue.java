@@ -41,15 +41,29 @@ public abstract class BlockingPendingQueue<E extends Event> {
     this.pendingQueue = pendingQueue;
   }
 
-  public boolean offer(E event) {
-    boolean isAdded = false;
+  public boolean waitedOffer(E event) {
     try {
-      isAdded = pendingQueue.offer(event, MAX_BLOCKING_TIME_MS, TimeUnit.MILLISECONDS);
+      return pendingQueue.offer(event, MAX_BLOCKING_TIME_MS, TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
       LOGGER.info("pending queue offer is interrupted.", e);
       Thread.currentThread().interrupt();
+      return false;
     }
-    return isAdded;
+  }
+
+  public boolean directOffer(E event) {
+    return pendingQueue.offer(event);
+  }
+
+  public boolean put(E event) {
+    try {
+      pendingQueue.put(event);
+      return true;
+    } catch (InterruptedException e) {
+      LOGGER.info("pending queue put is interrupted.", e);
+      Thread.currentThread().interrupt();
+      return false;
+    }
   }
 
   public E directPoll() {

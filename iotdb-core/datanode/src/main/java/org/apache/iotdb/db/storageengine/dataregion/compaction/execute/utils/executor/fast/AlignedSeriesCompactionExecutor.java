@@ -345,6 +345,26 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
               .readMemChunk((ChunkMetadata) valueChunkMetadata));
     }
     chunkMetadataElement.valueChunks = valueChunks;
+    setForceDecoding(chunkMetadataElement);
+  }
+
+  void setForceDecoding(ChunkMetadataElement chunkMetadataElement) {
+    IMeasurementSchema timeChunkSchema = measurementSchemas.get(0);
+    if (timeChunkSchema.getCompressor()
+            != chunkMetadataElement.chunk.getHeader().getCompressionType()
+        || timeChunkSchema.getEncodingType()
+            != chunkMetadataElement.chunk.getHeader().getEncodingType()) {
+      chunkMetadataElement.needForceDecoding = true;
+      return;
+    }
+    for (int i = 1; i < measurementSchemas.size(); i++) {
+      ChunkHeader header = chunkMetadataElement.valueChunks.get(i - 1).getHeader();
+      if (header.getCompressionType() != measurementSchemas.get(i).getCompressor()
+          || header.getEncodingType() != measurementSchemas.get(i).getEncodingType()) {
+        chunkMetadataElement.needForceDecoding = true;
+        return;
+      }
+    }
   }
 
   /**
