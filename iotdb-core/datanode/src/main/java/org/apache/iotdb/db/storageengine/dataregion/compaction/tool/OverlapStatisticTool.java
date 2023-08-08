@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.tool.TsFileStatisticReader.ChunkGroupStatistics;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -38,7 +39,8 @@ public class OverlapStatisticTool {
 
   private long processedTimePartitionCount;
   private long processedSeqFileCount;
-  private final Map<String, Pair<List<String>, List<String>>> timePartitionFileMap = new HashMap<>();
+  private final Map<String, Pair<List<String>, List<String>>> timePartitionFileMap =
+      new HashMap<>();
 
   public static void main(String[] args) {
     if (args.length == 0) {
@@ -82,19 +84,38 @@ public class OverlapStatisticTool {
     processedSeqFileCount += partialRet.totalFiles;
 
     // 打印进度
-    double overlappedSeqFilePercentage =
-        (double) partialRet.overlappedFiles / partialRet.totalFiles * 100;
-    double overlappedChunkGroupPercentage =
-        (double) partialRet.overlappedChunkGroups / partialRet.totalChunkGroups * 100;
-    double overlappedChunkPercentage =
-        (double) partialRet.overlappedChunks / partialRet.totalChunks * 100;
-    System.out.println("----------------" + timePartition + "----------------");
+    double overlappedSeqFilePercentage;
+    if (partialRet.totalFiles == 0) {
+      overlappedSeqFilePercentage = 0;
+    } else {
+      overlappedSeqFilePercentage =
+          (double) partialRet.overlappedFiles / partialRet.totalFiles * 100;
+    }
+
+    double overlappedChunkGroupPercentage;
+    if (partialRet.totalChunkGroups == 0) {
+      overlappedChunkGroupPercentage = 0;
+    } else {
+      overlappedChunkGroupPercentage =
+          (double) partialRet.overlappedChunkGroups / partialRet.totalChunkGroups * 100;
+    }
+
+    double overlappedChunkPercentage;
+    if (partialRet.totalChunks == 0) {
+      overlappedChunkPercentage = 0;
+    } else {
+      overlappedChunkPercentage =
+          (double) partialRet.overlappedChunks / partialRet.totalChunks * 100;
+    }
+    System.out.println("--------------------" + timePartition + "--------------------");
     System.out.printf("overlapped_seq_file_percentage is %.2f%%\n", overlappedSeqFilePercentage);
     System.out.printf(
         "overlapped_chunk_group_percentage is %.2f%%\n", overlappedChunkGroupPercentage);
     System.out.printf("overlapped_chunk_percentage is %.2f%%\n", overlappedChunkPercentage);
     System.out.printf("processed time partition count: %d\n", processedTimePartitionCount);
-    System.out.printf("processed seq file count: %d, total seq file count: %d\n", processedSeqFileCount, seqFileCount);
+    System.out.printf(
+        "processed seq file count: %d, total seq file count: %d\n",
+        processedSeqFileCount, seqFileCount);
   }
 
   private void processDataDirs(List<String> dataDirs) {
@@ -148,6 +169,13 @@ public class OverlapStatisticTool {
               continue;
             }
             if (!file.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
+              continue;
+            }
+            String resourceFilePath = file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX;
+            if (!new File(resourceFilePath).exists()) {
+              System.out.println(
+                  resourceFilePath
+                      + " is not exist, the tsfile is skipped because it is not closed.");
               continue;
             }
             String filePath = file.getAbsolutePath();
