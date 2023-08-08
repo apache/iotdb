@@ -83,7 +83,7 @@ public class TemporaryQueryDataFileService implements IService {
       }
     }
     try {
-      FileUtils.cleanDirectory(SystemFileFactory.INSTANCE.getFile(getDirName(queryId)));
+      FileUtils.deleteDirectory(SystemFileFactory.INSTANCE.getFile(getDirName(queryId)));
     } catch (IOException e) {
       logger.warn(
           String.format("Failed to clean dir in method deregister(%s), because %s", queryId, e));
