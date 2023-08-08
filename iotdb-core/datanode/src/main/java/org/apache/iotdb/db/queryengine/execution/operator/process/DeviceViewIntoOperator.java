@@ -67,13 +67,7 @@ public class DeviceViewIntoOperator extends AbstractIntoOperator {
       Map<String, InputLocation> sourceColumnToInputLocationMap,
       ExecutorService intoOperationExecutor,
       long statementSizePerLine) {
-    super(
-        operatorContext,
-        child,
-        inputColumnTypes,
-        sourceColumnToInputLocationMap,
-        intoOperationExecutor,
-        statementSizePerLine);
+    super(operatorContext, child, inputColumnTypes, intoOperationExecutor, statementSizePerLine);
     this.deviceToTargetPathSourceInputLocationMap = deviceToTargetPathSourceInputLocationMap;
     this.deviceToTargetPathDataTypeMap = deviceToTargetPathDataTypeMap;
     this.targetDeviceToAlignedMap = targetDeviceToAlignedMap;

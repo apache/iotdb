@@ -1032,7 +1032,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               ImmutableMap.of(),
               ImmutableList.of(),
               inputDataTypes,
-              inputLocations.size());
+              inputLocations.size() - 1);
 
       for (Expression expression : projectExpressions) {
         projectOutputTransformerList.add(
@@ -1670,7 +1670,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         targetPathToDataTypeMap,
         intoPathDescriptor.getTargetDeviceToAlignedMap(),
         sourceTargetPathPairWithViewList,
-        sourceColumnToInputLocationMap,
         FragmentInstanceManager.getInstance().getIntoOperationExecutor(),
         statementSizePerLine);
   }
