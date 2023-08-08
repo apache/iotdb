@@ -28,6 +28,7 @@ import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 
 import org.apache.thrift.TException;
+import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -304,7 +305,7 @@ public class IoTDBConnectionTest {
     connection.releaseSavepoint(null);
   }
 
-  @Test(expected = IoTDBSQLException.class)
+  @Test(expected = TTransportException.class)
   public void create() throws SQLException, TException {
     when(properties.get("user")).thenReturn("root");
     when(connectionMock.getClient()).thenReturn(client);
