@@ -77,11 +77,12 @@ public class ListTimeRangeImpl implements ITimeRange {
   @Override
   public boolean isOverlapped(Interval interval) {
     for (Interval currentInterval : intervalList) {
-       boolean isOverlap = interval.getStart() <= currentInterval.getEnd()
-          && interval.getEnd() >= currentInterval.getStart();
-       if (isOverlap) {
-         return true;
-       }
+      boolean isOverlap =
+          interval.getStart() <= currentInterval.getEnd()
+              && interval.getEnd() >= currentInterval.getStart();
+      if (isOverlap) {
+        return true;
+      }
     }
     return false;
   }
