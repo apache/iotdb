@@ -92,6 +92,14 @@ public class OverlapStatisticTool {
 
     System.out.println("--------------------" + timePartition + "--------------------");
     printOneStatistics(partialRet);
+    double currentFinishedTimePartitionPercentage = 1;
+    if (!timePartitionFileMap.isEmpty()) {
+      currentFinishedTimePartitionPercentage =
+          (double) processedTimePartitionCount / timePartitionFileMap.size();
+    }
+    System.out.printf(
+        "--------------------current process: %.2f%%--------------------\n",
+        currentFinishedTimePartitionPercentage * 100);
   }
 
   private void printOneStatistics(OverlapStatistic overlapStatistic) {
@@ -112,11 +120,7 @@ public class OverlapStatisticTool {
       overlappedChunkPercentage =
           (double) overlapStatistic.overlappedChunks / overlapStatistic.totalChunks * 100;
     }
-    double currentFinishedTimePartitionPercentage = 1;
-    if (!timePartitionFileMap.isEmpty()) {
-      currentFinishedTimePartitionPercentage =
-          (double) processedTimePartitionCount / timePartitionFileMap.size();
-    }
+
     System.out.printf(
         "overlapped_seq_file is %d, total seq file is %d, overlapped_seq_file_percentage is %.2f%%\n",
         overlapStatistic.overlappedFiles, overlapStatistic.totalFiles, overlappedSeqFilePercentage);
@@ -134,9 +138,6 @@ public class OverlapStatisticTool {
     System.out.printf(
         "processed seq file count: %d, total seq file count: %d\n",
         processedSeqFileCount, seqFileCount);
-    System.out.printf(
-        "--------------------current process: %.2f%%--------------------\n",
-        currentFinishedTimePartitionPercentage * 100);
   }
 
   private void processDataDirs(List<String> dataDirs) {
