@@ -34,6 +34,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import static org.apache.iotdb.db.storageengine.dataregion.compaction.tool.AlignedBorderTablePrinter.printTable;
+
 public class OverlapStatisticTool {
   private long seqFileCount;
 
@@ -51,13 +53,10 @@ public class OverlapStatisticTool {
     long startTime = System.currentTimeMillis();
     // 1. 处理参数，从输入中获取数据目录的路径
     List<String> dataDirs = tool.getDataDirsFromArgs(args);
-    long scanDataDirCost = System.currentTimeMillis() - startTime;
     // 2. 进行计算
-    startTime = System.currentTimeMillis();
     tool.process(dataDirs);
     System.out.printf(
-        "process calculation time cost: %.2fs, scan data dir cost: %.2fs\n",
-        ((double) System.currentTimeMillis() - startTime) / 1000, (double) scanDataDirCost / 1000);
+        "Total time cost: %.2fs\n", ((double) System.currentTimeMillis() - startTime) / 1000);
   }
 
   private List<String> getDataDirsFromArgs(String[] args) {
@@ -77,65 +76,67 @@ public class OverlapStatisticTool {
       OverlapStatistic partialRet =
           processOneTimePartition(timePartitionFiles.left, timePartitionFiles.right);
 
+      // 更新并打印进度
+      processedTimePartitionCount += 1;
+      processedSeqFileCount += partialRet.totalFiles;
+      printOneStatistics(partialRet, timePartition);
+
       // 2. 根据时间分区的信息
       // 将该时间分区的结果集更新到最终结果集
       statistic.merge(partialRet);
-      // 更新并打印进度
-      updateProcessAndPrint(timePartition, partialRet);
     }
-    System.out.println("--------------------" + "final result" + "--------------------");
-    printOneStatistics(statistic);
+    printOneStatistics(statistic, "All EXECUTED");
   }
 
-  private void updateProcessAndPrint(String timePartition, OverlapStatistic partialRet) {
-    processedTimePartitionCount += 1;
-    processedSeqFileCount += partialRet.totalFiles;
-
-    // 打印进度
-
-    System.out.println("--------------------" + timePartition + "--------------------");
-    printOneStatistics(partialRet);
+  private void printOneStatistics(OverlapStatistic overlapStatistic, String label) {
+    printTableLog(overlapStatistic);
+    printProgressLog(label);
   }
 
-  private void printOneStatistics(OverlapStatistic overlapStatistic) {
-    double overlappedSeqFilePercentage;
-    if (overlapStatistic.totalFiles == 0) {
-      overlappedSeqFilePercentage = 0;
-    } else {
-      overlappedSeqFilePercentage =
-          (double) overlapStatistic.overlappedFiles / overlapStatistic.totalFiles * 100;
-    }
+  private void printProgressLog(String label) {
+    System.out.printf(
+        "All progress: %s\n" + "File progress: %d/%d\n" + "Partition progress: %d/%d %s",
+        label,
+        processedSeqFileCount,
+        seqFileCount,
+        processedTimePartitionCount,
+        timePartitionFileMap.size(),
+        System.getProperty("line.separator"));
+  }
 
-    double overlappedChunkGroupPercentage;
-    if (overlapStatistic.totalChunkGroups == 0) {
-      overlappedChunkGroupPercentage = 0;
-    } else {
-      overlappedChunkGroupPercentage =
-          (double) overlapStatistic.overlappedChunkGroups / overlapStatistic.totalChunkGroups * 100;
-    }
+  private void printTableLog(OverlapStatistic overlapStatistic) {
+    double overlappedSeqFilePercentage =
+        calculatePercentage(overlapStatistic.overlappedFiles, overlapStatistic.totalFiles);
+    double overlappedChunkGroupPercentage =
+        calculatePercentage(
+            overlapStatistic.overlappedChunkGroups, overlapStatistic.totalChunkGroups);
+    double overlappedChunkPercentage =
+        calculatePercentage(overlapStatistic.overlappedChunks, overlapStatistic.totalChunks);
+    String[][] log = {
+      {
+        "File",
+        overlapStatistic.totalFiles + "",
+        overlapStatistic.overlappedFiles + "",
+        overlappedSeqFilePercentage + ""
+      },
+      {
+        "ChunkGroup",
+        overlapStatistic.totalChunkGroups + "",
+        overlapStatistic.overlappedChunkGroups + "",
+        overlappedChunkGroupPercentage + ""
+      },
+      {
+        "Chunk",
+        overlapStatistic.totalChunkGroups + "",
+        overlapStatistic.overlappedChunks + "",
+        overlappedChunkPercentage + ""
+      }
+    };
+    printTable(log);
+  }
 
-    double overlappedChunkPercentage;
-    if (overlapStatistic.totalChunks == 0) {
-      overlappedChunkPercentage = 0;
-    } else {
-      overlappedChunkPercentage =
-          (double) overlapStatistic.overlappedChunks / overlapStatistic.totalChunks * 100;
-    }
-    System.out.printf(
-        "overlapped_seq_file is %d, total seq file is %d, overlapped_seq_file_percentage is %.2f%%\n",
-        overlapStatistic.overlappedFiles, overlapStatistic.totalFiles, overlappedSeqFilePercentage);
-    System.out.printf(
-        "overlapped_chunk_group is %d, total chunk group is %d, overlapped_chunk_group_percentage is %.2f%%\n",
-        overlapStatistic.overlappedChunkGroups,
-        overlapStatistic.totalChunkGroups,
-        overlappedChunkGroupPercentage);
-    System.out.printf(
-        "overlapped_chunk is %d, total chunk is %d, overlapped_chunk_percentage is %.2f%%\n",
-        overlapStatistic.overlappedChunks, overlapStatistic.totalChunks, overlappedChunkPercentage);
-    System.out.printf("processed time partition count: %d\n", processedTimePartitionCount);
-    System.out.printf(
-        "processed seq file count: %d, total seq file count: %d\n",
-        processedSeqFileCount, seqFileCount);
+  private double calculatePercentage(long numerator, long denominator) {
+    return denominator != 0 ? (double) numerator / denominator * 100 : 0;
   }
 
   private void processDataDirs(List<String> dataDirs) {
