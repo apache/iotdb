@@ -22,6 +22,7 @@ package org.apache.iotdb.db.protocol.session;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.JMXService;
+import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -88,7 +89,10 @@ public class SessionManager implements SessionManagerMBean {
     // singleton
     String mbeanName =
         String.format(
-            "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "RpcSession");
+            "%s:%s=%s",
+            IoTDBConstant.IOTDB_SERVICE_JMX_NAME,
+            IoTDBConstant.JMX_TYPE,
+            ServiceType.SESSION_MANAGER.getJmxName());
     JMXService.registerMBean(this, mbeanName);
   }
 
