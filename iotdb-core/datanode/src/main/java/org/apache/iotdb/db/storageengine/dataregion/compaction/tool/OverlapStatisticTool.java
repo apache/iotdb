@@ -19,32 +19,32 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
-import org.apache.iotdb.db.storageengine.dataregion.compaction.tool.TsFileStatisticReader.ChunkGroupStatistics;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
-import static org.apache.iotdb.db.storageengine.dataregion.compaction.tool.AlignedBorderTablePrinter.printTable;
 
 public class OverlapStatisticTool {
-  private long seqFileCount;
+  public static long seqFileCount = 0;
 
-  private long processedTimePartitionCount;
-  private long processedSeqFileCount;
-  private final Map<String, Pair<List<String>, List<String>>> timePartitionFileMap =
+  public static Lock outputInfolock = new ReentrantLock();
+  public static long processedTimePartitionCount = 0;
+  public static long processedSeqFileCount = 0;
+  public static final Map<String, Pair<List<String>, List<String>>> timePartitionFileMap =
       new HashMap<>();
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws InterruptedException {
     if (args.length == 0) {
       System.out.println("Please input data dir paths.");
       return;
@@ -63,80 +63,41 @@ public class OverlapStatisticTool {
     return new ArrayList<>(Arrays.asList(args));
   }
 
-  public void process(List<String> dataDirs) {
+  public void process(List<String> dataDirs) throws InterruptedException {
     // 0. 预处理
     processDataDirs(dataDirs);
 
     // 1. 构造最终结果集
     OverlapStatistic statistic = new OverlapStatistic();
+    List<TimePartitionProcessTask> taskList = new ArrayList<>();
     for (Map.Entry<String, Pair<List<String>, List<String>>> timePartitionFilesEntry :
         timePartitionFileMap.entrySet()) {
       String timePartition = timePartitionFilesEntry.getKey();
       Pair<List<String>, List<String>> timePartitionFiles = timePartitionFilesEntry.getValue();
-      OverlapStatistic partialRet =
-          processOneTimePartition(timePartitionFiles.left, timePartitionFiles.right);
-
-      // 更新并打印进度
-      processedTimePartitionCount += 1;
-      processedSeqFileCount += partialRet.totalFiles;
-      printOneStatistics(partialRet, timePartition);
-
-      // 2. 根据时间分区的信息
-      // 将该时间分区的结果集更新到最终结果集
-      statistic.merge(partialRet);
+      taskList.add(new TimePartitionProcessTask(timePartition, timePartitionFiles));
     }
-    printOneStatistics(statistic, "All EXECUTED");
-  }
-
-  private void printOneStatistics(OverlapStatistic overlapStatistic, String label) {
-    printTableLog(overlapStatistic);
-    printProgressLog(label);
-  }
-
-  private void printProgressLog(String label) {
-    System.out.printf(
-        "All progress: %s\n" + "File progress: %d/%d\n" + "Partition progress: %d/%d %s",
-        label,
-        processedSeqFileCount,
-        seqFileCount,
-        processedTimePartitionCount,
-        timePartitionFileMap.size(),
-        System.getProperty("line.separator"));
-  }
-
-  private void printTableLog(OverlapStatistic overlapStatistic) {
-    double overlappedSeqFilePercentage =
-        calculatePercentage(overlapStatistic.overlappedFiles, overlapStatistic.totalFiles);
-    double overlappedChunkGroupPercentage =
-        calculatePercentage(
-            overlapStatistic.overlappedChunkGroups, overlapStatistic.totalChunkGroups);
-    double overlappedChunkPercentage =
-        calculatePercentage(overlapStatistic.overlappedChunks, overlapStatistic.totalChunks);
-    String[][] log = {
-      {
-        "Sequence File",
-        overlapStatistic.totalFiles + "",
-        overlapStatistic.overlappedFiles + "",
-        String.format("%.2f%%", overlappedSeqFilePercentage)
-      },
-      {
-        "ChunkGroup In Sequence File",
-        overlapStatistic.totalChunkGroups + "",
-        overlapStatistic.overlappedChunkGroups + "",
-        String.format("%.2f%%", overlappedChunkGroupPercentage)
-      },
-      {
-        "Chunk In Sequence File",
-        overlapStatistic.totalChunks + "",
-        overlapStatistic.overlappedChunks + "",
-        String.format("%.2f%%", overlappedChunkPercentage)
+    int workerNum = Math.min(taskList.size(), 10);
+    TimePartitionProcessWorker[] workers = new TimePartitionProcessWorker[workerNum];
+    for (int i = 0; i < taskList.size(); i++) {
+      int workerIdx = i % 10;
+      TimePartitionProcessWorker worker = workers[workerIdx];
+      if (worker == null) {
+        worker = new TimePartitionProcessWorker();
+        workers[workerIdx] = worker;
       }
-    };
-    printTable(log);
-  }
-
-  private double calculatePercentage(long numerator, long denominator) {
-    return denominator != 0 ? (double) numerator / denominator * 100 : 0;
+      worker.addTask(taskList.get(i));
+    }
+    CountDownLatch countDownLatch = new CountDownLatch(workerNum);
+    for (TimePartitionProcessWorker worker : workers) {
+      worker.run(countDownLatch);
+    }
+    countDownLatch.await();
+    for (TimePartitionProcessWorker worker : workers) {
+      for (OverlapStatistic partialRet : worker.getWorkerResults()) {
+        statistic.merge(partialRet);
+      }
+    }
+    PrintUtil.printOneStatistics(statistic, "All EXECUTED");
   }
 
   private void processDataDirs(List<String> dataDirs) {
@@ -217,95 +178,4 @@ public class OverlapStatisticTool {
     return storageGroup + "-" + dataRegion + "-" + timePartition;
   }
 
-  private OverlapStatistic processOneTimePartition(List<String> seqFiles, List<String> unseqFiles) {
-    // 1. 根据 timePartition，获取所有数据目录下的的乱序文件，构造 UnseqSpaceStatistics
-    UnseqSpaceStatistics unseqSpaceStatistics = buildUnseqSpaceStatistics(unseqFiles);
-
-    // 2. 遍历该时间分区下的所有顺序文件，获取每一个 chunk 的信息，依次进行 overlap 检查，并更新统计信息
-    OverlapStatistic overlapStatistic = new OverlapStatistic();
-    overlapStatistic.totalFiles += seqFiles.size();
-    for (String seqFile : seqFiles) {
-      boolean isFileOverlap = false;
-      try (TsFileStatisticReader reader = new TsFileStatisticReader(seqFile)) {
-        // 统计顺序文件的信息并更新到 overlapStatistic
-        List<ChunkGroupStatistics> chunkGroupStatisticsList = reader.getChunkGroupStatistics();
-        for (ChunkGroupStatistics chunkGroupStatistics : chunkGroupStatisticsList) {
-          overlapStatistic.totalChunks += chunkGroupStatistics.getTotalChunkNum();
-          String deviceId = chunkGroupStatistics.getDeviceID();
-          int overlapChunkNum = 0;
-
-          long deviceStartTime = Long.MAX_VALUE, deviceEndTime = Long.MIN_VALUE;
-          for (ChunkMetadata chunkMetadata : chunkGroupStatistics.getChunkMetadataList()) {
-            deviceStartTime = Math.min(deviceStartTime, chunkMetadata.getStartTime());
-            deviceEndTime = Math.max(deviceEndTime, chunkMetadata.getEndTime());
-            Interval interval =
-                new Interval(chunkMetadata.getStartTime(), chunkMetadata.getEndTime());
-            String measurementId = chunkMetadata.getMeasurementUid();
-            if (unseqSpaceStatistics.chunkHasOverlap(deviceId, measurementId, interval)) {
-              overlapChunkNum++;
-            }
-          }
-          overlapStatistic.overlappedChunks += overlapChunkNum;
-
-          Interval deviceInterval = new Interval(deviceStartTime, deviceEndTime);
-          if (unseqSpaceStatistics.chunkGroupHasOverlap(deviceId, deviceInterval)) {
-            isFileOverlap = true;
-            overlapStatistic.overlappedChunkGroups++;
-          }
-        }
-        overlapStatistic.totalChunkGroups += chunkGroupStatisticsList.size();
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-      if (isFileOverlap) {
-        overlapStatistic.overlappedFiles += 1;
-      }
-    }
-    return overlapStatistic;
-  }
-
-  private UnseqSpaceStatistics buildUnseqSpaceStatistics(List<String> unseqFiles) {
-    UnseqSpaceStatistics unseqSpaceStatistics = new UnseqSpaceStatistics();
-
-    for (String unseqFile : unseqFiles) {
-      try (TsFileStatisticReader reader = new TsFileStatisticReader(unseqFile)) {
-        List<ChunkGroupStatistics> chunkGroupStatisticsList = reader.getChunkGroupStatistics();
-        for (ChunkGroupStatistics statistics : chunkGroupStatisticsList) {
-          long deviceStartTime = Long.MAX_VALUE, deviceEndTime = Long.MIN_VALUE;
-          for (ChunkMetadata chunkMetadata : statistics.getChunkMetadataList()) {
-            unseqSpaceStatistics.updateMeasurement(
-                statistics.getDeviceID(),
-                chunkMetadata.getMeasurementUid(),
-                new Interval(chunkMetadata.getStartTime(), chunkMetadata.getEndTime()));
-            deviceStartTime = Math.min(deviceStartTime, chunkMetadata.getStartTime());
-            deviceEndTime = Math.max(deviceEndTime, chunkMetadata.getEndTime());
-          }
-          unseqSpaceStatistics.updateDevice(
-              statistics.getDeviceID(), new Interval(deviceStartTime, deviceEndTime));
-        }
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-    }
-    return unseqSpaceStatistics;
-  }
-
-  private static class OverlapStatistic {
-    private long totalFiles;
-    private long totalChunkGroups;
-    private long totalChunks;
-
-    private long overlappedFiles;
-    private long overlappedChunkGroups;
-    private long overlappedChunks;
-
-    private void merge(OverlapStatistic other) {
-      this.totalFiles += other.totalFiles;
-      this.totalChunkGroups += other.totalChunkGroups;
-      this.totalChunks += other.totalChunks;
-      this.overlappedFiles += other.overlappedFiles;
-      this.overlappedChunkGroups += other.overlappedChunkGroups;
-      this.overlappedChunks += other.overlappedChunks;
-    }
-  }
 }
