@@ -114,22 +114,22 @@ public class OverlapStatisticTool {
         calculatePercentage(overlapStatistic.overlappedChunks, overlapStatistic.totalChunks);
     String[][] log = {
       {
-        "File",
+        "Sequence File",
         overlapStatistic.totalFiles + "",
         overlapStatistic.overlappedFiles + "",
-        overlappedSeqFilePercentage + ""
+        String.format("%.2f%%", overlappedSeqFilePercentage)
       },
       {
-        "ChunkGroup",
+        "ChunkGroup In Sequence File",
         overlapStatistic.totalChunkGroups + "",
         overlapStatistic.overlappedChunkGroups + "",
-        overlappedChunkGroupPercentage + ""
+        String.format("%.2f%%", overlappedChunkGroupPercentage)
       },
       {
-        "Chunk",
-        overlapStatistic.totalChunkGroups + "",
+        "Chunk In Sequence File",
+        overlapStatistic.totalChunks + "",
         overlapStatistic.overlappedChunks + "",
-        overlappedChunkPercentage + ""
+        String.format("%.2f%%", overlappedChunkPercentage)
       }
     };
     printTable(log);
