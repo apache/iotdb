@@ -416,6 +416,7 @@ public class LoadTsfileAnalyzer {
 
     private static final long LOG_PRINT_INTERVAL = 10000;
     private long returnedTimeseriesCount = 0;
+    private boolean lastLogHasPrinted = false;
 
     private final File tsFile;
     private final Iterator<Map.Entry<String, List<TimeseriesMetadata>>>
@@ -439,10 +440,13 @@ public class LoadTsfileAnalyzer {
           currentDevice = next.getKey();
           timeseriesMetadataIterator = next.getValue().iterator();
         } else {
-          LOGGER.info(
-              "Analyzing TsFile {}, all {} timeseries has been returned to analyzer.",
-              tsFile.getAbsolutePath(),
-              returnedTimeseriesCount);
+          if (!lastLogHasPrinted) {
+            LOGGER.info(
+                "Analyzing TsFile {}, all {} timeseries has been returned to analyzer.",
+                tsFile.getAbsolutePath(),
+                returnedTimeseriesCount);
+            lastLogHasPrinted = true;
+          }
           return false;
         }
       }
@@ -453,7 +457,7 @@ public class LoadTsfileAnalyzer {
     public Pair<String, TimeseriesMetadata> next() {
       if (returnedTimeseriesCount++ % LOG_PRINT_INTERVAL == 0) {
         LOGGER.info(
-            "Analyzing TsFile {}, {} timeseries has been returned to analyzer.",
+            "Analyzing TsFile {}, until now {} timeseries has been returned to analyzer.",
             tsFile.getAbsolutePath(),
             returnedTimeseriesCount);
       }
