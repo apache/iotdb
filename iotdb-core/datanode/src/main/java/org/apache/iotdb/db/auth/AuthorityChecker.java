@@ -129,9 +129,6 @@ public class AuthorityChecker {
         }
         return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION, prompt.toString());
       }
-    } catch (AuthException e) {
-      logger.warn("Meets error while checking authorization.", e);
-      return RpcUtils.getStatus(e.getCode(), e.getMessage());
     } catch (Exception e) {
       return onQueryException(
           e, OperationType.CHECK_AUTHORITY.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -147,11 +144,7 @@ public class AuthorityChecker {
    * @throws AuthException if encountered authentication failure
    * @return true if the authority permission has passed
    */
-  public static boolean checkAuthorization(Statement statement, String username)
-      throws AuthException {
-    if (!statement.isAuthenticationRequired()) {
-      return true;
-    }
+  public static boolean checkAuthorization(Statement statement, String username) {
     String targetUser = null;
     if (statement instanceof AuthorStatement) {
       targetUser = ((AuthorStatement) statement).getUserName();
