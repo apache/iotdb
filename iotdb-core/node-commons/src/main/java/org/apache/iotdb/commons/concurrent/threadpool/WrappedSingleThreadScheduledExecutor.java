@@ -46,8 +46,7 @@ public class WrappedSingleThreadScheduledExecutor
   public WrappedSingleThreadScheduledExecutor(ScheduledExecutorService service, String mbeanName) {
     this.service = service;
     this.mbeanName =
-        String.format(
-            "%s:%s=%s", IoTDBConstant.IOTDB_THREADPOOL_PACKAGE, IoTDBConstant.JMX_TYPE, mbeanName);
+        String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, mbeanName);
     JMXService.registerMBean(this, this.mbeanName);
     ThreadPoolMetrics.getInstance().registerThreadPool(this, this.mbeanName);
   }

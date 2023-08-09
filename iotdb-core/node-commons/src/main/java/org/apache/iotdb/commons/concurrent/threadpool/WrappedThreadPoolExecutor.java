@@ -51,8 +51,7 @@ public class WrappedThreadPoolExecutor extends ThreadPoolExecutor
       String mbeanName) {
     super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, threadFactory);
     this.mbeanName =
-        String.format(
-            "%s:%s=%s", IoTDBConstant.IOTDB_THREADPOOL_PACKAGE, IoTDBConstant.JMX_TYPE, mbeanName);
+        String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, mbeanName);
     JMXService.registerMBean(this, this.mbeanName);
     ThreadPoolMetrics.getInstance().registerThreadPool(this, this.mbeanName);
   }
@@ -67,8 +66,7 @@ public class WrappedThreadPoolExecutor extends ThreadPoolExecutor
       String mbeanName) {
     super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, ioTThreadFactory);
     this.mbeanName =
-        String.format(
-            "%s:%s=%s", IoTDBConstant.IOTDB_THREADPOOL_PACKAGE, IoTDBConstant.JMX_TYPE, mbeanName);
+        String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, mbeanName);
     JMXService.registerMBean(this, this.mbeanName);
     ThreadPoolMetrics.getInstance().registerThreadPool(this, this.mbeanName);
   }
