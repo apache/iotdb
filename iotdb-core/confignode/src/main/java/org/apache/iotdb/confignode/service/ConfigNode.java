@@ -86,8 +86,7 @@ public class ConfigNode implements ConfigNodeMBean {
 
   private final String mbeanName =
       String.format(
-          "%s:%s=%s",
-          ConfigNodeConstant.CONFIGNODE_PACKAGE, ConfigNodeConstant.JMX_TYPE, "ConfigNode");
+          "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, ConfigNodeConstant.JMX_TYPE, "ConfigNode");
   private final RegisterManager registerManager = new RegisterManager();
 
   private ConfigManager configManager;

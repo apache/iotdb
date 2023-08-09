@@ -49,9 +49,9 @@ public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPC
     this.configNodeRPCServiceProcessor =
         (ConfigNodeRPCServiceProcessor) configNodeRPCServerProcessor;
 
-    String packageName = this.getClass().getPackage().toString().split(",")[0];
     super.mbeanName =
-        String.format("%s:%s=%s", packageName, IoTDBConstant.JMX_TYPE, getID().getJmxName());
+        String.format(
+            "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName());
     super.initSyncedServiceImpl(this.configNodeRPCServiceProcessor);
   }
 

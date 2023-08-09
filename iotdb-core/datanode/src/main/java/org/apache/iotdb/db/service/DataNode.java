@@ -107,8 +107,7 @@ public class DataNode implements DataNodeMBean {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final String mbeanName =
-      String.format(
-          "%s:%s=%s", "org.apache.iotdb.datanode.service", IoTDBConstant.JMX_TYPE, "DataNode");
+      String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "DataNode");
 
   private static final File SYSTEM_PROPERTIES =
       SystemFileFactory.INSTANCE.getFile(
