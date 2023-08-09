@@ -273,7 +273,8 @@ public class OverlapStatisticTool {
             deviceStartTime = Math.min(deviceStartTime, chunkMetadata.getStartTime());
             deviceEndTime = Math.max(deviceEndTime, chunkMetadata.getEndTime());
           }
-          unseqSpaceStatistics.updateDevice(statistics.getDeviceID(), new Interval(deviceStartTime, deviceEndTime));
+          unseqSpaceStatistics.updateDevice(
+              statistics.getDeviceID(), new Interval(deviceStartTime, deviceEndTime));
         }
       } catch (IOException e) {
         throw new RuntimeException(e);
