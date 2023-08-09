@@ -48,10 +48,16 @@ public class OverlapStatisticTool {
       return;
     }
     OverlapStatisticTool tool = new OverlapStatisticTool();
+    long startTime = System.currentTimeMillis();
     // 1. 处理参数，从输入中获取数据目录的路径
     List<String> dataDirs = tool.getDataDirsFromArgs(args);
+    long scanDataDirCost = System.currentTimeMillis() - startTime;
     // 2. 进行计算
+    startTime = System.currentTimeMillis();
     tool.process(dataDirs);
+    System.out.printf(
+        "process calculation time cost: %.2fs, scan data dir cost: %.2fs\n",
+        ((double) System.currentTimeMillis() - startTime) / 1000, (double) scanDataDirCost / 1000);
   }
 
   private List<String> getDataDirsFromArgs(String[] args) {
