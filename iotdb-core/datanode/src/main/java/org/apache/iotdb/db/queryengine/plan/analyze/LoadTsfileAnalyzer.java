@@ -207,6 +207,10 @@ public class LoadTsfileAnalyzer {
     }
 
     try {
+      if (loadTsFileStatement.isVerifySchema()) {
+        makeSureNoDuplicatedMeasurementsInDevices(device2TimeseriesSchemas);
+      }
+
       if (loadTsFileStatement.isAutoCreateDatabase()) {
         autoCreateDatabase(loadTsFileStatement.getDatabaseLevel(), device2TimeseriesSchemas);
       }
@@ -225,6 +229,23 @@ public class LoadTsfileAnalyzer {
           String.format(
               "Auto create or verify schema error when executing statement %s.",
               loadTsFileStatement));
+    }
+  }
+
+  private void makeSureNoDuplicatedMeasurementsInDevices(
+      Map<String, Set<MeasurementSchema>> device2TimeseriesSchemas) throws VerifyMetadataException {
+    for (final Map.Entry<String, Set<MeasurementSchema>> entry :
+        device2TimeseriesSchemas.entrySet()) {
+      final String device = entry.getKey();
+      final Map<String, MeasurementSchema> measurement2Schema = new HashMap<>();
+      for (final MeasurementSchema timeseriesSchema : entry.getValue()) {
+        final String measurement = timeseriesSchema.getMeasurementId();
+        if (measurement2Schema.containsKey(measurement)) {
+          throw new VerifyMetadataException(
+              String.format("Duplicated measurements %s in device %s.", measurement, device));
+        }
+        measurement2Schema.put(measurement, timeseriesSchema);
+      }
     }
   }
 
