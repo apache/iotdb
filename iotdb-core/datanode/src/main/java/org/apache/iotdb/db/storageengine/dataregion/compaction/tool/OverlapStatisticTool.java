@@ -264,12 +264,16 @@ public class OverlapStatisticTool {
       try (TsFileStatisticReader reader = new TsFileStatisticReader(unseqFile)) {
         List<ChunkGroupStatistics> chunkGroupStatisticsList = reader.getChunkGroupStatistics();
         for (ChunkGroupStatistics statistics : chunkGroupStatisticsList) {
+          long deviceStartTime = Long.MAX_VALUE, deviceEndTime = Long.MIN_VALUE;
           for (ChunkMetadata chunkMetadata : statistics.getChunkMetadataList()) {
             unseqSpaceStatistics.updateMeasurement(
                 statistics.getDeviceID(),
                 chunkMetadata.getMeasurementUid(),
                 new Interval(chunkMetadata.getStartTime(), chunkMetadata.getEndTime()));
+            deviceStartTime = Math.min(deviceStartTime, chunkMetadata.getStartTime());
+            deviceEndTime = Math.max(deviceEndTime, chunkMetadata.getEndTime());
           }
+          unseqSpaceStatistics.updateDevice(statistics.getDeviceID(), new Interval(deviceStartTime, deviceEndTime));
         }
       } catch (IOException e) {
         throw new RuntimeException(e);
