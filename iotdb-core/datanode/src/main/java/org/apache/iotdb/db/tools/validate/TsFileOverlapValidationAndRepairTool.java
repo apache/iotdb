@@ -37,7 +37,8 @@ import java.util.Set;
 public class TsFileOverlapValidationAndRepairTool {
 
   private static final Set<File> toMoveFiles = new HashSet<>();
-  private static int overlapFileNum = 0;
+  private static int overlapTsFileNum = 0;
+  private static int totalTsFileNum = 0;
   public static void main(String[] args) throws IOException {
     if (args.length == 0) {
       System.out.println("Please input sequence data dir path.");
@@ -53,8 +54,11 @@ public class TsFileOverlapValidationAndRepairTool {
   }
 
   private static boolean confirmMoveOverlapFilesToUnsequenceSpace() {
-    System.out.println("Overlap tsfile num is " + overlapFileNum);
+    System.out.printf("Overlap tsfile num is %d, total tsfile num is %d\n", overlapTsFileNum, totalTsFileNum);
     System.out.println("Corresponding file num is " + toMoveFiles.size());
+    if (overlapTsFileNum == 0) {
+      return false;
+    }
     System.out.println("Repair overlap tsfiles (y/n)");
     Scanner scanner = new Scanner(System.in);
     String input = scanner.nextLine();
@@ -131,6 +135,7 @@ public class TsFileOverlapValidationAndRepairTool {
               deviceStartTimeInCurrentFile);
           if (!fileHasOverlap) {
             recordOverlapTsFile(resource);
+            fileHasOverlap = true;
           }
         }
         deviceEndTimeMap.put(device, deviceEndTimeInCurrentFile);
@@ -147,7 +152,7 @@ public class TsFileOverlapValidationAndRepairTool {
     if (modsFile.exists()) {
       toMoveFiles.add(new File(modsFile.getFilePath()));
     }
-    overlapFileNum++;
+    overlapTsFileNum++;
   }
 
   public static List<TsFileResource> loadTsFileResources(File timePartitionDir) throws IOException {
@@ -168,6 +173,7 @@ public class TsFileOverlapValidationAndRepairTool {
       resources.add(resource);
     }
 
+    totalTsFileNum += resources.size();
     return resources;
   }
 }
