@@ -59,7 +59,8 @@ public class IoTConsensusRPCService extends ThriftService implements IoTConsensu
         (IoTConsensusRPCServiceProcessor) iotConsensusRPCServiceProcessor;
     super.mbeanName =
         String.format(
-            "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName());
+            "%s:%s=%s",
+            IoTDBConstant.IOTDB_SERVICE_JMX_NAME, IoTDBConstant.JMX_TYPE, getID().getJmxName());
     super.initAsyncedServiceImpl(this.iotConsensusRPCServiceProcessor);
   }
 
