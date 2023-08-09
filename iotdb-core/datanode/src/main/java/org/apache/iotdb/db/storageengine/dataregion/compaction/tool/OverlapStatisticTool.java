@@ -235,7 +235,6 @@ public class OverlapStatisticTool {
                 new Interval(chunkMetadata.getStartTime(), chunkMetadata.getEndTime());
             String measurementId = chunkMetadata.getMeasurementUid();
             if (unseqSpaceStatistics.chunkHasOverlap(deviceId, measurementId, interval)) {
-              isFileOverlap = true;
               overlapChunkNum++;
             }
           }
@@ -243,6 +242,7 @@ public class OverlapStatisticTool {
 
           Interval deviceInterval = new Interval(deviceStartTime, deviceEndTime);
           if (unseqSpaceStatistics.chunkGroupHasOverlap(deviceId, deviceInterval)) {
+            isFileOverlap = true;
             overlapStatistic.overlappedChunkGroups++;
           }
         }
