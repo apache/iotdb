@@ -344,6 +344,14 @@ public class LoadTsfileAnalyzer {
                   .map(MeasurementSchema::getMeasurementId)
                   .collect(Collectors.toList()));
 
+      if (iotdbDeviceSchemaInfo == null) {
+        throw new VerifyMetadataException(
+            String.format(
+                "Device %s does not exist in IoTDB and can not be created. "
+                    + "Please check weather auto-create-schema is enabled.",
+                device));
+      }
+
       // check device schema: is aligned or not
       if (iotdbDeviceSchemaInfo.isAligned()
           != Boolean.TRUE.equals(tsfileDevice2IsAligned.get(device))) {
@@ -359,17 +367,24 @@ public class LoadTsfileAnalyzer {
       final List<MeasurementSchema> iotdbTimeseriesSchemas =
           iotdbDeviceSchemaInfo.getMeasurementSchemaList();
       for (int i = 0, n = iotdbTimeseriesSchemas.size(); i < n; i++) {
-        final MeasurementSchema iotdbSchema = iotdbTimeseriesSchemas.get(i);
         final MeasurementSchema tsFileSchema = tsfileTimeseriesSchemas.get(i);
-        final String measurementPath =
-            device + TsFileConstant.PATH_SEPARATOR + iotdbSchema.getMeasurementId();
+        final MeasurementSchema iotdbSchema = iotdbTimeseriesSchemas.get(i);
+        if (iotdbSchema == null) {
+          throw new VerifyMetadataException(
+              String.format(
+                  "Measurement %s does not exist in IoTDB and can not be created. "
+                      + "Please check weather auto-create-schema is enabled.",
+                  device + TsFileConstant.PATH_SEPARATOR + tsfileTimeseriesSchemas.get(i)));
+        }
 
         // check datatype
         if (!tsFileSchema.getType().equals(iotdbSchema.getType())) {
           throw new VerifyMetadataException(
               String.format(
                   "Measurement %s datatype not match, TsFile: %s, IoTDB: %s",
-                  measurementPath, tsFileSchema.getType(), iotdbSchema.getType()));
+                  device + TsFileConstant.PATH_SEPARATOR + iotdbSchema.getMeasurementId(),
+                  tsFileSchema.getType(),
+                  iotdbSchema.getType()));
         }
 
         // check encoding
@@ -377,7 +392,7 @@ public class LoadTsfileAnalyzer {
           // we allow a measurement to have different encodings in different chunks
           LOGGER.warn(
               "Encoding type not match, measurement: {}, TsFile encoding: {}, IoTDB encoding: {}",
-              measurementPath,
+              device + TsFileConstant.PATH_SEPARATOR + iotdbSchema.getMeasurementId(),
               tsFileSchema.getEncodingType().name(),
               iotdbSchema.getEncodingType().name());
         }
@@ -387,7 +402,7 @@ public class LoadTsfileAnalyzer {
           // we allow a measurement to have different compressors in different chunks
           LOGGER.warn(
               "Compressor not match, measurement: {}, TsFile compressor: {}, IoTDB compressor: {}",
-              measurementPath,
+              device + TsFileConstant.PATH_SEPARATOR + iotdbSchema.getMeasurementId(),
               tsFileSchema.getCompressor().name(),
               iotdbSchema.getCompressor().name());
         }
