@@ -472,7 +472,7 @@ public class LoadTsfileAnalyzer {
         LOGGER.info(
             "Analyzing TsFile {}, until now {} timeseries has been returned to analyzer.",
             tsFile.getAbsolutePath(),
-            returnedTimeseriesCount - 1);
+            returnedTimeseriesCount);
       }
       returnedTimeseriesCount++;
 
