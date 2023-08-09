@@ -36,14 +36,11 @@ import java.util.Map;
 public class TsFileStatisticReader implements Closeable {
 
   private final TsFileSequenceReader reader;
-  private TsFileResource resource;
 
   private final List<ChunkGroupStatistics> chunkGroupStatisticsList;
 
   public TsFileStatisticReader(String filePath) throws IOException {
     reader = new TsFileSequenceReader(filePath);
-    resource = new TsFileResource(new File(filePath));
-    resource.deserialize();
     chunkGroupStatisticsList = new ArrayList<>();
   }
 
@@ -54,10 +51,8 @@ public class TsFileStatisticReader implements Closeable {
       Pair<String, Boolean> deviceWithIsAligned = allDevicesIteratorWithIsAligned.next();
       String deviceId = deviceWithIsAligned.left;
       boolean isAligned = deviceWithIsAligned.right;
-      long startTime = resource.getStartTime(deviceId);
-      long endTime = resource.getEndTime(deviceId);
 
-      ChunkGroupStatistics chunkGroupStatistics = new ChunkGroupStatistics(deviceId, isAligned, startTime, endTime);
+      ChunkGroupStatistics chunkGroupStatistics = new ChunkGroupStatistics(deviceId, isAligned);
       Iterator<Map<String, List<ChunkMetadata>>> measurementChunkMetadataListMapIterator =
           reader.getMeasurementChunkMetadataListMapIterator(deviceId);
 
@@ -87,14 +82,9 @@ public class TsFileStatisticReader implements Closeable {
     private final boolean isAligned;
     private int totalChunkNum = 0;
 
-    private long startTime;
-    private long endTime;
-
-    private ChunkGroupStatistics(String deviceId, boolean isAligned, long startTime, long endTime) {
+    private ChunkGroupStatistics(String deviceId, boolean isAligned) {
       this.deviceID = deviceId;
       this.isAligned = isAligned;
-      this.startTime = startTime;
-      this.endTime = endTime;
       this.chunkMetadataList = new ArrayList<>();
     }
 
@@ -114,12 +104,5 @@ public class TsFileStatisticReader implements Closeable {
       return isAligned;
     }
 
-    public long getStartTime() {
-      return startTime;
-    }
-
-    public long getEndTime() {
-      return endTime;
-    }
   }
 }

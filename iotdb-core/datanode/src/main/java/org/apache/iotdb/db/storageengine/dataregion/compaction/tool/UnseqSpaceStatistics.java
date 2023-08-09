@@ -24,13 +24,13 @@ import java.util.Map;
 
 public class UnseqSpaceStatistics {
   // 设备 -> 序列 -> 时间范围
-  private Map<String, Map<String, ITimeRange>> deviceStatisticMap = new HashMap<>();
+  private Map<String, Map<String, ITimeRange>> chunkStatisticMap = new HashMap<>();
 
   private Map<String, ITimeRange> chunkGroupStatisticMap = new HashMap<>();
 
   // 更新某个设备的某个序列的时间范围
   public void updateMeasurement(String device, String measurementUID, Interval interval) {
-    deviceStatisticMap
+    chunkStatisticMap
         .computeIfAbsent(device, key -> new HashMap<>())
         .computeIfAbsent(measurementUID, key -> new ListTimeRangeImpl())
         .addInterval(interval);
@@ -43,20 +43,27 @@ public class UnseqSpaceStatistics {
   }
 
   public boolean chunkHasOverlap(String device, String measurementUID, Interval interval) {
-    if (!deviceStatisticMap.containsKey(device)) {
+    if (!chunkStatisticMap.containsKey(device)) {
       return false;
     }
-    if (!deviceStatisticMap.get(device).containsKey(measurementUID)) {
+    if (!chunkStatisticMap.get(device).containsKey(measurementUID)) {
       return false;
     }
-    return deviceStatisticMap.get(device).get(measurementUID).isOverlapped(interval);
+    return chunkStatisticMap.get(device).get(measurementUID).isOverlapped(interval);
   }
 
   public boolean chunkGroupHasOverlap(String device, Interval interval) {
-    return false;
+    if (!chunkGroupStatisticMap.containsKey(device)) {
+      return false;
+    }
+    return chunkGroupStatisticMap.get(device).isOverlapped(interval);
   }
 
-  public Map<String, Map<String, ITimeRange>> getDeviceStatisticMap() {
-    return deviceStatisticMap;
+  public Map<String, Map<String, ITimeRange>> getChunkStatisticMap() {
+    return chunkStatisticMap;
+  }
+
+  public Map<String, ITimeRange> getChunkGroupStatisticMap() {
+    return chunkGroupStatisticMap;
   }
 }
