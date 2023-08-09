@@ -30,10 +30,14 @@ import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.iot.thrift.IoTConsensusIService;
 
 import org.apache.thrift.TBaseAsyncProcessor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationTargetException;
 
 public class IoTConsensusRPCService extends ThriftService implements IoTConsensusRPCServiceMBean {
+
+  private static final Logger logger = LoggerFactory.getLogger(IoTConsensusRPCService.class);
 
   private final TEndPoint thisNode;
   private final IoTConsensusConfig config;
@@ -53,9 +57,9 @@ public class IoTConsensusRPCService extends ThriftService implements IoTConsensu
   public void initAsyncedServiceImpl(Object iotConsensusRPCServiceProcessor) {
     this.iotConsensusRPCServiceProcessor =
         (IoTConsensusRPCServiceProcessor) iotConsensusRPCServiceProcessor;
+    String packageName = this.getClass().getPackage().toString().split(",")[0];
     super.mbeanName =
-        String.format(
-            "%s:%s=%s", this.getClass().getPackage(), IoTDBConstant.JMX_TYPE, getID().getJmxName());
+        String.format("%s:%s=%s", packageName, IoTDBConstant.JMX_TYPE, getID().getJmxName());
     super.initAsyncedServiceImpl(this.iotConsensusRPCServiceProcessor);
   }
 

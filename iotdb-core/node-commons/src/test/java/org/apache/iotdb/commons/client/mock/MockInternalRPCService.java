@@ -49,9 +49,9 @@ public class MockInternalRPCService extends ThriftService implements MockInterna
   @Override
   public void initSyncedServiceImpl(Object mockedProcessor) {
     this.mockedProcessor = (IDataNodeRPCService.Iface) mockedProcessor;
+    String packageName = this.getClass().getPackage().toString().split(",")[0];
     super.mbeanName =
-        String.format(
-            "%s:%s=%s", this.getClass().getPackage(), IoTDBConstant.JMX_TYPE, getID().getJmxName());
+        String.format("%s:%s=%s", packageName, IoTDBConstant.JMX_TYPE, getID().getJmxName());
     super.initSyncedServiceImpl(this.mockedProcessor);
   }
 
