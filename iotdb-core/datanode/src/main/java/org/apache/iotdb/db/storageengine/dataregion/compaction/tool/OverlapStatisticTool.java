@@ -154,9 +154,9 @@ public class OverlapStatisticTool {
   private void processDataDirWithIsSeq(String dataDirPath, boolean isSeq) {
     String dataDirWithIsSeq;
     if (isSeq) {
-      dataDirWithIsSeq = dataDirPath + "/sequence";
+      dataDirWithIsSeq = dataDirPath + File.separator + "sequence";
     } else {
-      dataDirWithIsSeq = dataDirPath + "/unsequence";
+      dataDirWithIsSeq = dataDirPath + File.separator+ "unsequence";
     }
     File dataDirWithIsSequence = new File(dataDirWithIsSeq);
     if (!dataDirWithIsSequence.exists() || !dataDirWithIsSequence.isDirectory()) {
