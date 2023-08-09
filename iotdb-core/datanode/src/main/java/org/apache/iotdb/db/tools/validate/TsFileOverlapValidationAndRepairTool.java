@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.tools.validate;
 
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -35,7 +34,7 @@ import java.util.Objects;
 import java.util.Scanner;
 import java.util.Set;
 
-public class TsFileResourceValidationTool {
+public class TsFileOverlapValidationAndRepairTool {
 
   private static final Set<File> toMoveFiles = new HashSet<>();
   private static int overlapFileNum = 0;
@@ -50,7 +49,7 @@ public class TsFileResourceValidationTool {
     if (!confirmMoveOverlapFilesToUnsequenceSpace()) {
       return;
     }
-
+    moveOverlapFiles();
   }
 
   private static boolean confirmMoveOverlapFilesToUnsequenceSpace() {
@@ -65,10 +64,21 @@ public class TsFileResourceValidationTool {
   private static void moveOverlapFiles() {
     for (File f : toMoveFiles) {
       if (!f.exists()) {
+        System.out.println(f.getAbsolutePath() + "is not exist in repairing");
         continue;
       }
       String filePath = f.getAbsolutePath();
-
+      String replaceStr = File.separator + "sequence" + File.separator;
+      String replaceToStr = File.separator + "unsequence" + File.separator;
+      int sequenceDirIndex = filePath.indexOf(replaceStr);
+      if (sequenceDirIndex == -1) {
+        continue;
+      }
+      String moveToPath = filePath.substring(0, sequenceDirIndex) + replaceToStr + filePath.substring(sequenceDirIndex + replaceStr.length());
+      boolean success = f.renameTo(new File(moveToPath));
+      if (!success) {
+        System.out.println("Failed to repair " + f.getAbsolutePath());
+      }
     }
   }
 
