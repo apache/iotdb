@@ -21,7 +21,6 @@ package org.apache.iotdb.consensus.iot.service;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
@@ -57,10 +56,6 @@ public class IoTConsensusRPCService extends ThriftService implements IoTConsensu
   public void initAsyncedServiceImpl(Object iotConsensusRPCServiceProcessor) {
     this.iotConsensusRPCServiceProcessor =
         (IoTConsensusRPCServiceProcessor) iotConsensusRPCServiceProcessor;
-    super.mbeanName =
-        String.format(
-            "%s:%s=%s",
-            IoTDBConstant.IOTDB_SERVICE_JMX_NAME, IoTDBConstant.JMX_TYPE, getID().getJmxName());
     super.initAsyncedServiceImpl(this.iotConsensusRPCServiceProcessor);
   }
 
