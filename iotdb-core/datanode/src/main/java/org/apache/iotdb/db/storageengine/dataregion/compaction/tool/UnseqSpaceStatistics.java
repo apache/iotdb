@@ -26,15 +26,23 @@ public class UnseqSpaceStatistics {
   // 设备 -> 序列 -> 时间范围
   private Map<String, Map<String, ITimeRange>> deviceStatisticMap = new HashMap<>();
 
+  private Map<String, ITimeRange> chunkGroupStatisticMap = new HashMap<>();
+
   // 更新某个设备的某个序列的时间范围
-  public void update(String device, String measurementUID, Interval interval) {
+  public void updateMeasurement(String device, String measurementUID, Interval interval) {
     deviceStatisticMap
         .computeIfAbsent(device, key -> new HashMap<>())
         .computeIfAbsent(measurementUID, key -> new ListTimeRangeImpl())
         .addInterval(interval);
   }
 
-  public boolean hasOverlap(String device, String measurementUID, Interval interval) {
+  public void updateDevice(String device, Interval interval) {
+    chunkGroupStatisticMap
+        .computeIfAbsent(device, key -> new ListTimeRangeImpl())
+        .addInterval(interval);
+  }
+
+  public boolean chunkHasOverlap(String device, String measurementUID, Interval interval) {
     if (!deviceStatisticMap.containsKey(device)) {
       return false;
     }
@@ -42,6 +50,10 @@ public class UnseqSpaceStatistics {
       return false;
     }
     return deviceStatisticMap.get(device).get(measurementUID).isOverlapped(interval);
+  }
+
+  public boolean chunkGroupHasOverlap(String device, Interval interval) {
+    return false;
   }
 
   public Map<String, Map<String, ITimeRange>> getDeviceStatisticMap() {

@@ -80,6 +80,9 @@ public class TsFileStatisticReader implements Closeable {
     private final boolean isAligned;
     private int totalChunkNum = 0;
 
+    private long startTime;
+    private long endTime;
+
     private ChunkGroupStatistics(String deviceId, boolean isAligned) {
       this.deviceID = deviceId;
       this.isAligned = isAligned;

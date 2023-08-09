@@ -231,12 +231,13 @@ public class OverlapStatisticTool {
             Interval interval =
                 new Interval(chunkMetadata.getStartTime(), chunkMetadata.getEndTime());
             String measurementId = chunkMetadata.getMeasurementUid();
-            if (unseqSpaceStatistics.hasOverlap(deviceId, measurementId, interval)) {
+            if (unseqSpaceStatistics.chunkHasOverlap(deviceId, measurementId, interval)) {
               isFileOverlap = true;
               overlapChunkNum++;
             }
           }
           overlapStatistic.overlappedChunks += overlapChunkNum;
+
           overlapStatistic.overlappedChunkGroups += overlapChunkNum == 0 ? 0 : 1;
         }
         overlapStatistic.totalChunkGroups += chunkGroupStatisticsList.size();
@@ -258,7 +259,7 @@ public class OverlapStatisticTool {
         List<ChunkGroupStatistics> chunkGroupStatisticsList = reader.getChunkGroupStatistics();
         for (ChunkGroupStatistics statistics : chunkGroupStatisticsList) {
           for (ChunkMetadata chunkMetadata : statistics.getChunkMetadataList()) {
-            unseqSpaceStatistics.update(
+            unseqSpaceStatistics.updateMeasurement(
                 statistics.getDeviceID(),
                 chunkMetadata.getMeasurementUid(),
                 new Interval(chunkMetadata.getStartTime(), chunkMetadata.getEndTime()));
