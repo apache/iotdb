@@ -16,9 +16,9 @@ public class UnseqSpaceStatisticsTest {
     unseqSpaceStatistics.updateMeasurement("root.db.d1", "s2", new Interval(1, 10));
     unseqSpaceStatistics.updateMeasurement("root.db.d2", "s2", new Interval(1, 10));
 
-    Assert.assertEquals(2, unseqSpaceStatistics.getDeviceStatisticMap().size());
-    Assert.assertEquals(2, unseqSpaceStatistics.getDeviceStatisticMap().get("root.db.d1").size());
-    Assert.assertEquals(1, unseqSpaceStatistics.getDeviceStatisticMap().get("root.db.d2").size());
+    Assert.assertEquals(2, unseqSpaceStatistics.getChunkStatisticMap().size());
+    Assert.assertEquals(2, unseqSpaceStatistics.getChunkStatisticMap().get("root.db.d1").size());
+    Assert.assertEquals(1, unseqSpaceStatistics.getChunkStatisticMap().get("root.db.d2").size());
   }
 
   @Test

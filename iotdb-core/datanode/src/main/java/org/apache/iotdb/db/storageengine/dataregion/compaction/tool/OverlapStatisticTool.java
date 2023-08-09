@@ -156,7 +156,7 @@ public class OverlapStatisticTool {
     if (isSeq) {
       dataDirWithIsSeq = dataDirPath + File.separator + "sequence";
     } else {
-      dataDirWithIsSeq = dataDirPath + File.separator+ "unsequence";
+      dataDirWithIsSeq = dataDirPath + File.separator + "unsequence";
     }
     File dataDirWithIsSequence = new File(dataDirWithIsSeq);
     if (!dataDirWithIsSequence.exists() || !dataDirWithIsSequence.isDirectory()) {
