@@ -109,9 +109,11 @@ public class LoadTsfileAnalyzer {
 
       try {
         analyzeSingleTsFile(tsFile);
-        LOGGER.info(
-            "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
-            i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
+        if (LOGGER.isInfoEnabled()) {
+          LOGGER.info(
+              "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
+              i + 1, tsfileNum, String.format("%.3f", (i + 1) * 100.00 / tsfileNum));
+        }
       } catch (IllegalArgumentException e) {
         LOGGER.warn(
             String.format(
@@ -353,14 +355,15 @@ public class LoadTsfileAnalyzer {
       }
 
       // check device schema: is aligned or not
-      if (iotdbDeviceSchemaInfo.isAligned()
-          != Boolean.TRUE.equals(tsfileDevice2IsAligned.get(device))) {
+      final boolean isAlignedInTsFile = tsfileDevice2IsAligned.get(device);
+      final boolean isAlignedInIoTDB = iotdbDeviceSchemaInfo.isAligned();
+      if (isAlignedInTsFile != isAlignedInIoTDB) {
         throw new VerifyMetadataException(
             String.format(
                 "Device %s in TsFile is %s, but in IoTDB is %s.",
                 device,
-                tsfileDevice2IsAligned.get(device) ? "aligned" : "not aligned",
-                iotdbDeviceSchemaInfo.isAligned() ? "aligned" : "not aligned"));
+                isAlignedInTsFile ? "aligned" : "not aligned",
+                isAlignedInIoTDB ? "aligned" : "not aligned"));
       }
 
       // check timeseries schema
@@ -381,8 +384,10 @@ public class LoadTsfileAnalyzer {
         if (!tsFileSchema.getType().equals(iotdbSchema.getType())) {
           throw new VerifyMetadataException(
               String.format(
-                  "Measurement %s datatype not match, TsFile: %s, IoTDB: %s",
-                  device + TsFileConstant.PATH_SEPARATOR + iotdbSchema.getMeasurementId(),
+                  "Measurement %s%s%s datatype not match, TsFile: %s, IoTDB: %s",
+                  device,
+                  TsFileConstant.PATH_SEPARATOR,
+                  iotdbSchema.getMeasurementId(),
                   tsFileSchema.getType(),
                   iotdbSchema.getType()));
         }
@@ -391,8 +396,10 @@ public class LoadTsfileAnalyzer {
         if (!tsFileSchema.getEncodingType().equals(iotdbSchema.getEncodingType())) {
           // we allow a measurement to have different encodings in different chunks
           LOGGER.warn(
-              "Encoding type not match, measurement: {}, TsFile encoding: {}, IoTDB encoding: {}",
-              device + TsFileConstant.PATH_SEPARATOR + iotdbSchema.getMeasurementId(),
+              "Encoding type not match, measurement: {}{}{}, TsFile encoding: {}, IoTDB encoding: {}",
+              device,
+              TsFileConstant.PATH_SEPARATOR,
+              iotdbSchema.getMeasurementId(),
               tsFileSchema.getEncodingType().name(),
               iotdbSchema.getEncodingType().name());
         }
@@ -401,8 +408,10 @@ public class LoadTsfileAnalyzer {
         if (!tsFileSchema.getCompressor().equals(iotdbSchema.getCompressor())) {
           // we allow a measurement to have different compressors in different chunks
           LOGGER.warn(
-              "Compressor not match, measurement: {}, TsFile compressor: {}, IoTDB compressor: {}",
-              device + TsFileConstant.PATH_SEPARATOR + iotdbSchema.getMeasurementId(),
+              "Compressor not match, measurement: {}{}{}, TsFile compressor: {}, IoTDB compressor: {}",
+              device,
+              TsFileConstant.PATH_SEPARATOR,
+              iotdbSchema.getMeasurementId(),
               tsFileSchema.getCompressor().name(),
               iotdbSchema.getCompressor().name());
         }
@@ -455,12 +464,18 @@ public class LoadTsfileAnalyzer {
 
     @Override
     public Pair<String, TimeseriesMetadata> next() {
-      if (returnedTimeseriesCount++ % LOG_PRINT_INTERVAL == 0) {
+      if (returnedTimeseriesCount == 0) {
+        LOGGER.info(
+            "Analyzing TsFile {}, start to return timeseries to analyzer.",
+            tsFile.getAbsolutePath());
+      } else if (returnedTimeseriesCount % LOG_PRINT_INTERVAL == 0) {
         LOGGER.info(
             "Analyzing TsFile {}, until now {} timeseries has been returned to analyzer.",
             tsFile.getAbsolutePath(),
-            returnedTimeseriesCount);
+            returnedTimeseriesCount - 1);
       }
+      returnedTimeseriesCount++;
+
       return new Pair<>(currentDevice, timeseriesMetadataIterator.next());
     }
   }
