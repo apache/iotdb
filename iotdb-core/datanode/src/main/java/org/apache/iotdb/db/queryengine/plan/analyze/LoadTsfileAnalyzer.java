@@ -148,11 +148,14 @@ public class LoadTsfileAnalyzer {
           || loadTsFileStatement.isVerifySchema()) {
         // cache timeseries metadata for the next step
         device2TimeseriesMetadata = reader.getAllTimeseriesMetadata(true);
+
         final TimeSeriesIterator timeSeriesIterator =
             new TimeSeriesIterator(tsFile, device2TimeseriesMetadata);
         while (timeSeriesIterator.hasNext()) {
           schemaAutoCreatorAndVerifier.autoCreateAndVerify(reader, timeSeriesIterator);
         }
+
+        schemaAutoCreatorAndVerifier.flushAndClearDeviceIsAlignedCacheIfNecessary();
       }
 
       // construct tsfile resource
@@ -280,6 +283,19 @@ public class LoadTsfileAnalyzer {
 
       if (currentBatchTimeseriesCount == maxTimeseriesNumberPerBatch) {
         flush();
+      }
+    }
+
+    /**
+     * This can only be invoked after all timeseries in the current tsfile have been processed.
+     * Otherwise, the isAligned status may be wrong.
+     */
+    public void flushAndClearDeviceIsAlignedCacheIfNecessary() throws SemanticException {
+      // avoid OOM when loading a tsfile with too many timeseries
+      // or loading too many tsfiles at the same time
+      if (tsfileDevice2IsAligned.size() > 10000) {
+        flush();
+        tsfileDevice2IsAligned.clear();
       }
     }
 
