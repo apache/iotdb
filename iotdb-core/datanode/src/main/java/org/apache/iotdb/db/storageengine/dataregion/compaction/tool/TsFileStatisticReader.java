@@ -80,6 +80,7 @@ public class TsFileStatisticReader implements Closeable {
   @Override
   public void close() throws IOException {
     this.reader.close();
+    this.resource.close();
   }
 
   public static class ChunkGroupStatistics {
