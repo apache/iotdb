@@ -137,9 +137,10 @@ public class TimePartitionProcessTask {
             continue;
           }
           Interval deviceInterval = new Interval(deviceStartTime, deviceEndTime);
-          if (unseqSpaceStatistics.chunkGroupHasOverlap(deviceId, deviceInterval)) {
-            overlapStatistic.overlappedChunkGroups++;
+          if (!unseqSpaceStatistics.chunkGroupHasOverlap(deviceId, deviceInterval)) {
+            continue;
           }
+          overlapStatistic.overlappedChunkGroups++;
           overlapStatistic.overlappedChunks += overlapChunkNum;
           isFileOverlap = true;
         }
