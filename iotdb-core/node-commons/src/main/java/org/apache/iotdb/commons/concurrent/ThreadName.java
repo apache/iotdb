@@ -86,6 +86,7 @@ public enum ThreadName {
   ASYNC_DATANODE_HEARTBEAT_CLIENT_POOL("AsyncDataNodeHeartbeatServiceClientPool"),
   // -------------------------- ConfigNode-LoadBalance --------------------------
   CONFIG_NODE_LOAD_STATISTIC("Cluster-LoadStatistics-Service"),
+  CONFIG_NODE_LOAD_PUBLISHER("Cluster-LoadStatistics-Publisher"),
   // -------------------------- ConfigNode-RegionManagement --------------------------
   CONFIG_NODE_REGION_MAINTAINER("IoTDB-Region-Maintainer"),
   // -------------------------- ConfigNode-Recover --------------------------
@@ -310,7 +311,7 @@ public enum ThreadName {
               ASYNC_DATANODE_HEARTBEAT_CLIENT_POOL));
 
   private static final Set<ThreadName> configNodeLoadBalanceThreadNames =
-      new HashSet<>(Arrays.asList(CONFIG_NODE_LOAD_STATISTIC));
+      new HashSet<>(Arrays.asList(CONFIG_NODE_LOAD_STATISTIC, CONFIG_NODE_LOAD_PUBLISHER));
 
   private static final Set<ThreadName> configNodeRegionManagementThreadNames =
       new HashSet<>(Arrays.asList(CONFIG_NODE_REGION_MAINTAINER));
