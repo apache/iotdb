@@ -34,7 +34,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-
 public class OverlapStatisticTool {
   public static long seqFileCount = 0;
 
@@ -177,5 +176,4 @@ public class OverlapStatisticTool {
       String storageGroup, String dataRegion, String timePartition) {
     return storageGroup + "-" + dataRegion + "-" + timePartition;
   }
-
 }

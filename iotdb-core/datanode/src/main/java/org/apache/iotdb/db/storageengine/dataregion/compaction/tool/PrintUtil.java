@@ -30,7 +30,7 @@ public class PrintUtil {
 
   private static void printProgressLog(String label) {
     System.out.printf(
-        "All progress: %s\n" + "File progress: %d/%d\n" + "Partition progress: %d/%d %s",
+        "Progress: %s\n" + "File progress: %d/%d\n" + "Partition progress: %d/%d %s",
         label,
         OverlapStatisticTool.processedSeqFileCount,
         OverlapStatisticTool.seqFileCount,
@@ -48,24 +48,24 @@ public class PrintUtil {
     double overlappedChunkPercentage =
         calculatePercentage(overlapStatistic.overlappedChunks, overlapStatistic.totalChunks);
     String[][] log = {
-        {
-            "Sequence File",
-            overlapStatistic.totalFiles + "",
-            overlapStatistic.overlappedFiles + "",
-            String.format("%.2f%%", overlappedSeqFilePercentage)
-        },
-        {
-            "ChunkGroup In Sequence File",
-            overlapStatistic.totalChunkGroups + "",
-            overlapStatistic.overlappedChunkGroups + "",
-            String.format("%.2f%%", overlappedChunkGroupPercentage)
-        },
-        {
-            "Chunk In Sequence File",
-            overlapStatistic.totalChunks + "",
-            overlapStatistic.overlappedChunks + "",
-            String.format("%.2f%%", overlappedChunkPercentage)
-        }
+      {
+        "Sequence File",
+        overlapStatistic.totalFiles + "",
+        overlapStatistic.overlappedFiles + "",
+        String.format("%.2f%%", overlappedSeqFilePercentage)
+      },
+      {
+        "ChunkGroup In Sequence File",
+        overlapStatistic.totalChunkGroups + "",
+        overlapStatistic.overlappedChunkGroups + "",
+        String.format("%.2f%%", overlappedChunkGroupPercentage)
+      },
+      {
+        "Chunk In Sequence File",
+        overlapStatistic.totalChunks + "",
+        overlapStatistic.overlappedChunks + "",
+        String.format("%.2f%%", overlappedChunkPercentage)
+      }
     };
     printTable(log);
   }

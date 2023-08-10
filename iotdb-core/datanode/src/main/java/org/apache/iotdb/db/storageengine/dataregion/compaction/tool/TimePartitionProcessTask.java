@@ -25,26 +25,29 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import java.io.IOException;
 import java.util.List;
 
-
 public class TimePartitionProcessTask {
   private final String timePartition;
   private final Pair<List<String>, List<String>> timePartitionFiles;
 
-  public TimePartitionProcessTask(String timePartition, Pair<List<String>, List<String>> timePartitionFiles) {
+  public TimePartitionProcessTask(
+      String timePartition, Pair<List<String>, List<String>> timePartitionFiles) {
     this.timePartition = timePartition;
     this.timePartitionFiles = timePartitionFiles;
   }
 
   public OverlapStatistic processTimePartition() {
+    long startTime = System.currentTimeMillis();
     OverlapStatistic partialRet =
         processOneTimePartition(timePartitionFiles.left, timePartitionFiles.right);
-
     // 更新并打印进度
     OverlapStatisticTool.outputInfolock.lock();
     OverlapStatisticTool.processedTimePartitionCount += 1;
     OverlapStatisticTool.processedSeqFileCount += partialRet.totalFiles;
     PrintUtil.printOneStatistics(partialRet, timePartition);
     OverlapStatisticTool.outputInfolock.unlock();
+    System.out.printf(
+        Thread.currentThread().getName() + " Time cost: %.2fs\n",
+        ((double) System.currentTimeMillis() - startTime) / 1000);
 
     return partialRet;
   }
@@ -54,7 +57,8 @@ public class TimePartitionProcessTask {
 
     for (String unseqFile : unseqFiles) {
       try (TsFileStatisticReader reader = new TsFileStatisticReader(unseqFile)) {
-        List<TsFileStatisticReader.ChunkGroupStatistics> chunkGroupStatisticsList = reader.getChunkGroupStatistics();
+        List<TsFileStatisticReader.ChunkGroupStatistics> chunkGroupStatisticsList =
+            reader.getChunkGroupStatistics();
         for (TsFileStatisticReader.ChunkGroupStatistics statistics : chunkGroupStatisticsList) {
           long deviceStartTime = Long.MAX_VALUE, deviceEndTime = Long.MIN_VALUE;
           for (ChunkMetadata chunkMetadata : statistics.getChunkMetadataList()) {
@@ -86,8 +90,10 @@ public class TimePartitionProcessTask {
       boolean isFileOverlap = false;
       try (TsFileStatisticReader reader = new TsFileStatisticReader(seqFile)) {
         // 统计顺序文件的信息并更新到 overlapStatistic
-        List<TsFileStatisticReader.ChunkGroupStatistics> chunkGroupStatisticsList = reader.getChunkGroupStatistics();
-        for (TsFileStatisticReader.ChunkGroupStatistics chunkGroupStatistics : chunkGroupStatisticsList) {
+        List<TsFileStatisticReader.ChunkGroupStatistics> chunkGroupStatisticsList =
+            reader.getChunkGroupStatistics();
+        for (TsFileStatisticReader.ChunkGroupStatistics chunkGroupStatistics :
+            chunkGroupStatisticsList) {
           overlapStatistic.totalChunks += chunkGroupStatistics.getTotalChunkNum();
           String deviceId = chunkGroupStatistics.getDeviceID();
           int overlapChunkNum = 0;
@@ -121,6 +127,4 @@ public class TimePartitionProcessTask {
     }
     return overlapStatistic;
   }
-
-
 }

@@ -37,14 +37,16 @@ public class TimePartitionProcessWorker {
   }
 
   public void run(CountDownLatch latch) {
-    new Thread(() -> {
-      while (!workerTaskList.isEmpty()) {
-        TimePartitionProcessTask task = workerTaskList.remove(0);
-        OverlapStatistic partialRet = task.processTimePartition();
-        workerResults.add(partialRet);
-      }
-      latch.countDown();
-    }).start();
+    new Thread(
+            () -> {
+              while (!workerTaskList.isEmpty()) {
+                TimePartitionProcessTask task = workerTaskList.remove(0);
+                OverlapStatistic partialRet = task.processTimePartition();
+                workerResults.add(partialRet);
+              }
+              latch.countDown();
+            })
+        .start();
   }
 
   public List<OverlapStatistic> getWorkerResults() {
