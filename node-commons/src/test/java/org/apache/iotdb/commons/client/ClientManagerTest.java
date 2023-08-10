@@ -508,6 +508,7 @@ public class ClientManagerTest {
       syncClient.clearCache();
       Assert.fail("A timeout exception should occur here");
     } catch (Exception ignored) {
+      // no handling
     }
     Assert.assertEquals(0, syncClusterManager.getPool().getNumActive(endPoint));
     Assert.assertEquals(0, syncClusterManager.getPool().getNumIdle(endPoint));
