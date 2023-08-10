@@ -180,7 +180,7 @@ public class TimePartitionProcessTask {
         overlapStatistic.totalChunkGroups += taskSummary.getTotalChunkGroups();
         overlapStatistic.overlappedChunks += taskSummary.getOverlapChunk();
         overlapStatistic.totalChunks += taskSummary.getTotalChunks();
-        if (taskSummary.getTotalChunkGroups() > 0) {
+        if (taskSummary.getOverlapChunkGroup() > 0) {
           overlapStatistic.overlappedFiles++;
         }
       } catch (Exception e) {
