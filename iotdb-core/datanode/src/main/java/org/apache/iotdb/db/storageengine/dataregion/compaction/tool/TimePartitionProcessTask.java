@@ -168,7 +168,7 @@ public class TimePartitionProcessTask {
     UnseqSpaceStatistics unseqSpaceStatistics = buildUnseqSpaceStatistics(unseqFiles);
     OverlapStatistic overlapStatistic = new OverlapStatistic();
     overlapStatistic.totalFiles += seqFiles.size();
-    executor = new AsyncThreadExecutor(Math.min(seqFiles.size(), 10));
+    executor = new AsyncThreadExecutor(10);
     List<Future<TaskSummary>> futures = new ArrayList<>();
     for (String seqFile : seqFiles) {
       futures.add(executor.submit(new SingleSequenceFileTask(unseqSpaceStatistics, seqFile)));
@@ -176,17 +176,18 @@ public class TimePartitionProcessTask {
     for (Future<TaskSummary> future : futures) {
       try {
         TaskSummary taskSummary = future.get();
-        overlapStatistic.overlappedChunkGroups += taskSummary.getOverlapChunkGroup();
-        overlapStatistic.totalChunkGroups += taskSummary.getTotalChunkGroups();
-        overlapStatistic.overlappedChunks += taskSummary.getOverlapChunk();
-        overlapStatistic.totalChunks += taskSummary.getTotalChunks();
-        if (taskSummary.getOverlapChunkGroup() > 0) {
+        overlapStatistic.overlappedChunkGroups += taskSummary.overlapChunkGroup;
+        overlapStatistic.totalChunkGroups += taskSummary.totalChunkGroups;
+        overlapStatistic.overlappedChunks += taskSummary.overlapChunk;
+        overlapStatistic.totalChunks += taskSummary.totalChunks;
+        if (taskSummary.overlapChunkGroup > 0) {
           overlapStatistic.overlappedFiles++;
         }
       } catch (Exception e) {
         // todo
       }
     }
+    executor.shutdown();
     return overlapStatistic;
   }
 }
