@@ -19,11 +19,16 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.tool.reader.AsyncThreadExecutor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.tool.reader.SingleSequenceFileTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.tool.reader.TaskSummary;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Future;
 
 public class TimePartitionProcessTask {
   private final String timePartition;
@@ -31,6 +36,8 @@ public class TimePartitionProcessTask {
   private long readFileCost = 0;
   private long buildUnseqSpaceStatisticCost = 0;
   private long checkOverlapCost = 0;
+
+  private AsyncThreadExecutor executor;
 
   public TimePartitionProcessTask(
       String timePartition, Pair<List<String>, List<String>> timePartitionFiles) {
@@ -41,7 +48,7 @@ public class TimePartitionProcessTask {
   public OverlapStatistic processTimePartition() {
     long startTime = System.currentTimeMillis();
     OverlapStatistic partialRet =
-        processOneTimePartition(timePartitionFiles.left, timePartitionFiles.right);
+        processOneTimePartitionAsync(timePartitionFiles.left, timePartitionFiles.right);
     // 更新并打印进度
     OverlapStatisticTool.outputInfolock.lock();
     OverlapStatisticTool.processedTimePartitionCount += 1;
@@ -151,6 +158,33 @@ public class TimePartitionProcessTask {
       }
       if (isFileOverlap) {
         overlapStatistic.overlappedFiles += 1;
+      }
+    }
+    return overlapStatistic;
+  }
+
+  public OverlapStatistic processOneTimePartitionAsync(
+      List<String> seqFiles, List<String> unseqFiles) {
+    UnseqSpaceStatistics unseqSpaceStatistics = buildUnseqSpaceStatistics(unseqFiles);
+    OverlapStatistic overlapStatistic = new OverlapStatistic();
+    overlapStatistic.totalFiles += seqFiles.size();
+    executor = new AsyncThreadExecutor(Math.min(seqFiles.size(), 10));
+    List<Future<TaskSummary>> futures = new ArrayList<>();
+    for (String seqFile : seqFiles) {
+      futures.add(executor.submit(new SingleSequenceFileTask(unseqSpaceStatistics, seqFile)));
+    }
+    for (Future<TaskSummary> future : futures) {
+      try {
+        TaskSummary taskSummary = future.get();
+        overlapStatistic.overlappedChunkGroups += taskSummary.getOverlapChunkGroup();
+        overlapStatistic.totalChunkGroups += taskSummary.getTotalChunkGroups();
+        overlapStatistic.overlappedChunks += taskSummary.getOverlapChunk();
+        overlapStatistic.totalChunks += taskSummary.getTotalChunks();
+        if (taskSummary.getTotalChunkGroups() > 0) {
+          overlapStatistic.overlappedFiles++;
+        }
+      } catch (Exception e) {
+        // todo
       }
     }
     return overlapStatistic;
