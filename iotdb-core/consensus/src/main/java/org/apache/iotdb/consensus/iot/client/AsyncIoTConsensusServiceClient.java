@@ -56,6 +56,7 @@ public class AsyncIoTConsensusServiceClient extends IoTConsensusIService.AsyncCl
         tAsyncClientManager,
         TNonblockingSocketWrapper.wrap(
             endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
+    setTimeout(property.getConnectionTimeoutMs());
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;
     this.clientManager = clientManager;
