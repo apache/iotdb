@@ -1,7 +1,12 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.tool.reader;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.tool.Interval;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.tool.TsFileStatisticReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.tool.UnseqSpaceStatistics;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 
+import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.Callable;
 
 public class SingleSequenceFileTask implements Callable<TaskSummary> {
@@ -19,7 +24,49 @@ public class SingleSequenceFileTask implements Callable<TaskSummary> {
   }
 
   private TaskSummary checkSeqFile(UnseqSpaceStatistics unseqSpaceStatistics, String seqFile) {
+    TaskSummary summary = new TaskSummary();
+    try (TsFileStatisticReader reader = new TsFileStatisticReader(seqFile)) {
+      // 统计顺序文件的信息并更新到 overlapStatistic
+      List<TsFileStatisticReader.ChunkGroupStatistics> chunkGroupStatisticsList =
+          reader.getChunkGroupStatistics();
+      for (TsFileStatisticReader.ChunkGroupStatistics chunkGroupStatistics :
+          chunkGroupStatisticsList) {
+        summary.totalChunks = chunkGroupStatistics.getTotalChunkNum();
+        String deviceId = chunkGroupStatistics.getDeviceID();
+        int overlapChunkNum = 0;
 
-    return new TaskSummary();
+        long deviceStartTime = Long.MAX_VALUE, deviceEndTime = Long.MIN_VALUE;
+
+        for (ChunkMetadata chunkMetadata : chunkGroupStatistics.getChunkMetadataList()) {
+          // skip empty chunk
+          if (chunkMetadata.getStartTime() > chunkMetadata.getEndTime()) {
+            continue;
+          }
+          // update device start time and end time
+          deviceStartTime = Math.min(deviceStartTime, chunkMetadata.getStartTime());
+          deviceEndTime = Math.max(deviceEndTime, chunkMetadata.getEndTime());
+          // check chunk overlap
+          Interval interval =
+              new Interval(chunkMetadata.getStartTime(), chunkMetadata.getEndTime());
+          String measurementId = chunkMetadata.getMeasurementUid();
+          if (unseqSpaceStatistics.chunkHasOverlap(deviceId, measurementId, interval)) {
+            summary.overlapChunk++;
+          }
+        }
+        // check device overlap
+        if (deviceStartTime > deviceEndTime) {
+          continue;
+        }
+        Interval deviceInterval = new Interval(deviceStartTime, deviceEndTime);
+        if (!unseqSpaceStatistics.chunkGroupHasOverlap(deviceId, deviceInterval)) {
+          continue;
+        }
+        summary.overlapChunkGroup++;
+      }
+      summary.totalChunkGroups = chunkGroupStatisticsList.size();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+    return summary;
   }
 }
