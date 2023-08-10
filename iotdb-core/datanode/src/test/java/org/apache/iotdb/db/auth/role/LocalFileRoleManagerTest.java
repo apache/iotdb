@@ -20,6 +20,7 @@ package org.apache.iotdb.db.auth.role;
 
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.role.LocalFileRoleManager;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -61,13 +62,14 @@ public class LocalFileRoleManagerTest {
 
   @Test
   public void test() throws AuthException, IllegalPathException {
-    Role[] roles = new Role[5];
+    Role[] roles = new Role[4];
     for (int i = 0; i < roles.length; i++) {
       roles[i] = new Role("role" + i);
       for (int j = 0; j <= i; j++) {
         PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.a.b.c" + j));
         pathPrivilege.getPrivileges().add(j);
-        roles[i].getPrivilegeList().add(pathPrivilege);
+        roles[i].getPathPrivilegeList().add(pathPrivilege);
+        roles[i].getSysPrivilege().add(j + 4);
       }
     }
 
@@ -108,21 +110,25 @@ public class LocalFileRoleManagerTest {
     PartialPath path = new PartialPath("root.a.b.c");
     int privilegeId = 0;
     assertFalse(role.hasPrivilege(path, privilegeId));
-    assertTrue(manager.grantPrivilegeToRole(role.getName(), path, privilegeId));
-    assertTrue(manager.grantPrivilegeToRole(role.getName(), path, privilegeId + 1));
-    assertFalse(manager.grantPrivilegeToRole(role.getName(), path, privilegeId));
+    assertTrue(manager.grantPrivilegeToRole(role.getName(), path, privilegeId, false));
+    assertTrue(manager.grantPrivilegeToRole(role.getName(), path, privilegeId + 1, false));
+    assertFalse(manager.grantPrivilegeToRole(role.getName(), path, privilegeId, false));
     role = manager.getRole(roles[0].getName());
     assertTrue(role.hasPrivilege(path, privilegeId));
+    assertTrue(
+        manager.grantPrivilegeToRole(role.getName(), null, PrivilegeType.MAINTAIN.ordinal(), true));
+    assertFalse(
+        manager.grantPrivilegeToRole(role.getName(), null, PrivilegeType.MAINTAIN.ordinal(), true));
     caught = false;
     try {
-      manager.grantPrivilegeToRole("not a role", path, privilegeId);
+      manager.grantPrivilegeToRole("not a role", path, privilegeId, false);
     } catch (AuthException e) {
       caught = true;
     }
     assertTrue(caught);
     caught = false;
     try {
-      manager.grantPrivilegeToRole(role.getName(), path, -1);
+      manager.grantPrivilegeToRole(role.getName(), path, -1, false);
     } catch (AuthException e) {
       caught = true;
     }
@@ -132,6 +138,11 @@ public class LocalFileRoleManagerTest {
     role = manager.getRole(roles[0].getName());
     assertTrue(manager.revokePrivilegeFromRole(role.getName(), path, privilegeId));
     assertFalse(manager.revokePrivilegeFromRole(role.getName(), path, privilegeId));
+    assertFalse(
+        manager.revokePrivilegeFromRole(role.getName(), null, PrivilegeType.USE_PIPE.ordinal()));
+    assertTrue(
+        manager.revokePrivilegeFromRole(role.getName(), null, PrivilegeType.MAINTAIN.ordinal()));
+    assertEquals(manager.getRole(role.getName()).getSysPriGrantOpt().size(), 0);
     caught = false;
     try {
       manager.revokePrivilegeFromRole("not a role", path, privilegeId);

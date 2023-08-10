@@ -411,7 +411,7 @@ public class AuthorInfoTest {
     permissionInfoResp = authorInfo.executeListUserPrivileges(authorPlan);
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    Set<PrivilegeType> allPrivilegeTypes = PrivilegeType.ALL.getStorablePrivilege();
+    Set<PrivilegeType> allPrivilegeTypes = PrivilegeType.values();
     List<String> resultPrivilegeTypes =
         permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_PRIVILEGE);
     Assert.assertEquals(allPrivilegeTypes.size(), resultPrivilegeTypes.size());

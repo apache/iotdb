@@ -149,12 +149,14 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
       newPath = AuthUtils.ROOT_PATH_PRIVILEGE_PATH;
     }
-    if (!userManager.grantPrivilegeToUser(username, newPath, privilegeId)) {
-      throw new AuthException(
-          TSStatusCode.ALREADY_HAS_PRIVILEGE,
-          String.format(
-              "User %s already has %s on %s", username, PrivilegeType.values()[privilegeId], path));
-    }
+    // LSL
+    //    if (!userManager.grantPrivilegeToUser(username, newPath, privilegeId)) {
+    //      throw new AuthException(
+    //          TSStatusCode.ALREADY_HAS_PRIVILEGE,
+    //          String.format(
+    //              "User %s already has %s on %s", username, PrivilegeType.values()[privilegeId],
+    // path));
+    //    }
   }
 
   @Override
@@ -216,12 +218,14 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
       newPath = AuthUtils.ROOT_PATH_PRIVILEGE_PATH;
     }
-    if (!roleManager.grantPrivilegeToRole(roleName, newPath, privilegeId)) {
-      throw new AuthException(
-          TSStatusCode.ALREADY_HAS_PRIVILEGE,
-          String.format(
-              "Role %s already has %s on %s", roleName, PrivilegeType.values()[privilegeId], path));
-    }
+    // LSL
+    //    if (!roleManager.grantPrivilegeToRole(roleName, newPath, privilegeId)) {
+    //      throw new AuthException(
+    //          TSStatusCode.ALREADY_HAS_PRIVILEGE,
+    //          String.format(
+    //              "Role %s already has %s on %s", roleName, PrivilegeType.values()[privilegeId],
+    // path));
+    //    }
   }
 
   @Override
@@ -287,12 +291,12 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
           TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_EXCEPTION, username));
     }
     // get privileges of the user
-    Set<Integer> privileges = user.getPrivileges(path);
+    Set<Integer> privileges = user.getPathPrivileges(path);
     // merge the privileges of the roles of the user
     for (String roleName : user.getRoleList()) {
       Role role = roleManager.getRole(roleName);
       if (role != null) {
-        privileges.addAll(role.getPrivileges(path));
+        privileges.addAll(role.getPathPrivileges(path));
       }
     }
     return privileges;
@@ -318,13 +322,13 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
           TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_EXCEPTION, username));
     }
     // get privileges of the user
-    if (user.checkPrivilege(path, privilegeId)) {
+    if (user.checkPathPrivilege(path, privilegeId)) {
       return true;
     }
     // merge the privileges of the roles of the user
     for (String roleName : user.getRoleList()) {
       Role role = roleManager.getRole(roleName);
-      if (role.checkPrivilege(path, privilegeId)) {
+      if (role.checkPathPrivilege(path, privilegeId)) {
         return true;
       }
     }

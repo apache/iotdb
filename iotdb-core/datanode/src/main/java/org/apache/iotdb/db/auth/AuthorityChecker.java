@@ -76,10 +76,6 @@ public class AuthorityChecker {
     for (int permission : permissions) {
       if (permission == -1) {
         continue;
-      } else if (permission == PrivilegeType.ALTER_PASSWORD.ordinal()
-          && username.equals(targetUser)) {
-        // A user can modify his own password
-        return true;
       }
 
       List<PartialPath> allPath = new ArrayList<>();
@@ -160,6 +156,7 @@ public class AuthorityChecker {
         username, statement.getPaths(), statement.getType(), targetUser);
   }
 
+  // here for grant option and alter password opeartion
   private static int[] translateToPermissionId(StatementType type) {
     switch (type) {
       case SHOW_SCHEMA_TEMPLATE:
@@ -220,6 +217,7 @@ public class AuthorityChecker {
       case LIST_USER:
       case LIST_USER_ROLES:
       case LIST_USER_PRIVILEGE:
+      case MODIFY_PASSWORD:
         return new int[] {PrivilegeType.MANAGE_USER.ordinal()};
       case CREATE_ROLE:
       case DELETE_ROLE:
@@ -227,15 +225,6 @@ public class AuthorityChecker {
       case LIST_ROLE_USERS:
       case LIST_ROLE_PRIVILEGE:
         return new int[] {PrivilegeType.MANAGE_ROLE.ordinal()};
-      case MODIFY_PASSWORD:
-        return new int[] {PrivilegeType.ALTER_PASSWORD.ordinal()};
-      case GRANT_USER_PRIVILEGE:
-      case REVOKE_USER_PRIVILEGE:
-      case GRANT_ROLE_PRIVILEGE:
-      case REVOKE_ROLE_PRIVILEGE:
-      case GRANT_USER_ROLE:
-      case REVOKE_USER_ROLE:
-        return new int[] {PrivilegeType.GRANT_PRIVILEGE.ordinal()};
       case CREATE_TRIGGER:
       case DROP_TRIGGER:
         return new int[] {PrivilegeType.USE_TRIGGER.ordinal()};

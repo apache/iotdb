@@ -19,7 +19,6 @@
 package org.apache.iotdb.commons.auth.user;
 
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.concurrent.HashLock;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -71,6 +70,7 @@ public abstract class BasicUserManager implements IUserManager {
    *
    * @throws AuthException if an exception is raised when interacting with the lower storage.
    */
+  // shall we really have a root user's profile in our storage?
   private void initAdmin() throws AuthException {
     User admin;
     try {
@@ -105,9 +105,6 @@ public abstract class BasicUserManager implements IUserManager {
       throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
     } finally {
       lock.readUnlock(username);
-    }
-    if (user != null) {
-      user.setLastActiveTime(System.currentTimeMillis());
     }
     return user;
   }
@@ -158,9 +155,8 @@ public abstract class BasicUserManager implements IUserManager {
     }
   }
 
-  @Override
-  public boolean grantPrivilegeToUser(String username, PartialPath path, int privilegeId)
-      throws AuthException {
+  public boolean grantPrivilegeToUser(
+      String username, PartialPath path, int privilegeId, boolean grantOpt) throws AuthException {
     AuthUtils.validatePrivilegeOnPath(path, privilegeId);
     lock.writeLock(username);
     try {
@@ -172,12 +168,12 @@ public abstract class BasicUserManager implements IUserManager {
       if (user.hasPrivilege(path, privilegeId)) {
         return false;
       }
-      Set<Integer> privilegesCopy = new HashSet<>(user.getPrivileges(path));
-      user.addPrivilege(path, privilegeId);
+      Set<Integer> privilegesCopy = new HashSet<>(user.getPathPrivileges(path));
+      user.addPathPrivilege(path, privilegeId, grantOpt);
       try {
         accessor.saveUser(user);
       } catch (IOException e) {
-        user.setPrivileges(path, privilegesCopy);
+        user.setPathPrivileges(path, privilegesCopy);
         throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
       }
       return true;
@@ -197,16 +193,17 @@ public abstract class BasicUserManager implements IUserManager {
         throw new AuthException(
             TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_ERROR, username));
       }
-      if (PrivilegeType.isStorable(privilegeId) && !user.hasPrivilege(path, privilegeId)) {
+      if (!user.hasPrivilege(path, privilegeId)) {
         return false;
       }
-      user.removePrivilege(path, privilegeId);
-      try {
-        accessor.saveUser(user);
-      } catch (IOException e) {
-        user.addPrivilege(path, privilegeId);
-        throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
-      }
+      user.removePathPrivilege(path, privilegeId);
+      // LSL. 这里不再需要保存文件了
+      //      try {
+      //        accessor.saveUser(user);
+      //      } catch (IOException e) {
+      //        user.addPathPrivilege(path, privilegeId);
+      //        throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
+      //      }
       return true;
     } finally {
       lock.writeUnlock(username);

@@ -61,13 +61,13 @@ public class LocalFileRoleAccessorTest {
 
   @Test
   public void test() throws IOException, IllegalPathException {
-    Role[] roles = new Role[5];
+    Role[] roles = new Role[4];
     for (int i = 0; i < roles.length; i++) {
       roles[i] = new Role("role" + i);
       for (int j = 0; j <= i; j++) {
         PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.a.b.c" + j));
         pathPrivilege.getPrivileges().add(j);
-        roles[i].getPrivilegeList().add(pathPrivilege);
+        roles[i].getPathPrivilegeList().add(pathPrivilege);
       }
     }
 

@@ -44,13 +44,25 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * This class store each role in a separate sequential file. Role file schema : Int32 role name size
- * Utf-8 role name bytes Int32 seriesPath privilege number n Int32 seriesPath[1] size Utf-8
- * seriesPath[1] bytes Int32 privilege num k1 Int32 privilege[1][1] Int32 privilege[1][2] ... Int32
- * privilege[1][k1] Int32 seriesPath[2] size Utf-8 seriesPath[2] bytes Int32 privilege num yk2 Int32
- * privilege[2][1] Int32 privilege[2][2] ... Int32 privilege[2][k2] ... Int32 seriesPath[n] size
- * Utf-8 seriesPath[n] bytes Int32 privilege num kn Int32 privilege[n][1] Int32 privilege[n][2] ...
- * Int32 privilege[n][kn]
+ * This class store role info in a separate sequential file and every role will have one role file.
+ * Role file schema: rolename-length int32| rolename-bytes-utf8| system-perivileges int32|
+ * path[1]-length int32| path[1]-bytes-utf8 | privilege-int32| path[2]-length int32|
+ * path[2]-bytes-utf8 | privilege-int32| path[3]-length int32| path[3]-bytes-utf8 | privilege-int32|
+ * .....
+ *
+ * <p>system-privileges is a int32 mask code. Low 16 bits for privileges and high 16 bits mark that
+ * whether the corresponding position 's privilege has grant option.So we can use a int32 to mark 16
+ * kinds of privileges. Here are the permissions corresponding to the bit location identifier：
+ * Manage_database : 0 MANAGE_USER : 1 MANAGE_ROLE : 2 USE_TRIGGER : 3 USE_UDF : 4 USE_CQ : 5
+ * USE_PIPE : 6 EXTEDN_TEMPLATE : 7 AUDIT : 8 MAINTAIN : 9 |0000-0000-0000-0001|0000-0000-0000-0001|
+ * means this role has Manage_database's privilege and be able to grant it to others.
+ *
+ * <p>path-privileges is a pair contains paths and privileges mask. Path privilege is a int32 mask
+ * code which has the same structure as system-privileges. For path privilege, the low 16 bits stand
+ * for four privileges, they are: READ_DATA : 0 WRITE_DATA : 1 READ_SCHEMA : 2 WRITE_SCHEMA : 3 And
+ * the high 16 bits stand for grant option.
+ *
+ * <p>Role files is appendable.
  */
 public class LocalFileRoleAccessor implements IRoleAccessor {
   private static final Logger logger = LoggerFactory.getLogger(LocalFileRoleAccessor.class);
@@ -94,9 +106,8 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
       Role role = new Role();
       role.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
 
-      int privilegeNum = dataInputStream.readInt();
       List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
-      for (int i = 0; i < privilegeNum; i++) {
+      for (int i = 0; dataInputStream.available() != 0; i++) {
         pathPrivilegeList.add(
             IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal));
       }
@@ -129,11 +140,9 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
       try {
         IOUtils.writeString(outputStream, role.getName(), STRING_ENCODING, encodingBufferLocal);
 
-        role.getPrivilegeList().sort(PathPrivilege.REFERENCE_DESCENT_SORTER);
-        int privilegeNum = role.getPrivilegeList().size();
-        IOUtils.writeInt(outputStream, privilegeNum, encodingBufferLocal);
+        int privilegeNum = role.getPathPrivilegeList().size();
         for (int i = 0; i < privilegeNum; i++) {
-          PathPrivilege pathPrivilege = role.getPrivilegeList().get(i);
+          PathPrivilege pathPrivilege = role.getPathPrivilegeList().get(i);
           IOUtils.writePathPrivilege(
               outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
         }

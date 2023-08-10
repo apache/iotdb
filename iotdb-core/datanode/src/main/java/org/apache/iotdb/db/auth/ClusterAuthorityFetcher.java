@@ -77,43 +77,70 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   }
 
   @Override
-  public TSStatus checkUserPrivileges(String username, List<PartialPath> allPath, int permission) {
+  public TSStatus checkUserPathPrivileges(
+      String username, List<PartialPath> allPath, int permission) {
     User user = iAuthorCache.getUserCache(username);
     if (user != null) {
-      for (PartialPath path : allPath) {
-        try {
-          if (!user.isOpenIdUser() || !authorizer.checkUserPrivileges(username, path, permission)) {
-            if (!user.checkPrivilege(path, permission)) {
-              if (user.getRoleList().isEmpty()) {
-                return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
+      if (!user.isOpenIdUser()) {
+        for (PartialPath path : allPath) {
+          // check user first
+          if (!user.checkPathPrivilege(path, permission)) {
+            if (user.getRoleList().isEmpty()) {
+              return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
+            }
+            boolean status = false;
+            for (String rolename : user.getRoleList()) {
+              Role cacheRole = iAuthorCache.getRoleCache(rolename);
+              if (cacheRole == null) {
+                iAuthorCache.invalidateCache(username, "");
+                return checkPath(username, allPath, permission);
               }
-              boolean status = false;
-              for (String roleName : user.getRoleList()) {
-                Role role = iAuthorCache.getRoleCache(roleName);
-                // It is detected that the role of the user does not exist in the cache, indicating
-                // that the permission information of the role has changed.
-                // The user cache needs to be initialized
-                if (role == null) {
-                  iAuthorCache.invalidateCache(username, "");
-                  return checkPath(username, allPath, permission);
-                }
-                status = role.checkPrivilege(path, permission);
-                if (status) {
-                  break;
-                }
-              }
-              if (!status) {
-                return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
+              if (cacheRole.checkPathPrivilege(path, permission)) {
+                status = true;
+                break;
               }
             }
+            if (!status) {
+              return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
+            }
           }
-        } catch (AuthException e) {
-          return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
         }
       }
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } else {
       return checkPath(username, allPath, permission);
+    }
+  }
+
+  public TSStatus checkUserSysPrivileges(String username, int permission) {
+    User user = iAuthorCache.getUserCache(username);
+    if (user != null) {
+      if (!user.isOpenIdUser()) {
+        // check user first
+        if (!user.checkSysPrivilege(permission)) {
+          if (user.getRoleList().isEmpty()) {
+            return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
+          }
+          boolean status = false;
+          for (String rolename : user.getRoleList()) {
+            Role cacheRole = iAuthorCache.getRoleCache(rolename);
+            if (cacheRole == null) {
+              iAuthorCache.invalidateCache(username, "");
+              return checkSysPri(username, permission);
+            }
+            if (cacheRole.checkSysPrivilege(permission)) {
+              status = true;
+              break;
+            }
+          }
+          if (!status) {
+            return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
+          }
+        }
+      }
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    } else {
+      return checkSysPri(username, permission);
     }
   }
 
@@ -224,6 +251,10 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         return status.getStatus();
       }
     }
+  }
+
+  public TSStatus checkSysPri(String username, int permission) {
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   public TSStatus checkPath(String username, List<PartialPath> allPath, int permission) {

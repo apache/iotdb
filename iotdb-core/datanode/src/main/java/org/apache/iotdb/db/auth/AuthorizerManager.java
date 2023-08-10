@@ -362,7 +362,7 @@ public class AuthorizerManager implements IAuthorizer {
   public TSStatus checkPath(String username, List<PartialPath> allPath, int permission) {
     authReadWriteLock.readLock().lock();
     try {
-      return authorityFetcher.checkUserPrivileges(username, allPath, permission);
+      return authorityFetcher.checkUserPathPrivileges(username, allPath, permission);
     } finally {
       authReadWriteLock.readLock().unlock();
     }

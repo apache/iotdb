@@ -32,7 +32,9 @@ public interface IAuthorityFetcher {
 
   TSStatus checkUser(String username, String password);
 
-  TSStatus checkUserPrivileges(String username, List<PartialPath> allPath, int permission);
+  TSStatus checkUserPathPrivileges(String username, List<PartialPath> allPath, int permission);
+
+  TSStatus checkUserSysPrivileges(String username, int permisssion);
 
   SettableFuture<ConfigTaskResult> operatePermission(AuthorStatement authorStatement);
 

@@ -2178,6 +2178,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   // Alter Password
 
+  // 这里需要修改，对于更改密码的操作，用户可以修改自己的密码，非本用户需要获取 manage 权限
   @Override
   public Statement visitAlterUser(IoTDBSqlParser.AlterUserContext ctx) {
     AuthorStatement authorStatement = new AuthorStatement(AuthorType.UPDATE_USER);

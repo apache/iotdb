@@ -283,7 +283,7 @@ public class AuthorInfo implements SnapshotProcessor {
       return result;
     }
     Set<String> rolePrivilegesSet = new HashSet<>();
-    for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
+    for (PathPrivilege pathPrivilege : role.getPathPrivilegeList()) {
       if (plan.getNodeNameList().isEmpty()) {
         rolePrivilegesSet.add(pathPrivilege.toString());
         continue;
@@ -314,13 +314,18 @@ public class AuthorInfo implements SnapshotProcessor {
     List<String> userPrivilegesList = new ArrayList<>();
 
     if (IoTDBConstant.PATH_ROOT.equals(plan.getUserName())) {
-      for (PrivilegeType privilegeType : PrivilegeType.ALL.getStorablePrivilege()) {
+      for (PrivilegeType privilegeType : PrivilegeType.values()) {
         userPrivilegesList.add(privilegeType.toString());
       }
+      userPrivilegesList.add("FLUSH");
+      userPrivilegesList.add("MERGE");
+      userPrivilegesList.add("CLEAR CACHE");
+      userPrivilegesList.add("ALTER SYSTEM");
+      userPrivilegesList.add("SCHEMA SNAPSHOT");
     } else {
       List<String> rolePrivileges = new ArrayList<>();
       Set<String> userPrivilegeSet = new HashSet<>();
-      for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
+      for (PathPrivilege pathPrivilege : user.getPathPrivilegeList()) {
         if (plan.getNodeNameList().isEmpty()
             && !userPrivilegeSet.contains(pathPrivilege.toString())) {
           rolePrivileges.add("");
@@ -342,7 +347,7 @@ public class AuthorInfo implements SnapshotProcessor {
           continue;
         }
         Set<String> rolePrivilegeSet = new HashSet<>();
-        for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
+        for (PathPrivilege pathPrivilege : role.getPathPrivilegeList()) {
           if (plan.getNodeNameList().isEmpty()
               && !rolePrivilegeSet.contains(pathPrivilege.toString())) {
             rolePrivileges.add(roleN);
@@ -403,8 +408,9 @@ public class AuthorInfo implements SnapshotProcessor {
 
     // User permission information
     User user = authorizer.getUser(username);
-    if (user.getPrivilegeList() != null) {
-      for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
+    // LSL
+    if (user.getPathPrivilegeList() != null) {
+      for (PathPrivilege pathPrivilege : user.getPathPrivilegeList()) {
         userPrivilegeList.add(pathPrivilege.getPath().getFullPath());
         String privilegeIdList = pathPrivilege.getPrivileges().toString();
         userPrivilegeList.add(privilegeIdList.substring(1, privilegeIdList.length() - 1));
@@ -420,7 +426,7 @@ public class AuthorInfo implements SnapshotProcessor {
       for (String roleName : user.getRoleList()) {
         Role role = authorizer.getRole(roleName);
         List<String> rolePrivilegeList = new ArrayList<>();
-        for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
+        for (PathPrivilege pathPrivilege : role.getPathPrivilegeList()) {
           rolePrivilegeList.add(pathPrivilege.getPath().getFullPath());
           String privilegeIdList = pathPrivilege.getPrivileges().toString();
           rolePrivilegeList.add(privilegeIdList.substring(1, privilegeIdList.length() - 1));

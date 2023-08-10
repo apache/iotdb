@@ -32,11 +32,9 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
-import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -101,38 +99,71 @@ public class LocalFileUserAccessor implements IUserAccessor {
         return null;
       }
     }
+
     FileInputStream inputStream = new FileInputStream(userProfile);
     try (DataInputStream dataInputStream =
         new DataInputStream(new BufferedInputStream(inputStream))) {
       User user = new User();
       user.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
       user.setPassword(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
-      int privilegeNum = dataInputStream.readInt();
+      user.setSysPrivilegeSet(dataInputStream.readInt());
       List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
-      for (int i = 0; i < privilegeNum; i++) {
+      for (int i = 0; dataInputStream.available() != 0; i++) {
         pathPrivilegeList.add(
             IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal));
       }
       user.setPrivilegeList(pathPrivilegeList);
-      int roleNum = dataInputStream.readInt();
-      List<String> roleList = new ArrayList<>();
-      for (int i = 0; i < roleNum; i++) {
-        String userName = IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal);
-        roleList.add(userName);
-      }
-      user.setRoleList(roleList);
 
-      // for online upgrading, profile for v0.9.x/v1 does not contain waterMark
-      long userProfileLength = userProfile.length();
-      try {
-        user.setUseWaterMark(dataInputStream.readInt() != 0);
-      } catch (EOFException e1) {
-        user.setUseWaterMark(false);
-        try (RandomAccessFile file = new RandomAccessFile(userProfile, "rw")) {
-          file.seek(userProfileLength);
-          file.writeInt(0);
+      File roleOfUser =
+          SystemFileFactory.INSTANCE.getFile(
+              userDirPath, File.separator + username + "_role" + IoTDBConstant.PROFILE_SUFFIX);
+
+      if (!roleOfUser.isFile() || !roleOfUser.exists()) {
+        // System may crush before a newer file is renamed.
+        File newRoleProfile =
+            SystemFileFactory.INSTANCE.getFile(
+                userDirPath
+                    + File.separator
+                    + username
+                    + "_role"
+                    + IoTDBConstant.PROFILE_SUFFIX
+                    + TEMP_SUFFIX);
+        if (newRoleProfile.exists() && newRoleProfile.isFile()) {
+          if (!newRoleProfile.renameTo(roleOfUser)) {
+            logger.error(" New role profile renaming not succeed.");
+          }
         }
       }
+
+      // need check: if we delete before and rename it , should we re get file?
+      roleOfUser =
+          SystemFileFactory.INSTANCE.getFile(
+              userDirPath, File.separator + username + "_role" + IoTDBConstant.PROFILE_SUFFIX);
+
+      if (roleOfUser.exists()) {
+        inputStream = new FileInputStream(roleOfUser);
+        try (DataInputStream roleInpuStream =
+            new DataInputStream(new BufferedInputStream(inputStream))) {
+          List<String> roleList = new ArrayList<>();
+          for (int i = 0; roleInpuStream.available() != 0; i++) {
+            String rolename = IOUtils.readString(roleInpuStream, STRING_ENCODING, strBufferLocal);
+            roleList.add(rolename);
+          }
+          user.setRoleList(roleList);
+        }
+      }
+
+      //      // for online upgrading, profile for v0.9.x/v1 does not contain waterMark
+      //      long userProfileLength = userProfile.length();
+      //      try {
+      //        user.setUseWaterMark(dataInputStream.readInt() != 0);
+      //      } catch (EOFException e1) {
+      //        user.setUseWaterMark(false);
+      //        try (RandomAccessFile file = new RandomAccessFile(userProfile, "rw")) {
+      //          file.seek(userProfileLength);
+      //          file.writeInt(0);
+      //        }
+      //      }
       return user;
     } catch (Exception e) {
       throw new IOException(e);
@@ -161,25 +192,19 @@ public class LocalFileUserAccessor implements IUserAccessor {
       try {
         IOUtils.writeString(outputStream, user.getName(), STRING_ENCODING, encodingBufferLocal);
         IOUtils.writeString(outputStream, user.getPassword(), STRING_ENCODING, encodingBufferLocal);
+        IOUtils.writeInt(outputStream, user.getAllSysPrivileges(), encodingBufferLocal);
 
-        user.getPrivilegeList().sort(PathPrivilege.REFERENCE_DESCENT_SORTER);
-        int privilegeNum = user.getPrivilegeList().size();
-        IOUtils.writeInt(outputStream, privilegeNum, encodingBufferLocal);
+        int privilegeNum = user.getPathPrivilegeList().size();
         for (int i = 0; i < privilegeNum; i++) {
-          PathPrivilege pathPrivilege = user.getPrivilegeList().get(i);
+          PathPrivilege pathPrivilege = user.getPathPrivilegeList().get(i);
           IOUtils.writePathPrivilege(
               outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
         }
 
-        int userNum = user.getRoleList().size();
-        IOUtils.writeInt(outputStream, userNum, encodingBufferLocal);
-        for (int i = 0; i < userNum; i++) {
-          IOUtils.writeString(
-              outputStream, user.getRoleList().get(i), STRING_ENCODING, encodingBufferLocal);
-        }
-        IOUtils.writeInt(outputStream, user.isUseWaterMark() ? 1 : 0, encodingBufferLocal);
+        //        IOUtils.writeInt(outputStream, user.isUseWaterMark() ? 1 : 0,
+        // encodingBufferLocal);
+        //
         outputStream.flush();
-
       } catch (Exception e) {
         throw new IOException(e);
       }
@@ -187,10 +212,38 @@ public class LocalFileUserAccessor implements IUserAccessor {
       encodingBufferLocal.remove();
     }
 
-    File oldFile =
+    File roleProfile =
+        SystemFileFactory.INSTANCE.getFile(
+            userDirPath
+                + File.separator
+                + user.getName()
+                + "_role"
+                + IoTDBConstant.PROFILE_SUFFIX
+                + TEMP_SUFFIX);
+    try (BufferedOutputStream roleOutputStream =
+        new BufferedOutputStream(Files.newOutputStream(roleProfile.toPath()))) {
+      try {
+        int userNum = user.getRoleList().size();
+        for (int i = 0; i < userNum; i++) {
+          IOUtils.writeString(
+              roleOutputStream, user.getRoleList().get(i), STRING_ENCODING, encodingBufferLocal);
+        }
+        roleOutputStream.flush();
+      } catch (Exception e) {
+        throw new IOException(e);
+      }
+    } finally {
+      encodingBufferLocal.remove();
+    }
+
+    File oldUserFile =
         SystemFileFactory.INSTANCE.getFile(
             userDirPath + File.separator + user.getName() + IoTDBConstant.PROFILE_SUFFIX);
-    IOUtils.replaceFile(userProfile, oldFile);
+    IOUtils.replaceFile(userProfile, oldUserFile);
+    File oldURoleFile =
+        SystemFileFactory.INSTANCE.getFile(
+            userDirPath + File.separator + user.getName() + "_role" + IoTDBConstant.PROFILE_SUFFIX);
+    IOUtils.replaceFile(roleProfile, oldURoleFile);
   }
 
   /**
@@ -215,6 +268,32 @@ public class LocalFileUserAccessor implements IUserAccessor {
         || (backFile.exists() && !backFile.delete())) {
       throw new IOException(String.format("Cannot delete user file of %s", username));
     }
+    if (!deleteURole(username)) {
+      return false;
+    }
+    return true;
+  }
+
+  public boolean deleteURole(String username) throws IOException {
+    File uRoleProfile =
+        SystemFileFactory.INSTANCE.getFile(
+            userDirPath + File.separator + username + "_role" + IoTDBConstant.PROFILE_SUFFIX);
+    File backProfile =
+        SystemFileFactory.INSTANCE.getFile(
+            userDirPath
+                + File.separator
+                + username
+                + "_role"
+                + IoTDBConstant.PROFILE_SUFFIX
+                + TEMP_SUFFIX);
+    // This role dont have any role.
+    if (!uRoleProfile.exists() && !backProfile.exists()) {
+      return true;
+    }
+    if ((uRoleProfile.exists() && !uRoleProfile.delete())
+        || (backProfile.exists() && !backProfile.delete())) {
+      throw new IOException(String.format("Catch error when delete %s 's role", username));
+    }
     return true;
   }
 
@@ -224,7 +303,9 @@ public class LocalFileUserAccessor implements IUserAccessor {
     String[] names =
         userDir.list(
             (dir, name) ->
-                name.endsWith(IoTDBConstant.PROFILE_SUFFIX) || name.endsWith(TEMP_SUFFIX));
+                (name.endsWith(IoTDBConstant.PROFILE_SUFFIX)
+                        && !name.endsWith("_role" + IoTDBConstant.PROFILE_SUFFIX))
+                    || (name.endsWith(TEMP_SUFFIX) && !name.endsWith("_role" + TEMP_SUFFIX)));
     List<String> retList = new ArrayList<>();
     if (names != null) {
       // in very rare situations, normal file and backup file may exist at the same time

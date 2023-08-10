@@ -62,13 +62,14 @@ public class LocalFileUserAccessorTest {
 
   @Test
   public void test() throws IOException, IllegalPathException {
-    User[] users = new User[5];
+    User[] users = new User[4];
     for (int i = 0; i < users.length; i++) {
       users[i] = new User("user" + i, "password" + i);
       for (int j = 0; j <= i; j++) {
         PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.a.b.c" + j));
         pathPrivilege.getPrivileges().add(j);
-        users[i].getPrivilegeList().add(pathPrivilege);
+        users[i].getPathPrivilegeList().add(pathPrivilege);
+        users[i].getSysPrivilege().add(j + 5);
         users[i].getRoleList().add("role" + j);
       }
     }

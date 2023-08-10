@@ -19,7 +19,6 @@
 package org.apache.iotdb.commons.auth.role;
 
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.concurrent.HashLock;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -107,9 +106,8 @@ public abstract class BasicRoleManager implements IRoleManager {
     }
   }
 
-  @Override
-  public boolean grantPrivilegeToRole(String rolename, PartialPath path, int privilegeId)
-      throws AuthException {
+  public boolean grantPrivilegeToRole(
+      String rolename, PartialPath path, int privilegeId, boolean grantOpt) throws AuthException {
     AuthUtils.validatePrivilegeOnPath(path, privilegeId);
     lock.writeLock(rolename);
     try {
@@ -121,12 +119,20 @@ public abstract class BasicRoleManager implements IRoleManager {
       if (role.hasPrivilege(path, privilegeId)) {
         return false;
       }
-      Set<Integer> privilegesCopy = new HashSet<>(role.getPrivileges(path));
-      role.addPrivilege(path, privilegeId);
+      if (path != null) {
+        Set<Integer> privilegesCopy = new HashSet<>(role.getPathPrivileges(path));
+        role.addPathPrivilege(path, privilegeId, grantOpt);
+      } else {
+        role.getSysPrivilege().add(privilegeId);
+        if (grantOpt) {
+          role.getSysPriGrantOpt().add(privilegeId);
+        }
+      }
       try {
         accessor.saveRole(role);
       } catch (IOException e) {
-        role.setPrivileges(path, privilegesCopy);
+        // no need to save every time. LSL. add raft log apply.
+        //        role.setPathPrivileges(path, privilegesCopy);
         throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
       }
       return true;
@@ -146,16 +152,23 @@ public abstract class BasicRoleManager implements IRoleManager {
         throw new AuthException(
             TSStatusCode.ROLE_NOT_EXIST, String.format("No such role %s", rolename));
       }
-      if (PrivilegeType.isStorable(privilegeId) && !role.hasPrivilege(path, privilegeId)) {
+      if (!role.hasPrivilege(path, privilegeId)) {
         return false;
       }
-      role.removePrivilege(path, privilegeId);
-      try {
-        accessor.saveRole(role);
-      } catch (IOException e) {
-        role.addPrivilege(path, privilegeId);
-        throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
+      if (path != null) {
+        role.removePathPrivilege(path, privilegeId);
+      } else {
+        role.getSysPrivilege().remove(privilegeId);
+        role.getSysPriGrantOpt().remove(privilegeId);
       }
+
+      // LSL. 我们不再需要保存文件了
+      //      try {
+      //        accessor.saveRole(role);
+      //      } catch (IOException e) {
+      //        role.addPathPrivilege(path, privilegeId);
+      //        throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
+      //      }
       return true;
     } finally {
       lock.writeUnlock(rolename);

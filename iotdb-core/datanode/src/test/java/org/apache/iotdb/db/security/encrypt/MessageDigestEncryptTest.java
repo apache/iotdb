@@ -40,6 +40,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+// LSL. there need check if the test go correctly.
 public class MessageDigestEncryptTest {
   private static final String providerClass =
       "org.apache.iotdb.commons.security.encrypt.MessageDigestEncrypt";
@@ -71,7 +72,7 @@ public class MessageDigestEncryptTest {
       for (int j = 0; j <= i; j++) {
         PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.a.b.c" + j));
         pathPrivilege.getPrivileges().add(j);
-        users[i].getPrivilegeList().add(pathPrivilege);
+        users[i].getPathPrivilegeList().add(pathPrivilege);
         users[i].getRoleList().add("role" + j);
       }
     }
