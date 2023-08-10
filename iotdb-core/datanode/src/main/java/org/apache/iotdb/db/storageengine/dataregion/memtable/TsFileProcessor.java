@@ -668,7 +668,7 @@ public class TsFileProcessor {
       }
       long acquireArray;
       if (alignedMemChunk.alignedListSize() % PrimitiveArrayManager.ARRAY_SIZE == 0) {
-        acquireArray = (end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1;
+        acquireArray = (end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1L;
       } else {
         acquireArray =
             (end
