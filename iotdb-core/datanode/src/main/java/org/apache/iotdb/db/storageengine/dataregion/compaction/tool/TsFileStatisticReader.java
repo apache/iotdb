@@ -43,7 +43,8 @@ public class TsFileStatisticReader implements Closeable {
 
   public TsFileStatisticReader(String filePath) throws IOException {
     reader = new TsFileSequenceReader(filePath);
-    resource = new TsFileResource(new File(filePath));
+    resource = new TsFileResource();
+    resource.setFile(new File(filePath));
     resource.deserialize();
     chunkGroupStatisticsList = new ArrayList<>();
   }
