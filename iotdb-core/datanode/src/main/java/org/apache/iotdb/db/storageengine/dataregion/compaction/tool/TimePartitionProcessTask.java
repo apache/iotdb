@@ -60,17 +60,17 @@ public class TimePartitionProcessTask {
         List<TsFileStatisticReader.ChunkGroupStatistics> chunkGroupStatisticsList =
             reader.getChunkGroupStatistics();
         for (TsFileStatisticReader.ChunkGroupStatistics statistics : chunkGroupStatisticsList) {
-          long deviceStartTime = Long.MAX_VALUE, deviceEndTime = Long.MIN_VALUE;
           for (ChunkMetadata chunkMetadata : statistics.getChunkMetadataList()) {
             unseqSpaceStatistics.updateMeasurement(
                 statistics.getDeviceID(),
                 chunkMetadata.getMeasurementUid(),
                 new Interval(chunkMetadata.getStartTime(), chunkMetadata.getEndTime()));
-            deviceStartTime = Math.min(deviceStartTime, chunkMetadata.getStartTime());
-            deviceEndTime = Math.max(deviceEndTime, chunkMetadata.getEndTime());
           }
-          unseqSpaceStatistics.updateDevice(
-              statistics.getDeviceID(), new Interval(deviceStartTime, deviceEndTime));
+          if (statistics.getStartTime() < statistics.getEndTime()) {
+            unseqSpaceStatistics.updateDevice(
+                statistics.getDeviceID(),
+                new Interval(statistics.getStartTime(), statistics.getEndTime()));
+          }
         }
       } catch (IOException e) {
         throw new RuntimeException(e);
@@ -98,10 +98,25 @@ public class TimePartitionProcessTask {
           String deviceId = chunkGroupStatistics.getDeviceID();
           int overlapChunkNum = 0;
 
-          long deviceStartTime = Long.MAX_VALUE, deviceEndTime = Long.MIN_VALUE;
+          long deviceStartTime = chunkGroupStatistics.getStartTime(),
+              deviceEndTime = chunkGroupStatistics.getEndTime();
+          if (deviceStartTime >= deviceEndTime) {
+            // skip empty chunk group
+            continue;
+          }
+          Interval deviceInterval = new Interval(deviceStartTime, deviceEndTime);
+          if (!unseqSpaceStatistics.chunkGroupHasOverlap(deviceId, deviceInterval)) {
+            // if chunk group is not overlapped, all chunk of it is not overlapped
+            continue;
+          }
+          isFileOverlap = true;
+          overlapStatistic.overlappedChunkGroups++;
+
           for (ChunkMetadata chunkMetadata : chunkGroupStatistics.getChunkMetadataList()) {
-            deviceStartTime = Math.min(deviceStartTime, chunkMetadata.getStartTime());
-            deviceEndTime = Math.max(deviceEndTime, chunkMetadata.getEndTime());
+            if (chunkMetadata.getStartTime() >= chunkMetadata.getEndTime()) {
+              // skip empty chunk
+              continue;
+            }
             Interval interval =
                 new Interval(chunkMetadata.getStartTime(), chunkMetadata.getEndTime());
             String measurementId = chunkMetadata.getMeasurementUid();
@@ -110,12 +125,6 @@ public class TimePartitionProcessTask {
             }
           }
           overlapStatistic.overlappedChunks += overlapChunkNum;
-
-          Interval deviceInterval = new Interval(deviceStartTime, deviceEndTime);
-          if (unseqSpaceStatistics.chunkGroupHasOverlap(deviceId, deviceInterval)) {
-            isFileOverlap = true;
-            overlapStatistic.overlappedChunkGroups++;
-          }
         }
         overlapStatistic.totalChunkGroups += chunkGroupStatisticsList.size();
       } catch (IOException e) {
