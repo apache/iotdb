@@ -28,6 +28,9 @@ import java.util.List;
 public class TimePartitionProcessTask {
   private final String timePartition;
   private final Pair<List<String>, List<String>> timePartitionFiles;
+  private long readFileCost = 0;
+  private long buildUnseqSpaceStatisticCost = 0;
+  private long checkOverlapCost = 0;
 
   public TimePartitionProcessTask(
       String timePartition, Pair<List<String>, List<String>> timePartitionFiles) {
@@ -46,8 +49,11 @@ public class TimePartitionProcessTask {
     PrintUtil.printOneStatistics(partialRet, timePartition);
     OverlapStatisticTool.outputInfolock.unlock();
     System.out.printf(
-        Thread.currentThread().getName() + " Time cost: %.2fs\n",
-        ((double) System.currentTimeMillis() - startTime) / 1000);
+        Thread.currentThread().getName() + " Time cost: %.2fs, Read file cost: %.2fs, Build unsequence space cost: %.2fs, Check overlap cost: %.2fs\n",
+        ((double) System.currentTimeMillis() - startTime) / 1000,
+        ((double) readFileCost / 1000),
+        ((double) buildUnseqSpaceStatisticCost / 1000),
+        ((double) checkOverlapCost / 1000));
 
     return partialRet;
   }
@@ -57,8 +63,12 @@ public class TimePartitionProcessTask {
 
     for (String unseqFile : unseqFiles) {
       try (TsFileStatisticReader reader = new TsFileStatisticReader(unseqFile)) {
+        long startTime = System.currentTimeMillis();
         List<TsFileStatisticReader.ChunkGroupStatistics> chunkGroupStatisticsList =
             reader.getChunkGroupStatistics();
+        readFileCost += (System.currentTimeMillis() - startTime);
+
+        startTime = System.currentTimeMillis();
         for (TsFileStatisticReader.ChunkGroupStatistics statistics : chunkGroupStatisticsList) {
           for (ChunkMetadata chunkMetadata : statistics.getChunkMetadataList()) {
             unseqSpaceStatistics.updateMeasurement(
@@ -72,6 +82,7 @@ public class TimePartitionProcessTask {
                 new Interval(statistics.getStartTime(), statistics.getEndTime()));
           }
         }
+        buildUnseqSpaceStatisticCost += (System.currentTimeMillis() - startTime);
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
@@ -90,8 +101,11 @@ public class TimePartitionProcessTask {
       boolean isFileOverlap = false;
       try (TsFileStatisticReader reader = new TsFileStatisticReader(seqFile)) {
         // 统计顺序文件的信息并更新到 overlapStatistic
+        long startTime = System.currentTimeMillis();
         List<TsFileStatisticReader.ChunkGroupStatistics> chunkGroupStatisticsList =
             reader.getChunkGroupStatistics();
+        readFileCost += (System.currentTimeMillis() - startTime);
+        startTime = System.currentTimeMillis();
         for (TsFileStatisticReader.ChunkGroupStatistics chunkGroupStatistics :
             chunkGroupStatisticsList) {
           overlapStatistic.totalChunks += chunkGroupStatistics.getTotalChunkNum();
@@ -127,6 +141,7 @@ public class TimePartitionProcessTask {
           overlapStatistic.overlappedChunks += overlapChunkNum;
         }
         overlapStatistic.totalChunkGroups += chunkGroupStatisticsList.size();
+        checkOverlapCost += (System.currentTimeMillis() - startTime);
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
