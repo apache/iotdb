@@ -854,6 +854,23 @@ public abstract class AlignedTVList extends TVList {
     return size;
   }
 
+  /**
+   * Get the single column array mem cost by give type.
+   *
+   * @param type the type of the value column
+   * @return valueListArrayMemCost
+   */
+  public static long valueListArrayMemCost(TSDataType type) {
+    long size = 0;
+    // value array mem size
+    size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
+    // array headers mem size
+    size += NUM_BYTES_ARRAY_HEADER;
+    // Object references size in ArrayList
+    size += NUM_BYTES_OBJECT_REF;
+    return size;
+  }
+
   /** Build TsBlock by column. */
   public TsBlock buildTsBlock(
       int floatPrecision, List<TSEncoding> encodingList, List<List<TimeRange>> deletionList) {
