@@ -39,8 +39,6 @@ import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.LoadFileException;
-import org.apache.iotdb.db.exception.VerifyMetadataException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIncompatibleException;
 import org.apache.iotdb.db.exception.metadata.view.UnsupportedViewException;
 import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
@@ -49,7 +47,6 @@ import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
-import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
@@ -59,10 +56,8 @@ import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowType;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
-import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator;
-import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.CompareBinaryExpression;
@@ -117,7 +112,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSeriesSt
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
@@ -140,18 +134,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.schemaengine.SchemaConstant;
 import org.apache.iotdb.db.schemaengine.template.Template;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
-import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.GroupByMonthFilter;
@@ -160,14 +146,11 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -2490,92 +2473,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   @Override
   public Analysis visitLoadFile(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
-    context.setQueryType(QueryType.WRITE);
-
-    int tsfileNum = loadTsFileStatement.getTsFiles().size();
-
-    // analyze tsfile metadata
-    for (int i = 0; i < tsfileNum; i++) {
-      File tsFile = loadTsFileStatement.getTsFiles().get(i);
-      if (tsFile.length() == 0) {
-        if (logger.isWarnEnabled()) {
-          logger.warn(String.format("TsFile %s is empty.", tsFile.getPath()));
-        }
-        throw new SemanticException(
-            String.format(
-                "TsFile %s is empty, please check it be flushed to disk correctly.",
-                tsFile.getPath()));
-      }
-      try {
-        analyzeTsFile(loadTsFileStatement, tsFile, context);
-      } catch (IllegalArgumentException e) {
-        logger.warn(
-            String.format(
-                "Parse file %s to resource error, this TsFile maybe empty.", tsFile.getPath()),
-            e);
-        throw new SemanticException(
-            String.format("TsFile %s is empty or incomplete.", tsFile.getPath()));
-      } catch (Exception e) {
-        logger.warn(String.format("Parse file %s to resource error.", tsFile.getPath()), e);
-        throw new SemanticException(
-            String.format("Parse file %s to resource error", tsFile.getPath()));
-      }
-
-      if (i + 1 == tsfileNum) {
-        break;
-      }
-
-      double progressPercentage = (i + 1) * 100.00 / tsfileNum;
-
-      logger.info(
-          "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
-          i + 1, tsfileNum, String.format("%.2f", progressPercentage));
-    }
-
-    logger.info(
-        "Load - Analysis Stage:{}/{} tsfiles have been analyzed, progress: {}%",
-        tsfileNum, tsfileNum, "100.00");
-    // load function will query data partition in scheduler
-    Analysis analysis = new Analysis();
-    analysis.setStatement(loadTsFileStatement);
-    return analysis;
-  }
-
-  private void autoCreateAndVerifySchema(
-      LoadTsFileStatement loadTsFileStatement,
-      Map<String, Map<MeasurementSchema, File>> device2Schemas,
-      Map<String, Pair<Boolean, File>> device2IsAligned,
-      MPPQueryContext context)
-      throws SemanticException {
-    if (device2Schemas.isEmpty()) {
-      return;
-    }
-    try {
-      if (loadTsFileStatement.isVerifySchema()) {
-        verifyLoadingMeasurements(device2Schemas);
-      }
-      if (loadTsFileStatement.isAutoCreateDatabase()) {
-        autoCreateSg(loadTsFileStatement.getSgLevel(), device2Schemas);
-      }
-      ISchemaTree schemaTree =
-          autoCreateSchema(
-              device2Schemas,
-              device2IsAligned,
-              context); // schema fetcher will not auto create if config set
-      // isAutoCreateSchemaEnabled is false.
-      if (loadTsFileStatement.isVerifySchema()) {
-        verifySchema(schemaTree, device2Schemas, device2IsAligned);
-      }
-    } catch (Exception e) {
-      logger.warn("Auto create or verify schema error.", e);
-      throw new SemanticException(
-          String.format(
-              "Auto create or verify schema error when executing statement %s.",
-              loadTsFileStatement));
-    } finally {
-      device2Schemas.clear();
-      device2IsAligned.clear();
-    }
+    return new LoadTsfileAnalyzer(loadTsFileStatement, context, partitionFetcher, schemaFetcher)
+        .analyzeFileByFile();
   }
 
   /** get analysis according to statement and params */
@@ -2594,298 +2493,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
     analysis.setDataPartitionInfo(dataPartition);
     return analysis;
-  }
-
-  private void analyzeTsFile(LoadTsFileStatement statement, File tsFile, MPPQueryContext context)
-      throws IOException, VerifyMetadataException {
-    try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
-      Map<String, List<TimeseriesMetadata>> device2Metadata = null;
-
-      if (IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
-          || statement.isVerifySchema()) {
-        device2Metadata = reader.getAllTimeseriesMetadata(true);
-        Map<String, Map<MeasurementSchema, File>> device2Schemas = new HashMap<>();
-        Map<String, Pair<Boolean, File>> device2IsAligned = new HashMap<>();
-        // construct schema
-        int deviceSize = device2Metadata.size();
-        int deviceCount = 0;
-        int timeseriesCount = 0;
-
-        for (Map.Entry<String, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
-          String device = entry.getKey();
-          deviceCount++;
-          List<TimeseriesMetadata> timeseriesMetadataList = entry.getValue();
-          boolean isAligned = false;
-
-          int timeseriesMetadataListSize = timeseriesMetadataList.size();
-
-          for (int timeseriesIndex = 0;
-              timeseriesIndex < timeseriesMetadataListSize;
-              timeseriesIndex++) {
-            TimeseriesMetadata timeseriesMetadata = timeseriesMetadataList.get(timeseriesIndex);
-            TSDataType dataType = timeseriesMetadata.getTsDataType();
-            if (!dataType.equals(TSDataType.VECTOR)) {
-              Pair<CompressionType, TSEncoding> pair =
-                  reader.readTimeseriesCompressionTypeAndEncoding(timeseriesMetadata);
-              MeasurementSchema measurementSchema =
-                  new MeasurementSchema(
-                      timeseriesMetadata.getMeasurementId(),
-                      dataType,
-                      pair.getRight(),
-                      pair.getLeft());
-              device2Schemas
-                  .computeIfAbsent(device, o -> new HashMap<>())
-                  .put(measurementSchema, tsFile);
-              timeseriesCount++;
-            } else {
-              isAligned = true;
-            }
-
-            // if the number of timeseries exceeds the threshold or loop to the last timeseries of
-            // the last device, we should create and verify schema , and clean the device2Schemas
-            // and device2IsAligned map.
-            if (timeseriesCount > CONFIG.getMaxLoadingTimeseriesNumber()
-                || (deviceCount == deviceSize
-                    && timeseriesIndex == timeseriesMetadataListSize - 1)) {
-
-              // check if the device has the same aligned definition in all tsfiles
-              if (hasDeviceSameDefinition(device2IsAligned, device, tsFile, isAligned)) {
-                autoCreateAndVerifySchema(statement, device2Schemas, device2IsAligned, context);
-                timeseriesCount = 0;
-              } else {
-                throw new VerifyMetadataException(
-                    String.format(
-                        "Device %s has different aligned definition in tsFile %s and other TsFile.",
-                        device, tsFile.getParentFile()));
-              }
-
-              logger.info(
-                  "Load - Create and Verify Schemas Stage: the device {} in tsfile {} have been created and verified.",
-                  entry.getKey(),
-                  tsFile.getName());
-            }
-          }
-
-          // when the number of devices does not exceed the threshold and it's not the last
-          // timeseries of the last device, we also need to check if the device has the same aligned
-          // definition in all tsfiles before going to the next device loop.
-          if (!hasDeviceSameDefinition(device2IsAligned, device, tsFile, isAligned)) {
-            throw new VerifyMetadataException(
-                String.format(
-                    "Device %s has different aligned definition in tsFile %s and other TsFile.",
-                    device, tsFile.getParentFile()));
-          }
-        }
-      }
-
-      // construct TsFileResource
-      TsFileResource tsFileResource = new TsFileResource(tsFile);
-
-      if (!tsFileResource.resourceFileExists()) {
-        if (device2Metadata == null) {
-          device2Metadata = reader.getAllTimeseriesMetadata(true);
-        }
-        FileLoaderUtils.updateTsFileResource(
-            device2Metadata, tsFileResource); // serialize it in LoadSingleTsFileNode
-        tsFileResource.updatePlanIndexes(reader.getMinPlanIndex());
-        tsFileResource.updatePlanIndexes(reader.getMaxPlanIndex());
-      } else {
-        tsFileResource.deserialize();
-      }
-
-      tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
-      statement.addTsFileResource(tsFileResource);
-    }
-  }
-
-  private boolean hasDeviceSameDefinition(
-      Map<String, Pair<Boolean, File>> device2IsAligned,
-      String device,
-      File tsFile,
-      boolean isAligned) {
-    return device2IsAligned
-        .computeIfAbsent(device, o -> new Pair<>(isAligned, tsFile))
-        .left
-        .equals(isAligned);
-  }
-
-  private void autoCreateSg(int sgLevel, Map<String, Map<MeasurementSchema, File>> device2Schemas)
-      throws VerifyMetadataException, LoadFileException, IllegalPathException {
-    sgLevel += 1; // e.g. "root.sg" means sgLevel = 1, "root.sg.test" means sgLevel=2
-    Set<PartialPath> sgSet = new HashSet<>();
-    for (String device : device2Schemas.keySet()) {
-      PartialPath devicePath = new PartialPath(device);
-
-      String[] nodes = devicePath.getNodes();
-      String[] sgNodes = new String[sgLevel];
-      if (nodes.length < sgLevel) {
-        throw new VerifyMetadataException(
-            String.format("Sg level %d is longer than device %s.", sgLevel, device));
-      }
-      System.arraycopy(nodes, 0, sgNodes, 0, sgLevel);
-      PartialPath sgPath = new PartialPath(sgNodes);
-      sgSet.add(sgPath);
-    }
-
-    for (PartialPath sgPath : sgSet) {
-      DatabaseSchemaStatement statement =
-          new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
-      statement.setDatabasePath(sgPath);
-      // load doesn't print exception log
-      statement.setEnablePrintExceptionLog(false);
-      executeSetDatabaseStatement(statement);
-    }
-  }
-
-  private void executeSetDatabaseStatement(Statement statement) throws LoadFileException {
-    long queryId = SessionManager.getInstance().requestQueryId();
-    ExecutionResult result =
-        Coordinator.getInstance()
-            .execute(
-                statement,
-                queryId,
-                null,
-                "",
-                partitionFetcher,
-                schemaFetcher,
-                IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
-    if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
-      logger.warn(
-          "Create Database error, statement: {}, result status is: {}", statement, result.status);
-      throw new LoadFileException(
-          String.format("Can not execute create database statement: %s", statement));
-    }
-  }
-
-  private ISchemaTree autoCreateSchema(
-      Map<String, Map<MeasurementSchema, File>> device2Schemas,
-      Map<String, Pair<Boolean, File>> device2IsAligned,
-      MPPQueryContext context)
-      throws IllegalPathException {
-    List<PartialPath> deviceList = new ArrayList<>();
-    List<String[]> measurementList = new ArrayList<>();
-    List<TSDataType[]> dataTypeList = new ArrayList<>();
-    List<TSEncoding[]> encodingsList = new ArrayList<>();
-    List<CompressionType[]> compressionTypesList = new ArrayList<>();
-    List<Boolean> isAlignedList = new ArrayList<>();
-
-    for (Map.Entry<String, Map<MeasurementSchema, File>> entry : device2Schemas.entrySet()) {
-      int measurementSize = entry.getValue().size();
-      String[] measurements = new String[measurementSize];
-      TSDataType[] tsDataTypes = new TSDataType[measurementSize];
-      TSEncoding[] encodings = new TSEncoding[measurementSize];
-      CompressionType[] compressionTypes = new CompressionType[measurementSize];
-
-      int index = 0;
-      for (MeasurementSchema measurementSchema : entry.getValue().keySet()) {
-        measurements[index] = measurementSchema.getMeasurementId();
-        tsDataTypes[index] = measurementSchema.getType();
-        encodings[index] = measurementSchema.getEncodingType();
-        compressionTypes[index++] = measurementSchema.getCompressor();
-      }
-
-      deviceList.add(new PartialPath(entry.getKey()));
-      measurementList.add(measurements);
-      dataTypeList.add(tsDataTypes);
-      encodingsList.add(encodings);
-      compressionTypesList.add(compressionTypes);
-      isAlignedList.add(device2IsAligned.get(entry.getKey()).left);
-    }
-
-    return SchemaValidator.validate(
-        schemaFetcher,
-        deviceList,
-        measurementList,
-        dataTypeList,
-        encodingsList,
-        compressionTypesList,
-        isAlignedList,
-        context);
-  }
-
-  private void verifyLoadingMeasurements(Map<String, Map<MeasurementSchema, File>> device2Schemas)
-      throws VerifyMetadataException {
-    for (Map.Entry<String, Map<MeasurementSchema, File>> deviceEntry : device2Schemas.entrySet()) {
-      Map<String, MeasurementSchema> id2Schema = new HashMap<>();
-      Map<MeasurementSchema, File> schema2TsFile = deviceEntry.getValue();
-      for (Map.Entry<MeasurementSchema, File> entry : schema2TsFile.entrySet()) {
-        String measurementId = entry.getKey().getMeasurementId();
-        if (!id2Schema.containsKey(measurementId)) {
-          id2Schema.put(measurementId, entry.getKey());
-        } else {
-          MeasurementSchema conflictSchema = id2Schema.get(measurementId);
-          String msg =
-              String.format(
-                  "Measurement %s Conflict, TsFile %s has measurement: %s, TsFile %s has measurement %s.",
-                  deviceEntry.getKey() + measurementId,
-                  entry.getValue().getPath(),
-                  entry.getKey(),
-                  schema2TsFile.get(conflictSchema).getPath(),
-                  conflictSchema);
-          logger.warn(msg);
-          throw new VerifyMetadataException(msg);
-        }
-      }
-    }
-  }
-
-  private void verifySchema(
-      ISchemaTree schemaTree,
-      Map<String, Map<MeasurementSchema, File>> device2Schemas,
-      Map<String, Pair<Boolean, File>> device2IsAligned)
-      throws VerifyMetadataException, IllegalPathException {
-    for (Map.Entry<String, Map<MeasurementSchema, File>> entry : device2Schemas.entrySet()) {
-      String device = entry.getKey();
-      MeasurementSchema[] tsFileSchemas =
-          entry.getValue().keySet().toArray(new MeasurementSchema[0]);
-      DeviceSchemaInfo schemaInfo =
-          schemaTree.searchDeviceSchemaInfo(
-              new PartialPath(device),
-              Arrays.stream(tsFileSchemas)
-                  .map(MeasurementSchema::getMeasurementId)
-                  .collect(Collectors.toList()));
-      if (schemaInfo.isAligned() != Boolean.TRUE.equals(device2IsAligned.get(device).left)) {
-        throw new VerifyMetadataException(
-            device,
-            "Is aligned",
-            device2IsAligned.get(device).left.toString(),
-            device2IsAligned.get(device).right.getPath(),
-            String.valueOf(schemaInfo.isAligned()));
-      }
-      List<MeasurementSchema> originSchemaList = schemaInfo.getMeasurementSchemaList();
-      int measurementSize = originSchemaList.size();
-      for (int j = 0; j < measurementSize; j++) {
-        MeasurementSchema originSchema = originSchemaList.get(j);
-        MeasurementSchema tsFileSchema = tsFileSchemas[j];
-        String measurementPath =
-            device + TsFileConstant.PATH_SEPARATOR + originSchema.getMeasurementId();
-        if (!tsFileSchema.getType().equals(originSchema.getType())) {
-          throw new VerifyMetadataException(
-              measurementPath,
-              "Datatype",
-              tsFileSchema.getType().name(),
-              entry.getValue().get(tsFileSchema).getPath(),
-              originSchema.getType().name());
-        }
-        if (!tsFileSchema.getEncodingType().equals(originSchema.getEncodingType())) {
-          logger.warn(
-              "Encoding type not match, measurement: {}, TsFile: {}, TsFile encoding: {}, origin encoding: {}",
-              measurementPath,
-              entry.getValue().get(tsFileSchema).getPath(),
-              tsFileSchema.getEncodingType().name(),
-              originSchema.getEncodingType().name());
-        }
-        if (!tsFileSchema.getCompressor().equals(originSchema.getCompressor())) {
-          logger.warn(
-              "Compression type not match, measurement: {}, TsFile: {}, TsFile compression: {}, origin compression: {}",
-              measurementPath,
-              entry.getValue().get(tsFileSchema).getPath(),
-              tsFileSchema.getCompressor().name(),
-              originSchema.getCompressor().name());
-        }
-      }
-    }
   }
 
   @Override
