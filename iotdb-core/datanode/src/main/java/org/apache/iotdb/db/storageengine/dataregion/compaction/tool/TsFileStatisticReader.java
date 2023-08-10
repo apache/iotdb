@@ -19,14 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.Closeable;
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -39,13 +37,8 @@ public class TsFileStatisticReader implements Closeable {
 
   private final List<ChunkGroupStatistics> chunkGroupStatisticsList;
 
-  private final TsFileResource resource;
-
   public TsFileStatisticReader(String filePath) throws IOException {
     reader = new TsFileSequenceReader(filePath);
-    resource = new TsFileResource();
-    resource.setFile(new File(filePath));
-    resource.deserialize();
     chunkGroupStatisticsList = new ArrayList<>();
   }
 
@@ -57,9 +50,7 @@ public class TsFileStatisticReader implements Closeable {
       String deviceId = deviceWithIsAligned.left;
       boolean isAligned = deviceWithIsAligned.right;
 
-      ChunkGroupStatistics chunkGroupStatistics =
-          new ChunkGroupStatistics(
-              deviceId, isAligned, resource.getStartTime(deviceId), resource.getEndTime(deviceId));
+      ChunkGroupStatistics chunkGroupStatistics = new ChunkGroupStatistics(deviceId, isAligned);
       Iterator<Map<String, List<ChunkMetadata>>> measurementChunkMetadataListMapIterator =
           reader.getMeasurementChunkMetadataListMapIterator(deviceId);
 
@@ -81,7 +72,6 @@ public class TsFileStatisticReader implements Closeable {
   @Override
   public void close() throws IOException {
     this.reader.close();
-    this.resource.close();
   }
 
   public static class ChunkGroupStatistics {
@@ -89,15 +79,11 @@ public class TsFileStatisticReader implements Closeable {
     private final List<ChunkMetadata> chunkMetadataList;
     private final boolean isAligned;
     private int totalChunkNum = 0;
-    private long startTime;
-    private long endTime;
 
-    private ChunkGroupStatistics(String deviceId, boolean isAligned, long startTime, long endTime) {
+    private ChunkGroupStatistics(String deviceId, boolean isAligned) {
       this.deviceID = deviceId;
       this.isAligned = isAligned;
       this.chunkMetadataList = new ArrayList<>();
-      this.startTime = startTime;
-      this.endTime = endTime;
     }
 
     public String getDeviceID() {
@@ -114,14 +100,6 @@ public class TsFileStatisticReader implements Closeable {
 
     public boolean isAligned() {
       return isAligned;
-    }
-
-    public long getStartTime() {
-      return startTime;
-    }
-
-    public long getEndTime() {
-      return endTime;
     }
   }
 }

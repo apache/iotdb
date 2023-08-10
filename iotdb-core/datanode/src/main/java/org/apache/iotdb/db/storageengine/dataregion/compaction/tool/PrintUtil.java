@@ -30,7 +30,7 @@ public class PrintUtil {
 
   private static void printProgressLog(String label) {
     System.out.printf(
-        "Progress: %s\n" + "File progress: %d/%d\n" + "Partition progress: %d/%d %s",
+        "Progress: %s\n" + "Sequence File progress: %d/%d\n" + "Partition progress: %d/%d %s",
         label,
         OverlapStatisticTool.processedSeqFileCount,
         OverlapStatisticTool.seqFileCount,
