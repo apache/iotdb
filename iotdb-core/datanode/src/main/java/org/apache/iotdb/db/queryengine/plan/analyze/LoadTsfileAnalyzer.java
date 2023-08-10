@@ -76,7 +76,8 @@ public class LoadTsfileAnalyzer {
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
 
-  private final Set<PartialPath> alreadySetDatabases = new HashSet<>();
+  private final SchemaAutoCreatorAndVerifier schemaAutoCreatorAndVerifier =
+      new SchemaAutoCreatorAndVerifier();
 
   LoadTsfileAnalyzer(
       LoadTsFileStatement loadTsFileStatement,
@@ -128,8 +129,11 @@ public class LoadTsfileAnalyzer {
       }
     }
 
-    // load function will query data partition in scheduler
-    Analysis analysis = new Analysis();
+    schemaAutoCreatorAndVerifier.flush();
+    LOGGER.info("Load - Analysis Stage: all tsfiles have been analyzed.");
+
+    // data partition will be queried in the scheduler
+    final Analysis analysis = new Analysis();
     analysis.setStatement(loadTsFileStatement);
     return analysis;
   }
@@ -142,41 +146,12 @@ public class LoadTsfileAnalyzer {
       // auto create or verify schema
       if (IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()
           || loadTsFileStatement.isVerifySchema()) {
-        final Map<String, Boolean> device2IsAligned = new HashMap<>();
-
+        // cache timeseries metadata for the next step
         device2TimeseriesMetadata = reader.getAllTimeseriesMetadata(true);
         final TimeSeriesIterator timeSeriesIterator =
             new TimeSeriesIterator(tsFile, device2TimeseriesMetadata);
         while (timeSeriesIterator.hasNext()) {
-          final Map<String, Set<MeasurementSchema>> device2TimeseriesSchemas = new HashMap<>();
-
-          // load timeseries metadata in batch with limited number
-          for (int timeseriesCount = 0, timeseriesLimit = CONFIG.getMaxLoadingTimeseriesNumber();
-              timeseriesCount < timeseriesLimit && timeSeriesIterator.hasNext();
-              ++timeseriesCount) {
-            final Pair<String, TimeseriesMetadata> pair = timeSeriesIterator.next();
-            final String device = pair.left;
-            final TimeseriesMetadata timeseriesMetadata = pair.right;
-
-            final TSDataType dataType = timeseriesMetadata.getTsDataType();
-            if (dataType.equals(TSDataType.VECTOR)) {
-              device2IsAligned.put(device, true);
-            } else {
-              final Pair<CompressionType, TSEncoding> compressionEncodingPair =
-                  reader.readTimeseriesCompressionTypeAndEncoding(timeseriesMetadata);
-              device2TimeseriesSchemas
-                  .computeIfAbsent(device, o -> new HashSet<>())
-                  .add(
-                      new MeasurementSchema(
-                          timeseriesMetadata.getMeasurementId(),
-                          dataType,
-                          compressionEncodingPair.getRight(),
-                          compressionEncodingPair.getLeft()));
-              device2IsAligned.putIfAbsent(device, false);
-            }
-          }
-
-          autoCreateAndVerifySchema(device2TimeseriesSchemas, device2IsAligned);
+          schemaAutoCreatorAndVerifier.autoCreateAndVerify(reader, timeSeriesIterator);
         }
       }
 
@@ -198,249 +173,8 @@ public class LoadTsfileAnalyzer {
     }
   }
 
-  private void autoCreateAndVerifySchema(
-      Map<String, Set<MeasurementSchema>> device2TimeseriesSchemas,
-      Map<String, Boolean> device2IsAligned)
-      throws SemanticException {
-    if (device2TimeseriesSchemas.isEmpty()) {
-      return;
-    }
-
-    try {
-      if (loadTsFileStatement.isVerifySchema()) {
-        makeSureNoDuplicatedMeasurementsInDevices(device2TimeseriesSchemas);
-      }
-
-      if (loadTsFileStatement.isAutoCreateDatabase()) {
-        autoCreateDatabase(loadTsFileStatement.getDatabaseLevel(), device2TimeseriesSchemas);
-      }
-
-      // schema fetcher will not auto create if config set
-      // isAutoCreateSchemaEnabled is false.
-      final ISchemaTree schemaTree =
-          autoCreateSchema(device2TimeseriesSchemas, device2IsAligned, context);
-
-      if (loadTsFileStatement.isVerifySchema()) {
-        verifySchema(schemaTree, device2TimeseriesSchemas, device2IsAligned);
-      }
-    } catch (Exception e) {
-      LOGGER.warn("Auto create or verify schema error.", e);
-      throw new SemanticException(
-          String.format(
-              "Auto create or verify schema error when executing statement %s.",
-              loadTsFileStatement));
-    }
-  }
-
-  private void makeSureNoDuplicatedMeasurementsInDevices(
-      Map<String, Set<MeasurementSchema>> device2TimeseriesSchemas) throws VerifyMetadataException {
-    for (final Map.Entry<String, Set<MeasurementSchema>> entry :
-        device2TimeseriesSchemas.entrySet()) {
-      final String device = entry.getKey();
-      final Map<String, MeasurementSchema> measurement2Schema = new HashMap<>();
-      for (final MeasurementSchema timeseriesSchema : entry.getValue()) {
-        final String measurement = timeseriesSchema.getMeasurementId();
-        if (measurement2Schema.containsKey(measurement)) {
-          throw new VerifyMetadataException(
-              String.format("Duplicated measurements %s in device %s.", measurement, device));
-        }
-        measurement2Schema.put(measurement, timeseriesSchema);
-      }
-    }
-  }
-
-  private void autoCreateDatabase(
-      int databaseLevel, Map<String, Set<MeasurementSchema>> device2TimeseriesSchemas)
-      throws VerifyMetadataException, LoadFileException, IllegalPathException {
-    final Set<PartialPath> databaseSet = new HashSet<>();
-
-    // e.g. "root.sg" means sgLevel = 1, "root.sg.test" means sgLevel=2
-    databaseLevel += 1;
-    for (final String device : device2TimeseriesSchemas.keySet()) {
-      final PartialPath devicePath = new PartialPath(device);
-
-      final String[] devicePrefixNodes = devicePath.getNodes();
-      if (devicePrefixNodes.length < databaseLevel) {
-        throw new VerifyMetadataException(
-            String.format("Database level %d is longer than device %s.", databaseLevel, device));
-      }
-
-      final String[] databasePrefixNodes = new String[databaseLevel];
-      System.arraycopy(devicePrefixNodes, 0, databasePrefixNodes, 0, databaseLevel);
-
-      databaseSet.add(new PartialPath(databasePrefixNodes));
-    }
-
-    databaseSet.removeAll(alreadySetDatabases);
-    for (final PartialPath databasePath : databaseSet) {
-      final DatabaseSchemaStatement statement =
-          new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
-      statement.setDatabasePath(databasePath);
-      // do not print exception log because it is not an error
-      statement.setEnablePrintExceptionLog(false);
-      executeSetDatabaseStatement(statement);
-    }
-    alreadySetDatabases.addAll(databaseSet);
-  }
-
-  private void executeSetDatabaseStatement(Statement statement) throws LoadFileException {
-    final long queryId = SessionManager.getInstance().requestQueryId();
-    final ExecutionResult result =
-        Coordinator.getInstance()
-            .execute(
-                statement,
-                queryId,
-                null,
-                "",
-                partitionFetcher,
-                schemaFetcher,
-                IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
-    if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
-      LOGGER.warn(
-          "Create database error, statement: {}, result status is: {}", statement, result.status);
-      throw new LoadFileException(
-          String.format(
-              "Create database error, statement: %s, result status is: %s",
-              statement, result.status));
-    }
-  }
-
-  private ISchemaTree autoCreateSchema(
-      Map<String, Set<MeasurementSchema>> device2Schemas,
-      Map<String, Boolean> device2IsAligned,
-      MPPQueryContext context)
-      throws IllegalPathException {
-    final List<PartialPath> deviceList = new ArrayList<>();
-    final List<String[]> measurementList = new ArrayList<>();
-    final List<TSDataType[]> dataTypeList = new ArrayList<>();
-    final List<TSEncoding[]> encodingsList = new ArrayList<>();
-    final List<CompressionType[]> compressionTypesList = new ArrayList<>();
-    final List<Boolean> isAlignedList = new ArrayList<>();
-
-    for (final Map.Entry<String, Set<MeasurementSchema>> entry : device2Schemas.entrySet()) {
-      final int measurementSize = entry.getValue().size();
-      final String[] measurements = new String[measurementSize];
-      final TSDataType[] tsDataTypes = new TSDataType[measurementSize];
-      final TSEncoding[] encodings = new TSEncoding[measurementSize];
-      final CompressionType[] compressionTypes = new CompressionType[measurementSize];
-
-      int index = 0;
-      for (final MeasurementSchema measurementSchema : entry.getValue()) {
-        measurements[index] = measurementSchema.getMeasurementId();
-        tsDataTypes[index] = measurementSchema.getType();
-        encodings[index] = measurementSchema.getEncodingType();
-        compressionTypes[index++] = measurementSchema.getCompressor();
-      }
-
-      deviceList.add(new PartialPath(entry.getKey()));
-      measurementList.add(measurements);
-      dataTypeList.add(tsDataTypes);
-      encodingsList.add(encodings);
-      compressionTypesList.add(compressionTypes);
-      isAlignedList.add(device2IsAligned.get(entry.getKey()));
-    }
-
-    return SchemaValidator.validate(
-        schemaFetcher,
-        deviceList,
-        measurementList,
-        dataTypeList,
-        encodingsList,
-        compressionTypesList,
-        isAlignedList,
-        context);
-  }
-
-  private void verifySchema(
-      ISchemaTree schemaTree,
-      Map<String, Set<MeasurementSchema>> tsfileDevice2Schemas,
-      Map<String, Boolean> tsfileDevice2IsAligned)
-      throws VerifyMetadataException, IllegalPathException {
-    for (final Map.Entry<String, Set<MeasurementSchema>> entry : tsfileDevice2Schemas.entrySet()) {
-      final String device = entry.getKey();
-      final List<MeasurementSchema> tsfileTimeseriesSchemas = new ArrayList<>(entry.getValue());
-      final DeviceSchemaInfo iotdbDeviceSchemaInfo =
-          schemaTree.searchDeviceSchemaInfo(
-              new PartialPath(device),
-              tsfileTimeseriesSchemas.stream()
-                  .map(MeasurementSchema::getMeasurementId)
-                  .collect(Collectors.toList()));
-
-      if (iotdbDeviceSchemaInfo == null) {
-        throw new VerifyMetadataException(
-            String.format(
-                "Device %s does not exist in IoTDB and can not be created. "
-                    + "Please check weather auto-create-schema is enabled.",
-                device));
-      }
-
-      // check device schema: is aligned or not
-      final boolean isAlignedInTsFile = tsfileDevice2IsAligned.get(device);
-      final boolean isAlignedInIoTDB = iotdbDeviceSchemaInfo.isAligned();
-      if (isAlignedInTsFile != isAlignedInIoTDB) {
-        throw new VerifyMetadataException(
-            String.format(
-                "Device %s in TsFile is %s, but in IoTDB is %s.",
-                device,
-                isAlignedInTsFile ? "aligned" : "not aligned",
-                isAlignedInIoTDB ? "aligned" : "not aligned"));
-      }
-
-      // check timeseries schema
-      final List<MeasurementSchema> iotdbTimeseriesSchemas =
-          iotdbDeviceSchemaInfo.getMeasurementSchemaList();
-      for (int i = 0, n = iotdbTimeseriesSchemas.size(); i < n; i++) {
-        final MeasurementSchema tsFileSchema = tsfileTimeseriesSchemas.get(i);
-        final MeasurementSchema iotdbSchema = iotdbTimeseriesSchemas.get(i);
-        if (iotdbSchema == null) {
-          throw new VerifyMetadataException(
-              String.format(
-                  "Measurement %s does not exist in IoTDB and can not be created. "
-                      + "Please check weather auto-create-schema is enabled.",
-                  device + TsFileConstant.PATH_SEPARATOR + tsfileTimeseriesSchemas.get(i)));
-        }
-
-        // check datatype
-        if (!tsFileSchema.getType().equals(iotdbSchema.getType())) {
-          throw new VerifyMetadataException(
-              String.format(
-                  "Measurement %s%s%s datatype not match, TsFile: %s, IoTDB: %s",
-                  device,
-                  TsFileConstant.PATH_SEPARATOR,
-                  iotdbSchema.getMeasurementId(),
-                  tsFileSchema.getType(),
-                  iotdbSchema.getType()));
-        }
-
-        // check encoding
-        if (!tsFileSchema.getEncodingType().equals(iotdbSchema.getEncodingType())) {
-          // we allow a measurement to have different encodings in different chunks
-          LOGGER.warn(
-              "Encoding type not match, measurement: {}{}{}, TsFile encoding: {}, IoTDB encoding: {}",
-              device,
-              TsFileConstant.PATH_SEPARATOR,
-              iotdbSchema.getMeasurementId(),
-              tsFileSchema.getEncodingType().name(),
-              iotdbSchema.getEncodingType().name());
-        }
-
-        // check compressor
-        if (!tsFileSchema.getCompressor().equals(iotdbSchema.getCompressor())) {
-          // we allow a measurement to have different compressors in different chunks
-          LOGGER.warn(
-              "Compressor not match, measurement: {}{}{}, TsFile compressor: {}, IoTDB compressor: {}",
-              device,
-              TsFileConstant.PATH_SEPARATOR,
-              iotdbSchema.getMeasurementId(),
-              tsFileSchema.getCompressor().name(),
-              iotdbSchema.getCompressor().name());
-        }
-      }
-    }
-  }
-
-  private static class TimeSeriesIterator implements Iterator<Pair<String, TimeseriesMetadata>> {
+  private static final class TimeSeriesIterator
+      implements Iterator<Pair<String, TimeseriesMetadata>> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TimeSeriesIterator.class);
 
@@ -498,6 +232,296 @@ public class LoadTsfileAnalyzer {
       returnedTimeseriesCount++;
 
       return new Pair<>(currentDevice, timeseriesMetadataIterator.next());
+    }
+  }
+
+  private final class SchemaAutoCreatorAndVerifier {
+
+    private final Map<String, Boolean> tsfileDevice2IsAligned = new HashMap<>();
+    private final Set<PartialPath> alreadySetDatabases = new HashSet<>();
+
+    private final int maxTimeseriesNumberPerBatch = CONFIG.getMaxLoadingTimeseriesNumber();
+    private final Map<String, Set<MeasurementSchema>> currentBatchDevice2TimeseriesSchemas =
+        new HashMap<>();
+    private int currentBatchTimeseriesCount = 0;
+
+    private SchemaAutoCreatorAndVerifier() {}
+
+    public void autoCreateAndVerify(
+        TsFileSequenceReader reader, TimeSeriesIterator timeSeriesIterator) throws IOException {
+      while (currentBatchTimeseriesCount < maxTimeseriesNumberPerBatch
+          && timeSeriesIterator.hasNext()) {
+        final Pair<String, TimeseriesMetadata> pair = timeSeriesIterator.next();
+        final String device = pair.left;
+        final TimeseriesMetadata timeseriesMetadata = pair.right;
+
+        final TSDataType dataType = timeseriesMetadata.getTsDataType();
+        if (dataType.equals(TSDataType.VECTOR)) {
+          tsfileDevice2IsAligned.put(device, true);
+
+          // not a timeseries, skip ++currentBatchTimeseriesCount
+        } else {
+          final Pair<CompressionType, TSEncoding> compressionEncodingPair =
+              reader.readTimeseriesCompressionTypeAndEncoding(timeseriesMetadata);
+          currentBatchDevice2TimeseriesSchemas
+              .computeIfAbsent(device, o -> new HashSet<>())
+              .add(
+                  new MeasurementSchema(
+                      timeseriesMetadata.getMeasurementId(),
+                      dataType,
+                      compressionEncodingPair.getRight(),
+                      compressionEncodingPair.getLeft()));
+
+          tsfileDevice2IsAligned.putIfAbsent(device, false);
+
+          ++currentBatchTimeseriesCount;
+        }
+      }
+
+      if (currentBatchTimeseriesCount == maxTimeseriesNumberPerBatch) {
+        flush();
+      }
+    }
+
+    public void flush() {
+      doAutoCreateAndVerify();
+
+      currentBatchDevice2TimeseriesSchemas.clear();
+      currentBatchTimeseriesCount = 0;
+    }
+
+    private void doAutoCreateAndVerify() throws SemanticException {
+      if (currentBatchDevice2TimeseriesSchemas.isEmpty()) {
+        return;
+      }
+
+      try {
+        if (loadTsFileStatement.isVerifySchema()) {
+          makeSureNoDuplicatedMeasurementsInDevices();
+        }
+
+        if (loadTsFileStatement.isAutoCreateDatabase()) {
+          autoCreateDatabase();
+        }
+
+        // schema fetcher will not auto create if config set
+        // isAutoCreateSchemaEnabled is false.
+        final ISchemaTree schemaTree = autoCreateSchema();
+
+        if (loadTsFileStatement.isVerifySchema()) {
+          verifySchema(schemaTree);
+        }
+      } catch (Exception e) {
+        LOGGER.warn("Auto create or verify schema error.", e);
+        throw new SemanticException(
+            String.format(
+                "Auto create or verify schema error when executing statement %s.",
+                loadTsFileStatement));
+      }
+    }
+
+    private void makeSureNoDuplicatedMeasurementsInDevices() throws VerifyMetadataException {
+      for (final Map.Entry<String, Set<MeasurementSchema>> entry :
+          currentBatchDevice2TimeseriesSchemas.entrySet()) {
+        final String device = entry.getKey();
+        final Map<String, MeasurementSchema> measurement2Schema = new HashMap<>();
+        for (final MeasurementSchema timeseriesSchema : entry.getValue()) {
+          final String measurement = timeseriesSchema.getMeasurementId();
+          if (measurement2Schema.containsKey(measurement)) {
+            throw new VerifyMetadataException(
+                String.format("Duplicated measurements %s in device %s.", measurement, device));
+          }
+          measurement2Schema.put(measurement, timeseriesSchema);
+        }
+      }
+    }
+
+    private void autoCreateDatabase()
+        throws VerifyMetadataException, LoadFileException, IllegalPathException {
+      final int databasePrefixNodesLength = loadTsFileStatement.getDatabaseLevel() + 1;
+      final Set<PartialPath> databaseSet = new HashSet<>();
+
+      for (final String device : currentBatchDevice2TimeseriesSchemas.keySet()) {
+        final PartialPath devicePath = new PartialPath(device);
+
+        final String[] devicePrefixNodes = devicePath.getNodes();
+        if (devicePrefixNodes.length < databasePrefixNodesLength) {
+          throw new VerifyMetadataException(
+              String.format(
+                  "Database level %d is longer than device %s.",
+                  databasePrefixNodesLength, device));
+        }
+
+        final String[] databasePrefixNodes = new String[databasePrefixNodesLength];
+        System.arraycopy(devicePrefixNodes, 0, databasePrefixNodes, 0, databasePrefixNodesLength);
+
+        databaseSet.add(new PartialPath(databasePrefixNodes));
+      }
+
+      databaseSet.removeAll(alreadySetDatabases);
+      for (final PartialPath databasePath : databaseSet) {
+        final DatabaseSchemaStatement statement =
+            new DatabaseSchemaStatement(DatabaseSchemaStatement.DatabaseSchemaStatementType.CREATE);
+        statement.setDatabasePath(databasePath);
+        // do not print exception log because it is not an error
+        statement.setEnablePrintExceptionLog(false);
+        executeSetDatabaseStatement(statement);
+      }
+      alreadySetDatabases.addAll(databaseSet);
+    }
+
+    private void executeSetDatabaseStatement(Statement statement) throws LoadFileException {
+      final long queryId = SessionManager.getInstance().requestQueryId();
+      final ExecutionResult result =
+          Coordinator.getInstance()
+              .execute(
+                  statement,
+                  queryId,
+                  null,
+                  "",
+                  partitionFetcher,
+                  schemaFetcher,
+                  IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
+        LOGGER.warn(
+            "Create database error, statement: {}, result status is: {}", statement, result.status);
+        throw new LoadFileException(
+            String.format(
+                "Create database error, statement: %s, result status is: %s",
+                statement, result.status));
+      }
+    }
+
+    private ISchemaTree autoCreateSchema() throws IllegalPathException {
+      final List<PartialPath> deviceList = new ArrayList<>();
+      final List<String[]> measurementList = new ArrayList<>();
+      final List<TSDataType[]> dataTypeList = new ArrayList<>();
+      final List<TSEncoding[]> encodingsList = new ArrayList<>();
+      final List<CompressionType[]> compressionTypesList = new ArrayList<>();
+      final List<Boolean> isAlignedList = new ArrayList<>();
+
+      for (final Map.Entry<String, Set<MeasurementSchema>> entry :
+          currentBatchDevice2TimeseriesSchemas.entrySet()) {
+        final int measurementSize = entry.getValue().size();
+        final String[] measurements = new String[measurementSize];
+        final TSDataType[] tsDataTypes = new TSDataType[measurementSize];
+        final TSEncoding[] encodings = new TSEncoding[measurementSize];
+        final CompressionType[] compressionTypes = new CompressionType[measurementSize];
+
+        int index = 0;
+        for (final MeasurementSchema measurementSchema : entry.getValue()) {
+          measurements[index] = measurementSchema.getMeasurementId();
+          tsDataTypes[index] = measurementSchema.getType();
+          encodings[index] = measurementSchema.getEncodingType();
+          compressionTypes[index++] = measurementSchema.getCompressor();
+        }
+
+        deviceList.add(new PartialPath(entry.getKey()));
+        measurementList.add(measurements);
+        dataTypeList.add(tsDataTypes);
+        encodingsList.add(encodings);
+        compressionTypesList.add(compressionTypes);
+        isAlignedList.add(tsfileDevice2IsAligned.get(entry.getKey()));
+      }
+
+      return SchemaValidator.validate(
+          schemaFetcher,
+          deviceList,
+          measurementList,
+          dataTypeList,
+          encodingsList,
+          compressionTypesList,
+          isAlignedList,
+          context);
+    }
+
+    private void verifySchema(ISchemaTree schemaTree)
+        throws VerifyMetadataException, IllegalPathException {
+      for (final Map.Entry<String, Set<MeasurementSchema>> entry :
+          currentBatchDevice2TimeseriesSchemas.entrySet()) {
+        final String device = entry.getKey();
+        final List<MeasurementSchema> tsfileTimeseriesSchemas = new ArrayList<>(entry.getValue());
+        final DeviceSchemaInfo iotdbDeviceSchemaInfo =
+            schemaTree.searchDeviceSchemaInfo(
+                new PartialPath(device),
+                tsfileTimeseriesSchemas.stream()
+                    .map(MeasurementSchema::getMeasurementId)
+                    .collect(Collectors.toList()));
+
+        if (iotdbDeviceSchemaInfo == null) {
+          throw new VerifyMetadataException(
+              String.format(
+                  "Device %s does not exist in IoTDB and can not be created. "
+                      + "Please check weather auto-create-schema is enabled.",
+                  device));
+        }
+
+        // check device schema: is aligned or not
+        final boolean isAlignedInTsFile = tsfileDevice2IsAligned.get(device);
+        final boolean isAlignedInIoTDB = iotdbDeviceSchemaInfo.isAligned();
+        if (isAlignedInTsFile != isAlignedInIoTDB) {
+          throw new VerifyMetadataException(
+              String.format(
+                  "Device %s in TsFile is %s, but in IoTDB is %s.",
+                  device,
+                  isAlignedInTsFile ? "aligned" : "not aligned",
+                  isAlignedInIoTDB ? "aligned" : "not aligned"));
+        }
+
+        // check timeseries schema
+        final List<MeasurementSchema> iotdbTimeseriesSchemas =
+            iotdbDeviceSchemaInfo.getMeasurementSchemaList();
+        for (int i = 0, n = iotdbTimeseriesSchemas.size(); i < n; i++) {
+          final MeasurementSchema tsFileSchema = tsfileTimeseriesSchemas.get(i);
+          final MeasurementSchema iotdbSchema = iotdbTimeseriesSchemas.get(i);
+          if (iotdbSchema == null) {
+            throw new VerifyMetadataException(
+                String.format(
+                    "Measurement %s does not exist in IoTDB and can not be created. "
+                        + "Please check weather auto-create-schema is enabled.",
+                    device + TsFileConstant.PATH_SEPARATOR + tsfileTimeseriesSchemas.get(i)));
+          }
+
+          // check datatype
+          if (!tsFileSchema.getType().equals(iotdbSchema.getType())) {
+            throw new VerifyMetadataException(
+                String.format(
+                    "Measurement %s%s%s datatype not match, TsFile: %s, IoTDB: %s",
+                    device,
+                    TsFileConstant.PATH_SEPARATOR,
+                    iotdbSchema.getMeasurementId(),
+                    tsFileSchema.getType(),
+                    iotdbSchema.getType()));
+          }
+
+          // check encoding
+          if (!tsFileSchema.getEncodingType().equals(iotdbSchema.getEncodingType())) {
+            // we allow a measurement to have different encodings in different chunks
+            LOGGER.warn(
+                "Encoding type not match, measurement: {}{}{}, "
+                    + "TsFile encoding: {}, IoTDB encoding: {}",
+                device,
+                TsFileConstant.PATH_SEPARATOR,
+                iotdbSchema.getMeasurementId(),
+                tsFileSchema.getEncodingType().name(),
+                iotdbSchema.getEncodingType().name());
+          }
+
+          // check compressor
+          if (!tsFileSchema.getCompressor().equals(iotdbSchema.getCompressor())) {
+            // we allow a measurement to have different compressors in different chunks
+            LOGGER.warn(
+                "Compressor not match, measurement: {}{}{}, "
+                    + "TsFile compressor: {}, IoTDB compressor: {}",
+                device,
+                TsFileConstant.PATH_SEPARATOR,
+                iotdbSchema.getMeasurementId(),
+                tsFileSchema.getCompressor().name(),
+                iotdbSchema.getCompressor().name());
+          }
+        }
+      }
     }
   }
 }
