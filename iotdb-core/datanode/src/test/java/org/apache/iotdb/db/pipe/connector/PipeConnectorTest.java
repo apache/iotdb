@@ -34,7 +34,7 @@ import java.util.HashMap;
 
 public class PipeConnectorTest {
   @Test
-  public void testIoTDBSyncConnector() {
+  public void testIoTDBLegacyPipeConnector() {
     IoTDBLegacyPipeConnector connector = new IoTDBLegacyPipeConnector();
     try {
       connector.validate(
@@ -44,7 +44,7 @@ public class PipeConnectorTest {
                     {
                       put(
                           PipeConnectorConstant.CONNECTOR_KEY,
-                          BuiltinPipePlugin.IOTDB_SYNC_CONNECTOR.getPipePluginName());
+                          BuiltinPipePlugin.IOTDB_LEGACY_PIPE_CONNECTOR.getPipePluginName());
                       put(PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY, "127.0.0.1");
                       put(PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY, "6667");
                     }
@@ -55,7 +55,7 @@ public class PipeConnectorTest {
   }
 
   @Test
-  public void testIoTDBThriftConnectorV1() {
+  public void testIoTDBThriftSyncConnector() {
     IoTDBThriftSyncConnector connector = new IoTDBThriftSyncConnector();
     try {
       connector.validate(
@@ -65,7 +65,7 @@ public class PipeConnectorTest {
                     {
                       put(
                           PipeConnectorConstant.CONNECTOR_KEY,
-                          BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR_V1.getPipePluginName());
+                          BuiltinPipePlugin.IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName());
                       put(PipeConnectorConstant.CONNECTOR_IOTDB_IP_KEY, "127.0.0.1");
                       put(PipeConnectorConstant.CONNECTOR_IOTDB_PORT_KEY, "6667");
                     }
@@ -76,7 +76,7 @@ public class PipeConnectorTest {
   }
 
   @Test
-  public void testIoTDBThriftConnectorV2() {
+  public void testIoTDBThriftAsyncConnector() {
     IoTDBThriftAsyncConnector connector = new IoTDBThriftAsyncConnector();
     try {
       connector.validate(
@@ -86,7 +86,7 @@ public class PipeConnectorTest {
                     {
                       put(
                           PipeConnectorConstant.CONNECTOR_KEY,
-                          BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR_V2.getPipePluginName());
+                          BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName());
                       put(PipeConnectorConstant.CONNECTOR_IOTDB_NODE_URLS_KEY, "127.0.0.1:6667");
                     }
                   })));
