@@ -34,7 +34,7 @@ import org.apache.iotdb.db.pipe.connector.thrift.async.handler.PipeTransferTsFil
 import org.apache.iotdb.db.pipe.connector.thrift.payload.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.thrift.payload.request.PipeTransferInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.thrift.payload.request.PipeTransferTabletReq;
-import org.apache.iotdb.db.pipe.connector.thrift.sync.IoTDBThriftConnectorV1;
+import org.apache.iotdb.db.pipe.connector.thrift.sync.IoTDBThriftSyncConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -69,9 +69,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class IoTDBThriftConnectorV2 extends IoTDBThriftConnector {
+public class IoTDBThriftAsyncConnector extends IoTDBThriftConnector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftConnectorV2.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftAsyncConnector.class);
 
   private static final String FAILED_TO_BORROW_CLIENT_FORMATTER =
       "Failed to borrow client from client pool for receiver %s:%s.";
@@ -86,7 +86,7 @@ public class IoTDBThriftConnectorV2 extends IoTDBThriftConnector {
       new AtomicReference<>();
   private static final int RETRY_TRIGGER_INTERVAL_MINUTES = 1;
   private final AtomicReference<Future<?>> retryTriggerFuture = new AtomicReference<>();
-  private final IoTDBThriftConnectorV1 retryConnector = new IoTDBThriftConnectorV1();
+  private final IoTDBThriftSyncConnector retryConnector = new IoTDBThriftSyncConnector();
   private final PriorityQueue<Pair<Long, Event>> retryEventQueue =
       new PriorityQueue<>(Comparator.comparing(o -> o.left));
 
@@ -95,9 +95,9 @@ public class IoTDBThriftConnectorV2 extends IoTDBThriftConnector {
   private final PriorityQueue<Pair<Long, Runnable>> commitQueue =
       new PriorityQueue<>(Comparator.comparing(o -> o.left));
 
-  public IoTDBThriftConnectorV2() {
+  public IoTDBThriftAsyncConnector() {
     if (ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get() == null) {
-      synchronized (IoTDBThriftConnectorV2.class) {
+      synchronized (IoTDBThriftAsyncConnector.class) {
         if (ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get() == null) {
           ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.set(
               new IClientManager.Factory<TEndPoint, AsyncPipeDataTransferServiceClient>()
@@ -140,7 +140,7 @@ public class IoTDBThriftConnectorV2 extends IoTDBThriftConnector {
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       LOGGER.warn(
-          "IoTDBThriftConnectorV2 only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
+          "IoTDBThriftAsyncConnector only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
               + "Current event: {}.",
           tabletInsertionEvent);
       return;
@@ -232,7 +232,7 @@ public class IoTDBThriftConnectorV2 extends IoTDBThriftConnector {
 
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       LOGGER.warn(
-          "IoTDBThriftConnectorV2 only support PipeTsFileInsertionEvent. Current event: {}.",
+          "IoTDBThriftAsyncConnector only support PipeTsFileInsertionEvent. Current event: {}.",
           tsFileInsertionEvent);
       return;
     }
@@ -279,7 +279,7 @@ public class IoTDBThriftConnectorV2 extends IoTDBThriftConnector {
   public void transfer(Event event) throws Exception {
     transferQueuedEventsIfNecessary();
 
-    LOGGER.warn("IoTDBThriftConnectorV2 does not support transfer generic event: {}.", event);
+    LOGGER.warn("IoTDBThriftAsyncConnector does not support transfer generic event: {}.", event);
   }
 
   private AsyncPipeDataTransferServiceClient borrowClient(TEndPoint targetNodeUrl)
@@ -401,7 +401,8 @@ public class IoTDBThriftConnectorV2 extends IoTDBThriftConnector {
       } else if (event instanceof PipeTsFileInsertionEvent) {
         retryConnector.transfer((PipeTsFileInsertionEvent) event);
       } else {
-        LOGGER.warn("IoTDBThriftConnectorV2 does not support transfer generic event: {}.", event);
+        LOGGER.warn(
+            "IoTDBThriftAsyncConnector does not support transfer generic event: {}.", event);
       }
 
       if (event instanceof EnrichedEvent) {
@@ -432,7 +433,8 @@ public class IoTDBThriftConnectorV2 extends IoTDBThriftConnector {
                 Optional.ofNullable(enrichedEvent)
                     .ifPresent(
                         event ->
-                            event.decreaseReferenceCount(IoTDBThriftConnectorV2.class.getName()))));
+                            event.decreaseReferenceCount(
+                                IoTDBThriftAsyncConnector.class.getName()))));
 
     while (!commitQueue.isEmpty()) {
       final Pair<Long, Runnable> committer = commitQueue.peek();
@@ -455,7 +457,7 @@ public class IoTDBThriftConnectorV2 extends IoTDBThriftConnector {
    */
   public void addFailureEventToRetryQueue(long requestCommitId, Event event) {
     if (RETRY_TRIGGER.get() == null) {
-      synchronized (IoTDBThriftConnectorV2.class) {
+      synchronized (IoTDBThriftAsyncConnector.class) {
         if (RETRY_TRIGGER.get() == null) {
           RETRY_TRIGGER.set(
               IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
@@ -465,7 +467,7 @@ public class IoTDBThriftConnectorV2 extends IoTDBThriftConnector {
     }
 
     if (retryTriggerFuture.get() == null) {
-      synchronized (IoTDBThriftConnectorV2.class) {
+      synchronized (IoTDBThriftAsyncConnector.class) {
         if (retryTriggerFuture.get() == null) {
           retryTriggerFuture.set(
               ScheduledExecutorUtil.safelyScheduleWithFixedDelay(

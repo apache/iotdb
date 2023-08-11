@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.thrift.async.handler;
 
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
-import org.apache.iotdb.db.pipe.connector.thrift.async.IoTDBThriftConnectorV2;
+import org.apache.iotdb.db.pipe.connector.thrift.async.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
@@ -34,7 +34,7 @@ public class PipeTransferRawTabletInsertionEventHandler
       long requestCommitId,
       PipeRawTabletInsertionEvent event,
       TPipeTransferReq req,
-      IoTDBThriftConnectorV2 connector) {
+      IoTDBThriftAsyncConnector connector) {
     super(requestCommitId, event, req, connector);
   }
 

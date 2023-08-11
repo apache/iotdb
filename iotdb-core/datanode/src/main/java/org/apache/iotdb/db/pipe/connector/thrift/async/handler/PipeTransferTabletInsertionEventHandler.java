@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.thrift.async.handler;
 
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
-import org.apache.iotdb.db.pipe.connector.thrift.async.IoTDBThriftConnectorV2;
+import org.apache.iotdb.db.pipe.connector.thrift.async.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -45,10 +45,13 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
   private final Event event;
   private final TPipeTransferReq req;
 
-  private final IoTDBThriftConnectorV2 connector;
+  private final IoTDBThriftAsyncConnector connector;
 
   protected PipeTransferTabletInsertionEventHandler(
-      long requestCommitId, Event event, TPipeTransferReq req, IoTDBThriftConnectorV2 connector) {
+      long requestCommitId,
+      Event event,
+      TPipeTransferReq req,
+      IoTDBThriftAsyncConnector connector) {
     this.requestCommitId = requestCommitId;
     this.event = event;
     this.req = req;

@@ -22,8 +22,8 @@ package org.apache.iotdb.db.pipe.connector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.db.pipe.connector.legacy.IoTDBLegacyPipeConnector;
-import org.apache.iotdb.db.pipe.connector.thrift.async.IoTDBThriftConnectorV2;
-import org.apache.iotdb.db.pipe.connector.thrift.sync.IoTDBThriftConnectorV1;
+import org.apache.iotdb.db.pipe.connector.thrift.async.IoTDBThriftAsyncConnector;
+import org.apache.iotdb.db.pipe.connector.thrift.sync.IoTDBThriftSyncConnector;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
@@ -56,7 +56,7 @@ public class PipeConnectorTest {
 
   @Test
   public void testIoTDBThriftConnectorV1() {
-    IoTDBThriftConnectorV1 connector = new IoTDBThriftConnectorV1();
+    IoTDBThriftSyncConnector connector = new IoTDBThriftSyncConnector();
     try {
       connector.validate(
           new PipeParameterValidator(
@@ -77,7 +77,7 @@ public class PipeConnectorTest {
 
   @Test
   public void testIoTDBThriftConnectorV2() {
-    IoTDBThriftConnectorV2 connector = new IoTDBThriftConnectorV2();
+    IoTDBThriftAsyncConnector connector = new IoTDBThriftAsyncConnector();
     try {
       connector.validate(
           new PipeParameterValidator(

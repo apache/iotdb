@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.connector.thrift.async.handler;
 
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.connector.thrift.async.IoTDBThriftConnectorV2;
+import org.apache.iotdb.db.pipe.connector.thrift.async.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.db.pipe.connector.thrift.payload.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.thrift.payload.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.thrift.payload.request.PipeTransferFileSealReq;
@@ -50,7 +50,7 @@ public class PipeTransferTsFileInsertionEventHandler
 
   private final long requestCommitId;
   private final PipeTsFileInsertionEvent event;
-  private final IoTDBThriftConnectorV2 connector;
+  private final IoTDBThriftAsyncConnector connector;
 
   private final File tsFile;
   private final int readFileBufferSize;
@@ -64,7 +64,7 @@ public class PipeTransferTsFileInsertionEventHandler
   private AsyncPipeDataTransferServiceClient client;
 
   public PipeTransferTsFileInsertionEventHandler(
-      long requestCommitId, PipeTsFileInsertionEvent event, IoTDBThriftConnectorV2 connector)
+      long requestCommitId, PipeTsFileInsertionEvent event, IoTDBThriftAsyncConnector connector)
       throws FileNotFoundException {
     this.requestCommitId = requestCommitId;
     this.event = event;

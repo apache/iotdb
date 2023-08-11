@@ -25,8 +25,8 @@ import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.db.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.db.pipe.connector.legacy.IoTDBLegacyPipeConnector;
-import org.apache.iotdb.db.pipe.connector.thrift.async.IoTDBThriftConnectorV2;
-import org.apache.iotdb.db.pipe.connector.thrift.sync.IoTDBThriftConnectorV1;
+import org.apache.iotdb.db.pipe.connector.thrift.async.IoTDBThriftAsyncConnector;
+import org.apache.iotdb.db.pipe.connector.thrift.sync.IoTDBThriftSyncConnector;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -66,10 +66,10 @@ public class PipeConnectorSubtaskManager {
       PipeConnector pipeConnector;
       if (connectorKey.equals(BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
           || connectorKey.equals(BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR_V1.getPipePluginName())) {
-        pipeConnector = new IoTDBThriftConnectorV1();
+        pipeConnector = new IoTDBThriftSyncConnector();
       } else if (connectorKey.equals(
           BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR_V2.getPipePluginName())) {
-        pipeConnector = new IoTDBThriftConnectorV2();
+        pipeConnector = new IoTDBThriftAsyncConnector();
       } else if (connectorKey.equals(BuiltinPipePlugin.IOTDB_SYNC_CONNECTOR.getPipePluginName())) {
         pipeConnector = new IoTDBLegacyPipeConnector();
       } else {

@@ -55,22 +55,22 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class IoTDBThriftConnectorV1 extends IoTDBThriftConnector {
+public class IoTDBThriftSyncConnector extends IoTDBThriftConnector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftConnectorV1.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftSyncConnector.class);
 
   private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
 
-  private final List<IoTDBThriftConnectorClient> clients = new ArrayList<>();
+  private final List<IoTDBThriftSyncConnectorClient> clients = new ArrayList<>();
   private final List<Boolean> isClientAlive = new ArrayList<>();
 
   private long currentClientIndex = 0;
 
-  public IoTDBThriftConnectorV1() {
+  public IoTDBThriftSyncConnector() {
     // Do nothing
   }
 
-  public IoTDBThriftConnectorV1(String ipAddress, int port) {
+  public IoTDBThriftSyncConnector(String ipAddress, int port) {
     nodeUrls.add(new TEndPoint(ipAddress, port));
   }
 
@@ -109,7 +109,7 @@ public class IoTDBThriftConnectorV1 extends IoTDBThriftConnector {
 
       clients.set(
           i,
-          new IoTDBThriftConnectorClient(
+          new IoTDBThriftSyncConnectorClient(
               new ThriftClientProperty.Builder()
                   .setConnectionTimeoutMs((int) PIPE_CONFIG.getPipeConnectorTimeoutMs())
                   .setRpcThriftCompressionEnabled(
@@ -166,7 +166,7 @@ public class IoTDBThriftConnectorV1 extends IoTDBThriftConnector {
     // PipeProcessor can change the type of TabletInsertionEvent
 
     final int clientIndex = nextClientIndex();
-    final IoTDBThriftConnectorClient client = clients.get(clientIndex);
+    final IoTDBThriftSyncConnectorClient client = clients.get(clientIndex);
 
     try {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
@@ -175,7 +175,7 @@ public class IoTDBThriftConnectorV1 extends IoTDBThriftConnector {
         doTransfer(client, (PipeRawTabletInsertionEvent) tabletInsertionEvent);
       } else {
         LOGGER.warn(
-            "IoTDBThriftConnectorV1 only support "
+            "IoTDBThriftSyncConnector only support "
                 + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
                 + "Ignore {}.",
             tabletInsertionEvent);
@@ -196,13 +196,13 @@ public class IoTDBThriftConnectorV1 extends IoTDBThriftConnector {
     // PipeProcessor can change the type of TabletInsertionEvent
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       LOGGER.warn(
-          "IoTDBThriftConnectorV1 only support PipeTsFileInsertionEvent. Ignore {}.",
+          "IoTDBThriftSyncConnector only support PipeTsFileInsertionEvent. Ignore {}.",
           tsFileInsertionEvent);
       return;
     }
 
     final int clientIndex = nextClientIndex();
-    final IoTDBThriftConnectorClient client = clients.get(clientIndex);
+    final IoTDBThriftSyncConnectorClient client = clients.get(clientIndex);
 
     try {
       doTransfer(client, (PipeTsFileInsertionEvent) tsFileInsertionEvent);
@@ -219,11 +219,11 @@ public class IoTDBThriftConnectorV1 extends IoTDBThriftConnector {
 
   @Override
   public void transfer(Event event) {
-    LOGGER.warn("IoTDBThriftConnectorV1 does not support transfer generic event: {}.", event);
+    LOGGER.warn("IoTDBThriftSyncConnector does not support transfer generic event: {}.", event);
   }
 
   private void doTransfer(
-      IoTDBThriftConnectorClient client,
+      IoTDBThriftSyncConnectorClient client,
       PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, TException, WALPipeException {
     final TPipeTransferResp resp =
@@ -240,7 +240,8 @@ public class IoTDBThriftConnectorV1 extends IoTDBThriftConnector {
   }
 
   private void doTransfer(
-      IoTDBThriftConnectorClient client, PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
+      IoTDBThriftSyncConnectorClient client,
+      PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException, TException, IOException {
     final TPipeTransferResp resp =
         client.pipeTransfer(
@@ -257,7 +258,7 @@ public class IoTDBThriftConnectorV1 extends IoTDBThriftConnector {
   }
 
   private void doTransfer(
-      IoTDBThriftConnectorClient client, PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
+      IoTDBThriftSyncConnectorClient client, PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
       throws PipeException, TException, InterruptedException, IOException {
     pipeTsFileInsertionEvent.waitForTsFileClose();
 
