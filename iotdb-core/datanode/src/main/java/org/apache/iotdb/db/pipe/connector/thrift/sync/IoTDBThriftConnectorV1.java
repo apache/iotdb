@@ -17,19 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.v1;
+package org.apache.iotdb.db.pipe.connector.thrift.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.connector.base.IoTDBThriftConnector;
-import org.apache.iotdb.db.pipe.connector.v1.reponse.PipeTransferFilePieceResp;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFilePieceReq;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFileSealReq;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferHandshakeReq;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferInsertNodeReq;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferTabletReq;
+import org.apache.iotdb.db.pipe.connector.thrift.IoTDBThriftConnector;
+import org.apache.iotdb.db.pipe.connector.thrift.payload.reponse.PipeTransferFilePieceResp;
+import org.apache.iotdb.db.pipe.connector.thrift.payload.request.PipeTransferFilePieceReq;
+import org.apache.iotdb.db.pipe.connector.thrift.payload.request.PipeTransferFileSealReq;
+import org.apache.iotdb.db.pipe.connector.thrift.payload.request.PipeTransferHandshakeReq;
+import org.apache.iotdb.db.pipe.connector.thrift.payload.request.PipeTransferInsertNodeReq;
+import org.apache.iotdb.db.pipe.connector.thrift.payload.request.PipeTransferTabletReq;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;

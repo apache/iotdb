@@ -18,7 +18,7 @@
  *
  */
 
-package org.apache.iotdb.db.pipe.connector.legacy;
+package org.apache.iotdb.db.pipe.receiver.legacy;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -52,9 +52,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class IoTDBSyncReceiver {
+public class IoTDBLegacyPipeReceiver {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSyncReceiver.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBLegacyPipeReceiver.class);
 
   private static final String PATCH_SUFFIX = ".patch";
 
@@ -162,7 +162,7 @@ public class IoTDBSyncReceiver {
    * @return {@link TSStatusCode#PIPESERVER_ERROR} if fail to receive or load; {@link
    *     TSStatusCode#SUCCESS_STATUS} if load successfully.
    * @throws TException The connection between the sender and the receiver has not been established
-   *     by {@link IoTDBSyncReceiver#handshake}
+   *     by {@link IoTDBLegacyPipeReceiver#handshake}
    */
   public TSStatus transportPipeData(ByteBuffer buff) throws TException {
     // step1. check connection
@@ -260,7 +260,7 @@ public class IoTDBSyncReceiver {
    *     TSStatusCode#SYNC_FILE_REDIRECTION_ERROR} if startIndex needs to rollback because
    *     mismatched; {@link TSStatusCode#SYNC_FILE_ERROR} if fail to receive file.
    * @throws TException The connection between the sender and the receiver has not been established
-   *     by {@link IoTDBSyncReceiver#handshake}
+   *     by {@link IoTDBLegacyPipeReceiver#handshake}
    */
   public TSStatus transportFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff)
       throws TException {
@@ -442,13 +442,13 @@ public class IoTDBSyncReceiver {
 
   ///////////////////////// singleton /////////////////////////
 
-  private IoTDBSyncReceiver() {}
+  private IoTDBLegacyPipeReceiver() {}
 
-  public static IoTDBSyncReceiver getInstance() {
+  public static IoTDBLegacyPipeReceiver getInstance() {
     return IoTDBSyncReceiverHolder.INSTANCE;
   }
 
   private static class IoTDBSyncReceiverHolder {
-    private static final IoTDBSyncReceiver INSTANCE = new IoTDBSyncReceiver();
+    private static final IoTDBLegacyPipeReceiver INSTANCE = new IoTDBLegacyPipeReceiver();
   }
 }

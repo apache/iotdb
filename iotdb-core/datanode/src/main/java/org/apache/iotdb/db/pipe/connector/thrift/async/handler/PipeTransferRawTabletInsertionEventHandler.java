@@ -17,20 +17,30 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.agent.receiver;
+package org.apache.iotdb.db.pipe.connector.thrift.async.handler;
 
-import org.apache.iotdb.db.pipe.connector.IoTDBThriftConnectorRequestVersion;
-import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
+import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
+import org.apache.iotdb.db.pipe.connector.thrift.async.IoTDBThriftConnectorV2;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
-public interface IoTDBThriftReceiver {
+import org.apache.thrift.TException;
 
-  IoTDBThriftConnectorRequestVersion getVersion();
+public class PipeTransferRawTabletInsertionEventHandler
+    extends PipeTransferTabletInsertionEventHandler<TPipeTransferResp> {
 
-  TPipeTransferResp receive(
-      TPipeTransferReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher);
+  public PipeTransferRawTabletInsertionEventHandler(
+      long requestCommitId,
+      PipeRawTabletInsertionEvent event,
+      TPipeTransferReq req,
+      IoTDBThriftConnectorV2 connector) {
+    super(requestCommitId, event, req, connector);
+  }
 
-  void handleExit();
+  @Override
+  protected void doTransfer(AsyncPipeDataTransferServiceClient client, TPipeTransferReq req)
+      throws TException {
+    client.pipeTransfer(req, this);
+  }
 }

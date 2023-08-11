@@ -17,20 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.v1;
+package org.apache.iotdb.db.pipe.receiver.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.agent.receiver.IoTDBThriftReceiver;
-import org.apache.iotdb.db.pipe.connector.IoTDBThriftConnectorRequestVersion;
-import org.apache.iotdb.db.pipe.connector.v1.reponse.PipeTransferFilePieceResp;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFilePieceReq;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFileSealReq;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferHandshakeReq;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferInsertNodeReq;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferTabletReq;
+import org.apache.iotdb.db.pipe.connector.thrift.IoTDBThriftConnectorRequestVersion;
+import org.apache.iotdb.db.pipe.connector.thrift.payload.PipeRequestType;
+import org.apache.iotdb.db.pipe.connector.thrift.payload.reponse.PipeTransferFilePieceResp;
+import org.apache.iotdb.db.pipe.connector.thrift.payload.request.PipeTransferFilePieceReq;
+import org.apache.iotdb.db.pipe.connector.thrift.payload.request.PipeTransferFileSealReq;
+import org.apache.iotdb.db.pipe.connector.thrift.payload.request.PipeTransferHandshakeReq;
+import org.apache.iotdb.db.pipe.connector.thrift.payload.request.PipeTransferInsertNodeReq;
+import org.apache.iotdb.db.pipe.connector.thrift.payload.request.PipeTransferTabletReq;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;

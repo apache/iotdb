@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.v1.request;
+package org.apache.iotdb.db.pipe.connector.thrift.payload.request;
 
-import org.apache.iotdb.db.pipe.connector.IoTDBThriftConnectorRequestVersion;
-import org.apache.iotdb.db.pipe.connector.v1.PipeRequestType;
+import org.apache.iotdb.db.pipe.connector.thrift.IoTDBThriftConnectorRequestVersion;
+import org.apache.iotdb.db.pipe.connector.thrift.payload.PipeRequestType;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;

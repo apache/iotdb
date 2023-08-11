@@ -17,22 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.v2.handler;
+package org.apache.iotdb.db.pipe.connector.thrift.async.handler;
 
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
-import org.apache.iotdb.db.pipe.connector.v2.IoTDBThriftConnectorV2;
-import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.connector.thrift.async.IoTDBThriftConnectorV2;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.thrift.TException;
 
-public class PipeTransferRawTabletInsertionEventHandler
+public class PipeTransferInsertNodeTabletInsertionEventHandler
     extends PipeTransferTabletInsertionEventHandler<TPipeTransferResp> {
 
-  public PipeTransferRawTabletInsertionEventHandler(
+  public PipeTransferInsertNodeTabletInsertionEventHandler(
       long requestCommitId,
-      PipeRawTabletInsertionEvent event,
+      PipeInsertNodeTabletInsertionEvent event,
       TPipeTransferReq req,
       IoTDBThriftConnectorV2 connector) {
     super(requestCommitId, event, req, connector);

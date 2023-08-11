@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.v2;
+package org.apache.iotdb.db.pipe.connector.thrift.async;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
@@ -27,14 +27,14 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.pipe.connector.base.IoTDBThriftConnector;
-import org.apache.iotdb.db.pipe.connector.v1.IoTDBThriftConnectorV1;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferHandshakeReq;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferInsertNodeReq;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferTabletReq;
-import org.apache.iotdb.db.pipe.connector.v2.handler.PipeTransferInsertNodeTabletInsertionEventHandler;
-import org.apache.iotdb.db.pipe.connector.v2.handler.PipeTransferRawTabletInsertionEventHandler;
-import org.apache.iotdb.db.pipe.connector.v2.handler.PipeTransferTsFileInsertionEventHandler;
+import org.apache.iotdb.db.pipe.connector.thrift.IoTDBThriftConnector;
+import org.apache.iotdb.db.pipe.connector.thrift.async.handler.PipeTransferInsertNodeTabletInsertionEventHandler;
+import org.apache.iotdb.db.pipe.connector.thrift.async.handler.PipeTransferRawTabletInsertionEventHandler;
+import org.apache.iotdb.db.pipe.connector.thrift.async.handler.PipeTransferTsFileInsertionEventHandler;
+import org.apache.iotdb.db.pipe.connector.thrift.payload.request.PipeTransferHandshakeReq;
+import org.apache.iotdb.db.pipe.connector.thrift.payload.request.PipeTransferInsertNodeReq;
+import org.apache.iotdb.db.pipe.connector.thrift.payload.request.PipeTransferTabletReq;
+import org.apache.iotdb.db.pipe.connector.thrift.sync.IoTDBThriftConnectorV1;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;

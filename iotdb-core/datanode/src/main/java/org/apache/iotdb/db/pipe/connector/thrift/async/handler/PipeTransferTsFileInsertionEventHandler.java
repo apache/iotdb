@@ -17,14 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.v2.handler;
+package org.apache.iotdb.db.pipe.connector.thrift.async.handler;
 
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.connector.v1.reponse.PipeTransferFilePieceResp;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFilePieceReq;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFileSealReq;
-import org.apache.iotdb.db.pipe.connector.v2.IoTDBThriftConnectorV2;
+import org.apache.iotdb.db.pipe.connector.thrift.async.IoTDBThriftConnectorV2;
+import org.apache.iotdb.db.pipe.connector.thrift.payload.reponse.PipeTransferFilePieceResp;
+import org.apache.iotdb.db.pipe.connector.thrift.payload.request.PipeTransferFilePieceReq;
+import org.apache.iotdb.db.pipe.connector.thrift.payload.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;

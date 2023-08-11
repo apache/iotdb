@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.connector.legacy.pipedata.TsFilePipeData;
-import org.apache.iotdb.db.pipe.connector.v1.IoTDBThriftConnectorClient;
+import org.apache.iotdb.db.pipe.connector.thrift.sync.IoTDBThriftConnectorClient;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -67,9 +67,9 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CON
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_USER_KEY;
 
-public class IoTDBSyncConnector implements PipeConnector {
+public class IoTDBLegacyPipeConnector implements PipeConnector {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSyncConnector.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBLegacyPipeConnector.class);
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
@@ -172,7 +172,7 @@ public class IoTDBSyncConnector implements PipeConnector {
       doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
     } else {
       throw new NotImplementedException(
-          "IoTDBSyncConnector only support "
+          "IoTDBLegacyPipeConnector only support "
               + "PipeInsertNodeInsertionEvent and PipeTabletInsertionEvent.");
     }
   }
@@ -181,7 +181,7 @@ public class IoTDBSyncConnector implements PipeConnector {
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       throw new NotImplementedException(
-          "IoTDBSyncConnector only support PipeTsFileInsertionEvent.");
+          "IoTDBLegacyPipeConnector only support PipeTsFileInsertionEvent.");
     }
 
     try {
@@ -196,7 +196,7 @@ public class IoTDBSyncConnector implements PipeConnector {
 
   @Override
   public void transfer(Event event) throws Exception {
-    LOGGER.warn("IoTDBSyncConnector does not support transfer generic event: {}.", event);
+    LOGGER.warn("IoTDBLegacyPipeConnector does not support transfer generic event: {}.", event);
   }
 
   private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeInsertionEvent)

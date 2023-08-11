@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.v1.request;
+package org.apache.iotdb.db.pipe.connector.thrift.payload.request;
 
-import org.apache.iotdb.db.pipe.connector.IoTDBThriftConnectorRequestVersion;
-import org.apache.iotdb.db.pipe.connector.v1.PipeRequestType;
+import org.apache.iotdb.db.pipe.connector.thrift.IoTDBThriftConnectorRequestVersion;
+import org.apache.iotdb.db.pipe.connector.thrift.payload.PipeRequestType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;

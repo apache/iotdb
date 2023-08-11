@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.v2.handler;
+package org.apache.iotdb.db.pipe.connector.thrift.async.handler;
 
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
-import org.apache.iotdb.db.pipe.connector.v2.IoTDBThriftConnectorV2;
+import org.apache.iotdb.db.pipe.connector.thrift.async.IoTDBThriftConnectorV2;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;

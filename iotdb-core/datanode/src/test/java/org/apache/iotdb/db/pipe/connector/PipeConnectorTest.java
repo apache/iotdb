@@ -21,9 +21,9 @@ package org.apache.iotdb.db.pipe.connector;
 
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant;
-import org.apache.iotdb.db.pipe.connector.legacy.IoTDBSyncConnector;
-import org.apache.iotdb.db.pipe.connector.v1.IoTDBThriftConnectorV1;
-import org.apache.iotdb.db.pipe.connector.v2.IoTDBThriftConnectorV2;
+import org.apache.iotdb.db.pipe.connector.legacy.IoTDBLegacyPipeConnector;
+import org.apache.iotdb.db.pipe.connector.thrift.async.IoTDBThriftConnectorV2;
+import org.apache.iotdb.db.pipe.connector.thrift.sync.IoTDBThriftConnectorV1;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
@@ -35,7 +35,7 @@ import java.util.HashMap;
 public class PipeConnectorTest {
   @Test
   public void testIoTDBSyncConnector() {
-    IoTDBSyncConnector connector = new IoTDBSyncConnector();
+    IoTDBLegacyPipeConnector connector = new IoTDBLegacyPipeConnector();
     try {
       connector.validate(
           new PipeParameterValidator(

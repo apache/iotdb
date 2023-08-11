@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.v1;
+package org.apache.iotdb.db.pipe.connector.thrift.payload;
 
 import java.util.Arrays;
 import java.util.HashMap;

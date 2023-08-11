@@ -43,7 +43,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.connector.legacy.IoTDBSyncReceiver;
+import org.apache.iotdb.db.pipe.receiver.legacy.IoTDBLegacyPipeReceiver;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -2528,7 +2528,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus handshake(TSyncIdentityInfo info) throws TException {
-    return IoTDBSyncReceiver.getInstance()
+    return IoTDBLegacyPipeReceiver.getInstance()
         .handshake(
             info,
             SESSION_MANAGER.getCurrSession().getClientAddress(),
@@ -2538,12 +2538,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus sendPipeData(ByteBuffer buff) throws TException {
-    return IoTDBSyncReceiver.getInstance().transportPipeData(buff);
+    return IoTDBLegacyPipeReceiver.getInstance().transportPipeData(buff);
   }
 
   @Override
   public TSStatus sendFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff) throws TException {
-    return IoTDBSyncReceiver.getInstance().transportFile(metaInfo, buff);
+    return IoTDBLegacyPipeReceiver.getInstance().transportFile(metaInfo, buff);
   }
 
   @Override
@@ -2688,7 +2688,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       TSCloseSessionReq req = new TSCloseSessionReq();
       closeSession(req);
     }
-    IoTDBSyncReceiver.getInstance().handleClientExit();
+    IoTDBLegacyPipeReceiver.getInstance().handleClientExit();
     PipeAgent.receiver().handleClientExit();
   }
 }
