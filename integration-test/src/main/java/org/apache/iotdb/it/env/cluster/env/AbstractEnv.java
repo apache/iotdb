@@ -87,9 +87,7 @@ import static org.junit.Assert.fail;
 
 public abstract class AbstractEnv implements BaseEnv {
   private static final Logger logger = IoTDBTestLogger.logger;
-  private final int NODE_START_TIMEOUT = 100;
-  private final int PROBE_TIMEOUT_MS = 2000;
-  private final int NODE_NETWORK_TIMEOUT_MS = 65_000;
+
   private final Random rand = new Random();
   protected List<ConfigNodeWrapper> configNodeWrapperList = Collections.emptyList();
   protected List<DataNodeWrapper> dataNodeWrapperList = Collections.emptyList();

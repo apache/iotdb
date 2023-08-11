@@ -46,6 +46,7 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.IOT_CONSENSUS_STR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE_CONFIG_NODE_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE_DATA_NODE_NUM;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.LOCK_FILE_PATH;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.RATIS_CONSENSUS_STR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCALABLE_SINGLE_NODE_MODE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCALABLE_SINGLE_NODE_MODE_CONFIG_NODE_NUM;
@@ -57,10 +58,6 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.STRONG_CONSISTENCY
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.USER_DIR;
 
 public class EnvUtils {
-  private static final String lockFilePath =
-      System.getProperty("user.dir") + File.separator + "target" + File.separator + "lock-";
-  private static final String sysVarDefaultConfigNodeNum = "DefaultConfigNodeNum";
-  private static final String sysVarDefaultDataNodeNum = "DefaultDataNodeNum";
 
   public static int[] searchAvailablePorts() {
     while (true) {
@@ -156,7 +153,7 @@ public class EnvUtils {
   }
 
   public static String getLockFilePath(int port) {
-    return lockFilePath + port;
+    return LOCK_FILE_PATH + port;
   }
 
   public static Pair<Integer, Integer> getNodeNum() {
