@@ -67,9 +67,9 @@ public class ReplicateTest {
 
   private final List<Peer> peers =
       Arrays.asList(
-          new Peer(gid, 1, new TEndPoint("127.0.0.1", basePort - 2)),
-          new Peer(gid, 2, new TEndPoint("127.0.0.1", basePort - 1)),
-          new Peer(gid, 3, new TEndPoint("127.0.0.1", basePort)));
+          new Peer(gid, 1, new TEndPoint("0.0.0.0", basePort - 2)),
+          new Peer(gid, 2, new TEndPoint("0.0.0.0", basePort - 1)),
+          new Peer(gid, 3, new TEndPoint("0.0.0.0", basePort)));
 
   private final List<File> peersStorage =
       Arrays.asList(
@@ -116,6 +116,7 @@ public class ReplicateTest {
       }
       Files.move(tmpConfigurationPath, configurationPath);
     } catch (IOException ignored) {
+      // not handle
     }
   }
 
