@@ -87,7 +87,7 @@ public class IoTDBPipeDemoIT {
       Map<String, String> processorAttributes = new HashMap<>();
       Map<String, String> connectorAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.realtime.mode", "log");
+      extractorAttributes.put("extractor.realtime.mode", "file");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.ip", receiverIp);
@@ -107,6 +107,7 @@ public class IoTDBPipeDemoIT {
       try (Connection connection = sender_env.getConnection();
           Statement statement = connection.createStatement()) {
         statement.execute("insert into root.vehicle.d0(time, s1) values (0, 1)");
+        statement.execute("flush");
       } catch (SQLException e) {
         e.printStackTrace();
         fail(e.getMessage());
