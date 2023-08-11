@@ -17,17 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.it.env.cluster;
+package org.apache.iotdb.itbase.category;
 
-public class SimpleEnv extends AbstractEnv {
-
-  @Override
-  public void initClusterEnvironment() {
-    initClusterEnvironment(1, 1);
-  }
-
-  @Override
-  public void initClusterEnvironment(int configNodesNum, int dataNodesNum) {
-    super.initEnvironment(configNodesNum, dataNodesNum);
-  }
-}
+public interface MultiClusterIT2 {}

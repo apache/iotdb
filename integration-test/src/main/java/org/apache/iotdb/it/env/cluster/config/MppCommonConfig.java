@@ -17,11 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.it.env.cluster;
+package org.apache.iotdb.it.env.cluster.config;
 
 import org.apache.iotdb.itbase.env.CommonConfig;
 
 import java.io.IOException;
+
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REGION_CONSENSUS_PROTOCOL_CLASS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REPLICATION_FACTOR;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.HYPHEN;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCHEMA_REPLICATION_FACTOR;
+import static org.apache.iotdb.it.env.cluster.EnvUtils.fromConsensusFullNameToAbbr;
 
 public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
 
@@ -356,5 +364,19 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   public CommonConfig setDataRegionPerDataNode(double dataRegionPerDataNode) {
     setProperty("data_region_per_data_node", String.valueOf(dataRegionPerDataNode));
     return this;
+  }
+
+  // For part of the log directory
+  public String getClusterConfigStr() {
+    return fromConsensusFullNameToAbbr(properties.getProperty(CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS))
+        + HYPHEN
+        + fromConsensusFullNameToAbbr(
+            properties.getProperty(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS))
+        + HYPHEN
+        + fromConsensusFullNameToAbbr(properties.getProperty(DATA_REGION_CONSENSUS_PROTOCOL_CLASS))
+        + HYPHEN
+        + properties.getProperty(SCHEMA_REPLICATION_FACTOR)
+        + HYPHEN
+        + properties.getProperty(DATA_REPLICATION_FACTOR);
   }
 }

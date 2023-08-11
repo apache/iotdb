@@ -17,35 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.it.env.cluster;
+package org.apache.iotdb.it.env.cluster.env;
 
-import org.apache.iotdb.itbase.env.DataNodeConfig;
+import org.apache.iotdb.it.env.cluster.EnvUtils;
+import org.apache.iotdb.tsfile.utils.Pair;
 
-import java.io.IOException;
+public class Cluster1Env extends AbstractEnv {
 
-public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
-
-  public MppDataNodeConfig() {
-    super();
-  }
-
-  public MppDataNodeConfig(String filePath) throws IOException {
-    super(filePath);
+  @Override
+  public void initClusterEnvironment() {
+    Pair<Integer, Integer> nodeNum = EnvUtils.getNodeNum();
+    super.initEnvironment(nodeNum.getLeft(), nodeNum.getRight());
   }
 
   @Override
-  public MppBaseConfig emptyClone() {
-    return new MppDataNodeConfig();
-  }
-
-  @Override
-  public void updateProperties(MppBaseConfig persistentConfig) {
-    if (persistentConfig instanceof MppDataNodeConfig) {
-      super.updateProperties(persistentConfig);
-    } else {
-      throw new UnsupportedOperationException(
-          "MppDataNodeConfig can't be override by an instance of "
-              + persistentConfig.getClass().getCanonicalName());
-    }
+  public void initClusterEnvironment(int configNodesNum, int dataNodesNum) {
+    super.initEnvironment(configNodesNum, dataNodesNum);
   }
 }

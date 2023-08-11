@@ -17,27 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.itbase.env;
+package org.apache.iotdb.itbase.category;
 
-public interface BaseNodeWrapper {
-
-  void createNodeDir();
-
-  void createLogDir();
-
-  void destroyDir();
-
-  void start();
-
-  void stop();
-
-  String getIp();
-
-  int getPort();
-
-  String getId();
-
-  String getIpAndPortString();
-
-  void dumpJVMSnapshot(String testCaseName);
-}
+public interface MultiClusterIT1 {}

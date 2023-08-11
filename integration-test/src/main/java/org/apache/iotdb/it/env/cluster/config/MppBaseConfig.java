@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.it.env.cluster;
+package org.apache.iotdb.it.env.cluster.config;
 
 import javax.annotation.Nullable;
 import javax.validation.constraints.NotNull;
@@ -33,7 +33,7 @@ import java.util.Properties;
 public abstract class MppBaseConfig {
 
   public static final String NULL_VALUE = "";
-  private final Properties properties;
+  protected final Properties properties;
 
   /** Create an empty MppPersistentConfig. */
   protected MppBaseConfig() {
