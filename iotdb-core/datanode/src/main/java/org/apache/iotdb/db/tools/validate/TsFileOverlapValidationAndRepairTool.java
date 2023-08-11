@@ -24,6 +24,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -66,28 +67,35 @@ public class TsFileOverlapValidationAndRepairTool {
   }
 
   private static void moveOverlapFiles() {
-    for (File f : toMoveFiles) {
-      if (!f.exists()) {
-        System.out.println(f.getAbsolutePath() + "is not exist in repairing");
-        continue;
+    try (FileWriter fileWriter = new FileWriter("moved-file" + System.currentTimeMillis(), false)) {
+      for (File f : toMoveFiles) {
+        if (!f.exists()) {
+          System.out.println(f.getAbsolutePath() + "is not exist in repairing");
+          continue;
+        }
+        String filePath = f.getAbsolutePath();
+        String replaceStr = File.separator + "sequence" + File.separator;
+        String replaceToStr = File.separator + "unsequence" + File.separator;
+        int sequenceDirIndex = filePath.indexOf(replaceStr);
+        if (sequenceDirIndex == -1) {
+          continue;
+        }
+        String moveToPath = filePath.substring(0, sequenceDirIndex) + replaceToStr + filePath.substring(sequenceDirIndex + replaceStr.length());
+        File targetFile = new File(moveToPath);
+        File targetParentFile = targetFile.getParentFile();
+        if (targetParentFile.exists()) {
+          targetParentFile.mkdirs();
+        }
+        boolean success = f.renameTo(targetFile);
+        if (!success) {
+          System.out.println("Failed to repair " + f.getAbsolutePath());
+        }
+        System.out.println("Repair file " + targetFile.getName());
+        fileWriter.write(targetFile.getName() + System.lineSeparator());
+        fileWriter.flush();
       }
-      String filePath = f.getAbsolutePath();
-      String replaceStr = File.separator + "sequence" + File.separator;
-      String replaceToStr = File.separator + "unsequence" + File.separator;
-      int sequenceDirIndex = filePath.indexOf(replaceStr);
-      if (sequenceDirIndex == -1) {
-        continue;
-      }
-      String moveToPath = filePath.substring(0, sequenceDirIndex) + replaceToStr + filePath.substring(sequenceDirIndex + replaceStr.length());
-      File targetFile = new File(moveToPath);
-      File targetParentFile = targetFile.getParentFile();
-      if (targetParentFile.exists()) {
-        targetParentFile.mkdirs();
-      }
-      boolean success = f.renameTo(new File(moveToPath));
-      if (!success) {
-        System.out.println("Failed to repair " + f.getAbsolutePath());
-      }
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
   }
 
