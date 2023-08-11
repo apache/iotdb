@@ -79,6 +79,11 @@ public class TsFileOverlapValidationAndRepairTool {
         continue;
       }
       String moveToPath = filePath.substring(0, sequenceDirIndex) + replaceToStr + filePath.substring(sequenceDirIndex + replaceStr.length());
+      File targetFile = new File(moveToPath);
+      File targetParentFile = targetFile.getParentFile();
+      if (targetParentFile.exists()) {
+        targetParentFile.mkdirs();
+      }
       boolean success = f.renameTo(new File(moveToPath));
       if (!success) {
         System.out.println("Failed to repair " + f.getAbsolutePath());
@@ -166,9 +171,9 @@ public class TsFileOverlapValidationAndRepairTool {
         System.out.println(tsfile.getAbsolutePath() + " is skipped because resource file is not exist.");
         continue;
       }
-      TsFileResource resource = new TsFileResource(tsfile);
+      TsFileResource resource = new TsFileResource();
+      resource.setFile(tsfile);
       resource.deserialize();
-      resource.buildDeviceTimeIndex();
       resource.close();
       resources.add(resource);
     }
