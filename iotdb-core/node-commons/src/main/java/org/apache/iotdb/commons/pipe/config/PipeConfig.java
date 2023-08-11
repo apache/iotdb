@@ -107,14 +107,6 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeConnectorPendingQueueSize();
   }
 
-  public int getPipeConnectorMaxDelay() {
-    return COMMON_CONFIG.getPipeConnectorMaxDelay();
-  }
-
-  public int getPipeConnectorBatchSize() {
-    return COMMON_CONFIG.getPipeConnectorBatchSize();
-  }
-
   public boolean isPipeAsyncConnectorRPCThriftCompressionEnabled() {
     return COMMON_CONFIG.isPipeAsyncConnectorRPCThriftCompressionEnabled();
   }

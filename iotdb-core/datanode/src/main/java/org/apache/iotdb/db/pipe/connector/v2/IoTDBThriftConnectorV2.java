@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.pipe.connector.base.IoTDBThriftBatchBuilderV2;
 import org.apache.iotdb.db.pipe.connector.base.IoTDBThriftConnector;
 import org.apache.iotdb.db.pipe.connector.v1.IoTDBThriftConnectorV1;
 import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferBatchReq;
@@ -52,7 +52,6 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -65,10 +64,8 @@ import javax.annotation.Nullable;
 
 import java.io.IOException;
 import java.util.Comparator;
-import java.util.List;
 import java.util.Optional;
 import java.util.PriorityQueue;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -76,6 +73,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_DELAY_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_DELAY_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_SIZE_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_SIZE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_MODE_BATCH;
 
 public class IoTDBThriftConnectorV2 extends IoTDBThriftConnector {
@@ -104,19 +105,7 @@ public class IoTDBThriftConnectorV2 extends IoTDBThriftConnector {
   private final PriorityQueue<Pair<Long, Runnable>> commitQueue =
       new PriorityQueue<>(Comparator.comparing(o -> o.left));
 
-  // For batch transfer
-  private final int MAX_DELAY_IN_MS = PipeConfig.getInstance().getPipeConnectorMaxDelay() * 1000;
-  private final long BATCH_SIZE_IN_BYTES =
-      (long) PipeConfig.getInstance().getPipeConnectorBatchSize() * 1024 * 1024;
-
-  private AtomicLong batchCommitId;
-  private List<TPipeTransferReq> tPipeTransferReqs;
-  private List<Long> requestCommitIds;
-  // TODO: replace it with List<EnrichedEvent> after PipeRawTabletInsertionEvent extending
-  // EnrichedEvent
-  private List<Event> events;
-  private AtomicLong lastSendTime;
-  private AtomicLong bufferSize;
+  IoTDBThriftBatchBuilderV2 batchBuilder;
 
   public IoTDBThriftConnectorV2() {
     if (ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get() == null) {
@@ -145,12 +134,15 @@ public class IoTDBThriftConnectorV2 extends IoTDBThriftConnector {
     retryConnector.customize(parameters, configuration);
 
     if (CONNECTOR_IOTDB_MODE_BATCH.equals(mode)) {
-      batchCommitId = new AtomicLong(0);
-      tPipeTransferReqs = new CopyOnWriteArrayList<>();
-      requestCommitIds = new CopyOnWriteArrayList<>();
-      events = new CopyOnWriteArrayList<>();
-      lastSendTime = new AtomicLong(0);
-      bufferSize = new AtomicLong(0);
+      batchBuilder =
+          new IoTDBThriftBatchBuilderV2(
+              parameters.getIntOrDefault(
+                      CONNECTOR_IOTDB_BATCH_DELAY_KEY, CONNECTOR_IOTDB_BATCH_DELAY_DEFAULT_VALUE)
+                  * 1000,
+              parameters.getLongOrDefault(
+                      CONNECTOR_IOTDB_BATCH_SIZE_KEY, CONNECTOR_IOTDB_BATCH_SIZE_DEFAULT_VALUE)
+                  * 1024
+                  * 1024);
     }
   }
 
@@ -188,17 +180,10 @@ public class IoTDBThriftConnectorV2 extends IoTDBThriftConnector {
               pipeInsertNodeTabletInsertionEvent.getInsertNode());
       if (CONNECTOR_IOTDB_MODE_BATCH.equals(mode)) {
         // Init last send time to record the first element
-        if (lastSendTime.get() == 0) {
-          lastSendTime.set(System.currentTimeMillis());
-        }
-        tPipeTransferReqs.add(pipeTransferInsertNodeReq);
-        requestCommitIds.add(requestCommitId);
-        events.add(pipeInsertNodeTabletInsertionEvent);
-        pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
-            PipeTransferTabletBatchInsertionEventHandler.class.getName());
-        bufferSize.addAndGet(pipeTransferInsertNodeReq.body.array().length);
-        if (bufferSize.get() >= BATCH_SIZE_IN_BYTES
-            || System.currentTimeMillis() - lastSendTime.get() >= MAX_DELAY_IN_MS) {
+        batchBuilder.initLastSendTime();
+        batchBuilder.tryCacheReq(
+            pipeTransferInsertNodeReq, requestCommitId, pipeInsertNodeTabletInsertionEvent);
+        if (batchBuilder.needSend()) {
           transferInBatch();
         }
       } else {
@@ -220,19 +205,9 @@ public class IoTDBThriftConnectorV2 extends IoTDBThriftConnector {
               pipeRawTabletInsertionEvent.isAligned());
       if (CONNECTOR_IOTDB_MODE_BATCH.equals(mode)) {
         // Init last send time to record the first element
-        if (lastSendTime.get() == 0) {
-          lastSendTime.set(System.currentTimeMillis());
-        }
-        tPipeTransferReqs.add(pipeTransferTabletReq);
-        requestCommitIds.add(requestCommitId);
-        events.add(pipeRawTabletInsertionEvent);
-        // TODO: Increase the event reference count after PipeRawTabletInsertionEvent extending
-        // EnrichedEvent
-        bufferSize.addAndGet(pipeTransferTabletReq.body.array().length);
-        if (bufferSize.get() >= BATCH_SIZE_IN_BYTES
-            || System.currentTimeMillis() - lastSendTime.get() >= MAX_DELAY_IN_MS) {
-          transferInBatch();
-        }
+        batchBuilder.initLastSendTime();
+        batchBuilder.tryCacheReq(
+            pipeTransferTabletReq, requestCommitId, pipeRawTabletInsertionEvent);
       } else {
         final PipeTransferRawTabletInsertionEventHandler pipeTransferTabletReqHandler =
             new PipeTransferRawTabletInsertionEventHandler(
@@ -247,17 +222,13 @@ public class IoTDBThriftConnectorV2 extends IoTDBThriftConnector {
     final PipeTransferTabletBatchInsertionEventHandler
         pipeTransferTabletBatchInsertionEventHandler =
             new PipeTransferTabletBatchInsertionEventHandler(
-                requestCommitIds,
-                events,
-                PipeTransferBatchReq.toTPipeTransferReq(tPipeTransferReqs),
+                batchBuilder.getRequestCommitIds(),
+                batchBuilder.getEvents(),
+                PipeTransferBatchReq.toTPipeTransferReq(batchBuilder.gettPipeTransferReqs()),
                 this);
     transfer(pipeTransferTabletBatchInsertionEventHandler);
 
-    tPipeTransferReqs.clear();
-    requestCommitIds.clear();
-    events.clear();
-    bufferSize.set(0);
-    lastSendTime.set(System.currentTimeMillis());
+    batchBuilder.clearBatchCaches();
   }
 
   private void transfer(
@@ -315,7 +286,7 @@ public class IoTDBThriftConnectorV2 extends IoTDBThriftConnector {
   private void transfer(
       PipeTransferTabletBatchInsertionEventHandler pipeTransferTabletBatchInsertionEventHandler) {
     final TEndPoint targetNodeUrl =
-        nodeUrls.get((int) (batchCommitId.getAndIncrement() % nodeUrls.size()));
+        nodeUrls.get((int) (batchBuilder.getBatchCommitId().getAndIncrement() % nodeUrls.size()));
 
     try {
       final AsyncPipeDataTransferServiceClient client = borrowClient(targetNodeUrl);

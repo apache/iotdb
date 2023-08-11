@@ -166,8 +166,6 @@ public class CommonConfig {
   private int pipeConnectorReadFileBufferSize = 8388608;
   private long pipeConnectorRetryIntervalMs = 1000L;
   private int pipeConnectorPendingQueueSize = 16;
-  private int pipeConnectorMaxDelay = 60;
-  private int pipeConnectorBatchSize = 16;
 
   private boolean pipeAsyncConnectorRPCThriftCompressionEnabled = false;
   private int pipeAsyncConnectorSelectorNumber = 1;
@@ -661,22 +659,6 @@ public class CommonConfig {
 
   public void setPipeConnectorPendingQueueSize(int pipeConnectorPendingQueueSize) {
     this.pipeConnectorPendingQueueSize = pipeConnectorPendingQueueSize;
-  }
-
-  public int getPipeConnectorMaxDelay() {
-    return pipeConnectorMaxDelay;
-  }
-
-  public void setPipeConnectorMaxDelay(int pipeConnectorMaxDelay) {
-    this.pipeConnectorMaxDelay = pipeConnectorMaxDelay;
-  }
-
-  public int getPipeConnectorBatchSize() {
-    return pipeConnectorBatchSize;
-  }
-
-  public void setPipeConnectorBatchSize(int pipeConnectorBatchSize) {
-    this.pipeConnectorBatchSize = pipeConnectorBatchSize;
   }
 
   public int getPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount() {

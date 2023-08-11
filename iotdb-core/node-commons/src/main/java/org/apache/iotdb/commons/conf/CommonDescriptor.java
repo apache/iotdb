@@ -326,14 +326,6 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_connector_pending_queue_size",
                 String.valueOf(config.getPipeConnectorPendingQueueSize()))));
-    config.setPipeConnectorMaxDelay(
-        Integer.parseInt(
-            properties.getProperty(
-                "pipe_connector_max_delay", String.valueOf(config.getPipeConnectorMaxDelay()))));
-    config.setPipeConnectorBatchSize(
-        Integer.parseInt(
-            properties.getProperty(
-                "pipe_connector_batch_size", String.valueOf(config.getPipeConnectorBatchSize()))));
 
     config.setPipeAsyncConnectorRPCThriftCompressionEnabled(
         Boolean.parseBoolean(
