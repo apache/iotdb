@@ -137,7 +137,9 @@ public class StatisticsService implements IClusterStatusSubscriber {
     Map<TConsensusGroupId, Pair<Integer, Integer>> differentRegionLeaderMap =
         loadCache.updateRegionGroupLeader();
 
-    if (!differentRegionLeaderMap.isEmpty() || loadCache.existUnreadyRegionGroup()) {
+    if (isNeedBroadcast
+        || !differentRegionLeaderMap.isEmpty()
+        || loadCache.existUnreadyRegionGroup()) {
       // Update RegionRoute if cluster statistics changed or some RegionGroups are unready
       differentRegionLeaderMap.putAll(routeBalancer.balanceRegionLeader());
       // Update RegionPriority
