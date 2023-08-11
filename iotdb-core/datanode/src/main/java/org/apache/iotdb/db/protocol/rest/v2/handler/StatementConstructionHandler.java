@@ -19,14 +19,22 @@ package org.apache.iotdb.db.protocol.rest.v2.handler;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.protocol.rest.utils.InsertRowDataUtils;
+import org.apache.iotdb.db.protocol.rest.v2.model.InsertRecordsRequest;
 import org.apache.iotdb.db.protocol.rest.v2.model.InsertTabletRequest;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -115,7 +123,7 @@ public class StatementConstructionHandler {
             if (data == null) {
               bitMaps[columnIndex].mark(rowIndex);
             } else {
-              floatValues[rowIndex] = Float.valueOf(String.valueOf(data));
+              floatValues[rowIndex] = Float.parseFloat(String.valueOf(data));
             }
           }
           columns[columnIndex] = floatValues;
@@ -127,7 +135,7 @@ public class StatementConstructionHandler {
               bitMaps[columnIndex].mark(rowIndex);
             } else {
               doubleValues[rowIndex] =
-                  Double.valueOf(String.valueOf(rawData.get(columnIndex).get(rowIndex)));
+                  Double.parseDouble(String.valueOf(rawData.get(columnIndex).get(rowIndex)));
             }
           }
           columns[columnIndex] = doubleValues;
@@ -162,6 +170,57 @@ public class StatementConstructionHandler {
     insertStatement.setRowCount(insertTabletRequest.getTimestamps().size());
     insertStatement.setDataTypes(dataTypes);
     insertStatement.setAligned(insertTabletRequest.getIsAligned());
+    return insertStatement;
+  }
+
+  public static InsertRowsStatement createInsertRowsStatement(
+      InsertRecordsRequest insertRecordsRequest)
+      throws IllegalPathException, QueryProcessException, IoTDBConnectionException {
+
+    // construct insert statement
+    InsertRowsStatement insertStatement = new InsertRowsStatement();
+    List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
+    List<List<TSDataType>> dataTypesList = new ArrayList<>();
+
+    for (int i = 0; i < insertRecordsRequest.getDataTypesList().size(); i++) {
+      List<TSDataType> dataTypes = new ArrayList<>();
+      for (int c = 0; c < insertRecordsRequest.getDataTypesList().get(i).size(); c++) {
+        dataTypes.add(
+            TSDataType.valueOf(
+                insertRecordsRequest.getDataTypesList().get(i).get(c).toUpperCase(Locale.ROOT)));
+      }
+      dataTypesList.add(dataTypes);
+    }
+
+    InsertRowDataUtils.filterNullValueAndMeasurement(
+        insertRecordsRequest.getDevices(),
+        insertRecordsRequest.getTimestamps(),
+        insertRecordsRequest.getMeasurementsList(),
+        insertRecordsRequest.getValuesList(),
+        dataTypesList);
+
+    List<ByteBuffer> valuesList =
+        InsertRowDataUtils.objectValuesListToByteBufferList(
+            insertRecordsRequest.getValuesList(), dataTypesList);
+
+    for (int i = 0; i < insertRecordsRequest.getDevices().size(); i++) {
+      InsertRowStatement statement = new InsertRowStatement();
+      statement.setDevicePath(
+          DataNodeDevicePathCache.getInstance()
+              .getPartialPath(insertRecordsRequest.getDevices().get(i)));
+      statement.setMeasurements(
+          insertRecordsRequest.getMeasurementsList().get(i).toArray(new String[0]));
+      statement.setTime(insertRecordsRequest.getTimestamps().get(i));
+      statement.fillValues(valuesList.get(i));
+      statement.setAligned(true);
+      // skip empty statement
+      if (statement.isEmpty()) {
+        continue;
+      }
+      insertRowStatementList.add(statement);
+    }
+    insertStatement.setInsertRowStatementList(insertRowStatementList);
+
     return insertStatement;
   }
 }
