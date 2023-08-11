@@ -23,17 +23,82 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.apache.iotdb</groupId>
-        <artifactId>iotdb-parent</artifactId>
-        <version>1.2.0-SNAPSHOT</version>
-        <relativePath>../../pom.xml</relativePath>
+        <artifactId>iotdb-connector</artifactId>
+        <version>1.3.0-SNAPSHOT</version>
     </parent>
     <artifactId>spark-iotdb-connector</artifactId>
+    <!-- NOTE: This module actually only contains the sources and the common settings
+               These sources are compiled twice for different scala version in sub-
+               modules.
+    -->
     <packaging>pom</packaging>
+    <name>IoTDB: Connector: Apache Spark</name>
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
+    <modules>
+        <module>scala_2.11</module>
+        <module>scala_2.12</module>
+    </modules>
+    <build>
+        <!--
+            Defining the settings in pluginManagement as we don't actually want to run the plugins in this module
+            but want to have the plugins defined in the child modules to inherit these settings.
+        -->
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.scala-tools</groupId>
+                    <artifactId>maven-scala-plugin</artifactId>
+                    <version>2.15.2</version>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>add-source</goal>
+                                <goal>compile</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                    <configuration>
+                        <scalaVersion>${scala.version}</scalaVersion>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>3.2.0</version>
+                    <configuration>
+                        <finalName>spark-iotdb-connector_${scala.library.version}-${project.version}</finalName>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-shade-plugin</artifactId>
+                    <version>3.4.1</version>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>shade</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                    <configuration>
+                        <relocations>
+                            <relocation>
+                                <pattern>org.apache.thrift</pattern>
+                                <shadedPattern>shade.org.apache.thrift</shadedPattern>
+                            </relocation>
+                        </relocations>
+                        <shadedArtifactAttached>true</shadedArtifactAttached>
+                        <shadedClassifierName>jar-with-dependencies</shadedClassifierName>
+                        <createDependencyReducedPom>false</createDependencyReducedPom>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>

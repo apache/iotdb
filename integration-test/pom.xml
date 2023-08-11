@@ -25,9 +25,9 @@
         <artifactId>iotdb-parent</artifactId>
         <groupId>org.apache.iotdb</groupId>
         <version>1.3.0-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>integration-test</artifactId>
+    <name>IoTDB: Integration-Test</name>
     <properties>
         <integrationTest.forkCount>1</integrationTest.forkCount>
         <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
@@ -38,7 +38,176 @@
         <integrationTest.testEnv/>
         <integrationTest.excludedGroups/>
         <integrationTest.includedGroups/>
+        <!-- -DClusterConfigurations values configured here -->
+        <lightWeightStandaloneMode.configNodeNumber>1</lightWeightStandaloneMode.configNodeNumber>
+        <lightWeightStandaloneMode.dataNodeNumber>1</lightWeightStandaloneMode.dataNodeNumber>
+        <lightWeightStandaloneMode.configNodeConsensus>Simple</lightWeightStandaloneMode.configNodeConsensus>
+        <lightWeightStandaloneMode.schemaRegionConsensus>Simple</lightWeightStandaloneMode.schemaRegionConsensus>
+        <lightWeightStandaloneMode.dataRegionConsensus>Simple</lightWeightStandaloneMode.dataRegionConsensus>
+        <lightWeightStandaloneMode.schemaRegionReplicaNumber>1</lightWeightStandaloneMode.schemaRegionReplicaNumber>
+        <lightWeightStandaloneMode.dataRegionReplicaNumber>1</lightWeightStandaloneMode.dataRegionReplicaNumber>
+        <scalableSingleNodeMode.configNodeNumber>1</scalableSingleNodeMode.configNodeNumber>
+        <scalableSingleNodeMode.dataNodeNumber>1</scalableSingleNodeMode.dataNodeNumber>
+        <scalableSingleNodeMode.configNodeConsensus>Ratis</scalableSingleNodeMode.configNodeConsensus>
+        <scalableSingleNodeMode.schemaRegionConsensus>Ratis</scalableSingleNodeMode.schemaRegionConsensus>
+        <scalableSingleNodeMode.dataRegionConsensus>IoT</scalableSingleNodeMode.dataRegionConsensus>
+        <scalableSingleNodeMode.schemaRegionReplicaNumber>1</scalableSingleNodeMode.schemaRegionReplicaNumber>
+        <scalableSingleNodeMode.dataRegionReplicaNumber>1</scalableSingleNodeMode.dataRegionReplicaNumber>
+        <highPerformanceMode.configNodeNumber>1</highPerformanceMode.configNodeNumber>
+        <highPerformanceMode.dataNodeNumber>3</highPerformanceMode.dataNodeNumber>
+        <highPerformanceMode.configNodeConsensus>Ratis</highPerformanceMode.configNodeConsensus>
+        <highPerformanceMode.schemaRegionConsensus>Ratis</highPerformanceMode.schemaRegionConsensus>
+        <highPerformanceMode.dataRegionConsensus>IoT</highPerformanceMode.dataRegionConsensus>
+        <highPerformanceMode.schemaRegionReplicaNumber>3</highPerformanceMode.schemaRegionReplicaNumber>
+        <highPerformanceMode.dataRegionReplicaNumber>2</highPerformanceMode.dataRegionReplicaNumber>
+        <strongConsistencyClusterMode.configNodeNumber>3</strongConsistencyClusterMode.configNodeNumber>
+        <strongConsistencyClusterMode.dataNodeNumber>3</strongConsistencyClusterMode.dataNodeNumber>
+        <strongConsistencyClusterMode.configNodeConsensus>Ratis</strongConsistencyClusterMode.configNodeConsensus>
+        <strongConsistencyClusterMode.schemaRegionConsensus>Ratis</strongConsistencyClusterMode.schemaRegionConsensus>
+        <strongConsistencyClusterMode.dataRegionConsensus>Ratis</strongConsistencyClusterMode.dataRegionConsensus>
+        <strongConsistencyClusterMode.schemaRegionReplicaNumber>3</strongConsistencyClusterMode.schemaRegionReplicaNumber>
+        <strongConsistencyClusterMode.dataRegionReplicaNumber>3</strongConsistencyClusterMode.dataRegionReplicaNumber>
     </properties>
+    <build>
+        <plugins>
+            <!-- skip default-test -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>default-test</id>
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- If the test starts separate processes, we should package first -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>${maven.assembly.version}</version>
+                <configuration>
+                    <skipAssembly>${integrationTest.launchNodeInSameJVM}</skipAssembly>
+                </configuration>
+                <executions>
+                    <!-- Package binaries-->
+                    <execution>
+                        <id>cluster-test-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <descriptors>
+                                <descriptor>src/assembly/mpp-test.xml</descriptor>
+                            </descriptors>
+                            <finalName>template-node</finalName>
+                            <appendAssemblyId>false</appendAssemblyId>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>cluster-test-assembly-share</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <descriptors>
+                                <descriptor>src/assembly/mpp-share.xml</descriptor>
+                            </descriptors>
+                            <finalName>template-node-share</finalName>
+                            <appendAssemblyId>false</appendAssemblyId>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Run integration tests -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>integration-test</id>
+                        <goals>
+                            <goal>integration-test</goal>
+                        </goals>
+                        <configuration>
+                            <groups>${integrationTest.includedGroups}</groups>
+                            <excludedGroups>${integrationTest.excludedGroups}</excludedGroups>
+                            <useSystemClassLoader>false</useSystemClassLoader>
+                            <parallel>none</parallel>
+                            <forkCount>${integrationTest.forkCount}</forkCount>
+                            <reuseForks>false</reuseForks>
+                            <systemPropertyVariables>
+                                <TestEnv>${integrationTest.testEnv}</TestEnv>
+                                <RandomSelectWriteNode>${integrationTest.randomSelectWriteNode}</RandomSelectWriteNode>
+                                <ReadAndVerifyWithMultiNode>${integrationTest.readAndVerifyWithMultiNode}</ReadAndVerifyWithMultiNode>
+                                <lightWeightStandaloneMode.configNodeNumber>${lightWeightStandaloneMode.configNodeNumber}</lightWeightStandaloneMode.configNodeNumber>
+                                <lightWeightStandaloneMode.dataNodeNumber>${lightWeightStandaloneMode.dataNodeNumber}</lightWeightStandaloneMode.dataNodeNumber>
+                                <lightWeightStandaloneMode.configNodeConsensus>${lightWeightStandaloneMode.configNodeConsensus}</lightWeightStandaloneMode.configNodeConsensus>
+                                <lightWeightStandaloneMode.schemaRegionConsensus>${lightWeightStandaloneMode.schemaRegionConsensus}</lightWeightStandaloneMode.schemaRegionConsensus>
+                                <lightWeightStandaloneMode.dataRegionConsensus>${lightWeightStandaloneMode.dataRegionConsensus}</lightWeightStandaloneMode.dataRegionConsensus>
+                                <lightWeightStandaloneMode.schemaRegionReplicaNumber>${lightWeightStandaloneMode.schemaRegionReplicaNumber}</lightWeightStandaloneMode.schemaRegionReplicaNumber>
+                                <lightWeightStandaloneMode.dataRegionReplicaNumber>${lightWeightStandaloneMode.dataRegionReplicaNumber}</lightWeightStandaloneMode.dataRegionReplicaNumber>
+                                <scalableSingleNodeMode.configNodeNumber>${scalableSingleNodeMode.configNodeNumber}</scalableSingleNodeMode.configNodeNumber>
+                                <scalableSingleNodeMode.dataNodeNumber>${scalableSingleNodeMode.dataNodeNumber}</scalableSingleNodeMode.dataNodeNumber>
+                                <scalableSingleNodeMode.configNodeConsensus>${scalableSingleNodeMode.configNodeConsensus}</scalableSingleNodeMode.configNodeConsensus>
+                                <scalableSingleNodeMode.schemaRegionConsensus>${scalableSingleNodeMode.schemaRegionConsensus}</scalableSingleNodeMode.schemaRegionConsensus>
+                                <scalableSingleNodeMode.dataRegionConsensus>${scalableSingleNodeMode.dataRegionConsensus}</scalableSingleNodeMode.dataRegionConsensus>
+                                <scalableSingleNodeMode.schemaRegionReplicaNumber>${scalableSingleNodeMode.schemaRegionReplicaNumber}</scalableSingleNodeMode.schemaRegionReplicaNumber>
+                                <scalableSingleNodeMode.dataRegionReplicaNumber>${scalableSingleNodeMode.dataRegionReplicaNumber}</scalableSingleNodeMode.dataRegionReplicaNumber>
+                                <highPerformanceMode.configNodeNumber>${highPerformanceMode.configNodeNumber}</highPerformanceMode.configNodeNumber>
+                                <highPerformanceMode.dataNodeNumber>${highPerformanceMode.dataNodeNumber}</highPerformanceMode.dataNodeNumber>
+                                <highPerformanceMode.configNodeConsensus>${highPerformanceMode.configNodeConsensus}</highPerformanceMode.configNodeConsensus>
+                                <highPerformanceMode.schemaRegionConsensus>${highPerformanceMode.schemaRegionConsensus}</highPerformanceMode.schemaRegionConsensus>
+                                <highPerformanceMode.dataRegionConsensus>${highPerformanceMode.dataRegionConsensus}</highPerformanceMode.dataRegionConsensus>
+                                <highPerformanceMode.schemaRegionReplicaNumber>${highPerformanceMode.schemaRegionReplicaNumber}</highPerformanceMode.schemaRegionReplicaNumber>
+                                <highPerformanceMode.dataRegionReplicaNumber>${highPerformanceMode.dataRegionReplicaNumber}</highPerformanceMode.dataRegionReplicaNumber>
+                                <strongConsistencyClusterMode.configNodeNumber>${strongConsistencyClusterMode.configNodeNumber}</strongConsistencyClusterMode.configNodeNumber>
+                                <strongConsistencyClusterMode.dataNodeNumber>${strongConsistencyClusterMode.dataNodeNumber}</strongConsistencyClusterMode.dataNodeNumber>
+                                <strongConsistencyClusterMode.configNodeConsensus>${strongConsistencyClusterMode.configNodeConsensus}</strongConsistencyClusterMode.configNodeConsensus>
+                                <strongConsistencyClusterMode.schemaRegionConsensus>${strongConsistencyClusterMode.schemaRegionConsensus}</strongConsistencyClusterMode.schemaRegionConsensus>
+                                <strongConsistencyClusterMode.dataRegionConsensus>${strongConsistencyClusterMode.dataRegionConsensus}</strongConsistencyClusterMode.dataRegionConsensus>
+                                <strongConsistencyClusterMode.schemaRegionReplicaNumber>${strongConsistencyClusterMode.schemaRegionReplicaNumber}</strongConsistencyClusterMode.schemaRegionReplicaNumber>
+                                <strongConsistencyClusterMode.dataRegionReplicaNumber>${strongConsistencyClusterMode.dataRegionReplicaNumber}</strongConsistencyClusterMode.dataRegionReplicaNumber>
+                            </systemPropertyVariables>
+                            <summaryFile>target/failsafe-reports/failsafe-summary-IT.xml</summaryFile>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>verify</id>
+                        <goals>
+                            <goal>verify</goal>
+                        </goals>
+                        <configuration>
+                            <summaryFiles>
+                                <summaryFile>target/failsafe-reports/failsafe-summary-IT.xml</summaryFile>
+                            </summaryFiles>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>1.6.0</version>
+                <configuration>
+                    <mainClass>org.apache.iotdb.it.framework.IoTDBTestReporter</mainClass>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>report</id>
+                        <phase>post-integration-test</phase>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
@@ -160,118 +329,6 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
-    <build>
-        <plugins>
-            <!-- skip default-test -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>default-test</id>
-                        <configuration>
-                            <skip>true</skip>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <!-- If the test starts separate processes, we should package first -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <version>${maven.assembly.version}</version>
-                <configuration>
-                    <skipAssembly>${integrationTest.launchNodeInSameJVM}</skipAssembly>
-                </configuration>
-                <executions>
-                    <!-- Package binaries-->
-                    <execution>
-                        <id>cluster-test-assembly</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                        <configuration>
-                            <descriptors>
-                                <descriptor>src/assembly/mpp-test.xml</descriptor>
-                            </descriptors>
-                            <finalName>template-node</finalName>
-                            <appendAssemblyId>false</appendAssemblyId>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>cluster-test-assembly-share</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                        <configuration>
-                            <descriptors>
-                                <descriptor>src/assembly/mpp-share.xml</descriptor>
-                            </descriptors>
-                            <finalName>template-node-share</finalName>
-                            <appendAssemblyId>false</appendAssemblyId>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <!-- Run integration tests -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>integration-test</id>
-                        <goals>
-                            <goal>integration-test</goal>
-                        </goals>
-                        <configuration>
-                            <groups>${integrationTest.includedGroups}</groups>
-                            <excludedGroups>${integrationTest.excludedGroups}</excludedGroups>
-                            <useSystemClassLoader>false</useSystemClassLoader>
-                            <parallel>none</parallel>
-                            <forkCount>${integrationTest.forkCount}</forkCount>
-                            <reuseForks>false</reuseForks>
-                            <systemPropertyVariables>
-                                <TestEnv>${integrationTest.testEnv}</TestEnv>
-                                <RandomSelectWriteNode>${integrationTest.randomSelectWriteNode}</RandomSelectWriteNode>
-                                <ReadAndVerifyWithMultiNode>${integrationTest.readAndVerifyWithMultiNode}</ReadAndVerifyWithMultiNode>
-                            </systemPropertyVariables>
-                            <summaryFile>target/failsafe-reports/failsafe-summary-IT.xml</summaryFile>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>verify</id>
-                        <goals>
-                            <goal>verify</goal>
-                        </goals>
-                        <configuration>
-                            <summaryFiles>
-                                <summaryFile>target/failsafe-reports/failsafe-summary-IT.xml</summaryFile>
-                            </summaryFiles>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>1.6.0</version>
-                <configuration>
-                    <mainClass>org.apache.iotdb.it.framework.IoTDBTestReporter</mainClass>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>report</id>
-                        <phase>post-integration-test</phase>
-                        <goals>
-                            <goal>java</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
-    </build>
     <profiles>
         <profile>
             <id>SimpleIT</id>
@@ -294,6 +351,62 @@
                 <integrationTest.includedGroups>org.apache.iotdb.itbase.category.RemoteIT</integrationTest.includedGroups>
                 <integrationTest.excludedGroups/>
                 <integrationTest.testEnv>Remote</integrationTest.testEnv>
+            </properties>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+        </profile>
+        <profile>
+            <id>MultiClusterIT</id>
+            <properties>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT1,org.apache.iotdb.itbase.category.MultiClusterIT2,org.apache.iotdb.itbase.category.MultiClusterIT3</integrationTest.includedGroups>
+                <integrationTest.excludedGroups/>
+                <integrationTest.testEnv>MultiCluster</integrationTest.testEnv>
+                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
+                <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
+                <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
+            </properties>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+        </profile>
+        <profile>
+            <id>MultiClusterIT1</id>
+            <properties>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT1</integrationTest.includedGroups>
+                <integrationTest.excludedGroups/>
+                <integrationTest.testEnv>MultiCluster</integrationTest.testEnv>
+                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
+                <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
+                <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
+            </properties>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+        </profile>
+        <profile>
+            <id>MultiClusterIT2</id>
+            <properties>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT2</integrationTest.includedGroups>
+                <integrationTest.excludedGroups/>
+                <integrationTest.testEnv>MultiCluster</integrationTest.testEnv>
+                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
+                <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
+                <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
+            </properties>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+        </profile>
+        <profile>
+            <id>MultiClusterIT3</id>
+            <properties>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.MultiClusterIT3</integrationTest.includedGroups>
+                <integrationTest.excludedGroups/>
+                <integrationTest.testEnv>MultiCluster</integrationTest.testEnv>
+                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
+                <integrationTest.randomSelectWriteNode>true</integrationTest.randomSelectWriteNode>
+                <integrationTest.readAndVerifyWithMultiNode>true</integrationTest.readAndVerifyWithMultiNode>
             </properties>
             <activation>
                 <activeByDefault>false</activeByDefault>

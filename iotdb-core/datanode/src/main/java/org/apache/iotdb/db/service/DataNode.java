@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
+import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
@@ -108,7 +109,10 @@ public class DataNode implements DataNodeMBean {
 
   private final String mbeanName =
       String.format(
-          "%s:%s=%s", "org.apache.iotdb.datanode.service", IoTDBConstant.JMX_TYPE, "DataNode");
+          "%s:%s=%s",
+          IoTDBConstant.IOTDB_SERVICE_JMX_NAME,
+          IoTDBConstant.JMX_TYPE,
+          ServiceType.DATA_NODE.getJmxName());
 
   private static final File SYSTEM_PROPERTIES =
       SystemFileFactory.INSTANCE.getFile(
@@ -206,14 +210,6 @@ public class DataNode implements DataNodeMBean {
 
     // Notice: Consider this DataNode as first start if the system.properties file doesn't exist
     boolean isFirstStart = IoTDBStartCheck.getInstance().checkIsFirstStart();
-
-    // Check target ConfigNodes
-    for (TEndPoint endPoint : config.getTargetConfigNodeList()) {
-      if (endPoint.getIp().equals("0.0.0.0")) {
-        throw new StartupException(
-            "The ip address of any target_config_node_list couldn't be 0.0.0.0");
-      }
-    }
 
     // Set this node
     thisNode.setIp(config.getInternalAddress());

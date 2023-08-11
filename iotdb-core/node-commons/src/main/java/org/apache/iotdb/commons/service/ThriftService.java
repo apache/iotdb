@@ -38,7 +38,8 @@ public abstract class ThriftService implements IService {
 
   protected String mbeanName =
       String.format(
-          "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName());
+          "%s:%s=%s",
+          IoTDBConstant.IOTDB_SERVICE_JMX_NAME, IoTDBConstant.JMX_TYPE, getID().getJmxName());
   protected AbstractThriftServiceThread thriftServiceThread;
   protected TProcessor processor;
 

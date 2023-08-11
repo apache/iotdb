@@ -52,7 +52,7 @@ public class TabletInsertionDataContainer {
 
   private long[] timestampColumn;
   private TSDataType[] valueColumnTypes;
-  // each column of Object[] is a column of primitive type array
+  // Each column of Object[] is a column of primitive type array
   private Object[] valueColumns;
   private BitMap[] nullValueColumnBitmaps;
   private int rowCount;

@@ -20,22 +20,22 @@
 package org.apache.iotdb.db.pipe.task.connection;
 
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.LinkedList;
 import java.util.Queue;
 
 public class PipeEventCollector implements EventCollector {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeEventCollector.class);
+
   private final BoundedBlockingPendingQueue<Event> pendingQueue;
 
-  // buffer queue is used to store events that are not offered to pending queue
-  // because the pending queue is full. when pending queue is full, pending queue
-  // will notify tasks to stop extracting events, and buffer queue will be used to store
-  // events before tasks are stopped. when pending queue is not full and tasks are
-  // notified by the pending queue to start extracting events, buffer queue will be used to store
-  // events before events in buffer queue are offered to pending queue.
   private final Queue<Event> bufferQueue;
 
   public PipeEventCollector(BoundedBlockingPendingQueue<Event> pendingQueue) {
@@ -51,16 +51,42 @@ public class PipeEventCollector implements EventCollector {
 
     while (!bufferQueue.isEmpty()) {
       final Event bufferedEvent = bufferQueue.peek();
-      if (pendingQueue.offer(bufferedEvent)) {
+      // Try to put already buffered events into pending queue, if pending queue is full, wait for
+      // pending queue to be available with timeout.
+      if (pendingQueue.waitedOffer(bufferedEvent)) {
         bufferQueue.poll();
       } else {
-        bufferQueue.offer(event);
-        return;
+        // If timeout, we judge whether the new event is a PipeRawTabletInsertionEvent. If it is,
+        // we wait for pending queue to be available without timeout until the pending queue is
+        // available. We don't put PipeRawTabletInsertionEvent into buffer queue, because it is
+        // memory consuming, holding too many PipeRawTabletInsertionEvent in buffer queue may cause
+        // OOM.
+        if (event instanceof PipeRawTabletInsertionEvent) {
+          if (pendingQueue.put(bufferedEvent)) {
+            bufferQueue.poll();
+          } else {
+            LOGGER.warn("interrupted when putting event into pending queue, event: {}", event);
+            bufferQueue.offer(event);
+            return;
+          }
+        } else {
+          bufferQueue.offer(event);
+          return;
+        }
       }
     }
 
-    if (!pendingQueue.offer(event)) {
-      bufferQueue.offer(event);
+    if (!pendingQueue.waitedOffer(event)) {
+      // PipeRawTabletInsertionEvent is memory consuming, so we should not put it into buffer queue
+      // when pending queue is full. Otherwise, it may cause OOM.
+      if (event instanceof PipeRawTabletInsertionEvent) {
+        if (!pendingQueue.put(event)) {
+          LOGGER.warn("interrupted when putting event into pending queue, event: {}", event);
+          bufferQueue.offer(event);
+        }
+      } else {
+        bufferQueue.offer(event);
+      }
     }
   }
 }

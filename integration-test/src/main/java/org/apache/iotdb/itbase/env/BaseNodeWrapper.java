@@ -21,7 +21,9 @@ package org.apache.iotdb.itbase.env;
 
 public interface BaseNodeWrapper {
 
-  void createDir();
+  void createNodeDir();
+
+  void createLogDir();
 
   void destroyDir();
 

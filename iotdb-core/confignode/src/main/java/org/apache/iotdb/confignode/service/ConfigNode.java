@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
+import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.metric.JvmGcMonitorMetrics;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -87,7 +88,9 @@ public class ConfigNode implements ConfigNodeMBean {
   private final String mbeanName =
       String.format(
           "%s:%s=%s",
-          ConfigNodeConstant.CONFIGNODE_PACKAGE, ConfigNodeConstant.JMX_TYPE, "ConfigNode");
+          IoTDBConstant.IOTDB_SERVICE_JMX_NAME,
+          ConfigNodeConstant.JMX_TYPE,
+          ServiceType.CONFIG_NODE.getJmxName());
   private final RegisterManager registerManager = new RegisterManager();
 
   private ConfigManager configManager;
