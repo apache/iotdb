@@ -111,7 +111,7 @@ public class TsFileOverlapValidationAndRepairTool {
   }
 
   private static void checkTimePartitionHasOverlap(File timePartitionDir) throws IOException {
-    List<TsFileResource> resources = loadTsFileResources(timePartitionDir);
+    List<TsFileResource> resources = loadSortedTsFileResources(timePartitionDir);
     if (resources.isEmpty()) {
       return;
     }
@@ -143,7 +143,9 @@ public class TsFileOverlapValidationAndRepairTool {
             fileHasOverlap = true;
           }
         }
-        deviceEndTimeMap.put(device, deviceEndTimeInCurrentFile);
+        if (deviceEndTimeInCurrentFile > deviceEndTimeInPreviousFile) {
+          deviceEndTimeMap.put(device, deviceEndTimeInCurrentFile);
+        }
         deviceLastExistTsFileMap.put(device, resource);
       }
     }
@@ -160,7 +162,7 @@ public class TsFileOverlapValidationAndRepairTool {
     overlapTsFileNum++;
   }
 
-  public static List<TsFileResource> loadTsFileResources(File timePartitionDir) throws IOException {
+  public static List<TsFileResource> loadSortedTsFileResources(File timePartitionDir) throws IOException {
     List<TsFileResource> resources = new ArrayList<>();
     for (File tsfile : Objects.requireNonNull(timePartitionDir.listFiles())) {
       if (!tsfile.getAbsolutePath().endsWith(TsFileConstant.TSFILE_SUFFIX) || !tsfile.isFile()) {
@@ -177,6 +179,19 @@ public class TsFileOverlapValidationAndRepairTool {
       resource.close();
       resources.add(resource);
     }
+    resources.sort(
+        (f1, f2) -> {
+          int timeDiff =
+              Long.compareUnsigned(
+                  Long.parseLong(f1.getTsFile().getName().split("-")[0]),
+                  Long.parseLong(f2.getTsFile().getName().split("-")[0]));
+          return timeDiff == 0
+              ? Long.compareUnsigned(
+              Long.parseLong(f1.getTsFile().getName().split("-")[1]),
+              Long.parseLong(f2.getTsFile().getName().split("-")[1]))
+              : timeDiff;
+        });
+
 
     totalTsFileNum += resources.size();
     return resources;
