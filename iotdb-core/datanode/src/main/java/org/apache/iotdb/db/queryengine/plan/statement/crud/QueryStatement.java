@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.CountTimeAggregationAmountVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -50,6 +51,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 
 /**
  * Base class of SELECT statement.
@@ -486,17 +489,10 @@ public class QueryStatement extends Statement {
       if (isGroupByTag() && isAlignByDevice()) {
         throw new SemanticException("GROUP BY TAGS does not support align by device now.");
       }
-      boolean hasCountTimeAggregation = false;
       Set<String> outputColumn = new HashSet<>();
       for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
         if (resultColumn.getColumnType() != ResultColumn.ColumnType.AGGREGATION) {
           throw new SemanticException(RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG);
-        }
-        if (resultColumn.getExpression() instanceof FunctionExpression
-            && "count_time"
-                .equalsIgnoreCase(
-                    ((FunctionExpression) resultColumn.getExpression()).getFunctionName())) {
-          hasCountTimeAggregation = true;
         }
         outputColumn.add(
             resultColumn.getAlias() != null
@@ -504,20 +500,12 @@ public class QueryStatement extends Statement {
                 : resultColumn.getExpression().getExpressionString());
       }
 
-      if (hasCountTimeAggregation) {
-        if (isGroupByLevel()) {
-          throw new SemanticException(COUNT_TIME_NOT_SUPPORT_GROUP_BY_LEVEL);
-        }
-        if (isGroupByTag()) {
-          throw new SemanticException(COUNT_TIME_NOT_SUPPORT_GROUP_BY_TAG);
-        }
-      }
-
       for (Expression expression : getExpressionSortItemList()) {
         if (!hasAggregationFunction(expression)) {
           throw new SemanticException(RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG);
         }
       }
+      CountTimeAggregationAmountVisitor countTimeAggregationAmountVisitor = new CountTimeAggregationAmountVisitor();
       if (isGroupByTag()) {
         if (hasHaving()) {
           throw new SemanticException("Having clause is not supported yet in GROUP BY TAGS query");
@@ -532,6 +520,9 @@ public class QueryStatement extends Statement {
         }
         for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
           Expression expression = resultColumn.getExpression();
+          if (countTimeAggregationAmountVisitor.process(resultColumn.getExpression(), null).size() > 0) {
+            throw new SemanticException(COUNT_TIME_NOT_SUPPORT_GROUP_BY_TAG);
+          }
           if (!(expression instanceof FunctionExpression
               && expression.getExpressions().get(0) instanceof TimeSeriesOperand
               && expression.isBuiltInAggregationFunctionExpression())) {
@@ -539,6 +530,17 @@ public class QueryStatement extends Statement {
                 expression + " can't be used in group by tag. It will be supported in the future.");
           }
         }
+      }
+      if (isGroupByLevel()
+          && selectComponent.getResultColumns().stream()
+              .anyMatch(
+                  resultColumn ->
+                      resultColumn
+                          .getExpression()
+                          .getOutputSymbol()
+                          .toLowerCase()
+                          .contains(COUNT_TIME))) {
+        throw new SemanticException(COUNT_TIME_NOT_SUPPORT_GROUP_BY_LEVEL);
       }
       if (hasGroupByExpression()) {
         // Aggregation expression shouldn't exist in group by clause.
