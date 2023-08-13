@@ -20,12 +20,12 @@
 package org.apache.iotdb.db.pipe.connector;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.pipe.connector.thrift.payload.reponse.PipeTransferFilePieceResp;
-import org.apache.iotdb.db.pipe.connector.thrift.payload.request.PipeTransferFilePieceReq;
-import org.apache.iotdb.db.pipe.connector.thrift.payload.request.PipeTransferFileSealReq;
-import org.apache.iotdb.db.pipe.connector.thrift.payload.request.PipeTransferHandshakeReq;
-import org.apache.iotdb.db.pipe.connector.thrift.payload.request.PipeTransferInsertNodeReq;
-import org.apache.iotdb.db.pipe.connector.thrift.payload.request.PipeTransferTabletReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferInsertNodeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletReq;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
