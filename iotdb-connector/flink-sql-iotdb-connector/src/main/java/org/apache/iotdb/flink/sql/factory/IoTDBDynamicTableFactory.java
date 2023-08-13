@@ -93,6 +93,7 @@ public class IoTDBDynamicTableFactory
     optionalOptions.add(Options.LOOKUP_CACHE_MAX_ROWS);
     optionalOptions.add(Options.LOOKUP_CACHE_TTL_SEC);
     optionalOptions.add(Options.ALIGNED);
+    optionalOptions.add(Options.MODE);
 
     return optionalOptions;
   }

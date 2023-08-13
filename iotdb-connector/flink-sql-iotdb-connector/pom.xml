@@ -50,6 +50,11 @@
             <artifactId>flink-table-common</artifactId>
             <version>${flink.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.java-websocket</groupId>
+            <artifactId>Java-WebSocket</artifactId>
+            <version>1.5.3</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

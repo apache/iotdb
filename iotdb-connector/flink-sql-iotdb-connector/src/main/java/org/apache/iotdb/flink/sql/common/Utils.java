@@ -29,6 +29,7 @@ import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.data.StringData;
 import org.apache.flink.table.types.DataType;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -110,5 +111,15 @@ public class Utils {
     }
     GenericRowData rowData = GenericRowData.of(values.toArray());
     return rowData;
+  }
+
+  public static List<Object> object2List(Object obj) {
+    ArrayList<Object> objects = new ArrayList<>();
+    int length = Array.getLength(obj);
+    for (int i = 0; i < length; i++) {
+      objects.add(Array.get(obj, i));
+    }
+
+    return objects;
   }
 }
