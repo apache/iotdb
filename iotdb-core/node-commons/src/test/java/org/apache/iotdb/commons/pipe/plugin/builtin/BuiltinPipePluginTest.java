@@ -20,7 +20,7 @@
 package org.apache.iotdb.commons.pipe.plugin.builtin;
 
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.DoNothingConnector;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBSyncConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBLegacyPipeConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.IoTDBExtractor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DoNothingProcessor;
@@ -121,7 +121,7 @@ public class BuiltinPipePluginTest {
       Assert.fail();
     }
 
-    testConnectorAllThrow(new IoTDBSyncConnector());
+    testConnectorAllThrow(new IoTDBLegacyPipeConnector());
     testConnectorAllThrow(new IoTDBThriftConnector());
   }
 

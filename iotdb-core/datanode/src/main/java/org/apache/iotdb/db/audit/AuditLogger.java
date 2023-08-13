@@ -45,7 +45,7 @@ import javax.validation.constraints.NotNull;
 
 import java.util.List;
 
-import static org.apache.iotdb.db.pipe.connector.legacy.loader.ILoader.SCHEMA_FETCHER;
+import static org.apache.iotdb.db.pipe.receiver.legacy.loader.ILoader.SCHEMA_FETCHER;
 
 public class AuditLogger {
   private static final Logger logger = LoggerFactory.getLogger(AuditLogger.class);
