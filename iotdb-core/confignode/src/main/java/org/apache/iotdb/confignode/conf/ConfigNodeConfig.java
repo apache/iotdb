@@ -41,13 +41,13 @@ public class ConfigNodeConfig {
   /** ConfigNodeId, the default value -1 will be changed after join cluster. */
   private volatile int configNodeId = -1;
 
-  /** could set ip or hostname. */
+  /** Could set ip or hostname. */
   private String internalAddress = "127.0.0.1";
 
-  /** used for communication between data node and config node. */
+  /** Used for communication between data node and config node. */
   private int internalPort = 10710;
 
-  /** used for communication between config node and config node. */
+  /** Used for communication between config node and config node. */
   private int consensusPort = 10720;
 
   /** Used for connecting to the ConfigNodeGroup. */
@@ -109,12 +109,6 @@ public class ConfigNodeConfig {
   /** RegionGroup allocate policy. */
   private RegionBalancer.RegionGroupAllocatePolicy regionGroupAllocatePolicy =
       RegionBalancer.RegionGroupAllocatePolicy.GREEDY;
-
-  /**
-   * DataPartition within the same SeriesPartitionSlot will inherit the allocation result of the
-   * predecessor or successor TimePartitionSlot if set true.
-   */
-  private boolean enableDataPartitionInheritPolicy = true;
 
   /** Max concurrent client number. */
   private int rpcMaxConcurrentClientNum = 65535;
@@ -557,14 +551,6 @@ public class ConfigNodeConfig {
   public void setRegionAllocateStrategy(
       RegionBalancer.RegionGroupAllocatePolicy regionGroupAllocatePolicy) {
     this.regionGroupAllocatePolicy = regionGroupAllocatePolicy;
-  }
-
-  public boolean isEnableDataPartitionInheritPolicy() {
-    return enableDataPartitionInheritPolicy;
-  }
-
-  public void setEnableDataPartitionInheritPolicy(boolean enableDataPartitionInheritPolicy) {
-    this.enableDataPartitionInheritPolicy = enableDataPartitionInheritPolicy;
   }
 
   public int getThriftServerAwaitTimeForStopService() {

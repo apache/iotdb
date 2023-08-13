@@ -33,7 +33,6 @@ public enum ServiceType {
   JVM_MEM_CONTROL_SERVICE("Memory Controller", "JvmMemControlService"),
   AUTHORIZATION_SERVICE("Authorization ServerService", "AuthService"),
   FILE_READER_MANAGER_SERVICE("File reader manager ServerService", "FileReaderManagerService"),
-  UPGRADE_SERVICE("UPGRADE DataService", "UpgradeService"),
   SETTLE_SERVICE("SETTLE DataService", "SettleService"),
   SYNC_RPC_SERVICE("Sync RPC ServerService", ""),
   SYNC_SERVICE("Sync Service", "SyncService"),
@@ -77,7 +76,10 @@ public enum ServiceType {
   PIPE_PLUGIN_CLASSLOADER_MANAGER_SERVICE(
       "Pipe Plugin Classloader Manager Service", "PipePluginClassLoader"),
   PIPE_RUNTIME_AGENT("Pipe Runtime Agent", "PipeRuntimeAgent"),
-  MLNode_RPC_SERVICE("Rpc Service for MLNode", "MLNodeRPCService");
+  MLNode_RPC_SERVICE("Rpc Service for MLNode", "MLNodeRPCService"),
+  SESSION_MANAGER("Session Manager", "RpcSession"),
+  CONFIG_NODE("Config Node", "ConfigNode"),
+  DATA_NODE("Data Node", "DataNode");
   private final String name;
   private final String jmxName;
 

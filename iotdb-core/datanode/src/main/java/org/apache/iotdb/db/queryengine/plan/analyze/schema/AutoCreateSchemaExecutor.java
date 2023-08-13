@@ -24,8 +24,15 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
+import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
+import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.MeasurementGroup;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -54,32 +61,47 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
 class AutoCreateSchemaExecutor {
-
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private final Coordinator coordinator;
   private final ITemplateManager templateManager;
-  private final Function<Statement, ExecutionResult> statementExecutor;
+  private final ISchemaFetcher schemaFetcher;
 
   AutoCreateSchemaExecutor(
-      ITemplateManager templateManager, Function<Statement, ExecutionResult> statementExecutor) {
+      Coordinator coordinator, ITemplateManager templateManager, ISchemaFetcher schemaFetcher) {
+    this.coordinator = coordinator;
     this.templateManager = templateManager;
-    this.statementExecutor = statementExecutor;
+    this.schemaFetcher = schemaFetcher;
   }
 
-  // auto create the missing measurements and merge them into given schemaTree
+  private ExecutionResult executeStatement(Statement statement, MPPQueryContext context) {
+    return coordinator.execute(
+        statement,
+        SessionManager.getInstance().requestQueryId(),
+        context == null ? null : context.getSession(),
+        "",
+        ClusterPartitionFetcher.getInstance(),
+        schemaFetcher,
+        context == null || context.getQueryType().equals(QueryType.WRITE)
+            ? config.getQueryTimeoutThreshold()
+            : context.getTimeOut());
+  }
+
+  // Auto create the missing measurements and merge them into given schemaTree
   void autoCreateTimeSeries(
       ClusterSchemaTree schemaTree,
       PartialPath devicePath,
       List<Integer> indexOfTargetMeasurements,
       String[] measurements,
       IntFunction<TSDataType> getDataType,
-      boolean isAligned) {
-    // auto create the rest missing timeseries
+      boolean isAligned,
+      MPPQueryContext context) {
+    // Auto create the rest missing timeseries
     List<String> missingMeasurements = new ArrayList<>(indexOfTargetMeasurements.size());
     List<TSDataType> dataTypesOfMissingMeasurement =
         new ArrayList<>(indexOfTargetMeasurements.size());
@@ -91,7 +113,7 @@ class AutoCreateSchemaExecutor {
         index -> {
           TSDataType tsDataType = getDataType.apply(index);
           // tsDataType == null means insert null value to a non-exist series
-          // should skip creating them
+          // Should skip creating them
           if (tsDataType != null) {
             missingMeasurements.add(measurements[index]);
             dataTypesOfMissingMeasurement.add(tsDataType);
@@ -109,7 +131,8 @@ class AutoCreateSchemaExecutor {
           dataTypesOfMissingMeasurement,
           encodingsOfMissingMeasurement,
           compressionTypesOfMissingMeasurement,
-          isAligned);
+          isAligned,
+          context);
     }
   }
 
@@ -120,8 +143,9 @@ class AutoCreateSchemaExecutor {
       List<List<Integer>> indexOfTargetMeasurementsList,
       List<String[]> measurementsList,
       List<TSDataType[]> tsDataTypesList,
-      List<Boolean> isAlignedList) {
-    // check whether there is template should be activated
+      List<Boolean> isAlignedList,
+      MPPQueryContext context) {
+    // Check whether there is template should be activated
     Map<PartialPath, Pair<Boolean, MeasurementGroup>> devicesNeedAutoCreateTimeSeries =
         new HashMap<>();
     int deviceIndex;
@@ -132,7 +156,7 @@ class AutoCreateSchemaExecutor {
       devicePath = devicePathList.get(deviceIndex);
       indexOfTargetMeasurements = indexOfTargetMeasurementsList.get(i);
 
-      // there are measurements need to be created as normal timeseries
+      // There are measurements need to be created as normal timeseries
       int finalDeviceIndex = deviceIndex;
       List<Integer> finalIndexOfMeasurementsNotInTemplate = indexOfTargetMeasurements;
       devicesNeedAutoCreateTimeSeries.compute(
@@ -159,18 +183,22 @@ class AutoCreateSchemaExecutor {
     }
 
     if (!devicesNeedAutoCreateTimeSeries.isEmpty()) {
-      internalCreateTimeSeries(schemaTree, devicesNeedAutoCreateTimeSeries);
+      internalCreateTimeSeries(schemaTree, devicesNeedAutoCreateTimeSeries, context);
     }
   }
 
-  // used for insert record or tablet
+  // Used for insert record or tablet
   void autoExtendTemplate(
-      String templateName, List<String> measurementList, List<TSDataType> dataTypeList) {
-    internalExtendTemplate(templateName, measurementList, dataTypeList, null, null);
+      String templateName,
+      List<String> measurementList,
+      List<TSDataType> dataTypeList,
+      MPPQueryContext context) {
+    internalExtendTemplate(templateName, measurementList, dataTypeList, null, null, context);
   }
 
-  // used for insert records or tablets
-  void autoExtendTemplate(Map<String, TemplateExtendInfo> templateExtendInfoMap) {
+  // Used for insert records or tablets
+  void autoExtendTemplate(
+      Map<String, TemplateExtendInfo> templateExtendInfoMap, MPPQueryContext context) {
     TemplateExtendInfo templateExtendInfo;
     for (Map.Entry<String, TemplateExtendInfo> entry : templateExtendInfoMap.entrySet()) {
       templateExtendInfo = entry.getValue().deduplicate();
@@ -179,12 +207,17 @@ class AutoCreateSchemaExecutor {
           templateExtendInfo.getMeasurements(),
           templateExtendInfo.getDataTypes(),
           templateExtendInfo.getEncodings(),
-          templateExtendInfo.getCompressors());
+          templateExtendInfo.getCompressors(),
+          context);
     }
   }
 
-  void autoActivateTemplate(ClusterSchemaTree schemaTree, PartialPath devicePath, int templateId) {
-    internalActivateTemplate(devicePath);
+  void autoActivateTemplate(
+      ClusterSchemaTree schemaTree,
+      PartialPath devicePath,
+      int templateId,
+      MPPQueryContext context) {
+    internalActivateTemplate(devicePath, context);
     Template template = templateManager.getTemplate(templateId);
     for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
       schemaTree.appendSingleMeasurement(
@@ -199,7 +232,8 @@ class AutoCreateSchemaExecutor {
   void autoActivateTemplate(
       ClusterSchemaTree schemaTree,
       List<PartialPath> deviceList,
-      List<Pair<Template, PartialPath>> templateSetInfoList) {
+      List<Pair<Template, PartialPath>> templateSetInfoList,
+      MPPQueryContext context) {
     Map<PartialPath, Pair<Template, PartialPath>> devicesNeedActivateTemplate = new HashMap<>();
     for (int i = 0; i < deviceList.size(); i++) {
       devicesNeedActivateTemplate.put(
@@ -208,13 +242,13 @@ class AutoCreateSchemaExecutor {
               templateManager.getTemplate(templateSetInfoList.get(i).left.getId()),
               templateSetInfoList.get(i).right));
     }
-    internalActivateTemplate(devicesNeedActivateTemplate);
+    internalActivateTemplate(devicesNeedActivateTemplate, context);
     PartialPath devicePath;
     Template template;
     for (Map.Entry<PartialPath, Pair<Template, PartialPath>> entry :
         devicesNeedActivateTemplate.entrySet()) {
       devicePath = entry.getKey();
-      // take the latest template
+      // Take the latest template
       template = templateManager.getTemplate(entry.getValue().left.getId());
       for (Map.Entry<String, IMeasurementSchema> measurementEntry :
           template.getSchemaMap().entrySet()) {
@@ -228,7 +262,7 @@ class AutoCreateSchemaExecutor {
     }
   }
 
-  // used for load TsFile
+  // Used for load TsFile
   @SuppressWarnings("squid:S107")
   void autoCreateMissingMeasurements(
       ClusterSchemaTree schemaTree,
@@ -239,8 +273,9 @@ class AutoCreateSchemaExecutor {
       List<TSDataType[]> tsDataTypesList,
       List<TSEncoding[]> encodingsList,
       List<CompressionType[]> compressionTypesList,
-      List<Boolean> isAlignedList) {
-    // check whether there is template should be activated
+      List<Boolean> isAlignedList,
+      MPPQueryContext context) {
+    // Check whether there is template should be activated
 
     Map<PartialPath, Pair<Template, PartialPath>> devicesNeedActivateTemplate = new HashMap<>();
     Map<PartialPath, Pair<Boolean, MeasurementGroup>> devicesNeedAutoCreateTimeSeries =
@@ -263,7 +298,7 @@ class AutoCreateSchemaExecutor {
       }
 
       if (templateInfo == null) {
-        // there are measurements need to be created as normal timeseries
+        // There are measurements need to be created as normal timeseries
         int finalDeviceIndex = deviceIndex;
         List<Integer> finalIndexOfMeasurementsNotInTemplate = indexOfTargetMeasurements;
         devicesNeedAutoCreateTimeSeries.compute(
@@ -301,7 +336,7 @@ class AutoCreateSchemaExecutor {
             checkMeasurementsInSchemaTemplate(
                 indexOfTargetMeasurements, measurementsList.get(deviceIndex), template);
         if (schemaTree.getMatchedDevices(devicePath).isEmpty()) {
-          // not activated yet
+          // Not activated yet
           devicesNeedActivateTemplate.putIfAbsent(devicePath, templateInfo);
         }
 
@@ -353,7 +388,8 @@ class AutoCreateSchemaExecutor {
             templateExtendInfo.getMeasurements(),
             templateExtendInfo.getDataTypes(),
             templateExtendInfo.getEncodings(),
-            templateExtendInfo.getCompressors());
+            templateExtendInfo.getCompressors(),
+            context);
       }
       for (Pair<Template, PartialPath> value : devicesNeedActivateTemplate.values()) {
         value.left = templateManager.getTemplate(value.left.getId());
@@ -361,11 +397,11 @@ class AutoCreateSchemaExecutor {
     }
 
     if (!devicesNeedActivateTemplate.isEmpty()) {
-      internalActivateTemplate(devicesNeedActivateTemplate);
+      internalActivateTemplate(devicesNeedActivateTemplate, context);
       for (Map.Entry<PartialPath, Pair<Template, PartialPath>> entry :
           devicesNeedActivateTemplate.entrySet()) {
         devicePath = entry.getKey();
-        // take the latest template
+        // Take the latest template
         template = templateManager.getTemplate(entry.getValue().left.getId());
         for (Map.Entry<String, IMeasurementSchema> measurementEntry :
             template.getSchemaMap().entrySet()) {
@@ -380,13 +416,13 @@ class AutoCreateSchemaExecutor {
     }
 
     if (!devicesNeedAutoCreateTimeSeries.isEmpty()) {
-      internalCreateTimeSeries(schemaTree, devicesNeedAutoCreateTimeSeries);
+      internalCreateTimeSeries(schemaTree, devicesNeedAutoCreateTimeSeries, context);
     }
   }
 
   private List<Integer> checkMeasurementsInSchemaTemplate(
       List<Integer> indexOfTargetMeasurements, String[] measurements, Template template) {
-    // check whether there is template should be activated
+    // Check whether there is template should be activated
     boolean shouldActivateTemplate = false;
     for (int index : indexOfTargetMeasurements) {
       if (template.hasSchema(measurements[index])) {
@@ -407,7 +443,7 @@ class AutoCreateSchemaExecutor {
     }
   }
 
-  // try to create the target timeseries and merge schema of successfully created
+  // Try to create the target timeseries and merge schema of successfully created
   // timeseries and existing timeseries into given schemaTree
   private void internalCreateTimeSeries(
       ClusterSchemaTree schemaTree,
@@ -416,11 +452,13 @@ class AutoCreateSchemaExecutor {
       List<TSDataType> tsDataTypes,
       List<TSEncoding> encodings,
       List<CompressionType> compressors,
-      boolean isAligned) {
+      boolean isAligned,
+      MPPQueryContext context) {
     List<MeasurementPath> measurementPathList =
         executeInternalCreateTimeseriesStatement(
             new InternalCreateTimeSeriesStatement(
-                devicePath, measurements, tsDataTypes, encodings, compressors, isAligned));
+                devicePath, measurements, tsDataTypes, encodings, compressors, isAligned),
+            context);
 
     Set<Integer> alreadyExistingMeasurementIndexSet =
         measurementPathList.stream()
@@ -444,10 +482,11 @@ class AutoCreateSchemaExecutor {
     }
   }
 
-  // auto create timeseries and return the existing timeseries info
-  private List<MeasurementPath> executeInternalCreateTimeseriesStatement(Statement statement) {
+  // Auto create timeseries and return the existing timeseries info
+  private List<MeasurementPath> executeInternalCreateTimeseriesStatement(
+      Statement statement, MPPQueryContext context) {
 
-    ExecutionResult executionResult = statementExecutor.apply(statement);
+    ExecutionResult executionResult = executeStatement(statement, context);
 
     int statusCode = executionResult.status.getCode();
     if (statusCode == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -477,9 +516,9 @@ class AutoCreateSchemaExecutor {
     return alreadyExistingMeasurements;
   }
 
-  private void internalActivateTemplate(PartialPath devicePath) {
+  private void internalActivateTemplate(PartialPath devicePath, MPPQueryContext context) {
     ExecutionResult executionResult =
-        statementExecutor.apply(new ActivateTemplateStatement(devicePath));
+        executeStatement(new ActivateTemplateStatement(devicePath), context);
     TSStatus status = executionResult.status;
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && status.getCode() != TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
@@ -488,10 +527,11 @@ class AutoCreateSchemaExecutor {
   }
 
   private void internalActivateTemplate(
-      Map<PartialPath, Pair<Template, PartialPath>> devicesNeedActivateTemplate) {
+      Map<PartialPath, Pair<Template, PartialPath>> devicesNeedActivateTemplate,
+      MPPQueryContext context) {
     ExecutionResult executionResult =
-        statementExecutor.apply(
-            new InternalBatchActivateTemplateStatement(devicesNeedActivateTemplate));
+        executeStatement(
+            new InternalBatchActivateTemplateStatement(devicesNeedActivateTemplate), context);
     TSStatus status = executionResult.status;
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         || status.getCode() == TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
@@ -515,11 +555,12 @@ class AutoCreateSchemaExecutor {
 
   private void internalCreateTimeSeries(
       ClusterSchemaTree schemaTree,
-      Map<PartialPath, Pair<Boolean, MeasurementGroup>> devicesNeedAutoCreateTimeSeries) {
+      Map<PartialPath, Pair<Boolean, MeasurementGroup>> devicesNeedAutoCreateTimeSeries,
+      MPPQueryContext context) {
 
     List<MeasurementPath> measurementPathList =
         executeInternalCreateTimeseriesStatement(
-            new InternalCreateMultiTimeSeriesStatement(devicesNeedAutoCreateTimeSeries));
+            new InternalCreateMultiTimeSeriesStatement(devicesNeedAutoCreateTimeSeries), context);
 
     schemaTree.appendMeasurementPaths(measurementPathList);
 
@@ -559,17 +600,19 @@ class AutoCreateSchemaExecutor {
       List<String> measurementList,
       List<TSDataType> dataTypeList,
       List<TSEncoding> encodingList,
-      List<CompressionType> compressionTypeList) {
+      List<CompressionType> compressionTypeList,
+      MPPQueryContext context) {
 
     ExecutionResult executionResult =
-        statementExecutor.apply(
+        executeStatement(
             new AlterSchemaTemplateStatement(
                 templateName,
                 measurementList,
                 dataTypeList,
                 encodingList,
                 compressionTypeList,
-                TemplateAlterOperationType.EXTEND_TEMPLATE));
+                TemplateAlterOperationType.EXTEND_TEMPLATE),
+            context);
     TSStatus status = executionResult.status;
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && status.getCode()

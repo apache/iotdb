@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -102,7 +103,8 @@ class NormalSchemaFetcher {
   }
 
   List<Integer> processNormalTimeSeries(
-      ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation) {
+      ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation,
+      MPPQueryContext context) {
     // [Step 0] Record the input value.
     boolean isAlignedPutIn = schemaComputationWithAutoCreation.isAligned();
 
@@ -128,7 +130,8 @@ class NormalSchemaFetcher {
           clusterSchemaFetchExecutor.fetchSchemaOfOneDevice(
               schemaComputationWithAutoCreation.getDevicePath(),
               schemaComputationWithAutoCreation.getMeasurements(),
-              indexOfMissingMeasurements);
+              indexOfMissingMeasurements,
+              context);
     } else {
       PathPatternTree patternTree =
           computePatternTreeNeededReFetch(
@@ -136,7 +139,8 @@ class NormalSchemaFetcher {
               schemaComputationWithAutoCreation.getMeasurements(),
               indexOfMissingMeasurements,
               missedPathStringOfLogicalView);
-      remoteSchemaTree = clusterSchemaFetchExecutor.fetchSchemaWithPatternTreeAndCache(patternTree);
+      remoteSchemaTree =
+          clusterSchemaFetchExecutor.fetchSchemaWithPatternTreeAndCache(patternTree, context);
     }
     // make sure all missed views are computed.
     remoteSchemaTree.computeSourceOfLogicalView(
@@ -153,7 +157,8 @@ class NormalSchemaFetcher {
     missedPathStringOfLogicalView = missedIndexAndPathString.right;
     if (!missedPathStringOfLogicalView.isEmpty()) {
       ClusterSchemaTree viewSchemaTree =
-          clusterSchemaFetchExecutor.fetchSchemaWithFullPaths(missedPathStringOfLogicalView);
+          clusterSchemaFetchExecutor.fetchSchemaWithFullPaths(
+              missedPathStringOfLogicalView, context);
       viewSchemaTree.computeSourceOfLogicalView(
           schemaComputationWithAutoCreation, indexOfMissingLogicalView);
     }
@@ -177,7 +182,8 @@ class NormalSchemaFetcher {
           indexOfMissingMeasurements,
           schemaComputationWithAutoCreation.getMeasurements(),
           schemaComputationWithAutoCreation::getDataType,
-          isAlignedPutIn);
+          isAlignedPutIn,
+          context);
       indexOfMissingMeasurements =
           schemaTree.compute(schemaComputationWithAutoCreation, indexOfMissingMeasurements);
     }
@@ -186,7 +192,8 @@ class NormalSchemaFetcher {
   }
 
   void processNormalTimeSeries(
-      List<? extends ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList) {
+      List<? extends ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList,
+      MPPQueryContext context) {
     // [Step 0] Record the input value.
     List<Boolean> isAlignedPutInList = null;
     if (config.isAutoCreateSchemaEnabled()) {
@@ -241,7 +248,8 @@ class NormalSchemaFetcher {
                   .map(ISchemaComputationWithAutoCreation::getMeasurements)
                   .collect(Collectors.toList()),
               indexOfDevicesWithMissingMeasurements,
-              indexOfMissingMeasurementsList);
+              indexOfMissingMeasurementsList,
+              context);
     } else {
       PathPatternTree patternTree =
           computePatternTreeNeededReFetch(
@@ -258,7 +266,8 @@ class NormalSchemaFetcher {
         fullPathsNeedReFetch.addAll(pair.right);
       }
       computePatternTreeNeededReFetch(patternTree, fullPathsNeedReFetch);
-      remoteSchemaTree = clusterSchemaFetchExecutor.fetchSchemaWithPatternTreeAndCache(patternTree);
+      remoteSchemaTree =
+          clusterSchemaFetchExecutor.fetchSchemaWithPatternTreeAndCache(patternTree, context);
     }
     // make sure all missed views are computed.
     for (int i = 0; i < schemaComputationWithAutoCreationList.size(); i++) {
@@ -299,7 +308,7 @@ class NormalSchemaFetcher {
         fullPathsNeedRefetch.addAll(pair.right);
       }
       ClusterSchemaTree viewSchemaTree =
-          clusterSchemaFetchExecutor.fetchSchemaWithFullPaths(fullPathsNeedRefetch);
+          clusterSchemaFetchExecutor.fetchSchemaWithFullPaths(fullPathsNeedRefetch, context);
       for (int i = 0, size = schemaComputationWithAutoCreationList.size(); i < size; i++) {
         schemaComputationWithAutoCreation = schemaComputationWithAutoCreationList.get(i);
         viewSchemaTree.computeSourceOfLogicalView(
@@ -345,7 +354,8 @@ class NormalSchemaFetcher {
                     return dataTypes;
                   })
               .collect(Collectors.toList()),
-          isAlignedPutInList);
+          isAlignedPutInList,
+          context);
       indexOfDevicesWithMissingMeasurements = new ArrayList<>();
       indexOfMissingMeasurementsList = new ArrayList<>();
       for (int i = 0; i < indexOfDevicesNeedAutoCreateSchema.size(); i++) {

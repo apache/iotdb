@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.plan.execution.QueryExecution;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -41,8 +42,8 @@ import static org.apache.iotdb.db.queryengine.execution.QueryState.QUEUED;
 import static org.apache.iotdb.db.queryengine.execution.QueryState.RUNNING;
 
 /**
- * State machine for a QueryExecution. It stores the states for the QueryExecution. Others can
- * register listeners when the state changes of the QueryExecution.
+ * State machine for a {@link QueryExecution}. It stores the states for the {@link QueryExecution}.
+ * Others can register listeners when the state changes of the {@link QueryExecution}.
  */
 public class QueryStateMachine {
   private final StateMachine<QueryState> queryState;

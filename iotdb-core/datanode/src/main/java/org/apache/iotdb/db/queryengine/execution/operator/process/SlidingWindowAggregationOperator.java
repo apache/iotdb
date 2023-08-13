@@ -40,11 +40,11 @@ import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil
 public class SlidingWindowAggregationOperator extends SingleInputAggregationOperator {
 
   private final ITimeRangeIterator timeRangeIterator;
-  // current interval of aggregation window [curStartTime, curEndTime)
+  // Current interval of aggregation window [curStartTime, curEndTime)
   private TimeRange curTimeRange;
 
   private final ITimeRangeIterator subTimeRangeIterator;
-  // current interval of pre-aggregation window [curStartTime, curEndTime)
+  // Current interval of pre-aggregation window [curStartTime, curEndTime)
   private TimeRange curSubTimeRange;
 
   public SlidingWindowAggregationOperator(
@@ -79,10 +79,10 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
   @Override
   protected boolean calculateNextAggregationResult() throws Exception {
     if (curTimeRange == null && timeRangeIterator.hasNextTimeRange()) {
-      // move to next time window
+      // Move to next time window
       curTimeRange = timeRangeIterator.nextTimeRange();
 
-      // clear previous aggregation result
+      // Clear previous aggregation result
       for (Aggregator aggregator : aggregators) {
         ((SlidingWindowAggregator) aggregator).updateTimeRange(curTimeRange);
       }
@@ -95,7 +95,7 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
           inputTsBlock = child.nextWithTimer();
           canCallNext = false;
         } else if (child.hasNextWithTimer()) {
-          // if child still has next but can't be invoked now
+          // If child still has next but can't be invoked now
           return false;
         } else {
           break;
@@ -105,7 +105,7 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
       calculateFromCachedData();
     }
 
-    // update result using aggregators
+    // Update result using aggregators
     updateResultTsBlock();
 
     return true;

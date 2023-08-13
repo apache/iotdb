@@ -87,7 +87,7 @@ public class StateMachine<T> {
         ImmutableSet.copyOf(requireNonNull(terminalStates, "terminalStates is null"));
   }
 
-  // state changes are atomic and state is volatile, so a direct read is safe here
+  // State changes are atomic and state is volatile, so a direct read is safe here
   @SuppressWarnings("FieldAccessNotGuarded")
   public T get() {
     return state;
@@ -288,7 +288,7 @@ public class StateMachine<T> {
       }
     }
 
-    // fire state change listener with the current state
+    // Fire state change listener with the current state
     // always fire listener callbacks from a different thread
     safeExecute(() -> stateChangeListener.stateChanged(currentState));
   }

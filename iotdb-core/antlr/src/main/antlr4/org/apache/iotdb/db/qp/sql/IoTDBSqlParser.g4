@@ -216,7 +216,7 @@ devicesWhereClause
     ;
 
 deviceContainsExpression
-    : DEVICE OPERATOR_CONTAINS value=STRING_LITERAL
+    : DEVICE operator_contains value=STRING_LITERAL
     ;
 
 // ---- Timeseries Where Clause
@@ -225,7 +225,7 @@ timeseriesWhereClause
     ;
 
 timeseriesContainsExpression
-    : TIMESERIES OPERATOR_CONTAINS value=STRING_LITERAL
+    : TIMESERIES operator_contains value=STRING_LITERAL
     ;
 
 columnEqualsExpression
@@ -237,7 +237,7 @@ tagEqualsExpression
     ;
 
 tagContainsExpression
-    : TAGS LR_BRACKET name=attributeKey RR_BRACKET OPERATOR_CONTAINS value=STRING_LITERAL
+    : TAGS LR_BRACKET name=attributeKey RR_BRACKET operator_contains value=STRING_LITERAL
     ;
 
 
@@ -274,7 +274,7 @@ showSchemaTemplates
 
 // ---- Show Measurements In Schema Template
 showNodesInSchemaTemplate
-    : SHOW NODES OPERATOR_IN SCHEMA TEMPLATE templateName=identifier
+    : SHOW NODES operator_in SCHEMA TEMPLATE templateName=identifier
     ;
 
 // ---- Show Paths Set Schema Template
@@ -481,7 +481,7 @@ showConfigNodes
 getRegionId
     : SHOW (DATA|SCHEMA) REGIONID WHERE (DATABASE operator_eq database=prefixPath
         |DEVICE operator_eq device=prefixPath)
-        (OPERATOR_AND (TIMESTAMP|TIME) operator_eq time = timeValue)?
+        (operator_and (TIMESTAMP|TIME) operator_eq time = timeValue)?
     ;
 
 // ---- Get Time Slot List
@@ -489,8 +489,8 @@ getTimeSlotList
     : SHOW (TIMESLOTID|TIMEPARTITION) WHERE (DEVICE operator_eq device=prefixPath
         | REGIONID operator_eq regionId=INTEGER_LITERAL
         | DATABASE operator_eq database=prefixPath )
-        (OPERATOR_AND STARTTIME operator_eq startTime=timeValue)?
-        (OPERATOR_AND ENDTIME operator_eq endTime=timeValue)?
+        (operator_and STARTTIME operator_eq startTime=timeValue)?
+        (operator_and ENDTIME operator_eq endTime=timeValue)?
     ;
 
 // ---- Count Time Slot List
@@ -498,8 +498,8 @@ countTimeSlotList
     : COUNT (TIMESLOTID|TIMEPARTITION) WHERE (DEVICE operator_eq device=prefixPath
         | REGIONID operator_eq regionId=INTEGER_LITERAL
         | DATABASE operator_eq database=prefixPath )
-        (OPERATOR_AND STARTTIME operator_eq startTime=INTEGER_LITERAL)?
-        (OPERATOR_AND ENDTIME operator_eq endTime=INTEGER_LITERAL)?
+        (operator_and STARTTIME operator_eq startTime=INTEGER_LITERAL)?
+        (operator_and ENDTIME operator_eq endTime=INTEGER_LITERAL)?
     ;
 
 // ---- Get Series Slot List
@@ -910,6 +910,8 @@ privileges
 
 privilegeValue
     : ALL
+    | READ
+    | WRITE
     | PRIVILEGE_VALUE
     ;
 
@@ -935,7 +937,7 @@ fullMerge
 
 // Flush
 flush
-    : FLUSH prefixPath? (COMMA prefixPath)* BOOLEAN_LITERAL? (ON (LOCAL | CLUSTER))?
+    : FLUSH prefixPath? (COMMA prefixPath)* boolean_literal? (ON (LOCAL | CLUSTER))?
     ;
 
 // Clear Cache
@@ -1023,7 +1025,7 @@ loadFileAttributeClauses
 
 loadFileAttributeClause
     : SGLEVEL operator_eq INTEGER_LITERAL
-    | VERIFY operator_eq BOOLEAN_LITERAL
+    | VERIFY operator_eq boolean_literal
     | ONSUCCESS operator_eq (DELETE|NONE)
     ;
 
@@ -1101,9 +1103,9 @@ constant
     | (MINUS|PLUS|DIV)? realLiteral
     | (MINUS|PLUS|DIV)? INTEGER_LITERAL
     | STRING_LITERAL
-    | BOOLEAN_LITERAL
-    | NULL_LITERAL
-    | NAN_LITERAL
+    | boolean_literal
+    | null_literal
+    | nan_literal
     ;
 
 datetimeLiteral
@@ -1135,20 +1137,20 @@ expression
     : LR_BRACKET unaryInBracket=expression RR_BRACKET
     | constant
     | time=(TIME | TIMESTAMP)
+    | caseWhenThenExpression
     | fullPathInExpression
+    | (PLUS | MINUS | operator_not) expressionAfterUnaryOperator=expression
     | scalarFunctionExpression
     | functionName LR_BRACKET expression (COMMA expression)* RR_BRACKET
-    | caseWhenThenExpression
-    | (PLUS | MINUS | OPERATOR_NOT) expressionAfterUnaryOperator=expression
     | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
     | leftExpression=expression (PLUS | MINUS) rightExpression=expression
     | leftExpression=expression (OPERATOR_GT | OPERATOR_GTE | OPERATOR_LT | OPERATOR_LTE | OPERATOR_SEQ | OPERATOR_DEQ | OPERATOR_NEQ) rightExpression=expression
-    | unaryBeforeRegularOrLikeExpression=expression OPERATOR_NOT? (REGEXP | LIKE) STRING_LITERAL
-    | firstExpression=expression OPERATOR_NOT? OPERATOR_BETWEEN secondExpression=expression OPERATOR_AND thirdExpression=expression
-    | unaryBeforeIsNullExpression=expression OPERATOR_IS OPERATOR_NOT? NULL_LITERAL
-    | unaryBeforeInExpression=expression OPERATOR_NOT? (OPERATOR_IN | OPERATOR_CONTAINS) LR_BRACKET constant (COMMA constant)* RR_BRACKET
-    | leftExpression=expression OPERATOR_AND rightExpression=expression
-    | leftExpression=expression OPERATOR_OR rightExpression=expression
+    | unaryBeforeRegularOrLikeExpression=expression operator_not? (REGEXP | LIKE) STRING_LITERAL
+    | firstExpression=expression operator_not? operator_between secondExpression=expression operator_and thirdExpression=expression
+    | unaryBeforeIsNullExpression=expression operator_is operator_not? null_literal
+    | unaryBeforeInExpression=expression operator_not? (operator_in | operator_contains) LR_BRACKET constant (COMMA constant)* RR_BRACKET
+    | leftExpression=expression operator_and rightExpression=expression
+    | leftExpression=expression operator_or rightExpression=expression
     ;
 
 caseWhenThenExpression
@@ -1174,6 +1176,52 @@ scalarFunctionExpression
 operator_eq
     : OPERATOR_SEQ
     | OPERATOR_DEQ
+    ;
+
+operator_and
+    : AND
+    | OPERATOR_BITWISE_AND
+    | OPERATOR_LOGICAL_AND
+    ;
+
+operator_or
+    : OR
+    | OPERATOR_BITWISE_OR
+    | OPERATOR_LOGICAL_OR
+    ;
+    
+operator_not
+    : NOT
+    | OPERATOR_NOT
+    ;
+    
+operator_contains
+    : CONTAINS
+    ;
+    
+operator_between
+    : BETWEEN
+    ;
+    
+operator_is
+    : IS
+    ;
+    
+operator_in
+    : IN
+    ;
+    
+null_literal
+    : NULL
+    ;
+
+nan_literal
+    : NAN
+    ;
+
+boolean_literal
+    : TRUE
+    | FALSE
     ;
 
 // Attribute Clause

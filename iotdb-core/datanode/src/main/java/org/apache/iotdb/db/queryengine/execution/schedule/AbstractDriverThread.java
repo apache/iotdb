@@ -28,9 +28,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.concurrent.ExecutionException;
 
-/** an abstract executor for {@link DriverTask}. */
+/** An abstract executor for {@link DriverTask}. */
 public abstract class AbstractDriverThread extends Thread implements Closeable {
 
   private static final Logger logger = LoggerFactory.getLogger(AbstractDriverThread.class);
@@ -72,28 +71,26 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
 
         try (SetThreadName driverTaskName = new SetThreadName(next.getDriverTaskId().getFullId())) {
           execute(next);
-        } catch (Throwable t) {
-          // try-with-resource syntax will call close once after try block is done, so we need to
+        } catch (Exception e) {
+          // Try-with-resource syntax will call close once after try block is done, so we need to
           // reset the thread name here
           try (SetThreadName driverTaskName =
               new SetThreadName(next.getDriver().getDriverTaskId().getFullId())) {
-            logger.warn("[ExecuteFailed]", t);
+            logger.warn("[ExecuteFailed]", e);
             next.setAbortCause(DriverTaskAbortedException.BY_INTERNAL_ERROR_SCHEDULED);
             scheduler.toAborted(next);
           }
         } finally {
           // Clear the interrupted flag on the current thread, driver cancellation may have
           // triggered an interrupt
-          if (Thread.interrupted()) {
-            if (closed) {
-              // reset interrupted flag if closed before interrupt
-              Thread.currentThread().interrupt();
-            }
+          if (Thread.interrupted() && closed) {
+            // Reset interrupted flag if closed before interrupt
+            Thread.currentThread().interrupt();
           }
         }
       }
     } finally {
-      // unless we have been closed, we need to replace this thread
+      // Unless we have been closed, we need to replace this thread
       if (!closed) {
         logger.warn(
             "Executor {} exits because it's interrupted. We will produce another thread to replace.",
@@ -108,10 +105,9 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
   /**
    * Processing a task.
    *
-   * @throws InterruptedException
-   * @throws ExecutionException
+   * @throws InterruptedException if the task processing is interrupted
    */
-  protected abstract void execute(DriverTask task) throws InterruptedException, ExecutionException;
+  protected abstract void execute(DriverTask task) throws InterruptedException;
 
   @Override
   public void close() throws IOException {

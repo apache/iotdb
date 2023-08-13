@@ -27,6 +27,8 @@ import java.util.Map;
 
 public interface IShowTimeSeriesPlan extends IShowSchemaPlan {
 
+  boolean needViewDetail();
+
   SchemaFilter getSchemaFilter();
 
   Map<Integer, Template> getRelatedTemplate();

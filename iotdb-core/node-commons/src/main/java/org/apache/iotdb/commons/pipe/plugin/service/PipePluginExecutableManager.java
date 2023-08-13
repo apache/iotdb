@@ -49,7 +49,7 @@ public class PipePluginExecutableManager extends ExecutableManager {
       try {
         return readTextFromFileUnderTemporaryRoot(md5FilePath).equals(pipePluginMeta.getJarMD5());
       } catch (IOException e) {
-        // if meet error when reading md5 from txt, we need to compute it again
+        // If meet error when reading md5 from txt, we need to compute it again
         LOGGER.error("Failed to read md5 from txt file for pipe plugin {}", pluginName, e);
       }
     }
@@ -59,7 +59,7 @@ public class PipePluginExecutableManager extends ExecutableManager {
           DigestUtils.md5Hex(
               Files.newInputStream(
                   Paths.get(getInstallDir() + File.separator + pipePluginMeta.getJarName())));
-      // save the md5 in a txt under trigger temporary lib
+      // Save the md5 in a txt under trigger temporary lib
       saveTextAsFileUnderTemporaryRoot(md5, md5FilePath);
       return md5.equals(pipePluginMeta.getJarMD5());
     } catch (IOException e) {

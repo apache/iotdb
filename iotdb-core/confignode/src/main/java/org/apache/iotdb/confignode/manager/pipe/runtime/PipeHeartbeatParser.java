@@ -24,11 +24,13 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalExcep
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +42,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeHeartbeatParser {
 
@@ -97,39 +100,44 @@ public class PipeHeartbeatParser {
         .getProcedureSubmitter()
         .submit(
             () -> {
-              if (!pipeMetaByteBufferListFromDataNode.isEmpty()) {
-                parseHeartbeatAndSaveMetaChangeLocally(
-                    dataNodeId, pipeMetaByteBufferListFromDataNode);
-              }
+              final AtomicReference<PipeTaskInfo> pipeTaskInfo =
+                  configManager.getPipeManager().getPipeTaskCoordinator().lock();
 
-              if (canSubmitHandleMetaChangeProcedure.get()
-                  && (needWriteConsensusOnConfigNodes.get() || needPushPipeMetaToDataNodes.get())) {
-                configManager
-                    .getProcedureManager()
-                    .pipeHandleMetaChange(
-                        needWriteConsensusOnConfigNodes.get(), needPushPipeMetaToDataNodes.get());
+              try {
+                if (!pipeMetaByteBufferListFromDataNode.isEmpty()) {
+                  parseHeartbeatAndSaveMetaChangeLocally(
+                      pipeTaskInfo, dataNodeId, pipeMetaByteBufferListFromDataNode);
+                }
 
-                // Reset flags after procedure is submitted
-                needWriteConsensusOnConfigNodes.set(false);
-                needPushPipeMetaToDataNodes.set(false);
+                if (canSubmitHandleMetaChangeProcedure.get()
+                    && (needWriteConsensusOnConfigNodes.get()
+                        || needPushPipeMetaToDataNodes.get())) {
+                  configManager
+                      .getProcedureManager()
+                      .pipeHandleMetaChange(
+                          needWriteConsensusOnConfigNodes.get(), needPushPipeMetaToDataNodes.get());
+
+                  // Reset flags after procedure is submitted
+                  needWriteConsensusOnConfigNodes.set(false);
+                  needPushPipeMetaToDataNodes.set(false);
+                }
+              } finally {
+                configManager.getPipeManager().getPipeTaskCoordinator().unlock();
               }
             });
   }
 
   private void parseHeartbeatAndSaveMetaChangeLocally(
-      int dataNodeId, @NotNull List<ByteBuffer> pipeMetaByteBufferListFromDataNode) {
+      final AtomicReference<PipeTaskInfo> pipeTaskInfo,
+      final int dataNodeId,
+      @NotNull final List<ByteBuffer> pipeMetaByteBufferListFromDataNode) {
     final Map<PipeStaticMeta, PipeMeta> pipeMetaMapFromDataNode = new HashMap<>();
     for (ByteBuffer byteBuffer : pipeMetaByteBufferListFromDataNode) {
       final PipeMeta pipeMeta = PipeMeta.deserialize(byteBuffer);
       pipeMetaMapFromDataNode.put(pipeMeta.getStaticMeta(), pipeMeta);
     }
 
-    for (final PipeMeta pipeMetaOnConfigNode :
-        configManager
-            .getPipeManager()
-            .getPipeTaskCoordinator()
-            .getPipeTaskInfo()
-            .getPipeMetaList()) {
+    for (final PipeMeta pipeMetaOnConfigNode : pipeTaskInfo.get().getPipeMetaList()) {
       final PipeMeta pipeMetaFromDataNode =
           pipeMetaMapFromDataNode.get(pipeMetaOnConfigNode.getStaticMeta());
       if (pipeMetaFromDataNode == null) {
@@ -141,9 +149,9 @@ public class PipeHeartbeatParser {
       }
 
       final Map<TConsensusGroupId, PipeTaskMeta> pipeTaskMetaMapOnConfigNode =
-          pipeMetaOnConfigNode.getRuntimeMeta().getConsensusGroupIdToTaskMetaMap();
+          pipeMetaOnConfigNode.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
       final Map<TConsensusGroupId, PipeTaskMeta> pipeTaskMetaMapFromDataNode =
-          pipeMetaFromDataNode.getRuntimeMeta().getConsensusGroupIdToTaskMetaMap();
+          pipeMetaFromDataNode.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
       for (final Map.Entry<TConsensusGroupId, PipeTaskMeta> runtimeMetaOnConfigNode :
           pipeTaskMetaMapOnConfigNode.entrySet()) {
         if (runtimeMetaOnConfigNode.getValue().getLeaderDataNodeId() != dataNodeId) {
@@ -189,6 +197,12 @@ public class PipeHeartbeatParser {
         for (final PipeRuntimeException exception :
             runtimeMetaFromDataNode.getExceptionMessages()) {
 
+          if (exception.getTimeStamp()
+              < pipeMetaOnConfigNode.getRuntimeMeta().getExceptionsClearTime()) {
+            // Ignore the exception if it's recorded before clear
+            continue;
+          }
+
           pipeTaskMetaOnConfigNode.trackExceptionMessage(exception);
 
           if (exception instanceof PipeRuntimeCriticalException) {
@@ -198,7 +212,9 @@ public class PipeHeartbeatParser {
                 .getStatus()
                 .get()
                 .equals(PipeStatus.STOPPED)) {
-              pipeMetaOnConfigNode.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
+              PipeRuntimeMeta runtimeMeta = pipeMetaOnConfigNode.getRuntimeMeta();
+              runtimeMeta.getStatus().set(PipeStatus.STOPPED);
+              runtimeMeta.setIsStoppedByRuntimeException(true);
 
               needWriteConsensusOnConfigNodes.set(true);
               needPushPipeMetaToDataNodes.set(true);
@@ -210,18 +226,24 @@ public class PipeHeartbeatParser {
             }
 
             if (exception instanceof PipeRuntimeConnectorCriticalException) {
-              ((PipeTableResp)
-                      configManager
-                          .getPipeManager()
-                          .getPipeTaskCoordinator()
-                          .getPipeTaskInfo()
-                          .showPipes())
+              ((PipeTableResp) pipeTaskInfo.get().showPipes())
                   .filter(true, pipeName).getAllPipeMeta().stream()
-                      .map(pipeMeta -> pipeMeta.getRuntimeMeta().getStatus())
-                      .filter(status -> !status.get().equals(PipeStatus.STOPPED))
+                      .filter(pipeMeta -> !pipeMeta.getStaticMeta().getPipeName().equals(pipeName))
+                      .map(PipeMeta::getRuntimeMeta)
+                      .filter(
+                          runtimeMeta -> !runtimeMeta.getStatus().get().equals(PipeStatus.STOPPED))
                       .forEach(
-                          status -> {
-                            status.set(PipeStatus.STOPPED);
+                          runtimeMeta -> {
+                            // Record the connector exception for each pipe affected
+                            Map<Integer, PipeRuntimeException> exceptionMap =
+                                runtimeMeta.getDataNodeId2PipeRuntimeExceptionMap();
+                            if (!exceptionMap.containsKey(dataNodeId)
+                                || exceptionMap.get(dataNodeId).getTimeStamp()
+                                    < exception.getTimeStamp()) {
+                              exceptionMap.put(dataNodeId, exception);
+                            }
+                            runtimeMeta.getStatus().set(PipeStatus.STOPPED);
+                            runtimeMeta.setIsStoppedByRuntimeException(true);
 
                             needWriteConsensusOnConfigNodes.set(true);
                             needPushPipeMetaToDataNodes.set(true);

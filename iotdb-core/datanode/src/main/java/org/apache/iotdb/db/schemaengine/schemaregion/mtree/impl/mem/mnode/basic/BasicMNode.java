@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.basic;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -161,7 +162,9 @@ public class BasicMNode implements IMemMNode {
    * @param newChildNode new child node
    */
   @Override
-  public synchronized void replaceChild(String oldChildName, IMemMNode newChildNode) {}
+  public synchronized void replaceChild(String oldChildName, IMemMNode newChildNode) {
+    // Do nothing
+  }
 
   @Override
   public void moveDataToNewMNode(IMemMNode newMNode) {
@@ -222,7 +225,7 @@ public class BasicMNode implements IMemMNode {
   }
 
   /**
-   * The basic memory occupied by any BasicMNode object
+   * The basic memory occupied by any BasicMNode object.
    *
    * <ol>
    *   <li>object header, 8B

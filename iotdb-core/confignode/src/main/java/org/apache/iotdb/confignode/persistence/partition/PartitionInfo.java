@@ -93,9 +93,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
- * The PartitionInfo stores cluster PartitionTable. The PartitionTable including: 1. regionMap:
- * location of Region member 2. schemaPartition: location of schemaengine 3. dataPartition: location
- * of data
+ * The {@link PartitionInfo} stores cluster PartitionTable.
+ *
+ * <p>The PartitionTable includes:
+ *
+ * <p>1. regionMap: location of Region member
+ *
+ * <p>2. schemaPartition: location of schemaEngine
+ *
+ * <p>3. dataPartition: location of data
  */
 public class PartitionInfo implements SnapshotProcessor {
 
@@ -104,13 +110,13 @@ public class PartitionInfo implements SnapshotProcessor {
   // Allocate 8MB buffer for load snapshot of PartitionInfo
   private static final int PARTITION_TABLE_BUFFER_SIZE = 32 * 1024 * 1024;
 
-  /** For Cluster Partition */
+  /** For Cluster Partition. */
   // For allocating Regions
   private final AtomicInteger nextRegionGroupId;
   // Map<DatabaseName, DatabasePartitionInfo>
   private final Map<String, DatabasePartitionTable> databasePartitionTables;
 
-  /** For Region-Maintainer */
+  /** For Region-Maintainer. */
   // For RegionReplicas' asynchronous management
   private final List<RegionMaintainTask> regionMaintainTaskList;
 
@@ -132,10 +138,11 @@ public class PartitionInfo implements SnapshotProcessor {
   // ======================================================
 
   /**
-   * Thread-safely create new DatabasePartitionTable
+   * Thread-safely create new DatabasePartitionTable.
    *
    * @param plan DatabaseSchemaPlan
-   * @return SUCCESS_STATUS if the new DatabasePartitionTable is created successfully.
+   * @return {@link TSStatusCode#SUCCESS_STATUS} if the new DatabasePartitionTable is created
+   *     successfully.
    */
   public TSStatus createDatabase(DatabaseSchemaPlan plan) {
     String databaseName = plan.getSchema().getName();
@@ -145,10 +152,10 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Thread-safely cache allocation result of new RegionGroups
+   * Thread-safely cache allocation result of new RegionGroups.
    *
    * @param plan CreateRegionGroupsPlan
-   * @return SUCCESS_STATUS
+   * @return {@link TSStatusCode#SUCCESS_STATUS}
    */
   public TSStatus createRegionGroups(CreateRegionGroupsPlan plan) {
     TSStatus result;
@@ -178,9 +185,9 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Offer a batch of RegionMaintainTasks for the RegionMaintainer
+   * Offer a batch of RegionMaintainTasks for the RegionMaintainer.
    *
-   * @return SUCCESS_STATUS
+   * @return {@link TSStatusCode#SUCCESS_STATUS}
    */
   public TSStatus offerRegionMaintainTasks(
       OfferRegionMaintainTasksPlan offerRegionMaintainTasksPlan) {
@@ -192,9 +199,9 @@ public class PartitionInfo implements SnapshotProcessor {
 
   /**
    * Poll the head of RegionMaintainTasks from the regionMaintainTaskList after it's executed
-   * successfully
+   * successfully.
    *
-   * @return SUCCESS_STATUS
+   * @return {@link TSStatusCode#SUCCESS_STATUS}
    */
   public TSStatus pollRegionMaintainTask() {
     synchronized (regionMaintainTaskList) {
@@ -208,7 +215,7 @@ public class PartitionInfo implements SnapshotProcessor {
    * are executed successfully. Tasks of each region group are treated as single independent queue.
    *
    * @param plan provides target region ids
-   * @return SUCCESS_STATUS
+   * @return {@link TSStatusCode#SUCCESS_STATUS}
    */
   public TSStatus pollSpecificRegionMaintainTask(PollSpecificRegionMaintainTaskPlan plan) {
     synchronized (regionMaintainTaskList) {
@@ -230,7 +237,7 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Get a deep copy of RegionCleanList for RegionCleaner to maintain cluster RegionReplicas
+   * Get a deep copy of RegionCleanList for RegionCleaner to maintain cluster RegionReplicas.
    *
    * @return A deep copy of RegionCleanList
    */
@@ -241,10 +248,10 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Thread-safely pre-delete the specific StorageGroup
+   * Thread-safely pre-delete the specific StorageGroup.
    *
    * @param preDeleteDatabasePlan PreDeleteStorageGroupPlan
-   * @return SUCCESS_STATUS
+   * @return {@link TSStatusCode#SUCCESS_STATUS}
    */
   public TSStatus preDeleteDatabase(PreDeleteDatabasePlan preDeleteDatabasePlan) {
     final PreDeleteDatabasePlan.PreDeleteType preDeleteType =
@@ -273,7 +280,7 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Thread-safely delete StorageGroup
+   * Thread-safely delete StorageGroup.
    *
    * @param plan DeleteStorageGroupPlan
    */
@@ -283,7 +290,7 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Thread-safely get SchemaPartition
+   * Thread-safely get SchemaPartition.
    *
    * @param plan SchemaPartitionPlan with partitionSlotsMap
    * @return SchemaPartitionDataSet that contains only existing SchemaPartition
@@ -340,7 +347,7 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Thread-safely get DataPartition
+   * Thread-safely get DataPartition.
    *
    * @param plan DataPartitionPlan with partitionSlotsMap
    * @return DataPartitionDataSet that contains only existing DataPartition
@@ -378,24 +385,42 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Checks whether the specified DataPartition has a predecessor or successor and returns if it
-   * does
+   * Checks whether the specified DataPartition has a successor and returns if it does.
    *
    * @param database DatabaseName
    * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
    * @param timePartitionSlot Corresponding TimePartitionSlot
-   * @param timePartitionInterval Time partition interval
-   * @return The specific DataPartition's predecessor if exists, null otherwise
+   * @return The specific DataPartition's successor if exists, null otherwise
    */
-  public TConsensusGroupId getAdjacentDataPartition(
+  public TConsensusGroupId getSuccessorDataPartition(
       String database,
       TSeriesPartitionSlot seriesPartitionSlot,
-      TTimePartitionSlot timePartitionSlot,
-      long timePartitionInterval) {
-    if (databasePartitionTables.containsKey(database)) {
+      TTimePartitionSlot timePartitionSlot) {
+    if (isDatabaseExisted(database)) {
       return databasePartitionTables
           .get(database)
-          .getAdjacentDataPartition(seriesPartitionSlot, timePartitionSlot, timePartitionInterval);
+          .getSuccessorDataPartition(seriesPartitionSlot, timePartitionSlot);
+    } else {
+      return null;
+    }
+  }
+
+  /**
+   * Checks whether the specified DataPartition has a predecessor and returns if it does.
+   *
+   * @param database DatabaseName
+   * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
+   * @param timePartitionSlot Corresponding TimePartitionSlot
+   * @return The specific DataPartition's predecessor if exists, null otherwise
+   */
+  public TConsensusGroupId getPredecessorDataPartition(
+      String database,
+      TSeriesPartitionSlot seriesPartitionSlot,
+      TTimePartitionSlot timePartitionSlot) {
+    if (isDatabaseExisted(database)) {
+      return databasePartitionTables
+          .get(database)
+          .getPredecessorDataPartition(seriesPartitionSlot, timePartitionSlot);
     } else {
       return null;
     }
@@ -413,10 +438,10 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Create SchemaPartition
+   * Create SchemaPartition.
    *
    * @param plan CreateSchemaPartitionPlan with SchemaPartition assigned result
-   * @return TSStatusCode.SUCCESS_STATUS
+   * @return {@link TSStatusCode#SUCCESS_STATUS}
    */
   public TSStatus createSchemaPartition(CreateSchemaPartitionPlan plan) {
     plan.getAssignedSchemaPartition()
@@ -431,10 +456,10 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Create DataPartition
+   * Create DataPartition.
    *
    * @param plan CreateDataPartitionPlan with DataPartition assigned result
-   * @return TSStatusCode.SUCCESS_STATUS
+   * @return {@link TSStatusCode#SUCCESS_STATUS}
    */
   public TSStatus createDataPartition(CreateDataPartitionPlan plan) {
     plan.getAssignedDataPartition()
@@ -474,7 +499,7 @@ public class PartitionInfo implements SnapshotProcessor {
     return schemaNodeManagementResp;
   }
 
-  /** Get Region information */
+  /** Get Region information. */
   public DataSet getRegionInfoList(GetRegionInfoListPlan regionsInfoPlan) {
     RegionInfoListResp regionResp = new RegionInfoListResp();
     List<TRegionInfo> regionInfoList = new Vector<>();
@@ -514,10 +539,10 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Update the location info of given regionId
+   * Update the location info of given regionId.
    *
    * @param req UpdateRegionLocationReq
-   * @return TSStatus
+   * @return {@link TSStatus}
    */
   public TSStatus updateRegionLocation(UpdateRegionLocationPlan req) {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -534,7 +559,7 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * get database for region
+   * Get database for region.
    *
    * @param regionId regionId
    * @return database name
@@ -552,7 +577,7 @@ public class PartitionInfo implements SnapshotProcessor {
   // ======================================================
 
   /**
-   * Only Leader use this interface. Filter unassigned SchemaPartitionSlots
+   * Only Leader use this interface. Filter unassigned SchemaPartitionSlots.
    *
    * @param partitionSlotsMap Map<StorageGroupName, List<TSeriesPartitionSlot>>
    * @return Map<StorageGroupName, List<TSeriesPartitionSlot>>, SchemaPartitionSlots that is not
@@ -718,6 +743,25 @@ public class PartitionInfo implements SnapshotProcessor {
   /**
    * Only leader use this interface.
    *
+   * <p>Get all the RegionGroups currently owned by the specified Database
+   *
+   * @param database DatabaseName
+   * @param type SchemaRegion or DataRegion
+   * @return List of TConsensusGroupId
+   * @throws DatabaseNotExistsException When the specified Database doesn't exist
+   */
+  public List<TConsensusGroupId> getAllRegionGroupIds(String database, TConsensusGroupType type)
+      throws DatabaseNotExistsException {
+    if (!isDatabaseExisted(database)) {
+      throw new DatabaseNotExistsException(database);
+    }
+
+    return databasePartitionTables.get(database).getAllRegionGroupIds(type);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
    * <p>Get the assigned SeriesPartitionSlots count in the specified Database
    *
    * @param database The specified Database
@@ -728,11 +772,23 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Get the DataNodes who contain the specific StorageGroup's Schema or Data
+   * Only leader use this interface.
+   *
+   * <p>Get the assigned TimePartitionSlots count in the specified Database
+   *
+   * @param database The specified Database
+   * @return The assigned TimePartitionSlots count
+   */
+  public long getAssignedTimePartitionSlotsCount(String database) {
+    return databasePartitionTables.get(database).getTimeSlotCount();
+  }
+
+  /**
+   * Get the DataNodes who contain the specific StorageGroup's Schema or Data.
    *
    * @param database The specific StorageGroup's name
    * @param type SchemaRegion or DataRegion
-   * @return Set<TDataNodeLocation>, the related DataNodes
+   * @return Set {@literal <}TDataNodeLocation{@literal >}, the related DataNodes
    */
   public Set<TDataNodeLocation> getDatabaseRelatedDataNodes(
       String database, TConsensusGroupType type) {
@@ -742,20 +798,20 @@ public class PartitionInfo implements SnapshotProcessor {
   /**
    * Only leader use this interface.
    *
-   * @param storageGroup StorageGroupName
+   * @param database DatabaseName
    * @param type SchemaRegion or DataRegion
    * @return The StorageGroup's Running or Available Regions that sorted by the number of allocated
    *     slots
    */
   public List<Pair<Long, TConsensusGroupId>> getRegionGroupSlotsCounter(
-      String storageGroup, TConsensusGroupType type) {
-    return databasePartitionTables.get(storageGroup).getRegionGroupSlotsCounter(type);
+      String database, TConsensusGroupType type) {
+    return databasePartitionTables.get(database).getRegionGroupSlotsCounter(type);
   }
 
   /**
    * Only leader use this interface.
    *
-   * @return Integer set of all schemaengine region id
+   * @return Integer set of all schemaEngine region id
    */
   public Set<Integer> getAllSchemaPartition() {
     Set<Integer> schemaPartitionSet = new HashSet<>();
@@ -763,6 +819,19 @@ public class PartitionInfo implements SnapshotProcessor {
         .values()
         .forEach(i -> schemaPartitionSet.addAll(i.getSchemaRegionIds()));
     return schemaPartitionSet;
+  }
+
+  /**
+   * Get the last DataAllotTable of the specified Database.
+   *
+   * @param database The specified Database
+   * @return The last DataAllotTable
+   */
+  public Map<TSeriesPartitionSlot, TConsensusGroupId> getLastDataAllotTable(String database) {
+    if (isDatabaseExisted(database)) {
+      return databasePartitionTables.get(database).getLastDataAllotTable();
+    }
+    return Collections.emptyMap();
   }
 
   @Override
@@ -867,7 +936,8 @@ public class PartitionInfo implements SnapshotProcessor {
    * Get the RegionId of the specific Database or seriesSlotId(device).
    *
    * @param plan GetRegionIdPlan with the specific Database ,seriesSlotId(device) , timeSlotId.
-   * @return GetRegionIdResp with STATUS and List<TConsensusGroupId>.
+   * @return GetRegionIdResp with {@link TSStatus} and List{@literal <}TConsensusGroupId{@literal
+   *     >}.
    */
   public DataSet getRegionId(GetRegionIdPlan plan) {
     if (!isDatabaseExisted(plan.getDatabase())) {
@@ -891,7 +961,7 @@ public class PartitionInfo implements SnapshotProcessor {
    * Get the timePartition of the specific Database or seriesSlotId(device) or regionId.
    *
    * @param plan GetRegionIdPlan with the specific Database ,seriesSlotId(device) , regionId.
-   * @return GetRegionIdResp with STATUS and List<TTimePartitionSlot>.
+   * @return GetRegionIdResp with STATUS and List{@literal <}TTimePartitionSlot{@literal >}.
    */
   public DataSet getTimeSlotList(GetTimeSlotListPlan plan) {
     if (!plan.getDatabase().equals("")) {

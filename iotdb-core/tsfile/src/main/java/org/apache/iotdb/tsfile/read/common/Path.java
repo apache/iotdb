@@ -103,7 +103,7 @@ public class Path implements Serializable, Comparable<Path> {
     if (!needCheck) {
       this.measurement = measurement;
       this.device = device;
-      this.fullPath = device + "." + measurement;
+      this.fullPath = device + TsFileConstant.PATH_SEPARATOR + measurement;
       return;
     }
     // use PathNodesGenerator to check whether path is legal.

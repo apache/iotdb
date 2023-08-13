@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -78,7 +79,7 @@ public class LoadTsFileManager {
     this.loadDir = SystemFileFactory.INSTANCE.getFile(CONFIG.getLoadTsFileDir());
     this.uuid2WriterManager = new ConcurrentHashMap<>();
     this.cleanupExecutors =
-        IoTDBThreadPoolFactory.newScheduledThreadPool(0, LoadTsFileManager.class.getName());
+        IoTDBThreadPoolFactory.newScheduledThreadPool(1, LoadTsFileManager.class.getName());
     this.uuid2Future = new ConcurrentHashMap<>();
 
     recover();
@@ -162,6 +163,8 @@ public class LoadTsFileManager {
     try {
       Files.delete(loadDirPath);
       LOGGER.info("Load dir {} was deleted.", loadDirPath);
+    } catch (DirectoryNotEmptyException e) {
+      LOGGER.info("Load dir {} is not empty, skip deleting.", loadDirPath);
     } catch (IOException e) {
       LOGGER.warn(MESSAGE_DELETE_FAIL, loadDirPath, e);
     }
@@ -179,6 +182,8 @@ public class LoadTsFileManager {
     try {
       Files.delete(loadDirPath);
       LOGGER.info("Load dir {} was deleted.", loadDirPath);
+    } catch (DirectoryNotEmptyException e) {
+      LOGGER.info("Load dir {} is not empty, skip deleting.", loadDirPath);
     } catch (IOException e) {
       LOGGER.warn(MESSAGE_DELETE_FAIL, loadDirPath, e);
     }
@@ -286,6 +291,8 @@ public class LoadTsFileManager {
       }
       try {
         Files.delete(taskDir.toPath());
+      } catch (DirectoryNotEmptyException e) {
+        LOGGER.info("Task dir {} is not empty, skip deleting.", taskDir.getPath());
       } catch (IOException e) {
         LOGGER.warn(MESSAGE_DELETE_FAIL, taskDir.getPath(), e);
       }

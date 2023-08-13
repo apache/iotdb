@@ -31,8 +31,26 @@ public class PipeConfig {
 
   /////////////////////////////// File ///////////////////////////////
 
+  public String getPipeHardlinkBaseDirName() {
+    return COMMON_CONFIG.getPipeHardlinkBaseDirName();
+  }
+
   public String getPipeHardlinkTsFileDirName() {
     return COMMON_CONFIG.getPipeHardlinkTsFileDirName();
+  }
+
+  public String getPipeHardlinkWALDirName() {
+    return COMMON_CONFIG.getPipeHardlinkWALDirName();
+  }
+
+  public boolean getPipeHardLinkWALEnabled() {
+    return COMMON_CONFIG.getPipeHardLinkWALEnabled();
+  }
+
+  /////////////////////////////// Tablet ///////////////////////////////
+
+  public int getPipeDataStructureTabletRowSize() {
+    return COMMON_CONFIG.getPipeDataStructureTabletRowSize();
   }
 
   /////////////////////////////// Subtask Executor ///////////////////////////////
@@ -73,6 +91,10 @@ public class PipeConfig {
 
   /////////////////////////////// Connector ///////////////////////////////
 
+  public long getPipeConnectorTimeoutMs() {
+    return COMMON_CONFIG.getPipeConnectorTimeoutMs();
+  }
+
   public int getPipeConnectorReadFileBufferSize() {
     return COMMON_CONFIG.getPipeConnectorReadFileBufferSize();
   }
@@ -83,6 +105,22 @@ public class PipeConfig {
 
   public int getPipeConnectorPendingQueueSize() {
     return COMMON_CONFIG.getPipeConnectorPendingQueueSize();
+  }
+
+  public boolean isPipeAsyncConnectorRPCThriftCompressionEnabled() {
+    return COMMON_CONFIG.isPipeAsyncConnectorRPCThriftCompressionEnabled();
+  }
+
+  public int getPipeAsyncConnectorSelectorNumber() {
+    return COMMON_CONFIG.getPipeAsyncConnectorSelectorNumber();
+  }
+
+  public int getPipeAsyncConnectorCoreClientNumber() {
+    return COMMON_CONFIG.getPipeAsyncConnectorCoreClientNumber();
+  }
+
+  public int getPipeAsyncConnectorMaxClientNumber() {
+    return COMMON_CONFIG.getPipeAsyncConnectorMaxClientNumber();
   }
 
   /////////////////////////////// Meta Consistency ///////////////////////////////
@@ -103,12 +141,25 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeMetaSyncerSyncIntervalMinutes();
   }
 
+  public long getPipeMetaSyncerAutoRestartPipeCheckIntervalRound() {
+    return COMMON_CONFIG.getPipeMetaSyncerAutoRestartPipeCheckIntervalRound();
+  }
+
+  public boolean getPipeAutoRestartEnabled() {
+    return COMMON_CONFIG.getPipeAutoRestartEnabled();
+  }
+
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfig.class);
 
   public void printAllConfigs() {
+    LOGGER.info("PipeHardlinkBaseDirName: {}", getPipeHardlinkBaseDirName());
     LOGGER.info("PipeHardlinkTsFileDirName: {}", getPipeHardlinkTsFileDirName());
+    LOGGER.info("PipeHardlinkWALDirName: {}", getPipeHardlinkWALDirName());
+    LOGGER.info("PipeHardLinkWALEnabled: {}", getPipeHardLinkWALEnabled());
+
+    LOGGER.info("PipeDataStructureTabletRowSize: {}", getPipeDataStructureTabletRowSize());
 
     LOGGER.info("PipeSubtaskExecutorMaxThreadNum: {}", getPipeSubtaskExecutorMaxThreadNum());
     LOGGER.info(
@@ -129,6 +180,7 @@ public class PipeConfig {
     LOGGER.info(
         "PipeExtractorPendingQueueTabletLimit: {}", getPipeExtractorPendingQueueTabletLimit());
 
+    LOGGER.info("PipeConnectorTimeoutMs: {}", getPipeConnectorTimeoutMs());
     LOGGER.info("PipeConnectorReadFileBufferSize: {}", getPipeConnectorReadFileBufferSize());
     LOGGER.info("PipeConnectorRetryIntervalMs: {}", getPipeConnectorRetryIntervalMs());
     LOGGER.info("PipeConnectorPendingQueueSize: {}", getPipeConnectorPendingQueueSize());
@@ -140,6 +192,10 @@ public class PipeConfig {
     LOGGER.info(
         "PipeMetaSyncerInitialSyncDelayMinutes: {}", getPipeMetaSyncerInitialSyncDelayMinutes());
     LOGGER.info("PipeMetaSyncerSyncIntervalMinutes: {}", getPipeMetaSyncerSyncIntervalMinutes());
+    LOGGER.info(
+        "PipeMetaSyncerAutoRestartPipeCheckIntervalRound: {}",
+        getPipeMetaSyncerAutoRestartPipeCheckIntervalRound());
+    LOGGER.info("PipeAutoRestartEnabled: {}", getPipeAutoRestartEnabled());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

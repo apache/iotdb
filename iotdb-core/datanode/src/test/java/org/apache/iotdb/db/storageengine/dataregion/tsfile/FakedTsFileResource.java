@@ -33,6 +33,7 @@ public class FakedTsFileResource extends TsFileResource {
   private String fakeTsfileName;
 
   public FakedTsFileResource(long tsFileSize, String name) {
+    super(new File(name));
     this.timeIndex = new FileTimeIndex();
     this.tsFileSize = tsFileSize;
     fakeTsfileName = name;

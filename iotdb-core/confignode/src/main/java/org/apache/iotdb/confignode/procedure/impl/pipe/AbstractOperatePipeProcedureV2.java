@@ -16,18 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.procedure.impl.pipe;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
+import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
+import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.pipe.task.OperatePipeTaskState;
+import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -38,11 +41,17 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * This procedure manage 4 kinds of PIPE operations: CREATE, START, STOP and DROP.
+ * This procedure manages 4 kinds of PIPE operations: {@link PipeTaskOperation#CREATE_PIPE}, {@link
+ * PipeTaskOperation#START_PIPE}, {@link PipeTaskOperation#STOP_PIPE} and {@link
+ * PipeTaskOperation#DROP_PIPE}.
  *
- * <p>This class extends AbstractNodeProcedure to make sure that pipe task procedures can be
+ * <p>This class extends {@link AbstractNodeProcedure} to make sure that pipe task procedures can be
  * executed in sequence and node procedures can be locked when a pipe task procedure is running.
  */
 public abstract class AbstractOperatePipeProcedureV2
@@ -53,27 +62,83 @@ public abstract class AbstractOperatePipeProcedureV2
 
   private static final int RETRY_THRESHOLD = 1;
 
-  // only used in rollback to reduce the number of network calls
+  // Only used in rollback to reduce the number of network calls
   protected boolean isRollbackFromOperateOnDataNodesSuccessful = false;
+
+  // This variable should not be serialized into procedure store,
+  // putting it here is just for convenience
+  protected AtomicReference<PipeTaskInfo> pipeTaskInfo;
+
+  @Override
+  protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
+    configNodeProcedureEnv.getSchedulerLock().lock();
+    try {
+      if (configNodeProcedureEnv.getNodeLock().tryLock(this)) {
+        pipeTaskInfo =
+            configNodeProcedureEnv
+                .getConfigManager()
+                .getPipeManager()
+                .getPipeTaskCoordinator()
+                .lock();
+        LOGGER.info("ProcedureId {} acquire lock.", getProcId());
+        return ProcedureLockState.LOCK_ACQUIRED;
+      }
+      configNodeProcedureEnv.getNodeLock().waitProcedure(this);
+      LOGGER.info("ProcedureId {} wait for lock.", getProcId());
+      return ProcedureLockState.LOCK_EVENT_WAIT;
+    } finally {
+      configNodeProcedureEnv.getSchedulerLock().unlock();
+    }
+  }
+
+  @Override
+  protected void releaseLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
+    configNodeProcedureEnv.getSchedulerLock().lock();
+    try {
+      LOGGER.info("ProcedureId {} release lock.", getProcId());
+      if (pipeTaskInfo != null) {
+        configNodeProcedureEnv
+            .getConfigManager()
+            .getPipeManager()
+            .getPipeTaskCoordinator()
+            .unlock();
+      }
+      if (configNodeProcedureEnv.getNodeLock().releaseLock(this)) {
+        configNodeProcedureEnv
+            .getNodeLock()
+            .wakeWaitingProcedures(configNodeProcedureEnv.getScheduler());
+      }
+    } finally {
+      configNodeProcedureEnv.getSchedulerLock().unlock();
+    }
+  }
 
   protected abstract PipeTaskOperation getOperation();
 
   /**
-   * Execute at state VALIDATE_TASK
+   * Execute at state {@link OperatePipeTaskState#VALIDATE_TASK}.
    *
-   * @return true if procedure can finish directly
+   * @throws PipeException if validation for pipe parameters failed
    */
   protected abstract void executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException;
 
-  /** Execute at state CALCULATE_INFO_FOR_TASK */
-  protected abstract void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env)
-      throws PipeException;
+  /** Execute at state {@link OperatePipeTaskState#CALCULATE_INFO_FOR_TASK}. */
+  protected abstract void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env);
 
-  /** Execute at state WRITE_CONFIG_NODE_CONSENSUS */
+  /**
+   * Execute at state {@link OperatePipeTaskState#WRITE_CONFIG_NODE_CONSENSUS}.
+   *
+   * @throws PipeException if configNode consensus write failed
+   */
   protected abstract void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env)
       throws PipeException;
 
-  /** Execute at state OPERATE_ON_DATA_NODES */
+  /**
+   * Execute at state {@link OperatePipeTaskState#OPERATE_ON_DATA_NODES}.
+   *
+   * @throws PipeException if push pipe metas to dataNodes failed
+   * @throws IOException Exception when Serializing to byte buffer
+   */
   protected abstract void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws PipeException, IOException;
 
@@ -83,7 +148,6 @@ public abstract class AbstractOperatePipeProcedureV2
     try {
       switch (state) {
         case VALIDATE_TASK:
-          env.getConfigManager().getPipeManager().getPipeTaskCoordinator().lock();
           executeFromValidateTask(env);
           setNextState(OperatePipeTaskState.CALCULATE_INFO_FOR_TASK);
           break;
@@ -97,20 +161,33 @@ public abstract class AbstractOperatePipeProcedureV2
           break;
         case OPERATE_ON_DATA_NODES:
           executeFromOperateOnDataNodes(env);
-          env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
           return Flow.NO_MORE_STATE;
+        default:
+          throw new UnsupportedOperationException(
+              String.format("Unknown state during executing operatePipeProcedure, %s", state));
       }
     } catch (Exception e) {
-      if (isRollbackSupported(state)) {
-        LOGGER.error("Fail in OperatePipeProcedure", e);
-        setFailure(new ProcedureException(e.getMessage()));
+      // Retry before rollback
+      if (getCycles() < RETRY_THRESHOLD) {
+        LOGGER.warn(
+            "Encountered error when trying to {} at state [{}], retry [{}/{}]",
+            getOperation(),
+            state,
+            getCycles() + 1,
+            RETRY_THRESHOLD,
+            e);
+        // Wait 3s for next retry
+        TimeUnit.MILLISECONDS.sleep(3000L);
       } else {
-        LOGGER.error("Retrievable error trying to {} at state [{}]", getOperation(), state, e);
-        if (getCycles() > RETRY_THRESHOLD) {
-          setFailure(
-              new ProcedureException(
-                  String.format("Fail to %s because %s", getOperation().name(), e.getMessage())));
-        }
+        LOGGER.warn(
+            "All {} retries failed when trying to {} at state [{}], will rollback...",
+            RETRY_THRESHOLD,
+            getOperation(),
+            state,
+            e);
+        setFailure(
+            new ProcedureException(
+                String.format("Fail to %s because %s", getOperation().name(), e.getMessage())));
       }
     }
     return Flow.HAS_MORE_STATE;
@@ -126,11 +203,7 @@ public abstract class AbstractOperatePipeProcedureV2
       throws IOException, InterruptedException, ProcedureException {
     switch (state) {
       case VALIDATE_TASK:
-        try {
-          rollbackFromValidateTask(env);
-        } finally {
-          env.getConfigManager().getPipeManager().getPipeTaskCoordinator().unlock();
-        }
+        rollbackFromValidateTask(env);
         break;
       case CALCULATE_INFO_FOR_TASK:
         rollbackFromCalculateInfoForTask(env);
@@ -144,7 +217,7 @@ public abstract class AbstractOperatePipeProcedureV2
         }
         break;
       case OPERATE_ON_DATA_NODES:
-        // we have to make sure that rollbackFromOperateOnDataNodes is executed before
+        // We have to make sure that rollbackFromOperateOnDataNodes is executed before
         // rollbackFromWriteConfigNodeConsensus, because rollbackFromOperateOnDataNodes is
         // executed based on the consensus of config nodes that is written by
         // rollbackFromWriteConfigNodeConsensus
@@ -181,25 +254,83 @@ public abstract class AbstractOperatePipeProcedureV2
     return OperatePipeTaskState.VALIDATE_TASK;
   }
 
-  protected TSStatus pushPipeMetaToDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  /**
+   * Pushing all the pipeMeta's to all the dataNodes, forcing an update to the the pipe's runtime
+   * state.
+   *
+   * @param env ConfigNodeProcedureEnv
+   * @return The responseMap after pushing pipe meta
+   * @throws IOException Exception when Serializing to byte buffer
+   */
+  protected Map<Integer, TPushPipeMetaResp> pushPipeMetaToDataNodes(ConfigNodeProcedureEnv env)
+      throws IOException {
     final List<ByteBuffer> pipeMetaBinaryList = new ArrayList<>();
-    for (PipeMeta pipeMeta :
-        env.getConfigManager()
-            .getPipeManager()
-            .getPipeTaskCoordinator()
-            .getPipeTaskInfo()
-            .getPipeMetaList()) {
+    for (PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
       pipeMetaBinaryList.add(pipeMeta.serialize());
     }
 
-    return RpcUtils.squashResponseStatusList(env.pushPipeMetaToDataNodes(pipeMetaBinaryList));
+    return env.pushPipeMetaToDataNodes(pipeMetaBinaryList);
+  }
+
+  /**
+   * Parsing the given pipe's or all pipes' pushPipeMeta exceptions to string.
+   *
+   * @param pipeName The given pipe's pipe name, null if report all pipes' exceptions.
+   * @param respMap The responseMap after pushing pipe meta
+   * @return Error messages for the given pipe after pushing pipe meta
+   */
+  protected String parsePushPipeMetaExceptionForPipe(
+      String pipeName, Map<Integer, TPushPipeMetaResp> respMap) {
+    final StringBuilder exceptionMessageBuilder = new StringBuilder();
+
+    for (Map.Entry<Integer, TPushPipeMetaResp> respEntry : respMap.entrySet()) {
+      int dataNodeId = respEntry.getKey();
+      TPushPipeMetaResp resp = respEntry.getValue();
+
+      if (resp.getStatus().getCode() == TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()) {
+        if (!resp.isSetExceptionMessages()) {
+          exceptionMessageBuilder.append(
+              String.format(
+                  "DataNodeId: %s, Message: Internal error while processing pushPipeMeta on dataNodes.",
+                  dataNodeId));
+          continue;
+        }
+
+        AtomicBoolean hasException = new AtomicBoolean(false);
+
+        resp.getExceptionMessages()
+            .forEach(
+                message -> {
+                  // Ignore the timeStamp for simplicity
+                  if (pipeName == null) {
+                    hasException.set(true);
+                    exceptionMessageBuilder.append(
+                        String.format(
+                            "PipeName: %s, Message: %s",
+                            message.getPipeName(), message.getMessage()));
+                  } else if (pipeName.equals(message.getPipeName())) {
+                    hasException.set(true);
+                    exceptionMessageBuilder.append(
+                        String.format("Message: %s", message.getMessage()));
+                  }
+                });
+
+        if (hasException.get()) {
+          // Only print dataNodeId if the given pipe meets exception on that node
+          exceptionMessageBuilder.insert(0, String.format("DataNodeId: %s, ", dataNodeId));
+          exceptionMessageBuilder.append(". ");
+        }
+      }
+    }
+    return exceptionMessageBuilder.toString();
   }
 
   protected void pushPipeMetaToDataNodesIgnoreException(ConfigNodeProcedureEnv env) {
     try {
+      // Ignore the exceptions reported
       pushPipeMetaToDataNodes(env);
-    } catch (Throwable throwable) {
-      LOGGER.info("Failed to push pipe meta list to data nodes, will retry later.", throwable);
+    } catch (Exception e) {
+      LOGGER.info("Failed to push pipe meta list to data nodes, will retry later.", e);
     }
   }
 

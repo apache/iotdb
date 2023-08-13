@@ -21,6 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.expression.visitor;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
+import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
@@ -28,24 +30,26 @@ import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import java.util.ArrayList;
 import java.util.List;
 
-public class GetMeasurementExpressionVisitor extends ReconstructVisitor<Void> {
+public class GetMeasurementExpressionVisitor extends ReconstructVisitor<Analysis> {
 
   @Override
-  public Expression process(Expression expression, Void context) {
-    Expression newExpression = expression.accept(this, context);
-
+  public Expression process(Expression expression, Analysis analysis) {
     if (expression.getViewPath() != null) {
       PartialPath viewPath = expression.getViewPath();
-      newExpression.setViewPath(new PartialPath(viewPath.getMeasurement(), false));
+      return new TimeSeriesOperand(
+          new MeasurementPath(
+              new PartialPath(viewPath.getMeasurement(), false),
+              ExpressionTypeAnalyzer.analyzeExpression(analysis, expression)));
     }
-    return newExpression;
+    return expression.accept(this, analysis);
   }
 
   @Override
-  public Expression visitFunctionExpression(FunctionExpression functionExpression, Void context) {
+  public Expression visitFunctionExpression(
+      FunctionExpression functionExpression, Analysis analysis) {
     List<Expression> childExpressions = new ArrayList<>();
     for (Expression suffixExpression : functionExpression.getExpressions()) {
-      childExpressions.add(process(suffixExpression, null));
+      childExpressions.add(process(suffixExpression, analysis));
     }
     return new FunctionExpression(
         functionExpression.getFunctionName(),
@@ -54,15 +58,16 @@ public class GetMeasurementExpressionVisitor extends ReconstructVisitor<Void> {
   }
 
   @Override
-  public Expression visitTimeSeriesOperand(TimeSeriesOperand timeSeriesOperand, Void context) {
+  public Expression visitTimeSeriesOperand(TimeSeriesOperand timeSeriesOperand, Analysis analysis) {
     MeasurementPath rawPath = (MeasurementPath) timeSeriesOperand.getPath();
-    PartialPath measurement = new PartialPath(rawPath.getMeasurement(), false);
-    MeasurementPath measurementWithSchema =
-        new MeasurementPath(measurement, rawPath.getMeasurementSchema());
-    if (rawPath.isMeasurementAliasExists()) {
-      measurementWithSchema.setMeasurementAlias(rawPath.getMeasurementAlias());
-    }
-    measurementWithSchema.setTagMap(rawPath.getTagMap());
-    return new TimeSeriesOperand(measurementWithSchema);
+    String measurementName =
+        rawPath.isMeasurementAliasExists()
+            ? rawPath.getMeasurementAlias()
+            : rawPath.getMeasurement();
+    MeasurementPath measurementPath =
+        new MeasurementPath(
+            new PartialPath(measurementName, false), rawPath.getMeasurementSchema());
+    measurementPath.setTagMap(rawPath.getTagMap());
+    return new TimeSeriesOperand(measurementPath);
   }
 }

@@ -16,13 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.procedure.impl.sync;
 
-import org.apache.iotdb.confignode.procedure.Procedure;
-import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
+import org.apache.iotdb.confignode.procedure.impl.pipe.task.DropPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -31,30 +28,18 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-// Empty procedure for old sync, restored only for compatibility
+/**
+ * Empty procedure for old sync, restored only for compatibility.
+ *
+ * @deprecated use {@link DropPipeProcedureV2} instead.
+ */
 @Deprecated
-public class DropPipeProcedure extends Procedure<ConfigNodeProcedureEnv> {
+public class DropPipeProcedure extends AbstractOperatePipeProcedure {
 
   private String pipeName;
 
   public DropPipeProcedure() {
     super();
-  }
-
-  @Override
-  protected Procedure<ConfigNodeProcedureEnv>[] execute(
-      ConfigNodeProcedureEnv configNodeProcedureEnv)
-      throws ProcedureYieldException, ProcedureSuspendedException, InterruptedException {
-    return new Procedure[0];
-  }
-
-  @Override
-  protected void rollback(ConfigNodeProcedureEnv configNodeProcedureEnv)
-      throws IOException, InterruptedException, ProcedureException {}
-
-  @Override
-  protected boolean abort(ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    return false;
   }
 
   @Override
@@ -72,8 +57,12 @@ public class DropPipeProcedure extends Procedure<ConfigNodeProcedureEnv> {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     DropPipeProcedure that = (DropPipeProcedure) o;
     return Objects.equals(pipeName, that.pipeName);
   }

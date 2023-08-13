@@ -26,6 +26,9 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -33,6 +36,7 @@ import java.util.concurrent.Executors;
 
 @SuppressWarnings({"squid:S106", "squid:S1144"})
 public class SessionPoolExample {
+  private static final Logger logger = LoggerFactory.getLogger(SessionPoolExample.class);
 
   private static SessionPool sessionPool;
   private static ExecutorService service;
@@ -111,7 +115,7 @@ public class SessionPoolExample {
                 System.out.println(wrapper.next());
               }
             } catch (IoTDBConnectionException | StatementExecutionException e) {
-              e.printStackTrace();
+              logger.error("Query by row record error", e);
             } finally {
               // remember to close data set finally!
               sessionPool.closeResultSet(wrapper);
@@ -139,7 +143,7 @@ public class SessionPoolExample {
                 System.out.println(builder);
               }
             } catch (IoTDBConnectionException | StatementExecutionException e) {
-              e.printStackTrace();
+              logger.error("Query by Iterator error", e);
             } finally {
               // remember to close data set finally!
               sessionPool.closeResultSet(wrapper);

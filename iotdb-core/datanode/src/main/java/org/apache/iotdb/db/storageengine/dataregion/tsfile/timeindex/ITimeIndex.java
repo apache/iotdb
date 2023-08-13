@@ -188,17 +188,19 @@ public interface ITimeIndex {
   int compareDegradePriority(ITimeIndex timeIndex);
 
   /**
-   * Whether this TsFile contains this device, if false, it must not contain this device, if true,
-   * it may or may not contain this device
+   * Whether this TsFile definitely not contains this device, if ture, it must not contain this
+   * device, if false, it may or may not contain this device Notice: using method be CAREFULLY and
+   * you really understand the meaning!!!!!
    */
-  boolean mayContainsDevice(String device);
+  boolean definitelyNotContains(String device);
 
   /**
    * @return null if the deviceId doesn't exist, otherwise index 0 is startTime, index 1 is endTime
    */
   long[] getStartAndEndTime(String deviceId);
 
-  Pair<Long, Long> getPossibleStartTimeAndEndTime(PartialPath devicePattern);
+  Pair<Long, Long> getPossibleStartTimeAndEndTime(
+      PartialPath devicePattern, Set<String> deviceMatchInfo);
 
   /**
    * Get TimeIndex Type

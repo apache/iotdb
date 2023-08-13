@@ -63,14 +63,14 @@ public class CompactionLogAnalyzer {
       while ((currLine = bufferedReader.readLine()) != null) {
         String fileInfo;
         if (currLine.startsWith(STR_SOURCE_FILES)) {
-          fileInfo = currLine.replace(STR_SOURCE_FILES + TsFileIdentifier.INFO_SEPARATOR, "");
+          fileInfo = currLine.replaceFirst(STR_SOURCE_FILES + TsFileIdentifier.INFO_SEPARATOR, "");
           sourceFileInfos.add(TsFileIdentifier.getFileIdentifierFromInfoString(fileInfo));
         } else if (currLine.startsWith(STR_TARGET_FILES)) {
-          fileInfo = currLine.replace(STR_TARGET_FILES + TsFileIdentifier.INFO_SEPARATOR, "");
+          fileInfo = currLine.replaceFirst(STR_TARGET_FILES + TsFileIdentifier.INFO_SEPARATOR, "");
           targetFileInfos.add(TsFileIdentifier.getFileIdentifierFromInfoString(fileInfo));
         } else {
           fileInfo =
-              currLine.replace(STR_DELETED_TARGET_FILES + TsFileIdentifier.INFO_SEPARATOR, "");
+              currLine.replaceFirst(STR_DELETED_TARGET_FILES + TsFileIdentifier.INFO_SEPARATOR, "");
           deletedTargetFileInfos.add(TsFileIdentifier.getFileIdentifierFromInfoString(fileInfo));
         }
       }
@@ -146,12 +146,14 @@ public class CompactionLogAnalyzer {
     } else {
       sourceFileInfos.add(TsFileIdentifier.getFileIdentifierFromFilePath(oldFilePath));
     }
+
+    int pos = oldFilePath.lastIndexOf(TsFileConstant.TSFILE_SUFFIX);
     if (isSeqSource) {
       String targetFilePath =
-          oldFilePath.replace(
-              TsFileConstant.TSFILE_SUFFIX,
-              TsFileConstant.TSFILE_SUFFIX
-                  + IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX_FROM_OLD);
+          oldFilePath.substring(0, pos)
+              + TsFileConstant.TSFILE_SUFFIX
+              + IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX_FROM_OLD
+              + oldFilePath.substring(pos + TsFileConstant.TSFILE_SUFFIX.length());
       if (oldFilePath.startsWith("root")) {
         targetFileInfos.add(TsFileIdentifier.getFileIdentifierFromOldInfoString(targetFilePath));
       } else {

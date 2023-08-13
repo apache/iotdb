@@ -24,18 +24,14 @@ import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
+import org.apache.iotdb.metrics.utils.SystemMetric;
+import org.apache.iotdb.metrics.utils.SystemTag;
 
 import java.util.HashMap;
 import java.util.Map;
 
 @SuppressWarnings("java:S6548")
 public class ThreadPoolMetrics implements IMetricSet {
-  private static final String THREAD_POOL_ACTIVE_THREAD_COUNT = "thread_pool_active_thread_count";
-  private static final String THREAD_POOL_DONE_TASK_COUNT = "thread_pool_done_task_count";
-  private static final String THREAD_POOL_WAITING_TASK_COUNT = "thread_pool_waiting_task_count";
-  private static final String THREAD_POOL_CORE_SIZE = "thread_pool_core_size";
-  private static final String THREAD_POOL_LARGEST_POOL_SIZE = "thread_pool_largest_pool_size";
-  private static final String POOL_NAME = "pool_name";
   private AbstractMetricService metricService;
   private Map<String, IThreadPoolMBean> notRegisteredPoolMap = new HashMap<>();
   private Map<String, IThreadPoolMBean> registeredPoolMap = new HashMap<>();
@@ -53,39 +49,39 @@ public class ThreadPoolMetrics implements IMetricSet {
       } else {
         registeredPoolMap.put(name, pool);
         metricService.createAutoGauge(
-            THREAD_POOL_ACTIVE_THREAD_COUNT,
+            SystemMetric.THREAD_POOL_ACTIVE_THREAD_COUNT.toString(),
             MetricLevel.IMPORTANT,
             registeredPoolMap,
             map -> registeredPoolMap.get(name).getActiveCount(),
-            POOL_NAME,
+            SystemTag.POOL_NAME.toString(),
             name);
         metricService.createAutoGauge(
-            THREAD_POOL_CORE_SIZE,
+            SystemMetric.THREAD_POOL_CORE_SIZE.toString(),
             MetricLevel.IMPORTANT,
             registeredPoolMap,
             map -> registeredPoolMap.get(name).getCorePoolSize(),
-            POOL_NAME,
+            SystemTag.POOL_NAME.toString(),
             name);
         metricService.createAutoGauge(
-            THREAD_POOL_WAITING_TASK_COUNT,
+            SystemMetric.THREAD_POOL_WAITING_TASK_COUNT.toString(),
             MetricLevel.IMPORTANT,
             registeredPoolMap,
             map -> registeredPoolMap.get(name).getQueueLength(),
-            POOL_NAME,
+            SystemTag.POOL_NAME.toString(),
             name);
         metricService.createAutoGauge(
-            THREAD_POOL_DONE_TASK_COUNT,
+            SystemMetric.THREAD_POOL_DONE_TASK_COUNT.toString(),
             MetricLevel.IMPORTANT,
             registeredPoolMap,
             map -> registeredPoolMap.get(name).getCompletedTaskCount(),
-            POOL_NAME,
+            SystemTag.POOL_NAME.toString(),
             name);
         metricService.createAutoGauge(
-            THREAD_POOL_LARGEST_POOL_SIZE,
+            SystemMetric.THREAD_POOL_LARGEST_POOL_SIZE.toString(),
             MetricLevel.IMPORTANT,
             registeredPoolMap,
             map -> registeredPoolMap.get(name).getLargestPoolSize(),
-            POOL_NAME,
+            SystemTag.POOL_NAME.toString(),
             name);
       }
     }
@@ -97,39 +93,39 @@ public class ThreadPoolMetrics implements IMetricSet {
       this.metricService = metricService;
       for (Map.Entry<String, IThreadPoolMBean> entry : notRegisteredPoolMap.entrySet()) {
         metricService.createAutoGauge(
-            THREAD_POOL_ACTIVE_THREAD_COUNT,
+            SystemMetric.THREAD_POOL_ACTIVE_THREAD_COUNT.toString(),
             MetricLevel.IMPORTANT,
             registeredPoolMap,
             map -> entry.getValue().getActiveCount(),
-            POOL_NAME,
+            SystemTag.POOL_NAME.toString(),
             entry.getKey());
         metricService.createAutoGauge(
-            THREAD_POOL_CORE_SIZE,
+            SystemMetric.THREAD_POOL_CORE_SIZE.toString(),
             MetricLevel.IMPORTANT,
             registeredPoolMap,
             map -> entry.getValue().getCorePoolSize(),
-            POOL_NAME,
+            SystemTag.POOL_NAME.toString(),
             entry.getKey());
         metricService.createAutoGauge(
-            THREAD_POOL_WAITING_TASK_COUNT,
+            SystemMetric.THREAD_POOL_WAITING_TASK_COUNT.toString(),
             MetricLevel.IMPORTANT,
             registeredPoolMap,
             map -> entry.getValue().getQueue().size(),
-            POOL_NAME,
+            SystemTag.POOL_NAME.toString(),
             entry.getKey());
         metricService.createAutoGauge(
-            THREAD_POOL_DONE_TASK_COUNT,
+            SystemMetric.THREAD_POOL_DONE_TASK_COUNT.toString(),
             MetricLevel.IMPORTANT,
             registeredPoolMap,
             map -> entry.getValue().getCompletedTaskCount(),
-            POOL_NAME,
+            SystemTag.POOL_NAME.toString(),
             entry.getKey());
         metricService.createAutoGauge(
-            THREAD_POOL_LARGEST_POOL_SIZE,
+            SystemMetric.THREAD_POOL_LARGEST_POOL_SIZE.toString(),
             MetricLevel.IMPORTANT,
             registeredPoolMap,
             map -> entry.getValue().getLargestPoolSize(),
-            POOL_NAME,
+            SystemTag.POOL_NAME.toString(),
             entry.getKey());
       }
       registeredPoolMap.putAll(notRegisteredPoolMap);
@@ -141,14 +137,30 @@ public class ThreadPoolMetrics implements IMetricSet {
   public void unbindFrom(AbstractMetricService metricService) {
     for (Map.Entry<String, IThreadPoolMBean> entry : registeredPoolMap.entrySet()) {
       metricService.remove(
-          MetricType.GAUGE, THREAD_POOL_ACTIVE_THREAD_COUNT, POOL_NAME, entry.getKey());
-      metricService.remove(MetricType.GAUGE, THREAD_POOL_CORE_SIZE, POOL_NAME, entry.getKey());
+          MetricType.GAUGE,
+          SystemMetric.THREAD_POOL_ACTIVE_THREAD_COUNT.toString(),
+          SystemTag.POOL_NAME.toString(),
+          entry.getKey());
       metricService.remove(
-          MetricType.GAUGE, THREAD_POOL_WAITING_TASK_COUNT, POOL_NAME, entry.getKey());
+          MetricType.GAUGE,
+          SystemMetric.THREAD_POOL_CORE_SIZE.toString(),
+          SystemTag.POOL_NAME.toString(),
+          entry.getKey());
       metricService.remove(
-          MetricType.GAUGE, THREAD_POOL_DONE_TASK_COUNT, POOL_NAME, entry.getKey());
+          MetricType.GAUGE,
+          SystemMetric.THREAD_POOL_WAITING_TASK_COUNT.toString(),
+          SystemTag.POOL_NAME.toString(),
+          entry.getKey());
       metricService.remove(
-          MetricType.GAUGE, THREAD_POOL_LARGEST_POOL_SIZE, POOL_NAME, entry.getKey());
+          MetricType.GAUGE,
+          SystemMetric.THREAD_POOL_DONE_TASK_COUNT.toString(),
+          SystemTag.POOL_NAME.toString(),
+          entry.getKey());
+      metricService.remove(
+          MetricType.GAUGE,
+          SystemMetric.THREAD_POOL_LARGEST_POOL_SIZE.toString(),
+          SystemTag.POOL_NAME.toString(),
+          entry.getKey());
     }
   }
 

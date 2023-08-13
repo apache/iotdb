@@ -113,4 +113,16 @@ public class IoTDBInsertAlignedValues2IT {
       }
     }
   }
+
+  @Test
+  public void testInsertAlignedWithEmptyPage2() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("insert into root.sg.d1(time, s1,s2) aligned values(1,'aa','bb')");
+      statement.execute("insert into root.sg.d1(time, s1,s2) aligned values(1,'aa','bb')");
+      statement.execute("insert into root.sg.d1(time, s1,s2) aligned values(1,'aa','bb')");
+      statement.execute("flush");
+      statement.execute("insert into root.sg.d1(time, s1,s2) aligned values(1,'aa','bb')");
+    }
+  }
 }

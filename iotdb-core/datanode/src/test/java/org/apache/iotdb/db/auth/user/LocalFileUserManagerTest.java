@@ -65,13 +65,13 @@ public class LocalFileUserManagerTest {
   public void testIllegalInput() throws AuthException {
     // Password contains space
     try {
-      manager.createUser("username1", "password_ ");
+      manager.createUser("username1", "password_ ", false);
     } catch (AuthException e) {
       assertTrue(e.getMessage().contains("cannot contain spaces"));
     }
     // Username contains space
     try {
-      assertFalse(manager.createUser("username 2", "password_"));
+      assertFalse(manager.createUser("username 2", "password_", false));
     } catch (AuthException e) {
       assertTrue(e.getMessage().contains("cannot contain spaces"));
     }
@@ -94,7 +94,7 @@ public class LocalFileUserManagerTest {
     User user = manager.getUser(users[0].getName());
     assertNull(user);
     for (User user1 : users) {
-      assertTrue(manager.createUser(user1.getName(), user1.getPassword()));
+      assertTrue(manager.createUser(user1.getName(), user1.getPassword(), false));
     }
     for (User user1 : users) {
       user = manager.getUser(user1.getName());
@@ -102,17 +102,17 @@ public class LocalFileUserManagerTest {
       assertTrue(AuthUtils.validatePassword(user1.getPassword(), user.getPassword()));
     }
 
-    assertFalse(manager.createUser(users[0].getName(), users[0].getPassword()));
+    assertFalse(manager.createUser(users[0].getName(), users[0].getPassword(), false));
     boolean caught = false;
     try {
-      manager.createUser("too", "short");
+      manager.createUser("too", "short", false);
     } catch (AuthException e) {
       caught = true;
     }
     assertTrue(caught);
     caught = false;
     try {
-      manager.createUser("short", "too");
+      manager.createUser("short", "too", false);
     } catch (AuthException e) {
       caught = true;
     }

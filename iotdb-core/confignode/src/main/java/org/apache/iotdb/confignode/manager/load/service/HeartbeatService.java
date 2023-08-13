@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager.load.service;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.confignode.client.async.AsyncConfigNodeHeartbeatClientPool;
@@ -63,7 +64,8 @@ public class HeartbeatService {
 
   private Future<?> currentHeartbeatFuture;
   private final ScheduledExecutorService heartBeatExecutor =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("Cluster-Heartbeat-Service");
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+          ThreadName.CONFIG_NODE_HEART_BEAT_SERVICE.getName());
   private final AtomicLong heartbeatCounter = new AtomicLong(0);
 
   public HeartbeatService(IManager configManager, LoadCache loadCache) {

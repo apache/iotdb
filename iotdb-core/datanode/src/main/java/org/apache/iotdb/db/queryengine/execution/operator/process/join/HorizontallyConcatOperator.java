@@ -43,7 +43,7 @@ import static com.google.common.base.Preconditions.checkArgument;
  */
 public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
 
-  /** start index for each input TsBlocks and size of it is equal to inputTsBlocks. */
+  /** Start index for each input TsBlocks and size of it is equal to inputTsBlocks. */
   private final int[] inputIndex;
 
   private final TsBlockBuilder tsBlockBuilder;
@@ -65,7 +65,7 @@ public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
       return null;
     }
     tsBlockBuilder.reset();
-    // indicates how many rows can be built in this calculate
+    // Indicates how many rows can be built in this calculate
     int maxRowCanBuild = Integer.MAX_VALUE;
     for (int i = 0; i < inputOperatorsCount; i++) {
       maxRowCanBuild =
@@ -76,15 +76,15 @@ public class HorizontallyConcatOperator extends AbstractConsumeAllOperator {
     TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
     ColumnBuilder[] valueColumnBuilders = tsBlockBuilder.getValueColumnBuilders();
 
-    // build TimeColumn according to the first inputTsBlock
+    // Build TimeColumn according to the first inputTsBlock
     int currTsBlockIndex = inputIndex[0];
     for (int row = 0; row < maxRowCanBuild; row++) {
       timeColumnBuilder.writeLong(firstTimeColumn.getLong(currTsBlockIndex + row));
       tsBlockBuilder.declarePosition();
     }
 
-    // build ValueColumns according to inputTsBlocks
-    int valueBuilderIndex = 0; // indicate which valueColumnBuilder should use
+    // Build ValueColumns according to inputTsBlocks
+    int valueBuilderIndex = 0; // Indicate which valueColumnBuilder should use
     for (int i = 0; i < inputOperatorsCount; i++) {
       currTsBlockIndex = inputIndex[i];
       for (Column column : inputTsBlocks[i].getValueColumns()) {

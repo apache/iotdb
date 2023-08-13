@@ -44,7 +44,7 @@ public class IoTDBSelectInto2IT extends IoTDBSelectIntoIT {
         .setMaxNumberOfPointsInPage(5)
         .setQueryThreadCount(1);
     EnvFactory.getEnv().initClusterEnvironment();
-    prepareData(SQLs);
+    prepareData(SELECT_INTO_SQL_LIST);
   }
 
   @AfterClass

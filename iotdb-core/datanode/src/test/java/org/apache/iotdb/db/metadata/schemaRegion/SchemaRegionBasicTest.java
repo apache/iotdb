@@ -814,7 +814,8 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
                 0,
                 0,
                 false,
-                SchemaFilterFactory.createPathContainsFilter("s")));
+                SchemaFilterFactory.createPathContainsFilter("s"),
+                false));
     expectedPathList =
         new HashSet<>(
             Arrays.asList(
@@ -841,7 +842,8 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
                 0,
                 0,
                 false,
-                SchemaFilterFactory.createPathContainsFilter("1")));
+                SchemaFilterFactory.createPathContainsFilter("1"),
+                false));
     expectedPathList =
         new HashSet<>(
             Arrays.asList(
@@ -867,7 +869,8 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
                 0,
                 0,
                 false,
-                SchemaFilterFactory.createPathContainsFilter("laptop.d")));
+                SchemaFilterFactory.createPathContainsFilter("laptop.d"),
+                false));
     expectedPathList =
         new HashSet<>(
             Arrays.asList(
@@ -895,7 +898,8 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
                 0,
                 0,
                 false,
-                SchemaFilterFactory.createDataTypeFilter(TSDataType.INT64)));
+                SchemaFilterFactory.createDataTypeFilter(TSDataType.INT64),
+                false));
     expectedPathList =
         new HashSet<>(
             Arrays.asList(
@@ -923,7 +927,8 @@ public class SchemaRegionBasicTest extends AbstractSchemaRegionTest {
                 0,
                 0,
                 false,
-                SchemaFilterFactory.createDataTypeFilter(TSDataType.BOOLEAN)));
+                SchemaFilterFactory.createDataTypeFilter(TSDataType.BOOLEAN),
+                false));
     expectedPathList = new HashSet<>(Collections.emptyList());
     expectedSize = expectedPathList.size();
     Assert.assertEquals(expectedSize, result.size());

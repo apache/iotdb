@@ -53,29 +53,18 @@ public class DataNodeLastCacheManager {
    * @param timeValuePair the latest point value
    * @param highPriorityUpdate the last value from insertPlan is high priority
    * @param latestFlushedTime latest flushed time
+   * @return increasing of memory usage
    */
-  public static void updateLastCache(
+  public static int updateLastCache(
       SchemaCacheEntry entry,
       TimeValuePair timeValuePair,
       boolean highPriorityUpdate,
       Long latestFlushedTime) {
     if (!CACHE_ENABLED || null == entry) {
-      return;
+      return 0;
     }
     ILastCacheContainer lastCacheContainer = entry.getLastCacheContainer();
-    lastCacheContainer.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
-  }
-
-  /**
-   * reset the last cache value of time series
-   *
-   * @param entry schema cache entry in DataNodeSchemaCache
-   */
-  public static void resetLastCache(SchemaCacheEntry entry) {
-    if (!CACHE_ENABLED || null == entry) {
-      return;
-    }
-    ILastCacheContainer lastCacheContainer = entry.getLastCacheContainer();
-    lastCacheContainer.resetLastCache();
+    return lastCacheContainer.updateCachedLast(
+        timeValuePair, highPriorityUpdate, latestFlushedTime);
   }
 }

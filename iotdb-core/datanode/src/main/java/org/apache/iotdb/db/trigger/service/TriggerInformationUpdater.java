@@ -21,6 +21,7 @@ package org.apache.iotdb.db.trigger.service;
 
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
@@ -49,7 +50,7 @@ public class TriggerInformationUpdater {
 
   private final ScheduledExecutorService triggerInformationUpdateExecutor =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-          "Stateful-Trigger-Information-Updater");
+          ThreadName.STATEFUL_TRIGGER_INFORMATION_UPDATER.getName());
 
   private Future<?> updateFuture;
 

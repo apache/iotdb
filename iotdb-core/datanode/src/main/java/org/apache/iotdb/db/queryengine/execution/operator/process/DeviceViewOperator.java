@@ -36,10 +36,10 @@ import com.google.common.util.concurrent.ListenableFuture;
 import java.util.List;
 
 /**
- * Since devices have been sorted by the merge order as expected, what DeviceViewOperator need to do
- * is traversing the device child operators, get all tsBlocks of one device and transform it to the
- * form we need, adding the device column and allocating value column to its expected location, then
- * get the next device operator until no next device.
+ * Since devices have been sorted by the merge order as expected, what {@link DeviceViewOperator}
+ * need to do is traversing the device child operators, get all tsBlocks of one device and transform
+ * it to the form we need, adding the device column and allocating value column to its expected
+ * location, then get the next device operator until no next device.
  *
  * <p>The deviceOperators can be timeJoinOperator or seriesScanOperator that have not transformed
  * the result form.

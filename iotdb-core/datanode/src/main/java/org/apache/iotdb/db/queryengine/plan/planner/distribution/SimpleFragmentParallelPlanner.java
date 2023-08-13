@@ -36,8 +36,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.MultiChildrenSinkNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastSeriesSourceNode;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -49,6 +51,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A simple implementation of IFragmentParallelPlaner. This planner will transform one PlanFragment
@@ -57,15 +60,18 @@ import java.util.Map;
 public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
   private static final Logger logger = LoggerFactory.getLogger(SimpleFragmentParallelPlanner.class);
 
-  private SubPlan subPlan;
-  private Analysis analysis;
-  private MPPQueryContext queryContext;
+  private final SubPlan subPlan;
+  private final Analysis analysis;
+  private final MPPQueryContext queryContext;
 
   // Record all the FragmentInstances belonged to same PlanFragment
-  Map<PlanFragmentId, FragmentInstance> instanceMap;
+  private final Map<PlanFragmentId, FragmentInstance> instanceMap;
   // Record which PlanFragment the PlanNode belongs
-  Map<PlanNodeId, Pair<PlanFragmentId, PlanNode>> planNodeMap;
-  List<FragmentInstance> fragmentInstanceList;
+  private final Map<PlanNodeId, Pair<PlanFragmentId, PlanNode>> planNodeMap;
+  private final List<FragmentInstance> fragmentInstanceList;
+
+  // Record FragmentInstances dispatched to same DataNode
+  private final Map<TDataNodeLocation, List<FragmentInstance>> dataNodeFIMap;
 
   public SimpleFragmentParallelPlanner(
       SubPlan subPlan, Analysis analysis, MPPQueryContext context) {
@@ -75,6 +81,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     this.instanceMap = new HashMap<>();
     this.planNodeMap = new HashMap<>();
     this.fragmentInstanceList = new ArrayList<>();
+    this.dataNodeFIMap = new HashMap<>();
   }
 
   @Override
@@ -90,6 +97,40 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
       recordPlanNodeRelation(fragment.getPlanNodeTree(), fragment.getId());
       produceFragmentInstance(fragment);
     }
+    fragmentInstanceList.forEach(
+        fragmentInstance ->
+            fragmentInstance.setDataNodeFINum(
+                dataNodeFIMap.get(fragmentInstance.getHostDataNode()).size()));
+
+    // compute dataNodeSeriesScanNum in LastQueryScanNode
+    if (analysis.getStatement() instanceof QueryStatement
+        && ((QueryStatement) analysis.getStatement()).isLastQuery()) {
+      final Map<Path, AtomicInteger> pathSumMap = new HashMap<>();
+      dataNodeFIMap
+          .values()
+          .forEach(
+              fragmentInstances -> {
+                fragmentInstances.forEach(
+                    fragmentInstance ->
+                        updateScanNum(
+                            fragmentInstance.getFragment().getPlanNodeTree(), pathSumMap));
+                pathSumMap.clear();
+              });
+    }
+  }
+
+  private void updateScanNum(PlanNode planNode, Map<Path, AtomicInteger> pathSumMap) {
+    if (planNode instanceof LastSeriesSourceNode) {
+      LastSeriesSourceNode lastSeriesSourceNode = (LastSeriesSourceNode) planNode;
+      pathSumMap.merge(
+          lastSeriesSourceNode.getSeriesPath(),
+          lastSeriesSourceNode.getDataNodeSeriesScanNum(),
+          (k, v) -> {
+            v.incrementAndGet();
+            return v;
+          });
+    }
+    planNode.getChildren().forEach(node -> updateScanNum(node, pathSumMap));
   }
 
   private void produceFragmentInstance(PlanFragment fragment) {
@@ -130,6 +171,16 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
       fragmentInstance.setExecutorAndHost(new StorageExecutor(regionReplicaSet));
       fragmentInstance.setHostDataNode(selectTargetDataNode(regionReplicaSet));
     }
+
+    dataNodeFIMap.compute(
+        fragmentInstance.getHostDataNode(),
+        (k, v) -> {
+          if (v == null) {
+            v = new ArrayList<>();
+          }
+          v.add(fragmentInstance);
+          return v;
+        });
 
     if (analysis.getStatement() instanceof QueryStatement
         || analysis.getStatement() instanceof ShowQueriesStatement) {

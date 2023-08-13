@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.exception.pipe;
 
+import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMetaVersion;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -33,42 +34,69 @@ public class PipeRuntimeNonCriticalException extends PipeRuntimeException {
     super(message);
   }
 
+  public PipeRuntimeNonCriticalException(String message, long timeStamp) {
+    super(message, timeStamp);
+  }
+
   @Override
   public boolean equals(Object obj) {
     return obj instanceof PipeRuntimeNonCriticalException
-        && Objects.equals(getMessage(), ((PipeRuntimeNonCriticalException) obj).getMessage());
+        && Objects.equals(getMessage(), ((PipeRuntimeNonCriticalException) obj).getMessage())
+        && Objects.equals(getTimeStamp(), ((PipeRuntimeException) obj).getTimeStamp());
   }
 
   @Override
   public int hashCode() {
-    return getMessage().hashCode();
+    return Objects.hash(getMessage(), getTimeStamp());
   }
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {
     PipeRuntimeExceptionType.NON_CRITICAL_EXCEPTION.serialize(byteBuffer);
     ReadWriteIOUtils.write(getMessage(), byteBuffer);
+    ReadWriteIOUtils.write(getTimeStamp(), byteBuffer);
   }
 
   @Override
   public void serialize(OutputStream stream) throws IOException {
     PipeRuntimeExceptionType.NON_CRITICAL_EXCEPTION.serialize(stream);
     ReadWriteIOUtils.write(getMessage(), stream);
+    ReadWriteIOUtils.write(getTimeStamp(), stream);
   }
 
-  public static PipeRuntimeNonCriticalException deserializeFrom(ByteBuffer byteBuffer) {
+  public static PipeRuntimeNonCriticalException deserializeFrom(
+      PipeRuntimeMetaVersion version, ByteBuffer byteBuffer) {
     final String message = ReadWriteIOUtils.readString(byteBuffer);
-    return new PipeRuntimeNonCriticalException(message);
+    switch (version) {
+      case VERSION_1:
+        return new PipeRuntimeNonCriticalException(message);
+      case VERSION_2:
+        return new PipeRuntimeNonCriticalException(message, ReadWriteIOUtils.readLong(byteBuffer));
+      default:
+        throw new UnsupportedOperationException(String.format("Unsupported version %s", version));
+    }
   }
 
-  public static PipeRuntimeNonCriticalException deserializeFrom(InputStream stream)
-      throws IOException {
+  public static PipeRuntimeNonCriticalException deserializeFrom(
+      PipeRuntimeMetaVersion version, InputStream stream) throws IOException {
     final String message = ReadWriteIOUtils.readString(stream);
-    return new PipeRuntimeNonCriticalException(message);
+    switch (version) {
+      case VERSION_1:
+        return new PipeRuntimeNonCriticalException(message);
+      case VERSION_2:
+        return new PipeRuntimeNonCriticalException(message, ReadWriteIOUtils.readLong(stream));
+      default:
+        throw new UnsupportedOperationException(String.format("Unsupported version %s", version));
+    }
   }
 
   @Override
   public String toString() {
-    return "PipeRuntimeNonCriticalException{ message: " + getMessage() + " }";
+    return "PipeRuntimeNonCriticalException{"
+        + "message='"
+        + getMessage()
+        + "', timeStamp="
+        + getTimeStamp()
+        + "}";
   }
 }

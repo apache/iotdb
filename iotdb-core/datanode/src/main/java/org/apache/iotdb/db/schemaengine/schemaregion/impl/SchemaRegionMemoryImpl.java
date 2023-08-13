@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.ClusterSchemaQuotaLevel;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
-import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
@@ -943,22 +942,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
   }
 
-  private void changeAlias(PartialPath path, String alias) throws MetadataException {
-    IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(path);
-    IDeviceMNode<IMemMNode> device = leafMNode.getParent().getAsDeviceMNode();
-    if (leafMNode.getAlias() != null) {
-      device.deleteAliasChild(leafMNode.getAlias());
-    }
-    device.addAlias(alias, leafMNode);
-    mtree.setAlias(leafMNode, alias);
-
-    try {
-      writeToMLog(SchemaRegionWritePlanFactory.getChangeAliasPlan(path, alias));
-    } catch (IOException e) {
-      throw new MetadataException(e);
-    }
-  }
-
   /**
    * Upsert tags and attributes key-value for the timeseries if the key has existed, just use the
    * new value to update it.
@@ -976,11 +959,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       Map<String, String> attributesMap,
       PartialPath fullPath)
       throws MetadataException, IOException {
-    IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
-
     // upsert alias
-    upsertAlias(alias, fullPath, leafMNode);
-
+    upsertAlias(alias, fullPath);
+    IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
     if (tagsMap == null && attributesMap == null) {
       return;
     }
@@ -1000,21 +981,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     tagManager.updateTagsAndAttributes(tagsMap, attributesMap, leafMNode);
   }
 
-  private void upsertAlias(
-      String alias, PartialPath fullPath, IMeasurementMNode<IMemMNode> leafMNode)
+  private void upsertAlias(String alias, PartialPath fullPath)
       throws MetadataException, IOException {
-    // upsert alias
-    if (alias != null && !alias.equals(leafMNode.getAlias())) {
-      IDeviceMNode<IMemMNode> deviceMNode = leafMNode.getParent().getAsDeviceMNode();
-      if (!deviceMNode.addAlias(alias, leafMNode)) {
-        throw new MetadataException("The alias already exists.");
-      }
-
-      if (leafMNode.getAlias() != null) {
-        deviceMNode.deleteAliasChild(leafMNode.getAlias());
-      }
-
-      mtree.setAlias(leafMNode, alias);
+    if (mtree.changeAlias(alias, fullPath)) {
       // persist to WAL
       writeToMLog(SchemaRegionWritePlanFactory.getChangeAliasPlan(fullPath, alias));
     }
@@ -1315,9 +1284,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     public RecoverOperationResult visitChangeAlias(
         IChangeAliasPlan changeAliasPlan, SchemaRegionMemoryImpl context) {
       try {
-        changeAlias(changeAliasPlan.getPath(), changeAliasPlan.getAlias());
+        upsertAlias(changeAliasPlan.getAlias(), changeAliasPlan.getPath());
         return RecoverOperationResult.SUCCESS;
-      } catch (MetadataException e) {
+      } catch (MetadataException | IOException e) {
         return new RecoverOperationResult(e);
       }
     }

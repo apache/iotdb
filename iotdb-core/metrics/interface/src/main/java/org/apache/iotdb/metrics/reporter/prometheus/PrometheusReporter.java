@@ -63,6 +63,7 @@ public class PrometheusReporter implements Reporter {
   }
 
   @Override
+  @SuppressWarnings("java:S1181")
   public boolean start() {
     if (httpServer != null) {
       LOGGER.warn("PrometheusReporter already start!");
@@ -80,7 +81,9 @@ public class PrometheusReporter implements Reporter {
                           "/metrics",
                           (request, response) -> response.sendString(Mono.just(scrape()))))
               .bindNow();
-    } catch (Exception e) {
+    } catch (Throwable e) {
+      // catch Throwable rather than Exception here because the code above might cause a
+      // NoClassDefFoundError
       httpServer = null;
       LOGGER.warn("PrometheusReporter failed to start, because ", e);
       return false;

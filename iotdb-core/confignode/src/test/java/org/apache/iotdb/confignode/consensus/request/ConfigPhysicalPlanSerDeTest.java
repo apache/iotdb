@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.consensus.request;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
@@ -539,8 +540,7 @@ public class ConfigPhysicalPlanSerDeTest {
     AuthorPlan req0;
     AuthorPlan req1;
     Set<Integer> permissions = new HashSet<>();
-    permissions.add(PrivilegeType.GRANT_USER_PRIVILEGE.ordinal());
-    permissions.add(PrivilegeType.REVOKE_USER_ROLE.ordinal());
+    permissions.add(PrivilegeType.GRANT_PRIVILEGE.ordinal());
 
     // create user
     req0 =
@@ -819,9 +819,12 @@ public class ConfigPhysicalPlanSerDeTest {
     CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
     createRegionGroupsPlan.addRegionGroup("root.sg0", dataRegionSet);
     createRegionGroupsPlan.addRegionGroup("root.sg1", schemaRegionSet);
+    CreateRegionGroupsPlan persistPlan = new CreateRegionGroupsPlan();
+    persistPlan.addRegionGroup("root.sg0", dataRegionSet);
+    persistPlan.addRegionGroup("root.sg1", schemaRegionSet);
     CreateRegionGroupsProcedure procedure0 =
         new CreateRegionGroupsProcedure(
-            TConsensusGroupType.DataRegion, createRegionGroupsPlan, failedRegions);
+            TConsensusGroupType.DataRegion, createRegionGroupsPlan, persistPlan, failedRegions);
 
     updateProcedurePlan0.setProcedure(procedure0);
     updateProcedurePlan1 =

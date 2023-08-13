@@ -21,11 +21,24 @@ package org.apache.iotdb.pipe.api.exception;
 
 public class PipeException extends RuntimeException {
 
+  private final long timeStamp;
+
   public PipeException(String message) {
     super(message);
+    this.timeStamp = System.currentTimeMillis();
+  }
+
+  public PipeException(String message, long timeStamp) {
+    super(message);
+    this.timeStamp = timeStamp;
   }
 
   public PipeException(String message, Throwable cause) {
     super(message, cause);
+    this.timeStamp = System.currentTimeMillis();
+  }
+
+  public long getTimeStamp() {
+    return timeStamp;
   }
 }

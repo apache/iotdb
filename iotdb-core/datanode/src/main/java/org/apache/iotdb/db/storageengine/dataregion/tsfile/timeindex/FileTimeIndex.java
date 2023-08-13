@@ -224,8 +224,8 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public boolean mayContainsDevice(String device) {
-    return true;
+  public boolean definitelyNotContains(String device) {
+    return false;
   }
 
   @Override
@@ -234,7 +234,8 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public Pair<Long, Long> getPossibleStartTimeAndEndTime(PartialPath devicePattern) {
+  public Pair<Long, Long> getPossibleStartTimeAndEndTime(
+      PartialPath devicePattern, Set<String> deviceMatchInfo) {
     return new Pair<>(startTime, endTime);
   }
 

@@ -16,11 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.persistence.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -57,6 +60,7 @@ import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
@@ -84,15 +88,18 @@ import java.util.UUID;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.db.schemaengine.SchemaConstant.ALL_MATCH_PATTERN;
 import static org.apache.iotdb.db.schemaengine.SchemaConstant.ALL_TEMPLATE;
+import static org.apache.iotdb.db.schemaengine.SchemaConstant.SYSTEM_DATABASE_PATTERN;
 
 /**
- * The ClusterSchemaInfo stores cluster schemaengine. The cluster schemaengine including: 1.
+ * The {@link ClusterSchemaInfo} stores cluster schemaEngine. The cluster schemaEngine including: 1.
  * StorageGroupSchema 2. Template (Not implement yet)
  */
 public class ClusterSchemaInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSchemaInfo.class);
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   // Database read write lock
   private final ReentrantReadWriteLock databaseReadWriteLock;
@@ -124,7 +131,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   // ======================================================
 
   /**
-   * Cache DatabaseSchema
+   * Cache DatabaseSchema.
    *
    * @param plan DatabaseSchemaPlan
    * @return SUCCESS_STATUS if the Database is set successfully.
@@ -155,7 +162,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   /**
-   * Alter DatabaseSchema
+   * Alter DatabaseSchema.
    *
    * @param plan DatabaseSchemaPlan
    * @return SUCCESS_STATUS if the DatabaseSchema is altered successfully.
@@ -216,7 +223,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   /**
-   * Delete Database
+   * Delete Database.
    *
    * @param plan DeleteDatabasePlan
    * @return SUCCESS_STATUS
@@ -240,6 +247,29 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       databaseReadWriteLock.writeLock().unlock();
     }
     return result;
+  }
+
+  /**
+   * Check database limit if necessary.
+   *
+   * @throws SchemaQuotaExceededException if the number of databases exceeds the limit
+   * @throws MetadataException if other exceptions happen
+   */
+  public void checkDatabaseLimit() throws MetadataException {
+    int limit = COMMON_CONFIG.getDatabaseLimitThreshold();
+    if (limit > 0) {
+      databaseReadWriteLock.readLock().lock();
+      try {
+        int count =
+            mTree.getDatabaseNum(ALL_MATCH_PATTERN, false)
+                - mTree.getDatabaseNum(SYSTEM_DATABASE_PATTERN, false);
+        if (count >= limit) {
+          throw new SchemaQuotaExceededException(limit);
+        }
+      } finally {
+        databaseReadWriteLock.readLock().unlock();
+      }
+    }
   }
 
   /** @return The number of matched Databases by the specified Database pattern */
@@ -384,7 +414,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   /**
-   * Adjust the maximum RegionGroup count of each Database
+   * Adjust the maximum RegionGroup count of each Database.
    *
    * @param plan AdjustMaxRegionGroupCountPlan
    * @return SUCCESS_STATUS
@@ -418,7 +448,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   /**
    * Only leader use this interface.
    *
-   * @return List<DatabaseName>, all Databases' name
+   * @return List {@literal <}DatabaseName{@literal >}, all Databases' name.
    */
   public List<String> getDatabaseNames() {
     List<String> databases = new ArrayList<>();

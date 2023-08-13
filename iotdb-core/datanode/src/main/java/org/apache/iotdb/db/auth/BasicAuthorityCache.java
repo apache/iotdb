@@ -34,15 +34,15 @@ import java.util.concurrent.TimeUnit;
 public class BasicAuthorityCache implements IAuthorCache {
   private static final Logger logger = LoggerFactory.getLogger(BasicAuthorityCache.class);
 
-  private IoTDBDescriptor conf = IoTDBDescriptor.getInstance();
+  private final IoTDBDescriptor conf = IoTDBDescriptor.getInstance();
 
-  private Cache<String, User> userCache =
+  private final Cache<String, User> userCache =
       Caffeine.newBuilder()
           .maximumSize(conf.getConfig().getAuthorCacheSize())
           .expireAfterAccess(conf.getConfig().getAuthorCacheExpireTime(), TimeUnit.MINUTES)
           .build();
 
-  private Cache<String, Role> roleCache =
+  private final Cache<String, Role> roleCache =
       Caffeine.newBuilder()
           .maximumSize(conf.getConfig().getAuthorCacheSize())
           .expireAfterAccess(conf.getConfig().getAuthorCacheExpireTime(), TimeUnit.MINUTES)

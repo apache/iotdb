@@ -41,7 +41,7 @@ import java.io.IOException;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
-class RatisClient {
+class RatisClient implements AutoCloseable {
 
   private final Logger logger = LoggerFactory.getLogger(RatisClient.class);
   private final RaftGroup serveGroup;
@@ -61,12 +61,17 @@ class RatisClient {
     return raftClient;
   }
 
-  private void close() {
+  private void invalidate() {
     try {
       raftClient.close();
     } catch (IOException e) {
       logger.warn("cannot close raft client ", e);
     }
+  }
+
+  @Override
+  public void close() throws Exception {
+    returnSelf();
   }
 
   void returnSelf() {
@@ -92,7 +97,7 @@ class RatisClient {
 
     @Override
     public void destroyObject(RaftGroup key, PooledObject<RatisClient> pooledObject) {
-      pooledObject.getObject().close();
+      pooledObject.getObject().invalidate();
     }
 
     @Override

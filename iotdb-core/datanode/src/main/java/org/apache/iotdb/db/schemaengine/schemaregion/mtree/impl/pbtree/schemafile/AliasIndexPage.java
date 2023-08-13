@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile;
 
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -34,13 +35,14 @@ import java.util.Queue;
  * <p>Since it is not necessary to shift size of it, extending a {@linkplain SchemaPage} might be
  * more reasonable for this structure.
  *
- * <p>TODO: another abstract class for this and InternalPage is expected
+ * <p>TODO: Another abstract class for this and InternalPage is expected
  */
 public class AliasIndexPage extends SchemaPage implements ISegment<String, String> {
 
   private static final int OFFSET_LEN = 2;
   long nextPage;
-  String penultKey = null, lastKey = null;
+  String penultKey = null;
+  String lastKey = null;
 
   /**
    * <b>Page Header Structure: (19 bytes used, 13 bytes reserved)</b> As in {@linkplain
@@ -218,7 +220,9 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
   }
 
   @Override
-  public void delete() {}
+  public void delete() {
+    // Do nothing
+  }
 
   @Override
   public long getNextSegAddress() {
@@ -274,21 +278,20 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
 
     int sp; // virtual index to split
     if (monotonic) {
-      // new entry into part with more space
-      sp = key.compareTo(lastKey) > 0 ? Math.max(pos, n / 2) : Math.min(pos, n / 2);
+      // New entry into part with more space
+      sp = key.compareTo(lastKey) > 0 ? Math.max(pos, n >> 1) : Math.min(pos, n >> 1);
     } else {
-      sp = n / 2;
+      sp = n >> 1;
     }
 
-    // little different from InternalSegment, only the front edge key can not split
+    // Little different from InternalSegment, only the front edge key can not split
     sp = sp <= 0 ? 1 : sp;
 
-    // this method BREAKS envelop of the passing in buffer to be more efficient
+    // This method BREAKS envelop of the passing in buffer to be more efficient
     // attributes for dstBuffer
-    short memberNum = 0,
-        spareOffset = (short) dstBuffer.capacity(),
-        spareSize = (short) (spareOffset - SchemaFileConfig.PAGE_HEADER_SIZE);
-    long nextSegAddress = this.nextPage;
+    short memberNum = 0;
+    short spareOffset = (short) dstBuffer.capacity();
+    short spareSize = (short) (spareOffset - SchemaFileConfig.PAGE_HEADER_SIZE);
     dstBuffer.clear();
 
     short offset;
@@ -299,7 +302,7 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
     // TODO: implement bulk split further
     for (int ix = sp; ix <= n; ix++) {
       if (ix == pos) {
-        // migrate newly insert
+        // Migrate newly insert
         mKey = key;
         recSize = 8 + entry.getBytes().length + mKey.getBytes().length;
 
@@ -309,7 +312,7 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
         ReadWriteIOUtils.write(entry, dstBuffer);
 
       } else {
-        // pos equals -2 if key is null
+        // Pos equals -2 if key is null
         aix = (ix > pos) && (pos != -2) ? ix - 1 : ix;
         mKey = getKeyByIndex(aix);
 
@@ -329,7 +332,7 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
       ReadWriteIOUtils.write(spareOffset, dstBuffer);
 
       if (ix == sp) {
-        // search key is the first key in split segment
+        // Search key is the first key in split segment
         sKey = mKey;
       }
       memberNum++;
@@ -400,13 +403,14 @@ public class AliasIndexPage extends SchemaPage implements ISegment<String, Strin
     return this;
   }
 
-  // endregion
+  // Endregion
 
   private void compactKeys() {
     ByteBuffer tempBuffer = ByteBuffer.allocate(this.pageBuffer.capacity() - this.spareOffset);
     tempBuffer.position(tempBuffer.capacity());
     this.spareOffset = (short) this.pageBuffer.capacity();
-    String key, name;
+    String key;
+    String name;
     int accSiz = 0;
     for (int i = 0; i < this.memberNum; i++) {
       // this.pageBuffer will not be overridden immediately

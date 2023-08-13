@@ -20,16 +20,101 @@
 
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <parent>
-        <artifactId>iotdb-parent</artifactId>
-        <groupId>org.apache.iotdb</groupId>
-        <version>1.3.0-SNAPSHOT</version>
-        <relativePath>../../pom.xml</relativePath>
-    </parent>
     <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.apache.iotdb</groupId>
+        <artifactId>iotdb-protocol</artifactId>
+        <version>1.3.0-SNAPSHOT</version>
+    </parent>
     <artifactId>openapi</artifactId>
+    <name>IoTDB: Protocol: OpenAPI</name>
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.openapitools</groupId>
+                <artifactId>openapi-generator-maven-plugin</artifactId>
+                <version>${openapi.generator.version}</version>
+                <executions>
+                    <execution>
+                        <id>generate-java-rest-codes-common</id>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <inputSpec>${project.basedir}/src/main/openapi3/iotdb_rest_common.yaml</inputSpec>
+                            <output>${project.build.directory}/generated-sources/java</output>
+                            <apiPackage>org.apache.iotdb.db.protocol.rest</apiPackage>
+                            <modelPackage>org.apache.iotdb.db.protocol.rest.model</modelPackage>
+                            <invokerPackage>org.apache.iotdb.db.protocol.rest.invoker</invokerPackage>
+                            <generatorName>jaxrs-jersey</generatorName>
+                            <groupId>org.apache.iotdb</groupId>
+                            <artifactId>iotdb-rest-service</artifactId>
+                            <artifactVersion>${project.version}</artifactVersion>
+                            <addCompileSourceRoot>true</addCompileSourceRoot>
+                            <configOptions>
+                                <licenseName>Apache License 2.0</licenseName>
+                                <groupId>org.apache.iotdb</groupId>
+                                <artifactId>iotdb-rest-service</artifactId>
+                                <artifactVersion>${project.version}</artifactVersion>
+                                <dateLibrary>java8</dateLibrary>
+                                <useGzipFeature>true</useGzipFeature>
+                            </configOptions>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>generate-java-rest-codes-v1</id>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <inputSpec>${project.basedir}/src/main/openapi3/iotdb_rest_v1.yaml</inputSpec>
+                            <output>${project.build.directory}/generated-sources/java</output>
+                            <apiPackage>org.apache.iotdb.db.protocol.rest.v1</apiPackage>
+                            <modelPackage>org.apache.iotdb.db.protocol.rest.v1.model</modelPackage>
+                            <invokerPackage>org.apache.iotdb.db.protocol.rest.v1.invoker</invokerPackage>
+                            <generatorName>jaxrs-jersey</generatorName>
+                            <groupId>org.apache.iotdb</groupId>
+                            <artifactId>iotdb-rest-service</artifactId>
+                            <artifactVersion>${project.version}</artifactVersion>
+                            <addCompileSourceRoot>true</addCompileSourceRoot>
+                            <configOptions>
+                                <licenseName>Apache License 2.0</licenseName>
+                                <groupId>org.apache.iotdb</groupId>
+                                <artifactId>iotdb-rest-service</artifactId>
+                                <artifactVersion>${project.version}</artifactVersion>
+                                <dateLibrary>java8</dateLibrary>
+                                <useGzipFeature>true</useGzipFeature>
+                            </configOptions>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>generate-java-rest-codes-v2</id>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <inputSpec>${project.basedir}/src/main/openapi3/iotdb_rest_v2.yaml</inputSpec>
+                            <output>${project.build.directory}/generated-sources/java</output>
+                            <apiPackage>org.apache.iotdb.db.protocol.rest.v2</apiPackage>
+                            <modelPackage>org.apache.iotdb.db.protocol.rest.v2.model</modelPackage>
+                            <invokerPackage>org.apache.iotdb.db.protocol.rest.v2.invoker</invokerPackage>
+                            <generatorName>jaxrs-jersey</generatorName>
+                            <groupId>org.apache.iotdb</groupId>
+                            <artifactId>iotdb-rest-service</artifactId>
+                            <artifactVersion>${project.version}</artifactVersion>
+                            <addCompileSourceRoot>true</addCompileSourceRoot>
+                            <configOptions>
+                                <licenseName>Apache License 2.0</licenseName>
+                                <groupId>org.apache.iotdb</groupId>
+                                <artifactId>iotdb-rest-service</artifactId>
+                                <artifactVersion>${project.version}</artifactVersion>
+                                <dateLibrary>java8</dateLibrary>
+                                <useGzipFeature>true</useGzipFeature>
+                            </configOptions>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
@@ -74,103 +159,4 @@
             <version>${jackson.version}</version>
         </dependency>
     </dependencies>
-    <profiles>
-        <profile>
-            <id>openapi-generation</id>
-            <activation>
-                <file>
-                    <exists>src/main/openapi3</exists>
-                </file>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.openapitools</groupId>
-                        <artifactId>openapi-generator-maven-plugin</artifactId>
-                        <version>${openapi.generator.version}</version>
-                        <executions>
-                            <execution>
-                                <id>generate-java-rest-codes-common</id>
-                                <goals>
-                                    <goal>generate</goal>
-                                </goals>
-                                <configuration>
-                                    <inputSpec>${project.basedir}/src/main/openapi3/iotdb_rest_common.yaml</inputSpec>
-                                    <output>${project.build.directory}/generated-sources/java</output>
-                                    <apiPackage>org.apache.iotdb.db.protocol.rest</apiPackage>
-                                    <modelPackage>org.apache.iotdb.db.protocol.rest.model</modelPackage>
-                                    <invokerPackage>org.apache.iotdb.db.protocol.rest.invoker</invokerPackage>
-                                    <generatorName>jaxrs-jersey</generatorName>
-                                    <groupId>org.apache.iotdb</groupId>
-                                    <artifactId>iotdb-rest-service</artifactId>
-                                    <artifactVersion>${project.version}</artifactVersion>
-                                    <addCompileSourceRoot>true</addCompileSourceRoot>
-                                    <configOptions>
-                                        <licenseName>Apache License 2.0</licenseName>
-                                        <groupId>org.apache.iotdb</groupId>
-                                        <artifactId>iotdb-rest-service</artifactId>
-                                        <artifactVersion>${project.version}</artifactVersion>
-                                        <dateLibrary>java8</dateLibrary>
-                                        <useGzipFeature>true</useGzipFeature>
-                                    </configOptions>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>generate-java-rest-codes-v1</id>
-                                <goals>
-                                    <goal>generate</goal>
-                                </goals>
-                                <configuration>
-                                    <inputSpec>${project.basedir}/src/main/openapi3/iotdb_rest_v1.yaml</inputSpec>
-                                    <output>${project.build.directory}/generated-sources/java</output>
-                                    <apiPackage>org.apache.iotdb.db.protocol.rest.v1</apiPackage>
-                                    <modelPackage>org.apache.iotdb.db.protocol.rest.v1.model</modelPackage>
-                                    <invokerPackage>org.apache.iotdb.db.protocol.rest.v1.invoker</invokerPackage>
-                                    <generatorName>jaxrs-jersey</generatorName>
-                                    <groupId>org.apache.iotdb</groupId>
-                                    <artifactId>iotdb-rest-service</artifactId>
-                                    <artifactVersion>${project.version}</artifactVersion>
-                                    <addCompileSourceRoot>true</addCompileSourceRoot>
-                                    <configOptions>
-                                        <licenseName>Apache License 2.0</licenseName>
-                                        <groupId>org.apache.iotdb</groupId>
-                                        <artifactId>iotdb-rest-service</artifactId>
-                                        <artifactVersion>${project.version}</artifactVersion>
-                                        <dateLibrary>java8</dateLibrary>
-                                        <useGzipFeature>true</useGzipFeature>
-                                    </configOptions>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>generate-java-rest-codes-v2</id>
-                                <goals>
-                                    <goal>generate</goal>
-                                </goals>
-                                <configuration>
-                                    <inputSpec>${project.basedir}/src/main/openapi3/iotdb_rest_v2.yaml</inputSpec>
-                                    <output>${project.build.directory}/generated-sources/java</output>
-                                    <apiPackage>org.apache.iotdb.db.protocol.rest.v2</apiPackage>
-                                    <modelPackage>org.apache.iotdb.db.protocol.rest.v2.model</modelPackage>
-                                    <invokerPackage>org.apache.iotdb.db.protocol.rest.v2.invoker</invokerPackage>
-                                    <generatorName>jaxrs-jersey</generatorName>
-                                    <groupId>org.apache.iotdb</groupId>
-                                    <artifactId>iotdb-rest-service</artifactId>
-                                    <artifactVersion>${project.version}</artifactVersion>
-                                    <addCompileSourceRoot>true</addCompileSourceRoot>
-                                    <configOptions>
-                                        <licenseName>Apache License 2.0</licenseName>
-                                        <groupId>org.apache.iotdb</groupId>
-                                        <artifactId>iotdb-rest-service</artifactId>
-                                        <artifactVersion>${project.version}</artifactVersion>
-                                        <dateLibrary>java8</dateLibrary>
-                                        <useGzipFeature>true</useGzipFeature>
-                                    </configOptions>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
 </project>

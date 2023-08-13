@@ -28,7 +28,6 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
-import org.apache.iotdb.consensus.iot.IoTConsensusServerMetrics;
 import org.apache.iotdb.consensus.iot.client.AsyncIoTConsensusServiceClient;
 import org.apache.iotdb.consensus.iot.client.DispatchLogHandler;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
@@ -70,8 +69,7 @@ public class LogDispatcher {
 
   public LogDispatcher(
       IoTConsensusServerImpl impl,
-      IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager,
-      IoTConsensusServerMetrics ioTConsensusServerMetrics) {
+      IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager) {
     this.impl = impl;
     this.selfPeerId = impl.getThisNode().getNodeId();
     this.clientManager = clientManager;
@@ -103,7 +101,6 @@ public class LogDispatcher {
 
   public synchronized void stop() {
     if (!threads.isEmpty()) {
-      threads.forEach(LogDispatcherThread::stop);
       executorService.shutdownNow();
       int timeout = 10;
       try {
@@ -114,6 +111,7 @@ public class LogDispatcher {
         Thread.currentThread().interrupt();
         logger.error("Unexpected Interruption when closing LogDispatcher service ");
       }
+      threads.forEach(LogDispatcherThread::stop);
     }
     stopped = true;
   }
@@ -224,6 +222,7 @@ public class LogDispatcher {
       this.syncStatus = new SyncStatus(controller, config);
       this.walEntryIterator = reader.getReqIterator(START_INDEX);
       this.logDispatcherThreadMetrics = new LogDispatcherThreadMetrics(this);
+      MetricService.getInstance().addMetricSet(logDispatcherThreadMetrics);
     }
 
     public IndexController getController() {
@@ -303,10 +302,9 @@ public class LogDispatcher {
     @Override
     public void run() {
       logger.info("{}: Dispatcher for {} starts", impl.getThisNode(), peer);
-      MetricService.getInstance().addMetricSet(logDispatcherThreadMetrics);
       try {
         Batch batch;
-        while (!Thread.interrupted() && !stopped) {
+        while (!Thread.interrupted()) {
           long startTime = System.nanoTime();
           while ((batch = getBatch()).isEmpty()) {
             // we may block here if there is no requests in the queue

@@ -211,9 +211,9 @@ public class GroupByTagNode extends MultiChildProcessNode {
 
   /**
    * The CrossSeriesAggregationDescriptor may be null if there exists a key containing no
-   * timeSeries.
+   * timeseries.
    *
-   * <p>e.g. we have following timeSeries:
+   * <p>e.g. we have following timeseries:
    *
    * <ul>
    *   <li>root.sg.d1.s1(k1=v1)

@@ -244,7 +244,7 @@ public class QueryExecution implements IQueryExecution {
     // time
     if (isQuery()) {
       long currentTime = System.currentTimeMillis();
-      if (currentTime >= context.getTimeOut() + context.getStartTime()) {
+      if (currentTime - context.getStartTime() >= context.getTimeOut()) {
         throw new QueryTimeoutRuntimeException(
             context.getStartTime(), currentTime, context.getTimeOut());
       }

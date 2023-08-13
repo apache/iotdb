@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.itbase.constant;
 
 /** All built-in UDFs need to register their function names and classes here. */

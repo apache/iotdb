@@ -232,6 +232,7 @@ public class UpdateLastCacheOperatorTest {
         measurementPath,
         measurementPath.getSeriesType(),
         null,
+        false,
         false);
   }
 }

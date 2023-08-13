@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.utils.datastructure;
 
 import java.util.List;
@@ -94,7 +95,9 @@ public interface BackwardSort extends QuickSort {
     while (overlapIdx < rowCount && compare(hi, overlapIdx) == 1) {
       overlapIdx++;
     }
-    if (overlapIdx == hi + 1) return;
+    if (overlapIdx == hi + 1) {
+      return;
+    }
 
     int tmpIdx = 0;
     int len = overlapIdx - hi;

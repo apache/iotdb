@@ -216,7 +216,7 @@ public class TsFileSelfCheckToolTest {
     byte[] serialArr = bo.toByteArray();
     // timeseriesMetadata begins at 878364
     // randomly modify timeseriesMetadata region
-    raf.seek(963375);
+    raf.seek(965844);
     raf.write(serialArr, 0, serialArr.length);
     bo.close();
     raf.close();

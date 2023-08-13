@@ -36,12 +36,12 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * The SingleDeviceViewOperator plays a similar role with DeviceViewOperator of adding a device
- * column to current resultSet.
+ * The {@link SingleDeviceViewOperator} plays a similar role with {@link DeviceViewOperator} of
+ * adding a device column to current resultSet.
  *
- * <p>Different from DeviceViewOperator which merge the resultSet from different devices,
- * SingleDeviceViewOperator only focuses on one single device, the goal of it is to add a device
- * view. It's just a transition and won't change the way data flows.
+ * <p>Different from {@link DeviceViewOperator} which merge the resultSet from different devices,
+ * {@link SingleDeviceViewOperator} only focuses on one single device, the goal of it is to add a
+ * device view. It's just a transition and won't change the way data flows.
  */
 public class SingleDeviceViewOperator implements ProcessOperator {
 

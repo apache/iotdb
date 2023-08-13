@@ -8,7 +8,6 @@ on:
     branches:
       - master
       - "rel/*"
-      - "new_*"
     paths-ignore:
       - "docs/**"
       - 'site/**'
@@ -45,22 +44,28 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Test
-        run: mvn -B clean compile test -pl distribution,iotdb-client/cli,iotdb-client/session,iotdb-client/jdbc -am -Dtest.port.closed=true -Pcode-coverage
+        run: mvn -B -P with-code-coverage clean compile test -pl distribution,iotdb-client/cli,iotdb-client/session,iotdb-client/jdbc -am -Dtest.port.closed=true
       - name: Coveralls
+        # TODO: "post-integration-test" doesn't evaluate the outcome of the IT phase, this is done in "validate"
         run: |
-          mvn -B post-integration-test -Pcode-coverage -pl code-coverage
+          mvn -B -P with-code-coverage post-integration-test -pl code-coverage
           mvn -B coveralls:report \
           -DserviceName=travis_ci \
           -Dbranch=$BRANCH_NAME \
           -DpullRequest=$PR_NUMBER \
           -DrepoToken=${{ secrets.COVERALL_TOKEN }} \
-          -Pcode-coverage
+          -Pwith-code-coverage
 
   sonar:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'apache/iotdb' || github.event_name == 'push'
     steps:
       - uses: actions/checkout@v3
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: corretto
+          java-version: 17
       - name: Cache Maven packages
         uses: actions/cache@v3
         with:
@@ -72,9 +77,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONARCLOUD_TOKEN }}
         run: |
-          mvn -B verify sonar:sonar \
+          mvn -B -P with-integration-tests,with-code-coverage verify sonar:sonar \
           -Dsonar.organization=apache \
-          -Dsonar.projectKey=apache_incubator-iotdb \
+          -Dsonar.projectKey=apache_iotdb \
           -Dsonar.host.url=https://sonarcloud.io \
           -Dsonar.login=${{ secrets.SONARCLOUD_TOKEN }} \
           -DskipTests -pl '!distribution,!integration-test' -am

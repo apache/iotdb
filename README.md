@@ -97,6 +97,122 @@ To use IoTDB, you need to have:
     # FreeBSD or Darwin
     > sudo sysctl -w kern.ipc.somaxconn=65535
     ```
+### Linux
+
+(This guide is based on an installation of Ubuntu 22.04)
+
+#### Git
+
+Make sure `Git` is installed, if it's missing, simply install it via:
+
+    sudo apt install git
+
+#### Java
+
+Make sure `Java` is installed, if it's missing, simply install it via:
+
+    sudo apt install default-jdk
+
+#### Flex
+
+    sudo apt install flex
+
+#### Bison
+
+    sudo apt install bison
+
+#### Boost
+
+    sudo apt install libboost-all-dev
+
+#### OpenSSL header files
+
+    sudo apt -y install libssl-dev
+
+#### OpenSSL
+
+Usually OpenSSL is already installed, however it's missing the header files we need to compile.
+So ensure these are installed:
+
+    sudo apt install libssl-dev
+
+When enabling the `compile-cpp`:
+
+### Mac OS
+
+#### Git
+
+First ensure `git` works.
+
+Usually on a new Mac, as soon as you simply type `git` in a `Terminal` window, a popup will come and ask if you want to finish installing the Mac developer tools. 
+Just say yes.
+As soon as this is finished, you are free to use `git`.
+
+#### Homebrew
+
+Then install `Homebrew` - If this hasn't been installed yet, as we are going to be installing everything using `Homebrew`.
+
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+#### Java
+
+As soon as that's done install `Java` or newer - If this hasn't been installed yet:
+
+    brew install java
+
+Depending on your version of Homebrew, it will tell you to do one of the following (Depending on the type of processor in your device).
+
+Mainly on the Intel-based models:
+
+    sudo ln -sfn /usr/local/opt/openjdk/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk.jdk
+
+Mainly on the ARM-based models:
+
+    sudo ln -sfn /opt/homebrew/opt/openjdk/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk.jdk
+
+#### CPP Prerequisites 
+
+Building `Thrift` requires us to add two more dependencies to the picture.
+
+This however is only needed when enabling the `compile-cpp` profile:
+
+    brew install boost
+    brew install bison
+    brew install openssl
+
+### Windows
+
+#### Chocolatey
+
+Then install `Chocolatey` - If this hasn't been installed yet, as we are going to be installing everything using `Chocolatey`.
+
+https://chocolatey.org/install
+
+#### Git
+
+    choco install git.install
+
+#### Java
+
+    choco install openjdk
+
+#### Visual Studio 19 2022
+
+    choco install visualstudio2022community
+    choco install visualstudio2022buildtools
+    choco install visualstudio2022-workload-nativedesktop
+
+#### FLex / Bison
+
+    choco install winflexbison
+
+#### Boost
+
+    choco install boost-msvc-14.2
+
+#### OpenSSL
+
+    choco install openssl
 
 ## Installation
 

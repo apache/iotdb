@@ -19,10 +19,17 @@
 
 package org.apache.iotdb.db.metadata.cache.dualkeycache;
 
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.SchemaCacheEntry;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheComputation;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheUpdating;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCacheBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCachePolicy;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.DataNodeLastCacheManager;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -30,6 +37,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 @RunWith(Parameterized.class)
@@ -51,7 +59,7 @@ public class DualKeyCacheTest {
     DualKeyCacheBuilder<String, String, String> dualKeyCacheBuilder = new DualKeyCacheBuilder<>();
     IDualKeyCache<String, String, String> dualKeyCache =
         dualKeyCacheBuilder
-            .cacheEvictionPolicy(DualKeyCachePolicy.LRU)
+            .cacheEvictionPolicy(DualKeyCachePolicy.valueOf(policy))
             .memoryCapacity(300)
             .firstKeySizeComputer(this::computeStringSize)
             .secondKeySizeComputer(this::computeStringSize)
@@ -125,5 +133,66 @@ public class DualKeyCacheTest {
 
   private int computeStringSize(String string) {
     return 8 + 8 + 4 + 2 * string.length();
+  }
+
+  @Test
+  public void testComputeAndUpdateSize() {
+    DualKeyCacheBuilder<String, String, SchemaCacheEntry> dualKeyCacheBuilder =
+        new DualKeyCacheBuilder<>();
+    IDualKeyCache<String, String, SchemaCacheEntry> dualKeyCache =
+        dualKeyCacheBuilder
+            .cacheEvictionPolicy(DualKeyCachePolicy.valueOf(policy))
+            .memoryCapacity(500)
+            .firstKeySizeComputer(this::computeStringSize)
+            .secondKeySizeComputer(this::computeStringSize)
+            .valueSizeComputer(SchemaCacheEntry::estimateSize)
+            .build();
+    String firstKey = "root.db.d1";
+    String[] secondKeyList = new String[] {"s1", "s2"};
+    for (String s : secondKeyList) {
+      dualKeyCache.put(
+          firstKey,
+          s,
+          new SchemaCacheEntry(
+              "root.db",
+              new MeasurementSchema(s, TSDataType.INT32),
+              Collections.emptyMap(),
+              false));
+    }
+    SchemaCacheEntry schemaCacheEntry =
+        new SchemaCacheEntry(
+            "root.db",
+            new MeasurementSchema("s1", TSDataType.INT32),
+            Collections.emptyMap(),
+            false);
+    int expectedSize =
+        computeStringSize("root.db.d1")
+            + computeStringSize("s1") * 2
+            + SchemaCacheEntry.estimateSize(schemaCacheEntry) * 2;
+    Assert.assertEquals(expectedSize, dualKeyCache.stats().memoryUsage());
+    dualKeyCache.update(
+        new IDualKeyCacheUpdating<String, String, SchemaCacheEntry>() {
+          @Override
+          public String getFirstKey() {
+            return firstKey;
+          }
+
+          @Override
+          public String[] getSecondKeyList() {
+            return secondKeyList;
+          }
+
+          @Override
+          public int updateValue(int index, SchemaCacheEntry value) {
+            return DataNodeLastCacheManager.updateLastCache(
+                value, new TimeValuePair(1L, new TsPrimitiveType.TsInt(1)), true, 0L);
+          }
+        });
+    int tmp = SchemaCacheEntry.estimateSize(schemaCacheEntry);
+    schemaCacheEntry
+        .getLastCacheContainer()
+        .updateCachedLast(new TimeValuePair(1L, new TsPrimitiveType.TsInt(1)), true, 0L);
+    expectedSize += (SchemaCacheEntry.estimateSize(schemaCacheEntry) - tmp) * 2;
+    Assert.assertEquals(expectedSize, dualKeyCache.stats().memoryUsage());
   }
 }

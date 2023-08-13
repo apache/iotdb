@@ -76,7 +76,7 @@ public class IoTDBSpaceQuotaIT {
           "create timeseries root.sg0.wf01.wt01.status3 with datatype=BOOLEAN,encoding=PLAIN;");
     } catch (SQLException | InterruptedException throwables) {
       Assert.assertEquals(
-          "1700: The number of timeSeries has reached the upper limit", throwables.getMessage());
+          "1700: The number of timeseries has reached the upper limit", throwables.getMessage());
     }
   }
 

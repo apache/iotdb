@@ -161,7 +161,7 @@ public class IoTDBConfig {
   /** The proportion of write memory for loading TsFile */
   private double loadTsFileProportion = 0.125;
 
-  private final int maxLoadingDeviceNumber = 10000;
+  private int maxLoadingTimeseriesNumber = 2000;
 
   /**
    * If memory cost of data region increased more than proportion of {@linkplain
@@ -1075,7 +1075,8 @@ public class IoTDBConfig {
   private double maxMemoryRatioForQueue = 0.6;
 
   /** Pipe related */
-  private String pipeReceiveFileDir = systemDir + File.separator + "pipe";
+  private String pipeReceiveFileDir =
+      systemDir + File.separator + "pipe" + File.separator + "receiver";
 
   /** Resource control */
   private boolean quotaEnable = false;
@@ -1212,6 +1213,7 @@ public class IoTDBConfig {
     mqttDir = addDataHomeDir(mqttDir);
     extPipeDir = addDataHomeDir(extPipeDir);
     queryDir = addDataHomeDir(queryDir);
+    sortTmpDir = addDataHomeDir(sortTmpDir);
     formulateDataDirs(tierDataDirs);
   }
 
@@ -1544,6 +1546,7 @@ public class IoTDBConfig {
 
   public void setQueryThreadCount(int queryThreadCount) {
     this.queryThreadCount = queryThreadCount;
+    this.maxBytesPerFragmentInstance = allocateMemoryForDataExchange / queryThreadCount;
   }
 
   public void setDegreeOfParallelism(int degreeOfParallelism) {
@@ -1877,6 +1880,7 @@ public class IoTDBConfig {
     this.allocateMemoryForCoordinator = allocateMemoryForRead * 50 / 1001;
     this.allocateMemoryForOperators = allocateMemoryForRead * 200 / 1001;
     this.allocateMemoryForDataExchange = allocateMemoryForRead * 200 / 1001;
+    this.maxBytesPerFragmentInstance = allocateMemoryForDataExchange / queryThreadCount;
     this.allocateMemoryForTimeIndex = allocateMemoryForRead * 200 / 1001;
   }
 
@@ -2110,6 +2114,7 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForDataExchange(long allocateMemoryForDataExchange) {
     this.allocateMemoryForDataExchange = allocateMemoryForDataExchange;
+    this.maxBytesPerFragmentInstance = allocateMemoryForDataExchange / queryThreadCount;
   }
 
   public long getAllocateMemoryForTimeIndex() {
@@ -3232,8 +3237,12 @@ public class IoTDBConfig {
     return loadTsFileProportion;
   }
 
-  public int getMaxLoadingDeviceNumber() {
-    return maxLoadingDeviceNumber;
+  public int getMaxLoadingTimeseriesNumber() {
+    return maxLoadingTimeseriesNumber;
+  }
+
+  public void setMaxLoadingTimeseriesNumber(int maxLoadingTimeseriesNumber) {
+    this.maxLoadingTimeseriesNumber = maxLoadingTimeseriesNumber;
   }
 
   public static String getEnvironmentVariables() {

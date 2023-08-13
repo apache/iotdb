@@ -407,6 +407,7 @@ public class WritingMetrics implements IMetricSet {
                 MetricService.getInstance()
                     .remove(
                         MetricType.HISTOGRAM,
+                        Metric.WAL_NODE_INFO.toString(),
                         Tag.NAME.toString(),
                         name,
                         Tag.TYPE.toString(),

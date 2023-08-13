@@ -74,7 +74,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   }
 
   /**
-   * called to perform a single step of the specified 'state' of the procedure
+   * Called to perform a single step of the specified 'state' of the procedure.
    *
    * @param state state to execute
    * @return Flow.NO_MORE_STATE if the procedure is completed, Flow.HAS_MORE_STATE if there is
@@ -84,7 +84,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException;
 
   /**
-   * called to perform the rollback of the specified state
+   * Called to perform the rollback of the specified state.
    *
    * @param state state to rollback
    * @throws IOException temporary failure, the rollback will retry later
@@ -139,7 +139,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   }
 
   /**
-   * Add a child procedure to execute
+   * Add a child procedure to execute.
    *
    * @param subProcedure the child procedure
    */
@@ -173,7 +173,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
         setNextState(getStateId(state));
       }
 
-      LOG.info(state + " " + this + "; cycles=" + this.cycles);
+      LOG.info("{} {}; cycles={}", state, this, cycles);
       // Keep running count of cycles
       if (getStateId(state) != this.previousState) {
         this.previousState = getStateId(state);
@@ -243,7 +243,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
       if (hasMoreState()) {
         setAbortFailure(getClass().getSimpleName(), "abort requested");
       } else {
-        LOG.warn("Ignoring abort request on state='" + getCurrentState() + "' for " + this);
+        LOG.warn("Ignoring abort request on state='{}' for {}", getCurrentState(), this);
       }
     }
   }

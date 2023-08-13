@@ -67,8 +67,7 @@ public class IoTDBCreateAlignedTimeseriesIT extends AbstractSchemaIT {
   public void testCreateAlignedTimeseries() throws Exception {
     String[] timeSeriesArray =
         new String[] {
-          "root.sg1.d1.vector1.s1,FLOAT,PLAIN,UNCOMPRESSED",
-          "root.sg1.d1.vector1.s2,INT64,RLE,SNAPPY"
+          "root.sg1.d1.vector1.s1,FLOAT,PLAIN,UNCOMPRESSED", "root.sg1.d1.vector1.s2,INT64,RLE,LZ4"
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -94,7 +93,7 @@ public class IoTDBCreateAlignedTimeseriesIT extends AbstractSchemaIT {
   public void testCreateAlignedTimeseriesWithDeletion() throws Exception {
     String[] timeSeriesArray =
         new String[] {
-          "root.sg1.d1.vector1.s1,DOUBLE,PLAIN,SNAPPY", "root.sg1.d1.vector1.s2,INT64,RLE,SNAPPY"
+          "root.sg1.d1.vector1.s1,DOUBLE,PLAIN,SNAPPY", "root.sg1.d1.vector1.s2,INT64,RLE,LZ4"
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

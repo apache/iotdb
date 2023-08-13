@@ -38,20 +38,23 @@ public class AlignedUpdateViewPathLastCacheOperator extends AlignedUpdateLastCac
       AlignedPath seriesPath,
       DataNodeSchemaCache dataNodeSchemaCache,
       boolean needUpdateCache,
+      boolean needUpdateNullEntry,
       String outputViewPath) {
-    super(operatorContext, child, seriesPath, dataNodeSchemaCache, needUpdateCache);
+    super(
+        operatorContext,
+        child,
+        seriesPath,
+        dataNodeSchemaCache,
+        needUpdateCache,
+        needUpdateNullEntry);
     checkArgument(seriesPath.getMeasurementList().size() == 1);
     this.outputViewPath = outputViewPath;
   }
 
   @Override
   protected void appendLastValueToTsBlockBuilder(
-      long lastTime, TsPrimitiveType lastValue, MeasurementPath measurementPath) {
+      long lastTime, TsPrimitiveType lastValue, MeasurementPath measurementPath, String type) {
     LastQueryUtil.appendLastValue(
-        tsBlockBuilder,
-        lastTime,
-        outputViewPath,
-        lastValue.getStringValue(),
-        measurementPath.getSeriesType().name());
+        tsBlockBuilder, lastTime, outputViewPath, lastValue.getStringValue(), type);
   }
 }

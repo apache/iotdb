@@ -120,7 +120,7 @@ public class FastCompactionPerformer
         // actually exist but the judgment return device being existed.
         sortedSourceFiles.addAll(seqFiles);
         sortedSourceFiles.addAll(unseqFiles);
-        sortedSourceFiles.removeIf(x -> !x.mayContainsDevice(device));
+        sortedSourceFiles.removeIf(x -> x.definitelyNotContains(device));
         sortedSourceFiles.sort(Comparator.comparingLong(x -> x.getStartTime(device)));
 
         boolean isAligned = deviceInfo.right;

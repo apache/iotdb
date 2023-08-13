@@ -96,7 +96,7 @@ public class TsFileResource {
   protected TsFileResource next;
 
   /** time index */
-  public ITimeIndex timeIndex;
+  private ITimeIndex timeIndex;
 
   @SuppressWarnings("squid:S3077")
   private volatile ModificationFile modFile;
@@ -492,19 +492,21 @@ public class TsFileResource {
   }
 
   /**
-   * Whether this TsFileResource contains this device, if false, it must not contain this device, if
-   * true, it may or may not contain this device
+   * Whether this TsFile definitely not contains this device, if ture, it must not contain this
+   * device, if false, it may or may not contain this device Notice: using method be CAREFULLY and
+   * you really understand the meaning!!!!!
    */
-  public boolean mayContainsDevice(String device) {
-    return timeIndex.mayContainsDevice(device);
+  public boolean definitelyNotContains(String device) {
+    return timeIndex.definitelyNotContains(device);
   }
 
   /**
    * Get the min start time and max end time of devices matched by given devicePattern. If there's
    * no device matched by given pattern, return null.
    */
-  public Pair<Long, Long> getPossibleStartTimeAndEndTime(PartialPath devicePattern) {
-    return timeIndex.getPossibleStartTimeAndEndTime(devicePattern);
+  public Pair<Long, Long> getPossibleStartTimeAndEndTime(
+      PartialPath devicePattern, Set<String> deviceMatchInfo) {
+    return timeIndex.getPossibleStartTimeAndEndTime(devicePattern, deviceMatchInfo);
   }
 
   public boolean isClosed() {
@@ -799,7 +801,7 @@ public class TsFileResource {
 
   /** @return true if the device is contained in the TsFile */
   public boolean isSatisfied(String deviceId, Filter timeFilter, boolean isSeq, boolean debug) {
-    if (!mayContainsDevice(deviceId)) {
+    if (definitelyNotContains(deviceId)) {
       if (debug) {
         DEBUG_LOGGER.info(
             "Path: {} file {} is not satisfied because of no device!", deviceId, file);

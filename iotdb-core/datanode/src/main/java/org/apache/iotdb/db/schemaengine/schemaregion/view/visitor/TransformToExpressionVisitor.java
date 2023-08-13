@@ -56,6 +56,23 @@ import org.apache.iotdb.commons.schema.view.viewExpression.unary.RegularViewExpr
 import org.apache.iotdb.commons.schema.view.viewExpression.unary.UnaryViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.visitor.ViewExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.binary.AdditionExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.binary.DivisionExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.binary.EqualToExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.binary.GreaterEqualExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.binary.GreaterThanExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.binary.LessEqualExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.binary.LessThanExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicAndExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.binary.LogicOrExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.binary.ModuloExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.binary.MultiplicationExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.binary.NonEqualExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.binary.SubtractionExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.NullOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import javax.ws.rs.NotSupportedException;
@@ -85,20 +102,19 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
 
   @Override
   public Expression visitConstantOperand(ConstantViewOperand constantOperand, Void context) {
-    return new org.apache.iotdb.db.queryengine.plan.expression.leaf.ConstantOperand(
-        constantOperand.getDataType(), constantOperand.getValueString());
+    return new ConstantOperand(constantOperand.getDataType(), constantOperand.getValueString());
   }
 
   @Override
   public Expression visitNullOperand(NullViewOperand nullOperand, Void context) {
-    return new org.apache.iotdb.db.queryengine.plan.expression.leaf.NullOperand();
+    return new NullOperand();
   }
 
   @Override
   public Expression visitTimeSeriesOperand(TimeSeriesViewOperand timeSeriesOperand, Void context) {
     try {
       PartialPath path = new PartialPath(timeSeriesOperand.getPathString());
-      return new org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand(path);
+      return new TimeSeriesOperand(path);
     } catch (IllegalPathException e) {
       throw new RuntimeException(e);
     }
@@ -106,7 +122,7 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
 
   @Override
   public Expression visitTimeStampOperand(TimestampViewOperand timestampOperand, Void context) {
-    return new org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand();
+    return new TimestampOperand();
   }
   // endregion
 
@@ -181,37 +197,32 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
   public Expression visitAdditionExpression(
       AdditionViewExpression additionExpression, Void context) {
     Pair<Expression, Expression> pair = this.getExpressionsForBinaryExpression(additionExpression);
-    return new org.apache.iotdb.db.queryengine.plan.expression.binary.AdditionExpression(
-        pair.left, pair.right);
+    return new AdditionExpression(pair.left, pair.right);
   }
 
   public Expression visitDivisionExpression(
       DivisionViewExpression divisionExpression, Void context) {
     Pair<Expression, Expression> pair = this.getExpressionsForBinaryExpression(divisionExpression);
-    return new org.apache.iotdb.db.queryengine.plan.expression.binary.DivisionExpression(
-        pair.left, pair.right);
+    return new DivisionExpression(pair.left, pair.right);
   }
 
   public Expression visitModuloExpression(ModuloViewExpression moduloExpression, Void context) {
     Pair<Expression, Expression> pair = this.getExpressionsForBinaryExpression(moduloExpression);
-    return new org.apache.iotdb.db.queryengine.plan.expression.binary.ModuloExpression(
-        pair.left, pair.right);
+    return new ModuloExpression(pair.left, pair.right);
   }
 
   public Expression visitMultiplicationExpression(
       MultiplicationViewExpression multiplicationExpression, Void context) {
     Pair<Expression, Expression> pair =
         this.getExpressionsForBinaryExpression(multiplicationExpression);
-    return new org.apache.iotdb.db.queryengine.plan.expression.binary.MultiplicationExpression(
-        pair.left, pair.right);
+    return new MultiplicationExpression(pair.left, pair.right);
   }
 
   public Expression visitSubtractionExpression(
       SubtractionViewExpression subtractionExpression, Void context) {
     Pair<Expression, Expression> pair =
         this.getExpressionsForBinaryExpression(subtractionExpression);
-    return new org.apache.iotdb.db.queryengine.plan.expression.binary.SubtractionExpression(
-        pair.left, pair.right);
+    return new SubtractionExpression(pair.left, pair.right);
   }
   // endregion
 
@@ -223,45 +234,39 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
 
   public Expression visitEqualToExpression(EqualToViewExpression equalToExpression, Void context) {
     Pair<Expression, Expression> pair = this.getExpressionsForBinaryExpression(equalToExpression);
-    return new org.apache.iotdb.db.queryengine.plan.expression.binary.EqualToExpression(
-        pair.left, pair.right);
+    return new EqualToExpression(pair.left, pair.right);
   }
 
   public Expression visitGreaterEqualExpression(
       GreaterEqualViewExpression greaterEqualExpression, Void context) {
     Pair<Expression, Expression> pair =
         this.getExpressionsForBinaryExpression(greaterEqualExpression);
-    return new org.apache.iotdb.db.queryengine.plan.expression.binary.GreaterEqualExpression(
-        pair.left, pair.right);
+    return new GreaterEqualExpression(pair.left, pair.right);
   }
 
   public Expression visitGreaterThanExpression(
       GreaterThanViewExpression greaterThanExpression, Void context) {
     Pair<Expression, Expression> pair =
         this.getExpressionsForBinaryExpression(greaterThanExpression);
-    return new org.apache.iotdb.db.queryengine.plan.expression.binary.GreaterThanExpression(
-        pair.left, pair.right);
+    return new GreaterThanExpression(pair.left, pair.right);
   }
 
   public Expression visitLessEqualExpression(
       LessEqualViewExpression lessEqualExpression, Void context) {
     Pair<Expression, Expression> pair = this.getExpressionsForBinaryExpression(lessEqualExpression);
-    return new org.apache.iotdb.db.queryengine.plan.expression.binary.LessEqualExpression(
-        pair.left, pair.right);
+    return new LessEqualExpression(pair.left, pair.right);
   }
 
   public Expression visitLessThanExpression(
       LessThanViewExpression lessThanExpression, Void context) {
     Pair<Expression, Expression> pair = this.getExpressionsForBinaryExpression(lessThanExpression);
-    return new org.apache.iotdb.db.queryengine.plan.expression.binary.LessThanExpression(
-        pair.left, pair.right);
+    return new LessThanExpression(pair.left, pair.right);
   }
 
   public Expression visitNonEqualExpression(
       NonEqualViewExpression nonEqualExpression, Void context) {
     Pair<Expression, Expression> pair = this.getExpressionsForBinaryExpression(nonEqualExpression);
-    return new org.apache.iotdb.db.queryengine.plan.expression.binary.NonEqualExpression(
-        pair.left, pair.right);
+    return new NonEqualExpression(pair.left, pair.right);
   }
   // endregion
 
@@ -274,14 +279,12 @@ public class TransformToExpressionVisitor extends ViewExpressionVisitor<Expressi
   public Expression visitLogicAndExpression(
       LogicAndViewExpression logicAndExpression, Void context) {
     Pair<Expression, Expression> pair = this.getExpressionsForBinaryExpression(logicAndExpression);
-    return new org.apache.iotdb.db.queryengine.plan.expression.binary.LogicAndExpression(
-        pair.left, pair.right);
+    return new LogicAndExpression(pair.left, pair.right);
   }
 
   public Expression visitLogicOrExpression(LogicOrViewExpression logicOrExpression, Void context) {
     Pair<Expression, Expression> pair = this.getExpressionsForBinaryExpression(logicOrExpression);
-    return new org.apache.iotdb.db.queryengine.plan.expression.binary.LogicOrExpression(
-        pair.left, pair.right);
+    return new LogicOrExpression(pair.left, pair.right);
   }
   // endregion
 

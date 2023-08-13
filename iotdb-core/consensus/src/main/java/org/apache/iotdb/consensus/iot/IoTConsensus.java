@@ -145,8 +145,9 @@ public class IoTConsensus implements IConsensus {
 
   @Override
   public void stop() {
-    clientManager.close();
     stateMachineMap.values().parallelStream().forEach(IoTConsensusServerImpl::stop);
+    clientManager.close();
+    syncClientManager.close();
     registerManager.deregisterAll();
   }
 

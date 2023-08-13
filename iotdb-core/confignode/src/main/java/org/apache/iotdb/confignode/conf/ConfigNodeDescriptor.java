@@ -59,7 +59,7 @@ public class ConfigNodeDescriptor {
   }
 
   /**
-   * get props url location.
+   * Get props url location.
    *
    * @return url object if location exit, otherwise null.
    */
@@ -271,12 +271,6 @@ public class ConfigNodeDescriptor {
       LOGGER.warn(
           "The configured region allocate strategy does not exist, use the default: GREEDY!");
     }
-
-    conf.setEnableDataPartitionInheritPolicy(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_data_partition_inherit_policy",
-                String.valueOf(conf.isEnableDataPartitionInheritPolicy()))));
 
     conf.setCnRpcAdvancedCompressionEnable(
         Boolean.parseBoolean(

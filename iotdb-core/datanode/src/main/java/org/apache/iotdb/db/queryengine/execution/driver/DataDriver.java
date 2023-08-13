@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.driver;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.DataSourceOperator;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 
 import com.google.common.util.concurrent.SettableFuture;
@@ -33,8 +34,8 @@ import java.util.List;
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.QUERY_RESOURCE_INIT;
 
 /**
- * One dataDriver is responsible for one FragmentInstance which is for data query, which may
- * contains several series.
+ * One {@link DataDriver} is responsible for one {@link FragmentInstance} which is for data query,
+ * which may contains several series.
  */
 @NotThreadSafe
 public class DataDriver extends Driver {
@@ -67,11 +68,12 @@ public class DataDriver extends Driver {
   }
 
   /**
-   * init seq file list and unseq file list in QueryDataSource and set it into each SourceNode.
+   * Init seq file list and unseq file list in {@link QueryDataSource} and set it into each
+   * SourceNode.
    *
    * @throws QueryProcessException while failed to init query resource, QueryProcessException will
    *     be thrown
-   * @throws IllegalStateException if QueryDataSource is null after initialization,
+   * @throws IllegalStateException if {@link QueryDataSource} is null after initialization,
    *     IllegalStateException will be thrown
    */
   private void initialize() throws QueryProcessException {
@@ -82,14 +84,14 @@ public class DataDriver extends Driver {
       if (sourceOperators != null && !sourceOperators.isEmpty()) {
         QueryDataSource dataSource = initQueryDataSource();
         if (dataSource == null) {
-          // if this driver is being initialized, meanwhile the whole FI was aborted or cancelled
+          // If this driver is being initialized, meanwhile the whole FI was aborted or cancelled
           // for some reasons, we may get null QueryDataSource here.
           // And it's safe for us to throw this exception here in such case.
           throw new IllegalStateException("QueryDataSource should never be null!");
         }
         sourceOperators.forEach(
             sourceOperator -> {
-              // construct QueryDataSource for source operator
+              // Construct QueryDataSource for source operator
               QueryDataSource queryDataSource =
                   new QueryDataSource(dataSource.getSeqResources(), dataSource.getUnseqResources());
 
@@ -112,8 +114,8 @@ public class DataDriver extends Driver {
   }
 
   /**
-   * The method is called in mergeLock() when executing query. This method will get all the
-   * QueryDataSource needed for this query.
+   * The method is called in mergeLock() when executing query. This method will get all the {@link
+   * QueryDataSource} needed for this query.
    *
    * @throws QueryProcessException while failed to init query resource, QueryProcessException will
    *     be thrown

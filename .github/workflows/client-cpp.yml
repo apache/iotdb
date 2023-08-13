@@ -53,7 +53,7 @@ jobs:
         run: |
           brew install boost
           brew install bison
-          echo 'export PATH=/usr/local/opt/bison/bin:$PATH' >> ~/.bash_profile
+          echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> ~/.bash_profile
           source ~/.bash_profile && export LDFLAGS="-L/usr/local/opt/bison/lib"
           brew install openssl
       - name: Cache Maven packages
@@ -63,27 +63,22 @@ jobs:
           key: client-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Build IoTDB server
-        run: mvn clean package -pl distribution -am -DskipTests
+        # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
+        # Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
+        # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
+        run: ./mvnw clean install -P with-tools,with-cpp -pl distribution -am -DskipTests
       - name: Test with Maven
-        run: mvn clean verify -pl iotdb-client/client-cpp -am -P compile-cpp -P cppTest
+        # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
+        run: ./mvnw clean verify -P with-tools,with-cpp -pl iotdb-client/client-cpp -am
       - name: Show test result
+        if: failure()
         run: cat iotdb-client/client-cpp/target/build/test/Testing/Temporary/LastTest_*.log
 
   build-win:
-    strategy:
-      fail-fast: false
-      max-parallel: 20
-      matrix:
-        os: [windows-latest]
-    runs-on: ${{ matrix.os}}
+    runs-on: windows-latest
 
     steps:
       - uses: actions/checkout@v3
-      - name: Set up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v3
-        with:
-          distribution: liberica
-          java-version: 11
       - name: Cache Maven packages
         uses: actions/cache@v3
         with:
@@ -91,26 +86,21 @@ jobs:
           key: client-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Install Win_Flex_Bison
-        run: mkdir D:\a\cpp ; `
-          Invoke-WebRequest https://github.com/lexxmark/winflexbison/releases/download/v2.5.24/win_flex_bison-2.5.24.zip -OutFile D:\a\cpp\win_flex_bison.zip ; `
-          [Environment]::SetEnvironmentVariable("Path", $env:Path + ";D:\a\cpp", "User") ; `
+        run: choco install winflexbison
       - name: Download Boost
         run: choco install boost-msvc-14.3 --version=1.78.0
-      - name: Install Boost
-        run: cd C:\local\boost_1_78_0 ; `
-          .\bootstrap.bat ; `
-          .\b2.exe
       - name: Install OpenSSL
         run:  choco install openssl
-      - name: Add Flex and Bison Path and OpenSSL
-        shell: bash
-        run: cd /d/a/cpp && unzip win_flex_bison.zip && mv win_flex.exe flex.exe && mv win_bison.exe bison.exe  && echo 'export PATH=/d/a/cpp:$PATH' >> ~/.bash_profile && source ~/.bash_profile
       - name: Build IoTDB server
         shell: bash
-        run: source ~/.bash_profile && mvn clean package -pl distribution -am -DskipTests
+        # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
+        # Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
+        # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
+        run: ./mvnw clean install -P with-tools,with-cpp -pl distribution -am -DskipTests
       - name: Test with Maven
         shell: bash
-        run: source ~/.bash_profile && mvn clean verify -pl iotdb-client/client-cpp -am -P compile-cpp -P cppTest -Dboost.include.dir=/c/local/boost_1_78_0 -Dboost.library.dir=/c/local/boost_1_78_0/stage/lib -Dcmake.url="https://github.com/Kitware/CMake/releases/download/v3.21.6/cmake-3.21.6-windows-x86_64.zip" -Dcmake.root.dir=/D/a/iotdb/iotdb/iotdb-client/compile-tools/thrift/target/cmake-3.21.6-windows-x86_64/ -Dcmake.generator="Visual Studio 17 2022"
+        # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
+        run: ./mvnw clean verify -P with-tools,with-cpp -pl iotdb-client/client-cpp -am
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v3

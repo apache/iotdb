@@ -88,6 +88,21 @@ public class TemplateTableTest {
     }
   }
 
+  @Test
+  public void testDuplicatePath() {
+    List<String> measurements = Arrays.asList("s1", "s1");
+    List<TSDataType> dataTypes = Arrays.asList(TSDataType.FLOAT, TSDataType.BOOLEAN);
+    List<TSEncoding> encodings = Arrays.asList(TSEncoding.RLE, TSEncoding.PLAIN);
+    List<CompressionType> compressors =
+        Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY);
+    try {
+      new Template("template", measurements, dataTypes, encodings, compressors);
+      Assert.fail("expect IllegalPathException");
+    } catch (IllegalPathException e) {
+      // do nothing
+    }
+  }
+
   private Template newSchemaTemplate(String name) throws IllegalPathException {
     List<String> measurements = Arrays.asList(name + "_" + "temperature", name + "_" + "status");
     List<TSDataType> dataTypes = Arrays.asList(TSDataType.FLOAT, TSDataType.BOOLEAN);

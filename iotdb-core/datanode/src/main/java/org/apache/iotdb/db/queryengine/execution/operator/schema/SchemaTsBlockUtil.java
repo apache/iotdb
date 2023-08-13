@@ -35,7 +35,7 @@ public class SchemaTsBlockUtil {
   private static final long MAX_SIZE = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
   private SchemaTsBlockUtil() {
-    // util class
+    // Util class
   }
 
   public static <T> List<TsBlock> transferSchemaResultToTsBlockList(

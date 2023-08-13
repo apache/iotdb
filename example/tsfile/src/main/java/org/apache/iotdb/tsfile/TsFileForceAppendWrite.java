@@ -86,7 +86,7 @@ public class TsFileForceAppendWrite {
       fwriter.doTruncate();
       write(fwriter);
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("ForceAppendTsFileWriter truncate or write error ", e);
     }
   }
 

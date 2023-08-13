@@ -66,8 +66,7 @@ public class HttpExample {
       String result = JsonParser.parseString(message).getAsJsonObject().toString();
       logger.info(result);
     } catch (IOException e) {
-      e.printStackTrace();
-
+      logger.error("The ping rest api failed", e);
     } finally {
       try {
         httpClient.close();
@@ -75,7 +74,7 @@ public class HttpExample {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
+        logger.error("Http Client close error", e);
       }
     }
   }
@@ -103,15 +102,14 @@ public class HttpExample {
       String result = JsonParser.parseString(message).getAsJsonObject().toString();
       logger.info(result);
     } catch (IOException e) {
-      e.printStackTrace();
-
+      logger.error("The insertTablet rest api failed", e);
     } finally {
       try {
         if (response != null) {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
+        logger.error("Response close error", e);
       }
     }
   }
@@ -129,14 +127,14 @@ public class HttpExample {
       ObjectMapper mapper = new ObjectMapper();
       logger.info("message  = {}", mapper.readValue(message, Map.class));
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.error("The query rest api failed", e);
     } finally {
       try {
         if (response != null) {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
+        logger.error("Response close error", e);
       }
     }
   }

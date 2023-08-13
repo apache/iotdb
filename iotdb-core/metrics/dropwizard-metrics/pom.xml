@@ -20,13 +20,18 @@
 
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
     <parent>
-        <artifactId>iotdb-metrics</artifactId>
         <groupId>org.apache.iotdb</groupId>
+        <artifactId>iotdb-metrics</artifactId>
         <version>1.3.0-SNAPSHOT</version>
     </parent>
-    <modelVersion>4.0.0</modelVersion>
     <artifactId>dropwizard-metrics</artifactId>
+    <name>IoTDB: Core: Metrics: Dropwizard</name>
+    <properties>
+        <jersey-core.version>1.9</jersey-core.version>
+        <reactor-netty-http.version>1.0.24</reactor-netty-http.version>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
@@ -44,8 +49,4 @@
             <version>${dropwizard.metrics.version}</version>
         </dependency>
     </dependencies>
-    <properties>
-        <jersey-core.version>1.9</jersey-core.version>
-        <reactor-netty-http.version>1.0.24</reactor-netty-http.version>
-    </properties>
 </project>

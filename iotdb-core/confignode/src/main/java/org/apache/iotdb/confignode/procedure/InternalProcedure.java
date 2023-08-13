@@ -26,7 +26,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
- * Internal Procedure, do some preiodic job for framework
+ * Internal Procedure, do some periodic job for framework.
  *
  * @param <Env>
  */

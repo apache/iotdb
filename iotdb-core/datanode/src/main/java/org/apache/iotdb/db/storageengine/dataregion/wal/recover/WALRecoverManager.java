@@ -139,7 +139,7 @@ public class WALRecoverManager {
     List<Future<Void>> futures = new ArrayList<>();
     ExecutorService recoverTsFilesThreadPool =
         IoTDBThreadPoolFactory.newFixedThreadPool(
-            Runtime.getRuntime().availableProcessors(), "TsFile-Recover");
+            Runtime.getRuntime().availableProcessors(), ThreadName.TSFILE_RECOVER.getName());
     // async recover
     for (UnsealedTsFileRecoverPerformer recoverPerformer : absolutePath2RecoverPerformer.values()) {
       Callable<Void> recoverTsFileTask =

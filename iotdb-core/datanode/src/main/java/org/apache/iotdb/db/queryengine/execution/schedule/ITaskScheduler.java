@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.schedule;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTaskStatus;
 
-/** the scheduler interface of {@link DriverTask}. */
+/** The scheduler interface of {@link DriverTask}. */
 public interface ITaskScheduler {
 
   /**

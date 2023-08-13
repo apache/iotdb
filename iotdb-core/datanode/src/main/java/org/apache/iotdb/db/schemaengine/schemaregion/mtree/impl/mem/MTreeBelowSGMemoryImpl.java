@@ -44,8 +44,8 @@ import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.schemaengine.SchemaConstant;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.factory.MemMNodeFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.LogicalViewInfo;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.MeasurementCollector;
@@ -121,7 +121,8 @@ public class MTreeBelowSGMemoryImpl {
 
   private final IMemMNode rootNode;
   private final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter;
-  private final IMNodeFactory<IMemMNode> nodeFactory = MemMNodeFactory.getInstance();
+  private final IMNodeFactory<IMemMNode> nodeFactory =
+      MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory();
   private final int levelOfSG;
   private final MemSchemaRegionStatistics regionStatistics;
 
@@ -471,13 +472,36 @@ public class MTreeBelowSGMemoryImpl {
           failingMeasurementMap.put(
               i,
               new ExceedQuotaException(
-                  "The number of timeSeries has reached the upper limit",
+                  "The number of timeseries has reached the upper limit",
                   TSStatusCode.SPACE_QUOTA_EXCEEDED.getStatusCode()));
         }
       }
     }
     return failingMeasurementMap;
   }
+
+  public boolean changeAlias(String alias, PartialPath fullPath) throws MetadataException {
+    IMeasurementMNode<IMemMNode> measurementMNode = getMeasurementMNode(fullPath);
+    // upsert alias
+    if (alias != null && !alias.equals(measurementMNode.getAlias())) {
+      synchronized (this) {
+        IDeviceMNode<IMemMNode> device = measurementMNode.getParent().getAsDeviceMNode();
+        IMemMNode memMNode = store.getChild(device.getAsMNode(), alias);
+        if (memMNode != null) {
+          throw new MetadataException(
+              "The alias is duplicated with the name or alias of other measurement.");
+        }
+        if (measurementMNode.getAlias() != null) {
+          device.deleteAliasChild(measurementMNode.getAlias());
+        }
+        device.addAlias(alias, measurementMNode);
+        setAlias(measurementMNode, alias);
+      }
+      return true;
+    }
+    return false;
+  }
+
   /**
    * Delete path. The path should be a full path from root to leaf node
    *
@@ -1008,7 +1032,8 @@ public class MTreeBelowSGMemoryImpl {
 
     collector.setTemplateMap(showTimeSeriesPlan.getRelatedTemplate(), nodeFactory);
     ISchemaReader<ITimeSeriesSchemaInfo> reader =
-        new TimeseriesReaderWithViewFetch(collector, showTimeSeriesPlan.getSchemaFilter());
+        new TimeseriesReaderWithViewFetch(
+            collector, showTimeSeriesPlan.getSchemaFilter(), showTimeSeriesPlan.needViewDetail());
     if (showTimeSeriesPlan.getLimit() > 0 || showTimeSeriesPlan.getOffset() > 0) {
       return new SchemaReaderLimitOffsetWrapper<>(
           reader, showTimeSeriesPlan.getLimit(), showTimeSeriesPlan.getOffset());
@@ -1076,9 +1101,11 @@ public class MTreeBelowSGMemoryImpl {
     IMemMNode deviceParent = checkAndAutoCreateInternalPath(devicePath);
 
     synchronized (this) {
-      IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
-
       String leafName = path.getMeasurement();
+      IMeasurementMNode<IMemMNode> measurementMNode =
+          nodeFactory.createLogicalViewMNode(
+              null, leafName, new LogicalViewInfo(new LogicalViewSchema(leafName, viewExpression)));
+      IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
 
       // no need to check alias, because logical view has no alias
 
@@ -1109,12 +1136,7 @@ public class MTreeBelowSGMemoryImpl {
         entityMNode.setAligned(null);
       }
 
-      IMeasurementMNode<IMemMNode> measurementMNode =
-          nodeFactory.createLogicalViewMNode(
-              entityMNode,
-              leafName,
-              new LogicalViewInfo(new LogicalViewSchema(leafName, viewExpression)));
-
+      measurementMNode.setParent(entityMNode.getAsMNode());
       store.addChild(entityMNode.getAsMNode(), leafName, measurementMNode.getAsMNode());
 
       return measurementMNode;

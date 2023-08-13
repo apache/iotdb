@@ -57,13 +57,13 @@ public class SchemaRegionReadPlanFactory {
 
   @TestOnly
   public static IShowTimeSeriesPlan getShowTimeSeriesPlan(PartialPath path) {
-    return new ShowTimeSeriesPlanImpl(path, Collections.emptyMap(), 0, 0, false, null);
+    return new ShowTimeSeriesPlanImpl(path, Collections.emptyMap(), 0, 0, false, null, false);
   }
 
   @TestOnly
   public static IShowTimeSeriesPlan getShowTimeSeriesPlan(
       PartialPath path, Map<Integer, Template> relatedTemplate) {
-    return new ShowTimeSeriesPlanImpl(path, relatedTemplate, 0, 0, false, null);
+    return new ShowTimeSeriesPlanImpl(path, relatedTemplate, 0, 0, false, null, false);
   }
 
   @TestOnly
@@ -75,7 +75,8 @@ public class SchemaRegionReadPlanFactory {
         0,
         0,
         false,
-        SchemaFilterFactory.createTagFilter(key, value, isContains));
+        SchemaFilterFactory.createTagFilter(key, value, isContains),
+        false);
   }
 
   public static IShowTimeSeriesPlan getShowTimeSeriesPlan(
@@ -84,9 +85,10 @@ public class SchemaRegionReadPlanFactory {
       long limit,
       long offset,
       boolean isPrefixMatch,
-      SchemaFilter schemaFilter) {
+      SchemaFilter schemaFilter,
+      boolean needViewDetail) {
     return new ShowTimeSeriesPlanImpl(
-        path, relatedTemplate, limit, offset, isPrefixMatch, schemaFilter);
+        path, relatedTemplate, limit, offset, isPrefixMatch, schemaFilter, needViewDetail);
   }
 
   public static IShowNodesPlan getShowNodesPlan(PartialPath path) {

@@ -82,7 +82,7 @@ def test_non_time_query():
                 "root.device0",
                 "FLOAT",
                 "GORILLA",
-                "SNAPPY",
+                "LZ4",
                 None,
                 None,
                 None,

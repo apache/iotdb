@@ -83,7 +83,9 @@ public class BatchActivateTemplateNode extends WritePlanNode {
   }
 
   @Override
-  public void addChild(PlanNode child) {}
+  public void addChild(PlanNode child) {
+    // Do nothing
+  }
 
   @Override
   public PlanNode clone() {
@@ -167,9 +169,15 @@ public class BatchActivateTemplateNode extends WritePlanNode {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
     BatchActivateTemplateNode that = (BatchActivateTemplateNode) o;
     return Objects.equals(templateActivationMap, that.templateActivationMap)
         && Objects.equals(regionReplicaSet, that.regionReplicaSet);

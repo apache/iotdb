@@ -250,7 +250,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     }
   }
 
-  /** cache user */
+  /** Cache user. */
   public User cacheUser(TPermissionInfoResp tPermissionInfoResp) {
     User user = new User();
     List<String> privilegeList = tPermissionInfoResp.getUserInfo().getPrivilegeList();
@@ -275,7 +275,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     return user;
   }
 
-  /** cache role */
+  /** Cache role. */
   public Role cacheRole(String roleName, TPermissionInfoResp tPermissionInfoResp) {
     Role role = new Role();
     List<String> privilegeList = tPermissionInfoResp.getRoleInfo().get(roleName).getPrivilegeList();
@@ -295,7 +295,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   }
 
   /**
-   * Convert user privilege information obtained from confignode to PathPrivilege
+   * Convert user privilege information obtained from confignode to {@link PathPrivilege}.
    *
    * @param path permission path
    * @param privilege privilegeIds
@@ -303,13 +303,15 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
    */
   private PathPrivilege toPathPrivilege(PartialPath path, String privilege) {
     PathPrivilege pathPrivilege = new PathPrivilege();
-    String[] privileges = privilege.replace(" ", "").split(",");
-    Set<Integer> privilegeIds = new HashSet<>();
-    for (String p : privileges) {
-      privilegeIds.add(Integer.parseInt(p));
-    }
-    pathPrivilege.setPrivileges(privilegeIds);
     pathPrivilege.setPath(path);
+    Set<Integer> privilegeIds = new HashSet<>();
+    pathPrivilege.setPrivileges(privilegeIds);
+    if (privilege.trim().length() != 0) {
+      String[] privileges = privilege.replace(" ", "").split(",");
+      for (String p : privileges) {
+        privilegeIds.add(Integer.parseInt(p));
+      }
+    }
     return pathPrivilege;
   }
 

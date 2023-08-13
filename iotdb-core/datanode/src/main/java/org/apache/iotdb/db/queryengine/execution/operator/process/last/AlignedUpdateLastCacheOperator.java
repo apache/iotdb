@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -43,8 +42,9 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
       Operator child,
       AlignedPath seriesPath,
       DataNodeSchemaCache dataNodeSchemaCache,
-      boolean needUpdateCache) {
-    super(operatorContext, child, dataNodeSchemaCache, needUpdateCache);
+      boolean needUpdateCache,
+      boolean needUpdateNullEntry) {
+    super(operatorContext, child, dataNodeSchemaCache, needUpdateCache, needUpdateNullEntry);
     this.seriesPath = seriesPath;
     this.devicePath = seriesPath.getDevicePath();
   }
@@ -63,32 +63,34 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
 
     tsBlockBuilder.reset();
     for (int i = 0; i + 1 < res.getValueColumnCount(); i += 2) {
+      MeasurementPath measurementPath =
+          new MeasurementPath(
+              devicePath.concatNode(seriesPath.getMeasurementList().get(i / 2)),
+              seriesPath.getSchemaList().get(i / 2),
+              true);
       if (!res.getColumn(i).isNull(0)) {
         long lastTime = res.getColumn(i).getLong(0);
         TsPrimitiveType lastValue = res.getColumn(i + 1).getTsPrimitiveType(0);
-        MeasurementPath measurementPath =
-            new MeasurementPath(
-                devicePath.concatNode(seriesPath.getMeasurementList().get(i / 2)),
-                seriesPath.getSchemaList().get(i / 2),
-                true);
-        if (needUpdateCache) {
-          TimeValuePair timeValuePair = new TimeValuePair(lastTime, lastValue);
-          lastCache.updateLastCache(
-              getDatabaseName(), measurementPath, timeValuePair, false, Long.MIN_VALUE);
+        mayUpdateLastCache(lastTime, lastValue, measurementPath);
+        appendLastValueToTsBlockBuilder(
+            lastTime,
+            lastValue,
+            measurementPath,
+            seriesPath.getSchemaList().get(i / 2).getType().name());
+      } else {
+        // we still need to update last cache if there is no data for this time series to avoid
+        // scanning all files each time
+        if (needUpdateNullEntry) {
+          mayUpdateLastCache(Long.MIN_VALUE, null, measurementPath);
         }
-        appendLastValueToTsBlockBuilder(lastTime, lastValue, measurementPath);
       }
     }
     return !tsBlockBuilder.isEmpty() ? tsBlockBuilder.build() : LAST_QUERY_EMPTY_TSBLOCK;
   }
 
   protected void appendLastValueToTsBlockBuilder(
-      long lastTime, TsPrimitiveType lastValue, MeasurementPath measurementPath) {
+      long lastTime, TsPrimitiveType lastValue, MeasurementPath measurementPath, String type) {
     LastQueryUtil.appendLastValue(
-        tsBlockBuilder,
-        lastTime,
-        measurementPath.getFullPath(),
-        lastValue.getStringValue(),
-        measurementPath.getSeriesType().name());
+        tsBlockBuilder, lastTime, measurementPath.getFullPath(), lastValue.getStringValue(), type);
   }
 }

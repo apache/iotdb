@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.schema;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
@@ -35,15 +36,17 @@ import java.util.List;
 
 public class SchemaValidator {
 
-  public static void validate(ISchemaFetcher schemaFetcher, InsertBaseStatement insertStatement) {
+  public static void validate(
+      ISchemaFetcher schemaFetcher, InsertBaseStatement insertStatement, MPPQueryContext context) {
     try {
       if (insertStatement instanceof InsertRowsStatement
           || insertStatement instanceof InsertMultiTabletsStatement
           || insertStatement instanceof InsertRowsOfOneDeviceStatement) {
         schemaFetcher.fetchAndComputeSchemaWithAutoCreate(
-            insertStatement.getSchemaValidationList());
+            insertStatement.getSchemaValidationList(), context);
       } else {
-        schemaFetcher.fetchAndComputeSchemaWithAutoCreate(insertStatement.getSchemaValidation());
+        schemaFetcher.fetchAndComputeSchemaWithAutoCreate(
+            insertStatement.getSchemaValidation(), context);
       }
       insertStatement.updateAfterSchemaValidation();
     } catch (QueryProcessException e) {
@@ -58,8 +61,9 @@ public class SchemaValidator {
       List<TSDataType[]> dataTypes,
       List<TSEncoding[]> encodings,
       List<CompressionType[]> compressionTypes,
-      List<Boolean> isAlignedList) {
+      List<Boolean> isAlignedList,
+      MPPQueryContext context) {
     return schemaFetcher.fetchSchemaListWithAutoCreate(
-        devicePaths, measurements, dataTypes, encodings, compressionTypes, isAlignedList);
+        devicePaths, measurements, dataTypes, encodings, compressionTypes, isAlignedList, context);
   }
 }

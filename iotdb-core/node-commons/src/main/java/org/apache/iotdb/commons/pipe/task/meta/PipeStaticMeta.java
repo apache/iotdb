@@ -42,7 +42,7 @@ public class PipeStaticMeta {
   private PipeParameters connectorParameters;
 
   private PipeStaticMeta() {
-    // Do nothing
+    // Empty constructor
   }
 
   public PipeStaticMeta(
@@ -218,8 +218,7 @@ public class PipeStaticMeta {
     return "PipeStaticMeta{"
         + "pipeName='"
         + pipeName
-        + '\''
-        + ", creationTime="
+        + "', creationTime="
         + creationTime
         + ", extractorParameters="
         + extractorParameters.getAttribute()
@@ -227,6 +226,6 @@ public class PipeStaticMeta {
         + processorParameters.getAttribute()
         + ", connectorParameters="
         + connectorParameters.getAttribute()
-        + '}';
+        + "}";
   }
 }

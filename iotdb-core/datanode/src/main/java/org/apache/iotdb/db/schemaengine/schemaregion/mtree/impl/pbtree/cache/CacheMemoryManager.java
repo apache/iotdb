@@ -21,6 +21,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.cache;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.schemaengine.metric.SchemaEngineCachedMetric;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaEngineStatistics;
@@ -337,5 +338,22 @@ public class CacheMemoryManager {
 
   public static CacheMemoryManager getInstance() {
     return CacheMemoryManager.GlobalCacheManagerHolder.INSTANCE;
+  }
+
+  @TestOnly
+  public void forceFlushAndRelease() {
+    releaseFlushStrategy =
+        new IReleaseFlushStrategy() {
+          @Override
+          public boolean isExceedReleaseThreshold() {
+            return true;
+          }
+
+          @Override
+          public boolean isExceedFlushThreshold() {
+            return true;
+          }
+        };
+    registerFlushTask();
   }
 }

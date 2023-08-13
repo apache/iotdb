@@ -68,14 +68,14 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
   protected void executeFromValidateTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleLeaderChangeProcedure: executeFromValidateTask");
 
-    // nothing needs to be checked
+    // Nothing needs to be checked
   }
 
   @Override
   protected void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleLeaderChangeProcedure: executeFromCalculateInfoForTask");
 
-    // nothing needs to be calculated
+    // Nothing needs to be calculated
   }
 
   @Override
@@ -110,28 +110,28 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
   protected void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleLeaderChangeProcedure: rollbackFromValidateTask");
 
-    // nothing to do
+    // Nothing to do
   }
 
   @Override
   protected void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleLeaderChangeProcedure: rollbackFromCalculateInfoForTask");
 
-    // nothing to do
+    // Nothing to do
   }
 
   @Override
   protected void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleLeaderChangeProcedure: rollbackFromHandleOnConfigNodes");
 
-    // nothing to do
+    // Nothing to do
   }
 
   @Override
   protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("PipeHandleLeaderChangeProcedure: rollbackFromCreateOnDataNodes");
 
-    // nothing to do
+    // Nothing to do
   }
 
   @Override

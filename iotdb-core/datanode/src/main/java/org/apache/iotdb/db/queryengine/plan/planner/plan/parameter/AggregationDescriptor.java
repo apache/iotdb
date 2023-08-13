@@ -52,7 +52,7 @@ public class AggregationDescriptor {
    * <p>example: select sum(s1) from root.sg.d1; expression [root.sg.d1.s1] will be in this field.
    *
    * <p>example: select sum(s1) from root.** group by level = 1; expression [root.sg.*.s1] may be in
-   * this field if the data is in different DataRegion</>
+   * this field if the data is in different DataRegion
    */
   protected List<Expression> inputExpressions;
 

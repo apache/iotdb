@@ -75,7 +75,7 @@ public abstract class PipeTaskStage {
       throw new PipeException(MESSAGE_PIPE_TASK_STAGE_HAS_NOT_BEEN_CREATED);
     }
     if (status == PipeStatus.RUNNING) {
-      // do nothing to allow retry strategy
+      // Do nothing to allow retry strategy
       return;
     }
     if (status == PipeStatus.DROPPED) {

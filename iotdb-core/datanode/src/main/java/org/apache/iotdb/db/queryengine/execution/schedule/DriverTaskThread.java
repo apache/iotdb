@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.execution.schedule;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
@@ -33,7 +34,7 @@ import io.airlift.units.Duration;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
-/** the worker thread of {@link DriverTask} */
+/** The worker thread of {@link DriverTask}. */
 public class DriverTaskThread extends AbstractDriverThread {
 
   public static final Duration EXECUTION_TIME_SLICE =
@@ -41,7 +42,7 @@ public class DriverTaskThread extends AbstractDriverThread {
           IoTDBDescriptor.getInstance().getConfig().getDriverTaskExecutionTimeSliceInMs(),
           TimeUnit.MILLISECONDS);
 
-  // we manage thread pool size directly, so create an unlimited pool
+  // We manage thread pool size directly, so create an unlimited pool
   private static final Executor listeningExecutor =
       IoTDBThreadPoolFactory.newCachedThreadPool(
           ThreadName.DRIVER_TASK_SCHEDULER_NOTIFICATION.getName());
@@ -61,7 +62,7 @@ public class DriverTaskThread extends AbstractDriverThread {
   @Override
   public void execute(DriverTask task) throws InterruptedException {
     long startNanos = ticker.read();
-    // try to switch it to RUNNING
+    // Try to switch it to RUNNING
     if (!scheduler.readyToRunning(task)) {
       return;
     }

@@ -117,7 +117,7 @@ public class CountGroupByLevelScanOperator<T extends ISchemaInfo> implements Sou
         } else if (schemaReader.hasNext()) {
           ISchemaInfo schemaInfo = schemaReader.next();
           PartialPath path = schemaInfo.getPartialPath();
-          if (path.getNodeLength() < level) {
+          if (path.getNodeLength() <= level) {
             continue;
           }
           PartialPath levelPath = new PartialPath(Arrays.copyOf(path.getNodes(), level + 1));

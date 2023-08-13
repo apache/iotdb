@@ -27,10 +27,10 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.TimeSeriesMetadataCacheMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -138,8 +138,7 @@ public class TimeSeriesMetadataCache {
           return null;
         }
         TimeseriesMetadata timeseriesMetadata =
-            reader.readTimeseriesMetadata(
-                new Path(key.device, key.measurement, true), ignoreNotExists);
+            reader.readTimeseriesMetadata(key.device, key.measurement, ignoreNotExists);
         return (timeseriesMetadata == null || timeseriesMetadata.getStatistics().getCount() == 0)
             ? null
             : timeseriesMetadata;
@@ -161,12 +160,13 @@ public class TimeSeriesMetadataCache {
           if (timeseriesMetadata == null) {
             cacheHit = false;
 
-            Path path = new Path(key.device, key.measurement, true);
             // bloom filter part
             BloomFilter bloomFilter =
                 BloomFilterCache.getInstance()
                     .get(new BloomFilterCache.BloomFilterCacheKey(key.filePath), debug);
-            if (bloomFilter != null && !bloomFilter.contains(path.getFullPath())) {
+            if (bloomFilter != null
+                && !bloomFilter.contains(
+                    key.device + TsFileConstant.PATH_SEPARATOR + key.measurement)) {
               if (debug) {
                 DEBUG_LOGGER.info("TimeSeries meta data {} is filter by bloomFilter!", key);
               }
@@ -174,7 +174,7 @@ public class TimeSeriesMetadataCache {
             }
             TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
             List<TimeseriesMetadata> timeSeriesMetadataList =
-                reader.readTimeseriesMetadata(path, allSensors);
+                reader.readTimeseriesMetadata(key.device, key.measurement, allSensors);
             // put TimeSeriesMetadata of all sensors used in this read into cache
             for (TimeseriesMetadata metadata : timeSeriesMetadataList) {
               TimeSeriesMetadataCacheKey k =

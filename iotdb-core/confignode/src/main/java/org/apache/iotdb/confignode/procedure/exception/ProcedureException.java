@@ -20,13 +20,13 @@
 package org.apache.iotdb.confignode.procedure.exception;
 
 public class ProcedureException extends Exception {
-  /** default constructor */
+  /** Default constructor. */
   public ProcedureException() {
     super();
   }
 
   /**
-   * Constructor
+   * Constructor.
    *
    * @param s message
    */

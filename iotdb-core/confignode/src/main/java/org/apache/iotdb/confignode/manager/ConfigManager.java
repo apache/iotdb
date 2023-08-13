@@ -61,7 +61,6 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetDataRepli
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
-import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
@@ -145,6 +144,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
@@ -199,7 +199,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
-/** Entry of all management, AssignPartitionManager,AssignRegionManager. */
+/** Entry of all management, AssignPartitionManager, AssignRegionManager. */
 public class ConfigManager implements IManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigManager.class);
@@ -348,11 +348,9 @@ public class ConfigManager implements IManager {
               req.getDataNodeConfiguration().getLocation(),
               this);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return nodeManager.registerDataNode(
-            new RegisterDataNodePlan(req.getDataNodeConfiguration()));
+        return nodeManager.registerDataNode(req);
       }
     }
-
     DataNodeRegisterResp resp = new DataNodeRegisterResp();
     resp.setStatus(status);
     resp.setConfigNodeList(getNodeManager().getRegisteredConfigNodes());
@@ -375,7 +373,7 @@ public class ConfigManager implements IManager {
               req.getDataNodeConfiguration().getLocation(),
               this);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return nodeManager.updateDataNodeIfNecessary(req.getDataNodeConfiguration());
+        return nodeManager.updateDataNodeIfNecessary(req);
       }
     }
 
@@ -447,9 +445,12 @@ public class ConfigManager implements IManager {
               .sorted(Comparator.comparingInt(TDataNodeLocation::getDataNodeId))
               .collect(Collectors.toList());
       Map<Integer, String> nodeStatus = getLoadManager().getNodeStatusWithReason();
-      return new TShowClusterResp(status, configNodeLocations, dataNodeInfoLocations, nodeStatus);
+      Map<Integer, TNodeVersionInfo> nodeVersionInfo = getNodeManager().getNodeVersionInfo();
+      return new TShowClusterResp(
+          status, configNodeLocations, dataNodeInfoLocations, nodeStatus, nodeVersionInfo);
     } else {
-      return new TShowClusterResp(status, new ArrayList<>(), new ArrayList<>(), new HashMap<>());
+      return new TShowClusterResp(
+          status, new ArrayList<>(), new ArrayList<>(), new HashMap<>(), new HashMap<>());
     }
   }
 
@@ -486,6 +487,7 @@ public class ConfigManager implements IManager {
     clusterParameters.setTimestampPrecision(COMMON_CONF.getTimestampPrecision());
     clusterParameters.setSchemaEngineMode(COMMON_CONF.getSchemaEngineMode());
     clusterParameters.setTagAttributeTotalSize(COMMON_CONF.getTagAttributeTotalSize());
+    clusterParameters.setDatabaseLimitThreshold(COMMON_CONF.getDatabaseLimitThreshold());
     return clusterParameters;
   }
 
@@ -1031,7 +1033,7 @@ public class ConfigManager implements IManager {
               req.getConfigNodeLocation(),
               this);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return nodeManager.restartConfigNode(req.getConfigNodeLocation());
+        return ClusterNodeStartUtils.ACCEPT_NODE_RESTART;
       }
     }
     return status;
@@ -1112,6 +1114,10 @@ public class ConfigManager implements IManager {
 
     if (clusterParameters.getTagAttributeTotalSize() != COMMON_CONF.getTagAttributeTotalSize()) {
       return errorStatus.setMessage(errorPrefix + "tag_attribute_total_size" + errorSuffix);
+    }
+
+    if (clusterParameters.getDatabaseLimitThreshold() != COMMON_CONF.getDatabaseLimitThreshold()) {
+      return errorStatus.setMessage(errorPrefix + "database_limit_threshold" + errorSuffix);
     }
 
     return null;
@@ -1732,7 +1738,7 @@ public class ConfigManager implements IManager {
   }
 
   /**
-   * Get all related schemaRegion which may contains the timeSeries matched by given patternTree.
+   * Get all related schemaRegion which may contains the timeseries matched by given patternTree.
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> getRelatedSchemaRegionGroup(
       PathPatternTree patternTree) {

@@ -31,12 +31,13 @@ import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.schemaengine.SchemaConstant;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.MemMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
-import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.factory.MemMNodeFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.LogicalViewInfo;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -51,7 +52,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.function.Consumer;
@@ -72,7 +72,8 @@ public class MemMTreeSnapshotUtil {
       "Error occurred during deserializing MemMTree.";
 
   private static final byte VERSION = 0;
-  private static final IMNodeFactory<IMemMNode> nodeFactory = MemMNodeFactory.getInstance();
+  private static final IMNodeFactory<IMemMNode> nodeFactory =
+      MNodeFactoryLoader.getInstance().getMemMNodeIMNodeFactory();;
 
   public static boolean createSnapshot(File snapshotDir, MemMTreeStore store) {
     File snapshotTmp =
@@ -84,7 +85,7 @@ public class MemMTreeSnapshotUtil {
           new BufferedOutputStream(new FileOutputStream(snapshotTmp))) {
         serializeTo(store, outputStream);
       }
-      if (snapshot.exists() && !deleteFile(snapshot)) {
+      if (snapshot.exists() && !FileUtils.deleteFileIfExist(snapshot)) {
         logger.error(
             "Failed to delete old snapshot {} while creating mtree snapshot.", snapshot.getName());
         return false;
@@ -94,27 +95,17 @@ public class MemMTreeSnapshotUtil {
             "Failed to rename {} to {} while creating mtree snapshot.",
             snapshotTmp.getName(),
             snapshot.getName());
-        deleteFile(snapshot);
+        FileUtils.deleteFileIfExist(snapshot);
         return false;
       }
 
       return true;
     } catch (IOException e) {
       logger.error("Failed to create mtree snapshot due to {}", e.getMessage(), e);
-      deleteFile(snapshot);
+      FileUtils.deleteFileIfExist(snapshot);
       return false;
     } finally {
-      deleteFile(snapshotTmp);
-    }
-  }
-
-  private static boolean deleteFile(File snapshot) {
-    try {
-      Files.delete(snapshot.toPath());
-      return true;
-    } catch (IOException e) {
-      logger.error(e.getMessage(), e);
-      return false;
+      FileUtils.deleteFileIfExist(snapshotTmp);
     }
   }
 

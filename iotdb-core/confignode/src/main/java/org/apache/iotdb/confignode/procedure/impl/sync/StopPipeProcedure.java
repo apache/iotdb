@@ -16,15 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.procedure.impl.sync;
 
 import org.apache.iotdb.commons.sync.PipeInfo;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.procedure.Procedure;
-import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
+import org.apache.iotdb.confignode.procedure.impl.pipe.task.StopPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -35,9 +32,13 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
-// Empty procedure for old sync, used only for compatibility
+/**
+ * Empty procedure for old sync, restored only for compatibility.
+ *
+ * @deprecated use {@link StopPipeProcedureV2} instead.
+ */
 @Deprecated
-public class StopPipeProcedure extends Procedure<ConfigNodeProcedureEnv> {
+public class StopPipeProcedure extends AbstractOperatePipeProcedure {
 
   private String pipeName;
   private PipeInfo pipeInfo;
@@ -52,22 +53,6 @@ public class StopPipeProcedure extends Procedure<ConfigNodeProcedureEnv> {
     this();
     this.pipeName = pipeInfo.getPipeName();
     this.pipeInfo = pipeInfo;
-  }
-
-  @Override
-  protected Procedure<ConfigNodeProcedureEnv>[] execute(
-      ConfigNodeProcedureEnv configNodeProcedureEnv)
-      throws ProcedureYieldException, ProcedureSuspendedException, InterruptedException {
-    return new Procedure[0];
-  }
-
-  @Override
-  protected void rollback(ConfigNodeProcedureEnv configNodeProcedureEnv)
-      throws IOException, InterruptedException, ProcedureException {}
-
-  @Override
-  protected boolean abort(ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    return false;
   }
 
   @Override
@@ -94,8 +79,12 @@ public class StopPipeProcedure extends Procedure<ConfigNodeProcedureEnv> {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     StopPipeProcedure that = (StopPipeProcedure) o;
     return Objects.equals(pipeName, that.pipeName)
         && Objects.equals(pipeInfo, that.pipeInfo)

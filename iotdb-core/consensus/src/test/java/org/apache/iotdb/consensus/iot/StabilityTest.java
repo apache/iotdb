@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.consensus.iot;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -48,14 +49,17 @@ public class StabilityTest {
 
   private IConsensus consensusImpl;
 
+  private final int basePort = 9000;
+
   public void constructConsensus() throws IOException {
     consensusImpl =
         ConsensusFactory.getConsensusImpl(
                 ConsensusFactory.IOT_CONSENSUS,
                 ConsensusConfig.newBuilder()
                     .setThisNodeId(1)
-                    .setThisNode(new TEndPoint("0.0.0.0", 9000))
+                    .setThisNode(new TEndPoint("0.0.0.0", basePort))
                     .setStorageDir(storageDir.getAbsolutePath())
+                    .setConsensusGroupType(TConsensusGroupType.DataRegion)
                     .build(),
                 gid -> new TestStateMachine())
             .orElseThrow(
@@ -88,7 +92,7 @@ public class StabilityTest {
   public void peerTest() throws Exception {
     consensusImpl.createPeer(
         dataRegionId,
-        Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 9000))));
+        Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort))));
 
     consensusImpl.deletePeer(dataRegionId);
 
@@ -100,7 +104,8 @@ public class StabilityTest {
     ConsensusGenericResponse response =
         consensusImpl.createPeer(
             dataRegionId,
-            Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 9000))));
+            Collections.singletonList(
+                new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort))));
     Assert.assertTrue(response.isSuccess());
     consensusImpl.deletePeer(dataRegionId);
   }
@@ -108,7 +113,7 @@ public class StabilityTest {
   public void snapshotTest() throws IOException {
     consensusImpl.createPeer(
         dataRegionId,
-        Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 9000))));
+        Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort))));
     consensusImpl.triggerSnapshot(dataRegionId);
 
     File dataDir = new File(IoTConsensus.buildPeerDir(storageDir, dataRegionId));
@@ -133,7 +138,7 @@ public class StabilityTest {
   public void snapshotUpgradeTest() throws Exception {
     consensusImpl.createPeer(
         dataRegionId,
-        Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 9000))));
+        Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort))));
     consensusImpl.triggerSnapshot(dataRegionId);
     long oldSnapshotIndex = System.currentTimeMillis();
     String oldSnapshotDirName =

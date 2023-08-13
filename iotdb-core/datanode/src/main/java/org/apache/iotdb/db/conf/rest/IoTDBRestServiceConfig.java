@@ -16,49 +16,50 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.conf.rest;
 
 public class IoTDBRestServiceConfig {
   static final String CONFIG_NAME = "iotdb-common.properties";
-  /** if the enableRestService is true, we will start REST Service */
+  /** If the enableRestService is true, we will start REST Service. */
   private boolean enableRestService = false;
 
-  /** set the REST Service port. */
+  /** Set the REST Service port. */
   private int restServicePort = 18080;
 
-  /** Whether to display rest service interface information through swagger */
+  /** Whether to display rest service interface information through swagger. */
   private boolean enableSwagger = false;
 
-  /** enable the REST Service ssl. */
+  /** Enable the REST Service ssl. */
   private boolean enableHttps = false;
 
-  /** ssl key Store Path */
+  /** ssl key Store Path. */
   private String keyStorePath = "";
 
-  /** ssl trust Store Path */
+  /** ssl trust Store Path. */
   private String trustStorePath = "";
 
-  /** ssl key Store password */
+  /** ssl key Store password. */
   private String keyStorePwd = "";
 
-  /** ssl trust Store password */
+  /** ssl trust Store password. */
   private String trustStorePwd = "";
 
-  /** ssl timeout */
+  /** ssl timeout. */
   private int idleTimeoutInSeconds = 50000;
 
-  /** Session expiration time */
+  /** Session expiration time. */
   private int cacheExpireInSeconds = 28800;
 
-  /** maximum number of users stored in cache */
+  /** Maximum number of users stored in cache. */
   private int cacheMaxNum = 100;
 
-  /** init number of users stored in cache */
+  /** Init number of users stored in cache. */
   private int cacheInitNum = 10;
 
   private int restQueryDefaultRowSizeLimit = 10000;
 
-  /** Is client authentication required */
+  /** Is client authentication required. */
   private boolean clientAuth = false;
 
   public boolean isClientAuth() {

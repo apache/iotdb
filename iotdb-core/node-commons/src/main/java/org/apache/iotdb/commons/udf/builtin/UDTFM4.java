@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.UDTF;
-import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
@@ -151,168 +150,241 @@ public class UDTFM4 implements UDTF {
 
   public void transformInt(RowWindow rowWindow, PointCollector collector) throws IOException {
     if (rowWindow.windowSize() > 0) { // else empty window do nothing
-      int firstValue = rowWindow.getRow(0).getInt(0);
-      int lastValue = rowWindow.getRow(rowWindow.windowSize() - 1).getInt(0);
+      int index = 0;
+      int size = rowWindow.windowSize();
+      int firstValueIndex = -1;
+      int firstValue = 0;
 
-      int minValue = Math.min(firstValue, lastValue);
-      int maxValue = Math.max(firstValue, lastValue);
-      int minIndex = (firstValue < lastValue) ? 0 : rowWindow.windowSize() - 1;
-      int maxIndex = (firstValue > lastValue) ? 0 : rowWindow.windowSize() - 1;
-
-      for (int i = 1; i < rowWindow.windowSize() - 1; i++) {
-        int value = rowWindow.getRow(i).getInt(0);
-        if (value < minValue) {
-          minValue = value;
-          minIndex = i;
-        }
-        if (value > maxValue) {
-          maxValue = value;
-          maxIndex = i;
+      for (; index < size; index++) {
+        if (!rowWindow.getRow(index).isNull(0)) {
+          firstValueIndex = index;
+          firstValue = rowWindow.getRow(index).getInt(0);
+          break;
         }
       }
 
-      Row row = rowWindow.getRow(0);
-      collector.putInt(row.getTime(), row.getInt(0));
+      if (firstValueIndex != -1) { // else empty window do nothing
+        int lastValueIndex = firstValueIndex;
+        int lastValue = firstValue;
+        int minValueIndex = firstValueIndex;
+        int minValue = firstValue;
+        int maxValueIndex = firstValueIndex;
+        int maxValue = firstValue;
 
-      int smallerIndex = Math.min(minIndex, maxIndex);
-      int largerIndex = Math.max(minIndex, maxIndex);
-      if (smallerIndex > 0) {
-        row = rowWindow.getRow(smallerIndex);
-        collector.putInt(row.getTime(), row.getInt(0));
-      }
-      if (largerIndex > smallerIndex) {
-        row = rowWindow.getRow(largerIndex);
-        collector.putInt(row.getTime(), row.getInt(0));
-      }
-      if (largerIndex < rowWindow.windowSize() - 1) {
-        row = rowWindow.getRow(rowWindow.windowSize() - 1);
-        collector.putInt(row.getTime(), row.getInt(0));
+        for (; index < size; index++) {
+          if (!rowWindow.getRow(index).isNull(0)) {
+            lastValueIndex = index;
+            lastValue = rowWindow.getRow(index).getInt(0);
+            if (lastValue < minValue) {
+              minValue = lastValue;
+              minValueIndex = index;
+            }
+            if (lastValue > maxValue) {
+              maxValue = lastValue;
+              maxValueIndex = index;
+            }
+          }
+        }
+        // first value
+        collector.putInt(rowWindow.getRow(firstValueIndex).getTime(), firstValue);
+        // min and max value if not duplicate
+        // if min/max value is equal to first/last value, we keep first/last value
+        int smallerIndex = Math.min(minValueIndex, maxValueIndex);
+        int largerIndex = Math.max(minValueIndex, maxValueIndex);
+        if (smallerIndex > firstValueIndex
+            && rowWindow.getRow(smallerIndex).getInt(0) != lastValue) {
+          collector.putInt(
+              rowWindow.getRow(smallerIndex).getTime(), rowWindow.getRow(smallerIndex).getInt(0));
+        }
+        if (largerIndex > smallerIndex && rowWindow.getRow(largerIndex).getInt(0) != lastValue) {
+          collector.putInt(
+              rowWindow.getRow(largerIndex).getTime(), rowWindow.getRow(largerIndex).getInt(0));
+        }
+        // last value
+        if (lastValueIndex > firstValueIndex) {
+          collector.putInt(rowWindow.getRow(lastValueIndex).getTime(), lastValue);
+        }
       }
     }
   }
 
   public void transformLong(RowWindow rowWindow, PointCollector collector) throws IOException {
     if (rowWindow.windowSize() > 0) { // else empty window do nothing
-      long firstValue = rowWindow.getRow(0).getLong(0);
-      long lastValue = rowWindow.getRow(rowWindow.windowSize() - 1).getLong(0);
+      int index = 0;
+      int size = rowWindow.windowSize();
+      int firstValueIndex = -1;
+      long firstValue = 0;
 
-      long minValue = Math.min(firstValue, lastValue);
-      long maxValue = Math.max(firstValue, lastValue);
-      int minIndex = (firstValue < lastValue) ? 0 : rowWindow.windowSize() - 1;
-      int maxIndex = (firstValue > lastValue) ? 0 : rowWindow.windowSize() - 1;
-
-      for (int i = 1; i < rowWindow.windowSize() - 1; i++) {
-        long value = rowWindow.getRow(i).getLong(0);
-        if (value < minValue) {
-          minValue = value;
-          minIndex = i;
-        }
-        if (value > maxValue) {
-          maxValue = value;
-          maxIndex = i;
+      for (; index < size; index++) {
+        if (!rowWindow.getRow(index).isNull(0)) {
+          firstValueIndex = index;
+          firstValue = rowWindow.getRow(index).getLong(0);
+          break;
         }
       }
 
-      Row row = rowWindow.getRow(0);
-      collector.putLong(row.getTime(), row.getLong(0));
+      if (firstValueIndex != -1) { // else empty window do nothing
+        int lastValueIndex = firstValueIndex;
+        long lastValue = firstValue;
+        int minValueIndex = firstValueIndex;
+        long minValue = firstValue;
+        int maxValueIndex = firstValueIndex;
+        long maxValue = firstValue;
 
-      int smallerIndex = Math.min(minIndex, maxIndex);
-      int largerIndex = Math.max(minIndex, maxIndex);
-      if (smallerIndex > 0) {
-        row = rowWindow.getRow(smallerIndex);
-        collector.putLong(row.getTime(), row.getLong(0));
-      }
-      if (largerIndex > smallerIndex) {
-        row = rowWindow.getRow(largerIndex);
-        collector.putLong(row.getTime(), row.getLong(0));
-      }
-      if (largerIndex < rowWindow.windowSize() - 1) {
-        row = rowWindow.getRow(rowWindow.windowSize() - 1);
-        collector.putLong(row.getTime(), row.getLong(0));
+        for (; index < size; index++) {
+          if (!rowWindow.getRow(index).isNull(0)) {
+            lastValueIndex = index;
+            lastValue = rowWindow.getRow(index).getLong(0);
+            if (lastValue < minValue) {
+              minValue = lastValue;
+              minValueIndex = index;
+            }
+            if (lastValue > maxValue) {
+              maxValue = lastValue;
+              maxValueIndex = index;
+            }
+          }
+        }
+        // first value
+        collector.putLong(rowWindow.getRow(firstValueIndex).getTime(), firstValue);
+        // min and max value if not duplicate
+        // if min/max value is equal to first/last value, we keep first/last value
+        int smallerIndex = Math.min(minValueIndex, maxValueIndex);
+        int largerIndex = Math.max(minValueIndex, maxValueIndex);
+        if (smallerIndex > firstValueIndex
+            && rowWindow.getRow(smallerIndex).getLong(0) != lastValue) {
+          collector.putLong(
+              rowWindow.getRow(smallerIndex).getTime(), rowWindow.getRow(smallerIndex).getLong(0));
+        }
+        if (largerIndex > smallerIndex && rowWindow.getRow(largerIndex).getLong(0) != lastValue) {
+          collector.putLong(
+              rowWindow.getRow(largerIndex).getTime(), rowWindow.getRow(largerIndex).getLong(0));
+        }
+        // last value
+        if (lastValueIndex > firstValueIndex) {
+          collector.putLong(rowWindow.getRow(lastValueIndex).getTime(), lastValue);
+        }
       }
     }
   }
 
   public void transformFloat(RowWindow rowWindow, PointCollector collector) throws IOException {
     if (rowWindow.windowSize() > 0) { // else empty window do nothing
-      float firstValue = rowWindow.getRow(0).getFloat(0);
-      float lastValue = rowWindow.getRow(rowWindow.windowSize() - 1).getFloat(0);
+      int index = 0;
+      int size = rowWindow.windowSize();
+      int firstValueIndex = -1;
+      float firstValue = 0;
 
-      float minValue = Math.min(firstValue, lastValue);
-      float maxValue = Math.max(firstValue, lastValue);
-      int minIndex = (firstValue < lastValue) ? 0 : rowWindow.windowSize() - 1;
-      int maxIndex = (firstValue > lastValue) ? 0 : rowWindow.windowSize() - 1;
-
-      for (int i = 1; i < rowWindow.windowSize() - 1; i++) {
-        float value = rowWindow.getRow(i).getFloat(0);
-        if (value < minValue) {
-          minValue = value;
-          minIndex = i;
-        }
-        if (value > maxValue) {
-          maxValue = value;
-          maxIndex = i;
+      for (; index < size; index++) {
+        if (!rowWindow.getRow(index).isNull(0)) {
+          firstValueIndex = index;
+          firstValue = rowWindow.getRow(index).getFloat(0);
+          break;
         }
       }
 
-      Row row = rowWindow.getRow(0);
-      collector.putFloat(row.getTime(), row.getFloat(0));
+      if (firstValueIndex != -1) { // else empty window do nothing
+        int lastValueIndex = firstValueIndex;
+        float lastValue = firstValue;
+        int minValueIndex = firstValueIndex;
+        float minValue = firstValue;
+        int maxValueIndex = firstValueIndex;
+        float maxValue = firstValue;
 
-      int smallerIndex = Math.min(minIndex, maxIndex);
-      int largerIndex = Math.max(minIndex, maxIndex);
-      if (smallerIndex > 0) {
-        row = rowWindow.getRow(smallerIndex);
-        collector.putFloat(row.getTime(), row.getFloat(0));
-      }
-      if (largerIndex > smallerIndex) {
-        row = rowWindow.getRow(largerIndex);
-        collector.putFloat(row.getTime(), row.getFloat(0));
-      }
-      if (largerIndex < rowWindow.windowSize() - 1) {
-        row = rowWindow.getRow(rowWindow.windowSize() - 1);
-        collector.putFloat(row.getTime(), row.getFloat(0));
+        for (; index < size; index++) {
+          if (!rowWindow.getRow(index).isNull(0)) {
+            lastValueIndex = index;
+            lastValue = rowWindow.getRow(index).getFloat(0);
+            if (lastValue < minValue) {
+              minValue = lastValue;
+              minValueIndex = index;
+            }
+            if (lastValue > maxValue) {
+              maxValue = lastValue;
+              maxValueIndex = index;
+            }
+          }
+        }
+        // first value
+        collector.putFloat(rowWindow.getRow(firstValueIndex).getTime(), firstValue);
+        // min and max value if not duplicate
+        // if min/max value is equal to first/last value, we keep first/last value
+        int smallerIndex = Math.min(minValueIndex, maxValueIndex);
+        int largerIndex = Math.max(minValueIndex, maxValueIndex);
+        if (smallerIndex > firstValueIndex
+            && rowWindow.getRow(smallerIndex).getFloat(0) != lastValue) {
+          collector.putFloat(
+              rowWindow.getRow(smallerIndex).getTime(), rowWindow.getRow(smallerIndex).getFloat(0));
+        }
+        if (largerIndex > smallerIndex && rowWindow.getRow(largerIndex).getFloat(0) != lastValue) {
+          collector.putFloat(
+              rowWindow.getRow(largerIndex).getTime(), rowWindow.getRow(largerIndex).getFloat(0));
+        }
+        // last value
+        if (lastValueIndex > firstValueIndex) {
+          collector.putFloat(rowWindow.getRow(lastValueIndex).getTime(), lastValue);
+        }
       }
     }
   }
 
   public void transformDouble(RowWindow rowWindow, PointCollector collector) throws IOException {
     if (rowWindow.windowSize() > 0) { // else empty window do nothing
-      double firstValue = rowWindow.getRow(0).getDouble(0);
-      double lastValue = rowWindow.getRow(rowWindow.windowSize() - 1).getDouble(0);
+      int index = 0;
+      int size = rowWindow.windowSize();
+      int firstValueIndex = -1;
+      double firstValue = 0;
 
-      double minValue = Math.min(firstValue, lastValue);
-      double maxValue = Math.max(firstValue, lastValue);
-      int minIndex = (firstValue < lastValue) ? 0 : rowWindow.windowSize() - 1;
-      int maxIndex = (firstValue > lastValue) ? 0 : rowWindow.windowSize() - 1;
-
-      for (int i = 1; i < rowWindow.windowSize() - 1; i++) {
-        double value = rowWindow.getRow(i).getDouble(0);
-        if (value < minValue) {
-          minValue = value;
-          minIndex = i;
-        }
-        if (value > maxValue) {
-          maxValue = value;
-          maxIndex = i;
+      for (; index < size; index++) {
+        if (!rowWindow.getRow(index).isNull(0)) {
+          firstValueIndex = index;
+          firstValue = rowWindow.getRow(index).getDouble(0);
+          break;
         }
       }
 
-      Row row = rowWindow.getRow(0);
-      collector.putDouble(row.getTime(), row.getDouble(0));
+      if (firstValueIndex != -1) { // else empty window do nothing
+        int lastValueIndex = firstValueIndex;
+        double lastValue = firstValue;
+        int minValueIndex = firstValueIndex;
+        double minValue = firstValue;
+        int maxValueIndex = firstValueIndex;
+        double maxValue = firstValue;
 
-      int smallerIndex = Math.min(minIndex, maxIndex);
-      int largerIndex = Math.max(minIndex, maxIndex);
-      if (smallerIndex > 0) {
-        row = rowWindow.getRow(smallerIndex);
-        collector.putDouble(row.getTime(), row.getDouble(0));
-      }
-      if (largerIndex > smallerIndex) {
-        row = rowWindow.getRow(largerIndex);
-        collector.putDouble(row.getTime(), row.getDouble(0));
-      }
-      if (largerIndex < rowWindow.windowSize() - 1) {
-        row = rowWindow.getRow(rowWindow.windowSize() - 1);
-        collector.putDouble(row.getTime(), row.getDouble(0));
+        for (; index < size; index++) {
+          if (!rowWindow.getRow(index).isNull(0)) {
+            lastValueIndex = index;
+            lastValue = rowWindow.getRow(index).getDouble(0);
+            if (lastValue < minValue) {
+              minValue = lastValue;
+              minValueIndex = index;
+            }
+            if (lastValue > maxValue) {
+              maxValue = lastValue;
+              maxValueIndex = index;
+            }
+          }
+        }
+        // first value
+        collector.putDouble(rowWindow.getRow(firstValueIndex).getTime(), firstValue);
+        // min and max value if not duplicate
+        // if min/max value is equal to first/last value, we keep first/last value
+        int smallerIndex = Math.min(minValueIndex, maxValueIndex);
+        int largerIndex = Math.max(minValueIndex, maxValueIndex);
+        if (smallerIndex > firstValueIndex
+            && rowWindow.getRow(smallerIndex).getDouble(0) != lastValue) {
+          collector.putDouble(
+              rowWindow.getRow(smallerIndex).getTime(),
+              rowWindow.getRow(smallerIndex).getDouble(0));
+        }
+        if (largerIndex > smallerIndex && rowWindow.getRow(largerIndex).getDouble(0) != lastValue) {
+          collector.putDouble(
+              rowWindow.getRow(largerIndex).getTime(), rowWindow.getRow(largerIndex).getDouble(0));
+        }
+        // last value
+        if (lastValueIndex > firstValueIndex) {
+          collector.putDouble(rowWindow.getRow(lastValueIndex).getTime(), lastValue);
+        }
       }
     }
   }

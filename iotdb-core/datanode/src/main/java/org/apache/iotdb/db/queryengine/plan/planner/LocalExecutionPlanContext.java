@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
+import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
@@ -78,10 +79,15 @@ public class LocalExecutionPlanContext {
   private Filter lastQueryTimeFilter;
   // whether we need to update last cache
   private boolean needUpdateLastCache;
+  private boolean needUpdateNullEntry;
+
+  public final DataNodeQueryContext dataNodeQueryContext;
 
   // for data region
   public LocalExecutionPlanContext(
-      TypeProvider typeProvider, FragmentInstanceContext instanceContext) {
+      TypeProvider typeProvider,
+      FragmentInstanceContext instanceContext,
+      DataNodeQueryContext dataNodeQueryContext) {
     this.typeProvider = typeProvider;
     this.allSensorsMap = new ConcurrentHashMap<>();
     this.dataRegionTTL = instanceContext.getDataRegion().getDataTTL();
@@ -89,6 +95,7 @@ public class LocalExecutionPlanContext {
     this.nextPipelineId = new AtomicInteger(0);
     this.driverContext = new DataDriverContext(instanceContext, getNextPipelineId());
     this.pipelineDriverFactories = new ArrayList<>();
+    this.dataNodeQueryContext = dataNodeQueryContext;
   }
 
   // For creating subContext, differ from parent context mainly in driver context
@@ -105,6 +112,7 @@ public class LocalExecutionPlanContext {
     this.cachedDataTypes = parentContext.cachedDataTypes;
     this.driverContext =
         parentContext.getDriverContext().createSubDriverContext(getNextPipelineId());
+    this.dataNodeQueryContext = parentContext.dataNodeQueryContext;
   }
 
   // for schema region
@@ -120,6 +128,7 @@ public class LocalExecutionPlanContext {
     this.driverContext =
         new SchemaDriverContext(instanceContext, schemaRegion, getNextPipelineId());
     this.pipelineDriverFactories = new ArrayList<>();
+    this.dataNodeQueryContext = null;
   }
 
   public void addPipelineDriverFactory(
@@ -267,6 +276,14 @@ public class LocalExecutionPlanContext {
 
   public boolean isNeedUpdateLastCache() {
     return needUpdateLastCache;
+  }
+
+  public boolean isNeedUpdateNullEntry() {
+    return needUpdateNullEntry;
+  }
+
+  public void setNeedUpdateNullEntry(boolean needUpdateNullEntry) {
+    this.needUpdateNullEntry = needUpdateNullEntry;
   }
 
   public long getDataRegionTTL() {

@@ -52,14 +52,14 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
   protected TsBlock inputTsBlock;
 
   protected final ITimeRangeIterator timeRangeIterator;
-  // current interval of aggregation window [curStartTime, curEndTime)
+  // Current interval of aggregation window [curStartTime, curEndTime)
   protected TimeRange curTimeRange;
 
   // We still think aggregator in SeriesAggregateScanOperator is a inputRaw step.
   // But in facing of statistics, it will invoke another method processStatistics()
   protected final List<Aggregator> aggregators;
 
-  // using for building result tsBlock
+  // Using for building result tsBlock
   protected final TsBlockBuilder resultTsBlockBuilder;
 
   protected boolean finished = false;

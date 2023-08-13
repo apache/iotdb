@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -27,7 +27,6 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -61,11 +60,7 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   protected void executeFromValidateTask(ConfigNodeProcedureEnv env) throws PipeException {
     LOGGER.info("StartPipeProcedureV2: executeFromValidateTask({})", pipeName);
 
-    env.getConfigManager()
-        .getPipeManager()
-        .getPipeTaskCoordinator()
-        .getPipeTaskInfo()
-        .checkBeforeStartPipe(pipeName);
+    pipeTaskInfo.get().checkBeforeStartPipe(pipeName);
   }
 
   @Override
@@ -93,13 +88,16 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       throws PipeException, IOException {
     LOGGER.info("StartPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
-    TSStatus result = pushPipeMetaToDataNodes(env);
-    if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    String exceptionMessage =
+        parsePushPipeMetaExceptionForPipe(pipeName, pushPipeMetaToDataNodes(env));
+    if (!exceptionMessage.isEmpty()) {
       throw new PipeException(
-          String.format(
-              "Failed to start pipe %s on data nodes. Failures: %s",
-              pipeName, result.getMessage()));
+          String.format("Failed to start pipe %s, details: %s", pipeName, exceptionMessage));
     }
+
+    // Clear exceptions and set isStoppedByRuntimeException to false if the pipe is
+    // started successfully on all data nodes
+    pipeTaskInfo.get().clearExceptionsAndSetIsStoppedByRuntimeExceptionToFalse(pipeName);
   }
 
   @Override
@@ -132,12 +130,12 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       throws PipeException, IOException {
     LOGGER.info("StartPipeProcedureV2: rollbackFromOperateOnDataNodes({})", pipeName);
 
-    TSStatus result = pushPipeMetaToDataNodes(env);
-    if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    String exceptionMessage =
+        parsePushPipeMetaExceptionForPipe(pipeName, pushPipeMetaToDataNodes(env));
+    if (!exceptionMessage.isEmpty()) {
       throw new PipeException(
           String.format(
-              "Failed to rollback start pipe %s on data nodes. Failures: %s",
-              pipeName, result.getMessage()));
+              "Failed to rollback start pipe %s, details: %s", pipeName, exceptionMessage));
     }
   }
 

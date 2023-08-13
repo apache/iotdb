@@ -65,7 +65,7 @@ public class AuthorizerManager implements IAuthorizer {
     }
   }
 
-  /** SingleTone */
+  /** SingleTon. */
   private static class AuthorizerManagerHolder {
     private static final AuthorizerManager INSTANCE = new AuthorizerManager();
 
@@ -358,7 +358,7 @@ public class AuthorizerManager implements IAuthorizer {
     }
   }
 
-  /** Check the path */
+  /** Check the path. */
   public TSStatus checkPath(String username, List<PartialPath> allPath, int permission) {
     authReadWriteLock.readLock().lock();
     try {
@@ -368,7 +368,7 @@ public class AuthorizerManager implements IAuthorizer {
     }
   }
 
-  /** Check the user */
+  /** Check the user. */
   public TSStatus checkUser(String username, String password) {
     authReadWriteLock.readLock().lock();
     try {
@@ -400,7 +400,7 @@ public class AuthorizerManager implements IAuthorizer {
     }
   }
 
-  /** build TSBlock */
+  /** build TSBlock. */
   public void buildTSBlock(
       Map<String, List<String>> authorizerInfo, SettableFuture<ConfigTaskResult> future) {
     List<TSDataType> types = new ArrayList<>();

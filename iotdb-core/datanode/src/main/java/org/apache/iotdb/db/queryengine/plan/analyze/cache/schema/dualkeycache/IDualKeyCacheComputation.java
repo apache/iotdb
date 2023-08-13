@@ -35,6 +35,9 @@ public interface IDualKeyCacheComputation<FK, SK, V> {
   /** Return the second key list of target cache values. */
   SK[] getSecondKeyList();
 
-  /** Compute each target cache value. The index is the second key's position in second key list. */
+  /**
+   * Compute each target cache value. The index is the second key's position in second key list. The
+   * value here is read only.
+   */
   void computeValue(int index, V value);
 }

@@ -54,17 +54,19 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
   }
 
   @Override
-  public ISchemaTree fetchSchemaWithTags(PathPatternTree patternTree) {
+  public ISchemaTree fetchSchemaWithTags(PathPatternTree patternTree, MPPQueryContext context) {
     return fetchSchema(patternTree, context);
   }
 
   @Override
   public void fetchAndComputeSchemaWithAutoCreate(
-      ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation) {}
+      ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation,
+      MPPQueryContext context) {}
 
   @Override
   public void fetchAndComputeSchemaWithAutoCreate(
-      List<? extends ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList) {
+      List<? extends ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList,
+      MPPQueryContext context) {
     for (ISchemaComputationWithAutoCreation computation : schemaComputationWithAutoCreationList) {
       computation.computeMeasurement(
           0, new SchemaMeasurementNode("s", new MeasurementSchema("s", TSDataType.INT32)));
@@ -128,7 +130,8 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
       List<TSDataType[]> tsDataTypes,
       List<TSEncoding[]> encodings,
       List<CompressionType[]> compressionTypes,
-      List<Boolean> aligned) {
+      List<Boolean> aligned,
+      MPPQueryContext context) {
     return null;
   }
 

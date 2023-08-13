@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.commons.exception.StartupException;
@@ -28,7 +29,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * DataNodeStartupCheck checks the parameters in iotdb-datanode.properties when start and restart
+ * {@link DataNodeStartupCheck} checks the parameters in iotdb-datanode.properties when start and
+ * restart.
  */
 public class DataNodeStartupCheck extends StartupChecks {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeStartupCheck.class);
@@ -48,9 +50,9 @@ public class DataNodeStartupCheck extends StartupChecks {
     portSet.add(config.getMppDataExchangePort());
     portSet.add(config.getDataRegionConsensusPort());
     portSet.add(config.getSchemaRegionConsensusPort());
-    if (portSet.size() != DATANODE_PORTS)
+    if (portSet.size() != DATANODE_PORTS) {
       throw new StartupException("ports used in datanode have repeat.");
-    else {
+    } else {
       LOGGER.info("DataNode port check successful.");
     }
   }

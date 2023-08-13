@@ -26,12 +26,50 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 
 public class RatisMetricsManager {
+
+  static class TimeKeeper implements AutoCloseable {
+    private final long startMoment;
+    private final TConsensusGroupType groupType;
+    private final BiConsumer<Long, TConsensusGroupType> reporter;
+
+    private TimeKeeper(
+        BiConsumer<Long, TConsensusGroupType> reporter, TConsensusGroupType groupType) {
+      this.reporter = reporter;
+      this.groupType = groupType;
+      startMoment = System.nanoTime();
+    }
+
+    void stopAndReport() {
+      final long timeElapsed = System.nanoTime() - startMoment;
+      reporter.accept(timeElapsed, groupType);
+    }
+
+    @Override
+    public void close() throws Exception {
+      stopAndReport();
+    }
+  }
+
   private final MetricService metricService = MetricService.getInstance();
 
+  public TimeKeeper startWriteLocallyTimer(TConsensusGroupType consensusGroupType) {
+    return new TimeKeeper(this::recordWriteLocallyCost, consensusGroupType);
+  }
+
+  public TimeKeeper startWriteRemotelyTimer(TConsensusGroupType consensusGroupType) {
+    return new TimeKeeper(this::recordWriteRemotelyCost, consensusGroupType);
+  }
+
+  public TimeKeeper startReadTimer(TConsensusGroupType consensusGroupType) {
+    return new TimeKeeper(this::recordReadRequestCost, consensusGroupType);
+  }
+
   /** Record the time cost in write locally stage. */
-  public void recordWriteLocallyCost(long costTimeInNanos, TConsensusGroupType consensusGroupType) {
+  private void recordWriteLocallyCost(
+      long costTimeInNanos, TConsensusGroupType consensusGroupType) {
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,
@@ -42,7 +80,7 @@ public class RatisMetricsManager {
   }
 
   /** Record the time cost in write remotely stage. */
-  public void recordWriteRemotelyCost(
+  private void recordWriteRemotelyCost(
       long costTimeInNanos, TConsensusGroupType consensusGroupType) {
     metricService.timer(
         costTimeInNanos,
@@ -54,7 +92,7 @@ public class RatisMetricsManager {
   }
 
   /** Record the time cost in submit read request stage. */
-  public void recordReadRequestCost(long costTimeInNanos, TConsensusGroupType consensusGroupType) {
+  private void recordReadRequestCost(long costTimeInNanos, TConsensusGroupType consensusGroupType) {
     metricService.timer(
         costTimeInNanos,
         TimeUnit.NANOSECONDS,

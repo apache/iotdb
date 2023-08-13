@@ -65,6 +65,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -874,6 +875,37 @@ public class Session implements ISession {
       throws StatementExecutionException, IoTDBConnectionException {
     long time = 0L;
     return executeLastDataQuery(paths, time, queryTimeoutInMs);
+  }
+
+  @Override
+  public SessionDataSet executeLastDataQueryForOneDevice(
+      String db, String device, List<String> sensors, boolean isLegalPathNodes)
+      throws StatementExecutionException, IoTDBConnectionException {
+    Pair<SessionDataSet, TEndPoint> pair;
+    try {
+      pair =
+          getSessionConnection(device)
+              .executeLastDataQueryForOneDevice(
+                  db, device, sensors, isLegalPathNodes, queryTimeoutInMs);
+      if (pair.right != null) {
+        handleRedirection(device, pair.right);
+      }
+      return pair.left;
+    } catch (IoTDBConnectionException e) {
+      if (enableRedirection
+          && !deviceIdToEndpoint.isEmpty()
+          && deviceIdToEndpoint.get(device) != null) {
+        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(device));
+        deviceIdToEndpoint.remove(device);
+
+        // reconnect with default connection
+        return defaultSessionConnection.executeLastDataQueryForOneDevice(
+                db, device, sensors, isLegalPathNodes, queryTimeoutInMs)
+            .left;
+      } else {
+        throw e;
+      }
+    }
   }
 
   @Override

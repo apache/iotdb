@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeResource;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -34,12 +35,18 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
-import org.apache.iotdb.it.env.cluster.ConfigNodeWrapper;
-import org.apache.iotdb.it.env.cluster.DataNodeWrapper;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.junit.Assert;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -47,10 +54,16 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertTrue;
 
 public class ConfigNodeTestUtils {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeTestUtils.class);
 
   public static void checkNodeConfig(
       List<TConfigNodeLocation> configNodeList,
@@ -169,6 +182,110 @@ public class ConfigNodeTestUtils {
     }
   }
 
+  public static TDataPartitionTableResp getDataPartitionWithRetry(
+      String database,
+      int seriesSlotStart,
+      int seriesSlotEnd,
+      long timeSlotStart,
+      long timeSlotEnd,
+      long timePartitionInterval)
+      throws InterruptedException {
+    Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
+        ConfigNodeTestUtils.constructPartitionSlotsMap(
+            database,
+            seriesSlotStart,
+            seriesSlotEnd,
+            timeSlotStart,
+            timeSlotEnd,
+            timePartitionInterval);
+    TDataPartitionTableResp dataPartitionTableResp;
+    TDataPartitionReq dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
+
+    for (int retry = 0; retry < 5; retry++) {
+      // Build new Client since it's unstable
+      try (SyncConfigNodeIServiceClient configNodeClient =
+          (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+        dataPartitionTableResp = configNodeClient.getDataPartitionTable(dataPartitionReq);
+        if (dataPartitionTableResp != null
+            && dataPartitionTableResp.getStatus().getCode()
+                == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return dataPartitionTableResp;
+        }
+      } catch (Exception e) {
+        // Retry sometimes in order to avoid request timeout
+        LOGGER.error(e.getMessage());
+        TimeUnit.SECONDS.sleep(1);
+      }
+    }
+    Assert.fail("Failed to create DataPartition");
+    return null;
+  }
+
+  public static TDataPartitionTableResp getOrCreateDataPartitionWithRetry(
+      String database,
+      int seriesSlotStart,
+      int seriesSlotEnd,
+      long timeSlotStart,
+      long timeSlotEnd,
+      long timePartitionInterval)
+      throws InterruptedException {
+
+    Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap =
+        ConfigNodeTestUtils.constructPartitionSlotsMap(
+            database,
+            seriesSlotStart,
+            seriesSlotEnd,
+            timeSlotStart,
+            timeSlotEnd,
+            timePartitionInterval);
+    TDataPartitionTableResp dataPartitionTableResp;
+    TDataPartitionReq dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
+
+    for (int retry = 0; retry < 5; retry++) {
+      // Build new Client since it's unstable
+      try (SyncConfigNodeIServiceClient configNodeClient =
+          (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+        dataPartitionTableResp = configNodeClient.getOrCreateDataPartitionTable(dataPartitionReq);
+        if (dataPartitionTableResp != null
+            && dataPartitionTableResp.getStatus().getCode()
+                == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          ConfigNodeTestUtils.checkDataPartitionTable(
+              database,
+              seriesSlotStart,
+              seriesSlotEnd,
+              timeSlotStart,
+              timeSlotEnd,
+              timePartitionInterval,
+              configNodeClient.getDataPartitionTable(dataPartitionReq).getDataPartitionTable());
+          return dataPartitionTableResp;
+        }
+      } catch (Exception e) {
+        // Retry sometimes in order to avoid request timeout
+        LOGGER.error(e.getMessage());
+        TimeUnit.SECONDS.sleep(1);
+      }
+    }
+    Assert.fail("Failed to create DataPartition");
+    return null;
+  }
+
+  public static Map<TConsensusGroupId, Integer> countDataPartition(
+      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
+          dataPartitionMap) {
+    Map<TConsensusGroupId, AtomicInteger> counter = new ConcurrentHashMap<>();
+    dataPartitionMap.forEach(
+        ((seriesPartitionSlot, timePartitionSlotMap) ->
+            timePartitionSlotMap.forEach(
+                ((timePartitionSlot, consensusGroupIds) ->
+                    consensusGroupIds.forEach(
+                        (consensusGroupId ->
+                            counter
+                                .computeIfAbsent(consensusGroupId, empty -> new AtomicInteger(0))
+                                .incrementAndGet()))))));
+    return counter.entrySet().stream()
+        .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().get()));
+  }
+
   public static TConfigNodeLocation generateTConfigNodeLocation(
       int nodeId, ConfigNodeWrapper configNodeWrapper) {
     return new TConfigNodeLocation(
@@ -215,6 +332,7 @@ public class ConfigNodeTestUtils {
     clusterParameters.setTimestampPrecision("ms");
     clusterParameters.setSchemaEngineMode("Memory");
     clusterParameters.setTagAttributeTotalSize(700);
+    clusterParameters.setDatabaseLimitThreshold(-1);
     return clusterParameters;
   }
 

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.itbase.env;
 
 /** This interface is used to handle properties in iotdb-common.properties. */
@@ -60,8 +61,6 @@ public interface CommonConfig {
   CommonConfig setSchemaRegionConsensusProtocolClass(String schemaRegionConsensusProtocolClass);
 
   CommonConfig setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass);
-
-  CommonConfig setEnableDataPartitionInheritPolicy(boolean enableDataPartitionInheritPolicy);
 
   CommonConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy);
 
@@ -111,9 +110,13 @@ public interface CommonConfig {
 
   CommonConfig setClusterSchemaLimitThreshold(long clusterSchemaLimitThreshold);
 
+  CommonConfig setDatabaseLimitThreshold(long databaseLimitThreshold);
+
   CommonConfig setQuotaEnable(boolean quotaEnable);
 
   CommonConfig setSortBufferSize(long sortBufferSize);
 
   CommonConfig setMaxTsBlockSizeInByte(long maxTsBlockSizeInByte);
+
+  CommonConfig setDataRegionPerDataNode(double dataRegionPerDataNode);
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.consensus;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -71,6 +72,7 @@ public class DataRegionConsensusImpl {
                           new TEndPoint(
                               conf.getInternalAddress(), conf.getDataRegionConsensusPort()))
                       .setStorageDir(conf.getDataRegionConsensusDir())
+                      .setConsensusGroupType(TConsensusGroupType.DataRegion)
                       .setIoTConsensusConfig(
                           IoTConsensusConfig.newBuilder()
                               .setRpc(

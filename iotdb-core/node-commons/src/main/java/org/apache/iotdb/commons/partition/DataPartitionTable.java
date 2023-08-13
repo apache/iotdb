@@ -34,6 +34,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -99,22 +100,34 @@ public class DataPartitionTable {
   }
 
   /**
-   * Checks whether the specified DataPartition has a predecessor or successor and returns if it
-   * does
+   * Checks whether the specified DataPartition has a successor and returns if it does.
    *
    * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
    * @param timePartitionSlot Corresponding TimePartitionSlot
-   * @param timePartitionInterval Time partition interval
+   * @return The specific DataPartition's successor if exists, null otherwise
+   */
+  public TConsensusGroupId getSuccessorDataPartition(
+      TSeriesPartitionSlot seriesPartitionSlot, TTimePartitionSlot timePartitionSlot) {
+    if (dataPartitionMap.containsKey(seriesPartitionSlot)) {
+      return dataPartitionMap.get(seriesPartitionSlot).getSuccessorDataPartition(timePartitionSlot);
+    } else {
+      return null;
+    }
+  }
+
+  /**
+   * Checks whether the specified DataPartition has a predecessor and returns if it does.
+   *
+   * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
+   * @param timePartitionSlot Corresponding TimePartitionSlot
    * @return The specific DataPartition's predecessor if exists, null otherwise
    */
-  public TConsensusGroupId getAdjacentDataPartition(
-      TSeriesPartitionSlot seriesPartitionSlot,
-      TTimePartitionSlot timePartitionSlot,
-      long timePartitionInterval) {
+  public TConsensusGroupId getPredecessorDataPartition(
+      TSeriesPartitionSlot seriesPartitionSlot, TTimePartitionSlot timePartitionSlot) {
     if (dataPartitionMap.containsKey(seriesPartitionSlot)) {
       return dataPartitionMap
           .get(seriesPartitionSlot)
-          .getAdjacentDataPartition(timePartitionSlot, timePartitionInterval);
+          .getPredecessorDataPartition(timePartitionSlot);
     } else {
       return null;
     }
@@ -200,8 +213,7 @@ public class DataPartitionTable {
    * @param seriesSlotId SeriesPartitionSlot
    * @param regionId TConsensusGroupId
    * @param startTime startTime
-   * @return the timePartition if seriesSlotId==-1&&regionId == -1, then return all timePartition;
-   *     if timeSlotId == -1, then return all the seriesSlot's dataRegionIds.
+   * @return the timePartition if seriesSlotId==-1 && regionId == -1, then return all timePartition.
    */
   public List<TTimePartitionSlot> getTimeSlotList(
       TSeriesPartitionSlot seriesSlotId, TConsensusGroupId regionId, long startTime, long endTime) {
@@ -222,10 +234,32 @@ public class DataPartitionTable {
     }
   }
 
+  /** Get timePartitionSlot count. */
+  public long getTimeSlotCount() {
+    AtomicLong sum = new AtomicLong();
+    dataPartitionMap.forEach(
+        (seriesPartitionSlot, seriesPartitionTable) ->
+            sum.addAndGet(seriesPartitionTable.getSeriesPartitionMap().size()));
+    return sum.get();
+  }
+
   public List<TSeriesPartitionSlot> getSeriesSlotList() {
     return dataPartitionMap.keySet().stream()
         .sorted(Comparator.comparing(TSeriesPartitionSlot::getSlotId))
         .collect(Collectors.toList());
+  }
+
+  /**
+   * Get the last DataAllotTable.
+   *
+   * @return The last DataAllotTable
+   */
+  public Map<TSeriesPartitionSlot, TConsensusGroupId> getLastDataAllotTable() {
+    Map<TSeriesPartitionSlot, TConsensusGroupId> result = new HashMap<>();
+    dataPartitionMap.forEach(
+        (seriesPartitionSlot, seriesPartitionTable) ->
+            result.put(seriesPartitionSlot, seriesPartitionTable.getLastConsensusGroupId()));
+    return result;
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)

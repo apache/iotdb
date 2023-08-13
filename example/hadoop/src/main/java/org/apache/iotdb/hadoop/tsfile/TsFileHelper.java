@@ -121,7 +121,7 @@ public class TsFileHelper {
       }
 
     } catch (Throwable e) {
-      e.printStackTrace();
+      logger.error("Write tsfile error", e);
       System.out.println(e.getMessage());
     }
   }

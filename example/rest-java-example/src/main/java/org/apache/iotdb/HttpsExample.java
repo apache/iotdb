@@ -38,7 +38,6 @@ import java.util.Base64;
 import java.util.Map;
 
 public class HttpsExample {
-
   private static Logger logger = LoggerFactory.getLogger(HttpsExample.class);
 
   private static final String UTF8 = "utf-8";
@@ -67,8 +66,7 @@ public class HttpsExample {
       logger.info(result);
 
     } catch (IOException e) {
-      e.printStackTrace();
-
+      logger.error("Https ping rest api failed", e);
     } finally {
       try {
         httpClient.close();
@@ -76,7 +74,7 @@ public class HttpsExample {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
+        logger.error("Response close error", e);
       }
     }
   }
@@ -104,15 +102,14 @@ public class HttpsExample {
       String result = JsonParser.parseString(message).getAsJsonObject().toString();
       logger.info(result);
     } catch (IOException e) {
-      e.printStackTrace();
-
+      logger.error("Https insertTablet rest api failed", e);
     } finally {
       try {
         if (response != null) {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
+        logger.error("Response close error", e);
       }
     }
   }
@@ -130,14 +127,14 @@ public class HttpsExample {
       ObjectMapper mapper = new ObjectMapper();
       logger.info("message = {}", mapper.readValue(message, Map.class));
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.error("Https query rest api failed", e);
     } finally {
       try {
         if (response != null) {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
+        logger.error("Response close error", e);
       }
     }
   }

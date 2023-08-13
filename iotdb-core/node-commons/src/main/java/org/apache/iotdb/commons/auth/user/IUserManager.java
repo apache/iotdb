@@ -43,10 +43,11 @@ public interface IUserManager extends SnapshotProcessor {
    *
    * @param username is not null or empty
    * @param password is not null or empty
+   * @param firstInit is first init admin
    * @return True if the user is successfully created, false when the user already exists.
    * @throws AuthException if the given username or password is illegal.
    */
-  boolean createUser(String username, String password) throws AuthException;
+  boolean createUser(String username, String password, boolean firstInit) throws AuthException;
 
   /**
    * Delete a user.

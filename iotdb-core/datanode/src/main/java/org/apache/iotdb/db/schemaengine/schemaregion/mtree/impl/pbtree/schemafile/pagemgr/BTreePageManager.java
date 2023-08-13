@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.schemafile.pagemgr;
 
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -166,7 +167,7 @@ public class BTreePageManager extends PageManager {
     }
 
     if (tarPage.getAsAliasIndexPage().insertRecord(alias, name) < 0) {
-      // need split and upwards insert
+      // Need split and upwards insert
       ByteBuffer spltBuf = ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH);
       String sk =
           tarPage
@@ -176,12 +177,12 @@ public class BTreePageManager extends PageManager {
       registerAsNewPage(splPage);
 
       if (treeTrace[0] < 1) {
-        // from single sub-index page to tree structure
+        // From single sub-index page to tree structure
         ByteBuffer trsBuf = ByteBuffer.allocate(SchemaFileConfig.PAGE_LENGTH);
         tarPage.getAsAliasIndexPage().extendsTo(trsBuf);
         ISchemaPage trsPage = ISchemaPage.loadSchemaPage(trsBuf);
 
-        // notice that index of tarPage belongs to repPage then
+        // Notice that index of tarPage belongs to repPage then
         registerAsNewPage(trsPage);
 
         // tarPage abolished since then

@@ -36,19 +36,19 @@ import java.util.concurrent.TimeUnit;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.appendAggregationResult;
 
 /**
- * AggregationOperator can process the situation: aggregation of intermediate aggregate result, it
- * will output one tsBlock contain many results on aggregation time intervals. One intermediate
- * tsBlock input will contain the result of many time intervals.
+ * {@link AggregationOperator} can process the situation: aggregation of intermediate aggregate
+ * result, it will output one tsBlock contain many results on aggregation time intervals. One
+ * intermediate tsBlock input will contain the result of many time intervals.
  */
 public class AggregationOperator extends AbstractConsumeAllOperator {
 
   private final ITimeRangeIterator timeRangeIterator;
-  // current interval of aggregation window [curStartTime, curEndTime)
+  // Current interval of aggregation window [curStartTime, curEndTime)
   private TimeRange curTimeRange;
 
   private final List<Aggregator> aggregators;
 
-  // using for building result tsBlock
+  // Using for building result tsBlock
   private final TsBlockBuilder resultTsBlockBuilder;
 
   private final long maxRetainedSize;
@@ -101,7 +101,7 @@ public class AggregationOperator extends AbstractConsumeAllOperator {
 
   @Override
   public TsBlock next() throws Exception {
-    // start stopwatch
+    // Start stopwatch
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
 
@@ -113,16 +113,16 @@ public class AggregationOperator extends AbstractConsumeAllOperator {
       }
 
       if (curTimeRange == null && timeRangeIterator.hasNextTimeRange()) {
-        // move to next time window
+        // Move to next time window
         curTimeRange = timeRangeIterator.nextTimeRange();
 
-        // clear previous aggregation result
+        // Clear previous aggregation result
         for (Aggregator aggregator : aggregators) {
           aggregator.reset();
         }
       }
 
-      // calculate aggregation result on current time window
+      // Calculate aggregation result on current time window
       calculateNextAggregationResult();
     }
 
@@ -141,7 +141,7 @@ public class AggregationOperator extends AbstractConsumeAllOperator {
   }
 
   private void calculateNextAggregationResult() {
-    // consume current input tsBlocks
+    // Consume current input tsBlocks
     for (Aggregator aggregator : aggregators) {
       aggregator.processTsBlocks(inputTsBlocks);
     }
@@ -153,7 +153,7 @@ public class AggregationOperator extends AbstractConsumeAllOperator {
       }
     }
 
-    // update result using aggregators
+    // Update result using aggregators
     updateResultTsBlock();
   }
 

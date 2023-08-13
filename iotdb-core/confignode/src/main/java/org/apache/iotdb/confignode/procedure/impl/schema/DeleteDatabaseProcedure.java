@@ -206,6 +206,9 @@ public class DeleteDatabaseProcedure
             LOG.info(
                 "[DeleteDatabaseProcedure] Database: {} is deleted successfully",
                 deleteDatabaseSchema.getName());
+            env.getConfigManager()
+                .getLoadManager()
+                .clearDataPartitionPolicyTable(deleteDatabaseSchema.getName());
             return Flow.NO_MORE_STATE;
           } else if (getCycles() > RETRY_THRESHOLD) {
             setFailure(

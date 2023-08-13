@@ -98,19 +98,6 @@ public class DatabasePartitionTable {
                 replicaSet.getRegionId(), new RegionGroup(System.currentTimeMillis(), replicaSet)));
   }
 
-  /**
-   * Delete RegionGroups' cache.
-   *
-   * @param replicaSets List<TRegionReplicaSet>
-   */
-  public void deleteRegionGroups(List<TRegionReplicaSet> replicaSets) {
-    replicaSets.forEach(replicaSet -> regionGroupMap.remove(replicaSet.getRegionId()));
-  }
-
-  public Set<TConsensusGroupId> getAllConsensusGroupId() {
-    return regionGroupMap.keySet();
-  }
-
   /** @return Deep copy of all Regions' RegionReplicaSet within one StorageGroup */
   public List<TRegionReplicaSet> getAllReplicaSets() {
     List<TRegionReplicaSet> result = new ArrayList<>();
@@ -220,6 +207,20 @@ public class DatabasePartitionTable {
     return result.getAndIncrement();
   }
 
+  /**
+   * Only leader use this interface.
+   *
+   * <p>Get all the RegionGroups currently owned by the specified Database
+   *
+   * @param type SchemaRegion or DataRegion
+   * @return List of TConsensusGroupId
+   */
+  public List<TConsensusGroupId> getAllRegionGroupIds(TConsensusGroupType type) {
+    return regionGroupMap.keySet().stream()
+        .filter(regionGroupId -> regionGroupId.getType().equals(type))
+        .collect(Collectors.toList());
+  }
+
   public int getAssignedSeriesPartitionSlotsCount() {
     return Math.max(
         schemaPartitionTable.getSchemaPartitionMap().size(),
@@ -251,19 +252,27 @@ public class DatabasePartitionTable {
   }
 
   /**
+   * Checks whether the specified DataPartition has a successor and returns if it does.
+   *
+   * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
+   * @param timePartitionSlot Corresponding TimePartitionSlot
+   * @return The specific DataPartition's successor if exists, null otherwise
+   */
+  public TConsensusGroupId getSuccessorDataPartition(
+      TSeriesPartitionSlot seriesPartitionSlot, TTimePartitionSlot timePartitionSlot) {
+    return dataPartitionTable.getSuccessorDataPartition(seriesPartitionSlot, timePartitionSlot);
+  }
+
+  /**
    * Checks whether the specified DataPartition has a predecessor and returns if it does.
    *
    * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
    * @param timePartitionSlot Corresponding TimePartitionSlot
-   * @param timePartitionInterval Time partition interval
    * @return The specific DataPartition's predecessor if exists, null otherwise
    */
-  public TConsensusGroupId getAdjacentDataPartition(
-      TSeriesPartitionSlot seriesPartitionSlot,
-      TTimePartitionSlot timePartitionSlot,
-      long timePartitionInterval) {
-    return dataPartitionTable.getAdjacentDataPartition(
-        seriesPartitionSlot, timePartitionSlot, timePartitionInterval);
+  public TConsensusGroupId getPredecessorDataPartition(
+      TSeriesPartitionSlot seriesPartitionSlot, TTimePartitionSlot timePartitionSlot) {
+    return dataPartitionTable.getPredecessorDataPartition(seriesPartitionSlot, timePartitionSlot);
   }
 
   /**
@@ -453,6 +462,10 @@ public class DatabasePartitionTable {
     return dataPartitionTable.getTimeSlotList(seriesSlotId, regionId, startTime, endTime);
   }
 
+  public long getTimeSlotCount() {
+    return dataPartitionTable.getTimeSlotCount();
+  }
+
   public List<TSeriesPartitionSlot> getSeriesSlotList(TConsensusGroupType type) {
     if (type == TConsensusGroupType.DataRegion) {
       return dataPartitionTable.getSeriesSlotList();
@@ -547,6 +560,15 @@ public class DatabasePartitionTable {
       }
     }
     return dataRegionIds;
+  }
+
+  /**
+   * Get the last DataAllotTable.
+   *
+   * @return The last DataAllotTable
+   */
+  public Map<TSeriesPartitionSlot, TConsensusGroupId> getLastDataAllotTable() {
+    return dataPartitionTable.getLastDataAllotTable();
   }
 
   @Override

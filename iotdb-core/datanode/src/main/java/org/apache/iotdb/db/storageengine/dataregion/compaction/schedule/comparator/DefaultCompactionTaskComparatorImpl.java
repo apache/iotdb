@@ -63,6 +63,13 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
 
   public int compareInnerSpaceCompactionTask(
       InnerSpaceCompactionTask o1, InnerSpaceCompactionTask o2) {
+
+    // if max mods file size of o1 and o2 are different
+    // we prefer to execute task with greater mods file
+    if (o1.getMaxModsFileSize() != o2.getMaxModsFileSize()) {
+      return o2.getMaxModsFileSize() > o1.getMaxModsFileSize() ? 1 : -1;
+    }
+
     // if the sum of compaction count of the selected files are different
     // we prefer to execute task with smaller compaction count
     // this can reduce write amplification
@@ -70,6 +77,13 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
         != ((double) o2.getSumOfCompactionCount()) / o2.getSelectedTsFileResourceList().size()) {
       return o1.getSumOfCompactionCount() / o1.getSelectedTsFileResourceList().size()
           - o2.getSumOfCompactionCount() / o2.getSelectedTsFileResourceList().size();
+    }
+
+    // if the time partition of o1 and o2 are different
+    // we prefer to execute task with greater time partition
+    // because we want to compact files with new data
+    if (o1.getTimePartition() != o2.getTimePartition()) {
+      return o2.getTimePartition() > o1.getTimePartition() ? 1 : -1;
     }
 
     // if the max file version of o1 and o2 are different
@@ -106,6 +120,13 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
 
   public int compareCrossSpaceCompactionTask(
       CrossSpaceCompactionTask o1, CrossSpaceCompactionTask o2) {
+    // if the time partition of o1 and o2 are different
+    // we prefer to execute task with greater time partition
+    // because we want to compact files with new data
+    if (o1.getTimePartition() != o2.getTimePartition()) {
+      return o2.getTimePartition() > o1.getTimePartition() ? 1 : -1;
+    }
+
     if (o1.getSelectedSequenceFiles().size() != o2.getSelectedSequenceFiles().size()) {
       // we prefer the task with fewer sequence files
       // because this type of tasks consume fewer memory during execution

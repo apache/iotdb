@@ -28,6 +28,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.apache.commons.lang3.StringUtils;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -47,6 +49,10 @@ public class IntoPathDescriptor {
   // List<(sourceColumn, targetPath)>
   private List<Pair<String, PartialPath>> sourceTargetPathPairList;
 
+  // if the sourceColumn is transformed from a viewPath, then store the viewPath in
+  // sourceColumnToViewList
+  private final List<String> sourceColumnToViewList;
+
   // targetDevice -> isAlignedDevice
   private final Map<String, Boolean> targetDeviceToAlignedMap;
 
@@ -55,19 +61,24 @@ public class IntoPathDescriptor {
 
   public IntoPathDescriptor() {
     this.sourceTargetPathPairList = new ArrayList<>();
+    this.sourceColumnToViewList = new ArrayList<>();
     this.targetDeviceToAlignedMap = new HashMap<>();
     this.sourceToDataTypeMap = new HashMap<>();
   }
 
   public IntoPathDescriptor(
       List<Pair<String, PartialPath>> sourceTargetPathPairList,
+      List<String> sourceColumnToViewList,
       Map<String, Boolean> targetDeviceToAlignedMap) {
     this.sourceTargetPathPairList = sourceTargetPathPairList;
+    this.sourceColumnToViewList = sourceColumnToViewList;
     this.targetDeviceToAlignedMap = targetDeviceToAlignedMap;
   }
 
-  public void specifyTargetPath(String sourceColumn, PartialPath targetPath) {
+  public void specifyTargetPath(
+      String sourceColumn, String sourceViewPath, PartialPath targetPath) {
     sourceTargetPathPairList.add(new Pair<>(sourceColumn, targetPath));
+    sourceColumnToViewList.add(sourceViewPath == null ? "" : sourceViewPath);
   }
 
   public void specifyDeviceAlignment(String targetDevice, boolean isAligned) {
@@ -98,6 +109,10 @@ public class IntoPathDescriptor {
 
   public List<Pair<String, PartialPath>> getSourceTargetPathPairList() {
     return sourceTargetPathPairList;
+  }
+
+  public List<String> getSourceColumnToViewList() {
+    return sourceColumnToViewList;
   }
 
   public Map<String, Boolean> getTargetDeviceToAlignedMap() {
@@ -146,6 +161,10 @@ public class IntoPathDescriptor {
       sourceTargetPathPair.right.serialize(stream);
     }
 
+    for (String sourceColumnToView : sourceColumnToViewList) {
+      ReadWriteIOUtils.write(sourceColumnToView, stream);
+    }
+
     ReadWriteIOUtils.write(targetDeviceToAlignedMap.size(), stream);
     for (Map.Entry<String, Boolean> entry : targetDeviceToAlignedMap.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), stream);
@@ -162,13 +181,20 @@ public class IntoPathDescriptor {
       sourceTargetPathPairList.add(new Pair<>(sourceColumn, targetPath));
     }
 
+    List<String> sourceColumnToViewList = new ArrayList<>();
+    for (int i = 0; i < listSize; i++) {
+      String viewPath = ReadWriteIOUtils.readString(byteBuffer);
+      sourceColumnToViewList.add(StringUtils.isEmpty(viewPath) ? "" : viewPath);
+    }
+
     int mapSize = ReadWriteIOUtils.readInt(byteBuffer);
     Map<String, Boolean> targetDeviceToAlignedMap = new HashMap<>(mapSize);
     for (int i = 0; i < mapSize; i++) {
       targetDeviceToAlignedMap.put(
           ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readBool(byteBuffer));
     }
-    return new IntoPathDescriptor(sourceTargetPathPairList, targetDeviceToAlignedMap);
+    return new IntoPathDescriptor(
+        sourceTargetPathPairList, sourceColumnToViewList, targetDeviceToAlignedMap);
   }
 
   @Override

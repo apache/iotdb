@@ -160,7 +160,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       List<TsFileResource> targetSeqFiles =
           split.seqFiles.stream().map(c -> c.resource).collect(Collectors.toList());
 
-      if (!split.hasOverlap) {
+      if (!split.atLeastOneSeqFileSelected) {
         LOGGER.debug("Unseq file {} does not overlap with any seq files.", unseqFile);
         CrossSpaceCompactionCandidate.TsFileResourceCandidate latestSealedSeqFile =
             getLatestSealedSeqFile(candidate.getSeqFileCandidates());
@@ -237,7 +237,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
 
     long totalFileSize = unseqFile.getTsFileSize();
     for (TsFileResource f : seqFiles) {
-      if (f.getTsFileSize() >= config.getTargetCompactionFileSize()) {
+      if (f.getTsFileSize() >= config.getTargetCompactionFileSize() * 1.5) {
         // to avoid serious write amplification caused by cross space compaction, we restrict that
         // seq files are no longer be compacted when the size reaches the threshold.
         return false;

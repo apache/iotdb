@@ -26,7 +26,9 @@ public class AutoCreateDeviceMNodePlanImpl implements IAutoCreateDeviceMNodePlan
 
   private PartialPath path;
 
-  public AutoCreateDeviceMNodePlanImpl() {}
+  public AutoCreateDeviceMNodePlanImpl() {
+    // Empty constructor
+  }
 
   public AutoCreateDeviceMNodePlanImpl(PartialPath path) {
     this.path = path;

@@ -49,7 +49,7 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBSelectIntoIT {
 
-  protected static final List<String> SQLs =
+  public static final List<String> SELECT_INTO_SQL_LIST =
       new ArrayList<>(
           Arrays.asList(
               "CREATE DATABASE root.sg",
@@ -86,11 +86,11 @@ public class IoTDBSelectIntoIT {
               "CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE"));
 
   static {
-    SQLs.add("CREATE DATABASE root.sg_type");
+    SELECT_INTO_SQL_LIST.add("CREATE DATABASE root.sg_type");
     for (int deviceId = 0; deviceId < 6; deviceId++) {
       for (TSDataType dataType : TSDataType.values()) {
         if (!dataType.equals(TSDataType.VECTOR)) {
-          SQLs.add(
+          SELECT_INTO_SQL_LIST.add(
               String.format(
                   "CREATE TIMESERIES root.sg_type.d_%d.s_%s %s",
                   deviceId, dataType.name().toLowerCase(), dataType));
@@ -98,9 +98,10 @@ public class IoTDBSelectIntoIT {
       }
     }
     for (int time = 0; time < 12; time++) {
-      SQLs.add(
+      SELECT_INTO_SQL_LIST.add(
           String.format(
-              "INSERT INTO root.sg_type.d_0(time, s_int32, s_int64, s_float, s_double, s_boolean, s_text) VALUES (%d, %d, %d, %f, %f, %s, 'text%d')",
+              "INSERT INTO root.sg_type.d_0(time, s_int32, s_int64, s_float, s_double, s_boolean, s_text) "
+                  + "VALUES (%d, %d, %d, %f, %f, %s, 'text%d')",
               time, time, time, (float) time, (double) time, time % 2 == 0, time));
     }
   }
@@ -129,7 +130,7 @@ public class IoTDBSelectIntoIT {
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setQueryThreadCount(1);
     EnvFactory.getEnv().initClusterEnvironment();
-    prepareData(SQLs);
+    prepareData(SELECT_INTO_SQL_LIST);
   }
 
   @AfterClass
@@ -550,7 +551,7 @@ public class IoTDBSelectIntoIT {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("CREATE USER tempuser1 'temppw1'");
-      adminStmt.execute("GRANT USER tempuser1 PRIVILEGES INSERT_TIMESERIES on root.sg_bk.**;");
+      adminStmt.execute("GRANT USER tempuser1 PRIVILEGES WRITE_DATA on root.sg_bk.**;");
 
       try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser1", "temppw1");
           Statement userStmt = userCon.createStatement()) {
@@ -561,8 +562,7 @@ public class IoTDBSelectIntoIT {
         Assert.assertTrue(
             e.getMessage(),
             e.getMessage()
-                .contains(
-                    "No permissions for this operation, please add privilege READ_TIMESERIES"));
+                .contains("No permissions for this operation, please add privilege READ_DATA"));
       }
     }
   }
@@ -572,7 +572,7 @@ public class IoTDBSelectIntoIT {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("CREATE USER tempuser2 'temppw2'");
-      adminStmt.execute("GRANT USER tempuser2 PRIVILEGES READ_TIMESERIES on root.sg.**;");
+      adminStmt.execute("GRANT USER tempuser2 PRIVILEGES WRITE_DATA on root.sg.**;");
 
       try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser2", "temppw2");
           Statement userStmt = userCon.createStatement()) {
@@ -583,8 +583,7 @@ public class IoTDBSelectIntoIT {
         Assert.assertTrue(
             e.getMessage(),
             e.getMessage()
-                .contains(
-                    "No permissions for this operation, please add privilege INSERT_TIMESERIES"));
+                .contains("No permissions for this operation, please add privilege WRITE_DATA"));
       }
     }
   }

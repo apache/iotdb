@@ -28,7 +28,9 @@ public class AlterLogicalViewPlanImpl implements IAlterLogicalViewPlan {
   private PartialPath targetPath = null;
   private ViewExpression sourceExpression = null;
 
-  public AlterLogicalViewPlanImpl() {}
+  public AlterLogicalViewPlanImpl() {
+    // Do nothing
+  }
 
   public AlterLogicalViewPlanImpl(PartialPath targetPath, ViewExpression sourceExpression) {
     this.targetPath = targetPath;

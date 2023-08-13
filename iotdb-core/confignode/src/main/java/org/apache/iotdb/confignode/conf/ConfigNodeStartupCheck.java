@@ -38,8 +38,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * ConfigNodeStartupCheck checks the parameters in iotdb-confignode.properties and
- * confignode-system.properties when start and restart
+ * {@link ConfigNodeStartupCheck} checks the parameters in iotdb-confignode.properties and
+ * confignode-system.properties when start and restart.
  */
 public class ConfigNodeStartupCheck extends StartupChecks {
 
@@ -161,12 +161,6 @@ public class ConfigNodeStartupCheck extends StartupChecks {
           CONF.getRoutePriorityPolicy(),
           "LEADER or GREEDY",
           "an unrecognized route_priority_policy is set");
-    }
-
-    // The ip of target ConfigNode couldn't be 0.0.0.0
-    if (CONF.getTargetConfigNode().getIp().equals("0.0.0.0")) {
-      throw new ConfigurationException(
-          "The ip address of any target_config_node_list couldn't be 0.0.0.0");
     }
 
     // The default RegionGroupNum should be positive

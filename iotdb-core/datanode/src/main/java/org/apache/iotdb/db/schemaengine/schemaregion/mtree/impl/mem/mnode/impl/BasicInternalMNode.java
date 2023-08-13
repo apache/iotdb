@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.impl;
 
 import org.apache.iotdb.commons.schema.node.utils.IMNodeContainer;
@@ -30,7 +31,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.contai
 public class BasicInternalMNode extends BasicMNode {
 
   /**
-   * suppress warnings reason: volatile for double synchronized check
+   * Suppress warnings reason: volatile for double synchronized check.
    *
    * <p>This will be a ConcurrentHashMap instance
    */
@@ -42,13 +43,13 @@ public class BasicInternalMNode extends BasicMNode {
     super(parent, name);
   }
 
-  /** check whether the MNode has a child with the name */
+  /** Check whether the MNode has a child with the name. */
   @Override
   public boolean hasChild(String name) {
     return (children != null && children.containsKey(name));
   }
 
-  /** get the child with the name */
+  /** Get the child with the name. */
   @Override
   public IMemMNode getChild(String name) {
     IMemMNode child = null;
@@ -59,7 +60,7 @@ public class BasicInternalMNode extends BasicMNode {
   }
 
   /**
-   * add a child to current mnode
+   * Add a child to current mnode.
    *
    * @param name child's name
    * @param child child's node
@@ -115,7 +116,7 @@ public class BasicInternalMNode extends BasicMNode {
     return child;
   }
 
-  /** delete a child */
+  /** Delete a child. */
   @Override
   public IMemMNode deleteChild(String name) {
     if (children != null) {
@@ -168,7 +169,7 @@ public class BasicInternalMNode extends BasicMNode {
     this.children = children;
   }
 
-  /** MNodeContainer reference and basic occupation, 8 + 80B */
+  /** MNodeContainer reference and basic occupation, 8 + 80B. */
   @Override
   public int estimateSize() {
     return 8 + 80 + super.estimateSize();

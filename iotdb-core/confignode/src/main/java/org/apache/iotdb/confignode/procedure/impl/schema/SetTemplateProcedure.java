@@ -43,7 +43,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.SetTemplateState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.db.exception.metadata.template.TemplateImcompatibeException;
+import org.apache.iotdb.db.exception.metadata.template.TemplateIncompatibleException;
 import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUpdateType;
@@ -308,7 +308,7 @@ public class SetTemplateProcedure
 
     for (TCheckTimeSeriesExistenceResp resp : respList) {
       if (resp.isExists()) {
-        setFailure(new ProcedureException(new TemplateImcompatibeException(templateName, path)));
+        setFailure(new ProcedureException(new TemplateIncompatibleException(templateName, path)));
       }
     }
     setNextState(SetTemplateState.COMMIT_SET);

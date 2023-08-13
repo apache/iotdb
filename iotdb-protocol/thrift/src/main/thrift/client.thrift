@@ -338,6 +338,19 @@ struct TSLastDataQueryReq {
   9: optional bool legalPathNodes
 }
 
+struct TSFastLastDataQueryForOneDeviceReq {
+  1: required i64 sessionId
+  2: required string db
+  3: required string deviceId
+  4: required list<string> sensors
+  5: optional i32 fetchSize
+  6: required i64 statementId
+  7: optional bool enableRedirectQuery
+  8: optional bool jdbcQuery
+  9: optional i64 timeout
+  10: optional bool legalPathNodes
+}
+
 struct TSAggregationQueryReq {
   1: required i64 sessionId
   2: required i64 statementId
@@ -350,6 +363,21 @@ struct TSAggregationQueryReq {
   9: optional i32 fetchSize
   10: optional i64 timeout
   11: optional bool legalPathNodes
+}
+
+struct TSGroupByQueryIntervalReq {
+  1: required i64 sessionId
+  2: required i64 statementId
+  3: required string device
+  4: required string measurement
+  5: required i32 dataType
+  6: required common.TAggregationType aggregationType
+  7: optional string database
+  8: optional i64 startTime
+  9: optional i64 endTime
+  10: optional i64 interval
+  11: optional i32 fetchSize
+  12: optional i64 timeout
 }
 
 struct TSCreateMultiTimeseriesReq {
@@ -498,7 +526,11 @@ service IClientRPCService {
 
   TSExecuteStatementResp executeLastDataQueryV2(1:TSLastDataQueryReq req);
 
+  TSExecuteStatementResp executeFastLastDataQueryForOneDeviceV2(1:TSFastLastDataQueryForOneDeviceReq req);
+
   TSExecuteStatementResp executeAggregationQueryV2(1:TSAggregationQueryReq req);
+
+  TSExecuteStatementResp executeGroupByQueryIntervalQuery(1:TSGroupByQueryIntervalReq req);
 
   TSFetchResultsResp fetchResultsV2(1:TSFetchResultsReq req);
 

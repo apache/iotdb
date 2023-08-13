@@ -27,33 +27,33 @@ import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.Duration;
 
 /**
- * IDriver encapsulates some methods which are necessary for FragmentInstanceTaskExecutor to run a
- * fragment instance.
+ * {@link IDriver} encapsulates some methods which are necessary for FragmentInstanceTaskExecutor to
+ * run a fragment instance.
  */
 public interface IDriver {
 
   /**
-   * Used to judge whether this IDriver should be scheduled for execution anymore.
+   * Used to judge whether this {@link IDriver} should be scheduled for execution anymore.
    *
-   * @return true if the IDriver is done or terminated due to failure, otherwise false.
+   * @return true if the {@link IDriver} is done or terminated due to failure, otherwise false.
    */
   boolean isFinished();
 
   /**
-   * run the IDriver for {@param duration} time slice, the time of this run is likely not to be
-   * equal to {@param duration}, the actual run time should be calculated by the caller.
+   * run the {@link IDriver} for {@param duration} time slice, the time of this run is likely not to
+   * be equal to {@param duration}, the actual run time should be calculated by the caller.
    *
-   * @param duration how long should this IDriver run
+   * @param duration how long should this {@link IDriver} run
    * @return the returned ListenableFuture is used to represent status of this processing if
-   *     isDone() return true, meaning that this IDriver is not blocked and is ready for next
-   *     processing. Otherwise, meaning that this IDriver is blocked and not ready for next
-   *     processing.
+   *     isDone() return true, meaning that this {@link IDriver} is not blocked and is ready for
+   *     next processing. Otherwise, meaning that this {@link IDriver} is blocked and not ready for
+   *     next processing.
    */
   @SuppressWarnings("squid:S1452")
   ListenableFuture<?> processFor(Duration duration);
 
   /**
-   * the id information about this IDriver.
+   * the id information about this {@link IDriver}.
    *
    * @return a {@link FragmentInstanceId} instance.
    */
@@ -65,17 +65,17 @@ public interface IDriver {
 
   void setDriverTaskId(DriverTaskId driverTaskId);
 
-  /** clear resource used by this fragment instance. */
+  /** Clear resource used by this fragment instance. */
   void close();
 
   /**
-   * fail current driver.
+   * Fail current {@link IDriver}.
    *
    * @param t reason cause this failure
    */
   void failed(Throwable t);
 
-  /** return get Sink of current IDriver. */
+  /** return get Sink of current {@link IDriver}. */
   ISink getSink();
 
   DriverContext getDriverContext();

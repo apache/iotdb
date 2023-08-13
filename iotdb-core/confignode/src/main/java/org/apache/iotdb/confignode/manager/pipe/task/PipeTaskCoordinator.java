@@ -36,43 +36,94 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class PipeTaskCoordinator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTaskCoordinator.class);
 
   private final ConfigManager configManager;
+
+  // NEVER EXPOSE THIS DIRECTLY TO THE OUTSIDE
   private final PipeTaskInfo pipeTaskInfo;
+
+  private final ReentrantLock pipeTaskCoordinatorLock;
+  private AtomicReference<PipeTaskInfo> pipeTaskInfoHolder;
 
   public PipeTaskCoordinator(ConfigManager configManager, PipeTaskInfo pipeTaskInfo) {
     this.configManager = configManager;
     this.pipeTaskInfo = pipeTaskInfo;
+    this.pipeTaskCoordinatorLock = new ReentrantLock(true);
   }
 
-  public PipeTaskInfo getPipeTaskInfo() {
-    return pipeTaskInfo;
+  /**
+   * Lock the pipe task coordinator.
+   *
+   * @return the pipe task info holder, which can be used to get the pipe task info. The holder is
+   *     null if the lock is not acquired.
+   */
+  public AtomicReference<PipeTaskInfo> lock() {
+    pipeTaskCoordinatorLock.lock();
+    LOGGER.info("Pipe task coordinator locked.");
+
+    pipeTaskInfoHolder = new AtomicReference<>(pipeTaskInfo);
+    return pipeTaskInfoHolder;
   }
 
-  public void lock() {
-    pipeTaskInfo.acquirePipeTaskInfoLock();
+  /**
+   * Unlock the pipe task coordinator. Calling this method will clear the pipe task info holder,
+   * which means that the holder will be null after calling this method.
+   *
+   * @return true if successfully unlocked, false if current thread is not holding the lock.
+   */
+  public boolean unlock() {
+    if (pipeTaskInfoHolder != null) {
+      pipeTaskInfoHolder.set(null);
+      pipeTaskInfoHolder = null;
+    }
+
+    try {
+      pipeTaskCoordinatorLock.unlock();
+      LOGGER.info("Pipe task coordinator unlocked.");
+      return true;
+    } catch (IllegalMonitorStateException ignored) {
+      // This is thrown if unlock() is called without lock() called first.
+      LOGGER.warn("This thread is not holding the lock.");
+      return false;
+    }
   }
 
-  public void unlock() {
-    pipeTaskInfo.releasePipeTaskInfoLock();
-  }
-
+  /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus createPipe(TCreatePipeReq req) {
     return configManager.getProcedureManager().createPipe(req);
   }
 
+  /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus startPipe(String pipeName) {
-    return configManager.getProcedureManager().startPipe(pipeName);
+    final boolean hasException = pipeTaskInfo.hasExceptions(pipeName);
+    final TSStatus status = configManager.getProcedureManager().startPipe(pipeName);
+    if (status == RpcUtils.SUCCESS_STATUS && hasException) {
+      LOGGER.info("Pipe {} has started successfully, clear its exceptions.", pipeName);
+      configManager.getProcedureManager().pipeHandleMetaChange(true, true);
+    }
+    return status;
   }
 
+  /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus stopPipe(String pipeName) {
-    return configManager.getProcedureManager().stopPipe(pipeName);
+    final boolean isStoppedByRuntimeException = pipeTaskInfo.isStoppedByRuntimeException(pipeName);
+    final TSStatus status = configManager.getProcedureManager().stopPipe(pipeName);
+    if (status == RpcUtils.SUCCESS_STATUS && isStoppedByRuntimeException) {
+      LOGGER.info(
+          "Pipe {} has stopped successfully manually, stop its auto restart process.", pipeName);
+      pipeTaskInfo.setIsStoppedByRuntimeExceptionToFalse(pipeName);
+      configManager.getProcedureManager().pipeHandleMetaChange(true, true);
+    }
+    return status;
   }
 
+  /** Caller should ensure that the method is called in the lock {@link #lock()}. */
   public TSStatus dropPipe(String pipeName) {
     final boolean isPipeExistedBeforeDrop = pipeTaskInfo.isPipeExisted(pipeName);
     final TSStatus status = configManager.getProcedureManager().dropPipe(pipeName);
@@ -88,23 +139,39 @@ public class PipeTaskCoordinator {
   }
 
   public TShowPipeResp showPipes(TShowPipeReq req) {
-    return ((PipeTableResp)
-            configManager.getConsensusManager().read(new ShowPipePlanV2()).getDataset())
-        .filter(req.whereClause, req.pipeName)
-        .convertToTShowPipeResp();
+    lock();
+    try {
+      return ((PipeTableResp)
+              configManager.getConsensusManager().read(new ShowPipePlanV2()).getDataset())
+          .filter(req.whereClause, req.pipeName)
+          .convertToTShowPipeResp();
+    } finally {
+      unlock();
+    }
   }
 
   public TGetAllPipeInfoResp getAllPipeInfo() {
+    lock();
     try {
       return ((PipeTableResp)
               configManager.getConsensusManager().read(new ShowPipePlanV2()).getDataset())
           .convertToTGetAllPipeInfoResp();
     } catch (IOException e) {
-      LOGGER.error("Fail to get AllPipeInfo", e);
+      LOGGER.warn("Failed to get all pipe info.", e);
       return new TGetAllPipeInfoResp(
-          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-              .setMessage(e.getMessage()),
+          new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage()),
           Collections.emptyList());
+    } finally {
+      unlock();
+    }
+  }
+
+  public boolean hasAnyPipe() {
+    lock();
+    try {
+      return !pipeTaskInfo.isEmpty();
+    } finally {
+      unlock();
     }
   }
 }

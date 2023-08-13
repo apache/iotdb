@@ -21,11 +21,16 @@ package org.apache.iotdb.confignode.persistence.pipe;
 
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Objects;
 
 public class PipeInfo implements SnapshotProcessor {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeInfo.class);
 
   private final PipePluginInfo pipePluginInfo;
   private final PipeTaskInfo pipeTaskInfo;
@@ -47,27 +52,36 @@ public class PipeInfo implements SnapshotProcessor {
 
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws IOException {
-    pipeTaskInfo.acquirePipeTaskInfoLock();
-    pipePluginInfo.acquirePipePluginInfoLock();
-    try {
-      return pipeTaskInfo.processTakeSnapshot(snapshotDir)
-          && pipePluginInfo.processTakeSnapshot(snapshotDir);
-    } finally {
-      pipePluginInfo.releasePipePluginInfoLock();
-      pipeTaskInfo.releasePipeTaskInfoLock();
-    }
+    return pipeTaskInfo.processTakeSnapshot(snapshotDir)
+        && pipePluginInfo.processTakeSnapshot(snapshotDir);
   }
 
   @Override
   public void processLoadSnapshot(File snapshotDir) throws IOException {
-    pipeTaskInfo.acquirePipeTaskInfoLock();
-    pipePluginInfo.acquirePipePluginInfoLock();
+    Exception loadPipeTaskInfoException = null;
+    Exception loadPipePluginInfoException = null;
+
     try {
       pipeTaskInfo.processLoadSnapshot(snapshotDir);
+    } catch (Exception ex) {
+      LOGGER.error("Failed to load pipe task info from snapshot", ex);
+      loadPipeTaskInfoException = ex;
+    }
+
+    try {
       pipePluginInfo.processLoadSnapshot(snapshotDir);
-    } finally {
-      pipePluginInfo.releasePipePluginInfoLock();
-      pipeTaskInfo.releasePipeTaskInfoLock();
+    } catch (Exception ex) {
+      LOGGER.error("Failed to load pipe plugin info from snapshot", ex);
+      loadPipePluginInfoException = ex;
+    }
+
+    if (loadPipeTaskInfoException != null || loadPipePluginInfoException != null) {
+      throw new IOException(
+          "Failed to load pipe info from snapshot, "
+              + "loadPipeTaskInfoException="
+              + loadPipeTaskInfoException
+              + ", loadPipePluginInfoException="
+              + loadPipePluginInfoException);
     }
   }
 

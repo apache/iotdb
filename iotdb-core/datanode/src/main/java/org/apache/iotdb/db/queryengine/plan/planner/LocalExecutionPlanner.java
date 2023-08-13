@@ -20,9 +20,9 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
+import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
@@ -59,9 +59,13 @@ public class LocalExecutionPlanner {
   }
 
   public List<PipelineDriverFactory> plan(
-      PlanNode plan, TypeProvider types, FragmentInstanceContext instanceContext)
-      throws MemoryNotEnoughException, QueryProcessException {
-    LocalExecutionPlanContext context = new LocalExecutionPlanContext(types, instanceContext);
+      PlanNode plan,
+      TypeProvider types,
+      FragmentInstanceContext instanceContext,
+      DataNodeQueryContext dataNodeQueryContext)
+      throws MemoryNotEnoughException {
+    LocalExecutionPlanContext context =
+        new LocalExecutionPlanContext(types, instanceContext, dataNodeQueryContext);
 
     // Generate pipelines, return the last pipeline data structure
     // TODO Replace operator with operatorFactory to build multiple driver for one pipeline

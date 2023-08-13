@@ -43,7 +43,9 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
     memChunk = new AlignedWritableMemChunk(schemaList);
   }
 
-  private AlignedWritableMemChunkGroup() {}
+  private AlignedWritableMemChunkGroup() {
+    // Empty constructor
+  }
 
   @Override
   public boolean writeValuesWithFlushCheck(

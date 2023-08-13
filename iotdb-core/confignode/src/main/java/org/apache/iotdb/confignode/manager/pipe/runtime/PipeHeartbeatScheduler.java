@@ -78,7 +78,7 @@ public class PipeHeartbeatScheduler {
   }
 
   private synchronized void heartbeat() {
-    if (configManager.getPipeManager().getPipeTaskCoordinator().getPipeTaskInfo().isEmpty()) {
+    if (!configManager.getPipeManager().getPipeTaskCoordinator().hasAnyPipe()) {
       return;
     }
 

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.manager.load.balancer.region;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -28,7 +29,7 @@ import java.util.Map;
 public interface IRegionGroupAllocator {
 
   /**
-   * Generate an optimal RegionReplicas' distribution for a new RegionGroup
+   * Generate an optimal RegionReplicas' distribution for a new RegionGroup.
    *
    * @param availableDataNodeMap DataNodes that can be used for allocation
    * @param freeDiskSpaceMap The free disk space of the DataNodes

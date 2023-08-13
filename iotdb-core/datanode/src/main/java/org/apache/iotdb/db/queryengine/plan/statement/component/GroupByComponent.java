@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.statement.component;
 
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowType;
+import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 
@@ -40,7 +41,8 @@ public abstract class GroupByComponent extends StatementNode {
   }
 
   public void setControlColumnExpression(Expression controlColumnExpression) {
-    this.controlColumnExpression = controlColumnExpression;
+    this.controlColumnExpression =
+        ExpressionAnalyzer.toLowerCaseExpression(controlColumnExpression);
   }
 
   public Expression getControlColumnExpression() {

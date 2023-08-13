@@ -47,4 +47,9 @@ public abstract class StoppableThread extends Thread {
       Thread.currentThread().interrupt();
     }
   }
+
+  @Override
+  public void run() {
+    // empty method
+  }
 }
