@@ -20,7 +20,7 @@
 
 package org.apache.iotdb.db.pipe.connector.payload.legacy;
 
-import org.apache.iotdb.db.pipe.connector.protocol.legacy.loader.ILoader;
+import org.apache.iotdb.db.pipe.receiver.legacy.loader.ILoader;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

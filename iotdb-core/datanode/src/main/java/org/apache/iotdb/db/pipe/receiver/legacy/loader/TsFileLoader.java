@@ -17,44 +17,46 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.protocol.legacy.loader;
+package org.apache.iotdb.db.pipe.receiver.legacy.loader;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
-import org.apache.iotdb.db.queryengine.plan.statement.Statement;
-import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesStatement;
-import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
+import java.io.File;
 
-/** This loader is used to load deletion plan. */
-public class DeletionLoader implements ILoader {
+/** This loader is used to load tsFiles. If .mods file exists, it will be loaded as well. */
+public class TsFileLoader implements ILoader {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DeletionLoader.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileLoader.class);
 
-  private final Deletion deletion;
+  private final File tsFile;
+  private final String database;
 
-  public DeletionLoader(Deletion deletion) {
-    this.deletion = deletion;
+  public TsFileLoader(File tsFile, String database) {
+    this.tsFile = tsFile;
+    this.database = database;
   }
 
   @Override
-  public void load() throws PipeException {
-    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
-      throw new PipeException("storage engine readonly");
-    }
+  public void load() {
     try {
-      Statement statement = generateStatement();
+      LoadTsFileStatement statement = new LoadTsFileStatement(tsFile.getAbsolutePath());
+      statement.setDeleteAfterLoad(true);
+      statement.setDatabaseLevel(parseSgLevel());
+      statement.setVerifySchema(true);
+      statement.setAutoCreateDatabase(false);
+
       long queryId = SessionManager.getInstance().requestQueryId();
       ExecutionResult result =
           Coordinator.getInstance()
@@ -67,24 +69,17 @@ public class DeletionLoader implements ILoader {
                   SCHEMA_FETCHER,
                   IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.error("Delete {} error, statement: {}.", deletion, statement);
-        LOGGER.error("Delete result status : {}.", result.status);
+        LOGGER.error("Load TsFile {} error, statement: {}.", tsFile.getPath(), statement);
+        LOGGER.error("Load TsFile result status : {}.", result.status);
         throw new LoadFileException(
-            String.format("Can not execute delete statement: %s", statement));
+            String.format("Can not execute load TsFile statement: %s", statement));
       }
     } catch (Exception e) {
       throw new PipeException(e.getMessage());
     }
   }
 
-  private Statement generateStatement() {
-    if (deletion.getStartTime() == Long.MIN_VALUE && deletion.getEndTime() == Long.MAX_VALUE) {
-      return new DeleteTimeSeriesStatement(Collections.singletonList(deletion.getPath()));
-    }
-    DeleteDataStatement statement = new DeleteDataStatement();
-    statement.setPathList(Collections.singletonList(deletion.getPath()));
-    statement.setDeleteStartTime(deletion.getStartTime());
-    statement.setDeleteEndTime(deletion.getEndTime());
-    return statement;
+  private int parseSgLevel() throws IllegalPathException {
+    return new PartialPath(database).getNodeLength() - 1;
   }
 }

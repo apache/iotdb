@@ -17,22 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.protocol.legacy.loader;
+package org.apache.iotdb.db.pipe.receiver.airgap;
 
-import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
-
-/**
- * This interface is used to load files, including tsFile, syncTask, schema, modsFile and
- * deletePlan.
- */
-public interface ILoader {
-
-  IPartitionFetcher PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
-
-  ISchemaFetcher SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
-
-  void load();
-}
+public class IoTDBAirGapReceiver {}

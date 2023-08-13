@@ -20,8 +20,8 @@
 
 package org.apache.iotdb.db.pipe.connector.payload.legacy;
 
-import org.apache.iotdb.db.pipe.connector.protocol.legacy.loader.ILoader;
-import org.apache.iotdb.db.pipe.connector.protocol.legacy.loader.TsFileLoader;
+import org.apache.iotdb.db.pipe.receiver.legacy.loader.ILoader;
+import org.apache.iotdb.db.pipe.receiver.legacy.loader.TsFileLoader;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
