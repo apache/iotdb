@@ -66,11 +66,11 @@ public class PipeConnectorSubtaskManager {
       PipeConnector pipeConnector;
       if (connectorKey.equals(BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
           || connectorKey.equals(
-              BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName())) {
-        pipeConnector = new IoTDBThriftAsyncConnector();
-      } else if (connectorKey.equals(
-          BuiltinPipePlugin.IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName())) {
+              BuiltinPipePlugin.IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName())) {
         pipeConnector = new IoTDBThriftSyncConnector();
+      } else if (connectorKey.equals(
+          BuiltinPipePlugin.IOTDB_THRIFT_ASYNC_CONNECTOR.getPipePluginName())) {
+        pipeConnector = new IoTDBThriftAsyncConnector();
       } else if (connectorKey.equals(
           BuiltinPipePlugin.IOTDB_LEGACY_PIPE_CONNECTOR.getPipePluginName())) {
         pipeConnector = new IoTDBLegacyPipeConnector();
