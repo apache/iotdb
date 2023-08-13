@@ -20,10 +20,10 @@
 package org.apache.iotdb.commons.pipe.plugin.builtin;
 
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.DoNothingConnector;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBSyncConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBLegacyPipeConnector;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftConnector;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftConnectorV1;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftConnectorV2;
+import org.apache.iotdb.commons.pipe.plugin.builtin.connector.IoTDBThriftSyncConnector;
 import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.IoTDBExtractor;
 import org.apache.iotdb.commons.pipe.plugin.builtin.processor.DoNothingProcessor;
 
@@ -38,9 +38,9 @@ public enum BuiltinPipePlugin {
   // connectors
   DO_NOTHING_CONNECTOR("do-nothing-connector", DoNothingConnector.class),
   IOTDB_THRIFT_CONNECTOR("iotdb-thrift-connector", IoTDBThriftConnector.class),
-  IOTDB_THRIFT_CONNECTOR_V1("iotdb-thrift-connector-v1", IoTDBThriftConnectorV1.class),
-  IOTDB_THRIFT_CONNECTOR_V2("iotdb-thrift-connector-v2", IoTDBThriftConnectorV2.class),
-  IOTDB_SYNC_CONNECTOR("iotdb-sync-connector", IoTDBSyncConnector.class),
+  IOTDB_THRIFT_SYNC_CONNECTOR("iotdb-thrift-sync-connector", IoTDBThriftSyncConnector.class),
+  IOTDB_THRIFT_ASYNC_CONNECTOR("iotdb-thrift-async-connector", IoTDBThriftAsyncConnector.class),
+  IOTDB_LEGACY_PIPE_CONNECTOR("iotdb-legacy-pipe-connector", IoTDBLegacyPipeConnector.class),
   ;
 
   private final String pipePluginName;
