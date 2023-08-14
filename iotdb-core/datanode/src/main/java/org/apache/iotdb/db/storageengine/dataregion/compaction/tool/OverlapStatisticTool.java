@@ -78,7 +78,7 @@ public class OverlapStatisticTool {
     int workerNum = Math.min(taskList.size(), 10);
     TimePartitionProcessWorker[] workers = new TimePartitionProcessWorker[workerNum];
     for (int i = 0; i < taskList.size(); i++) {
-      int workerIdx = i % 10;
+      int workerIdx = i % workerNum;
       TimePartitionProcessWorker worker = workers[workerIdx];
       if (worker == null) {
         worker = new TimePartitionProcessWorker();
