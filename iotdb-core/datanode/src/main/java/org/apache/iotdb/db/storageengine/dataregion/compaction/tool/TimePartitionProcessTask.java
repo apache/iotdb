@@ -33,9 +33,8 @@ import java.util.concurrent.Future;
 public class TimePartitionProcessTask {
   private final String timePartition;
   private final Pair<List<String>, List<String>> timePartitionFiles;
-  private long readFileCost = 0;
-  private long buildUnseqSpaceStatisticCost = 0;
-  private long checkOverlapCost = 0;
+  private long sequenceSpaceCost = 0;
+  private long unsequenceSpaceCost = 0;
 
   private AsyncThreadExecutor executor;
 
@@ -58,11 +57,10 @@ public class TimePartitionProcessTask {
     System.out.printf("Unsequence file num: %d\n", timePartitionFiles.getRight().size());
     System.out.printf(
         Thread.currentThread().getName()
-            + " Time cost: %.2fs, Read file cost: %.2fs, Build unsequence space cost: %.2fs, Check overlap cost: %.2fs\n",
+            + " Time cost: %.2fs, Sequence space cost: %.2fs, Build unsequence space cost: %.2fs.\n",
         ((double) System.currentTimeMillis() - startTime) / 1000,
-        ((double) readFileCost / 1000),
-        ((double) buildUnseqSpaceStatisticCost / 1000),
-        ((double) checkOverlapCost / 1000));
+        ((double) sequenceSpaceCost / 1000),
+        ((double) unsequenceSpaceCost / 1000));
 
     return partialRet;
   }
@@ -70,14 +68,12 @@ public class TimePartitionProcessTask {
   private UnseqSpaceStatistics buildUnseqSpaceStatistics(List<String> unseqFiles) {
     UnseqSpaceStatistics unseqSpaceStatistics = new UnseqSpaceStatistics();
 
+    long startTime = System.currentTimeMillis();
     for (String unseqFile : unseqFiles) {
-      long startTime = System.currentTimeMillis();
       try (TsFileStatisticReader reader = new TsFileStatisticReader(unseqFile)) {
         List<TsFileStatisticReader.ChunkGroupStatistics> chunkGroupStatisticsList =
             reader.getChunkGroupStatistics();
-        readFileCost += (System.currentTimeMillis() - startTime);
 
-        startTime = System.currentTimeMillis();
         for (TsFileStatisticReader.ChunkGroupStatistics statistics : chunkGroupStatisticsList) {
           long deviceStartTime = Long.MAX_VALUE, deviceEndTime = Long.MIN_VALUE;
           for (ChunkMetadata chunkMetadata : statistics.getChunkMetadataList()) {
@@ -91,17 +87,18 @@ public class TimePartitionProcessTask {
           unseqSpaceStatistics.updateDevice(
               statistics.getDeviceID(), new Interval(deviceStartTime, deviceEndTime));
         }
-        buildUnseqSpaceStatisticCost += (System.currentTimeMillis() - startTime);
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
     }
+    unsequenceSpaceCost += (System.currentTimeMillis() - startTime);
     return unseqSpaceStatistics;
   }
 
   public OverlapStatistic processOneTimePartitionAsync(
       List<String> seqFiles, List<String> unseqFiles) {
     UnseqSpaceStatistics unseqSpaceStatistics = buildUnseqSpaceStatistics(unseqFiles);
+    long startTime = System.currentTimeMillis();
     OverlapStatistic overlapStatistic = new OverlapStatistic();
     overlapStatistic.totalFiles += seqFiles.size();
     executor = new AsyncThreadExecutor(10);
@@ -124,6 +121,7 @@ public class TimePartitionProcessTask {
       }
     }
     executor.shutdown();
+    sequenceSpaceCost += (System.currentTimeMillis() - startTime);
     return overlapStatistic;
   }
 }
