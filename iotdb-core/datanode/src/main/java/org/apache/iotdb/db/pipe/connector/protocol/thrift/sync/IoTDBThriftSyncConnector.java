@@ -113,7 +113,7 @@ public class IoTDBThriftSyncConnector extends IoTDBThriftConnector {
               new ThriftClientProperty.Builder()
                   .setConnectionTimeoutMs((int) PIPE_CONFIG.getPipeConnectorTimeoutMs())
                   .setRpcThriftCompressionEnabled(
-                      PIPE_CONFIG.isPipeAsyncConnectorRPCThriftCompressionEnabled())
+                      PIPE_CONFIG.isPipeConnectorRPCThriftCompressionEnabled())
                   .build(),
               ip,
               port));

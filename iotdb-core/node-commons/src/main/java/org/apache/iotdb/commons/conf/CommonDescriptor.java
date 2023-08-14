@@ -326,12 +326,12 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_connector_pending_queue_size",
                 String.valueOf(config.getPipeConnectorPendingQueueSize()))));
-
-    config.setPipeAsyncConnectorRPCThriftCompressionEnabled(
+    config.setPipeConnectorRPCThriftCompressionEnabled(
         Boolean.parseBoolean(
             properties.getProperty(
-                "pipe_async_connector_rpc_thrift_compression_enable",
-                String.valueOf(config.isPipeAsyncConnectorRPCThriftCompressionEnabled()))));
+                "pipe_connector_rpc_thrift_compression_enabled",
+                String.valueOf(config.isPipeConnectorRPCThriftCompressionEnabled()))));
+
     config.setPipeAsyncConnectorSelectorNumber(
         Integer.parseInt(
             properties.getProperty(
