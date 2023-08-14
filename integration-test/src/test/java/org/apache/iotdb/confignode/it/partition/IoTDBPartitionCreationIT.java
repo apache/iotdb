@@ -414,13 +414,13 @@ public class IoTDBPartitionCreationIT {
         AtomicBoolean containUnknown = new AtomicBoolean(false);
         TShowDataNodesResp showDataNodesResp = client.showDataNodes();
         showDataNodesResp
-          .getDataNodesInfoList()
-          .forEach(
-            dataNodeInfo -> {
-              if (NodeStatus.Unknown.getStatus().equals(dataNodeInfo.getStatus())) {
-                containUnknown.set(true);
-              }
-            });
+            .getDataNodesInfoList()
+            .forEach(
+                dataNodeInfo -> {
+                  if (NodeStatus.Unknown.getStatus().equals(dataNodeInfo.getStatus())) {
+                    containUnknown.set(true);
+                  }
+                });
 
         if (!containUnknown.get()) {
           break;
