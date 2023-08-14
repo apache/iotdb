@@ -191,7 +191,7 @@ public class PipeAirGapReceiverAgent {
 
   public void cleanPipeReceiverDir() {
     final File receiverFileDir =
-        new File(IoTDBDescriptor.getInstance().getConfig().getPipeAirGapReceiverFileDir());
+        new File(IoTDBDescriptor.getInstance().getConfig().getPipeReceiverFileDir());
 
     try {
       FileUtils.deleteDirectory(receiverFileDir);
