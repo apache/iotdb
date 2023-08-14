@@ -136,18 +136,19 @@ public class StatisticsService implements IClusterStatusSubscriber {
     // Map<RegionGroupId, Pair<old leader index, new leader index>>
     Map<TConsensusGroupId, Pair<Integer, Integer>> differentRegionLeaderMap =
         loadCache.updateRegionGroupLeader();
-    if (!differentRegionLeaderMap.isEmpty()) {
-      isNeedBroadcast = true;
-    }
 
-    if (isNeedBroadcast || loadCache.existUnreadyRegionGroup()) {
+    if (isNeedBroadcast
+        || !differentRegionLeaderMap.isEmpty()
+        || loadCache.existUnreadyRegionGroup()) {
       // Update RegionRoute if cluster statistics changed or some RegionGroups are unready
       differentRegionLeaderMap.putAll(routeBalancer.balanceRegionLeader());
       // Update RegionPriority
       // Map<RegionGroupId, Pair<old priority, new priority>>
       Map<TConsensusGroupId, Pair<TRegionReplicaSet, TRegionReplicaSet>>
           differentRegionPriorityMap = routeBalancer.balanceRegionPriority();
-      if (!differentRegionLeaderMap.isEmpty() || !differentRegionPriorityMap.isEmpty()) {
+
+      if (containsChangeEvent(differentRegionLeaderMap)
+          || containsChangeEvent(differentRegionPriorityMap)) {
         eventBus.post(new RouteChangeEvent(differentRegionLeaderMap, differentRegionPriorityMap));
       }
     }
@@ -157,6 +158,11 @@ public class StatisticsService implements IClusterStatusSubscriber {
           new StatisticsChangeEvent(differentNodeStatisticsMap, differentRegionGroupStatisticsMap));
       broadcastLatestRegionRouteMap();
     }
+  }
+
+  private static <T> boolean containsChangeEvent(Map<TConsensusGroupId, Pair<T, T>> map) {
+    return !map.isEmpty()
+        && map.values().stream().anyMatch(pair -> !Objects.equals(pair.getLeft(), pair.getRight()));
   }
 
   public void broadcastLatestRegionRouteMap() {

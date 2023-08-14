@@ -26,6 +26,8 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
@@ -49,7 +51,6 @@ import com.google.common.eventbus.EventBus;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -73,7 +74,10 @@ public class LoadManager {
   private final StatisticsService statisticsService;
 
   private final EventBus loadPublisher =
-      new AsyncEventBus("Cluster-LoadPublisher-Thread", Executors.newFixedThreadPool(5));
+      new AsyncEventBus(
+          ThreadName.CONFIG_NODE_LOAD_PUBLISHER.getName(),
+          IoTDBThreadPoolFactory.newFixedThreadPool(
+              5, ThreadName.CONFIG_NODE_LOAD_PUBLISHER.getName()));
 
   public LoadManager(IManager configManager) {
     this.configManager = configManager;
