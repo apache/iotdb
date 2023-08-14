@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.rescon.quotas;
 
 import org.apache.iotdb.commons.exception.RpcThrottlingException;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -28,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedInsertBaseStatement;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.BitMap;
@@ -92,7 +94,11 @@ public class DefaultOperationQuota implements OperationQuota {
   protected void updateEstimateConsumeQuota(int numWrites, int numReads, Statement s) {
     if (numWrites > 0) {
       long avgSize = 0;
-      switch (s.getType()) {
+      final StatementType statementType =
+          s.getType() == StatementType.PIPE_ENRICHED_INSERT
+              ? ((PipeEnrichedInsertBaseStatement) s).getInsertBaseStatement().getType()
+              : s.getType();
+      switch (statementType) {
         case INSERT:
           // InsertStatement  InsertRowStatement
           if (s instanceof InsertStatement) {
