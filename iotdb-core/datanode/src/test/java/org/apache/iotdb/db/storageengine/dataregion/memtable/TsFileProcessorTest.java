@@ -326,6 +326,60 @@ public class TsFileProcessorTest {
   }
 
   @Test
+  public void alignedTvListRamCostTest2()
+      throws MetadataException, WriteProcessException, IOException {
+    processor =
+        new TsFileProcessor(
+            storageGroup,
+            SystemFileFactory.INSTANCE.getFile(filePath),
+            sgInfo,
+            this::closeTsFileProcessor,
+            (tsFileProcessor, updateMap, systemFlushTime) -> {},
+            true);
+    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
+    processor.setTsFileProcessorInfo(tsFileProcessorInfo);
+    this.sgInfo.initTsFileProcessorInfo(processor);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
+    // Test Tablet
+    processor.insertTablet(genInsertTableNode(0, true), 0, 10, new TSStatus[10]);
+    IMemTable memTable = processor.getWorkMemTable();
+    Assert.assertEquals(1596808, memTable.getTVListsRamCost());
+    processor.insertTablet(genInsertTableNodeFors3000ToS6000(0, true), 0, 10, new TSStatus[10]);
+    Assert.assertEquals(3192808, memTable.getTVListsRamCost());
+    processor.insertTablet(genInsertTableNode(100, true), 0, 10, new TSStatus[10]);
+    Assert.assertEquals(3192808, memTable.getTVListsRamCost());
+    processor.insertTablet(genInsertTableNodeFors3000ToS6000(100, true), 0, 10, new TSStatus[10]);
+    Assert.assertEquals(3192808, memTable.getTVListsRamCost());
+    processor.insertTablet(genInsertTableNode(200, true), 0, 10, new TSStatus[10]);
+    Assert.assertEquals(3192808, memTable.getTVListsRamCost());
+    processor.insertTablet(genInsertTableNodeFors3000ToS6000(200, true), 0, 10, new TSStatus[10]);
+    Assert.assertEquals(3192808, memTable.getTVListsRamCost());
+    processor.insertTablet(genInsertTableNode(300, true), 0, 10, new TSStatus[10]);
+    Assert.assertEquals(6385616, memTable.getTVListsRamCost());
+    processor.insertTablet(genInsertTableNodeFors3000ToS6000(300, true), 0, 10, new TSStatus[10]);
+    Assert.assertEquals(6385616, memTable.getTVListsRamCost());
+
+    Assert.assertEquals(240000, memTable.getTotalPointsNum());
+    Assert.assertEquals(1920960, memTable.memSize());
+    // Test records
+    for (int i = 1; i <= 100; i++) {
+      TSRecord record = new TSRecord(i, deviceId);
+      record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
+      processor.insert(buildInsertRowNodeByTSRecord(record));
+    }
+    Assert.assertEquals(6387232, memTable.getTVListsRamCost());
+    // Test records
+    for (int i = 1; i <= 100; i++) {
+      TSRecord record = new TSRecord(i, deviceId);
+      record.addTuple(DataPoint.getDataPoint(dataType, "s1", String.valueOf(i)));
+      processor.insert(buildInsertRowNodeByTSRecord(record));
+    }
+    Assert.assertEquals(6388848, memTable.getTVListsRamCost());
+    Assert.assertEquals(240200, memTable.getTotalPointsNum());
+    Assert.assertEquals(1923360, memTable.memSize());
+  }
+
+  @Test
   public void nonAlignedTvListRamCostTest()
       throws MetadataException, WriteProcessException, IOException {
     processor =
@@ -445,6 +499,49 @@ public class TsFileProcessorTest {
     MeasurementSchema[] schemas = new MeasurementSchema[3000];
     for (int i = 0; i < 3000; i++) {
       measurements[i] = "s" + i;
+      dataTypes[i] = TSDataType.INT64;
+      encodings[i] = TSEncoding.PLAIN;
+      schemas[i] = new MeasurementSchema(measurements[i], dataTypes[i], encodings[i]);
+    }
+
+    long[] times = new long[10];
+    Object[] columns = new Object[3000];
+    for (int i = 0; i < 3000; i++) {
+      columns[i] = new long[10];
+    }
+
+    for (long r = 0; r < 10; r++) {
+      times[(int) r] = r + startTime;
+      for (int i = 0; i < 3000; i++) {
+        ((long[]) columns[i])[(int) r] = r;
+      }
+    }
+
+    InsertTabletNode insertTabletNode =
+        new InsertTabletNode(
+            new QueryId("test_write").genPlanNodeId(),
+            new PartialPath(deviceId),
+            isAligned,
+            measurements,
+            dataTypes,
+            times,
+            null,
+            columns,
+            times.length);
+    insertTabletNode.setMeasurementSchemas(schemas);
+
+    return insertTabletNode;
+  }
+
+  private InsertTabletNode genInsertTableNodeFors3000ToS6000(long startTime, boolean isAligned)
+      throws IllegalPathException {
+    String deviceId = "root.sg.device5";
+    String[] measurements = new String[3000];
+    TSDataType[] dataTypes = new TSDataType[3000];
+    TSEncoding[] encodings = new TSEncoding[3000];
+    MeasurementSchema[] schemas = new MeasurementSchema[3000];
+    for (int i = 0; i < 3000; i++) {
+      measurements[i] = "s" + i + 3000;
       dataTypes[i] = TSDataType.INT64;
       encodings[i] = TSEncoding.PLAIN;
       schemas[i] = new MeasurementSchema(measurements[i], dataTypes[i], encodings[i]);
