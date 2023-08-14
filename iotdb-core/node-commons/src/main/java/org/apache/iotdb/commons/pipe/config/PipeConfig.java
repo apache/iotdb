@@ -107,8 +107,8 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeConnectorPendingQueueSize();
   }
 
-  public boolean isPipeAsyncConnectorRPCThriftCompressionEnabled() {
-    return COMMON_CONFIG.isPipeAsyncConnectorRPCThriftCompressionEnabled();
+  public boolean isPipeConnectorRPCThriftCompressionEnabled() {
+    return COMMON_CONFIG.isPipeConnectorRPCThriftCompressionEnabled();
   }
 
   public int getPipeAsyncConnectorSelectorNumber() {
