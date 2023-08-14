@@ -150,7 +150,8 @@ public class CommonConfig {
   private boolean pipeHardLinkWALEnabled = false;
 
   /** The maximum number of threads that can be used to execute subtasks in PipeSubtaskExecutor. */
-  private int pipeSubtaskExecutorMaxThreadNum = 5;
+  private int pipeSubtaskExecutorMaxThreadNum =
+      Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
 
   private int pipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount = 10_000;
   private long pipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration = 10 * 1000L;
@@ -685,7 +686,10 @@ public class CommonConfig {
   }
 
   public void setPipeSubtaskExecutorMaxThreadNum(int pipeSubtaskExecutorMaxThreadNum) {
-    this.pipeSubtaskExecutorMaxThreadNum = pipeSubtaskExecutorMaxThreadNum;
+    this.pipeSubtaskExecutorMaxThreadNum =
+        Math.min(
+            pipeSubtaskExecutorMaxThreadNum,
+            Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
   }
 
   public long getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs() {
