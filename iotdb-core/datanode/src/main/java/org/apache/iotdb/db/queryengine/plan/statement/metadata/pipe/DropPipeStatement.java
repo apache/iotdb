@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.statement.sys.pipe;
+package org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
@@ -28,49 +28,21 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
-public class CreatePipeStatement extends Statement implements IConfigStatement {
+public class DropPipeStatement extends Statement implements IConfigStatement {
 
   private String pipeName;
-  private Map<String, String> extractorAttributes;
-  private Map<String, String> processorAttributes;
-  private Map<String, String> connectorAttributes;
 
-  public CreatePipeStatement(StatementType createPipeStatement) {
-    this.statementType = createPipeStatement;
+  public DropPipeStatement(StatementType dropPipeStatement) {
+    this.statementType = dropPipeStatement;
   }
 
   public String getPipeName() {
     return pipeName;
   }
 
-  public Map<String, String> getExtractorAttributes() {
-    return extractorAttributes;
-  }
-
-  public Map<String, String> getProcessorAttributes() {
-    return processorAttributes;
-  }
-
-  public Map<String, String> getConnectorAttributes() {
-    return connectorAttributes;
-  }
-
   public void setPipeName(String pipeName) {
     this.pipeName = pipeName;
-  }
-
-  public void setExtractorAttributes(Map<String, String> extractorAttributes) {
-    this.extractorAttributes = extractorAttributes;
-  }
-
-  public void setProcessorAttributes(Map<String, String> processorAttributes) {
-    this.processorAttributes = processorAttributes;
-  }
-
-  public void setConnectorAttributes(Map<String, String> connectorAttributes) {
-    this.connectorAttributes = connectorAttributes;
   }
 
   @Override
@@ -85,6 +57,6 @@ public class CreatePipeStatement extends Statement implements IConfigStatement {
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitCreatePipe(this, context);
+    return visitor.visitDropPipe(this, context);
   }
 }
