@@ -231,13 +231,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             "{}-{} [Compaction] compaction finish, start to delete old files",
             storageGroupName,
             dataRegionId);
-        // delete the old files
-        long[] sizeList = new long[selectedTsFileResourceList.size()];
-        for (int i = 0, size = selectedTsFileResourceList.size(); i < size; ++i) {
-          sizeList[i] = selectedTsFileResourceList.get(i).getTsFileSize();
-        }
-        CompactionUtils.deleteTsFilesInDisk(
-            selectedTsFileResourceList, storageGroupName + "-" + dataRegionId);
+        CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(selectedTsFileResourceList);
         CompactionUtils.deleteModificationForSourceFile(
             selectedTsFileResourceList, storageGroupName + "-" + dataRegionId);
 
@@ -255,12 +249,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           // target resource is empty after compaction, then delete it
           targetTsFileResource.remove();
         }
-        List<String> fileNames = new ArrayList<>();
-        for (TsFileResource resource : selectedTsFileResourceList) {
-          fileNames.add(resource.getTsFile().getName());
-        }
-        FileMetrics.getInstance().deleteFile(sizeList, sequence, fileNames);
-
         CompactionMetrics.getInstance().recordSummaryInfo(summary);
 
         double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
