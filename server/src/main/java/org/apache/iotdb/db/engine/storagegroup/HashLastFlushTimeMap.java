@@ -23,9 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class HashLastFlushTimeMap implements ILastFlushTimeMap {
 
@@ -225,19 +223,9 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
   }
 
   private long recoverFlushTime(long partitionId, String devicePath) {
-    List<TsFileResource> tsFileResourceList =
-        tsFileManager.getOrCreateSequenceListByTimePartition(partitionId);
-
-    for (int i = tsFileResourceList.size() - 1; i >= 0; i--) {
-      Set<String> deviceSet = tsFileResourceList.get(i).getDevices();
-      if (deviceSet.contains(devicePath)) {
-        return tsFileResourceList.get(i).getEndTime(devicePath);
-      }
-    }
-
     long memCost = HASHMAP_NODE_BASIC_SIZE + 2L * devicePath.length();
     memCostForEachPartition.compute(partitionId, (k, v) -> v == null ? memCost : v + memCost);
-    return Long.MIN_VALUE;
+    return tsFileManager.recoverFlushTimeFromTsFileResource(partitionId, devicePath);
   }
 
   @Override
