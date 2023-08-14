@@ -35,22 +35,19 @@ public class TsFileStatisticReader implements Closeable {
 
   private final TsFileSequenceReader reader;
 
-  private final List<ChunkGroupStatistics> chunkGroupStatisticsList;
-
   public TsFileStatisticReader(String filePath) throws IOException {
     reader = new TsFileSequenceReader(filePath);
-    chunkGroupStatisticsList = new ArrayList<>();
   }
 
-  public List<ChunkGroupStatistics> getChunkGroupStatistics() throws IOException {
+  public List<ChunkGroupStatistics> getChunkGroupStatisticsList() throws IOException {
     TsFileDeviceIterator allDevicesIteratorWithIsAligned =
         reader.getAllDevicesIteratorWithIsAligned();
+    List<ChunkGroupStatistics> chunkGroupStatisticsList = new ArrayList<>();
     while (allDevicesIteratorWithIsAligned.hasNext()) {
       Pair<String, Boolean> deviceWithIsAligned = allDevicesIteratorWithIsAligned.next();
       String deviceId = deviceWithIsAligned.left;
-      boolean isAligned = deviceWithIsAligned.right;
 
-      ChunkGroupStatistics chunkGroupStatistics = new ChunkGroupStatistics(deviceId, isAligned);
+      ChunkGroupStatistics chunkGroupStatistics = new ChunkGroupStatistics(deviceId);
       Iterator<Map<String, List<ChunkMetadata>>> measurementChunkMetadataListMapIterator =
           reader.getMeasurementChunkMetadataListMapIterator(deviceId);
 
@@ -77,12 +74,10 @@ public class TsFileStatisticReader implements Closeable {
   public static class ChunkGroupStatistics {
     private final String deviceID;
     private final List<ChunkMetadata> chunkMetadataList;
-    private final boolean isAligned;
     private int totalChunkNum = 0;
 
-    private ChunkGroupStatistics(String deviceId, boolean isAligned) {
+    private ChunkGroupStatistics(String deviceId) {
       this.deviceID = deviceId;
-      this.isAligned = isAligned;
       this.chunkMetadataList = new ArrayList<>();
     }
 
@@ -96,10 +91,6 @@ public class TsFileStatisticReader implements Closeable {
 
     public int getTotalChunkNum() {
       return totalChunkNum;
-    }
-
-    public boolean isAligned() {
-      return isAligned;
     }
   }
 }

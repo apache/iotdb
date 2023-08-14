@@ -36,18 +36,17 @@ public class TimePartitionProcessTask {
   private long sequenceSpaceCost = 0;
   private long unsequenceSpaceCost = 0;
 
-  private AsyncThreadExecutor executor;
-
   public TimePartitionProcessTask(
       String timePartition, Pair<List<String>, List<String>> timePartitionFiles) {
     this.timePartition = timePartition;
     this.timePartitionFiles = timePartitionFiles;
   }
 
-  public OverlapStatistic processTimePartition() {
+  public OverlapStatistic processTimePartition(AsyncThreadExecutor fileTaskExecutor) {
     long startTime = System.currentTimeMillis();
+    UnseqSpaceStatistics unseqSpaceStatistics = buildUnseqSpaceStatistics(timePartitionFiles.right);
     OverlapStatistic partialRet =
-        processOneTimePartitionAsync(timePartitionFiles.left, timePartitionFiles.right);
+        processSequenceSpaceAsync(fileTaskExecutor, unseqSpaceStatistics, timePartitionFiles.left);
     // 更新并打印进度
     OverlapStatisticTool.outputInfolock.lock();
     OverlapStatisticTool.processedTimePartitionCount += 1;
@@ -72,7 +71,7 @@ public class TimePartitionProcessTask {
     for (String unseqFile : unseqFiles) {
       try (TsFileStatisticReader reader = new TsFileStatisticReader(unseqFile)) {
         List<TsFileStatisticReader.ChunkGroupStatistics> chunkGroupStatisticsList =
-            reader.getChunkGroupStatistics();
+            reader.getChunkGroupStatisticsList();
 
         for (TsFileStatisticReader.ChunkGroupStatistics statistics : chunkGroupStatisticsList) {
           long deviceStartTime = Long.MAX_VALUE, deviceEndTime = Long.MIN_VALUE;
@@ -95,13 +94,13 @@ public class TimePartitionProcessTask {
     return unseqSpaceStatistics;
   }
 
-  public OverlapStatistic processOneTimePartitionAsync(
-      List<String> seqFiles, List<String> unseqFiles) {
-    UnseqSpaceStatistics unseqSpaceStatistics = buildUnseqSpaceStatistics(unseqFiles);
+  public OverlapStatistic processSequenceSpaceAsync(
+      AsyncThreadExecutor executor,
+      UnseqSpaceStatistics unseqSpaceStatistics,
+      List<String> seqFiles) {
     long startTime = System.currentTimeMillis();
     OverlapStatistic overlapStatistic = new OverlapStatistic();
     overlapStatistic.totalFiles += seqFiles.size();
-    executor = new AsyncThreadExecutor(10);
     List<Future<TaskSummary>> futures = new ArrayList<>();
     for (String seqFile : seqFiles) {
       futures.add(executor.submit(new SingleSequenceFileTask(unseqSpaceStatistics, seqFile)));
@@ -120,7 +119,6 @@ public class TimePartitionProcessTask {
         // todo
       }
     }
-    executor.shutdown();
     sequenceSpaceCost += (System.currentTimeMillis() - startTime);
     return overlapStatistic;
   }
