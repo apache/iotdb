@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
+import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.DataRegionException;
@@ -121,6 +122,11 @@ public class DataNodeRegionManager {
           SchemaRegionConsensusImpl.getInstance().createPeer(schemaRegionId, peers);
       if (consensusGenericResponse.isSuccess()) {
         tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      } else if (consensusGenericResponse.getException()
+          instanceof ConsensusGroupAlreadyExistException) {
+        tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        tsStatus.setMessage(
+            String.format("SchemaRegion %d already exists.", schemaRegionId.getId()));
       } else {
         tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
         tsStatus.setMessage(consensusGenericResponse.getException().getMessage());
@@ -157,6 +163,10 @@ public class DataNodeRegionManager {
           DataRegionConsensusImpl.getInstance().createPeer(dataRegionId, peers);
       if (consensusGenericResponse.isSuccess()) {
         tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      } else if (consensusGenericResponse.getException()
+          instanceof ConsensusGroupAlreadyExistException) {
+        tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        tsStatus.setMessage(String.format("DataRegion %d already exists.", dataRegionId.getId()));
       } else {
         tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
         tsStatus.setMessage(consensusGenericResponse.getException().getMessage());
