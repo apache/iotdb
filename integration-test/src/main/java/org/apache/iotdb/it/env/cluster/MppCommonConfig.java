@@ -357,4 +357,24 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
     setProperty("data_region_per_data_node", String.valueOf(dataRegionPerDataNode));
     return this;
   }
+
+  @Override
+  public CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode) {
+    setProperty("schema_region_per_data_node", String.valueOf(schemaRegionPerDataNode));
+    return this;
+  }
+
+  // For part of the log directory
+  public String getClusterConfigStr() {
+    return fromConsensusFullNameToAbbr(properties.getProperty(CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS))
+        + HYPHEN
+        + fromConsensusFullNameToAbbr(
+            properties.getProperty(SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS))
+        + HYPHEN
+        + fromConsensusFullNameToAbbr(properties.getProperty(DATA_REGION_CONSENSUS_PROTOCOL_CLASS))
+        + HYPHEN
+        + properties.getProperty(SCHEMA_REPLICATION_FACTOR)
+        + HYPHEN
+        + properties.getProperty(DATA_REPLICATION_FACTOR);
+  }
 }
