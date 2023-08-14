@@ -32,11 +32,9 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -82,11 +80,11 @@ public class PipeAirGapReceiverAgent {
                 }
               })
           .start();
-      if (allowSubmitListening) {
-        executor.submit(this::runReceive);
-      }
     } catch (IOException e) {
       LOGGER.warn("Unhandled exception during pipe air gap receiving", e);
+    }
+    if (allowSubmitListening) {
+      executor.submit(this::runReceive);
     }
   }
 
@@ -187,24 +185,5 @@ public class PipeAirGapReceiverAgent {
           String.format("Unsupported pipe version %d", reqVersion));
     }
     return receiverThreadLocal.get();
-  }
-
-  public void cleanPipeReceiverDir() {
-    final File receiverFileDir =
-        new File(IoTDBDescriptor.getInstance().getConfig().getPipeReceiverFileDir());
-
-    try {
-      FileUtils.deleteDirectory(receiverFileDir);
-      LOGGER.info("Clean pipe receiver dir {} successfully.", receiverFileDir);
-    } catch (Exception e) {
-      LOGGER.warn("Clean pipe receiver dir {} failed.", receiverFileDir, e);
-    }
-
-    try {
-      FileUtils.forceMkdir(receiverFileDir);
-      LOGGER.info("Create pipe receiver dir {} successfully.", receiverFileDir);
-    } catch (IOException e) {
-      LOGGER.warn("Create pipe receiver dir {} failed.", receiverFileDir, e);
-    }
   }
 }

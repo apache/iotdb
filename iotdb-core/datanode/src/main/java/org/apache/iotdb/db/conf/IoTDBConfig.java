@@ -1076,7 +1076,7 @@ public class IoTDBConfig {
 
   /** Pipe related */
   private String pipeReceiverFileDir =
-      systemDir + File.separator + "pipe" + File.separator + "thrift_receiver";
+      systemDir + File.separator + "pipe" + File.separator + "receiver";
 
   private boolean pipeAirGapReceiveEnabled = false;
 
