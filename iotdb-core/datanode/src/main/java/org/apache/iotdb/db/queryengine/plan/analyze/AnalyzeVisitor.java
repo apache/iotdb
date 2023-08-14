@@ -98,6 +98,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedInsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalBatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
@@ -2422,6 +2423,37 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     } else {
       return computeAnalysisForInsertRows(analysis, (InsertRowsStatement) realInsertStatement);
     }
+  }
+
+  @Override
+  public Analysis visitPipeEnrichedInsert(
+      PipeEnrichedInsertBaseStatement pipeEnrichedInsertBaseStatement, MPPQueryContext context) {
+    Analysis analysis;
+
+    final InsertBaseStatement insertBaseStatement =
+        pipeEnrichedInsertBaseStatement.getInsertBaseStatement();
+    if (insertBaseStatement instanceof InsertTabletStatement) {
+      analysis = visitInsertTablet((InsertTabletStatement) insertBaseStatement, context);
+    } else if (insertBaseStatement instanceof InsertMultiTabletsStatement) {
+      analysis =
+          visitInsertMultiTablets((InsertMultiTabletsStatement) insertBaseStatement, context);
+    } else if (insertBaseStatement instanceof InsertRowStatement) {
+      analysis = visitInsertRow((InsertRowStatement) insertBaseStatement, context);
+    } else if (insertBaseStatement instanceof InsertRowsStatement) {
+      analysis = visitInsertRows((InsertRowsStatement) insertBaseStatement, context);
+    } else if (insertBaseStatement instanceof InsertRowsOfOneDeviceStatement) {
+      analysis =
+          visitInsertRowsOfOneDevice((InsertRowsOfOneDeviceStatement) insertBaseStatement, context);
+    } else {
+      throw new UnsupportedOperationException(
+          "Unsupported insert statement type: " + insertBaseStatement.getClass().getName());
+    }
+
+    // statement may be changed because of logical view
+    pipeEnrichedInsertBaseStatement.setInsertBaseStatement(
+        (InsertBaseStatement) analysis.getStatement());
+    analysis.setStatement(pipeEnrichedInsertBaseStatement);
+    return analysis;
   }
 
   private void validateSchema(

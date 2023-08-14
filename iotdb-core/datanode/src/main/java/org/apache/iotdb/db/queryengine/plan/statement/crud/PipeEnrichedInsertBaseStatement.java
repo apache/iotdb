@@ -35,7 +35,7 @@ import java.util.Map;
 
 public class PipeEnrichedInsertBaseStatement extends InsertBaseStatement {
 
-  private final InsertBaseStatement insertBaseStatement;
+  private InsertBaseStatement insertBaseStatement;
 
   public PipeEnrichedInsertBaseStatement(InsertBaseStatement insertBaseStatement) {
     statementType = StatementType.PIPE_ENRICHED_INSERT;
@@ -44,6 +44,10 @@ public class PipeEnrichedInsertBaseStatement extends InsertBaseStatement {
 
   public InsertBaseStatement getInsertBaseStatement() {
     return insertBaseStatement;
+  }
+
+  public void setInsertBaseStatement(InsertBaseStatement insertBaseStatement) {
+    this.insertBaseStatement = insertBaseStatement;
   }
 
   @Override
