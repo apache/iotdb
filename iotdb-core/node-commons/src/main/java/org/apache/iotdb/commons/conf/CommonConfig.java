@@ -160,14 +160,14 @@ public class CommonConfig {
   private int pipeExtractorMatcherCacheSize = 1024;
   private int pipeExtractorPendingQueueCapacity = 16;
   private int pipeExtractorPendingQueueTabletLimit = pipeExtractorPendingQueueCapacity / 2;
-  private int pipeDataStructureTabletRowSize = 16384;
+  private int pipeDataStructureTabletRowSize = 2048;
 
   private long pipeConnectorTimeoutMs = 15 * 60 * 1000L; // 15 minutes
   private int pipeConnectorReadFileBufferSize = 8388608;
   private long pipeConnectorRetryIntervalMs = 1000L;
   private int pipeConnectorPendingQueueSize = 16;
+  private boolean pipeConnectorRPCThriftCompressionEnabled = false;
 
-  private boolean pipeAsyncConnectorRPCThriftCompressionEnabled = false;
   private int pipeAsyncConnectorSelectorNumber = 1;
   private int pipeAsyncConnectorCoreClientNumber = 8;
   private int pipeAsyncConnectorMaxClientNumber = 16;
@@ -559,14 +559,13 @@ public class CommonConfig {
     this.pipeConnectorReadFileBufferSize = pipeConnectorReadFileBufferSize;
   }
 
-  public void setPipeAsyncConnectorRPCThriftCompressionEnabled(
-      boolean pipeAsyncConnectorRPCThriftCompressionEnabled) {
-    this.pipeAsyncConnectorRPCThriftCompressionEnabled =
-        pipeAsyncConnectorRPCThriftCompressionEnabled;
+  public void setPipeConnectorRPCThriftCompressionEnabled(
+      boolean pipeConnectorRPCThriftCompressionEnabled) {
+    this.pipeConnectorRPCThriftCompressionEnabled = pipeConnectorRPCThriftCompressionEnabled;
   }
 
-  public boolean isPipeAsyncConnectorRPCThriftCompressionEnabled() {
-    return pipeAsyncConnectorRPCThriftCompressionEnabled;
+  public boolean isPipeConnectorRPCThriftCompressionEnabled() {
+    return pipeConnectorRPCThriftCompressionEnabled;
   }
 
   public int getPipeAsyncConnectorSelectorNumber() {
