@@ -55,7 +55,7 @@ public class SyncIoTConsensusServiceClient extends IoTConsensusIService.Client
                         TConfigurationConst.defaultTConfiguration,
                         endpoint.getIp(),
                         endpoint.getPort(),
-                        property.getConnectionTimeoutMs()))));
+                        0))));
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;
     this.clientManager = clientManager;
