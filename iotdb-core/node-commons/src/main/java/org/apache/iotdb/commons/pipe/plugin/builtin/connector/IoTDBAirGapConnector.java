@@ -17,19 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.protocol.thrift;
+package org.apache.iotdb.commons.pipe.plugin.builtin.connector;
 
-public enum IoTDBThriftConnectorRequestVersion {
-  VERSION_1((byte) 1),
-  ;
-
-  private final byte version;
-
-  IoTDBThriftConnectorRequestVersion(byte type) {
-    this.version = type;
-  }
-
-  public byte getVersion() {
-    return version;
-  }
-}
+/**
+ * This class is a placeholder and should not be initialized. It represents the IoTDB Air Gap
+ * connector. There is a real implementation in the server module but cannot be imported here. The
+ * pipe agent in the server module will replace this class with the real implementation when
+ * initializing the IoTDB Air Gap connector.
+ */
+public class IoTDBAirGapConnector extends IoTDBConnector {}

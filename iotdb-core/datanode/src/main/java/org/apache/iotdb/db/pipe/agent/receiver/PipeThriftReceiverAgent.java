@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.agent.receiver;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBThriftConnectorRequestVersion;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.db.pipe.receiver.thrift.IoTDBThriftReceiver;
 import org.apache.iotdb.db.pipe.receiver.thrift.IoTDBThriftReceiverV1;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
@@ -37,16 +37,16 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 
-public class PipeReceiverAgent {
+public class PipeThriftReceiverAgent {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeReceiverAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeThriftReceiverAgent.class);
 
   private final ThreadLocal<IoTDBThriftReceiver> receiverThreadLocal = new ThreadLocal<>();
 
   public TPipeTransferResp receive(
       TPipeTransferReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
     final byte reqVersion = req.getVersion();
-    if (reqVersion == IoTDBThriftConnectorRequestVersion.VERSION_1.getVersion()) {
+    if (reqVersion == IoTDBConnectorRequestVersion.VERSION_1.getVersion()) {
       return getReceiver(reqVersion).receive(req, partitionFetcher, schemaFetcher);
     } else {
       return new TPipeTransferResp(
@@ -77,7 +77,7 @@ public class PipeReceiverAgent {
   }
 
   private IoTDBThriftReceiver setAndGetReceiver(byte reqVersion) {
-    if (reqVersion == IoTDBThriftConnectorRequestVersion.VERSION_1.getVersion()) {
+    if (reqVersion == IoTDBConnectorRequestVersion.VERSION_1.getVersion()) {
       receiverThreadLocal.set(new IoTDBThriftReceiverV1());
     } else {
       throw new UnsupportedOperationException(

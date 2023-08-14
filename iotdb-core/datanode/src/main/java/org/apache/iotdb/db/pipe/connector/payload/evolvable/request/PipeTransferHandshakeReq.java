@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
 
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.PipeRequestType;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBThriftConnectorRequestVersion;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -48,7 +48,7 @@ public class PipeTransferHandshakeReq extends TPipeTransferReq {
 
     handshakeReq.timestampPrecision = timestampPrecision;
 
-    handshakeReq.version = IoTDBThriftConnectorRequestVersion.VERSION_1.getVersion();
+    handshakeReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
     handshakeReq.type = PipeRequestType.HANDSHAKE.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
@@ -70,6 +70,23 @@ public class PipeTransferHandshakeReq extends TPipeTransferReq {
     handshakeReq.body = transferReq.body;
 
     return handshakeReq;
+  }
+
+  /////////////////////////////// For socket connection ///////////////////////////////
+  public static byte[] toTransferHandshakeBytes(String timestampPrecision) throws IOException {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
+      ReadWriteIOUtils.write(PipeRequestType.HANDSHAKE.getType(), outputStream);
+      ReadWriteIOUtils.write(timestampPrecision, outputStream);
+      return byteArrayOutputStream.getBuf();
+    }
+  }
+
+  public static PipeTransferHandshakeReq fromTransferHandshakeBytes(ByteBuffer byteBuffer) {
+    final PipeTransferHandshakeReq pipeTransferHandshakeBytes = new PipeTransferHandshakeReq();
+    pipeTransferHandshakeBytes.timestampPrecision = ReadWriteIOUtils.readString(byteBuffer);
+    return pipeTransferHandshakeBytes;
   }
 
   @Override

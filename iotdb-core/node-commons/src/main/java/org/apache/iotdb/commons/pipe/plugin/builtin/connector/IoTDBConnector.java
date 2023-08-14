@@ -33,7 +33,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
  * pipe agent in the server module will replace this class with the real implementation when
  * initializing the IoTDB Thrift connector.
  */
-public class IoTDBThriftConnector implements PipeConnector {
+public class IoTDBConnector implements PipeConnector {
   private static final String PLACEHOLDER_ERROR_MSG =
       "This class is a placeholder and should not be used.";
 

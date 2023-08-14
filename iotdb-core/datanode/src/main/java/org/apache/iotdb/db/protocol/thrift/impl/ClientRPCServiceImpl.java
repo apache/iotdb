@@ -2548,7 +2548,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TPipeTransferResp pipeTransfer(TPipeTransferReq req) {
-    return PipeAgent.receiver().receive(req, partitionFetcher, schemaFetcher);
+    return PipeAgent.thriftReceiver().receive(req, partitionFetcher, schemaFetcher);
   }
 
   @Override
@@ -2689,6 +2689,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       closeSession(req);
     }
     IoTDBLegacyPipeReceiver.getInstance().handleClientExit();
-    PipeAgent.receiver().handleClientExit();
+    PipeAgent.thriftReceiver().handleClientExit();
   }
 }

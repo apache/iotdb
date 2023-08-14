@@ -19,39 +19,294 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
-import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferInsertNodeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletReq;
+import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnector;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
+import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
+import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class IoTDBAirGapConnector implements PipeConnector {
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.RandomAccessFile;
+import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.zip.CRC32;
+
+public class IoTDBAirGapConnector extends IoTDBConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBAirGapConnector.class);
 
-  @Override
-  public void validate(PipeParameterValidator validator) throws Exception {}
+  private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
+  private final List<Socket> sockets = new ArrayList<>();
+  private final List<Boolean> isSocketAlive = new ArrayList<>();
+
+  private long currentClientIndex = 0;
+
+  public IoTDBAirGapConnector() {
+    // Do nothing
+  }
 
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
-      throws Exception {}
+      throws Exception {
+    super.customize(parameters, configuration);
+    for (int i = 0; i < nodeUrls.size(); i++) {
+      isSocketAlive.add(false);
+      sockets.add(null);
+    }
+  }
 
   @Override
-  public void handshake() throws Exception {}
+  public void handshake() throws Exception {
+    for (int i = 0; i < sockets.size(); i++) {
+      if (Boolean.TRUE.equals(isSocketAlive.get(i))) {
+        continue;
+      }
+
+      final String ip = nodeUrls.get(i).getIp();
+      final int port = nodeUrls.get(i).getPort();
+
+      // close the socket if necessary
+      if (sockets.get(i) != null) {
+        try {
+          sockets.set(i, null).close();
+        } catch (Exception e) {
+          LOGGER.warn(
+              "Failed to close socket with target server ip: {}, port: {}, because: {}. Ignore it.",
+              ip,
+              port,
+              e.getMessage());
+        }
+      }
+
+      sockets.set(i, new Socket(ip, port));
+      sockets.get(i).setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTimeoutMs());
+
+      if (!send(
+          sockets.get(i),
+          PipeTransferHandshakeReq.toTransferHandshakeBytes(
+              CommonDescriptor.getInstance().getConfig().getTimestampPrecision()))) {
+        throw new PipeException("Handshake error.");
+      } else {
+        isSocketAlive.set(i, true);
+        LOGGER.info("Handshake success. Target server ip: {}, port: {}", ip, port);
+      }
+    }
+
+    for (int i = 0; i < sockets.size(); i++) {
+      if (Boolean.TRUE.equals(isSocketAlive.get(i))) {
+        return;
+      }
+    }
+    throw new PipeConnectionException(
+        String.format("All target servers %s are not available.", nodeUrls));
+  }
 
   @Override
-  public void heartbeat() throws Exception {}
+  public void heartbeat() {
+    try {
+      handshake();
+    } catch (Exception e) {
+      LOGGER.warn(
+          "Failed to reconnect to target server, because: {}. Try to reconnect later.",
+          e.getMessage(),
+          e);
+    }
+  }
 
   @Override
-  public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {}
+  public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
+    // PipeProcessor can change the type of TabletInsertionEvent
+
+    final int socketIndex = nextSocketIndex();
+    final Socket socket = sockets.get(socketIndex);
+
+    try {
+      if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+        doTransfer(socket, (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
+      } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
+        doTransfer(socket, (PipeRawTabletInsertionEvent) tabletInsertionEvent);
+      } else {
+        LOGGER.warn(
+            "IoTDBThriftSyncConnector only support "
+                + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
+                + "Ignore {}.",
+            tabletInsertionEvent);
+      }
+    } catch (TException e) {
+      isSocketAlive.set(socketIndex, false);
+
+      throw new PipeConnectionException(
+          String.format(
+              "Network error when transfer tablet insertion event %s, because %s.",
+              tabletInsertionEvent, e.getMessage()),
+          e);
+    }
+  }
 
   @Override
-  public void transfer(Event event) throws Exception {}
+  public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
+    // PipeProcessor can change the type of TabletInsertionEvent
+    if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
+      LOGGER.warn(
+          "IoTDBThriftSyncConnector only support PipeTsFileInsertionEvent. Ignore {}.",
+          tsFileInsertionEvent);
+      return;
+    }
+
+    final int socketIndex = nextSocketIndex();
+    final Socket socket = sockets.get(socketIndex);
+
+    try {
+      doTransfer(socket, (PipeTsFileInsertionEvent) tsFileInsertionEvent);
+    } catch (TException e) {
+      isSocketAlive.set(socketIndex, false);
+
+      throw new PipeConnectionException(
+          String.format(
+              "Network error when transfer tsfile insertion event %s, because %s.",
+              tsFileInsertionEvent, e.getMessage()),
+          e);
+    }
+  }
 
   @Override
-  public void close() throws Exception {}
+  public void transfer(Event event) {
+    LOGGER.warn("IoTDBThriftSyncConnector does not support transfer generic event: {}.", event);
+  }
+
+  private void doTransfer(
+      Socket socket, PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
+      throws PipeException, TException, WALPipeException, IOException {
+    if (!send(
+        socket,
+        PipeTransferInsertNodeReq.toTransferInsertNodeBytes(
+            pipeInsertNodeTabletInsertionEvent.getInsertNode()))) {
+      throw new PipeException(
+          String.format(
+              "Transfer PipeInsertNodeTabletInsertionEvent %s error.",
+              pipeInsertNodeTabletInsertionEvent));
+    }
+  }
+
+  private void doTransfer(Socket socket, PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
+      throws PipeException, TException, IOException {
+    if (!send(
+        socket,
+        PipeTransferTabletReq.toTPipeTransferTabletBytes(
+            pipeRawTabletInsertionEvent.convertToTablet(),
+            pipeRawTabletInsertionEvent.isAligned()))) {
+      throw new PipeException(
+          String.format(
+              "Transfer PipeRawTabletInsertionEvent %s error.", pipeRawTabletInsertionEvent));
+    }
+  }
+
+  private void doTransfer(Socket socket, PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
+      throws PipeException, TException, InterruptedException, IOException {
+    pipeTsFileInsertionEvent.waitForTsFileClose();
+
+    final File tsFile = pipeTsFileInsertionEvent.getTsFile();
+
+    // 1. Transfer file piece by piece
+    final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
+    final byte[] readBuffer = new byte[readFileBufferSize];
+    long position = 0;
+    try (final RandomAccessFile reader = new RandomAccessFile(tsFile, "r")) {
+      while (true) {
+        final int readLength = reader.read(readBuffer);
+        if (readLength == -1) {
+          break;
+        }
+
+        if (!send(
+            socket,
+            PipeTransferFilePieceReq.toTPipeTransferBytes(
+                tsFile.getName(),
+                position,
+                readLength == readFileBufferSize
+                    ? readBuffer
+                    : Arrays.copyOfRange(readBuffer, 0, readLength)))) {
+          throw new PipeException(String.format("Transfer file %s error.", tsFile));
+        } else {
+          position += readLength;
+        }
+      }
+    }
+
+    // 2. Transfer file seal signal, which means the file is transferred completely
+    if (!send(
+        socket,
+        PipeTransferFileSealReq.toTPipeTransferFileSealBytes(tsFile.getName(), tsFile.length()))) {
+      throw new PipeException(String.format("Seal file %s error.", tsFile));
+    } else {
+      LOGGER.info("Successfully transferred file {}.", tsFile);
+    }
+  }
+
+  private int nextSocketIndex() {
+    final int socketSize = sockets.size();
+    // Round-robin, find the next alive client
+    for (int tryCount = 0; tryCount < socketSize; ++tryCount) {
+      final int clientIndex = (int) (currentClientIndex++ % socketSize);
+      if (Boolean.TRUE.equals(isSocketAlive.get(clientIndex))) {
+        return clientIndex;
+      }
+    }
+    throw new PipeConnectionException(
+        "All sockets are dead, please check the connection to the receiver.");
+  }
+
+  @Override
+  public void close() {
+    for (int i = 0; i < sockets.size(); ++i) {
+      try {
+        if (sockets.get(i) != null) {
+          sockets.set(i, null).close();
+        }
+      } catch (Exception e) {
+        LOGGER.warn("Failed to close client {}.", i, e);
+      } finally {
+        isSocketAlive.set(i, false);
+      }
+    }
+  }
+
+  private boolean send(Socket socket, byte[] bytes) throws IOException {
+    OutputStream outputStream = socket.getOutputStream();
+    outputStream.write(addCheckSum(bytes));
+    outputStream.flush();
+    byte[] response = new byte[1];
+    int size = socket.getInputStream().read(response);
+    return size != 0 && response[0] == 0;
+  }
+
+  private byte[] addCheckSum(byte[] bytes) {
+    CRC32 crc32 = new CRC32();
+    crc32.update(bytes, 0, bytes.length);
+    long checksum = crc32.getValue();
+    return BytesUtils.concatByteArray(BytesUtils.longToBytes(checksum), bytes);
+  }
 }

@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
 
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.PipeRequestType;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBThriftConnectorRequestVersion;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -54,7 +54,7 @@ public class PipeTransferFileSealReq extends TPipeTransferReq {
     fileSealReq.fileName = fileName;
     fileSealReq.fileLength = fileLength;
 
-    fileSealReq.version = IoTDBThriftConnectorRequestVersion.VERSION_1.getVersion();
+    fileSealReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
     fileSealReq.type = PipeRequestType.TRANSFER_FILE_SEAL.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
@@ -76,6 +76,28 @@ public class PipeTransferFileSealReq extends TPipeTransferReq {
     fileSealReq.version = req.version;
     fileSealReq.type = req.type;
     fileSealReq.body = req.body;
+
+    return fileSealReq;
+  }
+
+  /////////////////////////////// For socket connection ///////////////////////////////
+  public static byte[] toTPipeTransferFileSealBytes(String fileName, long fileLength)
+      throws IOException {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
+      ReadWriteIOUtils.write(PipeRequestType.TRANSFER_FILE_SEAL.getType(), outputStream);
+      ReadWriteIOUtils.write(fileName, outputStream);
+      ReadWriteIOUtils.write(fileLength, outputStream);
+      return byteArrayOutputStream.getBuf();
+    }
+  }
+
+  public static PipeTransferFileSealReq fromPipeTransferFileSealBytes(ByteBuffer byteBuffer) {
+    final PipeTransferFileSealReq fileSealReq = new PipeTransferFileSealReq();
+
+    fileSealReq.fileName = ReadWriteIOUtils.readString(byteBuffer);
+    fileSealReq.fileLength = ReadWriteIOUtils.readLong(byteBuffer);
 
     return fileSealReq;
   }

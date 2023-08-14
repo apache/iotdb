@@ -19,25 +19,44 @@
 
 package org.apache.iotdb.db.pipe.agent;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.plugin.PipePluginAgent;
-import org.apache.iotdb.db.pipe.agent.receiver.PipeReceiverAgent;
+import org.apache.iotdb.db.pipe.agent.receiver.PipeAirGapReceiverAgent;
+import org.apache.iotdb.db.pipe.agent.receiver.PipeThriftReceiverAgent;
 import org.apache.iotdb.db.pipe.agent.runtime.PipeRuntimeAgent;
 import org.apache.iotdb.db.pipe.agent.task.PipeTaskAgent;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
 
 /** PipeAgent is the entry point of the pipe module in DataNode. */
 public class PipeAgent {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeAgent.class);
+
   private final PipePluginAgent pipePluginAgent;
   private final PipeTaskAgent pipeTaskAgent;
   private final PipeRuntimeAgent pipeRuntimeAgent;
-  private final PipeReceiverAgent pipeReceiverAgent;
+  private final PipeThriftReceiverAgent pipeThriftReceiverAgent;
+  private PipeAirGapReceiverAgent pipeAirGapReceiverAgent;
 
   /** Private constructor to prevent users from creating a new instance. */
   private PipeAgent() {
     pipePluginAgent = new PipePluginAgent();
     pipeTaskAgent = new PipeTaskAgent();
     pipeRuntimeAgent = new PipeRuntimeAgent();
-    pipeReceiverAgent = new PipeReceiverAgent();
+    pipeThriftReceiverAgent = new PipeThriftReceiverAgent();
+    if (IoTDBDescriptor.getInstance().getConfig().getPipeAirGapReceiveEnabled()) {
+      try {
+        pipeAirGapReceiverAgent = new PipeAirGapReceiverAgent();
+        pipeAirGapReceiverAgent.start();
+      } catch (IOException e) {
+        LOGGER.warn(
+            "Pipe air gap server start failed, the cluster may not receive pipe data through air gap port.");
+      }
+    }
   }
 
   /** The singleton holder of PipeAgent. */
@@ -77,7 +96,11 @@ public class PipeAgent {
    *
    * @return the singleton instance of PipeReceiverAgent
    */
-  public static PipeReceiverAgent receiver() {
-    return PipeAgentHolder.HANDLE.pipeReceiverAgent;
+  public static PipeThriftReceiverAgent thriftReceiver() {
+    return PipeAgentHolder.HANDLE.pipeThriftReceiverAgent;
+  }
+
+  public static PipeAirGapReceiverAgent airGapReceiver() {
+    return PipeAgentHolder.HANDLE.pipeAirGapReceiverAgent;
   }
 }

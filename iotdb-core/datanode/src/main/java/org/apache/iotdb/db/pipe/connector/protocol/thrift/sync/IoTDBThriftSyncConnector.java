@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -29,7 +28,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletReq;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBThriftConnector;
+import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -55,7 +54,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class IoTDBThriftSyncConnector extends IoTDBThriftConnector {
+public class IoTDBThriftSyncConnector extends IoTDBConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftSyncConnector.class);
 
@@ -68,10 +67,6 @@ public class IoTDBThriftSyncConnector extends IoTDBThriftConnector {
 
   public IoTDBThriftSyncConnector() {
     // Do nothing
-  }
-
-  public IoTDBThriftSyncConnector(String ipAddress, int port) {
-    nodeUrls.add(new TEndPoint(ipAddress, port));
   }
 
   @Override
@@ -87,7 +82,7 @@ public class IoTDBThriftSyncConnector extends IoTDBThriftConnector {
   @Override
   public void handshake() throws Exception {
     for (int i = 0; i < clients.size(); i++) {
-      if (isClientAlive.get(i)) {
+      if (Boolean.TRUE.equals(isClientAlive.get(i))) {
         continue;
       }
 
@@ -141,7 +136,7 @@ public class IoTDBThriftSyncConnector extends IoTDBThriftConnector {
     }
 
     for (int i = 0; i < clients.size(); i++) {
-      if (isClientAlive.get(i)) {
+      if (Boolean.TRUE.equals(isClientAlive.get(i))) {
         return;
       }
     }
@@ -320,7 +315,7 @@ public class IoTDBThriftSyncConnector extends IoTDBThriftConnector {
     // Round-robin, find the next alive client
     for (int tryCount = 0; tryCount < clientSize; ++tryCount) {
       final int clientIndex = (int) (currentClientIndex++ % clientSize);
-      if (isClientAlive.get(clientIndex)) {
+      if (Boolean.TRUE.equals(isClientAlive.get(clientIndex))) {
         return clientIndex;
       }
     }

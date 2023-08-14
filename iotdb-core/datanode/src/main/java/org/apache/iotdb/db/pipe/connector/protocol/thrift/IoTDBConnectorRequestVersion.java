@@ -17,6 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.receiver.airgap;
+package org.apache.iotdb.db.pipe.connector.protocol.thrift;
 
-public class IoTDBAirGapReceiver {}
+public enum IoTDBConnectorRequestVersion {
+  VERSION_1((byte) 1),
+  ;
+
+  private final byte version;
+
+  IoTDBConnectorRequestVersion(byte type) {
+    this.version = type;
+  }
+
+  public byte getVersion() {
+    return version;
+  }
+}
