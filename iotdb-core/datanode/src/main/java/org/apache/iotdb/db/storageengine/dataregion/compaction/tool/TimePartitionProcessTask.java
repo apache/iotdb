@@ -78,10 +78,16 @@ public class TimePartitionProcessTask {
           for (ChunkMetadata chunkMetadata : statistics.getChunkMetadataList()) {
             deviceStartTime = Math.min(deviceStartTime, chunkMetadata.getStartTime());
             deviceEndTime = Math.max(deviceEndTime, chunkMetadata.getEndTime());
+            if (deviceStartTime > deviceEndTime) {
+              continue;
+            }
             unseqSpaceStatistics.updateMeasurement(
                 statistics.getDeviceID(),
                 chunkMetadata.getMeasurementUid(),
                 new Interval(chunkMetadata.getStartTime(), chunkMetadata.getEndTime()));
+          }
+          if (deviceStartTime > deviceEndTime) {
+            continue;
           }
           unseqSpaceStatistics.updateDevice(
               statistics.getDeviceID(), new Interval(deviceStartTime, deviceEndTime));
