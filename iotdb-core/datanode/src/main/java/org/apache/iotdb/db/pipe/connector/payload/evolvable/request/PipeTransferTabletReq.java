@@ -232,7 +232,7 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
       ReadWriteIOUtils.write(PipeRequestType.TRANSFER_TABLET.getType(), outputStream);
       tablet.serialize(outputStream);
       ReadWriteIOUtils.write(isAligned, outputStream);
-      return byteArrayOutputStream.getBuf();
+      return byteArrayOutputStream.toByteArray();
     }
   }
 

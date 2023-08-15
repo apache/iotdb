@@ -76,7 +76,7 @@ public class PipeConnectorSubtaskManager {
           BuiltinPipePlugin.IOTDB_LEGACY_PIPE_CONNECTOR.getPipePluginName())) {
         pipeConnector = new IoTDBLegacyPipeConnector();
       } else if (connectorKey.equals(
-          BuiltinPipePlugin.IOTDB_AIR_GAP_PIPE_CONNECTOR.getPipePluginName())) {
+          BuiltinPipePlugin.IOTDB_AIR_GAP_CONNECTOR.getPipePluginName())) {
         pipeConnector = new IoTDBAirGapConnector();
       } else {
         pipeConnector = PipeAgent.plugin().reflectConnector(pipeConnectorParameters);

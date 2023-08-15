@@ -89,7 +89,7 @@ public class PipeTransferFileSealReq extends TPipeTransferReq {
       ReadWriteIOUtils.write(PipeRequestType.TRANSFER_FILE_SEAL.getType(), outputStream);
       ReadWriteIOUtils.write(fileName, outputStream);
       ReadWriteIOUtils.write(fileLength, outputStream);
-      return byteArrayOutputStream.getBuf();
+      return byteArrayOutputStream.toByteArray();
     }
   }
 

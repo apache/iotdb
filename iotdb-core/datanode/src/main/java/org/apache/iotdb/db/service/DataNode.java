@@ -61,6 +61,7 @@ import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.receiver.PipeAirGapReceiverAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -97,6 +98,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -185,6 +187,9 @@ public class DataNode implements DataNodeMBean {
 
       // Setup rpc service
       setUpRPCService();
+
+      // Setup pipe air gap service
+      setUpPipeAirGapService();
 
       // Serialize mutable system properties
       IoTDBStartCheck.getInstance().serializeMutableSystemPropertiesIfNecessary();
@@ -550,6 +555,13 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(CompactionTaskManager.getInstance());
 
     registerManager.register(PipeAgent.runtime());
+  }
+
+  /** Set up air gap service if pipe air gap receiver is enabled. */
+  private void setUpPipeAirGapService() {
+    if (IoTDBDescriptor.getInstance().getConfig().getPipeAirGapReceiveEnabled()) {
+      Optional.ofNullable(PipeAgent.airGapReceiver()).ifPresent(PipeAirGapReceiverAgent::start);
+    }
   }
 
   /** Set up RPC and protocols after DataNode is available */

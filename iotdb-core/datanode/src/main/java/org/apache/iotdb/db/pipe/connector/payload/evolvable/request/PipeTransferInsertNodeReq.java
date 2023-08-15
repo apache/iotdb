@@ -119,7 +119,7 @@ public class PipeTransferInsertNodeReq extends TPipeTransferReq {
       ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
       ReadWriteIOUtils.write(PipeRequestType.TRANSFER_INSERT_NODE.getType(), outputStream);
       return BytesUtils.concatByteArray(
-          byteArrayOutputStream.getBuf(), insertNode.serializeToByteBuffer().array());
+          byteArrayOutputStream.toByteArray(), insertNode.serializeToByteBuffer().array());
     }
   }
 

@@ -1078,9 +1078,9 @@ public class IoTDBConfig {
   private String pipeReceiverFileDir =
       systemDir + File.separator + "pipe" + File.separator + "receiver";
 
-  private boolean pipeAirGapReceiveEnabled = false;
+  private boolean pipeAirGapReceiveEnabled = true;
 
-  private int pipeAirGapReceivePort = 7980;
+  private int pipeAirGapReceivePort = 9780;
 
   /** Resource control */
   private boolean quotaEnable = false;

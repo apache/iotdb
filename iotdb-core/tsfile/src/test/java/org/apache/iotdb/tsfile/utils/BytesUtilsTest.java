@@ -26,6 +26,7 @@ import org.junit.Test;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -43,6 +44,13 @@ public class BytesUtilsTest {
     byte[] bb = BytesUtils.intToBytes(b);
     int bf = BytesUtils.bytesToInt(bb);
     assertEquals("testBytesToFloat", b, bf);
+  }
+
+  @Test
+  public void testCRC() {
+    ByteBuffer byteBuffer = ByteBuffer.wrap(new byte[10]);
+    ReadWriteIOUtils.write(4, byteBuffer);
+    System.out.println(byteBuffer.arrayOffset());
   }
 
   @Test

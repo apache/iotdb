@@ -51,10 +51,10 @@ public class PipeAgent {
     if (IoTDBDescriptor.getInstance().getConfig().getPipeAirGapReceiveEnabled()) {
       try {
         pipeAirGapReceiverAgent = new PipeAirGapReceiverAgent();
-        pipeAirGapReceiverAgent.start();
       } catch (IOException e) {
         LOGGER.warn(
-            "Pipe air gap server start failed, the cluster may not receive pipe data through air gap port.");
+            "Pipe air gap server start failed, the cluster may not receive pipe data through air gap port.",
+            e);
       }
     }
   }

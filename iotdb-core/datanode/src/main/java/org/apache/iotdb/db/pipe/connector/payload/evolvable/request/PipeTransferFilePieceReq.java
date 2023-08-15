@@ -100,7 +100,7 @@ public class PipeTransferFilePieceReq extends TPipeTransferReq {
       ReadWriteIOUtils.write(fileName, outputStream);
       ReadWriteIOUtils.write(startWritingOffset, outputStream);
       ReadWriteIOUtils.write(new Binary(filePiece), outputStream);
-      return byteArrayOutputStream.getBuf();
+      return byteArrayOutputStream.toByteArray();
     }
   }
 
