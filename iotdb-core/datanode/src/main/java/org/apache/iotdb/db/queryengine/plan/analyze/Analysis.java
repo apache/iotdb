@@ -127,6 +127,9 @@ public class Analysis {
   // Query Analysis (used in ALIGN BY DEVICE)
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
+  // the list of device names
+  private Set<PartialPath> deviceSet;
+
   // map from output device name to queried devices
   private Map<String, List<String>> outputDeviceToQueriedDevicesMap;
 
@@ -731,5 +734,13 @@ public class Analysis {
 
   public Map<String, Set<Expression>> getDeviceToOutputExpressions() {
     return deviceToOutputExpressions;
+  }
+
+  public void setDeviceSet(Set<PartialPath> deviceSet) {
+    this.deviceSet = deviceSet;
+  }
+
+  public Set<PartialPath> getDeviceSet() {
+    return deviceSet;
   }
 }

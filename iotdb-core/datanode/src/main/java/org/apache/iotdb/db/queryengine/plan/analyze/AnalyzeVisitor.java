@@ -154,6 +154,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -180,6 +181,8 @@ import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.SCHE
 import static org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils.constructTargetDevice;
 import static org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils.constructTargetMeasurement;
 import static org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils.constructTargetPath;
+import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.canPushDownLimitOffsetInGroupByTimeForDevice;
+import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.pushDownLimitOffsetInGroupByTimeForDevice;
 import static org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.GetSourcePathsVisitor.getSourcePaths;
 
 /** This visitor is used to analyze each type of Statement and returns the {@link Analysis}. */
@@ -246,6 +249,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       List<Pair<Expression, String>> outputExpressions;
       if (queryStatement.isAlignByDevice()) {
         Set<PartialPath> deviceSet = analyzeFrom(queryStatement, schemaTree);
+
+        if (canPushDownLimitOffsetInGroupByTimeForDevice(queryStatement)) {
+          // remove the device which won't appear in resultSet after limit/offset
+          deviceSet = pushDownLimitOffsetInGroupByTimeForDevice(deviceSet, queryStatement);
+        }
+        analysis.setDeviceSet(deviceSet);
 
         analyzeDeviceToWhere(analysis, queryStatement, schemaTree, deviceSet);
         outputExpressions = analyzeSelect(analysis, queryStatement, schemaTree, deviceSet);
@@ -384,15 +393,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         queryStatement.setWhereCondition(null);
       } else {
         whereCondition.setPredicate(predicate);
-      }
-    }
-    if (queryStatement.isGroupByTime()) {
-      GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
-      Filter groupByFilter = initGroupByFilter(groupByTimeComponent);
-      if (globalTimeFilter == null) {
-        globalTimeFilter = groupByFilter;
-      } else {
-        globalTimeFilter = FilterFactory.and(globalTimeFilter, groupByFilter);
       }
     }
     analysis.setGlobalTimeFilter(globalTimeFilter);
@@ -537,7 +537,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     // device path patterns in FROM clause
     List<PartialPath> devicePatternList = queryStatement.getFromComponent().getPrefixPaths();
 
-    Set<PartialPath> deviceSet = new LinkedHashSet<>();
+    Set<PartialPath> deviceSet = new HashSet<>();
     for (PartialPath devicePattern : devicePatternList) {
       // get all matched devices
       deviceSet.addAll(
@@ -545,7 +545,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               .map(DeviceSchemaInfo::getDevicePath)
               .collect(Collectors.toList()));
     }
-    return deviceSet;
+
+    return queryStatement.getResultDeviceOrder() == Ordering.ASC
+        ? deviceSet.stream().sorted().collect(Collectors.toCollection(LinkedHashSet::new))
+        : deviceSet.stream()
+            .sorted(Comparator.reverseOrder())
+            .collect(Collectors.toCollection(LinkedHashSet::new));
   }
 
   private List<Pair<Expression, String>> analyzeSelect(
@@ -1689,6 +1694,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           "The query time range should be specified in the GROUP BY TIME clause.");
     }
     analysis.setGroupByTimeParameter(new GroupByTimeParameter(groupByTimeComponent));
+
+    Filter globalTimeFilter = analysis.getGlobalTimeFilter();
+    Filter groupByFilter = initGroupByFilter(groupByTimeComponent);
+    if (globalTimeFilter == null) {
+      globalTimeFilter = groupByFilter;
+    } else {
+      globalTimeFilter = FilterFactory.and(globalTimeFilter, groupByFilter);
+    }
+    analysis.setGlobalTimeFilter(globalTimeFilter);
   }
 
   private void analyzeFill(Analysis analysis, QueryStatement queryStatement) {
