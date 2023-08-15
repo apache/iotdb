@@ -39,7 +39,10 @@ public class PipeRealtimeEventFactory {
       WALEntryHandler walEntryHandler, InsertNode insertNode, TsFileResource resource) {
     return TS_FILE_EPOCH_MANAGER.bindPipeInsertNodeTabletInsertionEvent(
         new PipeInsertNodeTabletInsertionEvent(
-            walEntryHandler, insertNode.getProgressIndex(), insertNode.isAligned()),
+            walEntryHandler,
+            insertNode.getProgressIndex(),
+            insertNode.isAligned(),
+            insertNode.isGeneratedByPipe()),
         insertNode,
         resource);
   }

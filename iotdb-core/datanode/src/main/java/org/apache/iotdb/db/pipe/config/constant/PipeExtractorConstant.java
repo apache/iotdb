@@ -26,6 +26,10 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_PATTERN_KEY = "extractor.pattern";
   public static final String EXTRACTOR_PATTERN_DEFAULT_VALUE = "root";
 
+  public static final String EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY =
+      "extractor.forwarding-pipe-requests";
+  public static final boolean EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE = false;
+
   public static final String EXTRACTOR_HISTORY_ENABLE_KEY = "extractor.history.enable";
   public static final String EXTRACTOR_HISTORY_START_TIME = "extractor.history.start-time";
   public static final String EXTRACTOR_HISTORY_END_TIME = "extractor.history.end-time";

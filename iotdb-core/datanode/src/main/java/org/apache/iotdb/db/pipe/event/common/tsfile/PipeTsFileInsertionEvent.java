@@ -156,6 +156,11 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     return new PipeTsFileInsertionEvent(resource, pipeTaskMeta, pattern, startTime, endTime);
   }
 
+  @Override
+  public boolean isGeneratedByPipe() {
+    return false;
+  }
+
   /////////////////////////// TsFileInsertionEvent ///////////////////////////
 
   @Override
