@@ -47,13 +47,6 @@ public class BytesUtilsTest {
   }
 
   @Test
-  public void testCRC() {
-    ByteBuffer byteBuffer = ByteBuffer.wrap(new byte[10]);
-    ReadWriteIOUtils.write(4, byteBuffer);
-    System.out.println(byteBuffer.arrayOffset());
-  }
-
-  @Test
   public void testIntToBytesWithBytesArray() {
     int b1 = 123;
     int b2 = 234;
