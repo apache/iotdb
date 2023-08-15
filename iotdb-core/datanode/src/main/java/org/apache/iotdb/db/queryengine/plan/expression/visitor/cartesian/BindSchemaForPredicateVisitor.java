@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
-import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.BinaryExpression;
@@ -40,7 +39,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
 
-import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.getMeasurementExpression;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.cartesianProduct;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructBinaryExpressions;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructFunctionExpressions;
@@ -76,16 +74,13 @@ public class BindSchemaForPredicateVisitor
         usedExpressions.addAll(actualExpressions);
       }
 
-      // for count_time aggregation, set the measurement as final response header
-      Expression measurementExpressionAlias =
-          getMeasurementExpression(predicate.getExpressions().get(0), new Analysis());
       Expression countTimeExpression =
           new FunctionExpression(
               COUNT_TIME,
               new LinkedHashMap<>(),
               Collections.singletonList(new TimestampOperand()),
               usedExpressions,
-              measurementExpressionAlias.getOutputSymbol());
+              "*");
       return Collections.singletonList(countTimeExpression);
     }
 

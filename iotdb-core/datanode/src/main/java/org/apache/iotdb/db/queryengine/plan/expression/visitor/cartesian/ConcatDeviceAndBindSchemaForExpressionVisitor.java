@@ -53,9 +53,9 @@ public class ConcatDeviceAndBindSchemaForExpressionVisitor
       FunctionExpression functionExpression, Context context) {
     List<List<Expression>> extendedExpressions = new ArrayList<>();
     for (Expression suffixExpression : functionExpression.getExpressions()) {
-      List<Expression> concatedExpression = process(suffixExpression, context);
-      if (concatedExpression != null && !concatedExpression.isEmpty()) {
-        extendedExpressions.add(concatedExpression);
+      List<Expression> concatExpression = process(suffixExpression, context);
+      if (concatExpression != null && !concatExpression.isEmpty()) {
+        extendedExpressions.add(concatExpression);
       }
 
       // We just process first input Expression of AggregationFunction,
@@ -79,16 +79,13 @@ public class ConcatDeviceAndBindSchemaForExpressionVisitor
           reconstructFunctionExpressions(functionExpression, childExpressionsList);
       usedExpressions.addAll(expressions);
 
-      // for count_time aggregation, set the measurement as final response header
-      Expression measurementExpressionAlias =
-          getMeasurementExpression(functionExpression.getExpressions().get(0), new Analysis());
       Expression countTimeExpression =
           new FunctionExpression(
               COUNT_TIME,
               new LinkedHashMap<>(),
               Collections.singletonList(new TimestampOperand()),
               usedExpressions,
-              measurementExpressionAlias.getOutputSymbol());
+              "*");
       return Collections.singletonList(countTimeExpression);
     }
 

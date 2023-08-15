@@ -170,7 +170,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -208,6 +207,7 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils.const
 import static org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils.constructTargetPath;
 import static org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.GetSourcePathsVisitor.getSourcePaths;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME_HEADER;
 
 /** This visitor is used to analyze each type of Statement and returns the {@link Analysis}. */
 public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> {
@@ -312,20 +312,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         analyzeGroupByTag(analysis, queryStatement, outputExpressions);
 
         Set<Expression> selectExpressions = new LinkedHashSet<>();
-        // duplicatedAggExpressions is used for count_time aggregation,
-        // because both count_time(s1) and count_time(s2) is transformed to count_time(Time),
-        // but we need put the countTimeSeries to sourceTransformedExpression
-        List<Expression> duplicatedAggExpressions = new ArrayList<>();
         if (queryStatement.isOutputEndTime()) {
           selectExpressions.add(END_TIME_EXPRESSION);
         }
         for (Pair<Expression, String> outputExpressionAndAlias : outputExpressions) {
           Expression outputExpression = outputExpressionAndAlias.left;
-          if (queryStatement.isAggregationQuery() && selectExpressions.contains(outputExpression)) {
-            duplicatedAggExpressions.add(outputExpression);
-            continue;
-          }
-
           selectExpressions.add(outputExpression);
         }
         analysis.setSelectExpressions(selectExpressions);
@@ -333,7 +324,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         analyzeAggregation(analysis, queryStatement);
 
         analyzeWhere(analysis, queryStatement, schemaTree);
-        analyzeSourceTransform(analysis, queryStatement, duplicatedAggExpressions);
+        analyzeSourceTransform(analysis, outputExpressions, queryStatement);
 
         analyzeSource(analysis, queryStatement);
 
@@ -775,9 +766,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return rawExpression.getOutputSymbol();
     }
 
-    if (queryStatement.isAggregationQuery()
-        && normalizedExpression.getOutputSymbol().contains(COUNT_TIME)) {
-      return normalizedExpression.getTransformedOutputSymbol();
+    if (queryStatement.isCountTimeAggregation()) {
+      return COUNT_TIME_HEADER;
     }
 
     return null;
@@ -1197,14 +1187,33 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private void analyzeSourceTransform(
-      Analysis analysis, QueryStatement queryStatement, List<Expression> duplicatedAggExpressions) {
+      Analysis analysis,
+      List<Pair<Expression, String>> outputExpressions,
+      QueryStatement queryStatement) {
     Set<Expression> sourceTransformExpressions = analysis.getSourceTransformExpressions();
 
     if (queryStatement.isAggregationQuery()) {
-      putAggExpressionToSourceTransform(analysis.getAggregationExpressions(), analysis);
-      for (Expression duplicateExpression : duplicatedAggExpressions) {
-        putAggExpressionToSourceTransform(
-            searchAggregationExpressions(duplicateExpression), analysis);
+      if (queryStatement.isCountTimeAggregation()) {
+
+        for (Pair<Expression, String> pair : outputExpressions) {
+          FunctionExpression countTimeExpression = (FunctionExpression) pair.left;
+          for (Expression countTimeSourceExpression :
+              countTimeExpression.getCountTimeExpressions()) {
+            analyzeExpressionType(analysis, countTimeSourceExpression);
+            sourceTransformExpressions.add(countTimeSourceExpression);
+          }
+        }
+
+        // count_time only returns one result
+        Pair<Expression, String> firstCountTimeExpression = outputExpressions.get(0);
+        outputExpressions.clear();
+        outputExpressions.add(firstCountTimeExpression);
+
+      } else {
+        for (Expression aggExpression : analysis.getAggregationExpressions()) {
+          // for AggregationExpression, only the first Expression of input need to transform
+          sourceTransformExpressions.add(aggExpression.getExpressions().get(0));
+        }
       }
 
       if (queryStatement.hasGroupByExpression()) {
@@ -1214,25 +1223,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       sourceTransformExpressions.addAll(analysis.getSelectExpressions());
       if (queryStatement.hasOrderByExpression()) {
         sourceTransformExpressions.addAll(analysis.getOrderByExpressions());
-      }
-    }
-  }
-
-  private void putAggExpressionToSourceTransform(
-      Collection<Expression> aggExpressions, Analysis analysis) {
-    Set<Expression> sourceTransformExpressions = analysis.getSourceTransformExpressions();
-    for (Expression aggExpression : aggExpressions) {
-      // put countTimeSourceExpression of count_time aggregation into sourceTransformExpression
-      if (aggExpression instanceof FunctionExpression
-          && COUNT_TIME.equalsIgnoreCase(((FunctionExpression) aggExpression).getFunctionName())) {
-        for (Expression countTimeSourceExpression :
-            ((FunctionExpression) aggExpression).getCountTimeExpressions()) {
-          analyzeExpressionType(analysis, countTimeSourceExpression);
-          sourceTransformExpressions.add(countTimeSourceExpression);
-        }
-      } else {
-        // for AggregationExpression, only the first Expression of input need to transform
-        sourceTransformExpressions.add(aggExpression.getExpressions().get(0));
       }
     }
   }

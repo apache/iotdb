@@ -180,11 +180,6 @@ public class CaseWhenThenExpression extends Expression {
   }
 
   @Override
-  public String getTransformedOutputInternal() {
-    return this.getOutputSymbolInternal();
-  }
-
-  @Override
   public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
     return visitor.visitCaseWhenThenExpression(this, context);
   }

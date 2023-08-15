@@ -50,8 +50,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
-
 public class FunctionExpression extends Expression {
 
   private FunctionType functionType;
@@ -218,15 +216,6 @@ public class FunctionExpression extends Expression {
       }
     }
     return functionName + "(" + builder + ")";
-  }
-
-  @Override
-  public String getTransformedOutputInternal() {
-    if (COUNT_TIME.equalsIgnoreCase(functionName)) {
-      return String.format("count_time(%s)", countTimeAlias);
-    }
-
-    return this.getOutputSymbolInternal();
   }
 
   @Override

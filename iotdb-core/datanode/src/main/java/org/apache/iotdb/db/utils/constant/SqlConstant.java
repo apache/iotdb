@@ -58,6 +58,7 @@ public class SqlConstant {
   public static final String MODE = "mode";
 
   public static final String COUNT_TIME = "count_time";
+  public static final String COUNT_TIME_HEADER = "count_time(*)";
 
   // names of scalar functions
   public static final String DIFF = "diff";

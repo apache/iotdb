@@ -23,15 +23,19 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
+import static org.apache.iotdb.db.queryengine.plan.expression.visitor.CountTimeAggregationAmountVisitor.COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
@@ -119,16 +123,14 @@ public class IoTDBCountTimeIT {
   @Test
   public void normalQueryTest() {
     // align by time
-    String[] expectedHeader = new String[] {"count_time(*),count_time(*)"};
-    String[] retArray = new String[] {"2,2,"};
+    String[] expectedHeader = new String[] {"count_time(*)"};
+    String[] retArray = new String[] {"2,"};
+    resultSetEqualTest("SELECT COUNT_TIME(*) FROM root.db.**;", expectedHeader, retArray);
+
+    expectedHeader = new String[] {"count_time(*)"};
+    retArray = new String[] {"2,"};
     resultSetEqualTest(
         "SELECT COUNT_TIME(*) FROM root.db.d1, root.db.d2;", expectedHeader, retArray);
-
-    expectedHeader = new String[] {"count_time(s1)"};
-    retArray = new String[] {"1,"};
-    resultSetEqualTest("select count_time(s1) from root.db.**;", expectedHeader, retArray);
-
-    // TODO how to represent count_time(d1.s1)
 
     // align by device
     expectedHeader = new String[] {"Device,count_time(*)"};
@@ -136,10 +138,12 @@ public class IoTDBCountTimeIT {
     resultSetEqualTest(
         "select count_time(*) from root.db.** align by device;", expectedHeader, retArray);
 
-    expectedHeader = new String[] {"Device,count_time(s1)"};
-    retArray = new String[] {"root.db.d1,1,", "root.db.d2,0,"};
+    expectedHeader = new String[] {"Device,count_time(*)"};
+    retArray = new String[] {"root.db.d1,2,", "root.db.d2,1,"};
     resultSetEqualTest(
-        "select count_time(s1) from root.db.** align by device;", expectedHeader, retArray);
+        "select count_time(*) from root.db.d1,root.db.d2 align by device;",
+        expectedHeader,
+        retArray);
   }
 
   @Test
@@ -151,25 +155,12 @@ public class IoTDBCountTimeIT {
         "SELECT count_time(*) FROM root.downsampling.** GROUP BY([0, 10), 2ms);",
         expectedHeader,
         retArray);
-
-    expectedHeader = new String[] {"Time,count_time(s1)"};
-    retArray = new String[] {"0,2,", "2,1,", "4,2,", "6,1,", "8,1,"};
     resultSetEqualTest(
-        "SELECT count_time(s1) FROM root.downsampling.** GROUP BY([0, 10), 2ms);",
+        "SELECT count_time(*) FROM root.downsampling.d1,root.downsampling.d2 GROUP BY([0, 10), 2ms);",
         expectedHeader,
         retArray);
-
-    expectedHeader = new String[] {"Time,count_time(s1)"};
-    retArray = new String[] {"0,1,", "2,0,", "4,2,", "6,0,", "8,1,"};
     resultSetEqualTest(
-        "SELECT count_time(s1) FROM root.downsampling.d1 GROUP BY([0, 10), 2ms);",
-        expectedHeader,
-        retArray);
-
-    expectedHeader = new String[] {"Time,count_time(s2)"};
-    retArray = new String[] {"0,1,", "2,1,", "4,1,", "6,1,", "8,2,"};
-    resultSetEqualTest(
-        "SELECT count_time(s2) FROM root.downsampling.d1 GROUP BY([0, 10), 2ms);",
+        "SELECT count_time(*) FROM root.downsampling.d2,root.downsampling.d1 GROUP BY([0, 10), 2ms);",
         expectedHeader,
         retArray);
 
@@ -179,33 +170,6 @@ public class IoTDBCountTimeIT {
         "SELECT count_time(*) FROM root.downsampling.d1 GROUP BY([0, 10), 2ms);",
         expectedHeader,
         retArray);
-
-    expectedHeader = new String[] {"Time,count_time(s1),count_time(s2)"};
-    retArray = new String[] {"0,2,2,", "2,1,1,", "4,2,2,", "6,1,1,", "8,2,2,"};
-    resultSetEqualTest(
-        "SELECT count_time(s1),count_time(s2) FROM root.downsampling.d1 GROUP BY([0, 10), 2ms);",
-        expectedHeader,
-        retArray);
-
-    expectedHeader = new String[] {"count_time(s1 + 1)"};
-    retArray = new String[] {"4,"};
-    resultSetEqualTest(
-        "SELECT count_time(s1+1) FROM root.downsampling.d1;", expectedHeader, retArray);
-
-    expectedHeader = new String[] {"count_time(s1 + 1)"};
-    retArray = new String[] {"7,"};
-    resultSetEqualTest(
-        "SELECT count_time(s1+1) FROM root.downsampling.*;", expectedHeader, retArray);
-
-    expectedHeader = new String[] {"count_time(s1 + s2)"};
-    retArray = new String[] {"8,"};
-    resultSetEqualTest(
-        "SELECT count_time(s1+s2) FROM root.downsampling.d1;", expectedHeader, retArray);
-
-    expectedHeader = new String[] {"count_time(s1 + s2)"};
-    retArray = new String[] {"8,"};
-    resultSetEqualTest(
-        "SELECT count_time(s1+s2) FROM root.downsampling.*;", expectedHeader, retArray);
 
     // align by device
     expectedHeader = new String[] {"Time,Device,count_time(*)"};
@@ -224,6 +188,14 @@ public class IoTDBCountTimeIT {
         };
     resultSetEqualTest(
         "SELECT count_time(*) FROM root.downsampling.** GROUP BY([0, 10), 2ms) ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+    resultSetEqualTest(
+        "SELECT count_time(*) FROM root.downsampling.d1,root.downsampling.d2 GROUP BY([0, 10), 2ms) ALIGN BY DEVICE;",
+        expectedHeader,
+        retArray);
+    resultSetEqualTest(
+        "SELECT count_time(*) FROM root.downsampling.d2,root.downsampling.d1 GROUP BY([0, 10), 2ms) ALIGN BY DEVICE;",
         expectedHeader,
         retArray);
 
@@ -246,63 +218,6 @@ public class IoTDBCountTimeIT {
         "SELECT count_time(*) FROM root.downsampling.** GROUP BY([0, 10), 2ms) ORDER BY count_time(*) ALIGN BY DEVICE;",
         expectedHeader,
         retArray);
-
-    expectedHeader = new String[] {"Time,Device,count_time(s1)"};
-    retArray =
-        new String[] {
-          "0,root.downsampling.d1,1,",
-          "2,root.downsampling.d1,0,",
-          "4,root.downsampling.d1,2,",
-          "6,root.downsampling.d1,0,",
-          "8,root.downsampling.d1,1,",
-          "0,root.downsampling.d2,1,",
-          "2,root.downsampling.d2,1,",
-          "4,root.downsampling.d2,1,",
-          "6,root.downsampling.d2,1,",
-          "8,root.downsampling.d2,1,",
-        };
-    resultSetEqualTest(
-        "SELECT count_time(s1) FROM root.downsampling.** GROUP BY([0, 10), 2ms) ALIGN BY DEVICE;",
-        expectedHeader,
-        retArray);
-
-    expectedHeader = new String[] {"Time,Device,sum(s1) / count_time(*)"};
-    retArray =
-        new String[] {
-          "0,root.downsampling.d1,0.0,",
-          "2,root.downsampling.d1,null,",
-          "4,root.downsampling.d1,4.5,",
-          "6,root.downsampling.d1,null,",
-          "8,root.downsampling.d1,4.0,",
-          "0,root.downsampling.d2,0.5,",
-          "2,root.downsampling.d2,2.0,",
-          "4,root.downsampling.d2,2.5,",
-          "6,root.downsampling.d2,7.0,",
-          "8,root.downsampling.d2,8.0,",
-        };
-    resultSetEqualTest(
-        "SELECT sum(s1) / count_time(*)  FROM root.downsampling.* GROUP BY([0, 10), 2ms) ALIGN BY DEVICE;",
-        expectedHeader,
-        retArray);
-
-    // test sort + offset, limit
-    expectedHeader = new String[] {"Time,Device,count_time(s1)"};
-    retArray =
-        new String[] {
-          "6,root.downsampling.d1,0,",
-          "0,root.downsampling.d1,1,",
-          "8,root.downsampling.d1,1,",
-          "0,root.downsampling.d2,1,",
-          "2,root.downsampling.d2,1,",
-          "4,root.downsampling.d2,1,",
-          "6,root.downsampling.d2,1,",
-          "8,root.downsampling.d2,1,",
-          "4,root.downsampling.d1,2,",
-        };
-    resultSetEqualTest(
-        "SELECT count_time(s1) FROM root.downsampling.** GROUP BY([0, 10), 2ms) ORDER BY count_time(s1) OFFSET 1 LIMIT 9 ALIGN BY DEVICE;",
-        expectedHeader,
-        retArray);
   }
 
   @Test
@@ -312,14 +227,6 @@ public class IoTDBCountTimeIT {
     String[] retArray = new String[] {"0,1,2,", "2,2,1,", "3,4,2,", "5,6,2,"};
     resultSetEqualTest(
         "select __endTime, count_time(*) from root.variation.d1 group by variation(state, 0, ignoreNull=False);",
-        expectedHeader,
-        retArray);
-
-    // TODO set `0,4,4` to `0,4,5` when the impl of ignoreNull changed
-    expectedHeader = new String[] {"Time,__endTime,count_time(s1)"};
-    retArray = new String[] {"0,4,4,", "5,6,2,"};
-    resultSetEqualTest(
-        "select __endTime, count_time(s1) from root.variation.d1 group by variation(state, 0, ignoreNull=True);",
         expectedHeader,
         retArray);
 
@@ -340,18 +247,14 @@ public class IoTDBCountTimeIT {
             + "group by variation(state, 0, ignoreNull=False) align by device;",
         expectedHeader,
         retArray);
-
-    expectedHeader = new String[] {"Time,Device,__endTime,count_time(s1)"};
-    retArray =
-        new String[] {
-          "0,root.variation.d1,4,4,",
-          "5,root.variation.d1,6,2,",
-          "0,root.variation.d2,0,1,",
-          "2,root.variation.d2,6,4,",
-        };
     resultSetEqualTest(
-        "select __endTime, count_time(s1) from root.variation.** "
-            + "group by variation(state, 0, ignoreNull=True) align by device;",
+        "select __endTime, count_time(*) from root.variation.d1,root.variation.d2 "
+            + "group by variation(state, 0, ignoreNull=False) align by device;",
+        expectedHeader,
+        retArray);
+    resultSetEqualTest(
+        "select __endTime, count_time(*) from root.variation.d2,root.variation.d1 "
+            + "group by variation(state, 0, ignoreNull=False) align by device;",
         expectedHeader,
         retArray);
   }
@@ -365,11 +268,12 @@ public class IoTDBCountTimeIT {
         "select __endTime, count_time(*) from root.session.** group by session(10ms);",
         expectedHeader,
         retArray);
-
-    expectedHeader = new String[] {"Time,__endTime,count_time(s1)"};
-    retArray = new String[] {"0,1,2,", "20,23,2,", "56,56,1,"};
     resultSetEqualTest(
-        "select __endTime, count_time(s1) from root.session.** group by session(10ms);",
+        "select __endTime, count_time(*) from root.session.d1,root.session.d2 group by session(10ms);",
+        expectedHeader,
+        retArray);
+    resultSetEqualTest(
+        "select __endTime, count_time(*) from root.session.d2,root.session.d1 group by session(10ms);",
         expectedHeader,
         retArray);
 
@@ -390,18 +294,12 @@ public class IoTDBCountTimeIT {
         "select __endTime, count_time(*) from root.session.** group by session(10ms) align by device;",
         expectedHeader,
         retArray);
-
-    expectedHeader = new String[] {"Time,Device,__endTime,count_time(s1)"};
-    retArray =
-        new String[] {
-          "0,root.session.d1,0,1,",
-          "20,root.session.d1,23,2,",
-          "56,root.session.d1,56,1,",
-          "1,root.session.d2,1,1,",
-          "20,root.session.d2,23,2,",
-        };
     resultSetEqualTest(
-        "select __endTime, count_time(s1) from root.session.** group by session(10ms) align by device;",
+        "select __endTime, count_time(*) from root.session.d1,root.session.d2 group by session(10ms) align by device;",
+        expectedHeader,
+        retArray);
+    resultSetEqualTest(
+        "select __endTime, count_time(*) from root.session.d2,root.session.d1 group by session(10ms) align by device;",
         expectedHeader,
         retArray);
   }
@@ -416,13 +314,6 @@ public class IoTDBCountTimeIT {
         expectedHeader,
         retArray);
 
-    expectedHeader = new String[] {"Time,__endTime,count_time(s1)"};
-    retArray = new String[] {"1,23,2,", "55,56,2,"};
-    resultSetEqualTest(
-        "select __endTime, count_time(s1) from root.condition.d1 group by condition(state=1, KEEP>=2, ignoreNull=true);",
-        expectedHeader,
-        retArray);
-
     // align by device
     expectedHeader = new String[] {"Time,Device,count_time(*)"};
     retArray = new String[] {"55,root.condition.d1,2,", "20,root.condition.d2,4,"};
@@ -430,21 +321,19 @@ public class IoTDBCountTimeIT {
         "select count_time(*) from root.condition.** group by condition(state=1, KEEP>=2, ignoreNull=false) align by device;",
         expectedHeader,
         retArray);
-
-    expectedHeader = new String[] {"Time,Device,__endTime,count_time(s1)"};
-    retArray =
-        new String[] {
-          "1,root.condition.d1,23,2,", "55,root.condition.d1,56,2,", "20,root.condition.d2,56,4,"
-        };
     resultSetEqualTest(
-        "select __endTime, count_time(s1) from root.condition.** group by condition(state=1, KEEP>=2, ignoreNull=true) align by device;",
+        "select count_time(*) from root.condition.d1,root.condition.d2 group by condition(state=1, KEEP>=2, ignoreNull=false) align by device;",
+        expectedHeader,
+        retArray);
+    resultSetEqualTest(
+        "select count_time(*) from root.condition.d2,root.condition.d1 group by condition(state=1, KEEP>=2, ignoreNull=false) align by device;",
         expectedHeader,
         retArray);
   }
 
+  @Ignore
   @Test
   public void havingTest() {
-
     // align by time
     String[] expectedHeader = new String[] {"Time,count_time(s1),count(root.having.d1.s1)"};
     String[] retArray = new String[] {"4,2,2,"};
@@ -452,35 +341,12 @@ public class IoTDBCountTimeIT {
         "select count_time(s1), count(s1) from root.having.d1 group by([0, 10), 2ms) having count_time(s1) > 1;",
         expectedHeader,
         retArray);
+  }
 
-    expectedHeader = new String[] {"Time,avg(root.having.d1.s1),avg_1"};
-    retArray = new String[] {"0,0.0,0.0,", "4,4.5,4.5,", "8,8.0,4.0,"};
-    resultSetEqualTest(
-        "select avg(s1), sum(s1) / count_time(*) as avg_1 from root.having.d1 group by([0, 10), 2ms) having count_time(*) > 1;",
-        expectedHeader,
-        retArray);
-
-    // align by device
-    expectedHeader = new String[] {"Time,Device,avg(s1),avg_1"};
-    retArray =
-        new String[] {
-          "0,root.having.d1,0.0,0.0,",
-          "4,root.having.d1,4.5,4.5,",
-          "8,root.having.d1,8.0,4.0,",
-          "0,root.having.d2,1.0,0.5,",
-          "4,root.having.d2,5.0,2.5,",
-          "8,root.having.d2,8.5,8.5,",
-        };
-    resultSetEqualTest(
-        "select avg(s1), sum(s1) / count_time(*) as avg_1 from root.having.* group by([0, 10), 2ms) having count_time(*) > 1 align by device;",
-        expectedHeader,
-        retArray);
-
-    expectedHeader = new String[] {"Time,Device,count_time(s1),count(s1)"};
-    retArray = new String[] {"4,root.having.d1,2,2,", "8,root.having.d2,2,2,"};
-    resultSetEqualTest(
-        "select count_time(s1), count(s1) from root.having.** group by([0, 10), 2ms) having count_time(s1) > 1 align by device;",
-        expectedHeader,
-        retArray);
+  @Test
+  public void testUnSupportedSql() {
+    assertTestFail(
+        "SELECT COUNT_TIME(s1) FROM root.db.**;",
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": " + COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD);
   }
 }

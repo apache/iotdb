@@ -29,12 +29,15 @@ import org.junit.Test;
 
 import java.time.ZonedDateTime;
 
+import static org.apache.iotdb.db.queryengine.plan.expression.visitor.CountTimeAggregationAmountVisitor.COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.IntoComponent.DEVICE_ALIGNMENT_INCONSISTENT_ERROR_MSG;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.IntoComponent.DEVICE_NUM_MISMATCH_ERROR_MSG;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.IntoComponent.DUPLICATE_TARGET_PATH_ERROR_MSG;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.IntoComponent.FORBID_PLACEHOLDER_ERROR_MSG;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.IntoComponent.PATH_NUM_MISMATCH_ERROR_MSG;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.IntoComponent.PLACEHOLDER_MISMATCH_ERROR_MSG;
+import static org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement.COUNT_TIME_CAN_ONLY_EXIST_ONE;
+import static org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement.COUNT_TIME_NOT_SUPPORT_ARITHMETIC_OPERATION;
 import static org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement.COUNT_TIME_NOT_SUPPORT_GROUP_BY_LEVEL;
 import static org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement.COUNT_TIME_NOT_SUPPORT_GROUP_BY_TAG;
 import static org.junit.Assert.fail;
@@ -161,6 +164,40 @@ public class AnalyzeFailTest {
     assertAnalyzeSemanticException(
         "select count_time(*) from root.sg.* group by tags(key);",
         COUNT_TIME_NOT_SUPPORT_GROUP_BY_TAG);
+
+    assertAnalyzeSemanticException(
+        "select count_time(s1) from root.sg.*;", COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD);
+
+    assertAnalyzeSemanticException(
+        "select count_time(s1) from root.sg.d1;", COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD);
+
+    assertAnalyzeSemanticException(
+        "select count_time(d1.s1) from root.sg.*;", COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD);
+
+    assertAnalyzeSemanticException(
+        "select count_time(d1.*) from root.sg.*;", COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD);
+
+    assertAnalyzeSemanticException(
+        "select count_time(* + *) from root.sg.*;", COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD);
+
+    assertAnalyzeSemanticException(
+        "select sum(s1) / count_time(*) from root.sg.*;",
+        COUNT_TIME_NOT_SUPPORT_ARITHMETIC_OPERATION);
+
+    assertAnalyzeSemanticException(
+        "select count_time(*) from root.sg.* having count_time(s1) > 1;",
+        COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD);
+
+    assertAnalyzeSemanticException(
+        "select count_time(*) from root.sg.* having count(s1) + count_time(*) > 1;",
+        COUNT_TIME_NOT_SUPPORT_ARITHMETIC_OPERATION);
+
+    assertAnalyzeSemanticException(
+        "select count_time(*),count_time(*) from root.sg.**;", COUNT_TIME_CAN_ONLY_EXIST_ONE);
+
+    assertAnalyzeSemanticException(
+        "select count_time(*),count_time(*) from root.sg.d1,root.sg.d2;",
+        COUNT_TIME_CAN_ONLY_EXIST_ONE);
   }
 
   private void assertAnalyzeSemanticException(String sql, String message) {

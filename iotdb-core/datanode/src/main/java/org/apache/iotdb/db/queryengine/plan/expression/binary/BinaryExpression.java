@@ -155,14 +155,6 @@ public abstract class BinaryExpression extends Expression {
     return buildExpression(left, right);
   }
 
-  @Override
-  public String getTransformedOutputInternal() {
-    String left = this.getLeftExpression().getTransformedOutputInternal();
-    String right = this.getRightExpression().getTransformedOutputInternal();
-
-    return buildExpression(left, right);
-  }
-
   private String buildExpression(String left, String right) {
     StringBuilder builder = new StringBuilder();
     if (leftExpression.getExpressionType().getPriority() < this.getExpressionType().getPriority()) {

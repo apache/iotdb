@@ -117,6 +117,8 @@ public class QueryStatement extends Statement {
 
   private boolean useWildcard = true;
 
+  private boolean isCountTimeAggregation = false;
+
   public QueryStatement() {
     this.statementType = StatementType.QUERY;
   }
@@ -468,6 +470,14 @@ public class QueryStatement extends Statement {
     return useWildcard;
   }
 
+  public void setCountTimeAggregation(boolean countTimeAggregation) {
+    this.isCountTimeAggregation = countTimeAggregation;
+  }
+
+  public boolean isCountTimeAggregation() {
+    return this.isCountTimeAggregation;
+  }
+
   public static final String RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG =
       "Raw data and aggregation hybrid query is not supported.";
 
@@ -476,6 +486,12 @@ public class QueryStatement extends Statement {
 
   public static final String COUNT_TIME_NOT_SUPPORT_GROUP_BY_TAG =
       "Count_time aggregation function using with group by tag is not supported.";
+
+  public static final String COUNT_TIME_NOT_SUPPORT_ARITHMETIC_OPERATION =
+      "Count_time aggregation function is not support arithmetic operation.";
+
+  public static final String COUNT_TIME_CAN_ONLY_EXIST_ONE =
+      "Count_time aggregation function can only exist one.";
 
   @SuppressWarnings({"squid:S3776", "squid:S6541"}) // Suppress high Cognitive Complexity warning
   public void semanticCheck() {
@@ -494,10 +510,13 @@ public class QueryStatement extends Statement {
         if (resultColumn.getColumnType() != ResultColumn.ColumnType.AGGREGATION) {
           throw new SemanticException(RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG);
         }
+
+        String expressionString = resultColumn.getExpression().getExpressionString();
+        if (expressionString.toLowerCase().contains(COUNT_TIME)) {
+          checkCountTimeValidation(resultColumn.getExpression(), outputColumn);
+        }
         outputColumn.add(
-            resultColumn.getAlias() != null
-                ? resultColumn.getAlias()
-                : resultColumn.getExpression().getExpressionString());
+            resultColumn.getAlias() != null ? resultColumn.getAlias() : expressionString);
       }
 
       for (Expression expression : getExpressionSortItemList()) {
@@ -505,7 +524,7 @@ public class QueryStatement extends Statement {
           throw new SemanticException(RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG);
         }
       }
-      CountTimeAggregationAmountVisitor countTimeAggregationAmountVisitor = new CountTimeAggregationAmountVisitor();
+
       if (isGroupByTag()) {
         if (hasHaving()) {
           throw new SemanticException("Having clause is not supported yet in GROUP BY TAGS query");
@@ -520,9 +539,6 @@ public class QueryStatement extends Statement {
         }
         for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
           Expression expression = resultColumn.getExpression();
-          if (countTimeAggregationAmountVisitor.process(resultColumn.getExpression(), null).size() > 0) {
-            throw new SemanticException(COUNT_TIME_NOT_SUPPORT_GROUP_BY_TAG);
-          }
           if (!(expression instanceof FunctionExpression
               && expression.getExpressions().get(0) instanceof TimeSeriesOperand
               && expression.isBuiltInAggregationFunctionExpression())) {
@@ -530,17 +546,6 @@ public class QueryStatement extends Statement {
                 expression + " can't be used in group by tag. It will be supported in the future.");
           }
         }
-      }
-      if (isGroupByLevel()
-          && selectComponent.getResultColumns().stream()
-              .anyMatch(
-                  resultColumn ->
-                      resultColumn
-                          .getExpression()
-                          .getOutputSymbol()
-                          .toLowerCase()
-                          .contains(COUNT_TIME))) {
-        throw new SemanticException(COUNT_TIME_NOT_SUPPORT_GROUP_BY_LEVEL);
       }
       if (hasGroupByExpression()) {
         // Aggregation expression shouldn't exist in group by clause.
@@ -580,6 +585,9 @@ public class QueryStatement extends Statement {
       if (!isAggregationQuery()) {
         throw new SemanticException(
             "Expression of HAVING clause can not be used in NonAggregationQuery");
+      }
+      if (havingExpression.toString().toLowerCase().contains(COUNT_TIME)) {
+        checkCountTimeValidation(havingExpression, null);
       }
       try {
         if (isGroupByLevel()) {
@@ -719,5 +727,33 @@ public class QueryStatement extends Statement {
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitQuery(this, context);
+  }
+
+  private void checkCountTimeValidation(Expression expression, Set<String> outputColumn) {
+    CountTimeAggregationAmountVisitor countTimeAggregationAmountVisitor =
+        new CountTimeAggregationAmountVisitor();
+
+    List<Expression> expressions = countTimeAggregationAmountVisitor.process(expression, null);
+    if (expressions.size() > 1) {
+      throw new SemanticException(COUNT_TIME_NOT_SUPPORT_ARITHMETIC_OPERATION);
+    } else if (expressions.size() == 1) {
+      if (!(expression instanceof FunctionExpression)) {
+        throw new SemanticException(COUNT_TIME_NOT_SUPPORT_ARITHMETIC_OPERATION);
+      }
+
+      if (outputColumn != null && outputColumn.contains(expression.getOutputSymbol())) {
+        throw new SemanticException(COUNT_TIME_CAN_ONLY_EXIST_ONE);
+      }
+
+      if (isGroupByTag()) {
+        throw new SemanticException(COUNT_TIME_NOT_SUPPORT_GROUP_BY_TAG);
+      }
+
+      if (isGroupByLevel()) {
+        throw new SemanticException(COUNT_TIME_NOT_SUPPORT_GROUP_BY_LEVEL);
+      }
+
+      setCountTimeAggregation(true);
+    }
   }
 }
