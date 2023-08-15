@@ -275,6 +275,10 @@
                     <groupId>io.dropwizard.metrics</groupId>
                     <artifactId>metrics-jvm</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>com.bugsnag</groupId>
+                    <artifactId>bugsnag</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <!-- for mocked test-->
