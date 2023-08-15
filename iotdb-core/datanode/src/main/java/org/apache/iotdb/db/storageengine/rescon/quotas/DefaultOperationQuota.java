@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedInsertBaseStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedLoadTsFileStatement;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.BitMap;
@@ -137,7 +138,10 @@ public class DefaultOperationQuota implements OperationQuota {
           }
           break;
         case MULTI_BATCH_INSERT:
-          // LoadTsFileStatement  InsertMultiTabletsStatement
+          // PipeEnrichedLoadTsFileStatement  LoadTsFileStatement  InsertMultiTabletsStatement
+          if (s instanceof PipeEnrichedLoadTsFileStatement) {
+            s = ((PipeEnrichedLoadTsFileStatement) s).getLoadTsFileStatement();
+          }
           if (s instanceof LoadTsFileStatement) {
             LoadTsFileStatement loadTsFileStatement = (LoadTsFileStatement) s;
             for (int i = 0; i < loadTsFileStatement.getResources().size(); i++) {

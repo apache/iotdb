@@ -313,6 +313,7 @@ struct TTsFilePieceReq{
 struct TLoadCommandReq{
     1: required i32 commandType
     2: required string uuid
+    3: optional bool isGeneratedByPipe
 }
 
 struct TLoadResp{

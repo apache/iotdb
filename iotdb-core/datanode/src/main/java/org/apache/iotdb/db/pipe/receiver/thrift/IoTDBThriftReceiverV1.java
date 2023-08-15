@@ -41,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedInsertBaseStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedLoadTsFileStatement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -414,15 +415,10 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
           TSStatusCode.PIPE_TRANSFER_EXECUTE_STATEMENT_ERROR, "Execute null statement.");
     }
 
-    switch (statement.getType()) {
-      case INSERT:
-      case BATCH_INSERT:
-      case BATCH_INSERT_ROWS:
-      case BATCH_INSERT_ONE_DEVICE:
-      case MULTI_BATCH_INSERT:
-        statement = new PipeEnrichedInsertBaseStatement((InsertBaseStatement) statement);
-        break;
-        // TODO: LOAD
+    if (statement instanceof InsertBaseStatement) {
+      statement = new PipeEnrichedInsertBaseStatement((InsertBaseStatement) statement);
+    } else if (statement instanceof LoadTsFileStatement) {
+      statement = new PipeEnrichedLoadTsFileStatement((LoadTsFileStatement) statement);
     }
 
     final ExecutionResult result =

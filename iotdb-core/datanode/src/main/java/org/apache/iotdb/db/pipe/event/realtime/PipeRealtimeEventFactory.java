@@ -30,9 +30,10 @@ public class PipeRealtimeEventFactory {
 
   private static final TsFileEpochManager TS_FILE_EPOCH_MANAGER = new TsFileEpochManager();
 
-  public static PipeRealtimeEvent createRealtimeEvent(TsFileResource resource) {
+  public static PipeRealtimeEvent createRealtimeEvent(
+      TsFileResource resource, boolean isGeneratedByPipe) {
     return TS_FILE_EPOCH_MANAGER.bindPipeTsFileInsertionEvent(
-        new PipeTsFileInsertionEvent(resource), resource);
+        new PipeTsFileInsertionEvent(resource, isGeneratedByPipe), resource);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(

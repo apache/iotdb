@@ -102,22 +102,24 @@ public class LoadTsFileScheduler implements IScheduler {
   private final DataPartitionBatchFetcher partitionFetcher;
   private final List<LoadSingleTsFileNode> tsFileNodeList;
   private final PlanFragmentId fragmentId;
-
-  private Set<TRegionReplicaSet> allReplicaSets;
+  private final Set<TRegionReplicaSet> allReplicaSets;
+  private final boolean isGeneratedByPipe;
 
   public LoadTsFileScheduler(
       DistributedQueryPlan distributedQueryPlan,
       MPPQueryContext queryContext,
       QueryStateMachine stateMachine,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager,
-      IPartitionFetcher partitionFetcher) {
+      IPartitionFetcher partitionFetcher,
+      boolean isGeneratedByPipe) {
     this.queryContext = queryContext;
     this.stateMachine = stateMachine;
     this.tsFileNodeList = new ArrayList<>();
     this.fragmentId = distributedQueryPlan.getRootSubPlan().getPlanFragment().getId();
-    this.dispatcher = new LoadTsFileDispatcherImpl(internalServiceClientManager);
+    this.dispatcher = new LoadTsFileDispatcherImpl(internalServiceClientManager, isGeneratedByPipe);
     this.partitionFetcher = new DataPartitionBatchFetcher(partitionFetcher);
     this.allReplicaSets = new HashSet<>();
+    this.isGeneratedByPipe = isGeneratedByPipe;
 
     for (FragmentInstance fragmentInstance : distributedQueryPlan.getInstances()) {
       tsFileNodeList.add((LoadSingleTsFileNode) fragmentInstance.getFragment().getPlanNodeTree());
@@ -279,6 +281,7 @@ public class LoadTsFileScheduler implements IScheduler {
     TLoadCommandReq loadCommandReq =
         new TLoadCommandReq(
             (isFirstPhaseSuccess ? LoadCommand.EXECUTE : LoadCommand.ROLLBACK).ordinal(), uuid);
+    loadCommandReq.setIsGeneratedByPipe(isGeneratedByPipe);
     Future<FragInstanceDispatchResult> dispatchResultFuture =
         dispatcher.dispatchCommand(loadCommandReq, allReplicaSets);
 
