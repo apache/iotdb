@@ -30,6 +30,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletReq;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBThriftConnector;
+import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -165,6 +166,22 @@ public class IoTDBThriftSyncConnector extends IoTDBThriftConnector {
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
     // PipeProcessor can change the type of TabletInsertionEvent
 
+    if (tabletInsertionEvent instanceof EnrichedEvent
+        && ((EnrichedEvent) tabletInsertionEvent).getShouldConvert()) {
+      for (TabletInsertionEvent event :
+          tabletInsertionEvent.processRowByRow(
+              (row, rowCollector) -> {
+                try {
+                  rowCollector.collectRow(row);
+                } catch (IOException e) {
+                  throw new PipeException("Failed to collect row", e);
+                }
+              })) {
+        transfer(event);
+      }
+      return;
+    }
+
     final int clientIndex = nextClientIndex();
     final IoTDBThriftSyncConnectorClient client = clients.get(clientIndex);
 
@@ -198,6 +215,14 @@ public class IoTDBThriftSyncConnector extends IoTDBThriftConnector {
       LOGGER.warn(
           "IoTDBThriftSyncConnector only support PipeTsFileInsertionEvent. Ignore {}.",
           tsFileInsertionEvent);
+      return;
+    }
+
+    if (((EnrichedEvent) tsFileInsertionEvent).getShouldConvert()) {
+      for (final TabletInsertionEvent tabletInsertionEvent :
+          tsFileInsertionEvent.toTabletInsertionEvents()) {
+        transfer(tabletInsertionEvent);
+      }
       return;
     }
 

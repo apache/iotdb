@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.pipe.event.common.tablet;
 
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRowCollector;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
@@ -47,6 +49,8 @@ public class TabletInsertionDataContainer {
 
   private String deviceId;
   private boolean isAligned;
+  private final PipeTaskMeta pipeTaskMeta = null; // used to report progress
+  private final PipeTsFileInsertionEvent sourceEvent = null; // used to report progress
   private MeasurementSchema[] measurementSchemaList;
   private String[] columnNameStringList;
 

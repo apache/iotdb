@@ -30,7 +30,6 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import java.io.IOException;
 
@@ -57,23 +56,8 @@ public class PipeDoNothingProcessor implements PipeProcessor {
           .equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE)) {
         eventCollector.collect(tabletInsertionEvent);
       } else {
-        tabletInsertionEvent
-            .processRowByRow(
-                (row, rowCollector) -> {
-                  try {
-                    rowCollector.collectRow(row);
-                  } catch (IOException e) {
-                    throw new PipeException("Failed to collect row", e);
-                  }
-                })
-            .forEach(
-                event -> {
-                  try {
-                    eventCollector.collect(event);
-                  } catch (IOException e) {
-                    throw new PipeException("Failed to collect event", e);
-                  }
-                });
+        ((EnrichedEvent) tabletInsertionEvent).setShouldConvert(true);
+        eventCollector.collect(tabletInsertionEvent);
       }
     } else {
       eventCollector.collect(tabletInsertionEvent);
@@ -90,10 +74,8 @@ public class PipeDoNothingProcessor implements PipeProcessor {
           && !enrichedEvent.hasTimeFilter()) {
         eventCollector.collect(tsFileInsertionEvent);
       } else {
-        for (final TabletInsertionEvent tabletInsertionEvent :
-            tsFileInsertionEvent.toTabletInsertionEvents()) {
-          eventCollector.collect(tabletInsertionEvent);
-        }
+        ((PipeTsFileInsertionEvent) tsFileInsertionEvent).setShouldConvert(true);
+        eventCollector.collect(tsFileInsertionEvent);
       }
     } else {
       eventCollector.collect(tsFileInsertionEvent);
