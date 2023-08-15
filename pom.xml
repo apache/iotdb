@@ -112,7 +112,6 @@
             we'll stay at 0.14.1.
         -->
         <thrift.version>0.14.1</thrift.version>
-        <airline.version>0.8</airline.version>
         <jackson.version>2.13.5</jackson.version>
         <disrupter.version>3.4.2</disrupter.version>
         <jackson.databind.version>2.13.4.2</jackson.databind.version>
@@ -504,11 +503,6 @@
                 <groupId>io.airlift</groupId>
                 <artifactId>units</artifactId>
                 <version>${io.airlift.units.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.airlift</groupId>
-                <artifactId>airline</artifactId>
-                <version>${airline.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.airlift</groupId>

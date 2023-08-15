@@ -268,7 +268,6 @@ org.osgi:org.osgi.core:6.0.0
 org.osgi:osgi.cmpn:6.0.0
 org.ops4j.pax.jdbc:pax-jdbc-common:1.4.5
 org.xerial.snappy:snappy-java:1.1.8.4
-io.airlift.airline:0.8
 net.minidev:accessors-smart:1.2
 
 
