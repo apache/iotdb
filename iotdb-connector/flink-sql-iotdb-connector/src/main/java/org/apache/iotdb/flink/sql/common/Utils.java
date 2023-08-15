@@ -20,8 +20,10 @@ package org.apache.iotdb.flink.sql.common;
 
 import org.apache.iotdb.flink.sql.exception.UnsupportedDataTypeException;
 import org.apache.iotdb.tsfile.exception.NullFieldException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.data.GenericRowData;
@@ -113,13 +115,18 @@ public class Utils {
     return rowData;
   }
 
-  public static List<Object> object2List(Object obj) {
+  public static List<Object> object2List(Object obj, TSDataType dataType) {
     ArrayList<Object> objects = new ArrayList<>();
     int length = Array.getLength(obj);
     for (int i = 0; i < length; i++) {
-      objects.add(Array.get(obj, i));
+      switch (dataType) {
+        case TEXT:
+          objects.add(StringData.fromString(((Binary) Array.get(obj, i)).getStringValue()));
+          break;
+        default:
+          objects.add(Array.get(obj, i));
+      }
     }
-
     return objects;
   }
 }

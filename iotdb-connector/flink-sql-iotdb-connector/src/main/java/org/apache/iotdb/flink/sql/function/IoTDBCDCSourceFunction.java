@@ -46,7 +46,7 @@ import java.util.stream.Collectors;
 
 public class IoTDBCDCSourceFunction<RowData> extends RichSourceFunction<RowData> {
   private ArrayBlockingQueue<Tablet> tablets = new ArrayBlockingQueue<Tablet>(5);
-  private WebSocketClient socketClient;
+  private List<WebSocketClient> socketClients;
   private Thread consumerThread;
 
   private final List<Tuple2<String, DataType>> SCHEMA;
@@ -60,13 +60,16 @@ public class IoTDBCDCSourceFunction<RowData> extends RichSourceFunction<RowData>
     DEVICE = options.get(Options.DEVICE);
     MEASUREMENTS =
         SCHEMA.stream().map(field -> String.valueOf(field.f0)).collect(Collectors.toList());
+
+    socketClients = new ArrayList<>(NODE_URLS.size());
   }
 
   @Override
   public void open(Configuration parameters) throws Exception {
     super.open(parameters);
+    // TODO
     for (String nodeUrl : NODE_URLS) {
-      socketClient =
+      socketClients.add(
           new WebSocketClient(new URI(String.format("ws://%s", nodeUrl))) {
             @Override
             public void onOpen(ServerHandshake serverHandshake) {}
@@ -77,6 +80,7 @@ public class IoTDBCDCSourceFunction<RowData> extends RichSourceFunction<RowData>
             @Override
             public void onMessage(ByteBuffer bytes) {
               super.onMessage(bytes);
+              this.send("ACK");
               Tablet tablet = Tablet.deserialize(bytes);
               try {
                 tablets.put(tablet);
@@ -93,13 +97,20 @@ public class IoTDBCDCSourceFunction<RowData> extends RichSourceFunction<RowData>
               e.printStackTrace();
               throw new RuntimeException(e);
             }
-          };
+          });
     }
   }
 
   @Override
   public void run(SourceContext<RowData> ctx) throws Exception {
-    socketClient.connect();
+    socketClients.forEach(
+        socketClient -> {
+          socketClient.connect();
+          while (socketClient.isOpen()) {
+            socketClient.send("ACK");
+            break;
+          }
+        });
     consumerThread =
         new Thread(
             () -> {
@@ -117,14 +128,17 @@ public class IoTDBCDCSourceFunction<RowData> extends RichSourceFunction<RowData>
 
   @Override
   public void cancel() {
-    if (socketClient != null) {
-      socketClient.close();
+    if (socketClients != null) {
+      socketClients.forEach(socketClient -> socketClient.close());
     }
     consumerThread.stop();
     tablets.clear();
   }
 
   public void collectTablet(Tablet tablet, SourceContext<RowData> ctx) {
+    if (!DEVICE.equals(tablet.deviceId)) {
+      return;
+    }
     List<MeasurementSchema> schemas = tablet.getSchemas();
     int rowSize = tablet.rowSize;
     HashMap<String, Pair<BitMap, List<Object>>> values = new HashMap<>();
@@ -134,14 +148,14 @@ public class IoTDBCDCSourceFunction<RowData> extends RichSourceFunction<RowData>
           measurement,
           new Pair<>(
               tablet.bitMaps[schemas.indexOf(schema)],
-              Utils.object2List(tablet.values[schemas.indexOf(schema)])));
+              Utils.object2List(tablet.values[schemas.indexOf(schema)], schema.getType())));
     }
     for (int i = 0; i < rowSize; i++) {
       ArrayList<Object> row = new ArrayList<>();
       row.add(tablet.timestamps[i]);
       for (String measurement : MEASUREMENTS) {
         if (values.get(measurement).getLeft() == null
-            || values.get(measurement).getLeft().isMarked(i)) {
+            || !values.get(measurement).getLeft().isMarked(i)) {
           row.add(values.get(measurement).getRight().get(i));
         } else {
           row.add(null);

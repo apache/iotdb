@@ -108,7 +108,7 @@
         <module>iotdb-core/confignode</module>
         <module>iotdb-connector/zeppelin-interpreter</module>
         <module>iotdb-client/client-py</module>
-        <module>iotdb-client/compile-tools</module>
+        <!--        <module>iotdb-client/compile-tools</module>-->
         <module>iotdb-client/client-cpp</module>
         <module>iotdb-core/metrics</module>
         <module>integration-test</module>
