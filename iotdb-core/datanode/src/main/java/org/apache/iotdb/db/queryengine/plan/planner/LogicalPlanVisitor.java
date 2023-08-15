@@ -42,21 +42,25 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.Mea
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedInsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalBatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
@@ -483,6 +487,40 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             insertRowStatement.isNeedInferType());
     insertNode.setFailedMeasurementNumber(insertRowStatement.getFailedMeasurementNumber());
     return insertNode;
+  }
+
+  @Override
+  public PlanNode visitPipeEnrichedInsert(
+      PipeEnrichedInsertBaseStatement pipeEnrichedInsertBaseStatement, MPPQueryContext context) {
+    InsertNode insertNode;
+
+    final InsertBaseStatement insertBaseStatement =
+        pipeEnrichedInsertBaseStatement.getInsertBaseStatement();
+    if (insertBaseStatement instanceof InsertRowStatement) {
+      insertNode =
+          (InsertRowNode) visitInsertRow((InsertRowStatement) insertBaseStatement, context);
+    } else if (insertBaseStatement instanceof InsertRowsStatement) {
+      insertNode =
+          (InsertRowsNode) visitInsertRows((InsertRowsStatement) insertBaseStatement, context);
+    } else if (insertBaseStatement instanceof InsertRowsOfOneDeviceStatement) {
+      insertNode =
+          (InsertRowsOfOneDeviceNode)
+              visitInsertRowsOfOneDevice(
+                  (InsertRowsOfOneDeviceStatement) insertBaseStatement, context);
+    } else if (insertBaseStatement instanceof InsertTabletStatement) {
+      insertNode =
+          (InsertTabletNode)
+              visitInsertTablet((InsertTabletStatement) insertBaseStatement, context);
+    } else if (insertBaseStatement instanceof InsertMultiTabletsStatement) {
+      insertNode =
+          (InsertMultiTabletsNode)
+              visitInsertMultiTablets((InsertMultiTabletsStatement) insertBaseStatement, context);
+    } else {
+      throw new UnsupportedOperationException(
+          "Unsupported insert statement type: " + insertBaseStatement.getClass().getName());
+    }
+
+    return new PipeEnrichedInsertNode(insertNode);
   }
 
   @Override
