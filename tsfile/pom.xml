@@ -105,6 +105,17 @@
             <artifactId>iotdb-antlr</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.jetbrains</groupId>
+            <artifactId>annotations</artifactId>
+            <version>24.0.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-antlr</artifactId>
+            <version>0.14.0-SNAPSHOT</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
