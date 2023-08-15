@@ -93,15 +93,6 @@ public class PipeTransferFileSealReq extends TPipeTransferReq {
     }
   }
 
-  public static PipeTransferFileSealReq fromPipeTransferFileSealBytes(ByteBuffer byteBuffer) {
-    final PipeTransferFileSealReq fileSealReq = new PipeTransferFileSealReq();
-
-    fileSealReq.fileName = ReadWriteIOUtils.readString(byteBuffer);
-    fileSealReq.fileLength = ReadWriteIOUtils.readLong(byteBuffer);
-
-    return fileSealReq;
-  }
-
   @Override
   public boolean equals(Object obj) {
     if (this == obj) {

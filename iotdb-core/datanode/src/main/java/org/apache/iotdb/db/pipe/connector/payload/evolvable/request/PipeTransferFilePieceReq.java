@@ -104,16 +104,6 @@ public class PipeTransferFilePieceReq extends TPipeTransferReq {
     }
   }
 
-  public static PipeTransferFilePieceReq fromTPipeTransferBytes(ByteBuffer byteBuffer) {
-    final PipeTransferFilePieceReq filePieceReq = new PipeTransferFilePieceReq();
-
-    filePieceReq.fileName = ReadWriteIOUtils.readString(byteBuffer);
-    filePieceReq.startWritingOffset = ReadWriteIOUtils.readLong(byteBuffer);
-    filePieceReq.filePiece = ReadWriteIOUtils.readBinary(byteBuffer).getValues();
-
-    return filePieceReq;
-  }
-
   @Override
   public boolean equals(Object obj) {
     if (this == obj) {

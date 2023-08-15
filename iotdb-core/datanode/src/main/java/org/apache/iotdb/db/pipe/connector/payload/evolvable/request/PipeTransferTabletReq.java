@@ -235,13 +235,4 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
       return byteArrayOutputStream.toByteArray();
     }
   }
-
-  public static PipeTransferTabletReq fromTPipeTransferBytes(ByteBuffer byteBuffer) {
-    final PipeTransferTabletReq tabletReq = new PipeTransferTabletReq();
-
-    tabletReq.tablet = Tablet.deserialize(byteBuffer);
-    tabletReq.isAligned = ReadWriteIOUtils.readBool(byteBuffer);
-
-    return tabletReq;
-  }
 }

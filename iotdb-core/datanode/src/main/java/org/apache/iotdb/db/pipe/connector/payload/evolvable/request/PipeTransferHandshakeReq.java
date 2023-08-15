@@ -83,12 +83,6 @@ public class PipeTransferHandshakeReq extends TPipeTransferReq {
     }
   }
 
-  public static PipeTransferHandshakeReq fromTransferHandshakeBytes(ByteBuffer byteBuffer) {
-    final PipeTransferHandshakeReq pipeTransferHandshakeBytes = new PipeTransferHandshakeReq();
-    pipeTransferHandshakeBytes.timestampPrecision = ReadWriteIOUtils.readString(byteBuffer);
-    return pipeTransferHandshakeBytes;
-  }
-
   @Override
   public boolean equals(Object obj) {
     if (this == obj) {

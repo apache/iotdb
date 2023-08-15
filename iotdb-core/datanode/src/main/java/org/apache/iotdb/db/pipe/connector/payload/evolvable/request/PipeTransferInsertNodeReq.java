@@ -123,12 +123,6 @@ public class PipeTransferInsertNodeReq extends TPipeTransferReq {
     }
   }
 
-  public static PipeTransferInsertNodeReq fromTransferInsertNodeBytes(ByteBuffer byteBuffer) {
-    final PipeTransferInsertNodeReq insertNodeReqs = new PipeTransferInsertNodeReq();
-    insertNodeReqs.insertNode = (InsertNode) PlanNodeType.deserialize(byteBuffer);
-    return insertNodeReqs;
-  }
-
   @Override
   public boolean equals(Object obj) {
     if (this == obj) {
