@@ -74,18 +74,15 @@ public class RegionBalancer {
       Map<String, Integer> allotmentMap, TConsensusGroupType consensusGroupType)
       throws NotEnoughDataNodeException, DatabaseNotExistsException {
 
-    // The new RegionGroups will occupy online DataNodes firstly
-    List<TDataNodeConfiguration> onlineDataNodes =
-        getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running);
     // Some new RegionGroups will have to occupy unknown DataNodes
     // if the number of online DataNodes is insufficient
     List<TDataNodeConfiguration> availableDataNodes =
         getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.Unknown);
 
     // Make sure the number of available DataNodes is enough for allocating new RegionGroups
-    for (String storageGroup : allotmentMap.keySet()) {
+    for (String database : allotmentMap.keySet()) {
       int replicationFactor =
-          getClusterSchemaManager().getReplicationFactor(storageGroup, consensusGroupType);
+          getClusterSchemaManager().getReplicationFactor(database, consensusGroupType);
       if (availableDataNodes.size() < replicationFactor) {
         throw new NotEnoughDataNodeException();
       }
@@ -97,18 +94,16 @@ public class RegionBalancer {
         getPartitionManager().getAllReplicaSets(consensusGroupType);
 
     for (Map.Entry<String, Integer> entry : allotmentMap.entrySet()) {
-      String storageGroup = entry.getKey();
+      String database = entry.getKey();
       int allotment = entry.getValue();
       int replicationFactor =
-          getClusterSchemaManager().getReplicationFactor(storageGroup, consensusGroupType);
-      List<TDataNodeConfiguration> targetDataNodes =
-          onlineDataNodes.size() >= replicationFactor ? onlineDataNodes : availableDataNodes;
+          getClusterSchemaManager().getReplicationFactor(database, consensusGroupType);
 
       for (int i = 0; i < allotment; i++) {
         // Prepare input data
         Map<Integer, TDataNodeConfiguration> availableDataNodeMap = new ConcurrentHashMap<>();
         Map<Integer, Double> freeDiskSpaceMap = new ConcurrentHashMap<>();
-        targetDataNodes.forEach(
+        availableDataNodes.forEach(
             dataNodeConfiguration -> {
               int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
               availableDataNodeMap.put(dataNodeId, dataNodeConfiguration);
@@ -124,7 +119,7 @@ public class RegionBalancer {
                 replicationFactor,
                 new TConsensusGroupId(
                     consensusGroupType, getPartitionManager().generateNextRegionGroupId()));
-        createRegionGroupsPlan.addRegionGroup(storageGroup, newRegionGroup);
+        createRegionGroupsPlan.addRegionGroup(database, newRegionGroup);
 
         // Mark the new RegionGroup as allocated
         allocatedRegionGroups.add(newRegionGroup);
