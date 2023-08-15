@@ -279,6 +279,10 @@
                     <groupId>com.bugsnag</groupId>
                     <artifactId>bugsnag</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>com.h2database</groupId>
+                    <artifactId>h2-mvstore</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <!-- for mocked test-->
