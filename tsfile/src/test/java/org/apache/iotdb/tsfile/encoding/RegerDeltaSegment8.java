@@ -16,7 +16,10 @@ import static java.lang.Math.abs;
 
 public class RegerDeltaSegment8 {
     public static int getBitWith(int num) {
-        return 32 - Integer.numberOfLeadingZeros(num);
+        if(num == 0){
+            return 1;
+        }else
+            return 32 - Integer.numberOfLeadingZeros(num);
     }
 
     public static byte[] int2Bytes(int integer) {
@@ -1304,7 +1307,17 @@ public class RegerDeltaSegment8 {
             for (int segment_i = 0; segment_i < segment_n; segment_i++){
                 int bit_width_time = Integer.MIN_VALUE;
                 int bit_width_value = Integer.MIN_VALUE;
-                
+
+                for (int data_i = segment_i * 8 + 1; data_i < (segment_i + 1) * 8 + 1; data_i++) {
+                    int cur_bit_width_time = getBitWith(ts_block.get(data_i).get(0));
+                    int cur_bit_width_value = getBitWith(ts_block.get(data_i).get(1));
+                    if(cur_bit_width_time>bit_width_time){
+                        bit_width_time = cur_bit_width_time;
+                    }
+                    if(cur_bit_width_value >bit_width_value){
+                        bit_width_value = cur_bit_width_value;
+                    }
+                }
             }
 
 //      System.out.println(ts_block);
