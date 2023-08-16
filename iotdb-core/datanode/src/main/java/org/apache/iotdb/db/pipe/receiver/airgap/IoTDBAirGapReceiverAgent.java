@@ -20,7 +20,11 @@
 package org.apache.iotdb.db.pipe.receiver.airgap;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.ShutdownException;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.service.IService;
+import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.db.pipe.receiver.thrift.IoTDBThriftReceiver;
 import org.apache.iotdb.db.pipe.receiver.thrift.IoTDBThriftReceiverV1;
@@ -47,7 +51,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.zip.CRC32;
 
-public class IoTDBAirGapReceiverAgent {
+public class IoTDBAirGapReceiverAgent implements IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBAirGapReceiverAgent.class);
 
@@ -68,11 +72,6 @@ public class IoTDBAirGapReceiverAgent {
 
   public IoTDBAirGapReceiverAgent() {
     // Empty constructor
-  }
-
-  public void start() {
-    executor.submit(this::runReceive);
-    allowSubmitListening = true;
   }
 
   public void runReceive() {
@@ -96,11 +95,6 @@ public class IoTDBAirGapReceiverAgent {
     if (allowSubmitListening) {
       executor.submit(this::runReceive);
     }
-  }
-
-  public void stop() {
-    allowSubmitListening = false;
-    executor.shutdown();
   }
 
   private void socketRunReceive(
@@ -244,5 +238,35 @@ public class IoTDBAirGapReceiverAgent {
       receiver.handleExit();
       receiverThreadLocal.remove();
     }
+  }
+
+  @Override
+  public void start() throws StartupException {
+    executor.submit(this::runReceive);
+    allowSubmitListening = true;
+  }
+
+  @Override
+  public void shutdown(long milliseconds) throws ShutdownException {
+    allowSubmitListening = false;
+    executor.shutdown();
+
+    IService.super.shutdown(milliseconds);
+  }
+
+  @Override
+  public void stop() {
+    allowSubmitListening = false;
+    executor.shutdown();
+  }
+
+  /**
+   * Get the name of the the service.
+   *
+   * @return current service name
+   */
+  @Override
+  public ServiceType getID() {
+    return ServiceType.AIR_GAP_SERVICE;
   }
 }

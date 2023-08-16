@@ -52,9 +52,12 @@ public class PipeRuntimeAgent implements IService {
 
   public synchronized void preparePipeResources(
       ResourcesInformationHolder resourcesInformationHolder) throws StartupException {
-    // Pipe air gap receiver and thrift receiver share the same pipe receiver dir
-    PipeAgent.receiver().thrift().cleanPipeReceiverDir();
+    // clean sender (connector) hardlink file dir
     PipeHardlinkFileDirStartupCleaner.clean();
+
+    // clean receiver file dir
+    PipeAgent.receiver().cleanPipeReceiverDir();
+
     PipeAgentLauncher.launchPipePluginAgent(resourcesInformationHolder);
     simpleConsensusProgressIndexAssigner.start();
   }

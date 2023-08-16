@@ -19,12 +19,22 @@
 
 package org.apache.iotdb.db.pipe.agent.receiver;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.receiver.airgap.IoTDBAirGapReceiverAgent;
 import org.apache.iotdb.db.pipe.receiver.legacy.IoTDBLegacyPipeReceiverAgent;
 import org.apache.iotdb.db.pipe.receiver.thrift.IoTDBThriftReceiverAgent;
 
+import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+
 /** PipeReceiverAgent is the entry point of all pipe receivers' logic. */
 public class PipeReceiverAgent {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeReceiverAgent.class);
 
   private final IoTDBThriftReceiverAgent thriftAgent;
   private final IoTDBAirGapReceiverAgent airGapAgent;
@@ -46,5 +56,24 @@ public class PipeReceiverAgent {
 
   public IoTDBLegacyPipeReceiverAgent legacy() {
     return legacyAgent;
+  }
+
+  public void cleanPipeReceiverDir() {
+    final File receiverFileDir =
+        new File(IoTDBDescriptor.getInstance().getConfig().getPipeReceiverFileDir());
+
+    try {
+      FileUtils.deleteDirectory(receiverFileDir);
+      LOGGER.info("Clean pipe receiver dir {} successfully.", receiverFileDir);
+    } catch (Exception e) {
+      LOGGER.warn("Clean pipe receiver dir {} failed.", receiverFileDir, e);
+    }
+
+    try {
+      FileUtils.forceMkdir(receiverFileDir);
+      LOGGER.info("Create pipe receiver dir {} successfully.", receiverFileDir);
+    } catch (IOException e) {
+      LOGGER.warn("Create pipe receiver dir {} failed.", receiverFileDir, e);
+    }
   }
 }

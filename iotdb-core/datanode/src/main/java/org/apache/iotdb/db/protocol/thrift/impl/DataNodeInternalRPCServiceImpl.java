@@ -58,7 +58,6 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.receiver.airgap.IoTDBAirGapReceiverAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
@@ -1340,8 +1339,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       commonConfig.setNodeStatus(NodeStatus.parse(status));
       if (commonConfig.getNodeStatus().equals(NodeStatus.Removing)) {
         PipeAgent.runtime().stop();
-        Optional.ofNullable(PipeAgent.receiver().airGap())
-            .ifPresent(IoTDBAirGapReceiverAgent::stop);
       }
     } catch (Exception e) {
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
