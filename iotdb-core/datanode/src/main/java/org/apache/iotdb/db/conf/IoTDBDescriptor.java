@@ -1894,15 +1894,6 @@ public class IoTDBDescriptor {
 
     conf.setPipeReceiverFileDir(
         properties.getProperty("pipe_receiver_file_dir", conf.getPipeReceiverFileDir()));
-    conf.setPipeAirGapReceiveEnabled(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "pipe_air_gap_receive_enabled",
-                Boolean.toString(conf.getPipeAirGapReceiveEnabled()))));
-    conf.setPipeAirGapReceivePort(
-        Integer.parseInt(
-            properties.getProperty(
-                "pipe_air_gap_receive_port", Integer.toString(conf.getPipeAirGapReceivePort()))));
   }
 
   private void loadCQProps(Properties properties) {

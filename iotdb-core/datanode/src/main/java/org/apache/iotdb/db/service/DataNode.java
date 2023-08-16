@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
@@ -559,7 +560,7 @@ public class DataNode implements DataNodeMBean {
 
   /** Set up air gap service if pipe air gap receiver is enabled. */
   private void setUpPipeAirGapService() {
-    if (IoTDBDescriptor.getInstance().getConfig().getPipeAirGapReceiveEnabled()) {
+    if (PipeConfig.getInstance().getPipeAirGapReceiverEnabled()) {
       Optional.ofNullable(PipeAgent.airGapReceiver()).ifPresent(PipeAirGapReceiverAgent::start);
     }
   }

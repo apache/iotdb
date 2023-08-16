@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.agent;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.agent.plugin.PipePluginAgent;
 import org.apache.iotdb.db.pipe.agent.receiver.PipeAirGapReceiverAgent;
 import org.apache.iotdb.db.pipe.agent.receiver.PipeThriftReceiverAgent;
@@ -48,7 +48,7 @@ public class PipeAgent {
     pipeTaskAgent = new PipeTaskAgent();
     pipeRuntimeAgent = new PipeRuntimeAgent();
     pipeThriftReceiverAgent = new PipeThriftReceiverAgent();
-    if (IoTDBDescriptor.getInstance().getConfig().getPipeAirGapReceiveEnabled()) {
+    if (PipeConfig.getInstance().getPipeAirGapReceiverEnabled()) {
       try {
         pipeAirGapReceiverAgent = new PipeAirGapReceiverAgent();
       } catch (IOException e) {

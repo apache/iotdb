@@ -149,6 +149,16 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeAutoRestartEnabled();
   }
 
+  /////////////////////////////// Air Gap Receiver ///////////////////////////////
+
+  public boolean getPipeAirGapReceiverEnabled() {
+    return COMMON_CONFIG.getPipeAirGapReceiverEnabled();
+  }
+
+  public int getPipeAirGapReceiverPort() {
+    return COMMON_CONFIG.getPipeAirGapReceiverPort();
+  }
+
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfig.class);

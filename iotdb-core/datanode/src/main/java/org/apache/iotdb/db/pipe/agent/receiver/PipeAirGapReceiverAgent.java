@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.agent.receiver;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.db.pipe.receiver.thrift.IoTDBThriftReceiver;
 import org.apache.iotdb.db.pipe.receiver.thrift.IoTDBThriftReceiverV1;
@@ -54,7 +54,7 @@ public class PipeAirGapReceiverAgent {
   private final ThreadLocal<IoTDBThriftReceiver> receiverThreadLocal = new ThreadLocal<>();
 
   private final ServerSocket serverSocket =
-      new ServerSocket(IoTDBDescriptor.getInstance().getConfig().getPipeAirGapReceivePort());
+      new ServerSocket(PipeConfig.getInstance().getPipeAirGapReceiverPort());
   private final ExecutorService executor = Executors.newSingleThreadExecutor();
   private boolean allowSubmitListening = false;
 
