@@ -53,7 +53,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
   // device, we
   // can use statistics to skip.
   // it's only exact while using limit & offset push down
-  private boolean queryAllSensors = false;
+  private final boolean queryAllSensors;
 
   public AlignedSeriesScanUtil(
       PartialPath seriesPath,
@@ -138,7 +138,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
       Set<String> allSensors)
       throws IOException {
     return FileLoaderUtils.loadTimeSeriesMetadata(
-        resource, (AlignedPath) seriesPath, context, filter);
+        resource, (AlignedPath) seriesPath, context, filter, queryAllSensors);
   }
 
   @Override

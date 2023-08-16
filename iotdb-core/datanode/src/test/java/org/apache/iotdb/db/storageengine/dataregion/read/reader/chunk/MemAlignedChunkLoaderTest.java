@@ -52,7 +52,7 @@ public class MemAlignedChunkLoaderTest {
     AlignedReadOnlyMemChunk chunk = Mockito.mock(AlignedReadOnlyMemChunk.class);
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
 
-    MemAlignedChunkLoader memAlignedChunkLoader = new MemAlignedChunkLoader(chunk);
+    MemAlignedChunkLoader memAlignedChunkLoader = new MemAlignedChunkLoader(chunk, false);
     try {
       memAlignedChunkLoader.loadChunk(chunkMetadata);
       fail();

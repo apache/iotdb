@@ -46,15 +46,23 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
   private final TsBlock tsBlock;
   private final AlignedChunkMetadata chunkMetadata;
 
+  // only used for limit and offset push down optimizer, if we select all columns from aligned
+  // device, we
+  // can use statistics to skip.
+  // it's only exact while using limit & offset push down
+  private final boolean queryAllSensors;
+
   private Filter valueFilter;
   private PaginationController paginationController = UNLIMITED_PAGINATION_CONTROLLER;
 
   private TsBlockBuilder builder;
 
-  public MemAlignedPageReader(TsBlock tsBlock, AlignedChunkMetadata chunkMetadata, Filter filter) {
+  public MemAlignedPageReader(
+      TsBlock tsBlock, AlignedChunkMetadata chunkMetadata, Filter filter, boolean queryAllSensors) {
     this.tsBlock = tsBlock;
     this.chunkMetadata = chunkMetadata;
     this.valueFilter = filter;
+    this.queryAllSensors = queryAllSensors;
   }
 
   @Override
@@ -107,11 +115,13 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
       // NOTE: if we change the query semantic in the future for aligned series, we need to remove
       // this check here.
       long rowCount = getTimeStatistics().getCount();
-      boolean canUse = getValueStatisticsList().isEmpty();
-      for (Statistics<? extends Serializable> vStatistics : getValueStatisticsList()) {
-        if (vStatistics != null && !vStatistics.hasNullValue(rowCount)) {
-          canUse = true;
-          break;
+      boolean canUse = queryAllSensors || getValueStatisticsList().isEmpty();
+      if (!canUse) {
+        for (Statistics<? extends Serializable> vStatistics : getValueStatisticsList()) {
+          if (vStatistics != null && !vStatistics.hasNullValue(rowCount)) {
+            canUse = true;
+            break;
+          }
         }
       }
       if (!canUse) {

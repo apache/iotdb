@@ -92,7 +92,8 @@ public class AlignedChunkReader implements IChunkReader {
    *
    * @param filter filter
    */
-  public AlignedChunkReader(Chunk timeChunk, List<Chunk> valueChunkList, Filter filter)
+  public AlignedChunkReader(
+      Chunk timeChunk, List<Chunk> valueChunkList, Filter filter, boolean queryAllSensors)
       throws IOException {
     this.filter = filter;
     this.timeChunkDataBuffer = timeChunk.getData();
@@ -108,7 +109,7 @@ public class AlignedChunkReader implements IChunkReader {
           valueChunkStatisticsList.add(chunk == null ? null : chunk.getChunkStatistic());
           valueDeleteIntervalList.add(chunk == null ? null : chunk.getDeleteIntervalList());
         });
-    initAllPageReaders(timeChunk.getChunkStatistic(), valueChunkStatisticsList);
+    initAllPageReaders(timeChunk.getChunkStatistic(), valueChunkStatisticsList, queryAllSensors);
   }
 
   /**
@@ -132,12 +133,14 @@ public class AlignedChunkReader implements IChunkReader {
           valueChunkStatisticsList.add(chunk == null ? null : chunk.getChunkStatistic());
           valueDeleteIntervalList.add(chunk == null ? null : chunk.getDeleteIntervalList());
         });
-    initAllPageReaders(timeChunk.getChunkStatistic(), valueChunkStatisticsList);
+    initAllPageReaders(timeChunk.getChunkStatistic(), valueChunkStatisticsList, false);
   }
 
   /** construct all the page readers in this chunk */
   private void initAllPageReaders(
-      Statistics timeChunkStatistics, List<Statistics> valueChunkStatisticsList)
+      Statistics timeChunkStatistics,
+      List<Statistics> valueChunkStatisticsList,
+      boolean queryAllSensors)
       throws IOException {
     // construct next satisfied page header
     while (timeChunkDataBuffer.remaining() > 0) {
@@ -176,7 +179,7 @@ public class AlignedChunkReader implements IChunkReader {
       // if the current page satisfies
       if (exits && timePageSatisfied(timePageHeader)) {
         AlignedPageReader alignedPageReader =
-            constructPageReaderForNextPage(timePageHeader, valuePageHeaderList);
+            constructPageReaderForNextPage(timePageHeader, valuePageHeaderList, queryAllSensors);
         if (alignedPageReader != null) {
           pageReaderList.add(alignedPageReader);
         }
@@ -213,7 +216,8 @@ public class AlignedChunkReader implements IChunkReader {
   }
 
   private AlignedPageReader constructPageReaderForNextPage(
-      PageHeader timePageHeader, List<PageHeader> valuePageHeader) throws IOException {
+      PageHeader timePageHeader, List<PageHeader> valuePageHeader, boolean queryAllSensors)
+      throws IOException {
     PageInfo timePageInfo = new PageInfo();
     getPageInfo(timePageHeader, timeChunkDataBuffer, timeChunkHeader, timePageInfo);
     PageInfo valuePageInfo = new PageInfo();
