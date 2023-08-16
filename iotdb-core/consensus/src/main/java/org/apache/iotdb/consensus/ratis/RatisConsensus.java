@@ -48,7 +48,6 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.NodeReadOnlyException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
-import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
 import org.apache.iotdb.consensus.exception.RatisUnderRecoveryException;
 import org.apache.iotdb.consensus.ratis.metrics.RatisMetricSet;
@@ -497,7 +496,9 @@ class RatisConsensus implements IConsensus {
     }
     // pre-condition: peer is a member of groupId
     if (!group.getPeers().contains(peerToRemove)) {
-      return failed(new PeerNotInConsensusGroupException(groupId, myself));
+      logger.error("duplicated peer remove operation detected. {}-{}", groupId, peer);
+      return ConsensusGenericResponse.newBuilder().setSuccess(true).build();
+      //      return failed(new PeerNotInConsensusGroupException(groupId, myself));
     }
 
     // update group peer information
