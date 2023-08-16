@@ -117,17 +117,11 @@ public class IoTDBPipeDataSyncIT {
         await()
             .atMost(600, TimeUnit.SECONDS)
             .until(
-                () -> {
-                  try {
-                    TestUtils.assertResultSetEqual(
+                () ->
+                    TestUtils.isResultSetEqual(
                         statement.executeQuery("select * from root.**"),
                         "Time,root.vehicle.d0.s1,",
-                        Collections.singleton("0,1.0,"));
-                    return true;
-                  } catch (Exception e) {
-                    return false;
-                  }
-                });
+                        Collections.singleton("0,1.0,")));
       } catch (Exception e) {
         e.printStackTrace();
         fail(e.getMessage());
