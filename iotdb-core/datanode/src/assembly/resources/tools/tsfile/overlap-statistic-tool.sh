@@ -47,5 +47,5 @@ done
 
 MAIN_CLASS=org.apache.iotdb.db.storageengine.dataregion.compaction.tool.OverlapStatisticTool
 
-"$JAVA" -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
+"$JAVA" -Xmx16G -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
 exit $?
