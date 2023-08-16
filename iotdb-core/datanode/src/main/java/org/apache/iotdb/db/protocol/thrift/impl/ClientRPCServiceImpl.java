@@ -176,7 +176,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import io.airlift.units.Duration;
 import io.jsonwebtoken.lang.Strings;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

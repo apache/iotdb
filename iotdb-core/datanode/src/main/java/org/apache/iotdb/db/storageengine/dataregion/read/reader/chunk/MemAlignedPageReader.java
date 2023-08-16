@@ -99,17 +99,16 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
   }
 
   private boolean pageSatisfy() {
-    if (valueFilter != null) {
-      return valueFilter.satisfy(getStatistics());
-    } else {
+    Statistics<? extends Serializable> statistics = getStatistics();
+    if (valueFilter == null || valueFilter.allSatisfy(statistics)) {
       // For aligned series, When we only read some measurements under an aligned device, if the
       // values of these queried measurements at a timestamp are all null, the timestamp will not be
       // selected.
       // NOTE: if we change the read semantic in the future for aligned series, we need to remove
       // this check here.
       long rowCount = getTimeStatistics().getCount();
-      for (Statistics<? extends Serializable> statistics : getValueStatisticsList()) {
-        if (statistics == null || statistics.hasNullValue(rowCount)) {
+      for (Statistics<? extends Serializable> vStatistics : getValueStatisticsList()) {
+        if (vStatistics == null || vStatistics.hasNullValue(rowCount)) {
           return true;
         }
       }
@@ -118,9 +117,12 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
       if (paginationController.hasCurOffset(rowCount)) {
         paginationController.consumeOffset(rowCount);
         return false;
+      } else {
+        return true;
       }
+    } else {
+      return valueFilter.satisfy(statistics);
     }
-    return true;
   }
 
   @Override
