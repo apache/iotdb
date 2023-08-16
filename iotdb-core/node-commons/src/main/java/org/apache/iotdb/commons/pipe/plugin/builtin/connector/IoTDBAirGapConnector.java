@@ -25,4 +25,4 @@ package org.apache.iotdb.commons.pipe.plugin.builtin.connector;
  * pipe agent in the server module will replace this class with the real implementation when
  * initializing the IoTDB Air Gap connector.
  */
-public class IoTDBAirGapConnector extends IoTDBConnector {}
+public class IoTDBAirGapConnector extends PlaceholderConnector {}

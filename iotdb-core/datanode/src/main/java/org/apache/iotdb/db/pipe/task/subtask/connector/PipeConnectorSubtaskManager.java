@@ -62,10 +62,10 @@ public class PipeConnectorSubtaskManager {
       final String connectorKey =
           pipeConnectorParameters.getStringOrDefault(
               PipeConnectorConstant.CONNECTOR_KEY,
-              BuiltinPipePlugin.IOTDB_CONNECTOR.getPipePluginName());
+              BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName());
 
       PipeConnector pipeConnector;
-      if (connectorKey.equals(BuiltinPipePlugin.IOTDB_CONNECTOR.getPipePluginName())
+      if (connectorKey.equals(BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
           || connectorKey.equals(
               BuiltinPipePlugin.IOTDB_THRIFT_SYNC_CONNECTOR.getPipePluginName())) {
         pipeConnector = new IoTDBThriftSyncConnector();

@@ -28,53 +28,55 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 /**
- * This class is a placeholder and should not be initialized. It represents the IoTDB Thrift
- * connector. There is a real implementation in the server module but cannot be imported here. The
- * pipe agent in the server module will replace this class with the real implementation when
- * initializing the IoTDB Thrift connector.
+ * This class is a placeholder and should not be initialized. It represents the all the IoTDB pipe
+ * connectors that can not be implemented in the node-commons module. Each IoTDB pipe connector has
+ * a real implementation in the server module but cannot be imported here. The pipe agent in the
+ * server module will replace this class with the real implementation when initializing the IoTDB
+ * pipe connector.
  */
-public class IoTDBConnector implements PipeConnector {
+public class PlaceholderConnector implements PipeConnector {
+
   private static final String PLACEHOLDER_ERROR_MSG =
       "This class is a placeholder and should not be used.";
 
   @Override
-  public final void validate(PipeParameterValidator validator) {
+  public void validate(PipeParameterValidator validator) {
     throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
   }
 
   @Override
-  public final void customize(
+  public void customize(
       PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration) {
     throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
   }
 
   @Override
-  public final void handshake() {
+  public void handshake() {
     throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
   }
 
   @Override
-  public final void heartbeat() {
+  public void heartbeat() {
     throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
   }
 
   @Override
-  public final void transfer(TabletInsertionEvent tabletInsertionEvent) {
+  public void transfer(TabletInsertionEvent tabletInsertionEvent) {
     throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
   }
 
   @Override
-  public final void transfer(TsFileInsertionEvent tsFileInsertionEvent) {
+  public void transfer(TsFileInsertionEvent tsFileInsertionEvent) {
     throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
   }
 
   @Override
-  public final void transfer(Event event) {
+  public void transfer(Event event) {
     throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
   }
 
   @Override
-  public final void close() {
+  public void close() {
     throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
   }
 }

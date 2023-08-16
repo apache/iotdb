@@ -102,7 +102,7 @@ public class PipePluginAgentTest {
                     }))
             .getClass());
     Assert.assertEquals(
-        BuiltinPipePlugin.IOTDB_CONNECTOR.getPipePluginClass(),
+        BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginClass(),
         agent
             .reflectConnector(
                 new PipeParameters(
@@ -110,7 +110,7 @@ public class PipePluginAgentTest {
                       {
                         put(
                             PipeConnectorConstant.CONNECTOR_KEY,
-                            BuiltinPipePlugin.IOTDB_CONNECTOR.getPipePluginName());
+                            BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName());
                       }
                     }))
             .getClass());
