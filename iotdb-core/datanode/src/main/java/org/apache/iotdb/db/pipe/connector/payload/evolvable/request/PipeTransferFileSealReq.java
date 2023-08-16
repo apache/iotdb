@@ -47,6 +47,8 @@ public class PipeTransferFileSealReq extends TPipeTransferReq {
     return fileLength;
   }
 
+  /////////////////////////////// Thrift ///////////////////////////////
+
   public static PipeTransferFileSealReq toTPipeTransferReq(String fileName, long fileLength)
       throws IOException {
     final PipeTransferFileSealReq fileSealReq = new PipeTransferFileSealReq();
@@ -80,7 +82,8 @@ public class PipeTransferFileSealReq extends TPipeTransferReq {
     return fileSealReq;
   }
 
-  /////////////////////////////// For socket connection ///////////////////////////////
+  /////////////////////////////// Air Gap ///////////////////////////////
+
   public static byte[] toTPipeTransferFileSealBytes(String fileName, long fileLength)
       throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
@@ -92,6 +95,8 @@ public class PipeTransferFileSealReq extends TPipeTransferReq {
       return byteArrayOutputStream.toByteArray();
     }
   }
+
+  /////////////////////////////// Object ///////////////////////////////
 
   @Override
   public boolean equals(Object obj) {

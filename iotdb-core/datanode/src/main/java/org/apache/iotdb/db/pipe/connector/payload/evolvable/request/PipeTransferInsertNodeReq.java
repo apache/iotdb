@@ -87,6 +87,8 @@ public class PipeTransferInsertNodeReq extends TPipeTransferReq {
             insertNode));
   }
 
+  /////////////////////////////// Thrift ///////////////////////////////
+
   public static PipeTransferInsertNodeReq toTPipeTransferReq(InsertNode insertNode) {
     final PipeTransferInsertNodeReq req = new PipeTransferInsertNodeReq();
 
@@ -111,7 +113,7 @@ public class PipeTransferInsertNodeReq extends TPipeTransferReq {
     return insertNodeReq;
   }
 
-  /////////////////////////////// For socket connection ///////////////////////////////
+  /////////////////////////////// Air Gap ///////////////////////////////
   public static byte[] toTransferInsertNodeBytes(InsertNode insertNode) throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
@@ -121,6 +123,8 @@ public class PipeTransferInsertNodeReq extends TPipeTransferReq {
           byteArrayOutputStream.toByteArray(), insertNode.serializeToByteBuffer().array());
     }
   }
+
+  /////////////////////////////// Object ///////////////////////////////
 
   @Override
   public boolean equals(Object obj) {

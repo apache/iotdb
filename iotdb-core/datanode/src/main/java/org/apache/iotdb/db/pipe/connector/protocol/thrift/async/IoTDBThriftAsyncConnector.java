@@ -63,6 +63,7 @@ import java.util.Comparator;
 import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.concurrent.Future;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -87,8 +88,8 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   private static final int RETRY_TRIGGER_INTERVAL_MINUTES = 1;
   private final AtomicReference<Future<?>> retryTriggerFuture = new AtomicReference<>();
   private final IoTDBThriftSyncConnector retryConnector = new IoTDBThriftSyncConnector();
-  private final PriorityQueue<Pair<Long, Event>> retryEventQueue =
-      new PriorityQueue<>(Comparator.comparing(o -> o.left));
+  private final PriorityBlockingQueue<Pair<Long, Event>> retryEventQueue =
+      new PriorityBlockingQueue<>(11, Comparator.comparing(o -> o.left));
 
   private final AtomicLong commitIdGenerator = new AtomicLong(0);
   private final AtomicLong lastCommitId = new AtomicLong(0);

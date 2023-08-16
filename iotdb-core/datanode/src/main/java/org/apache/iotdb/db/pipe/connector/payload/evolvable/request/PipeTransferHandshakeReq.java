@@ -42,6 +42,8 @@ public class PipeTransferHandshakeReq extends TPipeTransferReq {
     return timestampPrecision;
   }
 
+  /////////////////////////////// Thrift ///////////////////////////////
+
   public static PipeTransferHandshakeReq toTPipeTransferReq(String timestampPrecision)
       throws IOException {
     final PipeTransferHandshakeReq handshakeReq = new PipeTransferHandshakeReq();
@@ -72,7 +74,8 @@ public class PipeTransferHandshakeReq extends TPipeTransferReq {
     return handshakeReq;
   }
 
-  /////////////////////////////// For socket connection ///////////////////////////////
+  /////////////////////////////// Air Gap ///////////////////////////////
+
   public static byte[] toTransferHandshakeBytes(String timestampPrecision) throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
@@ -82,6 +85,8 @@ public class PipeTransferHandshakeReq extends TPipeTransferReq {
       return byteArrayOutputStream.toByteArray();
     }
   }
+
+  /////////////////////////////// Object ///////////////////////////////
 
   @Override
   public boolean equals(Object obj) {

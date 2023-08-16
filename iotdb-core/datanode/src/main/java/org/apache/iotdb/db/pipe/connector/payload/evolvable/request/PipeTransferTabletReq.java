@@ -53,23 +53,32 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
   private Tablet tablet;
   private boolean isAligned;
 
-  public static PipeTransferTabletReq toTPipeTransferReq(Tablet tablet, boolean isAligned)
-      throws IOException {
-    final PipeTransferTabletReq tabletReq = new PipeTransferTabletReq();
-
-    tabletReq.tablet = tablet;
-
-    tabletReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
-    tabletReq.type = PipeRequestType.TRANSFER_TABLET.getType();
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
-        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      tablet.serialize(outputStream);
-      ReadWriteIOUtils.write(isAligned, outputStream);
-      tabletReq.body =
-          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+  public InsertTabletStatement constructStatement() {
+    if (!checkSorted(tablet)) {
+      sortTablet(tablet);
     }
 
-    return tabletReq;
+    try {
+      final TSInsertTabletReq request = new TSInsertTabletReq();
+
+      for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
+        request.addToMeasurements(measurementSchema.getMeasurementId());
+        request.addToTypes(measurementSchema.getType().ordinal());
+      }
+
+      request.setPrefixPath(tablet.deviceId);
+      request.setIsAligned(isAligned);
+      request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
+      request.setValues(SessionUtils.getValueBuffer(tablet));
+      request.setSize(tablet.rowSize);
+      request.setMeasurements(
+          PathUtils.checkIsLegalSingleMeasurementsAndUpdate(request.getMeasurements()));
+
+      return StatementGenerator.createStatement(request);
+    } catch (MetadataException e) {
+      LOGGER.warn(String.format("Generate Statement from tablet %s error.", tablet), e);
+      return null;
+    }
   }
 
   private static boolean checkSorted(Tablet tablet) {
@@ -182,6 +191,27 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
     return sortedBitMap;
   }
 
+  /////////////////////////////// Thrift ///////////////////////////////
+
+  public static PipeTransferTabletReq toTPipeTransferReq(Tablet tablet, boolean isAligned)
+      throws IOException {
+    final PipeTransferTabletReq tabletReq = new PipeTransferTabletReq();
+
+    tabletReq.tablet = tablet;
+
+    tabletReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
+    tabletReq.type = PipeRequestType.TRANSFER_TABLET.getType();
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      tablet.serialize(outputStream);
+      ReadWriteIOUtils.write(isAligned, outputStream);
+      tabletReq.body =
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
+
+    return tabletReq;
+  }
+
   public static PipeTransferTabletReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
     final PipeTransferTabletReq tabletReq = new PipeTransferTabletReq();
 
@@ -195,35 +225,7 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
     return tabletReq;
   }
 
-  public InsertTabletStatement constructStatement() {
-    if (!checkSorted(tablet)) {
-      sortTablet(tablet);
-    }
-
-    try {
-      final TSInsertTabletReq request = new TSInsertTabletReq();
-
-      for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
-        request.addToMeasurements(measurementSchema.getMeasurementId());
-        request.addToTypes(measurementSchema.getType().ordinal());
-      }
-
-      request.setPrefixPath(tablet.deviceId);
-      request.setIsAligned(isAligned);
-      request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
-      request.setValues(SessionUtils.getValueBuffer(tablet));
-      request.setSize(tablet.rowSize);
-      request.setMeasurements(
-          PathUtils.checkIsLegalSingleMeasurementsAndUpdate(request.getMeasurements()));
-
-      return StatementGenerator.createStatement(request);
-    } catch (MetadataException e) {
-      LOGGER.warn(String.format("Generate Statement from tablet %s error.", tablet), e);
-      return null;
-    }
-  }
-
-  /////////////////////////////// For socket connection ///////////////////////////////
+  /////////////////////////////// Air Gap ///////////////////////////////
   public static byte[] toTPipeTransferTabletBytes(Tablet tablet, boolean isAligned)
       throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();

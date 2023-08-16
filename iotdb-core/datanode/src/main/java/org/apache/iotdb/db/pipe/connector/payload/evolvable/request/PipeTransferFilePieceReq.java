@@ -54,6 +54,8 @@ public class PipeTransferFilePieceReq extends TPipeTransferReq {
     return filePiece;
   }
 
+  /////////////////////////////// Thrift ///////////////////////////////
+
   public static PipeTransferFilePieceReq toTPipeTransferReq(
       String fileName, long startWritingOffset, byte[] filePiece) throws IOException {
     final PipeTransferFilePieceReq filePieceReq = new PipeTransferFilePieceReq();
@@ -90,7 +92,7 @@ public class PipeTransferFilePieceReq extends TPipeTransferReq {
     return filePieceReq;
   }
 
-  /////////////////////////////// For socket connection ///////////////////////////////
+  /////////////////////////////// Air Gap ///////////////////////////////
   public static byte[] toTPipeTransferBytes(
       String fileName, long startWritingOffset, byte[] filePiece) throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
@@ -103,6 +105,8 @@ public class PipeTransferFilePieceReq extends TPipeTransferReq {
       return byteArrayOutputStream.toByteArray();
     }
   }
+
+  /////////////////////////////// Object ///////////////////////////////
 
   @Override
   public boolean equals(Object obj) {
