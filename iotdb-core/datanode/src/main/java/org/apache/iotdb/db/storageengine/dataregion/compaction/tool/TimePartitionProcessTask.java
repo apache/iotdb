@@ -25,6 +25,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.tool.reader.TaskS
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
@@ -52,9 +53,10 @@ public class TimePartitionProcessTask {
     OverlapStatisticTool.outputInfolock.lock();
     System.out.println();
     OverlapStatisticTool.processedTimePartitionCount += 1;
-    OverlapStatisticTool.processedSeqFileCount += partialRet.totalFiles;
+    OverlapStatisticTool.processedSeqFileCount += partialRet.totalSequenceFile;
     PrintUtil.printOneStatistics(partialRet, timePartition);
-    System.out.printf("Unsequence file num: %d\n", timePartitionFiles.getRight().size());
+    System.out.printf("Sequence file num: %d, Sequence file size: %.2fM\n", partialRet.totalSequenceFile, ((double) partialRet.totalSequenceFileSize / 1024 / 1024));
+    System.out.printf("Unsequence file num: %d, Unsequence file size: %.2fM\n", partialRet.totalUnsequenceFile, (double) partialRet.totalUnsequenceFileSize / 1024 / 1024);
     System.out.printf(
         Thread.currentThread().getName()
             + " Time cost: %.2fs, Sequence space cost: %.2fs, Build unsequence space cost: %.2fs.\n",
@@ -62,7 +64,6 @@ public class TimePartitionProcessTask {
         ((double) sequenceSpaceCost / 1000),
         ((double) unsequenceSpaceCost / 1000));
 
-    System.out.println();
     OverlapStatisticTool.outputInfolock.unlock();
     return partialRet;
   }
@@ -72,6 +73,11 @@ public class TimePartitionProcessTask {
 
     long startTime = System.currentTimeMillis();
     for (String unseqFile : unseqFiles) {
+      File f = new File(unseqFile);
+      if (!f.exists()) {
+        continue;
+      }
+      unseqSpaceStatistics.unsequenceFileSize += f.length();
       try (TsFileStatisticReader reader = new TsFileStatisticReader(unseqFile)) {
         List<TsFileStatisticReader.ChunkGroupStatistics> chunkGroupStatisticsList =
             reader.getChunkGroupStatisticsList();
@@ -104,6 +110,7 @@ public class TimePartitionProcessTask {
       }
     }
     unsequenceSpaceCost += (System.currentTimeMillis() - startTime);
+    unseqSpaceStatistics.unsequenceFileNum += unseqFiles.size();
     return unseqSpaceStatistics;
   }
 
@@ -113,7 +120,6 @@ public class TimePartitionProcessTask {
       List<String> seqFiles) {
     long startTime = System.currentTimeMillis();
     OverlapStatistic overlapStatistic = new OverlapStatistic();
-    overlapStatistic.totalFiles += seqFiles.size();
     List<Future<TaskSummary>> futures = new ArrayList<>();
     for (String seqFile : seqFiles) {
       futures.add(executor.submit(new SingleSequenceFileTask(unseqSpaceStatistics, seqFile)));
@@ -121,18 +127,24 @@ public class TimePartitionProcessTask {
     for (Future<TaskSummary> future : futures) {
       try {
         TaskSummary taskSummary = future.get();
-        overlapStatistic.overlappedChunkGroups += taskSummary.overlapChunkGroup;
-        overlapStatistic.totalChunkGroups += taskSummary.totalChunkGroups;
-        overlapStatistic.overlappedChunks += taskSummary.overlapChunk;
-        overlapStatistic.totalChunks += taskSummary.totalChunks;
+        overlapStatistic.overlappedChunkGroupsInSequenceFile += taskSummary.overlapChunkGroup;
+        overlapStatistic.totalChunkGroupsInSequenceFile += taskSummary.totalChunkGroups;
+        overlapStatistic.overlappedChunksInSequenceFile += taskSummary.overlapChunk;
+        overlapStatistic.totalChunksInSequenceFile += taskSummary.totalChunks;
+
+        overlapStatistic.totalSequenceFileSize += taskSummary.fileSize;
         if (taskSummary.overlapChunkGroup > 0) {
-          overlapStatistic.overlappedFiles++;
+          overlapStatistic.overlappedSequenceFiles++;
         }
       } catch (Exception e) {
         e.printStackTrace();
         // todo
       }
     }
+    overlapStatistic.totalSequenceFile += seqFiles.size();
+    overlapStatistic.totalUnsequenceFile += unseqSpaceStatistics.unsequenceFileNum;
+    overlapStatistic.totalUnsequenceFileSize += unseqSpaceStatistics.unsequenceFileSize;
+
     sequenceSpaceCost += (System.currentTimeMillis() - startTime);
     return overlapStatistic;
   }

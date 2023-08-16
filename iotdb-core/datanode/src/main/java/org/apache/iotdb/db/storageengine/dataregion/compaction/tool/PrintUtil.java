@@ -41,29 +41,29 @@ public class PrintUtil {
 
   private static void printTableLog(OverlapStatistic overlapStatistic) {
     double overlappedSeqFilePercentage =
-        calculatePercentage(overlapStatistic.overlappedFiles, overlapStatistic.totalFiles);
+        calculatePercentage(overlapStatistic.overlappedSequenceFiles, overlapStatistic.totalSequenceFile);
     double overlappedChunkGroupPercentage =
         calculatePercentage(
-            overlapStatistic.overlappedChunkGroups, overlapStatistic.totalChunkGroups);
+            overlapStatistic.overlappedChunkGroupsInSequenceFile, overlapStatistic.totalChunkGroupsInSequenceFile);
     double overlappedChunkPercentage =
-        calculatePercentage(overlapStatistic.overlappedChunks, overlapStatistic.totalChunks);
+        calculatePercentage(overlapStatistic.overlappedChunksInSequenceFile, overlapStatistic.totalChunksInSequenceFile);
     String[][] log = {
       {
         "Sequence File",
-        overlapStatistic.totalFiles + "",
-        overlapStatistic.overlappedFiles + "",
+        overlapStatistic.totalSequenceFile + "",
+        overlapStatistic.overlappedSequenceFiles + "",
         String.format("%.2f%%", overlappedSeqFilePercentage)
       },
       {
         "ChunkGroup In Sequence File",
-        overlapStatistic.totalChunkGroups + "",
-        overlapStatistic.overlappedChunkGroups + "",
+        overlapStatistic.totalChunkGroupsInSequenceFile + "",
+        overlapStatistic.overlappedChunkGroupsInSequenceFile + "",
         String.format("%.2f%%", overlappedChunkGroupPercentage)
       },
       {
         "Chunk In Sequence File",
-        overlapStatistic.totalChunks + "",
-        overlapStatistic.overlappedChunks + "",
+        overlapStatistic.totalChunksInSequenceFile + "",
+        overlapStatistic.overlappedChunksInSequenceFile + "",
         String.format("%.2f%%", overlappedChunkPercentage)
       }
     };

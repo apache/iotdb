@@ -96,7 +96,10 @@ public class OverlapStatisticTool {
         statistic.merge(partialRet);
       }
     }
+    System.out.println();
     PrintUtil.printOneStatistics(statistic, "All EXECUTED");
+    System.out.printf("Sequence file num: %d, Sequence file size: %.2fM\n", statistic.totalSequenceFile, ((double) statistic.totalSequenceFileSize / 1024 / 1024));
+    System.out.printf("Unsequence file num: %d, Unsequence file size: %.2fM\n", statistic.totalUnsequenceFile, (double) statistic.totalUnsequenceFileSize / 1024 / 1024);
   }
 
   private void processDataDirs(List<String> dataDirs) {

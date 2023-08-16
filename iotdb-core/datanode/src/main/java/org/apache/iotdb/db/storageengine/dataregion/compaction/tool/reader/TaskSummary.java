@@ -24,4 +24,5 @@ public class TaskSummary {
   public long overlapChunkGroup = 0;
   public long totalChunks = 0;
   public long totalChunkGroups = 0;
+  public long fileSize = 0;
 }

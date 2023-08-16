@@ -24,6 +24,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.tool.TsFileStatis
 import org.apache.iotdb.db.storageengine.dataregion.compaction.tool.UnseqSpaceStatistics;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
 import java.util.List;
@@ -45,6 +46,11 @@ public class SingleSequenceFileTask implements Callable<TaskSummary> {
 
   private TaskSummary checkSeqFile(UnseqSpaceStatistics unseqSpaceStatistics, String seqFile) {
     TaskSummary summary = new TaskSummary();
+    File f = new File(seqFile);
+    if (!f.exists()) {
+      return summary;
+    }
+    summary.fileSize += f.length();
     try (TsFileStatisticReader reader = new TsFileStatisticReader(seqFile)) {
       // 统计顺序文件的信息并更新到 overlapStatistic
       List<TsFileStatisticReader.ChunkGroupStatistics> chunkGroupStatisticsList =

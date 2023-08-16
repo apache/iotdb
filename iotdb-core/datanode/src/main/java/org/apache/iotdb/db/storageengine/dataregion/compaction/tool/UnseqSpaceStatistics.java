@@ -24,6 +24,8 @@ import java.util.Map;
 
 public class UnseqSpaceStatistics {
   // 设备 -> 序列 -> 时间范围
+  public long unsequenceFileNum = 0;
+  public long unsequenceFileSize = 0;
   private Map<String, Map<String, ITimeRange>> chunkStatisticMap = new HashMap<>();
 
   private Map<String, ITimeRange> chunkGroupStatisticMap = new HashMap<>();

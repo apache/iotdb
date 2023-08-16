@@ -20,20 +20,28 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
 public class OverlapStatistic {
-  long totalFiles;
-  long totalChunkGroups;
-  long totalChunks;
+  long totalSequenceFile;
+  long totalChunkGroupsInSequenceFile;
+  long totalChunksInSequenceFile;
 
-  long overlappedFiles;
-  long overlappedChunkGroups;
-  long overlappedChunks;
+  long overlappedSequenceFiles;
+  long overlappedChunkGroupsInSequenceFile;
+  long overlappedChunksInSequenceFile;
+
+  long totalUnsequenceFile;
+  long totalSequenceFileSize;
+  long totalUnsequenceFileSize;
 
   public void merge(OverlapStatistic other) {
-    this.totalFiles += other.totalFiles;
-    this.totalChunkGroups += other.totalChunkGroups;
-    this.totalChunks += other.totalChunks;
-    this.overlappedFiles += other.overlappedFiles;
-    this.overlappedChunkGroups += other.overlappedChunkGroups;
-    this.overlappedChunks += other.overlappedChunks;
+    this.totalSequenceFile += other.totalSequenceFile;
+    this.totalChunkGroupsInSequenceFile += other.totalChunkGroupsInSequenceFile;
+    this.totalChunksInSequenceFile += other.totalChunksInSequenceFile;
+    this.overlappedSequenceFiles += other.overlappedSequenceFiles;
+    this.overlappedChunkGroupsInSequenceFile += other.overlappedChunkGroupsInSequenceFile;
+    this.overlappedChunksInSequenceFile += other.overlappedChunksInSequenceFile;
+
+    this.totalUnsequenceFile += other.totalUnsequenceFile;
+    this.totalSequenceFileSize += other.totalSequenceFileSize;
+    this.totalUnsequenceFileSize += other.totalUnsequenceFileSize;
   }
 }
