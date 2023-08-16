@@ -270,7 +270,8 @@ public class AlignedChunkReader implements IChunkReader {
             valuePageDataList,
             valueDataTypeList,
             valueDecoderList,
-            filter);
+            filter,
+            queryAllSensors);
     alignedPageReader.setDeleteIntervalList(valueDeleteIntervalList);
     return alignedPageReader;
   }
@@ -318,7 +319,8 @@ public class AlignedChunkReader implements IChunkReader {
             uncompressedValuePageDatas,
             valueTypes,
             valueDecoders,
-            null);
+            null,
+            false);
     alignedPageReader.initTsBlockBuilder(valueTypes);
     alignedPageReader.setDeleteIntervalList(valueDeleteIntervalList);
     return alignedPageReader.getAllSatisfiedData();
