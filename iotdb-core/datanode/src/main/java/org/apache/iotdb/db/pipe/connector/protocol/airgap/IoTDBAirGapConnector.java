@@ -54,15 +54,18 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.zip.CRC32;
 
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_TIMEOUT_MS_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_TIMEOUT_MS_KEY;
+
 public class IoTDBAirGapConnector extends IoTDBConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBAirGapConnector.class);
 
   private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
-  private static final int CONNECTION_SEND_TIMEOUT_MS = 5000;
 
   private final List<Socket> sockets = new ArrayList<>();
   private final List<Boolean> isSocketAlive = new ArrayList<>();
+  private int connectionSendTimeoutMs;
 
   private long currentClientIndex = 0;
 
@@ -78,6 +81,11 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       isSocketAlive.add(false);
       sockets.add(null);
     }
+    connectionSendTimeoutMs =
+        Integer.parseInt(
+            parameters.getStringOrDefault(
+                CONNECTOR_AIR_GAP_TIMEOUT_MS_KEY,
+                Integer.toString(CONNECTOR_AIR_GAP_TIMEOUT_MS_DEFAULT_VALUE)));
   }
 
   @Override
@@ -104,7 +112,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       }
 
       Socket socket = new Socket();
-      socket.connect(new InetSocketAddress(ip, port), CONNECTION_SEND_TIMEOUT_MS);
+      socket.connect(new InetSocketAddress(ip, port), connectionSendTimeoutMs);
       socket.setKeepAlive(true);
       socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTimeoutMs());
       sockets.set(i, socket);

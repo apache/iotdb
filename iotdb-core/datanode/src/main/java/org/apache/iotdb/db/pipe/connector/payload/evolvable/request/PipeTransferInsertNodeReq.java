@@ -35,7 +35,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class PipeTransferInsertNodeReq extends TPipeTransferReq {
