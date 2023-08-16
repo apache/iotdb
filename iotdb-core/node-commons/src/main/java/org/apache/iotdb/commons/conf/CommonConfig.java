@@ -180,7 +180,7 @@ public class CommonConfig {
   private long pipeMetaSyncerAutoRestartPipeCheckIntervalRound = 1;
   private boolean pipeAutoRestartEnabled = true;
 
-  private boolean pipeAirGapReceiverEnabled = true;
+  private boolean pipeAirGapReceiverEnabled = false;
   private int pipeAirGapReceiverPort = 9780;
 
   /** Whether to use persistent schema mode. */
