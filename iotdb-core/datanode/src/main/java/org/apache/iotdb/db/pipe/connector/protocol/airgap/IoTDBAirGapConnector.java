@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapOneByteResponse;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
@@ -112,7 +113,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
 
       try {
         socket.connect(new InetSocketAddress(ip, port), handshakeTimeoutMs);
-        socket.setKeepAlive(false);
+        socket.setKeepAlive(true);
         socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTimeoutMs());
         sockets.set(i, socket);
       } catch (Exception e) {
@@ -311,8 +312,8 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
     outputStream.flush();
 
     final byte[] response = new byte[1];
-    int size = socket.getInputStream().read(response);
-    return size > 0 && response[0] == 0;
+    final int size = socket.getInputStream().read(response);
+    return size > 0 && Arrays.equals(AirGapOneByteResponse.OK, response);
   }
 
   private byte[] enrichWithLengthAndChecksum(byte[] bytes) {
