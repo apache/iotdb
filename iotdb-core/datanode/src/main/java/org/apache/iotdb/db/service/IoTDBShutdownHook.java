@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.service;
 
+import java.io.IOException;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -88,13 +89,9 @@ public class IoTDBShutdownHook extends Thread {
 
     // close consensusImpl
     try {
-      if (SchemaRegionConsensusImpl.getInstance() != null) {
-        SchemaRegionConsensusImpl.getInstance().stop();
-      }
-      if (DataRegionConsensusImpl.getInstance() != null) {
-        DataRegionConsensusImpl.getInstance().stop();
-      }
-    } catch (Exception e) {
+      SchemaRegionConsensusImpl.getInstance().stop();
+      DataRegionConsensusImpl.getInstance().stop();
+    } catch (IOException e) {
       logger.error("Stop ConsensusImpl error in IoTDBShutdownHook", e);
     }
 

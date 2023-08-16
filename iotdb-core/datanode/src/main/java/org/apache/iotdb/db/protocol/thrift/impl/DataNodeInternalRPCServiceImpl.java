@@ -944,7 +944,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
       return exceptionMessages.isEmpty()
           ? new TPushPipeMetaResp()
-              .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
+          .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
           : new TPushPipeMetaResp()
               .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()))
               .setExceptionMessages(exceptionMessages);
@@ -1195,25 +1195,22 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private Map<TConsensusGroupId, Boolean> getJudgedLeaders() {
     Map<TConsensusGroupId, Boolean> result = new HashMap<>();
-    if (DataRegionConsensusImpl.getInstance() != null) {
-      DataRegionConsensusImpl.getInstance()
-          .getAllConsensusGroupIds()
-          .forEach(
-              groupId ->
-                  result.put(
-                      groupId.convertToTConsensusGroupId(),
-                      DataRegionConsensusImpl.getInstance().isLeader(groupId)));
-    }
+    DataRegionConsensusImpl.getInstance()
+        .getAllConsensusGroupIds()
+        .forEach(
+            groupId ->
+                result.put(
+                    groupId.convertToTConsensusGroupId(),
+                    DataRegionConsensusImpl.getInstance().isLeader(groupId)));
 
-    if (SchemaRegionConsensusImpl.getInstance() != null) {
-      SchemaRegionConsensusImpl.getInstance()
-          .getAllConsensusGroupIds()
-          .forEach(
-              groupId ->
-                  result.put(
-                      groupId.convertToTConsensusGroupId(),
-                      SchemaRegionConsensusImpl.getInstance().isLeader(groupId)));
-    }
+    SchemaRegionConsensusImpl.getInstance()
+        .getAllConsensusGroupIds()
+        .forEach(
+            groupId ->
+                result.put(
+                    groupId.convertToTConsensusGroupId(),
+                    SchemaRegionConsensusImpl.getInstance().isLeader(groupId)));
+
     return result;
   }
 
@@ -1805,16 +1802,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     // kill the datanode process 20 seconds later
     // because datanode process cannot exit normally for the reason of InterruptedException
     new Thread(
-            () -> {
-              try {
-                TimeUnit.SECONDS.sleep(20);
-              } catch (InterruptedException e) {
-                LOGGER.warn("Meets InterruptedException in stopDataNode RPC method");
-              } finally {
-                LOGGER.info("Executing system.exit(0) in stopDataNode RPC method after 20 seconds");
-                System.exit(0);
-              }
-            })
+        () -> {
+          try {
+            TimeUnit.SECONDS.sleep(20);
+          } catch (InterruptedException e) {
+            LOGGER.warn("Meets InterruptedException in stopDataNode RPC method");
+          } finally {
+            LOGGER.info("Executing system.exit(0) in stopDataNode RPC method after 20 seconds");
+            System.exit(0);
+          }
+        })
         .start();
 
     try {
