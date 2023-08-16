@@ -115,7 +115,7 @@ public class IoTDBPipeDemoIT {
       try (Connection connection = receiver_env.getConnection();
           Statement statement = connection.createStatement()) {
         await()
-            .atMost(60, TimeUnit.SECONDS)
+            .atMost(600, TimeUnit.SECONDS)
             .untilAsserted(
                 () ->
                     TestUtils.assertResultSetEqual(

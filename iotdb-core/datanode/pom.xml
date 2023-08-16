@@ -275,6 +275,14 @@
                     <groupId>io.dropwizard.metrics</groupId>
                     <artifactId>metrics-jvm</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>com.bugsnag</groupId>
+                    <artifactId>bugsnag</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.h2database</groupId>
+                    <artifactId>h2-mvstore</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <!-- for mocked test-->
@@ -331,10 +339,6 @@
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
         </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>

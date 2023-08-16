@@ -196,7 +196,6 @@
         <!-- caffeine cache -->
         <caffeine>2.9.3</caffeine>
         <commons-csv.version>1.9.0</commons-csv.version>
-        <commons-lang.version>2.6</commons-lang.version>
         <JTransforms.version>3.1</JTransforms.version>
         <xz.version>1.9</xz.version>
         <!-- codegen -->
@@ -602,11 +601,6 @@
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-csv</artifactId>
                 <version>${commons-csv.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>commons-lang</groupId>
-                <artifactId>commons-lang</artifactId>
-                <version>${commons-lang.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.github.wendykierp</groupId>
