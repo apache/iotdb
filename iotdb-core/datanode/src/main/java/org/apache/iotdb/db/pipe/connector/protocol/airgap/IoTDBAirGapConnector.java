@@ -43,9 +43,9 @@ import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -54,8 +54,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.zip.CRC32;
 
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_TIMEOUT_MS_DEFAULT_VALUE;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_TIMEOUT_MS_KEY;
+import static org.apache.iotdb.commons.utils.BasicStructureSerDeUtil.LONG_LEN;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY;
 
 public class IoTDBAirGapConnector extends IoTDBConnector {
 
@@ -65,13 +66,10 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
 
   private final List<Socket> sockets = new ArrayList<>();
   private final List<Boolean> isSocketAlive = new ArrayList<>();
-  private int connectionSendTimeoutMs;
+
+  private int handshakeTimeoutMs;
 
   private long currentClientIndex = 0;
-
-  public IoTDBAirGapConnector() {
-    // Do nothing
-  }
 
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
@@ -81,11 +79,10 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       isSocketAlive.add(false);
       sockets.add(null);
     }
-    connectionSendTimeoutMs =
-        Integer.parseInt(
-            parameters.getStringOrDefault(
-                CONNECTOR_AIR_GAP_TIMEOUT_MS_KEY,
-                Integer.toString(CONNECTOR_AIR_GAP_TIMEOUT_MS_DEFAULT_VALUE)));
+    handshakeTimeoutMs =
+        parameters.getIntOrDefault(
+            CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY,
+            CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_DEFAULT_VALUE);
   }
 
   @Override
@@ -111,17 +108,27 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
         }
       }
 
-      Socket socket = new Socket();
-      socket.connect(new InetSocketAddress(ip, port), connectionSendTimeoutMs);
-      socket.setKeepAlive(true);
-      socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTimeoutMs());
-      sockets.set(i, socket);
+      final Socket socket = new Socket();
+
+      try {
+        socket.connect(new InetSocketAddress(ip, port), handshakeTimeoutMs);
+        socket.setKeepAlive(false);
+        socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTimeoutMs());
+        sockets.set(i, socket);
+      } catch (Exception e) {
+        LOGGER.warn(
+            "Failed to connect to target server ip: {}, port: {}, because: {}. Ignore it.",
+            ip,
+            port,
+            e.getMessage());
+        continue;
+      }
 
       if (!send(
           socket,
           PipeTransferHandshakeReq.toTransferHandshakeBytes(
               CommonDescriptor.getInstance().getConfig().getTimestampPrecision()))) {
-        throw new PipeException("Handshake error.");
+        throw new PipeException("Handshake error with target server ip: " + ip + ", port: " + port);
       } else {
         isSocketAlive.set(i, true);
         LOGGER.info("Handshake success. Target server ip: {}, port: {}", ip, port);
@@ -163,7 +170,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
         doTransfer(socket, (PipeRawTabletInsertionEvent) tabletInsertionEvent);
       } else {
         LOGGER.warn(
-            "IoTDBThriftSyncConnector only support "
+            "IoTDBAirGapConnector only support "
                 + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
                 + "Ignore {}.",
             tabletInsertionEvent);
@@ -184,7 +191,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
     // PipeProcessor can change the type of TabletInsertionEvent
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       LOGGER.warn(
-          "IoTDBThriftSyncConnector only support PipeTsFileInsertionEvent. Ignore {}.",
+          "IoTDBAirGapConnector only support PipeTsFileInsertionEvent. Ignore {}.",
           tsFileInsertionEvent);
       return;
     }
@@ -207,7 +214,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
 
   @Override
   public void transfer(Event event) {
-    LOGGER.warn("IoTDBThriftSyncConnector does not support transfer generic event: {}.", event);
+    LOGGER.warn("IoTDBAirGapConnector does not support transfer generic event: {}.", event);
   }
 
   private void doTransfer(
@@ -219,8 +226,8 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
             pipeInsertNodeTabletInsertionEvent.getInsertNode()))) {
       throw new PipeException(
           String.format(
-              "Transfer PipeInsertNodeTabletInsertionEvent %s error.",
-              pipeInsertNodeTabletInsertionEvent));
+              "Transfer PipeInsertNodeTabletInsertionEvent %s error. Socket: %s",
+              pipeInsertNodeTabletInsertionEvent, socket));
     }
   }
 
@@ -233,7 +240,8 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
             pipeRawTabletInsertionEvent.isAligned()))) {
       throw new PipeException(
           String.format(
-              "Transfer PipeRawTabletInsertionEvent %s error.", pipeRawTabletInsertionEvent));
+              "Transfer PipeRawTabletInsertionEvent %s error. Socket: %s.",
+              pipeRawTabletInsertionEvent, socket));
     }
   }
 
@@ -262,7 +270,8 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
                 readLength == readFileBufferSize
                     ? readBuffer
                     : Arrays.copyOfRange(readBuffer, 0, readLength)))) {
-          throw new PipeException(String.format("Transfer file %s error.", tsFile));
+          throw new PipeException(
+              String.format("Transfer file %s error. Socket %s.", tsFile, socket));
         } else {
           position += readLength;
         }
@@ -273,7 +282,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
     if (!send(
         socket,
         PipeTransferFileSealReq.toTPipeTransferFileSealBytes(tsFile.getName(), tsFile.length()))) {
-      throw new PipeException(String.format("Seal file %s error.", tsFile));
+      throw new PipeException(String.format("Seal file %s error. Socket %s.", tsFile, socket));
     } else {
       LOGGER.info("Successfully transferred file {}.", tsFile);
     }
@@ -292,6 +301,32 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
         "All sockets are dead, please check the connection to the receiver.");
   }
 
+  private boolean send(Socket socket, byte[] bytes) throws IOException {
+    if (!socket.isConnected()) {
+      return false;
+    }
+
+    final BufferedOutputStream outputStream = new BufferedOutputStream(socket.getOutputStream());
+    outputStream.write(enrichWithLengthAndChecksum(bytes));
+    outputStream.flush();
+
+    final byte[] response = new byte[1];
+    int size = socket.getInputStream().read(response);
+    return size > 0 && response[0] == 0;
+  }
+
+  private byte[] enrichWithLengthAndChecksum(byte[] bytes) {
+    // length of checksum and bytes payload
+    final byte[] length = BytesUtils.intToBytes(bytes.length + LONG_LEN);
+
+    final CRC32 crc32 = new CRC32();
+    crc32.update(bytes, 0, bytes.length);
+
+    // double length as simple checksum
+    return BytesUtils.concatByteArrayList(
+        Arrays.asList(length, length, BytesUtils.longToBytes(crc32.getValue()), bytes));
+  }
+
   @Override
   public void close() {
     for (int i = 0; i < sockets.size(); ++i) {
@@ -305,26 +340,5 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
         isSocketAlive.set(i, false);
       }
     }
-  }
-
-  private boolean send(Socket socket, byte[] bytes) throws IOException {
-    OutputStream outputStream = socket.getOutputStream();
-    if (!socket.isConnected()) {
-      return false;
-    }
-    outputStream.write(addLengthAndCheckSum(bytes));
-    outputStream.flush();
-    byte[] response = new byte[1];
-    int size = socket.getInputStream().read(response);
-    return size != 0 && response[0] == 0;
-  }
-
-  private byte[] addLengthAndCheckSum(byte[] bytes) {
-    CRC32 crc32 = new CRC32();
-    crc32.update(bytes, 0, bytes.length);
-    long checksum = crc32.getValue();
-    byte[] result = BytesUtils.concatByteArray(BytesUtils.longToBytes(checksum), bytes);
-    byte[] length = BytesUtils.intToBytes(result.length);
-    return BytesUtils.concatByteArrayList(Arrays.asList(length, length, result));
   }
 }

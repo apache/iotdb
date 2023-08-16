@@ -121,17 +121,21 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
                     PipeTransferHandshakeReq.toTPipeTransferReq(
                         CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
         if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          throw new PipeException(String.format("Handshake error, result status %s.", resp.status));
+          LOGGER.warn(
+              "Handshake error with target server ip: {}, port: {}, because: {}.",
+              ip,
+              port,
+              resp.status);
         } else {
           isClientAlive.set(i, true);
           LOGGER.info("Handshake success. Target server ip: {}, port: {}", ip, port);
         }
       } catch (TException e) {
-        throw new PipeConnectionException(
-            String.format(
-                "Handshake error with target server ip: %s, port: %s, because: %s",
-                ip, port, e.getMessage()),
-            e);
+        LOGGER.warn(
+            "Handshake error with target server ip: {}, port: {}, because: {}.",
+            ip,
+            port,
+            e.getMessage());
       }
     }
 
