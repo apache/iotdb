@@ -73,11 +73,23 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     socket.setSoTimeout((int) PipeConfig.getInstance().getPipeConnectorTimeoutMs());
     socket.setKeepAlive(true);
 
+    LOGGER.info("Pipe air gap receiver {} started. Socket: {}", receiverId, socket);
+
     try {
       while (!socket.isClosed()) {
         receive();
       }
-      LOGGER.info("Pipe air gap receiver {} closed.", receiverId);
+      LOGGER.info(
+          "Pipe air gap receiver {} closed because socket is closed. Socket: {}",
+          receiverId,
+          socket);
+    } catch (Exception e) {
+      LOGGER.warn(
+          "Pipe air gap receiver {} closed because of exception. Socket: {}",
+          receiverId,
+          socket,
+          e);
+      throw e;
     } finally {
       PipeAgent.receiver().thrift().handleClientExit();
       socket.close();

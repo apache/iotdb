@@ -80,10 +80,13 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       isSocketAlive.add(false);
       sockets.add(null);
     }
+
     handshakeTimeoutMs =
         parameters.getIntOrDefault(
             CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_KEY,
             CONNECTOR_AIR_GAP_HANDSHAKE_TIMEOUT_MS_DEFAULT_VALUE);
+    LOGGER.info(
+        "IoTDBAirGapConnector is customized with handshakeTimeoutMs: {}.", handshakeTimeoutMs);
   }
 
   @Override
@@ -190,7 +193,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
 
   @Override
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
-    // PipeProcessor can change the type of TabletInsertionEvent
+    // PipeProcessor can change the type of tsFileInsertionEvent
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       LOGGER.warn(
           "IoTDBAirGapConnector only support PipeTsFileInsertionEvent. Ignore {}.",
