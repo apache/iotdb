@@ -124,7 +124,7 @@ public class IoTDBPipeDataSyncIT {
                         "Time,root.vehicle.d0.s1,",
                         Collections.singleton("0,1.0,"));
                     return true;
-                  } catch (SQLException e) {
+                  } catch (Exception e) {
                     return false;
                   }
                 });
