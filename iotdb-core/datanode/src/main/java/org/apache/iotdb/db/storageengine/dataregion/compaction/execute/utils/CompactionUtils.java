@@ -436,4 +436,57 @@ public class CompactionUtils {
     }
     return true;
   }
+
+  public static void deleteSourceTsFileAndUpdateFileMetrics(
+      List<TsFileResource> sourceSeqResourceList, List<TsFileResource> sourceUnseqResourceList) {
+    // delete seq file
+    deleteSourceTsFileAndUpdateFileMetrics(sourceSeqResourceList);
+
+    // delete unSeq file
+    long[] unSequenceFileSize = new long[sourceUnseqResourceList.size()];
+    List<String> unSequenceFileNames = new ArrayList<>();
+    boolean removeSuccess = true;
+    for (int i = 0; i < sourceUnseqResourceList.size(); i++) {
+      TsFileResource tsFileResource = sourceUnseqResourceList.get(i);
+      if (!tsFileResource.remove()) {
+        removeSuccess = false;
+        logger.warn(
+            "[Compaction] delete unSequence file failed,file path is {}",
+            tsFileResource.getTsFile().getAbsolutePath());
+      } else {
+        logger.info(
+            "[Compaction] delete unSequence file :{}",
+            tsFileResource.getTsFile().getAbsolutePath());
+        unSequenceFileSize[i] = tsFileResource.getTsFileSize();
+        unSequenceFileNames.add(tsFileResource.getTsFile().getName());
+      }
+    }
+    if (removeSuccess) {
+      FileMetrics.getInstance().deleteFile(unSequenceFileSize, false, unSequenceFileNames);
+    }
+  }
+
+  public static void deleteSourceTsFileAndUpdateFileMetrics(
+      List<TsFileResource> sourceSeqResourceList) {
+    long[] sequenceFileSize = new long[sourceSeqResourceList.size()];
+    List<String> sequenceFileNames = new ArrayList<>();
+    boolean removeSuccess = true;
+    for (int i = 0; i < sourceSeqResourceList.size(); i++) {
+      TsFileResource tsFileResource = sourceSeqResourceList.get(i);
+      if (!tsFileResource.remove()) {
+        removeSuccess = false;
+        logger.warn(
+            "[Compaction] delete sequence file failed,file path is {}",
+            tsFileResource.getTsFile().getAbsolutePath());
+      } else {
+        logger.info(
+            "[Compaction] delete sequence file :{}", tsFileResource.getTsFile().getAbsolutePath());
+        sequenceFileSize[i] = tsFileResource.getTsFileSize();
+        sequenceFileNames.add(tsFileResource.getTsFile().getName());
+      }
+    }
+    if (removeSuccess) {
+      FileMetrics.getInstance().deleteFile(sequenceFileSize, true, sequenceFileNames);
+    }
+  }
 }

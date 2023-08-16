@@ -99,7 +99,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import com.google.common.base.Function;
-import org.apache.commons.lang.Validate;
+import org.apache.commons.lang3.Validate;
 
 import java.time.ZoneId;
 import java.util.ArrayList;

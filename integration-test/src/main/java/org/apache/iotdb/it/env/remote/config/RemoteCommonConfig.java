@@ -266,4 +266,8 @@ public class RemoteCommonConfig implements CommonConfig {
   public CommonConfig setDataRegionPerDataNode(double dataRegionPerDataNode) {
     return this;
   }
+
+  public CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode) {
+    return this;
+  }
 }
