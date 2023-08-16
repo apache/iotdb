@@ -20,6 +20,15 @@
 package org.apache.iotdb.commons.path;
 
 public class PathPatternTreeUtils {
+  /**
+   * Intersect the pattern tree with the full path prefix tree, and return the intersected pattern
+   * tree.
+   *
+   * @param patternTree any pattern tree
+   * @param fullPathPrefixTree the included pattern must be fullPath or prefix pattern(e.g.
+   *     root.sg.**)
+   * @return the intersected pattern tree
+   */
   public static PathPatternTree intersectWithFullPathPrefixTree(
       PathPatternTree patternTree, PathPatternTree fullPathPrefixTree) {
     PathPatternTree result = new PathPatternTree();
