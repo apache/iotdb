@@ -117,7 +117,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       try {
         socket.connect(new InetSocketAddress(ip, port), handshakeTimeoutMs);
         socket.setKeepAlive(true);
-        socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTimeoutMs());
+        socket.setSoTimeout(handshakeTimeoutMs);
         sockets.set(i, socket);
         LOGGER.info("Successfully connected to target server ip: {}, port: {}.", ip, port);
       } catch (Exception e) {
@@ -136,6 +136,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
         throw new PipeException("Handshake error with target server ip: " + ip + ", port: " + port);
       } else {
         isSocketAlive.set(i, true);
+        socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTimeoutMs());
         LOGGER.info("Handshake success. Target server ip: {}, port: {}", ip, port);
       }
     }
