@@ -63,6 +63,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
@@ -230,6 +231,12 @@ public class AsyncDataNodeClientPool {
         case PUSH_PIPE_META:
           client.pushPipeMeta(
               (TPushPipeMetaReq) clientHandler.getRequest(requestId),
+              (PipePushMetaRPCHandler)
+                  clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
+          break;
+        case PUSH_SINGLE_PIPE_META:
+          client.pushSinglePipeMeta(
+              (TPushSinglePipeMetaReq) clientHandler.getRequest(requestId),
               (PipePushMetaRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;

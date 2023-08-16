@@ -69,6 +69,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
+import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -657,6 +658,31 @@ public class ConfigNodeProcedureEnv {
 
     final AsyncClientHandler<TPushPipeMetaReq, TPushPipeMetaResp> clientHandler =
         new AsyncClientHandler<>(DataNodeRequestType.PUSH_PIPE_META, request, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    return clientHandler.getResponseMap();
+  }
+
+  public Map<Integer, TPushPipeMetaResp> pushSinglePipeMetaToDataNodes(ByteBuffer pipeMetaBinary) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    final TPushSinglePipeMetaReq request = new TPushSinglePipeMetaReq().setPipeMeta(pipeMetaBinary);
+
+    final AsyncClientHandler<TPushSinglePipeMetaReq, TPushPipeMetaResp> clientHandler =
+        new AsyncClientHandler<>(
+            DataNodeRequestType.PUSH_SINGLE_PIPE_META, request, dataNodeLocationMap);
+    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    return clientHandler.getResponseMap();
+  }
+
+  public Map<Integer, TPushPipeMetaResp> dropPipeOnDataNodes(String pipeNameToDrop) {
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    final TPushSinglePipeMetaReq request =
+        new TPushSinglePipeMetaReq().setPipeMeta(new byte[0]).setPipeNameToDrop(pipeNameToDrop);
+
+    final AsyncClientHandler<TPushSinglePipeMetaReq, TPushPipeMetaResp> clientHandler =
+        new AsyncClientHandler<>(
+            DataNodeRequestType.PUSH_SINGLE_PIPE_META, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseMap();
   }

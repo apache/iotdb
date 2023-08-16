@@ -255,8 +255,7 @@ public abstract class AbstractOperatePipeProcedureV2
   }
 
   /**
-   * Pushing all the pipeMeta's to all the dataNodes, forcing an update to the the pipe's runtime
-   * state.
+   * Pushing all the pipeMeta's to all the dataNodes, forcing an update to the pipe's runtime state.
    *
    * @param env ConfigNodeProcedureEnv
    * @return The responseMap after pushing pipe meta
@@ -332,6 +331,32 @@ public abstract class AbstractOperatePipeProcedureV2
     } catch (Exception e) {
       LOGGER.info("Failed to push pipe meta list to data nodes, will retry later.", e);
     }
+  }
+
+  /**
+   * Pushing one pipeMeta to all the dataNodes, forcing an update to the pipe's runtime state.
+   *
+   * @param pipeName pipe name of the pipe to push
+   * @param env ConfigNodeProcedureEnv
+   * @return The responseMap after pushing pipe meta
+   * @throws IOException Exception when Serializing to byte buffer
+   */
+  protected Map<Integer, TPushPipeMetaResp> pushSinglePipeMetaToDataNodes(
+      String pipeName, ConfigNodeProcedureEnv env) throws IOException {
+    return env.pushSinglePipeMetaToDataNodes(
+        pipeTaskInfo.get().getPipeMetaByPipeName(pipeName).serialize());
+  }
+
+  /**
+   * Drop a pipe on all the dataNodes.
+   *
+   * @param pipeName pipe name of the pipe to drop
+   * @param env ConfigNodeProcedureEnv
+   * @return The responseMap after pushing pipe meta
+   */
+  protected Map<Integer, TPushPipeMetaResp> dropPipeOnDataNodes(
+      String pipeName, ConfigNodeProcedureEnv env) {
+    return env.dropPipeOnDataNodes(pipeName);
   }
 
   @Override

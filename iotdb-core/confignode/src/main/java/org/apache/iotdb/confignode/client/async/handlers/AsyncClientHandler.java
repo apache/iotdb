@@ -211,6 +211,7 @@ public class AsyncClientHandler<Q, R> {
             (Map<Integer, TPipeHeartbeatResp>) responseMap,
             countDownLatch);
       case PUSH_PIPE_META:
+      case PUSH_SINGLE_PIPE_META:
         return new PipePushMetaRPCHandler(
             requestType,
             requestId,
