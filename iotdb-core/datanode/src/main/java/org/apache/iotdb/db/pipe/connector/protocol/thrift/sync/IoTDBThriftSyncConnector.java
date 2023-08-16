@@ -23,15 +23,8 @@ import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.connector.base.IoTDBThriftBatchBuilderV1;
-import org.apache.iotdb.db.pipe.connector.base.IoTDBThriftConnector;
-import org.apache.iotdb.db.pipe.connector.v1.reponse.PipeTransferFilePieceResp;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferBatchReq;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFilePieceReq;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFileSealReq;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferHandshakeReq;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferInsertNodeReq;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferTabletReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferBatchReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
@@ -69,7 +62,6 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CON
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_SIZE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_MODE_BATCH;
 
-public class IoTDBThriftConnectorV1 extends IoTDBThriftConnector {
 public class IoTDBThriftSyncConnector extends IoTDBThriftConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftSyncConnector.class);
@@ -85,13 +77,7 @@ public class IoTDBThriftSyncConnector extends IoTDBThriftConnector {
     // Do nothing
   }
 
-  public IoTDBThriftSyncConnector(String ipAddress, int port) {
-    nodeUrls.add(new TEndPoint(ipAddress, port));
   private IoTDBThriftBatchBuilderV1 batchBuilder;
-
-  public IoTDBThriftConnectorV1() {
-    // Empty constructor
-  }
 
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
@@ -278,7 +264,8 @@ public class IoTDBThriftSyncConnector extends IoTDBThriftConnector {
     LOGGER.warn("IoTDBThriftSyncConnector does not support transfer generic event: {}.", event);
   }
 
-  private void doTransferInBatch(IoTDBThriftConnectorClient client) throws IOException, TException {
+  private void doTransferInBatch(IoTDBThriftSyncConnectorClient client)
+      throws IOException, TException {
     final TPipeTransferResp resp =
         client.pipeTransfer(
             PipeTransferBatchReq.toTPipeTransferReq(batchBuilder.gettPipeTransferReqs()));

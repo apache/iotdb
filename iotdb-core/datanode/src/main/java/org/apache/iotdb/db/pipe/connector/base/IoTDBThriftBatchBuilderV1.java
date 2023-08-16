@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.base;
 
-import org.apache.iotdb.db.pipe.connector.v1.IoTDBThriftConnectorV1;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftConnectorV1;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;

@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.v2.handler;
+package org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler;
 
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
-import org.apache.iotdb.db.pipe.connector.v2.IoTDBThriftConnectorV2;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -46,13 +46,13 @@ public class PipeTransferTabletBatchInsertionEventHandler
   private final List<Event> events;
   private final TPipeTransferReq req;
 
-  private final IoTDBThriftConnectorV2 connector;
+  private final IoTDBThriftAsyncConnector connector;
 
   public PipeTransferTabletBatchInsertionEventHandler(
       List<Long> requestCommitIds,
       List<Event> events,
       TPipeTransferReq req,
-      IoTDBThriftConnectorV2 connector) {
+      IoTDBThriftAsyncConnector connector) {
     // Deep copy to keep Ids' and events' reference
     this.requestCommitIds = new ArrayList<>(requestCommitIds);
     this.events = new ArrayList<>(events);

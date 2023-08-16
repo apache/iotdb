@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.base;
 
-import org.apache.iotdb.db.pipe.connector.v2.handler.PipeTransferTabletBatchInsertionEventHandler;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletBatchInsertionEventHandler;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;

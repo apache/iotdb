@@ -27,25 +27,17 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.pipe.connector.base.IoTDBThriftBatchBuilderV2;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferBatchReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletReq;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBThriftConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferInsertNodeTabletInsertionEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferRawTabletInsertionEventHandler;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletBatchInsertionEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTsFileInsertionEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncConnector;
-import org.apache.iotdb.db.pipe.connector.base.IoTDBThriftBatchBuilderV2;
-import org.apache.iotdb.db.pipe.connector.base.IoTDBThriftConnector;
-import org.apache.iotdb.db.pipe.connector.v1.IoTDBThriftConnectorV1;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferBatchReq;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferHandshakeReq;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferInsertNodeReq;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferTabletReq;
-import org.apache.iotdb.db.pipe.connector.v2.handler.PipeTransferInsertNodeTabletInsertionEventHandler;
-import org.apache.iotdb.db.pipe.connector.v2.handler.PipeTransferRawTabletInsertionEventHandler;
-import org.apache.iotdb.db.pipe.connector.v2.handler.PipeTransferTabletBatchInsertionEventHandler;
-import org.apache.iotdb.db.pipe.connector.v2.handler.PipeTransferTsFileInsertionEventHandler;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -87,7 +79,6 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CON
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_SIZE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_MODE_BATCH;
 
-public class IoTDBThriftConnectorV2 extends IoTDBThriftConnector {
 public class IoTDBThriftAsyncConnector extends IoTDBThriftConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftAsyncConnector.class);
@@ -116,7 +107,6 @@ public class IoTDBThriftAsyncConnector extends IoTDBThriftConnector {
 
   IoTDBThriftBatchBuilderV2 batchBuilder;
 
-  public IoTDBThriftConnectorV2() {
   public IoTDBThriftAsyncConnector() {
     if (ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get() == null) {
       synchronized (IoTDBThriftAsyncConnector.class) {
