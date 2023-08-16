@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.base;
+package org.apache.iotdb.db.pipe.connector.builder;
 
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletBatchInsertionEventHandler;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;

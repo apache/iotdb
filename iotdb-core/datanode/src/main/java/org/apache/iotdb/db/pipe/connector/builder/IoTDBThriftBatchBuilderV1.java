@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.base;
+package org.apache.iotdb.db.pipe.connector.builder;
 
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftConnectorV1;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -57,7 +57,7 @@ public class IoTDBThriftBatchBuilderV1 {
       // TODO: Remove the "if" after PipeRawTabletInsertionEvent extending EnrichedEvent
       if (event instanceof EnrichedEvent) {
         events.add((EnrichedEvent) event);
-        ((EnrichedEvent) event).increaseReferenceCount(IoTDBThriftConnectorV1.class.getName());
+        ((EnrichedEvent) event).increaseReferenceCount(IoTDBThriftSyncConnector.class.getName());
       }
       bufferSize += insertNodeReq.body.array().length;
     }
@@ -74,7 +74,7 @@ public class IoTDBThriftBatchBuilderV1 {
     lastSendTime = System.currentTimeMillis();
     // Release the events to allow committing
     for (EnrichedEvent event : events) {
-      event.decreaseReferenceCount(IoTDBThriftConnectorV1.class.getName());
+      event.decreaseReferenceCount(IoTDBThriftSyncConnector.class.getName());
     }
     events.clear();
   }
