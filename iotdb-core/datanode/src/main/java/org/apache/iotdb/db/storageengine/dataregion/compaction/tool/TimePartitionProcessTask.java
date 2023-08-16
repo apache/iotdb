@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
+import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Future;
@@ -49,10 +50,10 @@ public class TimePartitionProcessTask {
         processSequenceSpaceAsync(fileTaskExecutor, unseqSpaceStatistics, timePartitionFiles.left);
     // 更新并打印进度
     OverlapStatisticTool.outputInfolock.lock();
+    System.out.println();
     OverlapStatisticTool.processedTimePartitionCount += 1;
     OverlapStatisticTool.processedSeqFileCount += partialRet.totalFiles;
     PrintUtil.printOneStatistics(partialRet, timePartition);
-    OverlapStatisticTool.outputInfolock.unlock();
     System.out.printf("Unsequence file num: %d\n", timePartitionFiles.getRight().size());
     System.out.printf(
         Thread.currentThread().getName()
@@ -61,6 +62,8 @@ public class TimePartitionProcessTask {
         ((double) sequenceSpaceCost / 1000),
         ((double) unsequenceSpaceCost / 1000));
 
+    System.out.println();
+    OverlapStatisticTool.outputInfolock.unlock();
     return partialRet;
   }
 
@@ -78,7 +81,7 @@ public class TimePartitionProcessTask {
           for (ChunkMetadata chunkMetadata : statistics.getChunkMetadataList()) {
             deviceStartTime = Math.min(deviceStartTime, chunkMetadata.getStartTime());
             deviceEndTime = Math.max(deviceEndTime, chunkMetadata.getEndTime());
-            if (deviceStartTime > deviceEndTime) {
+            if (chunkMetadata.getStartTime() > chunkMetadata.getEndTime()) {
               continue;
             }
             unseqSpaceStatistics.updateMeasurement(
@@ -93,7 +96,11 @@ public class TimePartitionProcessTask {
               statistics.getDeviceID(), new Interval(deviceStartTime, deviceEndTime));
         }
       } catch (IOException e) {
-        throw new RuntimeException(e);
+        if (e instanceof NoSuchFileException) {
+          System.out.println(((NoSuchFileException) e).getFile() + " is not exist");
+          continue;
+        }
+        e.printStackTrace();
       }
     }
     unsequenceSpaceCost += (System.currentTimeMillis() - startTime);
@@ -122,6 +129,7 @@ public class TimePartitionProcessTask {
           overlapStatistic.overlappedFiles++;
         }
       } catch (Exception e) {
+        e.printStackTrace();
         // todo
       }
     }

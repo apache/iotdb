@@ -25,6 +25,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.tool.UnseqSpaceSt
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 
 import java.io.IOException;
+import java.nio.file.NoSuchFileException;
 import java.util.List;
 import java.util.concurrent.Callable;
 
@@ -52,7 +53,6 @@ public class SingleSequenceFileTask implements Callable<TaskSummary> {
           chunkGroupStatisticsList) {
         summary.totalChunks += chunkGroupStatistics.getTotalChunkNum();
         String deviceId = chunkGroupStatistics.getDeviceID();
-        int overlapChunkNum = 0;
 
         long deviceStartTime = Long.MAX_VALUE, deviceEndTime = Long.MIN_VALUE;
 
@@ -84,7 +84,12 @@ public class SingleSequenceFileTask implements Callable<TaskSummary> {
       }
       summary.totalChunkGroups = chunkGroupStatisticsList.size();
     } catch (IOException e) {
-      throw new RuntimeException(e);
+      if (e instanceof NoSuchFileException) {
+        System.out.println(((NoSuchFileException) e).getFile() + " is not exist");
+        return new TaskSummary();
+      }
+      e.printStackTrace();
+      return new TaskSummary();
     }
     return summary;
   }

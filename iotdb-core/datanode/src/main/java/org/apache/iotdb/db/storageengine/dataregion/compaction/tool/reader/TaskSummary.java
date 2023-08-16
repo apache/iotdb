@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.tool.reader;
 
 public class TaskSummary {
-  public long overlapChunk;
-  public long overlapChunkGroup;
-  public long totalChunks;
-  public long totalChunkGroups;
+  public long overlapChunk = 0;
+  public long overlapChunkGroup = 0;
+  public long totalChunks = 0;
+  public long totalChunkGroups = 0;
 }
