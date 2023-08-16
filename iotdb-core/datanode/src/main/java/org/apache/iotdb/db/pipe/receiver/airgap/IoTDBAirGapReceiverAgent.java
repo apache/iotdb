@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.agent.receiver;
+package org.apache.iotdb.db.pipe.receiver.airgap;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBConnectorRequestVersion;
+import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.db.pipe.receiver.thrift.IoTDBThriftReceiver;
 import org.apache.iotdb.db.pipe.receiver.thrift.IoTDBThriftReceiverV1;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
@@ -47,18 +47,26 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.zip.CRC32;
 
-public class PipeAirGapReceiverAgent {
+public class IoTDBAirGapReceiverAgent {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeAirGapReceiverAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBAirGapReceiverAgent.class);
 
   private final ThreadLocal<IoTDBThriftReceiver> receiverThreadLocal = new ThreadLocal<>();
 
-  private final ServerSocket serverSocket =
-      new ServerSocket(PipeConfig.getInstance().getPipeAirGapReceiverPort());
+  private final ServerSocket serverSocket;
+
+  {
+    try {
+      serverSocket = new ServerSocket(PipeConfig.getInstance().getPipeAirGapReceiverPort());
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   private final ExecutorService executor = Executors.newSingleThreadExecutor();
   private boolean allowSubmitListening = false;
 
-  public PipeAirGapReceiverAgent() throws IOException {
+  public IoTDBAirGapReceiverAgent() {
     // Empty constructor
   }
 

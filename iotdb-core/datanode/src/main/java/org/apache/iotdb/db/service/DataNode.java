@@ -62,7 +62,7 @@ import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.agent.receiver.PipeAirGapReceiverAgent;
+import org.apache.iotdb.db.pipe.receiver.airgap.IoTDBAirGapReceiverAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -561,7 +561,7 @@ public class DataNode implements DataNodeMBean {
   /** Set up air gap service if pipe air gap receiver is enabled. */
   private void setUpPipeAirGapService() {
     if (PipeConfig.getInstance().getPipeAirGapReceiverEnabled()) {
-      Optional.ofNullable(PipeAgent.airGapReceiver()).ifPresent(PipeAirGapReceiverAgent::start);
+      Optional.ofNullable(PipeAgent.receiver().airGap()).ifPresent(IoTDBAirGapReceiverAgent::start);
     }
   }
 

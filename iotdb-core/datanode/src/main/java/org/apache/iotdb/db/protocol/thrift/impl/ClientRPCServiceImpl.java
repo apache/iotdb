@@ -43,7 +43,6 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.receiver.legacy.IoTDBLegacyPipeReceiver;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -2528,7 +2527,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus handshake(TSyncIdentityInfo info) throws TException {
-    return IoTDBLegacyPipeReceiver.getInstance()
+    return PipeAgent.receiver()
+        .legacy()
         .handshake(
             info,
             SESSION_MANAGER.getCurrSession().getClientAddress(),
@@ -2538,17 +2538,17 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus sendPipeData(ByteBuffer buff) throws TException {
-    return IoTDBLegacyPipeReceiver.getInstance().transportPipeData(buff);
+    return PipeAgent.receiver().legacy().transportPipeData(buff);
   }
 
   @Override
   public TSStatus sendFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff) throws TException {
-    return IoTDBLegacyPipeReceiver.getInstance().transportFile(metaInfo, buff);
+    return PipeAgent.receiver().legacy().transportFile(metaInfo, buff);
   }
 
   @Override
   public TPipeTransferResp pipeTransfer(TPipeTransferReq req) {
-    return PipeAgent.thriftReceiver().receive(req, partitionFetcher, schemaFetcher);
+    return PipeAgent.receiver().thrift().receive(req, partitionFetcher, schemaFetcher);
   }
 
   @Override
@@ -2688,7 +2688,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       TSCloseSessionReq req = new TSCloseSessionReq();
       closeSession(req);
     }
-    IoTDBLegacyPipeReceiver.getInstance().handleClientExit();
-    PipeAgent.thriftReceiver().handleClientExit();
+    PipeAgent.receiver().thrift().handleClientExit();
+    PipeAgent.receiver().legacy().handleClientExit();
   }
 }

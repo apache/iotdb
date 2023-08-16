@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.protocol.thrift;
+package org.apache.iotdb.db.pipe.connector.protocol;
 
 public enum IoTDBConnectorRequestVersion {
   VERSION_1((byte) 1),

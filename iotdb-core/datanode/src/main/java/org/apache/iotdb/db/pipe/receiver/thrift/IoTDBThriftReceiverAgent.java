@@ -17,12 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.agent.receiver;
+package org.apache.iotdb.db.pipe.receiver.thrift;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBConnectorRequestVersion;
-import org.apache.iotdb.db.pipe.receiver.thrift.IoTDBThriftReceiver;
-import org.apache.iotdb.db.pipe.receiver.thrift.IoTDBThriftReceiverV1;
+import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -37,9 +35,9 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 
-public class PipeThriftReceiverAgent {
+public class IoTDBThriftReceiverAgent {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeThriftReceiverAgent.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftReceiverAgent.class);
 
   private final ThreadLocal<IoTDBThriftReceiver> receiverThreadLocal = new ThreadLocal<>();
 
