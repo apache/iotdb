@@ -116,6 +116,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
         socket.setKeepAlive(true);
         socket.setSoTimeout((int) PIPE_CONFIG.getPipeConnectorTimeoutMs());
         sockets.set(i, socket);
+        LOGGER.info("Successfully connected to target server ip: {}, port: {}.", ip, port);
       } catch (Exception e) {
         LOGGER.warn(
             "Failed to connect to target server ip: {}, port: {}, because: {}. Ignore it.",
