@@ -24,7 +24,10 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.fail;
 
@@ -685,6 +688,69 @@ public class PartialPathTest {
     for (int i = 0; i < pathPairs.length; i++) {
       Assert.assertEquals(results[i], pathPairs[i][0].include(pathPairs[i][1]));
     }
+  }
+
+  @Test
+  public void testIntersectWithPrefixPattern() throws Exception {
+    checkIntersect(
+        new PartialPath("root.**.d*"),
+        new PartialPath("root.test.dac.device1.**"),
+        new HashSet<PartialPath>() {
+          {
+            add(new PartialPath("root.test.dac.device1"));
+            add(new PartialPath("root.test.dac.device1.d*"));
+            add(new PartialPath("root.test.dac.device1.**.d*"));
+          }
+        });
+    checkIntersect(
+        new PartialPath("root.**.d*.**"),
+        new PartialPath("root.test.dac.device1.**"),
+        new HashSet<PartialPath>() {
+          {
+            add(new PartialPath("root.test.dac.device1"));
+            add(new PartialPath("root.test.dac.device1.**"));
+          }
+        });
+    checkIntersect(
+        new PartialPath("root.**.d1.**"),
+        new PartialPath("root.sg1.d1.**"),
+        new HashSet<PartialPath>() {
+          {
+            add(new PartialPath("root.sg1.d1.**"));
+          }
+        });
+    checkIntersect(
+        new PartialPath("root.**.d1.s1"),
+        new PartialPath("root.sg1.d1.**"),
+        new HashSet<PartialPath>() {
+          {
+            add(new PartialPath("root.sg1.d1.s1"));
+            add(new PartialPath("root.sg1.d1.d1.s1"));
+            add(new PartialPath("root.sg1.d1.**.d1.s1"));
+          }
+        });
+    checkIntersect(
+        new PartialPath("root.**.d*"),
+        new PartialPath("root.sg1.d1.**"),
+        new HashSet<PartialPath>() {
+          {
+            add(new PartialPath("root.sg1.d1"));
+            add(new PartialPath("root.sg1.d1.d*"));
+            add(new PartialPath("root.sg1.d1.**.d*"));
+          }
+        });
+    checkIntersect(
+        new PartialPath("root.sg1.d2.s1"),
+        new PartialPath("root.sg1.d1.**"),
+        Collections.emptySet());
+  }
+
+  private void checkIntersect(PartialPath pattern, PartialPath prefix, Set<PartialPath> expected) {
+    List<PartialPath> actual = pattern.intersectWithPrefixPattern(prefix);
+    for (PartialPath path : actual) {
+      Assert.assertTrue(expected.remove(path));
+    }
+    Assert.assertTrue(expected.isEmpty());
   }
 
   private void checkNodes(String[] expected, String[] actual) {
