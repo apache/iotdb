@@ -17,11 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.compaction.tool.reader;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
-import org.apache.iotdb.db.storageengine.dataregion.compaction.tool.Interval;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.tool.TsFileStatisticReader;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.tool.UnseqSpaceStatistics;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 
 import java.io.File;
@@ -30,7 +27,7 @@ import java.nio.file.NoSuchFileException;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-public class SingleSequenceFileTask implements Callable<TaskSummary> {
+public class SingleSequenceFileTask implements Callable<SequenceFileTaskSummary> {
   private UnseqSpaceStatistics unseqSpaceStatistics;
   private String seqFile;
 
@@ -40,12 +37,13 @@ public class SingleSequenceFileTask implements Callable<TaskSummary> {
   }
 
   @Override
-  public TaskSummary call() throws Exception {
+  public SequenceFileTaskSummary call() throws Exception {
     return checkSeqFile(unseqSpaceStatistics, seqFile);
   }
 
-  private TaskSummary checkSeqFile(UnseqSpaceStatistics unseqSpaceStatistics, String seqFile) {
-    TaskSummary summary = new TaskSummary();
+  private SequenceFileTaskSummary checkSeqFile(
+      UnseqSpaceStatistics unseqSpaceStatistics, String seqFile) {
+    SequenceFileTaskSummary summary = new SequenceFileTaskSummary();
     File f = new File(seqFile);
     if (!f.exists()) {
       return summary;
@@ -91,11 +89,11 @@ public class SingleSequenceFileTask implements Callable<TaskSummary> {
       summary.totalChunkGroups = chunkGroupStatisticsList.size();
     } catch (IOException e) {
       if (e instanceof NoSuchFileException) {
-        System.out.println(((NoSuchFileException) e).getFile() + " is not exist");
-        return new TaskSummary();
+        System.out.println(seqFile + " is not exist");
+        return new SequenceFileTaskSummary();
       }
       e.printStackTrace();
-      return new TaskSummary();
+      return new SequenceFileTaskSummary();
     }
     return summary;
   }

@@ -19,16 +19,15 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
-import static org.apache.iotdb.db.storageengine.dataregion.compaction.tool.AlignedBorderTablePrinter.printTable;
-
-public class PrintUtil {
+class PrintUtil {
+  static String[] header = {"", "Total", "Overlap", "Overlap/Total"};
 
   public static void printOneStatistics(OverlapStatistic overlapStatistic, String label) {
     printTableLog(overlapStatistic);
-    printProgressLog(label);
+    printProgressLog(label, overlapStatistic);
   }
 
-  private static void printProgressLog(String label) {
+  private static void printProgressLog(String label, OverlapStatistic statistic) {
     System.out.printf(
         "Progress: %s\n" + "Sequence File progress: %d/%d\n" + "Partition progress: %d/%d %s",
         label,
@@ -37,16 +36,26 @@ public class PrintUtil {
         OverlapStatisticTool.processedTimePartitionCount,
         OverlapStatisticTool.timePartitionFileMap.size(),
         System.getProperty("line.separator"));
+    System.out.printf(
+        "Sequence file num: %d, Sequence file size: %.2fM\n",
+        statistic.totalSequenceFile, ((double) statistic.totalSequenceFileSize / 1024 / 1024));
+    System.out.printf(
+        "Unsequence file num: %d, Unsequence file size: %.2fM\n",
+        statistic.totalUnsequenceFile, (double) statistic.totalUnsequenceFileSize / 1024 / 1024);
   }
 
   private static void printTableLog(OverlapStatistic overlapStatistic) {
     double overlappedSeqFilePercentage =
-        calculatePercentage(overlapStatistic.overlappedSequenceFiles, overlapStatistic.totalSequenceFile);
+        calculatePercentage(
+            overlapStatistic.overlappedSequenceFiles, overlapStatistic.totalSequenceFile);
     double overlappedChunkGroupPercentage =
         calculatePercentage(
-            overlapStatistic.overlappedChunkGroupsInSequenceFile, overlapStatistic.totalChunkGroupsInSequenceFile);
+            overlapStatistic.overlappedChunkGroupsInSequenceFile,
+            overlapStatistic.totalChunkGroupsInSequenceFile);
     double overlappedChunkPercentage =
-        calculatePercentage(overlapStatistic.overlappedChunksInSequenceFile, overlapStatistic.totalChunksInSequenceFile);
+        calculatePercentage(
+            overlapStatistic.overlappedChunksInSequenceFile,
+            overlapStatistic.totalChunksInSequenceFile);
     String[][] log = {
       {
         "Sequence File",
@@ -72,5 +81,75 @@ public class PrintUtil {
 
   private static double calculatePercentage(long numerator, long denominator) {
     return denominator != 0 ? (double) numerator / denominator * 100 : 0;
+  }
+
+  public static void printTable(String[][] data) {
+    int numRows = data.length;
+    int numCols = data[0].length;
+    int[] maxCellWidths = calculateMaxCellWidths(header, data);
+
+    printTopBorder(maxCellWidths);
+    printRow(header, maxCellWidths);
+
+    for (int row = 0; row < numRows; row++) {
+      printSeparator(maxCellWidths);
+      printRow(data[row], maxCellWidths);
+    }
+
+    printBottomBorder(maxCellWidths);
+  }
+
+  private static int[] calculateMaxCellWidths(String[] header, String[][] data) {
+    int numCols = header.length;
+    int[] maxCellWidths = new int[numCols];
+
+    for (int col = 0; col < numCols; col++) {
+      maxCellWidths[col] = header[col].length();
+      for (String[] row : data) {
+        maxCellWidths[col] = Math.max(maxCellWidths[col], row[col].length());
+      }
+    }
+
+    return maxCellWidths;
+  }
+
+  private static void printTopBorder(int[] maxCellWidths) {
+    System.out.print("┌");
+    for (int width : maxCellWidths) {
+      printRepeat("─", width + 2);
+      System.out.print("┬");
+    }
+    System.out.println();
+  }
+
+  private static void printSeparator(int[] maxCellWidths) {
+    System.out.print("├");
+    for (int width : maxCellWidths) {
+      printRepeat("─", width + 2);
+      System.out.print("┼");
+    }
+    System.out.println();
+  }
+
+  private static void printBottomBorder(int[] maxCellWidths) {
+    System.out.print("└");
+    for (int width : maxCellWidths) {
+      printRepeat("─", width + 2);
+      System.out.print("┴");
+    }
+    System.out.println();
+  }
+
+  private static void printRow(String[] row, int[] maxCellWidths) {
+    for (int col = 0; col < row.length; col++) {
+      System.out.printf("│ %-" + maxCellWidths[col] + "s ", row[col]);
+    }
+    System.out.println("│");
+  }
+
+  private static void printRepeat(String value, int times) {
+    for (int i = 0; i < times; i++) {
+      System.out.print(value);
+    }
   }
 }

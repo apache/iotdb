@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
-import org.apache.iotdb.db.storageengine.dataregion.compaction.tool.reader.AsyncThreadExecutor;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -41,7 +39,7 @@ public class TimePartitionProcessWorker {
   public void run(CountDownLatch latch) {
     new Thread(
             () -> {
-              AsyncThreadExecutor fileProcessTaskExecutor = new AsyncThreadExecutor(10);
+              SequenceFileSubTaskThreadExecutor fileProcessTaskExecutor = new SequenceFileSubTaskThreadExecutor(10);
               while (!workerTaskList.isEmpty()) {
                 TimePartitionProcessTask task = workerTaskList.remove(0);
                 OverlapStatistic partialRet = task.processTimePartition(fileProcessTaskExecutor);

@@ -44,4 +44,21 @@ public class OverlapStatistic {
     this.totalSequenceFileSize += other.totalSequenceFileSize;
     this.totalUnsequenceFileSize += other.totalUnsequenceFileSize;
   }
+
+  public void mergeSingleSequenceFileTaskResult(SequenceFileTaskSummary summary) {
+    if (summary.equals(new SequenceFileTaskSummary())) {
+      return;
+    }
+    this.overlappedChunkGroupsInSequenceFile += summary.overlapChunkGroup;
+    this.totalChunkGroupsInSequenceFile += summary.totalChunkGroups;
+    this.overlappedChunksInSequenceFile += summary.overlapChunk;
+    this.totalChunksInSequenceFile += summary.totalChunks;
+    this.totalSequenceFile += 1;
+    this.totalSequenceFileSize += summary.fileSize;
+  }
+
+  public void mergeUnSeqSpaceStatistics(UnseqSpaceStatistics statistics) {
+    this.totalUnsequenceFile += statistics.unsequenceFileNum;
+    this.totalUnsequenceFileSize += statistics.unsequenceFileSize;
+  }
 }

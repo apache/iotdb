@@ -17,12 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.compaction.tool.reader;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
-public class TaskSummary {
-  public long overlapChunk = 0;
-  public long overlapChunkGroup = 0;
-  public long totalChunks = 0;
-  public long totalChunkGroups = 0;
-  public long fileSize = 0;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+
+public class SequenceFileSubTaskThreadExecutor {
+  private ExecutorService executor;
+
+  public SequenceFileSubTaskThreadExecutor(int threadCount) {
+    executor = Executors.newFixedThreadPool(threadCount);
+  }
+
+  public Future<SequenceFileTaskSummary> submit(Callable<SequenceFileTaskSummary> task) {
+    return executor.submit(task);
+  }
+
+  public void shutdown() {
+    executor.shutdown();
+  }
 }
