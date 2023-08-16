@@ -224,20 +224,6 @@
             <artifactId>stats</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.airlift</groupId>
-            <artifactId>airline</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.google.code.findbugs</groupId>
-                    <artifactId>jsr305</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>io.airlift</groupId>
-            <artifactId>concurrent</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.eclipse.jetty</groupId>
             <artifactId>jetty-server</artifactId>
         </dependency>
@@ -274,6 +260,14 @@
                 <exclusion>
                     <groupId>io.dropwizard.metrics</groupId>
                     <artifactId>metrics-jvm</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.bugsnag</groupId>
+                    <artifactId>bugsnag</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.h2database</groupId>
+                    <artifactId>h2-mvstore</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -331,10 +325,6 @@
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
         </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>

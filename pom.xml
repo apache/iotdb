@@ -79,47 +79,14 @@
         </mailingList>
     </mailingLists>
     <modules>
-        <module>iotdb-core/tsfile</module>
-        <module>iotdb-core/antlr</module>
-        <module>iotdb-protocol/thrift</module>
-        <module>iotdb-protocol/thrift-commons</module>
-        <module>iotdb-protocol/thrift-confignode</module>
-        <module>iotdb-protocol/thrift-iot-consensus</module>
-        <module>iotdb-protocol/thrift-mlnode</module>
-        <module>iotdb-client/service-rpc</module>
-        <module>iotdb-client/jdbc</module>
-        <module>iotdb-client/session</module>
-        <module>iotdb-client/cli</module>
-        <module>iotdb-protocol/openapi</module>
-        <module>iotdb-core/datanode</module>
-        <module>example</module>
-        <module>iotdb-connector/grafana-plugin</module>
-        <module>iotdb-connector/grafana-connector</module>
-        <module>iotdb-connector/spark-tsfile</module>
-        <module>iotdb-connector/hadoop</module>
-        <module>iotdb-connector/spark-iotdb-connector/scala_2.11</module>
-        <module>iotdb-connector/spark-iotdb-connector/scala_2.12</module>
-        <module>iotdb-connector/flink-tsfile-connector</module>
-        <module>iotdb-connector/flink-iotdb-connector</module>
-        <module>iotdb-connector/flink-sql-iotdb-connector</module>
+        <module>iotdb-api</module>
+        <module>iotdb-client</module>
+        <module>iotdb-connector</module>
+        <module>iotdb-core</module>
+        <module>iotdb-protocol</module>
         <module>distribution</module>
-        <module>iotdb-connector/hive-connector</module>
-        <module>iotdb-core/node-commons</module>
-        <module>iotdb-core/confignode</module>
-        <module>iotdb-connector/zeppelin-interpreter</module>
-        <module>iotdb-client/client-py</module>
-        <!--        <module>iotdb-client/compile-tools</module>-->
-        <module>iotdb-client/client-cpp</module>
-        <module>iotdb-core/metrics</module>
-        <module>integration-test</module>
-        <module>iotdb-core/consensus</module>
+        <module>example</module>
         <module>library-udf</module>
-        <module>iotdb-api/udf-api</module>
-        <module>iotdb-api/trigger-api</module>
-        <module>iotdb-api/external-api</module>
-        <module>iotdb-client/isession</module>
-        <module>iotdb-core/mlnode</module>
-        <module>iotdb-api/pipe-api</module>
     </modules>
     <!-- Properties Management -->
     <properties>
@@ -138,9 +105,13 @@
         <flink.version>1.14.6</flink.version>
         <common.io.version>2.11.0</common.io.version>
         <commons.collections4>4.4</commons.collections4>
-        <!-- keep consistent with client-cpp/tools/thrift/pom.xml-->
+        <!--
+            Thrift 0.17.0 was the last version that could be used in Java 8 applications,
+            However Thrift 0.17.0 has an invalid entry in the META-INF/MANIFEST.mf file.
+            All versions between 0.17.0 and 0.14.1 have know vulnerabilities, so for now
+            we'll stay at 0.14.1.
+        -->
         <thrift.version>0.14.1</thrift.version>
-        <airline.version>0.8</airline.version>
         <jackson.version>2.13.5</jackson.version>
         <disrupter.version>3.4.2</disrupter.version>
         <jackson.databind.version>2.13.4.2</jackson.databind.version>
@@ -170,14 +141,16 @@
         <sonar.java.checkstyle.reportPaths>target/checkstyle-report.xml</sonar.java.checkstyle.reportPaths>
         <sonar.coverage.jacoco.xmlReportPaths>target/jacoco-merged-reports/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
         <sonar.junit.reportPaths>target/surefire-reports,target/failsafe-reports</sonar.junit.reportPaths>
-        <!-- By default, the argLine is empty-->
         <gson.version>2.8.9</gson.version>
+        <!-- By default, the argLine is empty-->
         <argLine/>
         <!-- whether enable compiling the cpp client-->
         <client-cpp>false</client-cpp>
         <!-- disable enforcer by default-->
         <enforcer.skip>true</enforcer.skip>
         <spotless.version>2.27.1</spotless.version>
+        <!-- Override this to `true`, if you want to disable spotless -->
+        <spotless.skip>false</spotless.skip>
         <httpclient.version>4.5.14</httpclient.version>
         <httpcore.version>4.4.16</httpcore.version>
         <!-- for REST service -->
@@ -192,7 +165,6 @@
         <javax.annotation-api.version>1.3.2</javax.annotation-api.version>
         <log4j.version>1.2.24</log4j.version>
         <lz4-java.version>1.8.0</lz4-java.version>
-        <jaxb-runtime.version>3.0.2</jaxb-runtime.version>
         <mockito-core.version>2.23.4</mockito-core.version>
         <objenesis.version>3.2</objenesis.version>
         <powermock-core.version>2.0.9</powermock-core.version>
@@ -222,23 +194,28 @@
         <!-- caffeine cache -->
         <caffeine>2.9.3</caffeine>
         <commons-csv.version>1.9.0</commons-csv.version>
-        <commons-lang.version>2.6</commons-lang.version>
         <JTransforms.version>3.1</JTransforms.version>
         <xz.version>1.9</xz.version>
         <!-- codegen -->
         <drill.freemarker.maven.plugin.version>1.17.0</drill.freemarker.maven.plugin.version>
         <codegen.phase>generate-sources</codegen.phase>
+        <cmake-maven-plugin.version>3.26.3-b1</cmake-maven-plugin.version>
+        <cmake.build.type>Release</cmake.build.type>
+        <ctest.skip.tests>false</ctest.skip.tests>
+        <thrift.exec.absolute.path/>
+        <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
+        <boost.include.dir/>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
-        their version in sub-project's pom, but we have to claim themselves again
-        in sub-projects
+        their version in subproject's pom, but we have to claim themselves again
+        in subprojects
     -->
     <dependencyManagement>
         <dependencies>
             <!--
                 in the subprojects, you have to claim logback again, because maybe
-                someone in your dependences uses log4j lib.
+                someone in your dependencies uses log4j lib.
             -->
             <dependency>
                 <groupId>ch.qos.logback</groupId>
@@ -418,22 +395,7 @@
                 <artifactId>jackson-core-asl</artifactId>
                 <version>${jackson-core-asl.version}</version>
             </dependency>
-            <dependency>
-                <groupId>org.glassfish.jaxb</groupId>
-                <artifactId>jaxb-runtime</artifactId>
-                <version>${jaxb-runtime.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>jakarta.activation</groupId>
-                        <artifactId>jakarta.activation-api</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <!--            <dependency>
-                <groupId>org.javassist</groupId>
-                <artifactId>javassist</artifactId>
-                <version>3.24.1-GA</version>
-            </dependency>-->
+
             <dependency>
                 <groupId>org.mockito</groupId>
                 <artifactId>mockito-core</artifactId>
@@ -527,11 +489,6 @@
             </dependency>
             <dependency>
                 <groupId>io.airlift</groupId>
-                <artifactId>airline</artifactId>
-                <version>${airline.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.airlift</groupId>
                 <artifactId>slice</artifactId>
                 <version>${io.airlift.slice.version}</version>
             </dependency>
@@ -622,11 +579,6 @@
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-csv</artifactId>
                 <version>${commons-csv.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>commons-lang</groupId>
-                <artifactId>commons-lang</artifactId>
-                <version>${commons-lang.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.github.wendykierp</groupId>
@@ -731,6 +683,7 @@
                             <!-- only for Travis CI with WinOS-->
                             <exclude>hadoopbin</exclude>
                             <exclude>windowssystem32</exclude>
+                            <exclude>.ignore</exclude>
                             <!-- generated by Github -->
                             <exclude>**/.github/**</exclude>
                             <!-- figures -->
@@ -740,8 +693,6 @@
                             <exclude>**/.jpeg</exclude>
                             <!--Generated by Apache Release -->
                             <exclude>local-snapshots-dir/**</exclude>
-                            <!-- JSON can't contain comments and therefore no Apache header -->
-                            <exclude>*.json</exclude>
                             <!-- visualization plans -->
                             <exclude>**/*.plan</exclude>
                             <exclude>**/NOTICE-binary</exclude>
@@ -801,9 +752,31 @@
                         </execution>
                     </executions>
                 </plugin>
+                <plugin>
+                    <groupId>com.googlecode.maven-download-plugin</groupId>
+                    <artifactId>download-maven-plugin</artifactId>
+                    <version>1.6.8</version>
+                </plugin>
+                <plugin>
+                    <groupId>com.googlecode.cmake-maven-project</groupId>
+                    <artifactId>cmake-maven-plugin</artifactId>
+                    <version>3.26.3-b1</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>3.3.0</version>
+                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <configuration>
+                    <skip>${spotless.skip}</skip>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.eluder.coveralls</groupId>
                 <artifactId>coveralls-maven-plugin</artifactId>
@@ -1109,88 +1082,116 @@
         </plugins>
     </build>
     <profiles>
-        <!-- spotless is too slow, so we put it into a profile to skip it if needed -->
-        <profile>
-            <id>spotless</id>
-            <activation>
-                <!-- activeByDefault does not take effect-->
-                <file>
-                    <exists>.</exists>
-                </file>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>com.diffplug.spotless</groupId>
-                        <artifactId>spotless-maven-plugin</artifactId>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
         <!--
           A set of profiles defining the different properties needed to download and run thrift
           They are automatically activated depending on the OS you are using.
         -->
         <profile>
-            <id>windows</id>
-            <activation>
-                <os>
-                    <family>windows</family>
-                </os>
-            </activation>
-            <properties>
-                <os.classifier>windows-x86_64</os.classifier>
-                <thrift.download-url>http://archive.apache.org/dist/thrift/${thrift.version}/thrift-${thrift.version}.exe</thrift.download-url>
-                <thrift.executable>thrift-${thrift.version}-win-x86_64.exe</thrift.executable>
-                <thrift.skip-making-executable>true</thrift.skip-making-executable>
-                <thrift.exec-cmd.executable>echo</thrift.exec-cmd.executable>
-                <thrift.exec-cmd.args>"Do nothing"</thrift.exec-cmd.args>
-            </properties>
-        </profile>
-        <!-- Has to be listed before "mac" as it seems a mac is both "mac" and "unix" -->
-        <profile>
-            <id>unix</id>
+            <id>.os-unix</id>
             <activation>
                 <os>
                     <family>unix</family>
+                    <name>Linux</name>
+                    <arch>!aarch64</arch>
                 </os>
             </activation>
             <properties>
                 <os.classifier>linux-x86_64</os.classifier>
-                <thrift.download-url>https://gitbox.apache.org/repos/asf?p=iotdb-bin-resources.git;a=blob_plain;f=compile-tools/thrift-0.14-ubuntu;hb=HEAD</thrift.download-url>
-                <thrift.executable>thrift_0.14.1_linux</thrift.executable>
-                <thrift.skip-making-executable>false</thrift.skip-making-executable>
-                <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
-                <thrift.exec-cmd.args>+x ${project.build.directory}/tools/${thrift.executable}</thrift.exec-cmd.args>
+                <cmake.generator>Unix Makefiles</cmake.generator>
+                <thrift.executable>thrift</thrift.executable>
             </properties>
         </profile>
         <profile>
-            <id>mac</id>
+            <id>.os-unix-arm</id>
+            <activation>
+                <os>
+                    <family>unix</family>
+                    <name>Linux</name>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <os.classifier>linux-aarch64</os.classifier>
+                <cmake.generator>Unix Makefiles</cmake.generator>
+                <thrift.executable>thrift</thrift.executable>
+            </properties>
+        </profile>
+        <profile>
+            <id>.os-mac</id>
             <activation>
                 <os>
                     <family>mac</family>
+                    <arch>!aarch64</arch>
                 </os>
             </activation>
             <properties>
                 <os.classifier>mac-x86_64</os.classifier>
-                <thrift.download-url>https://gitbox.apache.org/repos/asf?p=iotdb-bin-resources.git;a=blob_plain;f=compile-tools/thrift-0.14-MacOS;hb=HEAD</thrift.download-url>
-                <thrift.executable>thrift_0.14.1_mac</thrift.executable>
-                <thrift.skip-making-executable>false</thrift.skip-making-executable>
-                <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
-                <thrift.exec-cmd.args>+x ${project.build.directory}/tools/${thrift.executable}</thrift.exec-cmd.args>
+                <cmake.generator>Unix Makefiles</cmake.generator>
+                <thrift.executable>thrift</thrift.executable>
+                <boost.include.dir>/usr/local/include</boost.include.dir>
+            </properties>
+        </profile>
+        <profile>
+            <id>.os-mac-arm</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <os.classifier>mac-aarch64</os.classifier>
+                <cmake.generator>Unix Makefiles</cmake.generator>
+                <thrift.executable>thrift</thrift.executable>
+                <boost.include.dir>/opt/homebrew/opt/boost/include</boost.include.dir>
+            </properties>
+        </profile>
+        <profile>
+            <id>.os-windows</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                    <arch>!aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <os.classifier>windows-x86_64</os.classifier>
+                <cmake.generator>Visual Studio 17 2022</cmake.generator>
+                <thrift.executable>Release/thrift.exe</thrift.executable>
+            </properties>
+        </profile>
+        <profile>
+            <id>.os-windows-arm</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <os.classifier>windows-aarch64</os.classifier>
+                <cmake.generator>Visual Studio 17 2022</cmake.generator>
+                <thrift.executable>Release/thrift.exe</thrift.executable>
+            </properties>
+        </profile>
+        <profile>
+            <id>.java-9-and-above</id>
+            <activation>
+                <jdk>[9,)</jdk>
+            </activation>
+            <properties>
+                <maven.compiler.release>8</maven.compiler.release>
             </properties>
         </profile>
         <!-- Some APIs were removed in Java 11, so we need to add replacements -->
         <profile>
-            <id>java-11-and-above</id>
+            <id>.java-11-and-above</id>
             <activation>
-                <!-- This needs to be updated as soon as Java 20 is shipped -->
-                <jdk>[11,20)</jdk>
+                <jdk>[11,)</jdk>
             </activation>
             <properties>
-                <maven.compiler.release>8</maven.compiler.release>
                 <!-- change to 1.15.0 will modify many codes (all are javadocs), we change it to 1.15.0
-                until: iotdb decides to do not support jdk8-->
+                    until: iotdb decides to do not support jdk8-->
                 <google.java.format.version>1.7</google.java.format.version>
             </properties>
             <dependencies>
@@ -1203,23 +1204,29 @@
                     <groupId>javax.xml.bind</groupId>
                     <artifactId>jaxb-api</artifactId>
                 </dependency>
-                <dependency>
-                    <groupId>org.glassfish.jaxb</groupId>
-                    <artifactId>jaxb-runtime</artifactId>
-                </dependency>
             </dependencies>
         </profile>
         <!-- Add argLine for Java 16 and above, due to [JEP 396: Strongly Encapsulate JDK Internals by Default]
           (https://openjdk.java.net/jeps/396) -->
         <profile>
-            <id>java-16-and-above</id>
+            <id>.java-16-and-above</id>
             <activation>
-                <!-- This needs to be updated as soon as Java 20 is shipped -->
-                <jdk>[16,20)</jdk>
+                <jdk>[16,)</jdk>
             </activation>
             <properties>
-                <maven.compiler.release>8</maven.compiler.release>
                 <argLine>--illegal-access=permit --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</argLine>
+            </properties>
+        </profile>
+        <!-- Little helper profile that will disable running the cmake tests when the maven tests are being skipped -->
+        <profile>
+            <id>.skipTests</id>
+            <activation>
+                <property>
+                    <name>skipTests</name>
+                </property>
+            </activation>
+            <properties>
+                <ctest.skip.tests>true</ctest.skip.tests>
             </properties>
         </profile>
         <!--
@@ -1232,51 +1239,40 @@
           {maven local repo}/.cache/download-maven-plugin
         -->
         <profile>
-            <id>thrift-generation</id>
+            <id>.thrift-generation</id>
             <activation>
                 <file>
                     <exists>src/main/thrift</exists>
                 </file>
             </activation>
             <properties>
-                <thrift.exec.absolute.path>${project.build.directory}/tools/${thrift.executable}</thrift.exec.absolute.path>
+                <thrift.exec.absolute.path>${project.build.directory}/thrift/bin/${thrift.executable}</thrift.exec.absolute.path>
             </properties>
             <build>
                 <plugins>
                     <plugin>
-                        <groupId>com.googlecode.maven-download-plugin</groupId>
-                        <artifactId>download-maven-plugin</artifactId>
-                        <version>1.6.7</version>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <version>3.6.0</version>
                         <executions>
                             <execution>
-                                <id>get-thrift-executable</id>
+                                <id>get-thrift</id>
                                 <phase>generate-sources</phase>
                                 <goals>
-                                    <goal>wget</goal>
+                                    <goal>unpack</goal>
                                 </goals>
                                 <configuration>
-                                    <url>${thrift.download-url}</url>
-                                    <outputDirectory>${project.build.directory}/tools</outputDirectory>
-                                    <outputFileName>${thrift.executable}</outputFileName>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>exec-maven-plugin</artifactId>
-                        <version>1.6.0</version>
-                        <executions>
-                            <execution>
-                                <id>make-thrift-executable-executable</id>
-                                <phase>generate-sources</phase>
-                                <goals>
-                                    <goal>exec</goal>
-                                </goals>
-                                <configuration>
-                                    <skip>${thrift.skip-making-executable}</skip>
-                                    <executable>${thrift.exec-cmd.executable}</executable>
-                                    <commandlineArgs>${thrift.exec-cmd.args}</commandlineArgs>
+                                    <artifactItems>
+                                        <artifactItem>
+                                            <groupId>org.apache.iotdb</groupId>
+                                            <artifactId>iotdb-tools-thrift</artifactId>
+                                            <version>${project.version}</version>
+                                            <classifier>${os.classifier}</classifier>
+                                            <type>zip</type>
+                                            <overWrite>true</overWrite>
+                                            <outputDirectory>${project.build.directory}/thrift</outputDirectory>
+                                        </artifactItem>
+                                    </artifactItems>
                                 </configuration>
                             </execution>
                         </executions>
@@ -1294,8 +1290,6 @@
                                 </goals>
                                 <configuration>
                                     <generator>java</generator>
-                                    <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
-                                    <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
                                 </configuration>
                             </execution>
                             <execution>
@@ -1306,8 +1300,6 @@
                                 </goals>
                                 <configuration>
                                     <generator>py</generator>
-                                    <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
-                                    <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
                                     <includes>**/common.thrift,**/client.thrift,**/datanode.thrift,**/confignode.thrift,**/mlnode.thrift</includes>
                                     <outputDirectory>${project.build.directory}/generated-sources-python/</outputDirectory>
                                 </configuration>
@@ -1320,16 +1312,42 @@
                                 </goals>
                                 <configuration>
                                     <generator>go</generator>
-                                    <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
-                                    <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
                                     <includes>**/common.thrift,**/client.thrift</includes>
                                     <outputDirectory>${project.build.directory}/generated-sources-go</outputDirectory>
                                 </configuration>
                             </execution>
                         </executions>
+                        <configuration>
+                            <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
+                            <thriftSourceRoot>${project.basedir}/src/main/thrift</thriftSourceRoot>
+                        </configuration>
                     </plugin>
                 </plugins>
             </build>
+            <dependencies>
+                <!-- This ensures the iotdb-tools-thift module is build first -->
+                <dependency>
+                    <groupId>org.apache.iotdb</groupId>
+                    <artifactId>iotdb-tools-thrift</artifactId>
+                    <version>1.3.0-SNAPSHOT</version>
+                    <type>pom</type>
+                    <scope>provided</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+        <!-- Enable integration-testsuite on demand, as this takes quite a long time to run -->
+        <profile>
+            <id>with-integration-tests</id>
+            <modules>
+                <module>integration-test</module>
+            </modules>
+        </profile>
+        <!-- Enable the building of the tools (Currently this only adds building of the Thrift module) -->
+        <profile>
+            <id>with-tools</id>
+            <modules>
+                <module>tools</module>
+            </modules>
         </profile>
         <!-- Make sure the source assembly has the right name -->
         <profile>
@@ -1361,6 +1379,27 @@
                                         </manifest>
                                     </archive>
                                 </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!--
+                      Generate an SBOM for the project
+                    -->
+                    <plugin>
+                        <groupId>org.cyclonedx</groupId>
+                        <artifactId>cyclonedx-maven-plugin</artifactId>
+                        <version>2.7.9</version>
+                        <!-- Only run this in the root module of the project -->
+                        <inherited>false</inherited>
+                        <configuration>
+                            <outputName>apache-${project.artifactId}-${project.version}-sbom</outputName>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>makeAggregateBom</goal>
+                                </goals>
                             </execution>
                         </executions>
                     </plugin>
@@ -1397,17 +1436,9 @@
                 </plugins>
             </build>
         </profile>
-        <!-- enable site-->
-        <!-- use `mvn package -P site -pl site` to compile the site module only -->
-        <profile>
-            <id>site</id>
-            <modules>
-                <module>site</module>
-            </modules>
-        </profile>
         <!-- code coverage for ut and it, and then merge them together.-->
         <profile>
-            <id>code-coverage</id>
+            <id>with-code-coverage</id>
             <modules>
                 <module>code-coverage</module>
             </modules>
