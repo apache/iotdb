@@ -1415,7 +1415,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         ConsensusGroupId.Factory.createFromTConsensusGroupId(tconsensusGroupId);
     if (consensusGroupId instanceof DataRegionId) {
       ConsensusGenericResponse response =
-          DataRegionConsensusImpl.getInstance().deletePeer(consensusGroupId);
+          DataRegionConsensusImpl.getInstance().deleteLocalPeer(consensusGroupId);
       if (!response.isSuccess()
           && !(response.getException() instanceof PeerNotInConsensusGroupException)) {
         return RpcUtils.getStatus(
@@ -1424,7 +1424,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return regionManager.deleteDataRegion((DataRegionId) consensusGroupId);
     } else {
       ConsensusGenericResponse response =
-          SchemaRegionConsensusImpl.getInstance().deletePeer(consensusGroupId);
+          SchemaRegionConsensusImpl.getInstance().deleteLocalPeer(consensusGroupId);
       if (!response.isSuccess()
           && !(response.getException() instanceof PeerNotInConsensusGroupException)) {
         return RpcUtils.getStatus(
@@ -1755,9 +1755,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     ConsensusGenericResponse resp;
     if (regionId instanceof DataRegionId) {
-      resp = DataRegionConsensusImpl.getInstance().createPeer(regionId, peers);
+      resp = DataRegionConsensusImpl.getInstance().createLocalPeer(regionId, peers);
     } else {
-      resp = SchemaRegionConsensusImpl.getInstance().createPeer(regionId, peers);
+      resp = SchemaRegionConsensusImpl.getInstance().createLocalPeer(regionId, peers);
     }
     if (!resp.isSuccess()) {
       LOGGER.warn(

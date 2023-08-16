@@ -625,7 +625,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
     ConsensusGroupId groupId = configManager.getConsensusManager().getConsensusGroupId();
     ConsensusGenericResponse resp =
-        configManager.getConsensusManager().getConsensusImpl().deletePeer(groupId);
+        configManager.getConsensusManager().getConsensusImpl().deleteLocalPeer(groupId);
     if (!resp.isSuccess()) {
       return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
           .setMessage(

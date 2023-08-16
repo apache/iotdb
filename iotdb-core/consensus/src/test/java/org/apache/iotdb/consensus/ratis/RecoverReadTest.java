@@ -123,7 +123,7 @@ public class RecoverReadTest {
     final ConsensusGroupId gid = miniCluster.getGid();
     final List<Peer> members = miniCluster.getPeers();
 
-    miniCluster.getServers().forEach(s -> s.createPeer(gid, members));
+    miniCluster.getServers().forEach(s -> s.createLocalPeer(gid, members));
 
     // first write 10 ops
     TestUtils.write(miniCluster.getServer(0), gid, 10);
@@ -150,7 +150,7 @@ public class RecoverReadTest {
     final ConsensusGroupId gid = miniCluster.getGid();
     final List<Peer> members = miniCluster.getPeers();
 
-    miniCluster.getServers().forEach(s -> s.createPeer(gid, members));
+    miniCluster.getServers().forEach(s -> s.createLocalPeer(gid, members));
 
     // first write 10 ops
     TestUtils.write(miniCluster.getServer(0), gid, 10);
@@ -192,7 +192,7 @@ public class RecoverReadTest {
     final ConsensusGroupId gid = miniCluster.getGid();
     final List<Peer> members = miniCluster.getPeers();
 
-    miniCluster.getServers().forEach(s -> s.createPeer(gid, members));
+    miniCluster.getServers().forEach(s -> s.createLocalPeer(gid, members));
 
     // first write 10 ops
     TestUtils.write(miniCluster.getServer(0), gid, 10);
@@ -218,7 +218,7 @@ public class RecoverReadTest {
     final ConsensusGroupId gid = miniCluster.getGid();
     final List<Peer> members = miniCluster.getPeers();
 
-    miniCluster.getServers().forEach(s -> s.createPeer(gid, members));
+    miniCluster.getServers().forEach(s -> s.createLocalPeer(gid, members));
 
     // first write 30 ops
     TestUtils.write(miniCluster.getServer(0), gid, 50);

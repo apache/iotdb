@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.consensus.ratis;
 
+import java.util.Optional;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -45,6 +46,7 @@ import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.NodeReadOnlyException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
@@ -73,8 +75,12 @@ import org.apache.ratis.protocol.RaftGroupId;
 import org.apache.ratis.protocol.RaftPeer;
 import org.apache.ratis.protocol.RaftPeerId;
 import org.apache.ratis.protocol.SnapshotManagementRequest;
+import org.apache.ratis.protocol.exceptions.AlreadyExistsException;
+import org.apache.ratis.protocol.exceptions.GroupMismatchException;
 import org.apache.ratis.protocol.exceptions.NotLeaderException;
 import org.apache.ratis.protocol.exceptions.RaftException;
+import org.apache.ratis.protocol.exceptions.ReadException;
+import org.apache.ratis.protocol.exceptions.ReadIndexException;
 import org.apache.ratis.protocol.exceptions.ResourceUnavailableException;
 import org.apache.ratis.server.DivisionInfo;
 import org.apache.ratis.server.RaftServer;
@@ -97,12 +103,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
-/** A multi-raft consensus implementation based on Apache Ratis. */
+/**
+ * A multi-raft consensus implementation based on Apache Ratis.
+ */
 class RatisConsensus implements IConsensus {
 
   private static final Logger logger = LoggerFactory.getLogger(RatisConsensus.class);
 
-  /** the unique net communication endpoint */
+  /**
+   * the unique net communication endpoint
+   */
   private final RaftPeer myself;
 
   private final RaftServer server;
@@ -110,7 +120,7 @@ class RatisConsensus implements IConsensus {
   private final RaftProperties properties = new RaftProperties();
   private final RaftClientRpc clientRpc;
 
-  private final IClientManager<RaftGroup, RatisClient> clientManager;
+  private final IClientManager<RaftGroup, org.apache.iotdb.consensus.ratis.RatisClient> clientManager;
 
   private final Map<RaftGroupId, RaftGroup> lastSeen = new ConcurrentHashMap<>();
 
@@ -120,7 +130,6 @@ class RatisConsensus implements IConsensus {
   private static final int DEFAULT_PRIORITY = 0;
   private static final int LEADER_PRIORITY = 1;
 
-  /** TODO make it configurable */
   private static final int DEFAULT_WAIT_LEADER_READY_TIMEOUT = (int) TimeUnit.SECONDS.toMillis(20);
 
   private final ExecutorService addExecutor;
@@ -159,7 +168,7 @@ class RatisConsensus implements IConsensus {
             ThreadName.RATIS_BG_DISK_GUARDIAN.getName());
 
     clientManager =
-        new IClientManager.Factory<RaftGroup, RatisClient>()
+        new IClientManager.Factory<RaftGroup, org.apache.iotdb.consensus.ratis.RatisClient>()
             .createClientManager(new RatisClientPoolFactory());
 
     clientRpc = new GrpcFactory(new Parameters()).newRaftClientRpc(ClientId.randomId(), properties);
@@ -170,7 +179,7 @@ class RatisConsensus implements IConsensus {
             .setProperties(properties)
             .setStateMachineRegistry(
                 raftGroupId ->
-                    new ApplicationStateMachineProxy(
+                    new org.apache.iotdb.consensus.ratis.ApplicationStateMachineProxy(
                         registry.apply(Utils.fromRaftGroupIdToConsensusGroupId(raftGroupId)),
                         raftGroupId,
                         canServeStaleRead))
@@ -178,14 +187,14 @@ class RatisConsensus implements IConsensus {
   }
 
   @Override
-  public void start() throws IOException {
+  public synchronized void start() throws IOException {
     MetricService.getInstance().addMetricSet(this.ratisMetricSet);
     server.start();
     startSnapshotGuardian();
   }
 
   @Override
-  public void stop() throws IOException {
+  public synchronized void stop() throws IOException {
     addExecutor.shutdown();
     diskGuardian.shutdown();
     try {
@@ -206,7 +215,9 @@ class RatisConsensus implements IConsensus {
     return !reply.isSuccess() && (reply.getException() instanceof ResourceUnavailableException);
   }
 
-  /** launch a consensus write with retry mechanism */
+  /**
+   * launch a consensus write with retry mechanism
+   */
   private RaftClientReply writeWithRetry(CheckedSupplier<RaftClientReply, IOException> caller)
       throws IOException {
 
@@ -245,120 +256,125 @@ class RatisConsensus implements IConsensus {
     return writeWithRetry(() -> server.submitClientRequest(request));
   }
 
-  private RaftClientReply writeRemotelyWithRetry(RatisClient client, Message message)
+  private RaftClientReply writeRemotelyWithRetry(
+      org.apache.iotdb.consensus.ratis.RatisClient client, Message message)
       throws IOException {
     return writeWithRetry(() -> client.getRaftClient().io().send(message));
   }
 
   /**
-   * write will first send request to local server use method call if local server is not leader, it
-   * will use RaftClient to send RPC to read leader
+   * write will first send request to local server using local method call. If local server is not
+   * leader, it will use RaftClient to send RPC to read leader
    */
   @Override
-  public ConsensusWriteResponse write(
-      ConsensusGroupId consensusGroupId, IConsensusRequest IConsensusRequest) {
+  public TSStatus write(ConsensusGroupId groupId, IConsensusRequest request)
+      throws ConsensusException {
     // pre-condition: group exists and myself server serves this group
-    RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(consensusGroupId);
+    RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
     RaftGroup raftGroup = getGroupInfo(raftGroupId);
     if (raftGroup == null || !raftGroup.getPeers().contains(myself)) {
-      return failedWrite(new ConsensusGroupNotExistException(consensusGroupId));
+      throw new ConsensusGroupNotExistException(groupId);
     }
 
     // current Peer is group leader and in ReadOnly State
-    if (isLeader(consensusGroupId) && Utils.rejectWrite()) {
+    if (isLeader(groupId) && Utils.rejectWrite()) {
       try {
         forceStepDownLeader(raftGroup);
       } catch (Exception e) {
         logger.warn("leader {} read only, force step down failed due to {}", myself, e);
       }
-      return failedWrite(new NodeReadOnlyException(myself));
+      throw new NodeReadOnlyException(myself);
     }
 
     // serialize request into Message
-    Message message = new RequestMessage(IConsensusRequest);
+    Message message = new RequestMessage(request);
 
     // 1. first try the local server
     RaftClientRequest clientRequest =
         buildRawRequest(raftGroupId, message, RaftClientRequest.writeRequestType());
 
-    RaftClientReply localServerReply;
     RaftPeer suggestedLeader = null;
-    if (isLeader(consensusGroupId) && waitUntilLeaderReady(raftGroupId)) {
+    if (isLeader(groupId) && waitUntilLeaderReady(raftGroupId)) {
       try (AutoCloseable ignored =
           RatisMetricsManager.getInstance().startWriteLocallyTimer(consensusGroupType)) {
-        localServerReply = writeLocallyWithRetry(clientRequest);
+        RaftClientReply localServerReply = writeLocallyWithRetry(clientRequest);
         if (localServerReply.isSuccess()) {
-          ResponseMessage responseMessage = (ResponseMessage) localServerReply.getMessage();
-          TSStatus writeStatus = (TSStatus) responseMessage.getContentHolder();
-          return ConsensusWriteResponse.newBuilder().setStatus(writeStatus).build();
+          org.apache.iotdb.consensus.ratis.ResponseMessage responseMessage = (org.apache.iotdb.consensus.ratis.ResponseMessage) localServerReply.getMessage();
+          return Optional.ofNullable(responseMessage.getContentHolder()).map(TSStatus.class::cast)
+              .orElse(null);
         }
         NotLeaderException ex = localServerReply.getNotLeaderException();
-        if (ex != null) { // local server is not leader
+        if (ex != null) {
           suggestedLeader = ex.getSuggestedLeader();
         }
       } catch (Exception e) {
-        return failedWrite(new RatisRequestFailedException(e));
+        throw new RatisRequestFailedException(e);
       }
     }
 
     // 2. try raft client
     TSStatus writeResult;
     try (AutoCloseable ignored =
-            RatisMetricsManager.getInstance().startWriteRemotelyTimer(consensusGroupType);
-        RatisClient client = getRaftClient(raftGroup)) {
+        RatisMetricsManager.getInstance().startWriteRemotelyTimer(consensusGroupType);
+        org.apache.iotdb.consensus.ratis.RatisClient client = getRaftClient(raftGroup)) {
       RaftClientReply reply = writeRemotelyWithRetry(client, message);
       if (!reply.isSuccess()) {
-        return failedWrite(new RatisRequestFailedException(reply.getException()));
+        throw new RatisRequestFailedException(reply.getException());
       }
       writeResult = Utils.deserializeFrom(reply.getMessage().getContent().asReadOnlyByteBuffer());
     } catch (Exception e) {
-      return failedWrite(new RatisRequestFailedException(e));
+      throw new RatisRequestFailedException(e);
     }
 
     if (suggestedLeader != null) {
       TEndPoint leaderEndPoint = Utils.fromRaftPeerAddressToTEndPoint(suggestedLeader.getAddress());
       writeResult.setRedirectNode(new TEndPoint(leaderEndPoint.getIp(), leaderEndPoint.getPort()));
     }
-    return ConsensusWriteResponse.newBuilder().setStatus(writeResult).build();
+    return writeResult;
   }
 
-  /** Read directly from LOCAL COPY notice: May read stale data (not linearizable) */
+  /**
+   * Read directly from LOCAL COPY notice:
+   */
   @Override
-  public ConsensusReadResponse read(
-      ConsensusGroupId consensusGroupId, IConsensusRequest IConsensusRequest) {
-    RaftGroupId groupId = Utils.fromConsensusGroupIdToRaftGroupId(consensusGroupId);
-    RaftGroup group = getGroupInfo(groupId);
+  public DataSet read(ConsensusGroupId groupId, IConsensusRequest request)
+      throws ConsensusException {
+    RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
+    RaftGroup group = getGroupInfo(raftGroupId);
     if (group == null || !group.getPeers().contains(myself)) {
-      return failedRead(new ConsensusGroupNotExistException(consensusGroupId));
+      throw new ConsensusGroupNotExistException(groupId);
     }
 
     final boolean isLinearizableRead =
-        !canServeStaleRead.computeIfAbsent(consensusGroupId, id -> new AtomicBoolean(false)).get();
+        !canServeStaleRead.computeIfAbsent(groupId, id -> new AtomicBoolean(false)).get();
 
     RaftClientReply reply;
     try {
-      reply = doRead(groupId, IConsensusRequest, isLinearizableRead);
+      reply = doRead(raftGroupId, request, isLinearizableRead);
       // allow stale read if current linearizable read returns successfully
       if (isLinearizableRead) {
-        canServeStaleRead.get(consensusGroupId).set(true);
+        canServeStaleRead.get(groupId).set(true);
       }
-    } catch (Exception e) {
+    } catch (ReadException | ReadIndexException e) {
       if (isLinearizableRead) {
         // linearizable read failed. the RaftServer is recovering from Raft Log and cannot serve
         // read requests.
-        return failedRead(new RatisUnderRecoveryException(e));
+        throw new RatisUnderRecoveryException(e);
       } else {
-        return failedRead(new RatisRequestFailedException(e));
+        throw new RatisRequestFailedException(e);
       }
+    } catch (Exception e) {
+      throw new RatisRequestFailedException(e);
     }
-
     Message ret = reply.getMessage();
-    ResponseMessage readResponseMessage = (ResponseMessage) ret;
-    DataSet dataSet = (DataSet) readResponseMessage.getContentHolder();
-    return ConsensusReadResponse.newBuilder().setDataSet(dataSet).build();
+    org.apache.iotdb.consensus.ratis.ResponseMessage readResponseMessage = (org.apache.iotdb.consensus.ratis.ResponseMessage) ret;
+    return Optional.ofNullable(readResponseMessage.getContentHolder()).map(DataSet.class::cast)
+        .orElse(null);
   }
 
-  /** return a success raft client reply or throw an Exception */
+  /**
+   * return a success raft client reply or throw an Exception
+   */
   private RaftClientReply doRead(
       RaftGroupId gid, IConsensusRequest readRequest, boolean linearizable) throws Exception {
     final RaftClientRequest.Type readType =
@@ -390,25 +406,22 @@ class RatisConsensus implements IConsensus {
    * register self to the RaftGroup
    */
   @Override
-  public ConsensusGenericResponse createPeer(ConsensusGroupId groupId, List<Peer> peers) {
+  public void createLocalPeer(ConsensusGroupId groupId, List<Peer> peers)
+      throws ConsensusException {
     RaftGroup group = buildRaftGroup(groupId, peers);
-    // add RaftPeer myself to this RaftGroup
-    return addNewGroupToServer(group, myself);
-  }
-
-  private ConsensusGenericResponse addNewGroupToServer(RaftGroup group, RaftPeer server) {
-    RaftClientReply reply;
     RaftGroup clientGroup =
-        group.getPeers().isEmpty() ? RaftGroup.valueOf(group.getGroupId(), server) : group;
-    try (RatisClient client = getRaftClient(clientGroup)) {
-      reply = client.getRaftClient().getGroupManagementApi(server.getId()).add(group);
+        group.getPeers().isEmpty() ? RaftGroup.valueOf(group.getGroupId(), myself) : group;
+    try (org.apache.iotdb.consensus.ratis.RatisClient client = getRaftClient(clientGroup)) {
+      RaftClientReply reply = client.getRaftClient().getGroupManagementApi(myself.getId())
+          .add(group);
       if (!reply.isSuccess()) {
-        return failed(new RatisRequestFailedException(reply.getException()));
+        throw new RatisRequestFailedException(reply.getException());
       }
+    } catch (AlreadyExistsException e) {
+      throw new ConsensusGroupAlreadyExistException(groupId);
     } catch (Exception e) {
-      return failed(new RatisRequestFailedException(e));
+      throw new RatisRequestFailedException(e);
     }
-    return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
   }
 
   /**
@@ -419,7 +432,7 @@ class RatisConsensus implements IConsensus {
    * clean up
    */
   @Override
-  public ConsensusGenericResponse deletePeer(ConsensusGroupId groupId) {
+  public void deleteLocalPeer(ConsensusGroupId groupId) throws ConsensusException {
     RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
 
     // send remove group to myself
@@ -435,13 +448,13 @@ class RatisConsensus implements IConsensus {
                   true,
                   false));
       if (!reply.isSuccess()) {
-        return failed(new RatisRequestFailedException(reply.getException()));
+        throw new RatisRequestFailedException(reply.getException());
       }
+    } catch (GroupMismatchException e) {
+      throw new ConsensusGroupNotExistException(groupId);
     } catch (IOException e) {
-      return failed(new RatisRequestFailedException(e));
+      throw new RatisRequestFailedException(e);
     }
-
-    return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
   }
 
   /**
@@ -451,32 +464,25 @@ class RatisConsensus implements IConsensus {
    * change
    */
   @Override
-  public ConsensusGenericResponse addPeer(ConsensusGroupId groupId, Peer peer) {
+  public void addRemotePeer(ConsensusGroupId groupId, Peer peer) throws ConsensusException {
     RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
-    RaftGroup group = getGroupInfo(raftGroupId);
-    RaftPeer peerToAdd = Utils.fromPeerAndPriorityToRaftPeer(peer, DEFAULT_PRIORITY);
 
+    RaftGroup group = getGroupInfo(raftGroupId);
     // pre-conditions: group exists and myself in this group
     if (group == null || !group.getPeers().contains(myself)) {
-      return failed(new ConsensusGroupNotExistException(groupId));
+      throw new ConsensusGroupNotExistException(groupId);
     }
 
+    RaftPeer peerToAdd = Utils.fromPeerAndPriorityToRaftPeer(peer, DEFAULT_PRIORITY);
     // pre-condition: peer not in this group
     if (group.getPeers().contains(peerToAdd)) {
-      return failed(new PeerAlreadyInConsensusGroupException(groupId, peer));
+      throw new PeerAlreadyInConsensusGroupException(groupId, peer);
     }
 
     List<RaftPeer> newConfig = new ArrayList<>(group.getPeers());
     newConfig.add(peerToAdd);
 
-    RaftClientReply reply;
-    try {
-      reply = sendReconfiguration(RaftGroup.valueOf(raftGroupId, newConfig));
-    } catch (RatisRequestFailedException e) {
-      return failed(e);
-    }
-
-    return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
+    sendReconfiguration(RaftGroup.valueOf(raftGroupId, newConfig));
   }
 
   /**
@@ -486,7 +492,7 @@ class RatisConsensus implements IConsensus {
    * change
    */
   @Override
-  public ConsensusGenericResponse removePeer(ConsensusGroupId groupId, Peer peer) {
+  public ConsensusGenericResponse removeRemotePeer(ConsensusGroupId groupId, Peer peer) {
     RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
     RaftGroup group = getGroupInfo(raftGroupId);
     RaftPeer peerToRemove = Utils.fromPeerAndPriorityToRaftPeer(peer, DEFAULT_PRIORITY);
@@ -516,53 +522,26 @@ class RatisConsensus implements IConsensus {
     return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
   }
 
-  @Override
-  public ConsensusGenericResponse updatePeer(ConsensusGroupId groupId, Peer oldPeer, Peer newPeer) {
-    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
-  }
-
-  @Override
-  public ConsensusGenericResponse changePeer(ConsensusGroupId groupId, List<Peer> newPeers) {
-    RaftGroup raftGroup = buildRaftGroup(groupId, newPeers);
-
-    // pre-conditions: myself in this group
-    if (!raftGroup.getPeers().contains(myself)) {
-      return failed(new ConsensusGroupNotExistException(groupId));
-    }
-
-    // add RaftPeer myself to this RaftGroup
-    RaftClientReply reply;
-    try {
-      reply = sendReconfiguration(raftGroup);
-    } catch (RatisRequestFailedException e) {
-      return failed(e);
-    }
-    return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
-  }
 
   /**
    * NOTICE: transferLeader *does not guarantee* the leader be transferred to newLeader.
    * transferLeader is implemented by 1. modify peer priority 2. ask current leader to step down
    *
-   * <p>1. call setConfiguration to upgrade newLeader's priority to 1 and degrade all follower peers
-   * to 0. By default, Ratis gives every Raft Peer same priority 0. Ratis does not allow a peer with
-   * priority <= currentLeader.priority to becomes the leader, so we have to upgrade leader's
-   * priority to 1
+   * <p>1. call setConfiguration to upgrade newLeader's priority to 1 and degrade all follower
+   * peers to 0. By default, Ratis gives every Raft Peer same priority 0. Ratis does not allow a
+   * peer with priority <= currentLeader.priority to becomes the leader, so we have to upgrade
+   * leader's priority to 1
    *
    * <p>2. call transferLeadership to force current leader to step down and raise a new round of
    * election. In this election, the newLeader peer with priority 1 is guaranteed to be elected.
    */
   @Override
-  public ConsensusGenericResponse transferLeader(ConsensusGroupId groupId, Peer newLeader) {
+  public void transferLeader(ConsensusGroupId groupId, Peer newLeader) throws ConsensusException {
 
     // first fetch the newest information
-
     RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
-    RaftGroup raftGroup = getGroupInfo(raftGroupId);
-
-    if (raftGroup == null) {
-      return failed(new ConsensusGroupNotExistException(groupId));
-    }
+    RaftGroup raftGroup = Optional.ofNullable(getGroupInfo(raftGroupId))
+        .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
 
     RaftPeer newRaftLeader = Utils.fromPeerAndPriorityToRaftPeer(newLeader, LEADER_PRIORITY);
 
@@ -581,21 +560,20 @@ class RatisConsensus implements IConsensus {
     }
 
     RaftClientReply reply;
-    try (RatisClient client = getRaftClient(raftGroup)) {
+    try (org.apache.iotdb.consensus.ratis.RatisClient client = getRaftClient(raftGroup)) {
       RaftClientReply configChangeReply =
           client.getRaftClient().admin().setConfiguration(newConfiguration);
       if (!configChangeReply.isSuccess()) {
-        return failed(new RatisRequestFailedException(configChangeReply.getException()));
+        throw new RatisRequestFailedException(configChangeReply.getException());
       }
 
       reply = transferLeader(raftGroup, newRaftLeader);
       if (!reply.isSuccess()) {
-        return failed(new RatisRequestFailedException(reply.getException()));
+        throw new RatisRequestFailedException(reply.getException());
       }
     } catch (Exception e) {
-      return failed(new RatisRequestFailedException(e));
+      throw new RatisRequestFailedException(e);
     }
-    return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
   }
 
   private void forceStepDownLeader(RaftGroup group) throws Exception {
@@ -605,8 +583,7 @@ class RatisConsensus implements IConsensus {
   }
 
   private RaftClientReply transferLeader(RaftGroup group, RaftPeer newLeader) throws Exception {
-    try (RatisClient client = getRaftClient(group)) {
-      // TODO tuning for timeoutMs
+    try (org.apache.iotdb.consensus.ratis.RatisClient client = getRaftClient(group)) {
       return client
           .getRaftClient()
           .admin()
@@ -650,7 +627,7 @@ class RatisConsensus implements IConsensus {
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      logger.warn("Unexpected interruption", e);
+      logger.warn("Unexpected interruption when waitUntilLeaderReady", e);
       return false;
     }
     return divisionInfo.isLeader();
@@ -690,12 +667,11 @@ class RatisConsensus implements IConsensus {
   }
 
   @Override
-  public ConsensusGenericResponse triggerSnapshot(ConsensusGroupId groupId) {
+  public void triggerSnapshot(ConsensusGroupId groupId) throws ConsensusException {
     RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
     RaftGroup groupInfo = getGroupInfo(raftGroupId);
-
     if (groupInfo == null || !groupInfo.getPeers().contains(myself)) {
-      return failed(new ConsensusGroupNotExistException(groupId));
+      throw new ConsensusGroupNotExistException(groupId);
     }
 
     // TODO tuning snapshot create timeout
@@ -707,13 +683,11 @@ class RatisConsensus implements IConsensus {
     try {
       reply = server.snapshotManagement(request);
       if (!reply.isSuccess()) {
-        return failed(new RatisRequestFailedException(reply.getException()));
+        throw new RatisRequestFailedException(reply.getException());
       }
     } catch (IOException ioException) {
-      return failed(new RatisRequestFailedException(ioException));
+      throw new RatisRequestFailedException(ioException);
     }
-
-    return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
   }
 
   private void triggerSnapshotByCustomize() {

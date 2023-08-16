@@ -250,7 +250,7 @@ public class ConsensusManager {
               configNodeLocation.getConfigNodeId(),
               configNodeLocation.getConsensusEndPoint()));
     }
-    consensusImpl.createPeer(DEFAULT_CONSENSUS_GROUP_ID, peerList);
+    consensusImpl.createLocalPeer(DEFAULT_CONSENSUS_GROUP_ID, peerList);
   }
 
   /**
@@ -262,7 +262,7 @@ public class ConsensusManager {
   public void addConfigNodePeer(TConfigNodeLocation configNodeLocation) throws AddPeerException {
     boolean result =
         consensusImpl
-            .addPeer(
+            .addRemotePeer(
                 DEFAULT_CONSENSUS_GROUP_ID,
                 new Peer(
                     DEFAULT_CONSENSUS_GROUP_ID,
@@ -284,7 +284,7 @@ public class ConsensusManager {
    */
   public boolean removeConfigNodePeer(TConfigNodeLocation configNodeLocation) {
     return consensusImpl
-        .removePeer(
+        .removeRemotePeer(
             DEFAULT_CONSENSUS_GROUP_ID,
             new Peer(
                 DEFAULT_CONSENSUS_GROUP_ID,

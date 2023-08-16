@@ -265,9 +265,9 @@ public class RegionMigrateService implements IService {
     private ConsensusGenericResponse addRegionPeer(ConsensusGroupId regionId, Peer newPeer) {
       ConsensusGenericResponse resp;
       if (regionId instanceof DataRegionId) {
-        resp = DataRegionConsensusImpl.getInstance().addPeer(regionId, newPeer);
+        resp = DataRegionConsensusImpl.getInstance().addRemotePeer(regionId, newPeer);
       } else {
-        resp = SchemaRegionConsensusImpl.getInstance().addPeer(regionId, newPeer);
+        resp = SchemaRegionConsensusImpl.getInstance().addRemotePeer(regionId, newPeer);
       }
       return resp;
     }
@@ -354,9 +354,9 @@ public class RegionMigrateService implements IService {
     private ConsensusGenericResponse removeRegionPeer(ConsensusGroupId regionId, Peer oldPeer) {
       ConsensusGenericResponse resp;
       if (regionId instanceof DataRegionId) {
-        resp = DataRegionConsensusImpl.getInstance().removePeer(regionId, oldPeer);
+        resp = DataRegionConsensusImpl.getInstance().removeRemotePeer(regionId, oldPeer);
       } else {
-        resp = SchemaRegionConsensusImpl.getInstance().removePeer(regionId, oldPeer);
+        resp = SchemaRegionConsensusImpl.getInstance().removeRemotePeer(regionId, oldPeer);
       }
       return resp;
     }
@@ -409,9 +409,9 @@ public class RegionMigrateService implements IService {
       ConsensusGenericResponse resp;
       try {
         if (regionId instanceof DataRegionId) {
-          resp = DataRegionConsensusImpl.getInstance().deletePeer(regionId);
+          resp = DataRegionConsensusImpl.getInstance().deleteLocalPeer(regionId);
         } else {
-          resp = SchemaRegionConsensusImpl.getInstance().deletePeer(regionId);
+          resp = SchemaRegionConsensusImpl.getInstance().deleteLocalPeer(regionId);
         }
       } catch (Throwable e) {
         taskLogger.error("{}, deletePeer error, regionId: {}", REGION_MIGRATE_PROCESS, regionId, e);

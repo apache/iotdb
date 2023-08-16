@@ -119,7 +119,7 @@ public class DataNodeRegionManager {
         peers.add(new Peer(schemaRegionId, dataNodeLocation.getDataNodeId(), endpoint));
       }
       ConsensusGenericResponse consensusGenericResponse =
-          SchemaRegionConsensusImpl.getInstance().createPeer(schemaRegionId, peers);
+          SchemaRegionConsensusImpl.getInstance().createLocalPeer(schemaRegionId, peers);
       if (consensusGenericResponse.isSuccess()) {
         tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else if (consensusGenericResponse.getException()
@@ -160,7 +160,7 @@ public class DataNodeRegionManager {
         peers.add(new Peer(dataRegionId, dataNodeLocation.getDataNodeId(), endpoint));
       }
       ConsensusGenericResponse consensusGenericResponse =
-          DataRegionConsensusImpl.getInstance().createPeer(dataRegionId, peers);
+          DataRegionConsensusImpl.getInstance().createLocalPeer(dataRegionId, peers);
       if (consensusGenericResponse.isSuccess()) {
         tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else if (consensusGenericResponse.getException()

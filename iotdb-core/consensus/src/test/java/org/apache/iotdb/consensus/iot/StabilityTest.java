@@ -90,11 +90,11 @@ public class StabilityTest {
   }
 
   public void peerTest() throws Exception {
-    consensusImpl.createPeer(
+    consensusImpl.createLocalPeer(
         dataRegionId,
         Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort))));
 
-    consensusImpl.deletePeer(dataRegionId);
+    consensusImpl.deleteLocalPeer(dataRegionId);
 
     consensusImpl.stop();
     consensusImpl = null;
@@ -102,16 +102,16 @@ public class StabilityTest {
     constructConsensus();
 
     ConsensusGenericResponse response =
-        consensusImpl.createPeer(
+        consensusImpl.createLocalPeer(
             dataRegionId,
             Collections.singletonList(
                 new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort))));
     Assert.assertTrue(response.isSuccess());
-    consensusImpl.deletePeer(dataRegionId);
+    consensusImpl.deleteLocalPeer(dataRegionId);
   }
 
   public void snapshotTest() throws IOException {
-    consensusImpl.createPeer(
+    consensusImpl.createLocalPeer(
         dataRegionId,
         Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort))));
     consensusImpl.triggerSnapshot(dataRegionId);
@@ -132,11 +132,11 @@ public class StabilityTest {
     Assert.assertNotNull(versionFiles2);
     Assert.assertEquals(1, versionFiles2.length);
     Assert.assertNotEquals(versionFiles1[0].getName(), versionFiles2[0].getName());
-    consensusImpl.deletePeer(dataRegionId);
+    consensusImpl.deleteLocalPeer(dataRegionId);
   }
 
   public void snapshotUpgradeTest() throws Exception {
-    consensusImpl.createPeer(
+    consensusImpl.createLocalPeer(
         dataRegionId,
         Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort))));
     consensusImpl.triggerSnapshot(dataRegionId);
@@ -166,6 +166,6 @@ public class StabilityTest {
     Assert.assertEquals(
         oldSnapshotIndex + 1,
         Long.parseLong(snapshotFiles[0].getName().replaceAll(".*[^\\d](?=(\\d+))", "")));
-    consensusImpl.deletePeer(dataRegionId);
+    consensusImpl.deleteLocalPeer(dataRegionId);
   }
 }

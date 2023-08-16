@@ -101,9 +101,9 @@ public class RatisConsensusTest {
 
   @Test
   public void basicConsensus3Copy() throws Exception {
-    servers.get(0).createPeer(group.getGroupId(), group.getPeers());
-    servers.get(1).createPeer(group.getGroupId(), group.getPeers());
-    servers.get(2).createPeer(group.getGroupId(), group.getPeers());
+    servers.get(0).createLocalPeer(group.getGroupId(), group.getPeers());
+    servers.get(1).createLocalPeer(group.getGroupId(), group.getPeers());
+    servers.get(2).createLocalPeer(group.getGroupId(), group.getPeers());
 
     doConsensus(servers.get(0), group.getGroupId(), 10, 10);
   }
@@ -112,19 +112,19 @@ public class RatisConsensusTest {
   public void addMemberToGroup() throws Exception {
     List<Peer> original = peers.subList(0, 1);
 
-    servers.get(0).createPeer(group.getGroupId(), original);
+    servers.get(0).createLocalPeer(group.getGroupId(), original);
     doConsensus(servers.get(0), group.getGroupId(), 10, 10);
 
-    ConsensusGenericResponse resp = servers.get(0).createPeer(group.getGroupId(), original);
+    ConsensusGenericResponse resp = servers.get(0).createLocalPeer(group.getGroupId(), original);
     Assert.assertFalse(resp.isSuccess());
     Assert.assertTrue(resp.getException() instanceof RatisRequestFailedException);
 
     // add 2 members
-    servers.get(1).createPeer(group.getGroupId(), Collections.emptyList());
-    servers.get(0).addPeer(group.getGroupId(), peers.get(1));
+    servers.get(1).createLocalPeer(group.getGroupId(), Collections.emptyList());
+    servers.get(0).addRemotePeer(group.getGroupId(), peers.get(1));
 
-    servers.get(2).createPeer(group.getGroupId(), Collections.emptyList());
-    servers.get(0).changePeer(group.getGroupId(), peers);
+    servers.get(2).createLocalPeer(group.getGroupId(), Collections.emptyList());
+    servers.get(0).addRemotePeer(group.getGroupId(), peers.get(2));
 
     Assert.assertEquals(
         3, ((TestUtils.IntegerCounter) stateMachines.get(0)).getConfiguration().size());
@@ -133,39 +133,39 @@ public class RatisConsensusTest {
 
   @Test
   public void removeMemberFromGroup() throws Exception {
-    servers.get(0).createPeer(group.getGroupId(), group.getPeers());
-    servers.get(1).createPeer(group.getGroupId(), group.getPeers());
-    servers.get(2).createPeer(group.getGroupId(), group.getPeers());
+    servers.get(0).createLocalPeer(group.getGroupId(), group.getPeers());
+    servers.get(1).createLocalPeer(group.getGroupId(), group.getPeers());
+    servers.get(2).createLocalPeer(group.getGroupId(), group.getPeers());
 
     doConsensus(servers.get(0), group.getGroupId(), 10, 10);
 
     servers.get(0).transferLeader(gid, peers.get(0));
-    servers.get(0).removePeer(gid, peers.get(1));
-    servers.get(1).deletePeer(gid);
-    servers.get(0).removePeer(gid, peers.get(2));
-    servers.get(2).deletePeer(gid);
+    servers.get(0).removeRemotePeer(gid, peers.get(1));
+    servers.get(1).deleteLocalPeer(gid);
+    servers.get(0).removeRemotePeer(gid, peers.get(2));
+    servers.get(2).deleteLocalPeer(gid);
 
     doConsensus(servers.get(0), group.getGroupId(), 10, 20);
   }
 
   @Test
   public void oneMemberGroupChange() throws Exception {
-    servers.get(0).createPeer(group.getGroupId(), peers.subList(0, 1));
+    servers.get(0).createLocalPeer(group.getGroupId(), peers.subList(0, 1));
     doConsensus(servers.get(0), group.getGroupId(), 10, 10);
 
-    servers.get(1).createPeer(group.getGroupId(), Collections.emptyList());
-    servers.get(0).addPeer(group.getGroupId(), peers.get(1));
+    servers.get(1).createLocalPeer(group.getGroupId(), Collections.emptyList());
+    servers.get(0).addRemotePeer(group.getGroupId(), peers.get(1));
     servers.get(1).transferLeader(group.getGroupId(), peers.get(1));
-    servers.get(0).removePeer(group.getGroupId(), peers.get(0));
+    servers.get(0).removeRemotePeer(group.getGroupId(), peers.get(0));
     Assert.assertEquals(servers.get(1).getLeader(gid).getNodeId(), peers.get(1).getNodeId());
-    servers.get(0).deletePeer(group.getGroupId());
+    servers.get(0).deleteLocalPeer(group.getGroupId());
   }
 
   @Test
   public void crashAndStart() throws Exception {
-    servers.get(0).createPeer(group.getGroupId(), group.getPeers());
-    servers.get(1).createPeer(group.getGroupId(), group.getPeers());
-    servers.get(2).createPeer(group.getGroupId(), group.getPeers());
+    servers.get(0).createLocalPeer(group.getGroupId(), group.getPeers());
+    servers.get(1).createLocalPeer(group.getGroupId(), group.getPeers());
+    servers.get(2).createLocalPeer(group.getGroupId(), group.getPeers());
 
     // 200 operation will trigger snapshot & purge
     doConsensus(servers.get(0), group.getGroupId(), 200, 200);
@@ -178,9 +178,9 @@ public class RatisConsensusTest {
 
   // FIXME: Turn on the test when it is stable
   public void transferLeader() throws Exception {
-    servers.get(0).createPeer(group.getGroupId(), group.getPeers());
-    servers.get(1).createPeer(group.getGroupId(), group.getPeers());
-    servers.get(2).createPeer(group.getGroupId(), group.getPeers());
+    servers.get(0).createLocalPeer(group.getGroupId(), group.getPeers());
+    servers.get(1).createLocalPeer(group.getGroupId(), group.getPeers());
+    servers.get(2).createLocalPeer(group.getGroupId(), group.getPeers());
 
     doConsensus(servers.get(0), group.getGroupId(), 10, 10);
 
@@ -198,13 +198,13 @@ public class RatisConsensusTest {
 
   @Test
   public void transferSnapshot() throws Exception {
-    servers.get(0).createPeer(gid, peers.subList(0, 1));
+    servers.get(0).createLocalPeer(gid, peers.subList(0, 1));
 
     doConsensus(servers.get(0), gid, 10, 10);
     Assert.assertTrue(servers.get(0).triggerSnapshot(gid).isSuccess());
 
-    servers.get(1).createPeer(gid, Collections.emptyList());
-    servers.get(0).addPeer(gid, peers.get(1));
+    servers.get(1).createLocalPeer(gid, Collections.emptyList());
+    servers.get(0).addRemotePeer(gid, peers.get(1));
 
     doConsensus(servers.get(1), gid, 10, 20);
   }
