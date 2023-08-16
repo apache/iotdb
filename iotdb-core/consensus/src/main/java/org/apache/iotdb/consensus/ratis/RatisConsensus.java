@@ -45,6 +45,7 @@ import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.NodeReadOnlyException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
@@ -73,6 +74,8 @@ import org.apache.ratis.protocol.RaftGroupId;
 import org.apache.ratis.protocol.RaftPeer;
 import org.apache.ratis.protocol.RaftPeerId;
 import org.apache.ratis.protocol.SnapshotManagementRequest;
+import org.apache.ratis.protocol.exceptions.AlreadyExistsException;
+import org.apache.ratis.protocol.exceptions.GroupMismatchException;
 import org.apache.ratis.protocol.exceptions.NotLeaderException;
 import org.apache.ratis.protocol.exceptions.RaftException;
 import org.apache.ratis.protocol.exceptions.ResourceUnavailableException;
@@ -392,19 +395,18 @@ class RatisConsensus implements IConsensus {
   @Override
   public ConsensusGenericResponse createPeer(ConsensusGroupId groupId, List<Peer> peers) {
     RaftGroup group = buildRaftGroup(groupId, peers);
-    // add RaftPeer myself to this RaftGroup
-    return addNewGroupToServer(group, myself);
-  }
-
-  private ConsensusGenericResponse addNewGroupToServer(RaftGroup group, RaftPeer server) {
     RaftClientReply reply;
     RaftGroup clientGroup =
-        group.getPeers().isEmpty() ? RaftGroup.valueOf(group.getGroupId(), server) : group;
+        group.getPeers().isEmpty() ? RaftGroup.valueOf(group.getGroupId(), myself) : group;
     try (RatisClient client = getRaftClient(clientGroup)) {
-      reply = client.getRaftClient().getGroupManagementApi(server.getId()).add(group);
+      reply = client.getRaftClient().getGroupManagementApi(myself.getId()).add(group);
       if (!reply.isSuccess()) {
         return failed(new RatisRequestFailedException(reply.getException()));
       }
+    } catch (AlreadyExistsException e) {
+      return ConsensusGenericResponse.newBuilder()
+          .setException(new ConsensusGroupAlreadyExistException(groupId))
+          .build();
     } catch (Exception e) {
       return failed(new RatisRequestFailedException(e));
     }
@@ -437,6 +439,10 @@ class RatisConsensus implements IConsensus {
       if (!reply.isSuccess()) {
         return failed(new RatisRequestFailedException(reply.getException()));
       }
+    } catch (GroupMismatchException e) {
+      return ConsensusGenericResponse.newBuilder()
+          .setException(new ConsensusGroupNotExistException(groupId))
+          .build();
     } catch (IOException e) {
       return failed(new RatisRequestFailedException(e));
     }
