@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -32,20 +31,14 @@ import javax.annotation.concurrent.ThreadSafe;
 import java.io.IOException;
 import java.util.List;
 
-/**
- * Consensus module base interface.
- */
+/** Consensus module base interface. */
 @ThreadSafe
 public interface IConsensus {
 
-  /**
-   * Start the consensus module
-   */
+  /** Start the consensus module */
   void start() throws IOException;
 
-  /**
-   * Stop the consensus module
-   */
+  /** Stop the consensus module */
   void stop() throws IOException;
 
   /**
@@ -69,14 +62,13 @@ public interface IConsensus {
   /**
    * Require the <em>local node</em> to create a Peer and become a member of the given consensus
    * group. This node will prepare and initialize local statemachine {@link IStateMachine} and other
-   * data structures. After this method returns, we can call
-   * {@link #addRemotePeer(ConsensusGroupId, Peer)} to notify original group that this new Peer is
-   * prepared to be added into the latest configuration. createLocalPeer should be called on a node
-   * that does not contain any peer of the consensus group, to avoid one node having more than one
-   * replica.
+   * data structures. After this method returns, we can call {@link #addRemotePeer(ConsensusGroupId,
+   * Peer)} to notify original group that this new Peer is prepared to be added into the latest
+   * configuration. createLocalPeer should be called on a node that does not contain any peer of the
+   * consensus group, to avoid one node having more than one replica.
    *
    * @param groupId the consensus group this Peer belongs
-   * @param peers   other known peers in this group
+   * @param peers other known peers in this group
    */
   void createLocalPeer(ConsensusGroupId groupId, List<Peer> peers) throws ConsensusException;
 
@@ -84,8 +76,8 @@ public interface IConsensus {
    * When the <em>local node</em> is no longer a member of the given consensus group, call this
    * method to do cleanup works. This method will close local statemachine {@link IStateMachine},
    * delete local data and do other cleanup works. deleteLocalPeer should be called after
-   * successfully removing this peer from current consensus group configuration (by calling
-   * {@link #removeRemotePeer(ConsensusGroupId, Peer)}).
+   * successfully removing this peer from current consensus group configuration (by calling {@link
+   * #removeRemotePeer(ConsensusGroupId, Peer)}).
    *
    * @param groupId the consensus group this Peer used to belong
    */
@@ -94,15 +86,15 @@ public interface IConsensus {
   // single consensus group API
 
   /**
-   * Tell the group that a new Peer is prepared to be added into this group. Call
-   * {@link #createLocalPeer(ConsensusGroupId, List)} on the new Peer before calling this method.
-   * When this method returns, the group data should be already transmitted to the new Peer. That
-   * is, the new peer is available to answer client requests by the time this method successfully
-   * returns. addRemotePeer should be called on a living peer of the consensus group. For example:
-   * We'd like to add a peer D to (A, B, C) group. We need to execute addPeer in A, B or C.
+   * Tell the group that a new Peer is prepared to be added into this group. Call {@link
+   * #createLocalPeer(ConsensusGroupId, List)} on the new Peer before calling this method. When this
+   * method returns, the group data should be already transmitted to the new Peer. That is, the new
+   * peer is available to answer client requests by the time this method successfully returns.
+   * addRemotePeer should be called on a living peer of the consensus group. For example: We'd like
+   * to add a peer D to (A, B, C) group. We need to execute addPeer in A, B or C.
    *
    * @param groupId the consensus group this peer belongs
-   * @param peer    the newly added peer
+   * @param peer the newly added peer
    */
   void addRemotePeer(ConsensusGroupId groupId, Peer peer) throws ConsensusException;
 
@@ -114,7 +106,7 @@ public interface IConsensus {
    * to remove C, in case C is dead, the removePeer should be sent to A or B.
    *
    * @param groupId the consensus group this peer belongs
-   * @param peer    the peer to be removed
+   * @param peer the peer to be removed
    */
   void removeRemotePeer(ConsensusGroupId groupId, Peer peer) throws ConsensusException;
 

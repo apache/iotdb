@@ -86,7 +86,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -438,15 +438,15 @@ public class PartitionManager {
       // since the RegionGroup creating process might take some time
       return status;
     }
-
-    ConsensusWriteResponse writeResp = getConsensusManager().write(plan);
-    if (!writeResp.isSuccessful()) {
+    try {
+      return getConsensusManager().write(plan);
+    } catch (ConsensusException e) {
       // The allocation might fail due to consensus error
-      status = writeResp.getStatus();
-      status.setMessage(writeResp.getErrorMessage());
       LOGGER.error("Write DataPartition allocation result failed because: {}", status);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return res;
     }
-    return status;
   }
 
   // ======================================================
@@ -896,7 +896,11 @@ public class PartitionManager {
       String database, PreDeleteDatabasePlan.PreDeleteType preDeleteType) {
     final PreDeleteDatabasePlan preDeleteDatabasePlan =
         new PreDeleteDatabasePlan(database, preDeleteType);
-    getConsensusManager().write(preDeleteDatabasePlan);
+    try {
+      getConsensusManager().write(preDeleteDatabasePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+    }
   }
 
   public boolean isDatabasePreDeleted(String database) {
@@ -956,7 +960,14 @@ public class PartitionManager {
    * @return TSStatus
    */
   public TSStatus updateRegionLocation(UpdateRegionLocationPlan req) {
-    return getConsensusManager().write(req).getStatus();
+    try {
+      return getConsensusManager().write(req);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return res;
+    }
   }
 
   public GetRegionIdResp getRegionId(TGetRegionIdReq req) {
@@ -1233,8 +1244,13 @@ public class PartitionManager {
                   }
 
                   // Poll the head entry if success
-                  getConsensusManager()
-                      .write(new PollSpecificRegionMaintainTaskPlan(successfulTask));
+                  try {
+                    getConsensusManager()
+                        .write(new PollSpecificRegionMaintainTaskPlan(successfulTask));
+                  } catch (ConsensusException e) {
+                    LOGGER.warn(
+                        "Something wrong happened while calling consensus layer's write API.", e);
+                  }
 
                   if (successfulTask.size() < selectedRegionMaintainTask.size()) {
                     // Here we just break and wait until next schedule task

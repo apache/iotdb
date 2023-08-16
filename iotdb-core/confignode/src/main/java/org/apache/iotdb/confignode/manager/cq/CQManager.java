@@ -34,7 +34,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -78,16 +78,13 @@ public class CQManager {
   }
 
   public TSStatus dropCQ(TDropCQReq req) {
-    ConsensusWriteResponse response =
-        configManager.getConsensusManager().write(new DropCQPlan(req.cqId));
-    if (response.getStatus() != null) {
-      return response.getStatus();
-    } else {
-      LOGGER.warn(
-          "Unexpected error happened while dropping cq {}: ", req.cqId, response.getException());
+    try {
+      return configManager.getConsensusManager().write(new DropCQPlan(req.cqId));
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
       // consensus layer related errors
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      res.setMessage(response.getErrorMessage());
+      res.setMessage(e.getMessage());
       return res;
     }
   }

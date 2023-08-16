@@ -72,6 +72,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.exception.metadata.DatabaseAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
@@ -152,12 +153,16 @@ public class ClusterSchemaManager {
         clusterSchemaInfo.checkDatabaseLimit();
       }
       // Cache DatabaseSchema
-      result = getConsensusManager().write(databaseSchemaPlan).getStatus();
+      result = getConsensusManager().write(databaseSchemaPlan);
       // Bind Database metrics
       PartitionMetrics.bindDatabasePartitionMetrics(
           MetricService.getInstance(), configManager, databaseSchemaPlan.getSchema().getName());
       // Adjust the maximum RegionGroup number of each Database
       adjustMaxRegionGroupNum();
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage(e.getMessage());
     } catch (MetadataException metadataException) {
       // Reject if StorageGroup already set
       if (metadataException instanceof IllegalPathException) {
@@ -220,12 +225,26 @@ public class ClusterSchemaManager {
     }
 
     // Alter DatabaseSchema
-    return getConsensusManager().write(databaseSchemaPlan).getStatus();
+    try {
+      return getConsensusManager().write(databaseSchemaPlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage(e.getMessage());
+      return result;
+    }
   }
 
   /** Delete DatabaseSchema. */
   public TSStatus deleteDatabase(DeleteDatabasePlan deleteDatabasePlan) {
-    TSStatus result = getConsensusManager().write(deleteDatabasePlan).getStatus();
+    TSStatus result;
+    try {
+      result = getConsensusManager().write(deleteDatabasePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage(e.getMessage());
+    }
     if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       adjustMaxRegionGroupNum();
     }
@@ -374,25 +393,53 @@ public class ClusterSchemaManager {
     // TODO: Check response
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
 
-    return getConsensusManager().write(setTTLPlan).getStatus();
+    try {
+      return getConsensusManager().write(setTTLPlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage(e.getMessage());
+      return result;
+    }
   }
 
   public TSStatus setSchemaReplicationFactor(
       SetSchemaReplicationFactorPlan setSchemaReplicationFactorPlan) {
     // TODO: Inform DataNodes
-    return getConsensusManager().write(setSchemaReplicationFactorPlan).getStatus();
+    try {
+      return getConsensusManager().write(setSchemaReplicationFactorPlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage(e.getMessage());
+      return result;
+    }
   }
 
   public TSStatus setDataReplicationFactor(
       SetDataReplicationFactorPlan setDataReplicationFactorPlan) {
     // TODO: Inform DataNodes
-    return getConsensusManager().write(setDataReplicationFactorPlan).getStatus();
+    try {
+      return getConsensusManager().write(setDataReplicationFactorPlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage(e.getMessage());
+      return result;
+    }
   }
 
   public TSStatus setTimePartitionInterval(
       SetTimePartitionIntervalPlan setTimePartitionIntervalPlan) {
     // TODO: Inform DataNodes
-    return getConsensusManager().write(setTimePartitionIntervalPlan).getStatus();
+    try {
+      return getConsensusManager().write(setTimePartitionIntervalPlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage(e.getMessage());
+      return result;
+    }
   }
 
   /**
@@ -478,7 +525,11 @@ public class ClusterSchemaManager {
         LOGGER.warn("Adjust maxRegionGroupNum failed because StorageGroup doesn't exist", e);
       }
     }
-    getConsensusManager().write(adjustMaxRegionGroupNumPlan);
+    try {
+      getConsensusManager().write(adjustMaxRegionGroupNumPlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+    }
   }
 
   public static int calcMaxRegionGroupNum(
@@ -740,19 +791,36 @@ public class ClusterSchemaManager {
   }
 
   public TSStatus preUnsetSchemaTemplate(int templateId, PartialPath path) {
-    return getConsensusManager()
-        .write(new PreUnsetSchemaTemplatePlan(templateId, path))
-        .getStatus();
+    try {
+      return getConsensusManager().write(new PreUnsetSchemaTemplatePlan(templateId, path));
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage(e.getMessage());
+      return result;
+    }
   }
 
   public TSStatus rollbackPreUnsetSchemaTemplate(int templateId, PartialPath path) {
-    return getConsensusManager()
-        .write(new RollbackPreUnsetSchemaTemplatePlan(templateId, path))
-        .getStatus();
+    try {
+      return getConsensusManager().write(new RollbackPreUnsetSchemaTemplatePlan(templateId, path));
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage(e.getMessage());
+      return result;
+    }
   }
 
   public TSStatus unsetSchemaTemplateInBlackList(int templateId, PartialPath path) {
-    return getConsensusManager().write(new UnsetSchemaTemplatePlan(templateId, path)).getStatus();
+    try {
+      return getConsensusManager().write(new UnsetSchemaTemplatePlan(templateId, path));
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage(e.getMessage());
+      return result;
+    }
   }
 
   public synchronized TSStatus dropSchemaTemplate(String templateName) {
@@ -784,7 +852,14 @@ public class ClusterSchemaManager {
     }
 
     // execute drop template
-    return getConsensusManager().write(new DropSchemaTemplatePlan(templateName)).getStatus();
+    try {
+      return getConsensusManager().write(new DropSchemaTemplatePlan(templateName));
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      result.setMessage(e.getMessage());
+      return result;
+    }
   }
 
   public synchronized TSStatus extendSchemaTemplate(TemplateExtendInfo templateExtendInfo) {
