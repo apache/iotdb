@@ -103,13 +103,13 @@ public enum ThreadName {
   IOT_CONSENSUS_RPC_PROCESSOR("IoTConsensusRPC-Processor"),
   ASYNC_DATANODE_IOT_CONSENSUS_CLIENT_POOL("AsyncDataNodeIoTConsensusServiceClientPool"),
   LOG_DISPATCHER("LogDispatcher"),
+  LOG_DISPATCHER_RETRY_EXECUTOR("LogDispatcherRetryExecutor"),
   // -------------------------- Ratis --------------------------
   // NOTICE: The thread name of ratis cannot be edited here!
   // We list the thread name here just for distinguishing what module the thread belongs to.
   RAFT_SERVER_PROXY_EXECUTOR("\\d+-impl-thread"),
   RAFT_SERVER_EXECUTOR("\\d+-server-thread"),
   RAFT_SERVER_CLIENT_EXECUTOR("\\d+-client-thread"),
-  RATIS_ADD("Ratis-Add"),
   SEGMENT_RAFT_WORKER("SegmentedRaftLogWorker"),
   STATE_MACHINE_UPDATER("StateMachineUpdater"),
   FOLLOWER_STATE("FollowerState"),
@@ -235,7 +235,8 @@ public enum ThreadName {
               IOT_CONSENSUS_RPC_SERVICE,
               IOT_CONSENSUS_RPC_PROCESSOR,
               ASYNC_DATANODE_IOT_CONSENSUS_CLIENT_POOL,
-              LOG_DISPATCHER));
+              LOG_DISPATCHER,
+              LOG_DISPATCHER_RETRY_EXECUTOR));
 
   private static final Set<ThreadName> ratisThreadNames =
       new HashSet<>(
@@ -243,7 +244,6 @@ public enum ThreadName {
               RAFT_SERVER_PROXY_EXECUTOR,
               RAFT_SERVER_EXECUTOR,
               RAFT_SERVER_CLIENT_EXECUTOR,
-              RATIS_ADD,
               SEGMENT_RAFT_WORKER,
               STATE_MACHINE_UPDATER,
               FOLLOWER_STATE,
