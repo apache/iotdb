@@ -1,7 +1,6 @@
 package org.apache.iotdb.db.pipe.connector.protocol.websocket;
 
 import org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
@@ -80,8 +79,7 @@ public class WebsocketConnector implements PipeConnector {
                 Optional.ofNullable(enrichedEvent)
                     .ifPresent(
                         event ->
-                            event.decreaseReferenceCount(
-                                WebsocketConnector.class.getName()))));
+                            event.decreaseReferenceCount(WebsocketConnector.class.getName()))));
 
     while (!commitQueue.isEmpty()) {
       final Pair<Long, Runnable> committer = commitQueue.peek();

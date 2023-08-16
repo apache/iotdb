@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.flink.sql.function;
 
+import org.apache.iotdb.flink.sql.client.IoTDBWebsocketClient;
 import org.apache.iotdb.flink.sql.common.Options;
 import org.apache.iotdb.flink.sql.common.Utils;
 import org.apache.iotdb.flink.sql.wrapper.SchemaWrapper;
@@ -33,22 +34,19 @@ import org.apache.flink.streaming.api.functions.source.RichSourceFunction;
 import org.apache.flink.table.data.GenericRowData;
 import org.apache.flink.table.types.DataType;
 import org.java_websocket.client.WebSocketClient;
-import org.java_websocket.handshake.ServerHandshake;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URI;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.stream.Collectors;
 
 public class IoTDBCDCSourceFunction<RowData> extends RichSourceFunction<RowData> {
-  private ArrayBlockingQueue<Tablet> tablets = new ArrayBlockingQueue<Tablet>(5);
-  private List<WebSocketClient> socketClients;
-  private Thread consumerThread;
-
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBCDCSourceFunction.class);
+  private final List<IoTDBWebsocketClient> socketClients = new ArrayList<>();
   private final List<Tuple2<String, DataType>> SCHEMA;
   private final List<String> NODE_URLS;
   private final String DEVICE;
@@ -60,79 +58,36 @@ public class IoTDBCDCSourceFunction<RowData> extends RichSourceFunction<RowData>
     DEVICE = options.get(Options.DEVICE);
     MEASUREMENTS =
         SCHEMA.stream().map(field -> String.valueOf(field.f0)).collect(Collectors.toList());
-
-    socketClients = new ArrayList<>(NODE_URLS.size());
   }
 
   @Override
   public void open(Configuration parameters) throws Exception {
     super.open(parameters);
-    // TODO
     for (String nodeUrl : NODE_URLS) {
-      socketClients.add(
-          new WebSocketClient(new URI(String.format("ws://%s", nodeUrl))) {
-            @Override
-            public void onOpen(ServerHandshake serverHandshake) {}
-
-            @Override
-            public void onMessage(String s) {}
-
-            @Override
-            public void onMessage(ByteBuffer bytes) {
-              super.onMessage(bytes);
-              this.send("ACK");
-              Tablet tablet = Tablet.deserialize(bytes);
-              try {
-                tablets.put(tablet);
-              } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-              }
-            }
-
-            @Override
-            public void onClose(int i, String s, boolean b) {}
-
-            @Override
-            public void onError(Exception e) {
-              e.printStackTrace();
-              throw new RuntimeException(e);
-            }
-          });
+      socketClients.add(new IoTDBWebsocketClient(new URI(String.format("ws://%s", nodeUrl)), this));
     }
   }
 
   @Override
-  public void run(SourceContext<RowData> ctx) throws Exception {
+  public void run(SourceContext<RowData> ctx) {
     socketClients.forEach(
         socketClient -> {
+          socketClient.setContext(ctx);
           socketClient.connect();
-          while (socketClient.isOpen()) {
-            socketClient.send("ACK");
-            break;
+          while (true) {
+            if (socketClient.isOpen()) {
+              socketClient.send("START");
+              break;
+            }
           }
         });
-    consumerThread =
-        new Thread(
-            () -> {
-              while (true) {
-                try {
-                  collectTablet(tablets.take(), ctx);
-                } catch (InterruptedException e) {
-                  throw new RuntimeException(e);
-                }
-              }
-            });
-    consumerThread.start();
-    consumerThread.join();
   }
 
   @Override
   public void cancel() {
     if (socketClients != null) {
-      socketClients.forEach(socketClient -> socketClient.close());
+      socketClients.forEach(WebSocketClient::close);
     }
-    consumerThread.stop();
-    tablets.clear();
   }
 
   public void collectTablet(Tablet tablet, SourceContext<RowData> ctx) {
