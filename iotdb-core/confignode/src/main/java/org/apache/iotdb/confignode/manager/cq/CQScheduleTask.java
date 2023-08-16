@@ -29,7 +29,7 @@ import org.apache.iotdb.confignode.consensus.request.write.cq.UpdateCQLastExecTi
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.cq.CQInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TExecuteCQ;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -245,24 +245,29 @@ public class CQScheduleTask implements Runnable {
             startTime,
             endTime,
             System.currentTimeMillis() * FACTOR);
-
-        ConsensusWriteResponse result =
-            configManager
-                .getConsensusManager()
-                .write(new UpdateCQLastExecTimePlan(cqId, executionTime, md5));
+        TSStatus result;
+        try {
+          result =
+              configManager
+                  .getConsensusManager()
+                  .write(new UpdateCQLastExecTimePlan(cqId, executionTime, md5));
+        } catch (ConsensusException e) {
+          LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+          result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+          result.setMessage(e.getMessage());
+        }
 
         // while leadership changed, the update last exec time operation for CQTasks in new leader
         // may still update failed because stale CQTask in old leader may update it in advance
-        if (!result.isSuccessful()) {
+        if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           LOGGER.warn(
               "Failed to update the last execution time {} of CQ {}, because {}",
               executionTime,
               cqId,
-              result.getErrorMessage());
+              result.getMessage());
           // no such cq, we don't need to submit it again
-          if (result.getStatus() != null
-              && result.getStatus().code == TSStatusCode.NO_SUCH_CQ.getStatusCode()) {
-            LOGGER.info("Stop submitting CQ {} because {}", cqId, result.getStatus().message);
+          if (result.getCode() == TSStatusCode.NO_SUCH_CQ.getStatusCode()) {
+            LOGGER.info("Stop submitting CQ {} because {}", cqId, result.getMessage());
             return;
           }
         }

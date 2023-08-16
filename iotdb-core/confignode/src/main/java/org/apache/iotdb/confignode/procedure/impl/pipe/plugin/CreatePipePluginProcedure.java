@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl.pipe.plugin;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.plugin.CreatePipePluginPlan;
@@ -35,7 +36,7 @@ import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
 import org.apache.iotdb.confignode.procedure.state.pipe.plugin.CreatePipePluginState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -163,10 +164,16 @@ public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipeP
     final CreatePipePluginPlan createPluginPlan =
         new CreatePipePluginPlan(pipePluginMeta, needToSaveJar ? new Binary(jarFile) : null);
 
-    final ConsensusWriteResponse response =
-        configNodeManager.getConsensusManager().write(createPluginPlan);
-    if (!response.isSuccessful()) {
-      throw new PipeException(response.getErrorMessage());
+    TSStatus response;
+    try {
+      response = configNodeManager.getConsensusManager().write(createPluginPlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      response.setMessage(e.getMessage());
+    }
+    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(response.getMessage());
     }
 
     setNextState(CreatePipePluginState.CREATE_ON_DATA_NODES);
@@ -226,9 +233,13 @@ public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipeP
         "CreatePipePluginProcedure: rollbackFromCreateOnConfigNodes({})",
         pipePluginMeta.getPluginName());
 
-    env.getConfigManager()
-        .getConsensusManager()
-        .write(new DropPipePluginPlan(pipePluginMeta.getPluginName()));
+    try {
+      env.getConfigManager()
+          .getConsensusManager()
+          .write(new DropPipePluginPlan(pipePluginMeta.getPluginName()));
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+    }
   }
 
   private void rollbackFromCreateOnDataNodes(ConfigNodeProcedureEnv env) throws ProcedureException {

@@ -77,7 +77,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -250,12 +250,20 @@ public class NodeManager {
         new RegisterDataNodePlan(req.getDataNodeConfiguration());
     // Register new DataNode
     registerDataNodePlan.getDataNodeConfiguration().getLocation().setDataNodeId(dataNodeId);
-    getConsensusManager().write(registerDataNodePlan);
+    try {
+      getConsensusManager().write(registerDataNodePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+    }
 
     // update datanode's versionInfo
     UpdateVersionInfoPlan updateVersionInfoPlan =
         new UpdateVersionInfoPlan(req.getVersionInfo(), dataNodeId);
-    getConsensusManager().write(updateVersionInfoPlan);
+    try {
+      getConsensusManager().write(updateVersionInfoPlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+    }
 
     // Bind DataNode metrics
     PartitionMetrics.bindDataNodePartitionMetrics(
@@ -281,14 +289,22 @@ public class NodeManager {
       // Update DataNodeConfiguration when modified during restart
       UpdateDataNodePlan updateDataNodePlan =
           new UpdateDataNodePlan(req.getDataNodeConfiguration());
-      getConsensusManager().write(updateDataNodePlan);
+      try {
+        getConsensusManager().write(updateDataNodePlan);
+      } catch (ConsensusException e) {
+        LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      }
     }
     TNodeVersionInfo versionInfo = nodeInfo.getVersionInfo(nodeId);
     if (!req.getVersionInfo().equals(versionInfo)) {
       // Update versionInfo when modified during restart
       UpdateVersionInfoPlan updateVersionInfoPlan =
           new UpdateVersionInfoPlan(req.getVersionInfo(), nodeId);
-      getConsensusManager().write(updateVersionInfoPlan);
+      try {
+        getConsensusManager().write(updateVersionInfoPlan);
+      } catch (ConsensusException e) {
+        LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      }
     }
 
     TDataNodeRestartResp resp = new TDataNodeRestartResp();
@@ -363,11 +379,11 @@ public class NodeManager {
       // Update versionInfo when modified during restart
       UpdateVersionInfoPlan updateConfigNodePlan =
           new UpdateVersionInfoPlan(versionInfo, configNodeId);
-      ConsensusWriteResponse result = getConsensusManager().write(updateConfigNodePlan);
-      if (result.getException() != null) {
+      try {
+        return getConsensusManager().write(updateConfigNodePlan);
+      } catch (ConsensusException e) {
         return new TSStatus(TSStatusCode.CONSENSUS_NOT_INITIALIZED.getStatusCode());
       }
-      return result.getStatus();
     }
     return ClusterNodeStartUtils.ACCEPT_NODE_RESTART;
   }
@@ -526,10 +542,18 @@ public class NodeManager {
   public void applyConfigNode(
       TConfigNodeLocation configNodeLocation, TNodeVersionInfo versionInfo) {
     ApplyConfigNodePlan applyConfigNodePlan = new ApplyConfigNodePlan(configNodeLocation);
-    getConsensusManager().write(applyConfigNodePlan);
+    try {
+      getConsensusManager().write(applyConfigNodePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+    }
     UpdateVersionInfoPlan updateVersionInfoPlan =
         new UpdateVersionInfoPlan(versionInfo, configNodeLocation.getConfigNodeId());
-    getConsensusManager().write(updateVersionInfoPlan);
+    try {
+      getConsensusManager().write(updateVersionInfoPlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+    }
   }
 
   /**

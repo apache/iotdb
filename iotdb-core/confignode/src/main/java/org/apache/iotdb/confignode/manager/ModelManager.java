@@ -37,7 +37,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelStateReq;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -79,35 +79,25 @@ public class ModelManager {
   }
 
   public TSStatus updateModelInfo(TUpdateModelInfoReq req) {
-    ConsensusWriteResponse response =
-        configManager.getConsensusManager().write(new UpdateModelInfoPlan(req));
-    if (response.getStatus() != null) {
-      return response.getStatus();
-    } else {
-      LOGGER.warn(
-          "Unexpected error happened while updating model {}: ",
-          req.getModelId(),
-          response.getException());
+    try {
+      return configManager.getConsensusManager().write(new UpdateModelInfoPlan(req));
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
       // consensus layer related errors
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      res.setMessage(response.getErrorMessage());
+      res.setMessage(e.getMessage());
       return res;
     }
   }
 
   public TSStatus updateModelState(TUpdateModelStateReq req) {
-    ConsensusWriteResponse response =
-        configManager.getConsensusManager().write(new UpdateModelStatePlan(req));
-    if (response.getStatus() != null) {
-      return response.getStatus();
-    } else {
-      LOGGER.warn(
-          "Unexpected error happened while updating state of model {}: ",
-          req.getModelId(),
-          response.getException());
+    try {
+      return configManager.getConsensusManager().write(new UpdateModelStatePlan(req));
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
       // consensus layer related errors
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      res.setMessage(response.getErrorMessage());
+      res.setMessage(e.getMessage());
       return res;
     }
   }

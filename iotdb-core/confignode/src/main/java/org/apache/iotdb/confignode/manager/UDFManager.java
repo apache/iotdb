@@ -110,7 +110,7 @@ public class UDFManager {
 
       LOGGER.info("Start to add UDF [{}] in UDF_Table on Config Nodes", udfName);
 
-      return configManager.getConsensusManager().write(createFunctionPlan).getStatus();
+      return configManager.getConsensusManager().write(createFunctionPlan);
     } catch (Exception e) {
       LOGGER.warn(e.getMessage(), e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
@@ -143,10 +143,7 @@ public class UDFManager {
         return result;
       }
 
-      return configManager
-          .getConsensusManager()
-          .write(new DropFunctionPlan(functionName))
-          .getStatus();
+      return configManager.getConsensusManager().write(new DropFunctionPlan(functionName));
     } catch (Exception e) {
       LOGGER.warn(e.getMessage(), e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())

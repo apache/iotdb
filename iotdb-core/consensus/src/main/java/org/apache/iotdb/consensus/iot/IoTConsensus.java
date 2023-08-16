@@ -19,12 +19,10 @@
 
 package org.apache.iotdb.consensus.iot;
 
-import java.util.Optional;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -35,9 +33,6 @@ import org.apache.iotdb.consensus.IStateMachine.Registry;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
-import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -54,11 +49,9 @@ import org.apache.iotdb.consensus.iot.client.SyncIoTConsensusServiceClient;
 import org.apache.iotdb.consensus.iot.logdispatcher.IoTConsensusMemoryManager;
 import org.apache.iotdb.consensus.iot.service.IoTConsensusRPCService;
 import org.apache.iotdb.consensus.iot.service.IoTConsensusRPCServiceProcessor;
-import org.apache.iotdb.consensus.simple.SimpleConsensusServerImpl;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.ratis.protocol.GroupManagementRequest.Op;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,6 +63,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -161,12 +155,14 @@ public class IoTConsensus implements IConsensus {
   @Override
   public TSStatus write(ConsensusGroupId groupId, IConsensusRequest request)
       throws ConsensusException {
-    IoTConsensusServerImpl impl = Optional.ofNullable(stateMachineMap.get(groupId))
-        .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
+    IoTConsensusServerImpl impl =
+        Optional.ofNullable(stateMachineMap.get(groupId))
+            .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
     if (impl.isReadOnly()) {
       return StatusUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY);
     } else if (!impl.isActive()) {
-      return RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT,
+      return RpcUtils.getStatus(
+          TSStatusCode.WRITE_PROCESS_REJECT,
           "peer is inactive and not ready to receive sync log request.");
     } else {
       return impl.write(request);
@@ -193,31 +189,35 @@ public class IoTConsensus implements IConsensus {
       throw new IllegalPeerEndpointException(thisNode, peers);
     }
     AtomicBoolean exist = new AtomicBoolean(true);
-    Optional.ofNullable(stateMachineMap.computeIfAbsent(
-        groupId,
-        k -> {
-          exist.set(false);
+    Optional.ofNullable(
+            stateMachineMap.computeIfAbsent(
+                groupId,
+                k -> {
+                  exist.set(false);
 
-          String path = buildPeerDir(storageDir, groupId);
-          File file = new File(path);
-          if (!file.mkdirs()) {
-            logger.warn("Unable to create consensus dir for group {} at {}", groupId, path);
-            return null;
-          }
+                  String path = buildPeerDir(storageDir, groupId);
+                  File file = new File(path);
+                  if (!file.mkdirs()) {
+                    logger.warn("Unable to create consensus dir for group {} at {}", groupId, path);
+                    return null;
+                  }
 
-          IoTConsensusServerImpl impl =
-              new IoTConsensusServerImpl(
-                  path,
-                  new Peer(groupId, thisNodeId, thisNode),
-                  peers,
-                  registry.apply(groupId),
-                  clientManager,
-                  syncClientManager,
-                  config);
-          impl.start();
-          return impl;
-        })).orElseThrow(() -> new ConsensusException(
-        String.format("Unable to create consensus dir for group %s", groupId)));
+                  IoTConsensusServerImpl impl =
+                      new IoTConsensusServerImpl(
+                          path,
+                          new Peer(groupId, thisNodeId, thisNode),
+                          peers,
+                          registry.apply(groupId),
+                          clientManager,
+                          syncClientManager,
+                          config);
+                  impl.start();
+                  return impl;
+                }))
+        .orElseThrow(
+            () ->
+                new ConsensusException(
+                    String.format("Unable to create consensus dir for group %s", groupId)));
     if (exist.get()) {
       throw new ConsensusGroupAlreadyExistException(groupId);
     }
@@ -241,8 +241,9 @@ public class IoTConsensus implements IConsensus {
 
   @Override
   public void addRemotePeer(ConsensusGroupId groupId, Peer peer) throws ConsensusException {
-    IoTConsensusServerImpl impl = Optional.ofNullable(stateMachineMap.get(groupId))
-        .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
+    IoTConsensusServerImpl impl =
+        Optional.ofNullable(stateMachineMap.get(groupId))
+            .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
     if (impl.getConfiguration().contains(peer)) {
       throw new PeerAlreadyInConsensusGroupException(groupId, peer);
     }
@@ -291,10 +292,10 @@ public class IoTConsensus implements IConsensus {
   }
 
   @Override
-  public void removeRemotePeer(ConsensusGroupId groupId, Peer peer)
-      throws ConsensusException {
-    IoTConsensusServerImpl impl = Optional.ofNullable(stateMachineMap.get(groupId))
-        .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
+  public void removeRemotePeer(ConsensusGroupId groupId, Peer peer) throws ConsensusException {
+    IoTConsensusServerImpl impl =
+        Optional.ofNullable(stateMachineMap.get(groupId))
+            .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
 
     try {
       // let other peers remove the sync channel with target peer
@@ -322,8 +323,9 @@ public class IoTConsensus implements IConsensus {
 
   @Override
   public void triggerSnapshot(ConsensusGroupId groupId) throws ConsensusException {
-    IoTConsensusServerImpl impl = Optional.ofNullable(stateMachineMap.get(groupId))
-        .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
+    IoTConsensusServerImpl impl =
+        Optional.ofNullable(stateMachineMap.get(groupId))
+            .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
     try {
       impl.takeSnapshot();
     } catch (ConsensusGroupModifyPeerException e) {

@@ -36,11 +36,11 @@ import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
+import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.RatisConfig;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.ratis.util.SizeInBytes;
@@ -294,12 +294,12 @@ public class ConsensusManager {
   }
 
   /** Transmit PhysicalPlan to confignode.consensus.statemachine */
-  public ConsensusWriteResponse write(ConfigPhysicalPlan plan) {
+  public TSStatus write(ConfigPhysicalPlan plan) throws ConsensusException {
     return consensusImpl.write(DEFAULT_CONSENSUS_GROUP_ID, plan);
   }
 
   /** Transmit PhysicalPlan to confignode.consensus.statemachine */
-  public ConsensusReadResponse read(ConfigPhysicalPlan plan) {
+  public DataSet read(ConfigPhysicalPlan plan) throws ConsensusException {
     return consensusImpl.read(DEFAULT_CONSENSUS_GROUP_ID, plan);
   }
 

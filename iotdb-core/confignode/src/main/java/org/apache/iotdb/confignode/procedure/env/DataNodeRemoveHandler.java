@@ -38,6 +38,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
@@ -560,7 +561,11 @@ public class DataNodeRemoveHandler {
   public void removeDataNodePersistence(TDataNodeLocation dataNodeLocation) {
     // Remove consensus record
     List<TDataNodeLocation> removeDataNodes = Collections.singletonList(dataNodeLocation);
-    configManager.getConsensusManager().write(new RemoveDataNodePlan(removeDataNodes));
+    try {
+      configManager.getConsensusManager().write(new RemoveDataNodePlan(removeDataNodes));
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+    }
 
     // Adjust maxRegionGroupNum
     configManager.getClusterSchemaManager().adjustMaxRegionGroupNum();

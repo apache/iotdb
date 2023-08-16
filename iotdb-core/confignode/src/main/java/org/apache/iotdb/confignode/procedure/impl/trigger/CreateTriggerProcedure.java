@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl.trigger;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
 import org.apache.iotdb.confignode.consensus.request.write.trigger.AddTriggerInTablePlan;
@@ -32,7 +33,7 @@ import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
 import org.apache.iotdb.confignode.procedure.state.CreateTriggerState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -90,12 +91,19 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
               triggerInformation.getTriggerName(),
               jarFile != null);
 
-          ConsensusWriteResponse response =
-              configManager
-                  .getConsensusManager()
-                  .write(new AddTriggerInTablePlan(triggerInformation, jarFile));
-          if (!response.isSuccessful()) {
-            throw new TriggerManagementException(response.getErrorMessage());
+          TSStatus response;
+          try {
+            response =
+                configManager
+                    .getConsensusManager()
+                    .write(new AddTriggerInTablePlan(triggerInformation, jarFile));
+          } catch (ConsensusException e) {
+            LOG.warn("Something wrong happened while calling consensus layer's write API.", e);
+            response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+            response.setMessage(e.getMessage());
+          }
+          if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            throw new TriggerManagementException(response.getMessage());
           }
 
           setNextState(CreateTriggerState.CONFIG_NODE_INACTIVE);
@@ -189,9 +197,13 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
       case VALIDATED:
         LOG.info("Start [VALIDATED] rollback of trigger [{}]", triggerInformation.getTriggerName());
 
-        env.getConfigManager()
-            .getConsensusManager()
-            .write(new DeleteTriggerInTablePlan(triggerInformation.getTriggerName()));
+        try {
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(new DeleteTriggerInTablePlan(triggerInformation.getTriggerName()));
+        } catch (ConsensusException e) {
+          LOG.warn("Something wrong happened while calling consensus layer's write API.", e);
+        }
         break;
 
       case CONFIG_NODE_INACTIVE:

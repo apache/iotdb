@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
 import org.apache.iotdb.confignode.procedure.state.pipe.plugin.DropPipePluginState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -118,7 +119,11 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
       return Flow.NO_MORE_STATE;
     }
 
-    env.getConfigManager().getConsensusManager().write(new DropPipePluginPlan(pluginName));
+    try {
+      env.getConfigManager().getConsensusManager().write(new DropPipePluginPlan(pluginName));
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+    }
 
     setNextState(DropPipePluginState.DROP_ON_DATA_NODES);
     return Flow.HAS_MORE_STATE;
@@ -141,7 +146,11 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
   private Flow executeFromDropOnConfigNodes(ConfigNodeProcedureEnv env) {
     LOGGER.info("DropPipePluginProcedure: executeFromDropOnConfigNodes({})", pluginName);
 
-    env.getConfigManager().getConsensusManager().write(new DropPipePluginPlan(pluginName));
+    try {
+      env.getConfigManager().getConsensusManager().write(new DropPipePluginPlan(pluginName));
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+    }
 
     setNextState(DropPipePluginState.UNLOCK);
     return Flow.HAS_MORE_STATE;

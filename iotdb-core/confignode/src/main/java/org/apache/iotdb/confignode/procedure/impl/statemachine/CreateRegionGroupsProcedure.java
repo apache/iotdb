@@ -33,6 +33,7 @@ import org.apache.iotdb.confignode.persistence.partition.maintainer.RegionDelete
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.state.CreateRegionGroupsState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -161,7 +162,11 @@ public class CreateRegionGroupsProcedure
                         }));
 
         env.persistRegionGroup(persistPlan);
-        env.getConfigManager().getConsensusManager().write(offerPlan);
+        try {
+          env.getConfigManager().getConsensusManager().write(offerPlan);
+        } catch (ConsensusException e) {
+          LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+        }
         setNextState(CreateRegionGroupsState.ACTIVATE_REGION_GROUPS);
         break;
       case ACTIVATE_REGION_GROUPS:
