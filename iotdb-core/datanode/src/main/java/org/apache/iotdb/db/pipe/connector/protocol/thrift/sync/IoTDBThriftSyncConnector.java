@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.connector.builder.IoTDBThriftBatchBuilderV1;
+import org.apache.iotdb.db.pipe.connector.builder.IoTDBThriftBatchSyncBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferBatchReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
@@ -77,7 +77,7 @@ public class IoTDBThriftSyncConnector extends IoTDBThriftConnector {
     // Do nothing
   }
 
-  private IoTDBThriftBatchBuilderV1 batchBuilder;
+  private IoTDBThriftBatchSyncBuilder batchBuilder;
 
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
@@ -89,7 +89,7 @@ public class IoTDBThriftSyncConnector extends IoTDBThriftConnector {
     }
     if (CONNECTOR_IOTDB_MODE_BATCH.equals(mode)) {
       batchBuilder =
-          new IoTDBThriftBatchBuilderV1(
+          new IoTDBThriftBatchSyncBuilder(
               parameters.getIntOrDefault(
                       CONNECTOR_IOTDB_BATCH_DELAY_KEY, CONNECTOR_IOTDB_BATCH_DELAY_DEFAULT_VALUE)
                   * 1000,

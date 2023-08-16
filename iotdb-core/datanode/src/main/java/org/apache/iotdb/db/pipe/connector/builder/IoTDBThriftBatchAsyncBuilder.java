@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class IoTDBThriftBatchBuilderV2 {
+public class IoTDBThriftBatchAsyncBuilder {
   private final AtomicLong batchCommitId = new AtomicLong(0);
   private final List<TPipeTransferReq> tPipeTransferReqs = new CopyOnWriteArrayList<>();
   private final List<Long> requestCommitIds = new CopyOnWriteArrayList<>();
@@ -41,7 +41,7 @@ public class IoTDBThriftBatchBuilderV2 {
   private final int maxDelayInMs;
   private final long batchSizeInBytes;
 
-  public IoTDBThriftBatchBuilderV2(int maxDelayInMs, long batchSizeInBytes) {
+  public IoTDBThriftBatchAsyncBuilder(int maxDelayInMs, long batchSizeInBytes) {
     this.maxDelayInMs = maxDelayInMs;
     this.batchSizeInBytes = batchSizeInBytes;
   }

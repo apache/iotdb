@@ -27,7 +27,7 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import java.util.ArrayList;
 import java.util.List;
 
-public class IoTDBThriftBatchBuilderV1 {
+public class IoTDBThriftBatchSyncBuilder {
   private final List<TPipeTransferReq> tPipeTransferReqs = new ArrayList<>();
   private final List<EnrichedEvent> events = new ArrayList<>();
   private long lastSendTime = 0;
@@ -36,7 +36,7 @@ public class IoTDBThriftBatchBuilderV1 {
   private final int maxDelayInMs;
   private final long batchSizeInBytes;
 
-  public IoTDBThriftBatchBuilderV1(int maxDelayInMs, long batchSizeInBytes) {
+  public IoTDBThriftBatchSyncBuilder(int maxDelayInMs, long batchSizeInBytes) {
     this.maxDelayInMs = maxDelayInMs;
     this.batchSizeInBytes = batchSizeInBytes;
   }

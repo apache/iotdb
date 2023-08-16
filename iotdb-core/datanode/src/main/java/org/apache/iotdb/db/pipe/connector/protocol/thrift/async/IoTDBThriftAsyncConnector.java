@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.pipe.connector.builder.IoTDBThriftBatchBuilderV2;
+import org.apache.iotdb.db.pipe.connector.builder.IoTDBThriftBatchAsyncBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferBatchReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferInsertNodeReq;
@@ -105,7 +105,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBThriftConnector {
   private final PriorityQueue<Pair<Long, Runnable>> commitQueue =
       new PriorityQueue<>(Comparator.comparing(o -> o.left));
 
-  IoTDBThriftBatchBuilderV2 batchBuilder;
+  IoTDBThriftBatchAsyncBuilder batchBuilder;
 
   public IoTDBThriftAsyncConnector() {
     if (ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get() == null) {
@@ -135,7 +135,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBThriftConnector {
 
     if (CONNECTOR_IOTDB_MODE_BATCH.equals(mode)) {
       batchBuilder =
-          new IoTDBThriftBatchBuilderV2(
+          new IoTDBThriftBatchAsyncBuilder(
               parameters.getIntOrDefault(
                       CONNECTOR_IOTDB_BATCH_DELAY_KEY, CONNECTOR_IOTDB_BATCH_DELAY_DEFAULT_VALUE)
                   * 1000,
