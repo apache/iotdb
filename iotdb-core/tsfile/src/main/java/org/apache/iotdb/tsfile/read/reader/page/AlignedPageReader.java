@@ -120,16 +120,21 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
   private boolean pageSatisfy() {
     Statistics statistics = getStatistics();
     if (filter == null || filter.allSatisfy(statistics)) {
-      // For aligned series, When we only query some measurements under an aligned device, if the
-      // values of these queried measurements at a timestamp are all null, the timestamp will not be
-      // selected.
+      // For aligned series, When we only query some measurements under an aligned device, if any
+      // values of these queried measurements has the same value count as the time column, the
+      // timestamp will be selected.
       // NOTE: if we change the query semantic in the future for aligned series, we need to remove
       // this check here.
       long rowCount = getTimeStatistics().getCount();
+      boolean canUse = getValueStatisticsList().isEmpty();
       for (Statistics vStatistics : getValueStatisticsList()) {
-        if (vStatistics == null || vStatistics.hasNullValue(rowCount)) {
-          return true;
+        if (vStatistics != null && !vStatistics.hasNullValue(rowCount)) {
+          canUse = true;
+          break;
         }
+      }
+      if (!canUse) {
+        return true;
       }
       // When the number of points in all value pages is the same as that in the time page, it means
       // that there is no null value, and all timestamps will be selected.
