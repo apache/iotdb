@@ -255,6 +255,10 @@ public class Analysis {
   // extra message from config node, queries wll be sent to these Running DataNodes
   private List<TDataNodeLocation> runningDataNodeLocations;
 
+  // used for limit and offset push down optimizer, if we select all columns from aligned device, we
+  // can use statistics to skip
+  private boolean lastLevelUseWildcard = false;
+
   public Analysis() {
     this.finishQueryAfterAnalyze = false;
   }
@@ -731,5 +735,13 @@ public class Analysis {
 
   public Map<String, Set<Expression>> getDeviceToOutputExpressions() {
     return deviceToOutputExpressions;
+  }
+
+  public boolean isLastLevelUseWildcard() {
+    return lastLevelUseWildcard;
+  }
+
+  public void setLastLevelUseWildcard(boolean lastLevelUseWildcard) {
+    this.lastLevelUseWildcard = lastLevelUseWildcard;
   }
 }

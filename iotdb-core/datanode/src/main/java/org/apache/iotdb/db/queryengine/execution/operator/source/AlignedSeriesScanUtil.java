@@ -49,16 +49,32 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
 
   private final List<TSDataType> dataTypes;
 
+  // only used for limit and offset push down optimizer, if we select all columns from aligned
+  // device, we
+  // can use statistics to skip.
+  // it's only exact while using limit & offset push down
+  private boolean queryAllSensors = false;
+
   public AlignedSeriesScanUtil(
       PartialPath seriesPath,
       Ordering scanOrder,
       SeriesScanOptions scanOptions,
       FragmentInstanceContext context) {
+    this(seriesPath, scanOrder, scanOptions, context, false);
+  }
+
+  public AlignedSeriesScanUtil(
+      PartialPath seriesPath,
+      Ordering scanOrder,
+      SeriesScanOptions scanOptions,
+      FragmentInstanceContext context,
+      boolean queryAllSensors) {
     super(seriesPath, scanOrder, scanOptions, context);
     dataTypes =
         ((AlignedPath) seriesPath)
             .getSchemaList().stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
     isAligned = true;
+    this.queryAllSensors = queryAllSensors;
   }
 
   @SuppressWarnings("squid:S3740")
@@ -160,14 +176,20 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
     long rowCount =
         ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getTimeStatistics().getCount();
     boolean canUse =
-        ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getValueStatisticsList().isEmpty();
-    for (Statistics statistics :
-        ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getValueStatisticsList()) {
-      if (statistics != null && !statistics.hasNullValue(rowCount)) {
-        canUse = true;
-        break;
+        queryAllSensors
+            || ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata)
+                .getValueStatisticsList()
+                .isEmpty();
+    if (!canUse) {
+      for (Statistics statistics :
+          ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getValueStatisticsList()) {
+        if (statistics != null && !statistics.hasNullValue(rowCount)) {
+          canUse = true;
+          break;
+        }
       }
     }
+
     if (!canUse) {
       return;
     }
@@ -200,12 +222,16 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
     // NOTE: if we change the query semantic in the future for aligned series, we need to remove
     // this check here.
     long rowCount = firstChunkMetadata.getStatistics().getCount();
-    boolean canUse = ((AlignedChunkMetadata) firstChunkMetadata).getValueStatisticsList().isEmpty();
-    for (Statistics statistics :
-        ((AlignedChunkMetadata) firstChunkMetadata).getValueStatisticsList()) {
-      if (statistics != null && !statistics.hasNullValue(rowCount)) {
-        canUse = true;
-        break;
+    boolean canUse =
+        queryAllSensors
+            || ((AlignedChunkMetadata) firstChunkMetadata).getValueStatisticsList().isEmpty();
+    if (!canUse) {
+      for (Statistics statistics :
+          ((AlignedChunkMetadata) firstChunkMetadata).getValueStatisticsList()) {
+        if (statistics != null && !statistics.hasNullValue(rowCount)) {
+          canUse = true;
+          break;
+        }
       }
     }
     if (!canUse) {
