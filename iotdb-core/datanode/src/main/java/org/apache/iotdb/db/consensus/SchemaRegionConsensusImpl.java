@@ -135,6 +135,14 @@ public class SchemaRegionConsensusImpl {
                                       .setBufferByteLimit(
                                           conf.getSchemaRatisConsensusLogAppenderBufferSizeMax())
                                       .build())
+                              .setRead(
+                                  RatisConfig.Read.newBuilder()
+                                      // use thrift connection timeout to unify read timeout
+                                      .setReadTimeout(
+                                          TimeDuration.valueOf(
+                                              conf.getConnectionTimeoutInMS(),
+                                              TimeUnit.MILLISECONDS))
+                                      .build())
                               .build())
                       .setStorageDir(conf.getSchemaRegionConsensusDir())
                       .build(),
