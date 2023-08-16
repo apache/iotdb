@@ -55,7 +55,6 @@ public class AsyncConfigNodeIServiceClient extends IConfigNodeRPCService.AsyncCl
         protocolFactory,
         tClientManager,
         TNonblockingSocketWrapper.wrap(endpoint.getIp(), endpoint.getPort(), connectionTimeout));
-    setTimeout(connectionTimeout);
     this.endpoint = endpoint;
     this.clientManager = clientManager;
   }
