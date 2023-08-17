@@ -225,44 +225,47 @@ public class TestUtils {
   }
 
   public static void assertResultSetEqual(
-      ResultSet actualResultSet, String expectedHeader, String[] expectedRetArray)
-      throws SQLException {
+      ResultSet actualResultSet, String expectedHeader, String[] expectedRetArray) {
     assertResultSetEqual(actualResultSet, expectedHeader, expectedRetArray, null);
   }
 
   public static void assertResultSetEqual(
-      ResultSet actualResultSet, String expectedHeader, Set<String> expectedRetSet)
-      throws SQLException {
-    ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
-    StringBuilder header = new StringBuilder();
-    for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-      header.append(resultSetMetaData.getColumnName(i)).append(",");
-    }
-    assertEquals(expectedHeader, header.toString());
-
-    Set<String> actualRetSet = new HashSet<>();
-    while (actualResultSet.next()) {
-      StringBuilder builder = new StringBuilder();
+      ResultSet actualResultSet, String expectedHeader, Set<String> expectedRetSet) {
+    try {
+      ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
+      StringBuilder header = new StringBuilder();
       for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-        builder.append(actualResultSet.getString(i)).append(",");
+        header.append(resultSetMetaData.getColumnName(i)).append(",");
       }
-      actualRetSet.add(builder.toString());
+      assertEquals(expectedHeader, header.toString());
+
+      Set<String> actualRetSet = new HashSet<>();
+
+      while (actualResultSet.next()) {
+        StringBuilder builder = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          builder.append(actualResultSet.getString(i)).append(",");
+        }
+        actualRetSet.add(builder.toString());
+      }
+      assertEquals(expectedRetSet, actualRetSet);
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail(String.valueOf(e));
     }
-    assertEquals(expectedRetSet, actualRetSet);
   }
 
   public static void assertResultSetEqual(
-      ResultSet actualResultSet, String expectedHeader, String[] expectedRetArray, DateFormat df)
-      throws SQLException {
-    ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
-    StringBuilder header = new StringBuilder();
-    for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-      header.append(resultSetMetaData.getColumnName(i)).append(",");
-    }
-    assertEquals(expectedHeader, header.toString());
-
-    int cnt = 0;
+      ResultSet actualResultSet, String expectedHeader, String[] expectedRetArray, DateFormat df) {
     try {
+      ResultSetMetaData resultSetMetaData = actualResultSet.getMetaData();
+      StringBuilder header = new StringBuilder();
+      for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+        header.append(resultSetMetaData.getColumnName(i)).append(",");
+      }
+      assertEquals(expectedHeader, header.toString());
+
+      int cnt = 0;
       while (actualResultSet.next()) {
         StringBuilder builder = new StringBuilder();
         if (df != null) {
@@ -276,10 +279,11 @@ public class TestUtils {
         assertEquals(expectedRetArray[cnt], builder.toString());
         cnt++;
       }
+      assertEquals(expectedRetArray.length, cnt);
     } catch (Exception e) {
+      e.printStackTrace();
       Assert.fail(String.valueOf(e));
     }
-    assertEquals(expectedRetArray.length, cnt);
   }
 
   public static void executeNonQuery(String sql) {
