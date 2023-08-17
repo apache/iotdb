@@ -228,13 +228,13 @@ public class AsyncDataNodeClientPool {
               (AsyncTSStatusRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
-        case PUSH_PIPE_META:
+        case PIPE_PUSH_ALL_META:
           client.pushPipeMeta(
               (TPushPipeMetaReq) clientHandler.getRequest(requestId),
               (PipePushMetaRPCHandler)
                   clientHandler.createAsyncRPCHandler(requestId, targetDataNode));
           break;
-        case PUSH_SINGLE_PIPE_META:
+        case PIPE_PUSH_SINGLE_META:
           client.pushSinglePipeMeta(
               (TPushSinglePipeMetaReq) clientHandler.getRequest(requestId),
               (PipePushMetaRPCHandler)

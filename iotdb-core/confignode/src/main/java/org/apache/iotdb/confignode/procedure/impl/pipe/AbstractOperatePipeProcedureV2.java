@@ -268,7 +268,7 @@ public abstract class AbstractOperatePipeProcedureV2
       pipeMetaBinaryList.add(pipeMeta.serialize());
     }
 
-    return env.pushPipeMetaToDataNodes(pipeMetaBinaryList);
+    return env.pushAllPipeMetaToDataNodes(pipeMetaBinaryList);
   }
 
   /**

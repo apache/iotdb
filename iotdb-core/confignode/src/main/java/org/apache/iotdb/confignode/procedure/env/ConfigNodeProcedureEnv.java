@@ -661,14 +661,15 @@ public class ConfigNodeProcedureEnv {
     return clientHandler.getResponseList();
   }
 
-  public Map<Integer, TPushPipeMetaResp> pushPipeMetaToDataNodes(
+  public Map<Integer, TPushPipeMetaResp> pushAllPipeMetaToDataNodes(
       List<ByteBuffer> pipeMetaBinaryList) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TPushPipeMetaReq request = new TPushPipeMetaReq().setPipeMetas(pipeMetaBinaryList);
 
     final AsyncClientHandler<TPushPipeMetaReq, TPushPipeMetaResp> clientHandler =
-        new AsyncClientHandler<>(DataNodeRequestType.PUSH_PIPE_META, request, dataNodeLocationMap);
+        new AsyncClientHandler<>(
+            DataNodeRequestType.PIPE_PUSH_ALL_META, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseMap();
   }
@@ -680,7 +681,7 @@ public class ConfigNodeProcedureEnv {
 
     final AsyncClientHandler<TPushSinglePipeMetaReq, TPushPipeMetaResp> clientHandler =
         new AsyncClientHandler<>(
-            DataNodeRequestType.PUSH_SINGLE_PIPE_META, request, dataNodeLocationMap);
+            DataNodeRequestType.PIPE_PUSH_SINGLE_META, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseMap();
   }
@@ -693,7 +694,7 @@ public class ConfigNodeProcedureEnv {
 
     final AsyncClientHandler<TPushSinglePipeMetaReq, TPushPipeMetaResp> clientHandler =
         new AsyncClientHandler<>(
-            DataNodeRequestType.PUSH_SINGLE_PIPE_META, request, dataNodeLocationMap);
+            DataNodeRequestType.PIPE_PUSH_SINGLE_META, request, dataNodeLocationMap);
     AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
     return clientHandler.getResponseMap();
   }
