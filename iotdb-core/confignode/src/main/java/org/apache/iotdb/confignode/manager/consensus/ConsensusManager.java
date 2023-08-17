@@ -269,17 +269,14 @@ public class ConsensusManager {
    * @throws AddPeerException When addPeer doesn't success
    */
   public void addConfigNodePeer(TConfigNodeLocation configNodeLocation) throws AddPeerException {
-    boolean result =
-        consensusImpl
-            .addRemotePeer(
-                DEFAULT_CONSENSUS_GROUP_ID,
-                new Peer(
-                    DEFAULT_CONSENSUS_GROUP_ID,
-                    configNodeLocation.getConfigNodeId(),
-                    configNodeLocation.getConsensusEndPoint()))
-            .isSuccess();
-
-    if (!result) {
+    try {
+      consensusImpl.addRemotePeer(
+          DEFAULT_CONSENSUS_GROUP_ID,
+          new Peer(
+              DEFAULT_CONSENSUS_GROUP_ID,
+              configNodeLocation.getConfigNodeId(),
+              configNodeLocation.getConsensusEndPoint()));
+    } catch (ConsensusException e) {
       throw new AddPeerException(configNodeLocation);
     }
   }

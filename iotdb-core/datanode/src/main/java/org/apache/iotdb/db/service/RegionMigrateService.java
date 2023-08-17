@@ -224,9 +224,10 @@ public class RegionMigrateService implements IService {
           if (!addPeerSucceed) {
             Thread.sleep(SLEEP_MILLIS);
           }
-          resp =
-              addRegionPeer(
-                  regionId, new Peer(regionId, destDataNode.getDataNodeId(), destEndpoint));
+          addRegionPeer(regionId, new Peer(regionId, destDataNode.getDataNodeId(), destEndpoint));
+          if (addPeerSucceed) {
+            break;
+          }
         } catch (Throwable e) {
           addPeerSucceed = false;
           taskLogger.error(
@@ -237,12 +238,9 @@ public class RegionMigrateService implements IService {
               i,
               e);
         }
-        if (addPeerSucceed && resp != null && resp.isSuccess()) {
-          break;
-        }
       }
 
-      if (!addPeerSucceed || resp == null || !resp.isSuccess()) {
+      if (!addPeerSucceed) {
         String errorMsg =
             String.format(
                 "%s, AddPeer for region error after max retry times, peerId: %s, regionId: %s, resp: %s",
@@ -263,14 +261,12 @@ public class RegionMigrateService implements IService {
       return status;
     }
 
-    private ConsensusGenericResponse addRegionPeer(ConsensusGroupId regionId, Peer newPeer) {
-      ConsensusGenericResponse resp;
+    private void addRegionPeer(ConsensusGroupId regionId, Peer newPeer) throws ConsensusException {
       if (regionId instanceof DataRegionId) {
-        resp = DataRegionConsensusImpl.getInstance().addRemotePeer(regionId, newPeer);
+        DataRegionConsensusImpl.getInstance().addRemotePeer(regionId, newPeer);
       } else {
-        resp = SchemaRegionConsensusImpl.getInstance().addRemotePeer(regionId, newPeer);
+        SchemaRegionConsensusImpl.getInstance().addRemotePeer(regionId, newPeer);
       }
-      return resp;
     }
   }
 
