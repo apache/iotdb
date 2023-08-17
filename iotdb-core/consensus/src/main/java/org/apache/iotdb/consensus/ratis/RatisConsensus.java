@@ -39,9 +39,6 @@ import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
-import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -720,21 +717,6 @@ class RatisConsensus implements IConsensus {
     final long delay = config.getImpl().getTriggerSnapshotTime();
     ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
         diskGuardian, this::triggerSnapshotByCustomize, 0, delay, TimeUnit.SECONDS);
-  }
-
-  private ConsensusGenericResponse failed(ConsensusException e) {
-    logger.debug("{} request failed with exception {}", this, e);
-    return ConsensusGenericResponse.newBuilder().setSuccess(false).setException(e).build();
-  }
-
-  private ConsensusWriteResponse failedWrite(ConsensusException e) {
-    logger.debug("{} write request failed with exception {}", this, e);
-    return ConsensusWriteResponse.newBuilder().setException(e).build();
-  }
-
-  private ConsensusReadResponse failedRead(ConsensusException e) {
-    logger.debug("{} read request failed with exception {}", this, e);
-    return ConsensusReadResponse.newBuilder().setException(e).build();
   }
 
   private RaftClientRequest buildRawRequest(

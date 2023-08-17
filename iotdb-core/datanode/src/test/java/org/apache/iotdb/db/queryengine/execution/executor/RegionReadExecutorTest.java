@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -63,15 +62,13 @@ public class RegionReadExecutorTest {
     RegionReadExecutor executor =
         new RegionReadExecutor(dataRegionConsensus, schemaRegionConsensus, fragmentInstanceManager);
 
-    ConsensusReadResponse readResponse = Mockito.mock(ConsensusReadResponse.class);
-    Mockito.when(readResponse.isSuccess()).thenReturn(true);
+    DataSet dataSet = Mockito.mock(DataSet.class);
     FragmentInstanceInfo fragmentInstanceInfo = Mockito.mock(FragmentInstanceInfo.class);
-    Mockito.when(readResponse.getDataset()).thenReturn(fragmentInstanceInfo);
+    Mockito.when(dataSet).thenReturn(fragmentInstanceInfo);
     Mockito.when(fragmentInstanceInfo.getState()).thenReturn(RUNNING);
     Mockito.when(fragmentInstanceInfo.getMessage()).thenReturn("data-success");
 
-    Mockito.when(dataRegionConsensus.read(dataRegionGroupId, fragmentInstance))
-        .thenReturn((DataSet) readResponse);
+    Mockito.when(dataRegionConsensus.read(dataRegionGroupId, fragmentInstance)).thenReturn(dataSet);
 
     RegionExecutionResult res = executor.execute(dataRegionGroupId, fragmentInstance);
 
@@ -81,13 +78,12 @@ public class RegionReadExecutorTest {
     // schema query
     ConsensusGroupId schemaRegionGroupId = new SchemaRegionId(1);
 
-    Mockito.when(readResponse.isSuccess()).thenReturn(true);
-    Mockito.when(readResponse.getDataset()).thenReturn(fragmentInstanceInfo);
+    Mockito.when(dataSet).thenReturn(fragmentInstanceInfo);
     Mockito.when(fragmentInstanceInfo.getState()).thenReturn(RUNNING);
     Mockito.when(fragmentInstanceInfo.getMessage()).thenReturn("schema-success");
 
     Mockito.when(schemaRegionConsensus.read(schemaRegionGroupId, fragmentInstance))
-        .thenReturn((DataSet) readResponse);
+        .thenReturn(dataSet);
 
     res = executor.execute(schemaRegionGroupId, fragmentInstance);
 
@@ -148,12 +144,9 @@ public class RegionReadExecutorTest {
     RegionReadExecutor executor =
         new RegionReadExecutor(dataRegionConsensus, schemaRegionConsensus, fragmentInstanceManager);
 
-    ConsensusReadResponse readResponse = Mockito.mock(ConsensusReadResponse.class);
-    Mockito.when(readResponse.isSuccess()).thenReturn(false);
-    Mockito.when(readResponse.getException()).thenReturn(new ConsensusException("data-exception"));
+    DataSet dataSet = Mockito.mock(DataSet.class);
 
-    Mockito.when(dataRegionConsensus.read(dataRegionGroupId, fragmentInstance))
-        .thenReturn((DataSet) readResponse);
+    Mockito.when(dataRegionConsensus.read(dataRegionGroupId, fragmentInstance)).thenReturn(dataSet);
 
     RegionExecutionResult res = executor.execute(dataRegionGroupId, fragmentInstance);
 
@@ -163,11 +156,8 @@ public class RegionReadExecutorTest {
     // schema query
     ConsensusGroupId schemaRegionGroupId = new SchemaRegionId(1);
 
-    Mockito.when(readResponse.isSuccess()).thenReturn(false);
-    Mockito.when(readResponse.getException()).thenReturn(null);
-
     Mockito.when(schemaRegionConsensus.read(schemaRegionGroupId, fragmentInstance))
-        .thenReturn((DataSet) readResponse);
+        .thenReturn(dataSet);
 
     res = executor.execute(schemaRegionGroupId, fragmentInstance);
 

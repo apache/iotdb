@@ -34,7 +34,6 @@ import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
@@ -216,9 +215,9 @@ public class RegionMigrateService implements IService {
           "{}, Start to addPeer {} for region {}", REGION_MIGRATE_PROCESS, destDataNode, tRegionId);
       ConsensusGroupId regionId = ConsensusGroupId.Factory.createFromTConsensusGroupId(tRegionId);
       TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      ConsensusGenericResponse resp = null;
       TEndPoint destEndpoint = getConsensusEndPoint(destDataNode, regionId);
       boolean addPeerSucceed = true;
+      Throwable throwable = null;
       for (int i = 0; i < MAX_RETRY_NUM; i++) {
         try {
           if (!addPeerSucceed) {
@@ -230,6 +229,7 @@ public class RegionMigrateService implements IService {
           }
         } catch (Throwable e) {
           addPeerSucceed = false;
+          throwable = e;
           taskLogger.error(
               "{}, executed addPeer {} for region {} error, retry times: {}",
               REGION_MIGRATE_PROCESS,
@@ -243,9 +243,9 @@ public class RegionMigrateService implements IService {
       if (!addPeerSucceed) {
         String errorMsg =
             String.format(
-                "%s, AddPeer for region error after max retry times, peerId: %s, regionId: %s, resp: %s",
-                REGION_MIGRATE_PROCESS, destEndpoint, regionId, resp);
-        taskLogger.error(errorMsg);
+                "%s, AddPeer for region error after max retry times, peerId: %s, regionId: %s",
+                REGION_MIGRATE_PROCESS, destEndpoint, regionId);
+        taskLogger.error(errorMsg, throwable);
         status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
         status.setMessage(errorMsg);
         return status;
@@ -302,7 +302,7 @@ public class RegionMigrateService implements IService {
           REGION_MIGRATE_PROCESS,
           destEndPoint,
           regionId);
-      ConsensusGenericResponse resp = null;
+      Throwable throwable = null;
       boolean removePeerSucceed = true;
       for (int i = 0; i < MAX_RETRY_NUM; i++) {
         try {
@@ -316,6 +316,7 @@ public class RegionMigrateService implements IService {
           }
         } catch (Throwable e) {
           removePeerSucceed = false;
+          throwable = e;
           taskLogger.error(
               "{}, executed removePeer {} for region {} error, retry times: {}",
               REGION_MIGRATE_PROCESS,
@@ -329,9 +330,9 @@ public class RegionMigrateService implements IService {
       if (!removePeerSucceed) {
         String errorMsg =
             String.format(
-                "%s, RemovePeer for region error after max retry times, peerId: %s, regionId: %s, resp: %s",
-                REGION_MIGRATE_PROCESS, destEndPoint, regionId, resp);
-        taskLogger.error(errorMsg);
+                "%s, RemovePeer for region error after max retry times, peerId: %s, regionId: %s",
+                REGION_MIGRATE_PROCESS, destEndPoint, regionId);
+        taskLogger.error(errorMsg, throwable);
         status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
         status.setMessage(errorMsg);
         return status;
