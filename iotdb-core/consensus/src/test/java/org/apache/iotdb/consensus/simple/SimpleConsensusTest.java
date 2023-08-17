@@ -248,10 +248,13 @@ public class SimpleConsensusTest {
 
   @Test
   public void transferLeader() {
-    ConsensusGenericResponse response =
-        consensusImpl.transferLeader(
-            dataRegionId, new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667)));
-    assertFalse(response.isSuccess());
+    try {
+      consensusImpl.transferLeader(
+          dataRegionId, new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667)));
+      assert false;
+    } catch (ConsensusException e) {
+      assert true;
+    }
   }
 
   @Test

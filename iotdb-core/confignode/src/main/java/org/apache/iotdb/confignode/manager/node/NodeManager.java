@@ -76,7 +76,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TRuntimeConfiguration;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -623,13 +622,13 @@ public class NodeManager {
           .setMessage(
               "Transfer ConfigNode leader failed because can not find any running ConfigNode.");
     }
-    ConsensusGenericResponse resp =
-        getConsensusManager()
-            .getConsensusImpl()
-            .transferLeader(
-                groupId,
-                new Peer(groupId, newLeader.getConfigNodeId(), newLeader.getConsensusEndPoint()));
-    if (!resp.isSuccess()) {
+    try {
+      getConsensusManager()
+          .getConsensusImpl()
+          .transferLeader(
+              groupId,
+              new Peer(groupId, newLeader.getConfigNodeId(), newLeader.getConsensusEndPoint()));
+    } catch (ConsensusException e) {
       return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
           .setMessage("Remove ConfigNode failed because transfer ConfigNode leader failed.");
     }
