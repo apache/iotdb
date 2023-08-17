@@ -98,8 +98,8 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
                 PipeTransferBatchReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
           case TRANSFER_FILE_PIECE:
             return handleTransferFilePiece(
-              PipeTransferFilePieceReq.fromTPipeTransferReq(req),
-              req instanceof AirGapPseudoTPipeTransferRequest);
+                PipeTransferFilePieceReq.fromTPipeTransferReq(req),
+                req instanceof AirGapPseudoTPipeTransferRequest);
           case TRANSFER_FILE_SEAL:
             return handleTransferFileSeal(
                 PipeTransferFileSealReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
