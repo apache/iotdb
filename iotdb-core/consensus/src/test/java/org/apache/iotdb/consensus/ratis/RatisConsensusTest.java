@@ -29,7 +29,7 @@ import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.RatisConfig;
-import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 
 import org.apache.ratis.util.TimeDuration;
 import org.junit.After;
@@ -117,7 +117,7 @@ public class RatisConsensusTest {
 
     ConsensusGenericResponse resp = servers.get(0).createPeer(group.getGroupId(), original);
     Assert.assertFalse(resp.isSuccess());
-    Assert.assertTrue(resp.getException() instanceof RatisRequestFailedException);
+    Assert.assertTrue(resp.getException() instanceof ConsensusGroupAlreadyExistException);
 
     // add 2 members
     servers.get(1).createPeer(group.getGroupId(), Collections.emptyList());

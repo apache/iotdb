@@ -45,7 +45,7 @@ for f in ${IOTDB_HOME}/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done
 
-MAIN_CLASS=org.apache.iotdb.db.tools.schema.SchemaFileSketchTool
+MAIN_CLASS=org.apache.iotdb.db.tools.schema.PBTreeFileSketchTool
 
 "$JAVA" -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
 exit $?

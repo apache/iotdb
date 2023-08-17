@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -29,7 +28,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletReq;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBThriftConnector;
+import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -56,7 +55,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class IoTDBThriftSyncConnector extends IoTDBThriftConnector {
+public class IoTDBThriftSyncConnector extends IoTDBConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftSyncConnector.class);
 
@@ -69,10 +68,6 @@ public class IoTDBThriftSyncConnector extends IoTDBThriftConnector {
 
   public IoTDBThriftSyncConnector() {
     // Do nothing
-  }
-
-  public IoTDBThriftSyncConnector(String ipAddress, int port) {
-    nodeUrls.add(new TEndPoint(ipAddress, port));
   }
 
   @Override
@@ -88,7 +83,7 @@ public class IoTDBThriftSyncConnector extends IoTDBThriftConnector {
   @Override
   public void handshake() throws Exception {
     for (int i = 0; i < clients.size(); i++) {
-      if (isClientAlive.get(i)) {
+      if (Boolean.TRUE.equals(isClientAlive.get(i))) {
         continue;
       }
 
@@ -114,7 +109,7 @@ public class IoTDBThriftSyncConnector extends IoTDBThriftConnector {
               new ThriftClientProperty.Builder()
                   .setConnectionTimeoutMs((int) PIPE_CONFIG.getPipeConnectorTimeoutMs())
                   .setRpcThriftCompressionEnabled(
-                      PIPE_CONFIG.isPipeAsyncConnectorRPCThriftCompressionEnabled())
+                      PIPE_CONFIG.isPipeConnectorRPCThriftCompressionEnabled())
                   .build(),
               ip,
               port));
@@ -127,22 +122,26 @@ public class IoTDBThriftSyncConnector extends IoTDBThriftConnector {
                     PipeTransferHandshakeReq.toTPipeTransferReq(
                         CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
         if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          throw new PipeException(String.format("Handshake error, result status %s.", resp.status));
+          LOGGER.warn(
+              "Handshake error with target server ip: {}, port: {}, because: {}.",
+              ip,
+              port,
+              resp.status);
         } else {
           isClientAlive.set(i, true);
           LOGGER.info("Handshake success. Target server ip: {}, port: {}", ip, port);
         }
       } catch (TException e) {
-        throw new PipeConnectionException(
-            String.format(
-                "Handshake error with target server ip: %s, port: %s, because: %s",
-                ip, port, e.getMessage()),
-            e);
+        LOGGER.warn(
+            "Handshake error with target server ip: {}, port: {}, because: {}.",
+            ip,
+            port,
+            e.getMessage());
       }
     }
 
     for (int i = 0; i < clients.size(); i++) {
-      if (isClientAlive.get(i)) {
+      if (Boolean.TRUE.equals(isClientAlive.get(i))) {
         return;
       }
     }
@@ -210,7 +209,7 @@ public class IoTDBThriftSyncConnector extends IoTDBThriftConnector {
 
   @Override
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
-    // PipeProcessor can change the type of TabletInsertionEvent
+    // PipeProcessor can change the type of tsFileInsertionEvent
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       LOGGER.warn(
           "IoTDBThriftSyncConnector only support PipeTsFileInsertionEvent. Ignore {}.",
@@ -345,7 +344,7 @@ public class IoTDBThriftSyncConnector extends IoTDBThriftConnector {
     // Round-robin, find the next alive client
     for (int tryCount = 0; tryCount < clientSize; ++tryCount) {
       final int clientIndex = (int) (currentClientIndex++ % clientSize);
-      if (isClientAlive.get(clientIndex)) {
+      if (Boolean.TRUE.equals(isClientAlive.get(clientIndex))) {
         return clientIndex;
       }
     }

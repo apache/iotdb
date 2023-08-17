@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.persistence.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -72,6 +73,16 @@ public class RegionGroup {
 
   public TRegionReplicaSet getReplicaSet() {
     return replicaSet.deepCopy();
+  }
+
+  public void addRegionLocation(TDataNodeLocation node) {
+    replicaSet.addToDataNodeLocations(node);
+    replicaSet.getDataNodeLocations().sort(TDataNodeLocation::compareTo);
+  }
+
+  public void removeRegionLocation(TDataNodeLocation node) {
+    replicaSet.getDataNodeLocations().remove(node);
+    replicaSet.getDataNodeLocations().sort(TDataNodeLocation::compareTo);
   }
 
   /** @param deltaMap Map<TSeriesPartitionSlot, Delta TTimePartitionSlot Count> */

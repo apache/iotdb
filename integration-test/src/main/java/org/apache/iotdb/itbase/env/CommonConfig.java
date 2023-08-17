@@ -119,4 +119,6 @@ public interface CommonConfig {
   CommonConfig setMaxTsBlockSizeInByte(long maxTsBlockSizeInByte);
 
   CommonConfig setDataRegionPerDataNode(double dataRegionPerDataNode);
+
+  CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode);
 }

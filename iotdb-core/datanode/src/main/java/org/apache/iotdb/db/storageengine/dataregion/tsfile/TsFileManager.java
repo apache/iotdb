@@ -92,6 +92,23 @@ public class TsFileManager {
     }
   }
 
+  public long recoverFlushTimeFromTsFileResource(long partitionId, String devicePath) {
+    writeLock("recoverFlushTimeFromTsFileResource");
+    try {
+      List<TsFileResource> tsFileResourceList =
+          sequenceFiles.computeIfAbsent(partitionId, l -> new TsFileResourceList());
+      for (int i = tsFileResourceList.size() - 1; i >= 0; i--) {
+        Set<String> deviceSet = tsFileResourceList.get(i).getDevices();
+        if (deviceSet.contains(devicePath)) {
+          return tsFileResourceList.get(i).getEndTime(devicePath);
+        }
+      }
+    } finally {
+      writeUnlock();
+    }
+    return Long.MIN_VALUE;
+  }
+
   public Iterator<TsFileResource> getIterator(boolean sequence) {
     readLock();
     try {

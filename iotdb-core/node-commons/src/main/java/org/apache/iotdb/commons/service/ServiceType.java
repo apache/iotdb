@@ -26,6 +26,7 @@ public enum ServiceType {
   RPC_SERVICE("RPC ServerService", "RPCService"),
   INFLUX_SERVICE("InfluxDB Protocol Service", "InfluxDB Protocol"),
   MQTT_SERVICE("MQTTService", "MqttService"),
+  AIR_GAP_SERVICE("AirGapService", "AirGapService"),
   MONITOR_SERVICE("Monitor ServerService", "Monitor"),
   STAT_MONITOR_SERVICE("Statistics ServerService", "StatMonitorService"),
   WAL_SERVICE("WAL ServerService", "WalService"),

@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
@@ -889,6 +890,9 @@ public class DataNode implements DataNodeMBean {
     }
     if (IoTDBRestServiceDescriptor.getInstance().getConfig().isEnableRestService()) {
       registerManager.register(RestService.getInstance());
+    }
+    if (PipeConfig.getInstance().getPipeAirGapReceiverEnabled()) {
+      registerManager.register(PipeAgent.receiver().airGap());
     }
   }
 

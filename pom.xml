@@ -112,7 +112,6 @@
             we'll stay at 0.14.1.
         -->
         <thrift.version>0.14.1</thrift.version>
-        <airline.version>0.8</airline.version>
         <jackson.version>2.13.5</jackson.version>
         <disrupter.version>3.4.2</disrupter.version>
         <jackson.databind.version>2.13.4.2</jackson.databind.version>
@@ -166,7 +165,6 @@
         <javax.annotation-api.version>1.3.2</javax.annotation-api.version>
         <log4j.version>1.2.24</log4j.version>
         <lz4-java.version>1.8.0</lz4-java.version>
-        <jaxb-runtime.version>3.0.2</jaxb-runtime.version>
         <mockito-core.version>2.23.4</mockito-core.version>
         <objenesis.version>3.2</objenesis.version>
         <powermock-core.version>2.0.9</powermock-core.version>
@@ -196,7 +194,6 @@
         <!-- caffeine cache -->
         <caffeine>2.9.3</caffeine>
         <commons-csv.version>1.9.0</commons-csv.version>
-        <commons-lang.version>2.6</commons-lang.version>
         <JTransforms.version>3.1</JTransforms.version>
         <xz.version>1.9</xz.version>
         <!-- codegen -->
@@ -399,22 +396,6 @@
                 <version>${jackson-core-asl.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.glassfish.jaxb</groupId>
-                <artifactId>jaxb-runtime</artifactId>
-                <version>${jaxb-runtime.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>jakarta.activation</groupId>
-                        <artifactId>jakarta.activation-api</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <!--            <dependency>
-                <groupId>org.javassist</groupId>
-                <artifactId>javassist</artifactId>
-                <version>3.24.1-GA</version>
-            </dependency>-->
-            <dependency>
                 <groupId>org.mockito</groupId>
                 <artifactId>mockito-core</artifactId>
                 <version>${mockito-core.version}</version>
@@ -504,11 +485,6 @@
                 <groupId>io.airlift</groupId>
                 <artifactId>units</artifactId>
                 <version>${io.airlift.units.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.airlift</groupId>
-                <artifactId>airline</artifactId>
-                <version>${airline.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.airlift</groupId>
@@ -602,11 +578,6 @@
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-csv</artifactId>
                 <version>${commons-csv.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>commons-lang</groupId>
-                <artifactId>commons-lang</artifactId>
-                <version>${commons-lang.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.github.wendykierp</groupId>
@@ -783,7 +754,7 @@
                 <plugin>
                     <groupId>com.googlecode.maven-download-plugin</groupId>
                     <artifactId>download-maven-plugin</artifactId>
-                    <version>1.6.7</version>
+                    <version>1.6.8</version>
                 </plugin>
                 <plugin>
                     <groupId>com.googlecode.cmake-maven-project</groupId>
@@ -1231,10 +1202,6 @@
                 <dependency>
                     <groupId>javax.xml.bind</groupId>
                     <artifactId>jaxb-api</artifactId>
-                </dependency>
-                <dependency>
-                    <groupId>org.glassfish.jaxb</groupId>
-                    <artifactId>jaxb-runtime</artifactId>
                 </dependency>
             </dependencies>
         </profile>

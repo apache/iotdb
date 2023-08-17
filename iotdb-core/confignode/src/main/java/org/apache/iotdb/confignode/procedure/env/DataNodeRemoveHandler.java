@@ -58,6 +58,7 @@ import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
 
 public class DataNodeRemoveHandler {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeRemoveHandler.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
@@ -402,7 +403,11 @@ public class DataNodeRemoveHandler {
 
   private Optional<TDataNodeLocation> pickNewReplicaNodeForRegion(
       List<TDataNodeLocation> regionReplicaNodes) {
-    return configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running).stream()
+    List<TDataNodeConfiguration> dataNodeConfigurations =
+        configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running);
+    // Randomly selected to ensure a basic load balancing
+    Collections.shuffle(dataNodeConfigurations);
+    return dataNodeConfigurations.stream()
         .map(TDataNodeConfiguration::getLocation)
         .filter(e -> !regionReplicaNodes.contains(e))
         .findAny();

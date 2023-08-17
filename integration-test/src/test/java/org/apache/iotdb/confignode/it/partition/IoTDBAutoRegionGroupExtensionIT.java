@@ -60,6 +60,7 @@ import static org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils.generateP
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBAutoRegionGroupExtensionIT {
+
   private static final String testDataRegionGroupExtensionPolicy = "AUTO";
   private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
   private static final int testReplicationFactor = 1;

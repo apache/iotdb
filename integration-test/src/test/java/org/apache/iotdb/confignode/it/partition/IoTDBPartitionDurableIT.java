@@ -79,6 +79,8 @@ public class IoTDBPartitionDurableIT {
   final String d1 = sg + ".d1.s";
   private static final int testSeriesPartitionBatchSize = 1;
   private static final int testTimePartitionBatchSize = 1;
+
+  private static final int testSchemaRegionPerDataNode = 3;
   private static final TEndPoint defaultEndPoint = new TEndPoint("-1", -1);
   private static final TDataNodeLocation defaultDataNode =
       new TDataNodeLocation(
@@ -99,8 +101,8 @@ public class IoTDBPartitionDurableIT {
         .setDataRegionConsensusProtocolClass(testConsensusProtocolClass)
         .setSchemaReplicationFactor(testReplicationFactor)
         .setDataReplicationFactor(testReplicationFactor)
-        .setTimePartitionInterval(testTimePartitionInterval);
-
+        .setTimePartitionInterval(testTimePartitionInterval)
+        .setSchemaRegionPerDataNode(testSchemaRegionPerDataNode);
     // Init 1C3D environment
     EnvFactory.getEnv().initClusterEnvironment(1, 3);
 
