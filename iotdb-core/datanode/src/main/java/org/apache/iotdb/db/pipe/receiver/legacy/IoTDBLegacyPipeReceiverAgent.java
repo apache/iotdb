@@ -52,9 +52,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class IoTDBLegacyPipeReceiver {
+public class IoTDBLegacyPipeReceiverAgent {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBLegacyPipeReceiver.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBLegacyPipeReceiverAgent.class);
 
   private static final String PATCH_SUFFIX = ".patch";
 
@@ -162,7 +162,7 @@ public class IoTDBLegacyPipeReceiver {
    * @return {@link TSStatusCode#PIPESERVER_ERROR} if fail to receive or load; {@link
    *     TSStatusCode#SUCCESS_STATUS} if load successfully.
    * @throws TException The connection between the sender and the receiver has not been established
-   *     by {@link IoTDBLegacyPipeReceiver#handshake}
+   *     by {@link IoTDBLegacyPipeReceiverAgent#handshake}
    */
   public TSStatus transportPipeData(ByteBuffer buff) throws TException {
     // step1. check connection
@@ -260,7 +260,7 @@ public class IoTDBLegacyPipeReceiver {
    *     TSStatusCode#SYNC_FILE_REDIRECTION_ERROR} if startIndex needs to rollback because
    *     mismatched; {@link TSStatusCode#SYNC_FILE_ERROR} if fail to receive file.
    * @throws TException The connection between the sender and the receiver has not been established
-   *     by {@link IoTDBLegacyPipeReceiver#handshake}
+   *     by {@link IoTDBLegacyPipeReceiverAgent#handshake}
    */
   public TSStatus transportFile(TSyncTransportMetaInfo metaInfo, ByteBuffer buff)
       throws TException {
@@ -438,17 +438,5 @@ public class IoTDBLegacyPipeReceiver {
     public String getIndex() {
       return index;
     }
-  }
-
-  ///////////////////////// singleton /////////////////////////
-
-  private IoTDBLegacyPipeReceiver() {}
-
-  public static IoTDBLegacyPipeReceiver getInstance() {
-    return IoTDBSyncReceiverHolder.INSTANCE;
-  }
-
-  private static class IoTDBSyncReceiverHolder {
-    private static final IoTDBLegacyPipeReceiver INSTANCE = new IoTDBLegacyPipeReceiver();
   }
 }
