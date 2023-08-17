@@ -149,12 +149,18 @@ public class SetTemplateProcedure
     // check whether the template can be set on given path
     CheckTemplateSettablePlan checkTemplateSettablePlan =
         new CheckTemplateSettablePlan(templateName, templateSetPath);
-    TemplateInfoResp resp =
-        (TemplateInfoResp)
-            env.getConfigManager()
-                .getConsensusManager()
-                .read(checkTemplateSettablePlan)
-                .getDataset();
+    TemplateInfoResp resp;
+    try {
+      resp =
+          (TemplateInfoResp)
+              env.getConfigManager().getConsensusManager().read(checkTemplateSettablePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      resp = new TemplateInfoResp();
+      resp.setStatus(res);
+    }
     if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(SetTemplateState.PRE_SET);
     } else {
@@ -221,9 +227,18 @@ public class SetTemplateProcedure
 
   private Template getTemplate(ConfigNodeProcedureEnv env) {
     GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan(templateName);
-    TemplateInfoResp templateResp =
-        (TemplateInfoResp)
-            env.getConfigManager().getConsensusManager().read(getSchemaTemplatePlan).getDataset();
+    TemplateInfoResp templateResp;
+    try {
+      templateResp =
+          (TemplateInfoResp)
+              env.getConfigManager().getConsensusManager().read(getSchemaTemplatePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      templateResp = new TemplateInfoResp();
+      templateResp.setStatus(res);
+    }
     if (templateResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(
           new ProcedureException(

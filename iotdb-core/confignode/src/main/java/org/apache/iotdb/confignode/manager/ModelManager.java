@@ -36,7 +36,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelStateReq;
-import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
+import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -104,17 +104,14 @@ public class ModelManager {
 
   public TShowModelResp showModel(TShowModelReq req) {
     try {
-      ConsensusReadResponse response =
-          configManager.getConsensusManager().read(new ShowModelPlan(req));
-      if (response.getDataset() != null) {
-        return ((ModelTableResp) response.getDataset()).convertToThriftResponse();
-      } else {
-        LOGGER.warn("Unexpected error happened while showing model: ", response.getException());
-        // consensus layer related errors
-        TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-        res.setMessage(response.getException().toString());
-        return new TShowModelResp(res, Collections.emptyList());
-      }
+      DataSet response = configManager.getConsensusManager().read(new ShowModelPlan(req));
+      return ((ModelTableResp) response).convertToThriftResponse();
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      // consensus layer related errors
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return new TShowModelResp(res, Collections.emptyList());
     } catch (IOException e) {
       LOGGER.error("Fail to get ModelTable", e);
       return new TShowModelResp(
@@ -126,17 +123,14 @@ public class ModelManager {
 
   public TShowTrailResp showTrail(TShowTrailReq req) {
     try {
-      ConsensusReadResponse response =
-          configManager.getConsensusManager().read(new ShowTrailPlan(req));
-      if (response.getDataset() != null) {
-        return ((TrailTableResp) response.getDataset()).convertToThriftResponse();
-      } else {
-        LOGGER.warn("Unexpected error happened while showing trail: ", response.getException());
-        // consensus layer related errors
-        TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-        res.setMessage(response.getException().toString());
-        return new TShowTrailResp(res, Collections.emptyList());
-      }
+      DataSet response = configManager.getConsensusManager().read(new ShowTrailPlan(req));
+      return ((TrailTableResp) response).convertToThriftResponse();
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      // consensus layer related errors
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return new TShowTrailResp(res, Collections.emptyList());
     } catch (IOException e) {
       LOGGER.error("Fail to get TrailTable", e);
       return new TShowTrailResp(

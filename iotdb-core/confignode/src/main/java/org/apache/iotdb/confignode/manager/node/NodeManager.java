@@ -396,7 +396,16 @@ public class NodeManager {
    *     GetDataNodeConfigurationPlan is -1
    */
   public DataNodeConfigurationResp getDataNodeConfiguration(GetDataNodeConfigurationPlan req) {
-    return (DataNodeConfigurationResp) getConsensusManager().read(req).getDataset();
+    try {
+      return (DataNodeConfigurationResp) getConsensusManager().read(req);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      DataNodeConfigurationResp response = new DataNodeConfigurationResp();
+      response.setStatus(res);
+      return response;
+    }
   }
 
   /**

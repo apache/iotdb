@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -49,7 +50,7 @@ import static org.junit.Assert.fail;
 public class RegionWriteExecutorTest {
 
   @Test
-  public void testInsertRowNode() {
+  public void testInsertRowNode() throws ConsensusException {
 
     IConsensus dataRegionConsensus = Mockito.mock(IConsensus.class);
     IConsensus schemaRegionConsensus = Mockito.mock(IConsensus.class);

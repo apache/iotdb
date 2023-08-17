@@ -33,8 +33,6 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -379,24 +377,22 @@ public class TestUtils {
     }
   }
 
-  static void write(IConsensus consensus, ConsensusGroupId gid, int count) {
+  static void write(IConsensus consensus, ConsensusGroupId gid, int count)
+      throws ConsensusException {
     for (int i = 0; i < count; i++) {
       final ByteBufferConsensusRequest increment = TestRequest.incrRequest();
-      final ConsensusWriteResponse response = consensus.write(gid, increment);
-      Assert.assertEquals(200, response.getStatus().getCode());
+      final TSStatus response = consensus.write(gid, increment);
+      Assert.assertEquals(200, response.getCode());
     }
   }
 
   static int read(IConsensus consensus, ConsensusGroupId gid) throws ConsensusException {
-    final ConsensusReadResponse response = doRead(consensus, gid);
-    if (!response.isSuccess()) {
-      throw response.getException();
-    }
-    final TestUtils.TestDataSet result = (TestUtils.TestDataSet) response.getDataset();
+    final DataSet response = doRead(consensus, gid);
+    final TestUtils.TestDataSet result = (TestUtils.TestDataSet) response;
     return result.getNumber();
   }
 
-  static ConsensusReadResponse doRead(IConsensus consensus, ConsensusGroupId gid) {
+  static DataSet doRead(IConsensus consensus, ConsensusGroupId gid) throws ConsensusException {
     final ByteBufferConsensusRequest getReq = TestUtils.TestRequest.getRequest();
     return consensus.read(gid, getReq);
   }
