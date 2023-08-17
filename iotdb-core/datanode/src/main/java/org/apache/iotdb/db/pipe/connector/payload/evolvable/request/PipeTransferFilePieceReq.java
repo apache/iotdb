@@ -34,9 +34,9 @@ import java.util.Objects;
 
 public class PipeTransferFilePieceReq extends TPipeTransferReq {
 
-  private String fileName;
-  private long startWritingOffset;
-  private byte[] filePiece;
+  private transient String fileName;
+  private transient long startWritingOffset;
+  private transient byte[] filePiece;
 
   private PipeTransferFilePieceReq() {
     // Empty constructor

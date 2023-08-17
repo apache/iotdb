@@ -39,7 +39,7 @@ import java.util.Objects;
 
 public class PipeTransferInsertNodeReq extends TPipeTransferReq {
 
-  private InsertNode insertNode;
+  private transient InsertNode insertNode;
 
   private PipeTransferInsertNodeReq() {
     // Do nothing
@@ -80,7 +80,6 @@ public class PipeTransferInsertNodeReq extends TPipeTransferReq {
       statement.setMeasurementSchemas(node.getMeasurementSchemas());
       return statement;
     }
-
     throw new UnsupportedOperationException(
         String.format(
             "unknown InsertNode type %s when constructing statement from insert node.",
