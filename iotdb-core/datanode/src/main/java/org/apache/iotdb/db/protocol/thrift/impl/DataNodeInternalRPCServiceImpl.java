@@ -51,7 +51,8 @@ import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
-import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
@@ -1444,7 +1445,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       ConsensusGenericResponse response =
           DataRegionConsensusImpl.getInstance().deletePeer(consensusGroupId);
       if (!response.isSuccess()
-          && !(response.getException() instanceof PeerNotInConsensusGroupException)) {
+          && !(response.getException() instanceof ConsensusGroupNotExistException)) {
         return RpcUtils.getStatus(
             TSStatusCode.DELETE_REGION_ERROR, response.getException().getMessage());
       }
@@ -1453,7 +1454,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       ConsensusGenericResponse response =
           SchemaRegionConsensusImpl.getInstance().deletePeer(consensusGroupId);
       if (!response.isSuccess()
-          && !(response.getException() instanceof PeerNotInConsensusGroupException)) {
+          && !(response.getException() instanceof ConsensusGroupNotExistException)) {
         return RpcUtils.getStatus(
             TSStatusCode.DELETE_REGION_ERROR, response.getException().getMessage());
       }
@@ -1786,7 +1787,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     } else {
       resp = SchemaRegionConsensusImpl.getInstance().createPeer(regionId, peers);
     }
-    if (!resp.isSuccess()) {
+    if (!resp.isSuccess()
+        && !(resp.getException() instanceof ConsensusGroupAlreadyExistException)) {
       LOGGER.warn(
           "{}, CreateNewRegionPeer error, peers: {}, regionId: {}, errorMessage",
           REGION_MIGRATE_PROCESS,

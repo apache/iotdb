@@ -40,7 +40,7 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 
 public class SSLClient {
-  private static Logger logger = LoggerFactory.getLogger(SSLClient.class);
+  private static final Logger logger = LoggerFactory.getLogger(SSLClient.class);
   private static SSLConnectionSocketFactory sslConnectionSocketFactory = null;
   private static PoolingHttpClientConnectionManager poolingHttpClientConnectionManager = null;
 

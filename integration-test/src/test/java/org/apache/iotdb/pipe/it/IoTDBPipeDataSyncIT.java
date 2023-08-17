@@ -50,39 +50,39 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2.class})
-public class IoTDBPipeDemoIT {
+public class IoTDBPipeDataSyncIT {
 
-  BaseEnv sender_env;
-  BaseEnv receiver_env;
+  private BaseEnv senderEnv;
+  private BaseEnv receiverEnv;
 
   @Before
   public void setUp() throws Exception {
     MultiEnvFactory.createEnv(2);
-    sender_env = MultiEnvFactory.getEnv(0);
-    receiver_env = MultiEnvFactory.getEnv(1);
+    senderEnv = MultiEnvFactory.getEnv(0);
+    receiverEnv = MultiEnvFactory.getEnv(1);
 
-    sender_env.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
-    receiver_env.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
+    senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
+    receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
 
-    sender_env.initClusterEnvironment();
-    receiver_env.initClusterEnvironment();
+    senderEnv.initClusterEnvironment();
+    receiverEnv.initClusterEnvironment();
   }
 
   @After
   public void tearDown() {
-    sender_env.cleanClusterEnvironment();
-    receiver_env.cleanClusterEnvironment();
+    senderEnv.cleanClusterEnvironment();
+    receiverEnv.cleanClusterEnvironment();
   }
 
   @Test
   public void testEnv() throws Exception {
-    DataNodeWrapper receiverDataNode = receiver_env.getDataNodeWrapper(0);
+    DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     String receiverIp = receiverDataNode.getIp();
     int receiverPort = receiverDataNode.getPort();
 
     try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) sender_env.getLeaderConfigNodeConnection()) {
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       Map<String, String> extractorAttributes = new HashMap<>();
       Map<String, String> processorAttributes = new HashMap<>();
       Map<String, String> connectorAttributes = new HashMap<>();
@@ -104,7 +104,7 @@ public class IoTDBPipeDemoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
-      try (Connection connection = sender_env.getConnection();
+      try (Connection connection = senderEnv.getConnection();
           Statement statement = connection.createStatement()) {
         statement.execute("insert into root.vehicle.d0(time, s1) values (0, 1)");
       } catch (SQLException e) {
@@ -112,17 +112,17 @@ public class IoTDBPipeDemoIT {
         fail(e.getMessage());
       }
 
-      try (Connection connection = receiver_env.getConnection();
+      try (Connection connection = receiverEnv.getConnection();
           Statement statement = connection.createStatement()) {
         await()
             .atMost(600, TimeUnit.SECONDS)
-            .untilAsserted(
+            .until(
                 () ->
-                    TestUtils.assertResultSetEqual(
+                    TestUtils.isResultSetEqual(
                         statement.executeQuery("select * from root.**"),
                         "Time,root.vehicle.d0.s1,",
                         Collections.singleton("0,1.0,")));
-      } catch (SQLException e) {
+      } catch (Exception e) {
         e.printStackTrace();
         fail(e.getMessage());
       }

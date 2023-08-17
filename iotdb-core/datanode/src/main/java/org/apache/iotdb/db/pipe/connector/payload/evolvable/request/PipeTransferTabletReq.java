@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.PipeRequestType;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBThriftConnectorRequestVersion;
+import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -36,7 +36,6 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,23 +53,32 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
   private Tablet tablet;
   private boolean isAligned;
 
-  public static PipeTransferTabletReq toTPipeTransferReq(Tablet tablet, boolean isAligned)
-      throws IOException {
-    final PipeTransferTabletReq tabletReq = new PipeTransferTabletReq();
-
-    tabletReq.tablet = tablet;
-
-    tabletReq.version = IoTDBThriftConnectorRequestVersion.VERSION_1.getVersion();
-    tabletReq.type = PipeRequestType.TRANSFER_TABLET.getType();
-    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
-        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      tablet.serialize(outputStream);
-      ReadWriteIOUtils.write(isAligned, outputStream);
-      tabletReq.body =
-          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+  public InsertTabletStatement constructStatement() {
+    if (!checkSorted(tablet)) {
+      sortTablet(tablet);
     }
 
-    return tabletReq;
+    try {
+      final TSInsertTabletReq request = new TSInsertTabletReq();
+
+      for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
+        request.addToMeasurements(measurementSchema.getMeasurementId());
+        request.addToTypes(measurementSchema.getType().ordinal());
+      }
+
+      request.setPrefixPath(tablet.deviceId);
+      request.setIsAligned(isAligned);
+      request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
+      request.setValues(SessionUtils.getValueBuffer(tablet));
+      request.setSize(tablet.rowSize);
+      request.setMeasurements(
+          PathUtils.checkIsLegalSingleMeasurementsAndUpdate(request.getMeasurements()));
+
+      return StatementGenerator.createStatement(request);
+    } catch (MetadataException e) {
+      LOGGER.warn(String.format("Generate Statement from tablet %s error.", tablet), e);
+      return null;
+    }
   }
 
   private static boolean checkSorted(Tablet tablet) {
@@ -97,25 +105,12 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
     int columnIndex = 0;
     for (int i = 0; i < tablet.getSchemas().size(); i++) {
       IMeasurementSchema schema = tablet.getSchemas().get(i);
-      if (schema instanceof MeasurementSchema) {
+      if (schema != null) {
         tablet.values[columnIndex] = sortList(tablet.values[columnIndex], schema.getType(), index);
         if (tablet.bitMaps != null && tablet.bitMaps[columnIndex] != null) {
           tablet.bitMaps[columnIndex] = sortBitMap(tablet.bitMaps[columnIndex], index);
         }
         columnIndex++;
-      } else {
-        int measurementSize = schema.getSubMeasurementsList().size();
-        for (int j = 0; j < measurementSize; j++) {
-          tablet.values[columnIndex] =
-              sortList(
-                  tablet.values[columnIndex],
-                  schema.getSubMeasurementsTSDataTypeList().get(j),
-                  index);
-          if (tablet.bitMaps != null && tablet.bitMaps[columnIndex] != null) {
-            tablet.bitMaps[columnIndex] = sortBitMap(tablet.bitMaps[columnIndex], index);
-          }
-          columnIndex++;
-        }
       }
     }
   }
@@ -196,6 +191,27 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
     return sortedBitMap;
   }
 
+  /////////////////////////////// Thrift ///////////////////////////////
+
+  public static PipeTransferTabletReq toTPipeTransferReq(Tablet tablet, boolean isAligned)
+      throws IOException {
+    final PipeTransferTabletReq tabletReq = new PipeTransferTabletReq();
+
+    tabletReq.tablet = tablet;
+
+    tabletReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
+    tabletReq.type = PipeRequestType.TRANSFER_TABLET.getType();
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      tablet.serialize(outputStream);
+      ReadWriteIOUtils.write(isAligned, outputStream);
+      tabletReq.body =
+          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
+
+    return tabletReq;
+  }
+
   public static PipeTransferTabletReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
     final PipeTransferTabletReq tabletReq = new PipeTransferTabletReq();
 
@@ -209,31 +225,16 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
     return tabletReq;
   }
 
-  public InsertTabletStatement constructStatement() {
-    if (!checkSorted(tablet)) {
-      sortTablet(tablet);
-    }
-
-    try {
-      final TSInsertTabletReq request = new TSInsertTabletReq();
-
-      for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
-        request.addToMeasurements(measurementSchema.getMeasurementId());
-        request.addToTypes(measurementSchema.getType().ordinal());
-      }
-
-      request.setPrefixPath(tablet.deviceId);
-      request.setIsAligned(isAligned);
-      request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
-      request.setValues(SessionUtils.getValueBuffer(tablet));
-      request.setSize(tablet.rowSize);
-      request.setMeasurements(
-          PathUtils.checkIsLegalSingleMeasurementsAndUpdate(request.getMeasurements()));
-
-      return StatementGenerator.createStatement(request);
-    } catch (MetadataException e) {
-      LOGGER.warn(String.format("Generate Statement from tablet %s error.", tablet), e);
-      return null;
+  /////////////////////////////// Air Gap ///////////////////////////////
+  public static byte[] toTPipeTransferTabletBytes(Tablet tablet, boolean isAligned)
+      throws IOException {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
+      ReadWriteIOUtils.write(PipeRequestType.TRANSFER_TABLET.getType(), outputStream);
+      tablet.serialize(outputStream);
+      ReadWriteIOUtils.write(isAligned, outputStream);
+      return byteArrayOutputStream.toByteArray();
     }
   }
 }
