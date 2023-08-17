@@ -19,13 +19,10 @@ package org.apache.iotdb.db.protocol.rest.utils;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.NoValidValueException;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import static org.apache.iotdb.session.Session.MSG_UNSUPPORTED_DATA_TYPE;
@@ -44,7 +41,7 @@ public class InsertRowDataUtils {
       List<Object> values = valuesList.get(i);
       List<String> measurements = measurementsList.get(i);
       List<TSDataType> types = typesList.get(i);
-      boolean isAllValuesNull = filterNullValueAndMeasurement(measurements, types, values);
+      boolean isAllValuesNull = getValuesIsEmpty(measurements, types, values);
       if (isAllValuesNull) {
         valuesList.remove(i);
         measurementsList.remove(i);
@@ -58,7 +55,7 @@ public class InsertRowDataUtils {
     }
   }
 
-  private static boolean filterNullValueAndMeasurement(
+  private static boolean getValuesIsEmpty(
       List<String> measurementsList, List<TSDataType> types, List<Object> valuesList) {
     for (int i = valuesList.size() - 1; i >= 0; i--) {
       if (valuesList.get(i) == null) {
@@ -70,134 +67,39 @@ public class InsertRowDataUtils {
     return valuesList.isEmpty();
   }
 
-  public static List<ByteBuffer> objectValuesListToByteBufferList(
-      List<List<Object>> valuesList, List<List<TSDataType>> typesList)
-      throws IoTDBConnectionException {
-    List<ByteBuffer> buffersList = new ArrayList<>();
-    for (int i = 0; i < valuesList.size(); i++) {
-      ByteBuffer buffer = getValueBuffer(typesList.get(i), valuesList.get(i));
-      buffersList.add(buffer);
-    }
-    return buffersList;
-  }
-
-  public static ByteBuffer getValueBuffer(List<TSDataType> types, List<Object> values)
-      throws IoTDBConnectionException {
-    ByteBuffer buffer = ByteBuffer.allocate(calculateLength(types, values));
-    putValues(types, values, buffer);
-    return buffer;
-  }
-
-  private static int calculateLength(List<TSDataType> types, List<Object> values)
-      throws IoTDBConnectionException {
-    int res = 0;
-    for (int i = 0; i < types.size(); i++) {
-      // types
-      res += Byte.BYTES;
-      switch (types.get(i)) {
-        case BOOLEAN:
-          res += 1;
-          break;
-        case INT32:
-          res += Integer.BYTES;
-          break;
-        case INT64:
-          res += Long.BYTES;
-          break;
-        case FLOAT:
-          res += Float.BYTES;
-          break;
-        case DOUBLE:
-          res += Double.BYTES;
-          break;
-        case TEXT:
-          res += Integer.BYTES;
-          if (values.get(i) instanceof Binary) {
-            res += ((Binary) values.get(i)).getValues().length;
-          } else {
-            res += ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET).length;
-          }
-          break;
-        default:
-          throw new IoTDBConnectionException(MSG_UNSUPPORTED_DATA_TYPE + types.get(i));
-      }
-    }
-    return res;
-  }
-
-  /**
-   * put value in buffer
-   *
-   * @param types types list
-   * @param values values list
-   * @param buffer buffer to insert
-   */
-  private static void putValues(List<TSDataType> types, List<Object> values, ByteBuffer buffer)
+  public static List<Object> reGenValues(List<TSDataType> types, List<Object> values)
       throws IoTDBConnectionException {
     for (int i = 0; i < values.size(); i++) {
       if (values.get(i) == null) {
-        ReadWriteIOUtils.write(-2, buffer);
         continue;
       }
-      ReadWriteIOUtils.write(types.get(i), buffer);
+      Object val = values.get(i);
       switch (types.get(i)) {
         case BOOLEAN:
-          ReadWriteIOUtils.write((Boolean) values.get(i), buffer);
-          break;
         case INT32:
-          ReadWriteIOUtils.write((Integer) values.get(i), buffer);
           break;
         case INT64:
-          Object object = values.get(i);
-          if (object instanceof Integer) {
-            int value = (Integer) values.get(i);
-            ReadWriteIOUtils.write((long) value, buffer);
-          } else {
-            ReadWriteIOUtils.write((long) values.get(i), buffer);
+          if (val instanceof Number) {
+            values.set(i, ((Number) val).longValue());
           }
           break;
         case FLOAT:
-          if (values.get(i) instanceof Double) {
-            double value = (Double) values.get(i);
-            ReadWriteIOUtils.write((float) value, buffer);
-          } else if (values.get(i) instanceof Integer) {
-            int value = (Integer) values.get(i);
-            ReadWriteIOUtils.write((float) value, buffer);
-          } else if (values.get(i) instanceof Long) {
-            long value = (Long) values.get(i);
-            ReadWriteIOUtils.write((float) value, buffer);
-          } else {
-            ReadWriteIOUtils.write((float) values.get(i), buffer);
+          if (val instanceof Number) {
+            values.set(i, ((Number) val).floatValue());
           }
           break;
         case DOUBLE:
-          if (values.get(i) instanceof Float) {
-            float value = (Float) values.get(i);
-            ReadWriteIOUtils.write((double) value, buffer);
-          } else if (values.get(i) instanceof Integer) {
-            int value = (Integer) values.get(i);
-            ReadWriteIOUtils.write((double) value, buffer);
-          } else if (values.get(i) instanceof Long) {
-            long value = (Long) values.get(i);
-            ReadWriteIOUtils.write((double) value, buffer);
-          } else {
-            ReadWriteIOUtils.write((double) values.get(i), buffer);
+          if (val instanceof Number) {
+            values.set(i, ((Number) val).doubleValue());
           }
           break;
         case TEXT:
-          byte[] bytes;
-          if (values.get(i) instanceof Binary) {
-            bytes = ((Binary) values.get(i)).getValues();
-          } else {
-            bytes = ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET);
-          }
-          ReadWriteIOUtils.write(bytes.length, buffer);
-          buffer.put(bytes);
+          values.set(i, new Binary(val.toString().getBytes(StandardCharsets.UTF_8)));
           break;
         default:
           throw new IoTDBConnectionException(MSG_UNSUPPORTED_DATA_TYPE + types.get(i));
       }
     }
-    buffer.flip();
+    return values;
   }
 }
