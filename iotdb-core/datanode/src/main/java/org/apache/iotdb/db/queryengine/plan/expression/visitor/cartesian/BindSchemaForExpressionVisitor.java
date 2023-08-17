@@ -64,8 +64,7 @@ public class BindSchemaForExpressionVisitor extends CartesianProductVisitor<ISch
               COUNT_TIME,
               new LinkedHashMap<>(),
               Collections.singletonList(new TimestampOperand()),
-              usedExpressions,
-              "*");
+              usedExpressions);
       return Collections.singletonList(countTimeExpression);
     }
 

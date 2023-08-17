@@ -35,7 +35,6 @@ public class LowercaseNormalizeVisitor extends ReconstructVisitor<Void> {
         functionExpression.getFunctionName().toLowerCase(),
         functionExpression.getFunctionAttributes(),
         childResult,
-        functionExpression.getCountTimeExpressions(),
-        functionExpression.getCountTimeAlias());
+        functionExpression.getCountTimeExpressions());
   }
 }

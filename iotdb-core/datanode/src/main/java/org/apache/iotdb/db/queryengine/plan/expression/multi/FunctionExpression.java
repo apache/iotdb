@@ -66,13 +66,7 @@ public class FunctionExpression extends Expression {
 
   private List<PartialPath> paths;
 
-  private Set<Expression> countTimeExpressions;
-
-  /**
-   * for count_time aggregation query, e.g. count_time(s1), returns count_time(s1) but not
-   * count_time(Time) in response header
-   */
-  private String countTimeAlias;
+  private List<Expression> countTimeExpressions;
 
   private String parametersString;
 
@@ -89,19 +83,18 @@ public class FunctionExpression extends Expression {
     this.functionName = functionName;
     this.functionAttributes = functionAttributes;
     this.expressions = expressions;
+    this.countTimeExpressions = null;
   }
 
   public FunctionExpression(
       String functionName,
       LinkedHashMap<String, String> functionAttributes,
       List<Expression> expressions,
-      Set<Expression> countTimeExpressions,
-      String countTimeAlias) {
+      List<Expression> countTimeExpressions) {
     this.functionName = functionName;
     this.functionAttributes = functionAttributes;
     this.expressions = expressions;
     this.countTimeExpressions = countTimeExpressions;
-    this.countTimeAlias = countTimeAlias;
   }
 
   public FunctionExpression(ByteBuffer byteBuffer) {
@@ -298,12 +291,8 @@ public class FunctionExpression extends Expression {
     return paths;
   }
 
-  public Set<Expression> getCountTimeExpressions() {
+  public List<Expression> getCountTimeExpressions() {
     return this.countTimeExpressions;
-  }
-
-  public String getCountTimeAlias() {
-    return this.countTimeAlias;
   }
 
   @Override

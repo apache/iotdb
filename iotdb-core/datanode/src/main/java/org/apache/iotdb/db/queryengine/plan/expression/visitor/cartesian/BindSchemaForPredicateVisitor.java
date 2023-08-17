@@ -38,6 +38,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.cartesianProduct;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructBinaryExpressions;
@@ -68,19 +69,15 @@ public class BindSchemaForPredicateVisitor
   @Override
   public List<Expression> visitFunctionExpression(FunctionExpression predicate, Context context) {
     if (COUNT_TIME.equalsIgnoreCase(predicate.getFunctionName())) {
-      Set<Expression> usedExpressions = new HashSet<>();
-      for (Expression originExpression : predicate.getExpressions()) {
-        List<Expression> actualExpressions = process(originExpression, context);
-        usedExpressions.addAll(actualExpressions);
-      }
+
+      List<Expression> usedExpressions = predicate.getExpressions().stream().flatMap(e -> process(e, context).stream()).collect(Collectors.toList());
 
       Expression countTimeExpression =
           new FunctionExpression(
               COUNT_TIME,
               new LinkedHashMap<>(),
               Collections.singletonList(new TimestampOperand()),
-              usedExpressions,
-              "*");
+              usedExpressions);
       return Collections.singletonList(countTimeExpression);
     }
 

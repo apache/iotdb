@@ -57,8 +57,7 @@ public class GetMeasurementExpressionVisitor extends ReconstructVisitor<Analysis
         functionExpression.getFunctionName(),
         functionExpression.getFunctionAttributes(),
         childExpressions,
-        functionExpression.getCountTimeExpressions(),
-        functionExpression.getCountTimeAlias());
+        functionExpression.getCountTimeExpressions());
   }
 
   @Override
