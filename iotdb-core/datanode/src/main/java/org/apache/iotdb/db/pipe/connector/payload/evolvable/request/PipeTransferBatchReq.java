@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
 
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.PipeRequestType;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBThriftConnectorRequestVersion;
+import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -62,7 +62,7 @@ public class PipeTransferBatchReq extends TPipeTransferReq {
       }
     }
 
-    batchReq.version = IoTDBThriftConnectorRequestVersion.VERSION_1.getVersion();
+    batchReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
     batchReq.type = PipeRequestType.TRANSFER_BATCH.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
