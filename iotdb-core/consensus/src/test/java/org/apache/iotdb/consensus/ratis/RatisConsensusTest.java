@@ -26,7 +26,6 @@ import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.ConsensusGroup;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
-import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
@@ -189,9 +188,7 @@ public class RatisConsensusTest {
 
     int leaderIndex = servers.get(0).getLeader(group.getGroupId()).getNodeId() - 1;
 
-    ConsensusGenericResponse resp =
-        servers.get(0).transferLeader(group.getGroupId(), peers.get((leaderIndex + 1) % 3));
-    Assert.assertTrue(resp.isSuccess());
+    servers.get(0).transferLeader(group.getGroupId(), peers.get((leaderIndex + 1) % 3));
 
     Peer newLeader = servers.get(0).getLeader(group.getGroupId());
     Assert.assertNotNull(newLeader);

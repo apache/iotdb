@@ -50,7 +50,6 @@ import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.db.auth.AuthorizerManager;
@@ -1461,26 +1460,24 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private TSStatus transferLeader(ConsensusGroupId regionId, Peer newLeaderPeer) {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    ConsensusGenericResponse resp;
-    if (regionId instanceof DataRegionId) {
-      resp = DataRegionConsensusImpl.getInstance().transferLeader(regionId, newLeaderPeer);
-    } else if (regionId instanceof SchemaRegionId) {
-      resp = SchemaRegionConsensusImpl.getInstance().transferLeader(regionId, newLeaderPeer);
-    } else {
+    try {
+      if (regionId instanceof DataRegionId) {
+        DataRegionConsensusImpl.getInstance().transferLeader(regionId, newLeaderPeer);
+      } else if (regionId instanceof SchemaRegionId) {
+        SchemaRegionConsensusImpl.getInstance().transferLeader(regionId, newLeaderPeer);
+      } else {
+        status.setCode(TSStatusCode.REGION_LEADER_CHANGE_ERROR.getStatusCode());
+        status.setMessage("[ChangeRegionLeader] Error Region type: " + regionId);
+        return status;
+      }
+    } catch (ConsensusException e) {
+      LOGGER.warn(
+          "[ChangeRegionLeader] Failed to change the leader of RegionGroup: {}", regionId, e);
       status.setCode(TSStatusCode.REGION_LEADER_CHANGE_ERROR.getStatusCode());
-      status.setMessage("[ChangeRegionLeader] Error Region type: " + regionId);
+      status.setMessage(e.getMessage());
       return status;
     }
 
-    if (!resp.isSuccess()) {
-      LOGGER.warn(
-          "[ChangeRegionLeader] Failed to change the leader of RegionGroup: {}",
-          regionId,
-          resp.getException());
-      status.setCode(TSStatusCode.REGION_LEADER_CHANGE_ERROR.getStatusCode());
-      status.setMessage(resp.getException().getMessage());
-      return status;
-    }
     status.setMessage(
         "[ChangeRegionLeader] Successfully change the leader of RegionGroup: "
             + regionId
