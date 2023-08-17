@@ -32,7 +32,7 @@ import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 public class CountTimeAggregationAmountVisitor extends CollectVisitor {
 
   public static final String COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD =
-      "The parameter of count_time aggregation can only be '*'";
+      "The parameter of count_time aggregation can only be '*'.";
 
   @Override
   public List<Expression> visitFunctionExpression(
@@ -41,11 +41,9 @@ public class CountTimeAggregationAmountVisitor extends CollectVisitor {
       if (!"*".equals(functionExpression.getExpressions().get(0).toString())) {
         throw new SemanticException(COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD);
       }
-
-      return Collections.singletonList(functionExpression);
     }
 
-    return Collections.emptyList();
+    return Collections.singletonList(functionExpression);
   }
 
   @Override
