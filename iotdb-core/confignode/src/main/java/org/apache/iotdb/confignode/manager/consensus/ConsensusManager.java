@@ -202,18 +202,26 @@ public class ConsensusManager {
           createPeerForConsensusGroup(SystemPropertiesUtils.loadConfigNodeList());
         } catch (BadNodeUrlException e) {
           throw new IOException(e);
+        } catch (ConsensusException e) {
+          LOGGER.error(
+              "Something wrong happened while calling consensus layer's createLocalPeer API.", e);
         }
       }
       LOGGER.info("Init ConsensusManager successfully when restarted");
     } else if (ConfigNodeDescriptor.getInstance().isSeedConfigNode()) {
       // Create ConsensusGroup that contains only itself
       // if the current ConfigNode is Seed-ConfigNode
-      createPeerForConsensusGroup(
-          Collections.singletonList(
-              new TConfigNodeLocation(
-                  SEED_CONFIG_NODE_ID,
-                  new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
-                  new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))));
+      try {
+        createPeerForConsensusGroup(
+            Collections.singletonList(
+                new TConfigNodeLocation(
+                    SEED_CONFIG_NODE_ID,
+                    new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
+                    new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))));
+      } catch (ConsensusException e) {
+        LOGGER.error(
+            "Something wrong happened while calling consensus layer's createLocalPeer API.", e);
+      }
     }
   }
 
@@ -239,7 +247,8 @@ public class ConsensusManager {
    *
    * @param configNodeLocations All registered ConfigNodes
    */
-  public void createPeerForConsensusGroup(List<TConfigNodeLocation> configNodeLocations) {
+  public void createPeerForConsensusGroup(List<TConfigNodeLocation> configNodeLocations)
+      throws ConsensusException {
     LOGGER.info("createPeerForConsensusGroup {}...", configNodeLocations);
 
     List<Peer> peerList = new ArrayList<>();

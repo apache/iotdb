@@ -26,8 +26,8 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
 import org.apache.iotdb.consensus.iot.util.TestStateMachine;
 
@@ -100,17 +100,13 @@ public class StabilityTest {
     consensusImpl = null;
 
     constructConsensus();
-
-    ConsensusGenericResponse response =
-        consensusImpl.createLocalPeer(
-            dataRegionId,
-            Collections.singletonList(
-                new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort))));
-    Assert.assertTrue(response.isSuccess());
+    consensusImpl.createLocalPeer(
+        dataRegionId,
+        Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort))));
     consensusImpl.deleteLocalPeer(dataRegionId);
   }
 
-  public void snapshotTest() throws IOException {
+  public void snapshotTest() throws IOException, ConsensusException {
     consensusImpl.createLocalPeer(
         dataRegionId,
         Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort))));
