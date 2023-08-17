@@ -56,6 +56,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
 
@@ -72,6 +73,8 @@ public class ConsensusManager {
 
   private final IManager configManager;
   private IConsensus consensusImpl;
+
+  private final AtomicBoolean isLeaderServiceReady = new AtomicBoolean(false);
 
   public ConsensusManager(IManager configManager, ConfigRegionStateMachine stateMachine)
       throws IOException {
@@ -353,7 +356,7 @@ public class ConsensusManager {
   public TSStatus confirmLeader() {
     TSStatus result = new TSStatus();
 
-    if (isLeader()) {
+    if (isLeader() && isLeaderServiceReady.get()) {
       return result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } else {
       result.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
@@ -367,6 +370,10 @@ public class ConsensusManager {
 
       return result;
     }
+  }
+
+  public void setLeaderServiceReady(boolean isLeaderServiceReady) {
+    this.isLeaderServiceReady.set(isLeaderServiceReady);
   }
 
   public ConsensusGroupId getConsensusGroupId() {
