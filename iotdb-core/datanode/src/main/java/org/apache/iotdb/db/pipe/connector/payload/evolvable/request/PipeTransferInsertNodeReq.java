@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
 
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.PipeRequestType;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBThriftConnectorRequestVersion;
+import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -29,7 +29,12 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.util.Objects;
 
 public class PipeTransferInsertNodeReq extends TPipeTransferReq {
@@ -81,12 +86,14 @@ public class PipeTransferInsertNodeReq extends TPipeTransferReq {
             insertNode));
   }
 
+  /////////////////////////////// Thrift ///////////////////////////////
+
   public static PipeTransferInsertNodeReq toTPipeTransferReq(InsertNode insertNode) {
     final PipeTransferInsertNodeReq req = new PipeTransferInsertNodeReq();
 
     req.insertNode = insertNode;
 
-    req.version = IoTDBThriftConnectorRequestVersion.VERSION_1.getVersion();
+    req.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
     req.type = PipeRequestType.TRANSFER_INSERT_NODE.getType();
     req.body = insertNode.serializeToByteBuffer();
 
@@ -104,6 +111,19 @@ public class PipeTransferInsertNodeReq extends TPipeTransferReq {
 
     return insertNodeReq;
   }
+
+  /////////////////////////////// Air Gap ///////////////////////////////
+  public static byte[] toTransferInsertNodeBytes(InsertNode insertNode) throws IOException {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
+      ReadWriteIOUtils.write(PipeRequestType.TRANSFER_INSERT_NODE.getType(), outputStream);
+      return BytesUtils.concatByteArray(
+          byteArrayOutputStream.toByteArray(), insertNode.serializeToByteBuffer().array());
+    }
+  }
+
+  /////////////////////////////// Object ///////////////////////////////
 
   @Override
   public boolean equals(Object obj) {

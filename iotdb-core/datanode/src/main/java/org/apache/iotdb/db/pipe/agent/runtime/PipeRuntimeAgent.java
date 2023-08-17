@@ -52,8 +52,12 @@ public class PipeRuntimeAgent implements IService {
 
   public synchronized void preparePipeResources(
       ResourcesInformationHolder resourcesInformationHolder) throws StartupException {
-    PipeAgent.receiver().cleanPipeReceiverDir();
+    // clean sender (connector) hardlink file dir
     PipeHardlinkFileDirStartupCleaner.clean();
+
+    // clean receiver file dir
+    PipeAgent.receiver().cleanPipeReceiverDir();
+
     PipeAgentLauncher.launchPipePluginAgent(resourcesInformationHolder);
     simpleConsensusProgressIndexAssigner.start();
   }

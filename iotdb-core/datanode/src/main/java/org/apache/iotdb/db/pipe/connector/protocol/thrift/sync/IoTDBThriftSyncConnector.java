@@ -30,7 +30,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletReq;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBThriftConnector;
+import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -62,7 +62,7 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CON
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_SIZE_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_MODE_BATCH;
 
-public class IoTDBThriftSyncConnector extends IoTDBThriftConnector {
+public class IoTDBThriftSyncConnector extends IoTDBConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftSyncConnector.class);
 
@@ -142,17 +142,21 @@ public class IoTDBThriftSyncConnector extends IoTDBThriftConnector {
                     PipeTransferHandshakeReq.toTPipeTransferReq(
                         CommonDescriptor.getInstance().getConfig().getTimestampPrecision()));
         if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          throw new PipeException(String.format("Handshake error, result status %s.", resp.status));
+          LOGGER.warn(
+              "Handshake error with target server ip: {}, port: {}, because: {}.",
+              ip,
+              port,
+              resp.status);
         } else {
           isClientAlive.set(i, true);
           LOGGER.info("Handshake success. Target server ip: {}, port: {}", ip, port);
         }
       } catch (TException e) {
-        throw new PipeConnectionException(
-            String.format(
-                "Handshake error with target server ip: %s, port: %s, because: %s",
-                ip, port, e.getMessage()),
-            e);
+        LOGGER.warn(
+            "Handshake error with target server ip: {}, port: {}, because: {}.",
+            ip,
+            port,
+            e.getMessage());
       }
     }
 
@@ -236,7 +240,7 @@ public class IoTDBThriftSyncConnector extends IoTDBThriftConnector {
 
   @Override
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
-    // PipeProcessor can change the type of TabletInsertionEvent
+    // PipeProcessor can change the type of tsFileInsertionEvent
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       LOGGER.warn(
           "IoTDBThriftSyncConnector only support PipeTsFileInsertionEvent. Ignore {}.",

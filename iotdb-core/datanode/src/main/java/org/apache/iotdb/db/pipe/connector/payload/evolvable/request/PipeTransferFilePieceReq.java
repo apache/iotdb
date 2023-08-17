@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
 
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.PipeRequestType;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBThriftConnectorRequestVersion;
+import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -54,6 +54,8 @@ public class PipeTransferFilePieceReq extends TPipeTransferReq {
     return filePiece;
   }
 
+  /////////////////////////////// Thrift ///////////////////////////////
+
   public static PipeTransferFilePieceReq toTPipeTransferReq(
       String fileName, long startWritingOffset, byte[] filePiece) throws IOException {
     final PipeTransferFilePieceReq filePieceReq = new PipeTransferFilePieceReq();
@@ -62,7 +64,7 @@ public class PipeTransferFilePieceReq extends TPipeTransferReq {
     filePieceReq.startWritingOffset = startWritingOffset;
     filePieceReq.filePiece = filePiece;
 
-    filePieceReq.version = IoTDBThriftConnectorRequestVersion.VERSION_1.getVersion();
+    filePieceReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
     filePieceReq.type = PipeRequestType.TRANSFER_FILE_PIECE.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
@@ -89,6 +91,22 @@ public class PipeTransferFilePieceReq extends TPipeTransferReq {
 
     return filePieceReq;
   }
+
+  /////////////////////////////// Air Gap ///////////////////////////////
+  public static byte[] toTPipeTransferBytes(
+      String fileName, long startWritingOffset, byte[] filePiece) throws IOException {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
+      ReadWriteIOUtils.write(PipeRequestType.TRANSFER_FILE_PIECE.getType(), outputStream);
+      ReadWriteIOUtils.write(fileName, outputStream);
+      ReadWriteIOUtils.write(startWritingOffset, outputStream);
+      ReadWriteIOUtils.write(new Binary(filePiece), outputStream);
+      return byteArrayOutputStream.toByteArray();
+    }
+  }
+
+  /////////////////////////////// Object ///////////////////////////////
 
   @Override
   public boolean equals(Object obj) {
