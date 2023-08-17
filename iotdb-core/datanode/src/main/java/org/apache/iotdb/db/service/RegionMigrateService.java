@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -406,28 +407,25 @@ public class RegionMigrateService implements IService {
           tRegionId);
       ConsensusGroupId regionId = ConsensusGroupId.Factory.createFromTConsensusGroupId(tRegionId);
       TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      ConsensusGenericResponse resp;
       try {
         if (regionId instanceof DataRegionId) {
-          resp = DataRegionConsensusImpl.getInstance().deleteLocalPeer(regionId);
+          DataRegionConsensusImpl.getInstance().deleteLocalPeer(regionId);
         } else {
-          resp = SchemaRegionConsensusImpl.getInstance().deleteLocalPeer(regionId);
+          SchemaRegionConsensusImpl.getInstance().deleteLocalPeer(regionId);
         }
+      } catch (ConsensusException e) {
+        String errorMsg =
+            String.format(
+                "deletePeer error, regionId: %s, errorMessage: %s", regionId, e.getMessage());
+        taskLogger.error(errorMsg);
+        status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+        status.setMessage(errorMsg);
+        return status;
       } catch (Throwable e) {
         taskLogger.error("{}, deletePeer error, regionId: {}", REGION_MIGRATE_PROCESS, regionId, e);
         status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
         status.setMessage(
             "deletePeer for region: " + regionId + " error. exception: " + e.getMessage());
-        return status;
-      }
-      if (!resp.isSuccess()) {
-        String errorMsg =
-            String.format(
-                "deletePeer error, regionId: %s, errorMessage: %s",
-                regionId, resp.getException().getMessage());
-        taskLogger.error(errorMsg);
-        status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-        status.setMessage(errorMsg);
         return status;
       }
       taskLogger.info(

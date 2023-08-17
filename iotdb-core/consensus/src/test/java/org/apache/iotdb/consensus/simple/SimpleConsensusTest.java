@@ -206,10 +206,12 @@ public class SimpleConsensusTest {
   }
 
   @Test
-  public void removeConsensusGroup() {
-    ConsensusGenericResponse response1 = consensusImpl.deleteLocalPeer(dataRegionId);
-    assertFalse(response1.isSuccess());
-    assertTrue(response1.getException() instanceof ConsensusGroupNotExistException);
+  public void removeConsensusGroup() throws ConsensusException {
+    try {
+      consensusImpl.deleteLocalPeer(dataRegionId);
+    } catch (ConsensusException e) {
+      assertTrue(e instanceof ConsensusGroupNotExistException);
+    }
 
     try {
       consensusImpl.createLocalPeer(
@@ -219,9 +221,7 @@ public class SimpleConsensusTest {
       throw new RuntimeException(e);
     }
 
-    ConsensusGenericResponse response3 = consensusImpl.deleteLocalPeer(dataRegionId);
-    assertTrue(response3.isSuccess());
-    assertNull(response3.getException());
+    consensusImpl.deleteLocalPeer(dataRegionId);
   }
 
   @Test
