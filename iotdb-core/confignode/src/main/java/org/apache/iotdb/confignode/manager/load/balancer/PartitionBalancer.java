@@ -190,7 +190,7 @@ public class PartitionBalancer {
               .put(seriesPartitionEntry.getKey(), seriesPartitionTable);
         }
       } finally {
-        allotTable.releaseLock();
+        Optional.ofNullable(allotTable).ifPresent(DataPartitionPolicyTable::releaseLock);
       }
       result.put(database, dataPartitionTable);
     }
