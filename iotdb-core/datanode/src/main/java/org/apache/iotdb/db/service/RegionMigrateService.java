@@ -309,9 +309,11 @@ public class RegionMigrateService implements IService {
           if (!removePeerSucceed) {
             Thread.sleep(SLEEP_MILLIS);
           }
-          resp =
-              removeRegionPeer(
-                  regionId, new Peer(regionId, destDataNode.getDataNodeId(), destEndPoint));
+          removeRegionPeer(
+              regionId, new Peer(regionId, destDataNode.getDataNodeId(), destEndPoint));
+          if (removePeerSucceed) {
+            break;
+          }
         } catch (Throwable e) {
           removePeerSucceed = false;
           taskLogger.error(
@@ -322,12 +324,9 @@ public class RegionMigrateService implements IService {
               i,
               e);
         }
-        if (removePeerSucceed && resp != null && resp.isSuccess()) {
-          break;
-        }
       }
 
-      if (!removePeerSucceed || resp == null || !resp.isSuccess()) {
+      if (!removePeerSucceed) {
         String errorMsg =
             String.format(
                 "%s, RemovePeer for region error after max retry times, peerId: %s, regionId: %s, resp: %s",
@@ -348,14 +347,13 @@ public class RegionMigrateService implements IService {
       return status;
     }
 
-    private ConsensusGenericResponse removeRegionPeer(ConsensusGroupId regionId, Peer oldPeer) {
-      ConsensusGenericResponse resp;
+    private void removeRegionPeer(ConsensusGroupId regionId, Peer oldPeer)
+        throws ConsensusException {
       if (regionId instanceof DataRegionId) {
-        resp = DataRegionConsensusImpl.getInstance().removeRemotePeer(regionId, oldPeer);
+        DataRegionConsensusImpl.getInstance().removeRemotePeer(regionId, oldPeer);
       } else {
-        resp = SchemaRegionConsensusImpl.getInstance().removeRemotePeer(regionId, oldPeer);
+        SchemaRegionConsensusImpl.getInstance().removeRemotePeer(regionId, oldPeer);
       }
-      return resp;
     }
   }
 
