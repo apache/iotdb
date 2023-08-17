@@ -289,14 +289,17 @@ public class ConsensusManager {
    *     ConfigRegion
    */
   public boolean removeConfigNodePeer(TConfigNodeLocation configNodeLocation) {
-    return consensusImpl
-        .removeRemotePeer(
-            DEFAULT_CONSENSUS_GROUP_ID,
-            new Peer(
-                DEFAULT_CONSENSUS_GROUP_ID,
-                configNodeLocation.getConfigNodeId(),
-                configNodeLocation.getConsensusEndPoint()))
-        .isSuccess();
+    try {
+      consensusImpl.removeRemotePeer(
+          DEFAULT_CONSENSUS_GROUP_ID,
+          new Peer(
+              DEFAULT_CONSENSUS_GROUP_ID,
+              configNodeLocation.getConfigNodeId(),
+              configNodeLocation.getConsensusEndPoint()));
+      return true;
+    } catch (ConsensusException e) {
+      return false;
+    }
   }
 
   /** Transmit PhysicalPlan to confignode.consensus.statemachine */
