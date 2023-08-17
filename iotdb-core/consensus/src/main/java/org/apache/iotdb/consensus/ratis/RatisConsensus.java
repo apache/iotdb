@@ -486,18 +486,18 @@ class RatisConsensus implements IConsensus {
    * change
    */
   @Override
-  public ConsensusGenericResponse removeRemotePeer(ConsensusGroupId groupId, Peer peer) {
+  public void removeRemotePeer(ConsensusGroupId groupId, Peer peer) throws ConsensusException {
     RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
     RaftGroup group = getGroupInfo(raftGroupId);
     RaftPeer peerToRemove = Utils.fromPeerAndPriorityToRaftPeer(peer, DEFAULT_PRIORITY);
 
     // pre-conditions: group exists and myself in this group
     if (group == null || !group.getPeers().contains(myself)) {
-      return failed(new ConsensusGroupNotExistException(groupId));
+      throw new ConsensusGroupNotExistException(groupId);
     }
     // pre-condition: peer is a member of groupId
     if (!group.getPeers().contains(peerToRemove)) {
-      return failed(new PeerNotInConsensusGroupException(groupId, myself));
+      throw new PeerNotInConsensusGroupException(groupId, myself);
     }
 
     // update group peer information
@@ -510,10 +510,8 @@ class RatisConsensus implements IConsensus {
     try {
       reply = sendReconfiguration(RaftGroup.valueOf(raftGroupId, newConfig));
     } catch (RatisRequestFailedException e) {
-      return failed(e);
+      throw e;
     }
-
-    return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
   }
 
   /**
@@ -708,15 +706,11 @@ class RatisConsensus implements IConsensus {
             currentDirLength,
             filesCount);
 
-        final ConsensusGenericResponse consensusGenericResponse =
-            triggerSnapshot(Utils.fromRaftGroupIdToConsensusGroupId(raftGroupId));
-        if (consensusGenericResponse.isSuccess()) {
+        try {
+          triggerSnapshot(Utils.fromRaftGroupIdToConsensusGroupId(raftGroupId));
           logger.info("Raft group {} took snapshot successfully", raftGroupId);
-        } else {
-          logger.warn(
-              "Raft group {} failed to take snapshot due to",
-              raftGroupId,
-              consensusGenericResponse.getException());
+        } catch (ConsensusException e) {
+          logger.warn("Raft group {} failed to take snapshot due to", raftGroupId, e);
         }
       }
     }

@@ -34,7 +34,6 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.exception.*;
 
@@ -49,7 +48,6 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -259,8 +257,12 @@ public class SimpleConsensusTest {
 
   @Test
   public void triggerSnapshot() {
-    ConsensusGenericResponse response = consensusImpl.triggerSnapshot(dataRegionId);
-    assertFalse(response.isSuccess());
+    try {
+      consensusImpl.triggerSnapshot(dataRegionId);
+      assert false;
+    } catch (ConsensusException e) {
+      assert true;
+    }
   }
 
   @Test

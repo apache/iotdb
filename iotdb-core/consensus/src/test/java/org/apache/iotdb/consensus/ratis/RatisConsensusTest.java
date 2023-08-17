@@ -201,7 +201,7 @@ public class RatisConsensusTest {
     servers.get(0).createLocalPeer(gid, peers.subList(0, 1));
 
     doConsensus(servers.get(0), gid, 10, 10);
-    Assert.assertTrue(servers.get(0).triggerSnapshot(gid).isSuccess());
+    servers.get(0).triggerSnapshot(gid);
 
     servers.get(1).createLocalPeer(gid, Collections.emptyList());
     servers.get(0).addRemotePeer(gid, peers.get(1));
