@@ -267,19 +267,19 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
     long startTime = groupByTimeComponent.getStartTime();
     long endTime = groupByTimeComponent.getEndTime();
+    long step = groupByTimeComponent.getSlidingStep();
     long interval = groupByTimeComponent.getInterval();
 
-    long size = (long) Math.ceil((endTime - startTime) / (double) interval);
+    long size = (long) Math.ceil((endTime - startTime) / (double) step);
     if (size > queryStatement.getRowOffset()) {
       long limitSize = queryStatement.getRowLimit();
       long offsetSize = queryStatement.getRowOffset();
-      if (queryStatement.getOrderByComponent().getTimeOrder() == Ordering.ASC) {
-        endTime = Math.min(endTime, startTime + (offsetSize + limitSize) * interval);
-        startTime = startTime + offsetSize * interval;
+      if (queryStatement.getResultTimeOrder() == Ordering.ASC) {
+        startTime = startTime + offsetSize * step;
       } else {
-        startTime = Math.max(startTime, endTime - (offsetSize + limitSize) * interval);
-        endTime = endTime - offsetSize * interval;
+        startTime = startTime + (size - offsetSize - limitSize) * step;
       }
+      endTime = Math.min(endTime, startTime + (limitSize - 1) * step + interval);
       groupByTimeComponent.setEndTime(endTime);
       groupByTimeComponent.setStartTime(startTime);
     } else {
@@ -309,7 +309,7 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     long endTime = groupByTimeComponent.getEndTime();
 
     long size =
-        (long) Math.ceil((endTime - startTime) / (double) groupByTimeComponent.getInterval());
+        (long) Math.ceil((endTime - startTime) / (double) groupByTimeComponent.getSlidingStep());
     if (size == 0 || size * deviceNames.size() <= queryStatement.getRowOffset()) {
       // resultSet is empty
       return Collections.emptySet();

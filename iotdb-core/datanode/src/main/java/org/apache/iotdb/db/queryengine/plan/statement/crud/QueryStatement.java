@@ -338,9 +338,10 @@ public class QueryStatement extends Statement {
   }
 
   public boolean isOrderByTimeInDevices() {
-    return orderByComponent != null
-        && orderByComponent.isBasedOnDevice()
-        && orderByComponent.getTimeOrderPriority() == 1;
+    return orderByComponent == null
+        || (orderByComponent.isBasedOnDevice()
+            && (orderByComponent.getSortItemList().size() == 1
+                || orderByComponent.getTimeOrderPriority() == 1));
   }
 
   public boolean isOrderByTimeseries() {

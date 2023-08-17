@@ -33,8 +33,11 @@ import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
+import org.apache.iotdb.db.queryengine.plan.statement.component.GroupByTimeComponent;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.junit.Assert;
@@ -48,6 +51,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.add;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.function;
@@ -295,5 +299,254 @@ public class LimitOffsetPushDownTest {
     Assert.assertEquals(rawPlan, actualPlan);
     Assert.assertEquals(
         actualPlan, new LimitOffsetPushDown().optimize(actualPlan, analysis, context));
+  }
+
+  // test for limit/offset push down in group by time
+  @Test
+  public void testGroupByTimePushDown() {
+    String sql = "select avg(s1),sum(s2) from root.** group by ((1, 899], 200ms) offset 1 limit 2";
+    checkGroupByTimePushDown(sql, 201, 601, 0, 0);
+  }
+
+  @Test
+  public void testGroupByTimePushDown2() {
+    String sql = "select avg(s1),sum(s2) from root.** group by ([4, 899), 200ms) offset 2 limit 3";
+    checkGroupByTimePushDown(sql, 404, 899, 0, 0);
+  }
+
+  @Test
+  public void testGroupByTimePushDown3() {
+    String sql = "select avg(s1),sum(s2) from root.** group by ([4, 899), 88ms) offset 2 limit 3";
+    checkGroupByTimePushDown(sql, 180, 444, 0, 0);
+  }
+
+  @Test
+  public void testGroupByTimePushDown4() {
+    String sql =
+        "select avg(s1),sum(s2) from root.** group by ([4, 899), 88ms) order by time offset 2 limit 3";
+    checkGroupByTimePushDown(sql, 180, 444, 0, 0);
+  }
+
+  @Test
+  public void testGroupByTimePushDown5() {
+    String sql =
+        "select avg(s1),sum(s2) from root.** group by ([4, 899), 88ms) order by time desc offset 2 limit 3";
+    checkGroupByTimePushDown(sql, 532, 796, 0, 0);
+  }
+
+  @Test
+  public void testGroupByTimePushDown6() {
+    String sql =
+        "select avg(s1),sum(s2) from root.** group by ([4, 899), 100ms) order by time desc offset 2 limit 3";
+    checkGroupByTimePushDown(sql, 404, 704, 0, 0);
+  }
+
+  @Test
+  public void testGroupByTimePushDown7() {
+    String sql =
+        "select avg(s1),sum(s2) from root.** group by ([4, 899), 50ms) order by time desc offset 2 limit 3";
+    checkGroupByTimePushDown(sql, 654, 804, 0, 0);
+  }
+
+  @Test
+  public void testGroupByTimePushDown8() {
+    String sql =
+        "select avg(s1),sum(s2) from root.** group by ([0, 900), 100ms) order by time desc offset 2 limit 2";
+    checkGroupByTimePushDown(sql, 500, 700, 0, 0);
+  }
+
+  @Test
+  public void testGroupByTimePushDown9() {
+    String sql =
+        "select avg(s1),sum(s2) from root.** group by ([4, 899), 50ms) order by s1 offset 2 limit 3";
+    checkGroupByTimePushDown(sql, 4, 899, 3, 2);
+  }
+
+  @Test
+  public void testGroupByTimePushDown10() {
+    String sql =
+        "select avg(s1),sum(s2) from root.** group by ([4, 899), 50ms, 25ms) offset 2 limit 3";
+    checkGroupByTimePushDown(sql, 54, 154, 0, 0);
+  }
+
+  @Test
+  public void testGroupByTimePushDown11() {
+    String sql =
+        "select avg(s1),sum(s2) from root.** group by ([4, 899), 50ms, 75ms) offset 2 limit 3";
+    checkGroupByTimePushDown(sql, 154, 354, 0, 0);
+  }
+
+  private void checkGroupByTimePushDown(
+      String sql, long startTime, long endTime, long rowLimit, long rowOffset) {
+    QueryStatement queryStatement =
+        (QueryStatement) StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
+    Assert.assertEquals(rowLimit, queryStatement.getRowLimit());
+    Assert.assertEquals(rowOffset, queryStatement.getRowOffset());
+
+    GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
+    Assert.assertEquals(startTime, groupByTimeComponent.getStartTime());
+    Assert.assertEquals(endTime, groupByTimeComponent.getEndTime());
+  }
+
+  // device: [root.sg.s1, root.sg.s2, root.sg.s2.a]
+  private void checkGroupByTimePushDownInAlignByDevice(
+      String sql,
+      List<String> deviceSet,
+      long rowLimit,
+      long rowOffset,
+      long startTime,
+      long endTime) {
+    QueryStatement statement =
+        (QueryStatement) StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
+    MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));
+    Analyzer analyzer =
+        new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());
+    Analysis analysis = analyzer.analyze(statement);
+
+    Assert.assertEquals(rowLimit, statement.getRowLimit());
+    Assert.assertEquals(rowOffset, statement.getRowOffset());
+
+    int index = 0;
+    Set<PartialPath> deviceSetInAnalysis = analysis.getDeviceSet();
+    for (PartialPath path : deviceSetInAnalysis) {
+      Assert.assertEquals(path.getFullPath(), deviceSet.get(index));
+      index++;
+    }
+
+    GroupByTimeParameter groupByTimeParameter = analysis.getGroupByTimeParameter();
+    Assert.assertEquals(startTime, groupByTimeParameter.getStartTime());
+    Assert.assertEquals(endTime, groupByTimeParameter.getEndTime());
+  }
+
+  @Test
+  public void testGroupByTimePushDownInAlignByDevice() {
+    String sql =
+        "select avg(s1) from root.** group by ([4, 899), 50ms) offset 16 limit 2 align by device";
+    List<String> deviceSet = new ArrayList<>();
+    deviceSet.add("root.sg.d1");
+    checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 0, 0, 804, 899);
+  }
+
+  @Test
+  public void testGroupByTimePushDownInAlignByDevice2() {
+    String sql =
+        "select avg(s1) from root.** group by ([4, 899), 50ms) offset 16 limit 10 align by device";
+    List<String> deviceSet = new ArrayList<>();
+    deviceSet.add("root.sg.d1");
+    deviceSet.add("root.sg.d2");
+    checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 10, 16, 4, 899);
+  }
+
+  @Test
+  public void testGroupByTimePushDownInAlignByDevice3() {
+    String sql =
+        "select avg(s1) from root.** group by ([4, 899), 50ms) offset 20 limit 2 align by device";
+    List<String> deviceSet = new ArrayList<>();
+    deviceSet.add("root.sg.d2");
+    checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 0, 0, 104, 204);
+  }
+
+  @Test
+  public void testGroupByTimePushDownInAlignByDevice4() {
+    String sql =
+        "select avg(s1) from root.** group by ([4, 899), 50ms) offset 33 limit 5 align by device";
+    List<String> deviceSet = new ArrayList<>();
+    deviceSet.add("root.sg.d2");
+    deviceSet.add("root.sg.d2.a");
+    checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 5, 15, 4, 899);
+  }
+
+  @Test
+  public void testGroupByTimePushDownInAlignByDevice5() {
+    String sql =
+        "select avg(s1) from root.** group by ([4, 199), 50ms, 25ms) offset 9 limit 5 align by device";
+    List<String> deviceSet = new ArrayList<>();
+    deviceSet.add("root.sg.d2");
+    checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 0, 0, 29, 179);
+  }
+
+  @Test
+  public void testGroupByTimePushDownInAlignByDevice6() {
+    String sql =
+        "select avg(s1) from root.** group by ([4, 199), 50ms, 25ms) offset 9 limit 9 align by device";
+    List<String> deviceSet = new ArrayList<>();
+    deviceSet.add("root.sg.d2");
+    deviceSet.add("root.sg.d2.a");
+    checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 9, 1, 4, 199);
+  }
+
+  @Test
+  public void testGroupByTimePushDownInAlignByDevice7() {
+    String sql =
+        "select avg(s1) from root.** group by ([4, 199), 50ms, 25ms) offset 9 limit 9 align by device";
+    List<String> deviceSet = new ArrayList<>();
+    deviceSet.add("root.sg.d2");
+    deviceSet.add("root.sg.d2.a");
+    checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 9, 1, 4, 199);
+  }
+
+  @Test
+  public void testGroupByTimePushDownInAlignByDevice8() {
+    String sql =
+        "select avg(s1) from root.** group by ([4, 199), 50ms, 25ms) order by device offset 9 limit 9 align by device";
+    List<String> deviceSet = new ArrayList<>();
+    deviceSet.add("root.sg.d2");
+    deviceSet.add("root.sg.d2.a");
+    checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 9, 1, 4, 199);
+  }
+
+  @Test
+  public void testGroupByTimePushDownInAlignByDevice9() {
+    String sql =
+        "select avg(s1) from root.** group by ([4, 199), 50ms, 25ms) order by device desc offset 9 limit 9 align by device";
+    List<String> deviceSet = new ArrayList<>();
+    deviceSet.add("root.sg.d2");
+    deviceSet.add("root.sg.d1");
+    checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 9, 1, 4, 199);
+  }
+
+  @Test
+  public void testGroupByTimePushDownInAlignByDevice10() {
+    String sql =
+        "select avg(s1) from root.** group by ([4, 199), 50ms, 25ms) order by device, time desc offset 9 limit 5 align by device";
+    List<String> deviceSet = new ArrayList<>();
+    deviceSet.add("root.sg.d2");
+    checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 0, 0, 54, 199);
+  }
+
+  @Test
+  public void testGroupByTimePushDownInAlignByDevice11() {
+    String sql =
+        "select avg(s1) from root.** group by ([4, 199), 50ms, 25ms) order by device desc, time desc offset 9 limit 5 align by device";
+    List<String> deviceSet = new ArrayList<>();
+    deviceSet.add("root.sg.d2");
+    checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 0, 0, 54, 199);
+  }
+
+  @Test
+  public void testGroupByTimePushDownInAlignByDevice12() {
+    String sql =
+        "select avg(s1) from root.** group by ([4, 899), 50ms) order by device desc offset 16 limit 2 align by device";
+    List<String> deviceSet = new ArrayList<>();
+    deviceSet.add("root.sg.d2.a");
+    checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 0, 0, 804, 899);
+  }
+
+  @Test
+  public void testGroupByTimePushDownInAlignByDevice13() {
+    String sql =
+        "select avg(s1) from root.** group by ([4, 199), 50ms, 25ms) order by device, avg(s1) desc offset 9 limit 5 align by device";
+    List<String> deviceSet = new ArrayList<>();
+    deviceSet.add("root.sg.d2");
+    checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 5, 1, 4, 199);
+  }
+
+  @Test
+  public void testGroupByTimePushDownInAlignByDevice14() {
+    String sql =
+        "select avg(s1) from root.** group by ([4, 199), 50ms, 25ms) order by device, avg(s1) desc,time desc offset 9 limit 5 align by device";
+    List<String> deviceSet = new ArrayList<>();
+    deviceSet.add("root.sg.d2");
+    checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 5, 1, 4, 199);
   }
 }
