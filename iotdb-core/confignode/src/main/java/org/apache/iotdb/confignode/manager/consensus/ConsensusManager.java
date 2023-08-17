@@ -74,6 +74,9 @@ public class ConsensusManager {
   private final IManager configManager;
   private IConsensus consensusImpl;
 
+  // TODO: This AtomicBoolean only ensure all leader services are ready
+  // TODO: But it doesn't ensure the ConfigNode-leader can read the latest data
+  // TODO: All read request should go through the ConsensusManager to ensure linearizability
   private final AtomicBoolean isLeaderServiceReady = new AtomicBoolean(false);
 
   public ConsensusManager(IManager configManager, ConfigRegionStateMachine stateMachine)
