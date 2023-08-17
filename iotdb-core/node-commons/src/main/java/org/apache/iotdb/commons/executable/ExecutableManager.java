@@ -224,8 +224,8 @@ public class ExecutableManager {
   }
 
   /**
-   * Create and save the file if the specified file does not exist, or this method does will
-   * override the existing file.
+   * Create and save the file if the specified file does not exist, or this method will override the
+   * existing file.
    */
   protected void saveToDir(ByteBuffer byteBuffer, String destination) throws IOException {
     try {
@@ -234,7 +234,7 @@ public class ExecutableManager {
         Files.createFile(path);
       }
       // FileOutPutStream is not in append mode by default, so the file will be overridden if it
-      // already exists which is reasonable for us.
+      // already exists.
       try (FileOutputStream outputStream = new FileOutputStream(destination)) {
         outputStream.getChannel().write(byteBuffer);
       }
