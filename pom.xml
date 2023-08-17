@@ -54,7 +54,7 @@
     <repositories>
         <repository>
             <id>iotdb-tools-thrift-staging-repo</id>
-            <url>https://repository.apache.org/content/repositories/orgapacheiotdb-1128/</url>
+            <url>https://repository.apache.org/content/repositories/orgapacheiotdb-1129/</url>
         </repository>
     </repositories>
     <issueManagement>
