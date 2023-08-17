@@ -19,7 +19,6 @@ package org.apache.iotdb.db.protocol.rest.v2.handler;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.protocol.rest.utils.InsertRowDataUtils;
 import org.apache.iotdb.db.protocol.rest.v2.model.InsertRecordsRequest;
 import org.apache.iotdb.db.protocol.rest.v2.model.InsertTabletRequest;
@@ -32,7 +31,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -175,7 +173,7 @@ public class StatementConstructionHandler {
 
   public static InsertRowsStatement createInsertRowsStatement(
       InsertRecordsRequest insertRecordsRequest)
-      throws IllegalPathException, QueryProcessException, IoTDBConnectionException {
+      throws IllegalPathException, IoTDBConnectionException {
 
     // construct insert statement
     InsertRowsStatement insertStatement = new InsertRowsStatement();
@@ -199,10 +197,6 @@ public class StatementConstructionHandler {
         insertRecordsRequest.getValuesList(),
         dataTypesList);
 
-    List<ByteBuffer> valuesList =
-        InsertRowDataUtils.objectValuesListToByteBufferList(
-            insertRecordsRequest.getValuesList(), dataTypesList);
-
     for (int i = 0; i < insertRecordsRequest.getDevices().size(); i++) {
       InsertRowStatement statement = new InsertRowStatement();
       statement.setDevicePath(
@@ -211,7 +205,11 @@ public class StatementConstructionHandler {
       statement.setMeasurements(
           insertRecordsRequest.getMeasurementsList().get(i).toArray(new String[0]));
       statement.setTime(insertRecordsRequest.getTimestamps().get(i));
-      statement.fillValues(valuesList.get(i));
+      statement.setDataTypes(dataTypesList.get(i).toArray(new TSDataType[0]));
+      List<Object> values =
+          InsertRowDataUtils.reGenValues(
+              dataTypesList.get(i), insertRecordsRequest.getValuesList().get(i));
+      statement.setValues(values.toArray());
       statement.setAligned(true);
       // skip empty statement
       if (statement.isEmpty()) {
