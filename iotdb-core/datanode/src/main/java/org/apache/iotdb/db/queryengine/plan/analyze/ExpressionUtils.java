@@ -98,7 +98,7 @@ public class ExpressionUtils {
             rawExpression.getFunctionName(),
             rawExpression.getFunctionAttributes(),
             childExpressions,
-                rawExpression.getCountTimeExpressions());
+            rawExpression.getCountTimeExpressions());
     return cloneCommonFields(rawExpression, resultExpression);
   }
 

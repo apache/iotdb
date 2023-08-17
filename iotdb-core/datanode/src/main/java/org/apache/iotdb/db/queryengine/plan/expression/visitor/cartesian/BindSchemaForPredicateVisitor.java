@@ -34,10 +34,8 @@ import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.cartesianProduct;
@@ -69,8 +67,10 @@ public class BindSchemaForPredicateVisitor
   @Override
   public List<Expression> visitFunctionExpression(FunctionExpression predicate, Context context) {
     if (COUNT_TIME.equalsIgnoreCase(predicate.getFunctionName())) {
-
-      List<Expression> usedExpressions = predicate.getExpressions().stream().flatMap(e -> process(e, context).stream()).collect(Collectors.toList());
+      List<Expression> usedExpressions =
+          predicate.getExpressions().stream()
+              .flatMap(e -> process(e, context).stream())
+              .collect(Collectors.toList());
 
       Expression countTimeExpression =
           new FunctionExpression(

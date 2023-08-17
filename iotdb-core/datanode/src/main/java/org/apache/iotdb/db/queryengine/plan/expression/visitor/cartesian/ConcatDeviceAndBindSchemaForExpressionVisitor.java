@@ -33,10 +33,8 @@ import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.cartesianProduct;
@@ -71,14 +69,15 @@ public class ConcatDeviceAndBindSchemaForExpressionVisitor
     }
 
     if (COUNT_TIME.equalsIgnoreCase(functionExpression.getFunctionName())) {
-      List<Expression> usedExpressions = extendedExpressions.stream().flatMap(Collection::stream).collect(Collectors.toList());
+      List<Expression> usedExpressions =
+          extendedExpressions.stream().flatMap(Collection::stream).collect(Collectors.toList());
 
       Expression countTimeExpression =
-              new FunctionExpression(
-                      COUNT_TIME,
-                      new LinkedHashMap<>(),
-                      Collections.singletonList(new TimestampOperand()),
-                      usedExpressions);
+          new FunctionExpression(
+              COUNT_TIME,
+              new LinkedHashMap<>(),
+              Collections.singletonList(new TimestampOperand()),
+              usedExpressions);
       return Collections.singletonList(countTimeExpression);
     }
 

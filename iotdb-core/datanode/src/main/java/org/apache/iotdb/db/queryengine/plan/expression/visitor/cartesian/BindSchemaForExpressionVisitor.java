@@ -36,10 +36,9 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.cartesianProduct;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructFunctionExpressions;
@@ -53,11 +52,10 @@ public class BindSchemaForExpressionVisitor extends CartesianProductVisitor<ISch
       FunctionExpression functionExpression, ISchemaTree schemaTree) {
 
     if (COUNT_TIME.equalsIgnoreCase(functionExpression.getFunctionName())) {
-      Set<Expression> usedExpressions = new HashSet<>();
-      for (Expression originExpression : functionExpression.getExpressions()) {
-        List<Expression> actualExpressions = process(originExpression, schemaTree);
-        usedExpressions.addAll(actualExpressions);
-      }
+      List<Expression> usedExpressions =
+          functionExpression.getExpressions().stream()
+              .flatMap(e -> process(e, schemaTree).stream())
+              .collect(Collectors.toList());
 
       Expression countTimeExpression =
           new FunctionExpression(
