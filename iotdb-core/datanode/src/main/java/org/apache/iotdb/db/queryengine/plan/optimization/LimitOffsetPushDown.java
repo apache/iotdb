@@ -279,7 +279,10 @@ public class LimitOffsetPushDown implements PlanOptimizer {
       } else {
         startTime = startTime + (size - offsetSize - limitSize) * step;
       }
-      endTime = Math.min(endTime, startTime + (limitSize - 1) * step + interval);
+      endTime =
+          limitSize == 0
+              ? endTime
+              : Math.min(endTime, startTime + (limitSize - 1) * step + interval);
       groupByTimeComponent.setEndTime(endTime);
       groupByTimeComponent.setStartTime(startTime);
     } else {
@@ -293,6 +296,10 @@ public class LimitOffsetPushDown implements PlanOptimizer {
   // 2. push down limit/offset to group by time in align by device
   public static boolean canPushDownLimitOffsetInGroupByTimeForDevice(
       QueryStatement queryStatement) {
+    if (!hasLimitOffset(queryStatement)) {
+      return false;
+    }
+
     if (queryStatement.isGroupByTime()
         && queryStatement.isAlignByDevice()
         && !queryStatement.hasHaving()
@@ -320,8 +327,12 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     Set<PartialPath> optimizedDeviceNames = new LinkedHashSet<>();
     int startDeviceIndex = (int) (offsetSize / size);
     int endDeviceIndex =
-        (int) Math.ceil((limitSize - ((startDeviceIndex + 1) * size - offsetSize)) / (double) size)
-            + startDeviceIndex;
+        limitSize == 0
+            ? deviceNames.size() - 1
+            : (int)
+                    Math.ceil(
+                        (limitSize - ((startDeviceIndex + 1) * size - offsetSize)) / (double) size)
+                + startDeviceIndex;
 
     Iterator<PartialPath> iterator = deviceNames.iterator();
     int index = 0;
@@ -334,7 +345,7 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     // if only refer to one device, optimize the time parameter
     if (startDeviceIndex == endDeviceIndex) {
       optimizedDeviceNames.add(iterator.next());
-      if (queryStatement.isOrderByTimeInDevices()) {
+      if (hasLimitOffset(queryStatement) && queryStatement.isOrderByTimeInDevices()) {
         pushDownLimitOffsetToTimeParameter(queryStatement);
       }
     } else {
@@ -343,7 +354,10 @@ public class LimitOffsetPushDown implements PlanOptimizer {
         index++;
       }
     }
-
     return optimizedDeviceNames;
+  }
+
+  private static boolean hasLimitOffset(QueryStatement queryStatement) {
+    return queryStatement.hasLimit() || queryStatement.hasOffset();
   }
 }

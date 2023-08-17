@@ -549,4 +549,23 @@ public class LimitOffsetPushDownTest {
     deviceSet.add("root.sg.d2");
     checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 5, 1, 4, 199);
   }
+
+  @Test
+  public void testGroupByTimePushDownInAlignByDevice15() {
+    String sql =
+        "select avg(s1) from root.** group by ([4, 199), 50ms, 25ms) order by device desc limit 1 offset 8 align by device";
+    List<String> deviceSet = new ArrayList<>();
+    deviceSet.add("root.sg.d2");
+    checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 0, 0, 4, 54);
+  }
+
+  @Test
+  public void testGroupByTimePushDownInAlignByDevice16() {
+    String sql =
+        "select avg(s1) from root.** group by ([4, 199), 50ms, 25ms) order by device desc offset 8 align by device";
+    List<String> deviceSet = new ArrayList<>();
+    deviceSet.add("root.sg.d2");
+    deviceSet.add("root.sg.d1");
+    checkGroupByTimePushDownInAlignByDevice(sql, deviceSet, 0, 0, 4, 199);
+  }
 }
