@@ -149,6 +149,16 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeAutoRestartEnabled();
   }
 
+  /////////////////////////////// Air Gap Receiver ///////////////////////////////
+
+  public boolean getPipeAirGapReceiverEnabled() {
+    return COMMON_CONFIG.getPipeAirGapReceiverEnabled();
+  }
+
+  public int getPipeAirGapReceiverPort() {
+    return COMMON_CONFIG.getPipeAirGapReceiverPort();
+  }
+
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfig.class);
@@ -184,6 +194,13 @@ public class PipeConfig {
     LOGGER.info("PipeConnectorReadFileBufferSize: {}", getPipeConnectorReadFileBufferSize());
     LOGGER.info("PipeConnectorRetryIntervalMs: {}", getPipeConnectorRetryIntervalMs());
     LOGGER.info("PipeConnectorPendingQueueSize: {}", getPipeConnectorPendingQueueSize());
+    LOGGER.info(
+        "PipeConnectorRPCThriftCompressionEnabled: {}",
+        isPipeConnectorRPCThriftCompressionEnabled());
+
+    LOGGER.info("PipeAsyncConnectorSelectorNumber: {}", getPipeAsyncConnectorSelectorNumber());
+    LOGGER.info("PipeAsyncConnectorCoreClientNumber: {}", getPipeAsyncConnectorCoreClientNumber());
+    LOGGER.info("PipeAsyncConnectorMaxClientNumber: {}", getPipeAsyncConnectorMaxClientNumber());
 
     LOGGER.info("SeperatedPipeHeartbeatEnabled: {}", isSeperatedPipeHeartbeatEnabled());
     LOGGER.info(
@@ -196,6 +213,9 @@ public class PipeConfig {
         "PipeMetaSyncerAutoRestartPipeCheckIntervalRound: {}",
         getPipeMetaSyncerAutoRestartPipeCheckIntervalRound());
     LOGGER.info("PipeAutoRestartEnabled: {}", getPipeAutoRestartEnabled());
+
+    LOGGER.info("PipeAirGapReceiverEnabled: {}", getPipeAirGapReceiverEnabled());
+    LOGGER.info("PipeAirGapReceiverPort: {}", getPipeAirGapReceiverPort());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

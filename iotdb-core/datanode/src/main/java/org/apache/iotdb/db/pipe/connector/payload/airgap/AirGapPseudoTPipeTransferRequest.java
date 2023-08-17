@@ -17,19 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.protocol.thrift;
+package org.apache.iotdb.db.pipe.connector.payload.airgap;
 
-public enum IoTDBThriftConnectorRequestVersion {
-  VERSION_1((byte) 1),
-  ;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
-  private final byte version;
-
-  IoTDBThriftConnectorRequestVersion(byte type) {
-    this.version = type;
-  }
-
-  public byte getVersion() {
-    return version;
-  }
-}
+public class AirGapPseudoTPipeTransferRequest extends TPipeTransferReq {}
