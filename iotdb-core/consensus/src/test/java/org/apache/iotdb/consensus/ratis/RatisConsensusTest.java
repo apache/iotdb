@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.consensus.ratis;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
@@ -26,10 +27,10 @@ import org.apache.iotdb.consensus.common.ConsensusGroup;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
-import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.RatisConfig;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.ratis.util.TimeDuration;
 import org.junit.After;
@@ -220,11 +221,15 @@ public class RatisConsensusTest {
           () -> {
             ByteBufferConsensusRequest incrReq = TestUtils.TestRequest.incrRequest();
 
-            ConsensusWriteResponse response = consensus.write(gid, incrReq);
-            if (response.getException() != null) {
-              response.getException().printStackTrace(System.out);
+            TSStatus response;
+            try {
+              response = consensus.write(gid, incrReq);
+            } catch (ConsensusException e) {
+              response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+              response.setMessage(e.getMessage());
+              e.printStackTrace(System.out);
             }
-            Assert.assertEquals(200, response.getStatus().getCode());
+            Assert.assertEquals(200, response.getCode());
             latch.countDown();
           });
     }
@@ -253,8 +258,7 @@ public class RatisConsensusTest {
     Assert.assertNotNull(leader);
 
     // Check we reached a consensus
-    ConsensusReadResponse response = leader.read(gid, getReq);
-    TestUtils.TestDataSet result = (TestUtils.TestDataSet) response.getDataset();
+    TestUtils.TestDataSet result = (TestUtils.TestDataSet) leader.read(gid, getReq);
     Assert.assertEquals(target, result.getNumber());
   }
 }

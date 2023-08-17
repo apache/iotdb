@@ -259,7 +259,16 @@ public class ClusterSchemaManager {
    * @return CountDatabaseResp
    */
   public CountDatabaseResp countMatchedDatabases(CountDatabasePlan countDatabasePlan) {
-    return (CountDatabaseResp) getConsensusManager().read(countDatabasePlan).getDataset();
+    try {
+      return (CountDatabaseResp) getConsensusManager().read(countDatabasePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      CountDatabaseResp response = new CountDatabaseResp();
+      response.setStatus(res);
+      return response;
+    }
   }
 
   /**
@@ -270,8 +279,16 @@ public class ClusterSchemaManager {
    * @return DatabaseSchemaResp
    */
   public DatabaseSchemaResp getMatchedDatabaseSchema(GetDatabasePlan getStorageGroupPlan) {
-    DatabaseSchemaResp resp =
-        (DatabaseSchemaResp) getConsensusManager().read(getStorageGroupPlan).getDataset();
+    DatabaseSchemaResp resp;
+    try {
+      resp = (DatabaseSchemaResp) getConsensusManager().read(getStorageGroupPlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      resp = new DatabaseSchemaResp();
+      resp.setStatus(res);
+    }
     List<String> preDeletedDatabaseList = new ArrayList<>();
     for (String database : resp.getSchemaMap().keySet()) {
       if (getPartitionManager().isDatabasePreDeleted(database)) {
@@ -286,8 +303,16 @@ public class ClusterSchemaManager {
 
   /** Only used in cluster tool show Databases. */
   public TShowDatabaseResp showDatabase(GetDatabasePlan getStorageGroupPlan) {
-    DatabaseSchemaResp databaseSchemaResp =
-        (DatabaseSchemaResp) getConsensusManager().read(getStorageGroupPlan).getDataset();
+    DatabaseSchemaResp databaseSchemaResp;
+    try {
+      databaseSchemaResp = (DatabaseSchemaResp) getConsensusManager().read(getStorageGroupPlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      databaseSchemaResp = new DatabaseSchemaResp();
+      databaseSchemaResp.setStatus(res);
+    }
     if (databaseSchemaResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // Return immediately if some Database doesn't exist
       return new TShowDatabaseResp().setStatus(databaseSchemaResp.getStatus());
@@ -683,7 +708,14 @@ public class ClusterSchemaManager {
    * @return TSStatus
    */
   public TSStatus createTemplate(CreateSchemaTemplatePlan createSchemaTemplatePlan) {
-    return getConsensusManager().write(createSchemaTemplatePlan).getStatus();
+    try {
+      return getConsensusManager().write(createSchemaTemplatePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return res;
+    }
   }
 
   /**
@@ -693,8 +725,16 @@ public class ClusterSchemaManager {
    */
   public TGetAllTemplatesResp getAllTemplates() {
     GetAllSchemaTemplatePlan getAllSchemaTemplatePlan = new GetAllSchemaTemplatePlan();
-    TemplateInfoResp templateResp =
-        (TemplateInfoResp) getConsensusManager().read(getAllSchemaTemplatePlan).getDataset();
+    TemplateInfoResp templateResp;
+    try {
+      templateResp = (TemplateInfoResp) getConsensusManager().read(getAllSchemaTemplatePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      templateResp = new TemplateInfoResp();
+      templateResp.setStatus(res);
+    }
     TGetAllTemplatesResp resp = new TGetAllTemplatesResp();
     resp.setStatus(templateResp.getStatus());
     if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -709,8 +749,16 @@ public class ClusterSchemaManager {
   /** show nodes in schemaengine template */
   public TGetTemplateResp getTemplate(String req) {
     GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan(req);
-    TemplateInfoResp templateResp =
-        (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan).getDataset();
+    TemplateInfoResp templateResp;
+    try {
+      templateResp = (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      templateResp = new TemplateInfoResp();
+      templateResp.setStatus(res);
+    }
     TGetTemplateResp resp = new TGetTemplateResp();
     if (templateResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && templateResp.getTemplateList() != null
@@ -725,8 +773,16 @@ public class ClusterSchemaManager {
   /** show path set template xx */
   public TGetPathsSetTemplatesResp getPathsSetTemplate(String templateName) {
     GetPathsSetTemplatePlan getPathsSetTemplatePlan = new GetPathsSetTemplatePlan(templateName);
-    PathInfoResp pathInfoResp =
-        (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan).getDataset();
+    PathInfoResp pathInfoResp;
+    try {
+      pathInfoResp = (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      pathInfoResp = new PathInfoResp();
+      pathInfoResp.setStatus(res);
+    }
     if (pathInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       TGetPathsSetTemplatesResp resp = new TGetPathsSetTemplatesResp();
       resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
@@ -742,21 +798,42 @@ public class ClusterSchemaManager {
    * template info won't be taken
    */
   public byte[] getAllTemplateSetInfo() {
-    AllTemplateSetInfoResp resp =
-        (AllTemplateSetInfoResp)
-            getConsensusManager().read(new GetAllTemplateSetInfoPlan()).getDataset();
-    return resp.getTemplateInfo();
+    try {
+      AllTemplateSetInfoResp resp =
+          (AllTemplateSetInfoResp) getConsensusManager().read(new GetAllTemplateSetInfoPlan());
+      return resp.getTemplateInfo();
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      return null;
+    }
   }
 
   public TemplateSetInfoResp getTemplateSetInfo(List<PartialPath> patternList) {
-    return (TemplateSetInfoResp)
-        getConsensusManager().read(new GetTemplateSetInfoPlan(patternList)).getDataset();
+    try {
+      return (TemplateSetInfoResp)
+          getConsensusManager().read(new GetTemplateSetInfoPlan(patternList));
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      TemplateSetInfoResp response = new TemplateSetInfoResp();
+      response.setStatus(res);
+      return response;
+    }
   }
 
   public Pair<TSStatus, Template> checkIsTemplateSetOnPath(String templateName, String path) {
     GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan(templateName);
-    TemplateInfoResp templateResp =
-        (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan).getDataset();
+    TemplateInfoResp templateResp;
+    try {
+      templateResp = (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      templateResp = new TemplateInfoResp();
+      templateResp.setStatus(res);
+    }
     if (templateResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       if (templateResp.getTemplateList() == null || templateResp.getTemplateList().isEmpty()) {
         return new Pair<>(
@@ -770,8 +847,16 @@ public class ClusterSchemaManager {
     }
 
     GetPathsSetTemplatePlan getPathsSetTemplatePlan = new GetPathsSetTemplatePlan(templateName);
-    PathInfoResp pathInfoResp =
-        (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan).getDataset();
+    PathInfoResp pathInfoResp;
+    try {
+      pathInfoResp = (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      pathInfoResp = new PathInfoResp();
+      pathInfoResp.setStatus(res);
+    }
     if (pathInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       List<String> templateSetPathList = pathInfoResp.getPathList();
       if (templateSetPathList == null
@@ -827,8 +912,16 @@ public class ClusterSchemaManager {
 
     // check template existence
     GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan(templateName);
-    TemplateInfoResp templateInfoResp =
-        (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan).getDataset();
+    TemplateInfoResp templateInfoResp;
+    try {
+      templateInfoResp = (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      templateInfoResp = new TemplateInfoResp();
+      templateInfoResp.setStatus(res);
+    }
     if (templateInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return templateInfoResp.getStatus();
     } else if (templateInfoResp.getTemplateList() == null
@@ -840,8 +933,16 @@ public class ClusterSchemaManager {
 
     // check is template set on some path, block all template set operation
     GetPathsSetTemplatePlan getPathsSetTemplatePlan = new GetPathsSetTemplatePlan(templateName);
-    PathInfoResp pathInfoResp =
-        (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan).getDataset();
+    PathInfoResp pathInfoResp;
+    try {
+      pathInfoResp = (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      pathInfoResp = new PathInfoResp();
+      pathInfoResp.setStatus(res);
+    }
     if (pathInfoResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return pathInfoResp.getStatus();
     } else if (pathInfoResp.getPathList() != null && !pathInfoResp.getPathList().isEmpty()) {
@@ -899,7 +1000,14 @@ public class ClusterSchemaManager {
 
     ExtendSchemaTemplatePlan extendSchemaTemplatePlan =
         new ExtendSchemaTemplatePlan(templateExtendInfo);
-    TSStatus status = getConsensusManager().write(extendSchemaTemplatePlan).getStatus();
+    TSStatus status;
+    try {
+      status = getConsensusManager().write(extendSchemaTemplatePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      status.setMessage(e.getMessage());
+    }
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return status;
     }

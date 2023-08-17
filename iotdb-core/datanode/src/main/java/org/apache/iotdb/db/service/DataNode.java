@@ -128,15 +128,11 @@ public class DataNode implements DataNodeMBean {
 
   private final TEndPoint thisNode = new TEndPoint();
 
-  /**
-   * Hold the information of trigger, udf......
-   */
+  /** Hold the information of trigger, udf...... */
   private final ResourcesInformationHolder resourcesInformationHolder =
       new ResourcesInformationHolder();
 
-  /**
-   * Responsible for keeping trigger information up to date.
-   */
+  /** Responsible for keeping trigger information up to date. */
   private final TriggerInformationUpdater triggerInformationUpdater =
       new TriggerInformationUpdater();
 
@@ -207,9 +203,7 @@ public class DataNode implements DataNodeMBean {
     }
   }
 
-  /**
-   * Prepare cluster IoTDB-DataNode
-   */
+  /** Prepare cluster IoTDB-DataNode */
   private boolean prepareDataNode() throws StartupException, IOException {
     // Set cluster mode
     config.setClusterMode(true);
@@ -354,7 +348,7 @@ public class DataNode implements DataNodeMBean {
    * Register this DataNode into cluster.
    *
    * @throws StartupException if register failed.
-   * @throws IOException      if serialize cluster name and dataNode Id failed.
+   * @throws IOException if serialize cluster name and dataNode Id failed.
    */
   private void sendRegisterRequestToConfigNode() throws StartupException, IOException {
     logger.info("Sending register request to ConfigNode-leader...");
@@ -558,9 +552,7 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(PipeAgent.runtime());
   }
 
-  /**
-   * Set up RPC and protocols after DataNode is available
-   */
+  /** Set up RPC and protocols after DataNode is available */
   private void setUpRPCService() throws StartupException {
     // Start InternalRPCService to indicate that the current DataNode can accept cluster scheduling
     registerManager.register(DataNodeInternalRPCService.getInstance());
@@ -705,9 +697,7 @@ public class DataNode implements DataNodeMBean {
     }
   }
 
-  /**
-   * Generate a list for UDFs that do not have jar on this node.
-   */
+  /** Generate a list for UDFs that do not have jar on this node. */
   private List<UDFInformation> getJarListForUDF() {
     List<UDFInformation> res = new ArrayList<>();
     for (UDFInformation udfInformation : resourcesInformationHolder.getUDFInformationList()) {
@@ -820,9 +810,7 @@ public class DataNode implements DataNodeMBean {
     }
   }
 
-  /**
-   * Generate a list for triggers that do not have jar on this node.
-   */
+  /** Generate a list for triggers that do not have jar on this node. */
   private List<TriggerInformation> getJarListForTrigger() {
     List<TriggerInformation> res = new ArrayList<>();
     for (TriggerInformation triggerInformation :

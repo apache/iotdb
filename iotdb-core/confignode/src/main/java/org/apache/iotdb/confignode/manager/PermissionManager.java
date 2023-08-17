@@ -88,7 +88,16 @@ public class PermissionManager {
    * @return PermissionInfoResp
    */
   public PermissionInfoResp queryPermission(AuthorPlan authorPlan) {
-    return (PermissionInfoResp) getConsensusManager().read(authorPlan).getDataset();
+    try {
+      return (PermissionInfoResp) getConsensusManager().read(authorPlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      PermissionInfoResp response = new PermissionInfoResp();
+      response.setStatus(res);
+      return response;
+    }
   }
 
   private ConsensusManager getConsensusManager() {

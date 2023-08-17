@@ -664,8 +664,7 @@ public class ConfigManager implements IManager {
         new GetSchemaPartitionPlan(
             partitionSlotsMap.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> new ArrayList<>(e.getValue()))));
-    SchemaPartitionResp queryResult =
-        (SchemaPartitionResp) partitionManager.getSchemaPartition(getSchemaPartitionPlan);
+    SchemaPartitionResp queryResult = partitionManager.getSchemaPartition(getSchemaPartitionPlan);
     resp = queryResult.convertToRpcSchemaPartitionTableResp();
 
     LOGGER.debug("GetSchemaPartition receive paths: {}, return: {}", relatedPaths, resp);
@@ -796,8 +795,7 @@ public class ConfigManager implements IManager {
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return resp.setStatus(status);
     }
-    DataPartitionResp queryResult =
-        (DataPartitionResp) partitionManager.getDataPartition(getDataPartitionPlan);
+    DataPartitionResp queryResult = partitionManager.getDataPartition(getDataPartitionPlan);
 
     resp = queryResult.convertToTDataPartitionTableResp();
 

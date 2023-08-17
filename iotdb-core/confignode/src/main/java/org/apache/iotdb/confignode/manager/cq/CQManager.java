@@ -33,7 +33,7 @@ import org.apache.iotdb.confignode.persistence.cq.CQInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
-import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
+import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -90,14 +90,14 @@ public class CQManager {
   }
 
   public TShowCQResp showCQ() {
-    ConsensusReadResponse response = configManager.getConsensusManager().read(new ShowCQPlan());
-    if (response.getDataset() != null) {
-      return ((ShowCQResp) response.getDataset()).convertToRpcShowCQResp();
-    } else {
-      LOGGER.warn("Unexpected error happened while showing cq: ", response.getException());
+    try {
+      DataSet response = configManager.getConsensusManager().read(new ShowCQPlan());
+      return ((ShowCQResp) response).convertToRpcShowCQResp();
+    } catch (ConsensusException e) {
+      LOGGER.warn("Unexpected error happened while showing cq: ", e);
       // consensus layer related errors
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      res.setMessage(response.getException().toString());
+      res.setMessage(e.getMessage());
       return new TShowCQResp(res, Collections.emptyList());
     }
   }
@@ -155,16 +155,15 @@ public class CQManager {
       }
       // keep fetching until we get all CQEntries if this node is still leader
       while (needFetch(allCQs)) {
-        ConsensusReadResponse response = configManager.getConsensusManager().read(new ShowCQPlan());
-        if (response.getDataset() != null) {
-          allCQs = ((ShowCQResp) response.getDataset()).getCqList();
-        } else {
+        try {
+          DataSet response = configManager.getConsensusManager().read(new ShowCQPlan());
+          allCQs = ((ShowCQResp) response).getCqList();
+        } catch (ConsensusException e) {
           // consensus layer related errors
-          LOGGER.warn(
-              "Unexpected error happened while fetching cq list: ", response.getException());
+          LOGGER.warn("Unexpected error happened while fetching cq list: ", e);
           try {
             Thread.sleep(500);
-          } catch (InterruptedException e) {
+          } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
           }
         }

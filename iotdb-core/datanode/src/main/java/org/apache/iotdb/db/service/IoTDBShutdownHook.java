@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.service;
 
-import java.io.IOException;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -42,6 +41,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
 
 public class IoTDBShutdownHook extends Thread {
 

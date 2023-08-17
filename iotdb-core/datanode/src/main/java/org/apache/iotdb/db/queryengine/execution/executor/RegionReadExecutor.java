@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.IConsensus;
-import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
+import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceInfo;
@@ -69,7 +69,7 @@ public class RegionReadExecutor {
   public RegionExecutionResult execute(
       ConsensusGroupId groupId, FragmentInstance fragmentInstance) {
     // execute fragment instance in state machine
-    ConsensusReadResponse readResponse;
+    DataSet readResponse;
     try (SetThreadName threadName = new SetThreadName(fragmentInstance.getId().getFullId())) {
       if (groupId instanceof DataRegionId) {
         readResponse = dataRegionConsensus.read(groupId, fragmentInstance);
@@ -81,20 +81,8 @@ public class RegionReadExecutor {
         LOGGER.error(RESPONSE_NULL_ERROR_MSG);
         resp.setAccepted(false);
         resp.setMessage(RESPONSE_NULL_ERROR_MSG);
-      } else if (!readResponse.isSuccess()) {
-        LOGGER.error(
-            "Execute FragmentInstance in ConsensusGroup {} failed.",
-            groupId,
-            readResponse.getException());
-        resp.setAccepted(false);
-        resp.setMessage(
-            String.format(
-                ERROR_MSG_FORMAT,
-                readResponse.getException() == null
-                    ? ""
-                    : readResponse.getException().getMessage()));
       } else {
-        FragmentInstanceInfo info = (FragmentInstanceInfo) readResponse.getDataset();
+        FragmentInstanceInfo info = (FragmentInstanceInfo) readResponse;
         resp.setAccepted(!info.getState().isFailed());
         resp.setMessage(info.getMessage());
       }

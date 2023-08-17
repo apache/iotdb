@@ -27,6 +27,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.ConsensusGroup;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.iot.util.TestEntry;
 import org.apache.iotdb.consensus.iot.util.TestStateMachine;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -157,7 +158,8 @@ public class ReplicateTest {
    * The three nodes use the requests in the queue to replicate the requests to the other two nodes.
    */
   @Test
-  public void replicateUsingQueueTest() throws IOException, InterruptedException {
+  public void replicateUsingQueueTest()
+      throws IOException, InterruptedException, ConsensusException {
     logger.info("Start ReplicateUsingQueueTest");
     servers.get(0).createLocalPeer(group.getGroupId(), group.getPeers());
     servers.get(1).createLocalPeer(group.getGroupId(), group.getPeers());
@@ -235,7 +237,7 @@ public class ReplicateTest {
    * nodes finally consistent.
    */
   @Test
-  public void replicateUsingWALTest() throws IOException, InterruptedException {
+  public void replicateUsingWALTest() throws IOException, InterruptedException, ConsensusException {
     logger.info("Start ReplicateUsingWALTest");
     servers.get(0).createLocalPeer(group.getGroupId(), group.getPeers());
     servers.get(1).createLocalPeer(group.getGroupId(), group.getPeers());
