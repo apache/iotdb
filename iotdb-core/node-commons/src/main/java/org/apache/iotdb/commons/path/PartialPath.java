@@ -118,8 +118,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   public boolean hasMultiLevelMatchWildcard() {
     for (String node : nodes) {
-      // *, ** , d*, *d*
-      if (PathPatternUtil.hasMultiLevelMatchWildcard(node)) {
+      if (PathPatternUtil.isMultiLevelMatchWildcard(node)) {
         return true;
       }
     }
@@ -127,7 +126,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   public boolean endWithMultiLevelWildcard() {
-    return PathPatternUtil.hasMultiLevelMatchWildcard(nodes[nodes.length - 1]);
+    return PathPatternUtil.isMultiLevelMatchWildcard(nodes[nodes.length - 1]);
   }
 
   // e.g. root.db.d.s, root.db.d.*, root.db.d.s*, not include patterns like root.db.d.**
