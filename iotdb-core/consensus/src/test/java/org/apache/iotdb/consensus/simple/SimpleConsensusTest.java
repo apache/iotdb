@@ -226,18 +226,24 @@ public class SimpleConsensusTest {
 
   @Test
   public void addPeer() {
-    ConsensusGenericResponse response =
-        consensusImpl.addRemotePeer(
-            dataRegionId, new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667)));
-    assertFalse(response.isSuccess());
+    try {
+      consensusImpl.addRemotePeer(
+          dataRegionId, new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667)));
+      assert false;
+    } catch (ConsensusException e) {
+      assert true;
+    }
   }
 
   @Test
   public void removePeer() {
-    ConsensusGenericResponse response =
-        consensusImpl.removeRemotePeer(
-            dataRegionId, new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667)));
-    assertFalse(response.isSuccess());
+    try {
+      consensusImpl.removeRemotePeer(
+          dataRegionId, new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667)));
+      assert false;
+    } catch (ConsensusException e) {
+      assert true;
+    }
   }
 
   @Test
