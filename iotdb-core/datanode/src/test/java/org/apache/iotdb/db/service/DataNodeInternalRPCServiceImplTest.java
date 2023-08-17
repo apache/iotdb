@@ -81,8 +81,8 @@ public class DataNodeInternalRPCServiceImplTest {
     SchemaEngine.getInstance().init();
     SchemaEngine.getInstance()
         .createSchemaRegion(new PartialPath("root.ln"), new SchemaRegionId(0));
-    DataRegionConsensusImpl.setupAndGetInstance().start();
-    SchemaRegionConsensusImpl.setupAndGetInstance().start();
+    DataRegionConsensusImpl.getInstance().start();
+    SchemaRegionConsensusImpl.getInstance().start();
     DataNodeRegionManager.getInstance().init();
   }
 

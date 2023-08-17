@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.IConsensus;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -80,10 +79,10 @@ public class RegionWriteExecutorTest {
     Mockito.when(regionManager.getRegionLock(dataRegionGroupId))
         .thenReturn(new ReentrantReadWriteLock());
 
-    ConsensusWriteResponse writeResponse = Mockito.mock(ConsensusWriteResponse.class);
+    TSStatus writeResponse = Mockito.mock(TSStatus.class);
     Mockito.when(dataRegionConsensus.write(dataRegionGroupId, planNode)).thenReturn(writeResponse);
 
-    Mockito.when(writeResponse.getStatus()).thenReturn(null);
+    Mockito.when(writeResponse).thenReturn(null);
 
     RegionExecutionResult res = executor.execute(dataRegionGroupId, planNode);
     assertFalse(res.isAccepted());
@@ -95,7 +94,6 @@ public class RegionWriteExecutorTest {
 
     Mockito.when(triggerFireVisitor.process(planNode, TriggerEvent.BEFORE_INSERT))
         .thenReturn(TriggerFireResult.SUCCESS);
-    Mockito.when(writeResponse.isSuccessful()).thenReturn(true);
     Mockito.when(triggerFireVisitor.process(planNode, TriggerEvent.AFTER_INSERT))
         .thenReturn(TriggerFireResult.TERMINATION);
     res = executor.execute(dataRegionGroupId, planNode);
@@ -103,7 +101,7 @@ public class RegionWriteExecutorTest {
 
     Mockito.when(triggerFireVisitor.process(planNode, TriggerEvent.AFTER_INSERT))
         .thenReturn(TriggerFireResult.SUCCESS);
-    Mockito.when(writeResponse.getStatus())
+    Mockito.when(writeResponse)
         .thenReturn(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     res = executor.execute(dataRegionGroupId, planNode);
     assertTrue(res.isAccepted());
