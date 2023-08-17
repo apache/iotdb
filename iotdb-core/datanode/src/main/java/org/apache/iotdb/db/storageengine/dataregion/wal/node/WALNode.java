@@ -309,10 +309,12 @@ public class WALNode implements IWALNode {
 
     private void summarizeExecuteResult() {
       if (filesShouldDelete.length == 0) {
-        logger.debug(
-            "wal node-{}:no wal file was found that should be deleted, current first valid version id is {}",
-            identifier,
-            firstValidVersionId);
+        if (logger.isDebugEnabled()) {
+          logger.debug(
+              "wal node-{}:no wal file was found that should be deleted, current first valid version id is {}",
+              identifier,
+              firstValidVersionId);
+        }
         return;
       }
 
