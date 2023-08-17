@@ -51,6 +51,12 @@
             <url>scm:git:https://gitbox.apache.org/repos/asf/iotdb-website.git</url>
         </site>
     </distributionManagement>
+    <repositories>
+        <repository>
+            <id>iotdb-tools-thrift-staging-repo</id>
+            <url>https://repository.apache.org/content/repositories/orgapacheiotdb-1128/</url>
+        </repository>
+    </repositories>
     <issueManagement>
         <system>Jira</system>
         <url>https://issues.apache.org/jira/browse/iotdb</url>
@@ -112,6 +118,8 @@
             we'll stay at 0.14.1.
         -->
         <thrift.version>0.14.1</thrift.version>
+        <!-- This is the version of the thrift binary -->
+        <iotdb-tools-thrift.version>0.14.1.0</iotdb-tools-thrift.version>
         <jackson.version>2.13.5</jackson.version>
         <disrupter.version>3.4.2</disrupter.version>
         <jackson.databind.version>2.13.4.2</jackson.databind.version>
@@ -1263,9 +1271,9 @@
                                 <configuration>
                                     <artifactItems>
                                         <artifactItem>
-                                            <groupId>org.apache.iotdb</groupId>
+                                            <groupId>org.apache.iotdb.tools</groupId>
                                             <artifactId>iotdb-tools-thrift</artifactId>
-                                            <version>${project.version}</version>
+                                            <version>${iotdb-tools-thrift.version}</version>
                                             <classifier>${os.classifier}</classifier>
                                             <type>zip</type>
                                             <overWrite>true</overWrite>
@@ -1292,6 +1300,17 @@
                                 </configuration>
                             </execution>
                             <execution>
+                                <id>generate-thrift-sources-nodejs</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>compile</goal>
+                                </goals>
+                                <configuration>
+                                    <generator>js:node</generator>
+                                    <outputDirectory>${project.build.directory}/generated-sources-nodejs/</outputDirectory>
+                                </configuration>
+                            </execution>
+                            <execution>
                                 <id>generate-thrift-sources-python</id>
                                 <phase>generate-sources</phase>
                                 <goals>
@@ -1299,7 +1318,6 @@
                                 </goals>
                                 <configuration>
                                     <generator>py</generator>
-                                    <includes>**/common.thrift,**/client.thrift,**/datanode.thrift,**/confignode.thrift,**/mlnode.thrift</includes>
                                     <outputDirectory>${project.build.directory}/generated-sources-python/</outputDirectory>
                                 </configuration>
                             </execution>
@@ -1311,7 +1329,6 @@
                                 </goals>
                                 <configuration>
                                     <generator>go</generator>
-                                    <includes>**/common.thrift,**/client.thrift</includes>
                                     <outputDirectory>${project.build.directory}/generated-sources-go</outputDirectory>
                                 </configuration>
                             </execution>
