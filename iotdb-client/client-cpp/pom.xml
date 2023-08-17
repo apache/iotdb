@@ -124,7 +124,7 @@
                         <configuration>
                             <fileSets>
                                 <fileSet>
-                                    <sourceFile>../../iotdb-protocol/thrift-datanode/src/main/thrift-datanode/client.thrift</sourceFile>
+                                    <sourceFile>../../iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift</sourceFile>
                                     <destinationFile>${project.build.directory}/protocols/client.thrift</destinationFile>
                                 </fileSet>
                                 <fileSet>
