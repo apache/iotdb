@@ -83,11 +83,13 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
+
     for (int i = 0; i < nodeUrls.size(); i++) {
       isClientAlive.add(false);
       clients.add(null);
     }
-    if (CONNECTOR_IOTDB_MODE_BATCH.equals(mode)) {
+
+    if (isTabletBatchModeEnabled) {
       batchBuilder =
           new IoTDBThriftBatchSyncBuilder(
               parameters.getIntOrDefault(
@@ -190,36 +192,9 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
 
     try {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-        PipeInsertNodeTabletInsertionEvent event =
-            (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
-        if (CONNECTOR_IOTDB_MODE_BATCH.equals(mode)) {
-          // Init last send time to record the first element
-          batchBuilder.initLastSendTime();
-          PipeTransferInsertNodeReq insertNodeReq =
-              PipeTransferInsertNodeReq.toTPipeTransferReq(event.getInsertNode());
-
-          // To avoid redundant event when retrying
-          batchBuilder.tryCacheReq(insertNodeReq, event);
-          if (batchBuilder.needSend()) {
-            doTransferInBatch(client);
-          }
-        } else {
-          doTransfer(client, event);
-        }
+        doTransfer(client, (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
       } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-        PipeRawTabletInsertionEvent event = (PipeRawTabletInsertionEvent) tabletInsertionEvent;
-        if (CONNECTOR_IOTDB_MODE_BATCH.equals(mode)) {
-          // Init last send time to record the first element
-          batchBuilder.initLastSendTime();
-          PipeTransferTabletReq tabletReq =
-              PipeTransferTabletReq.toTPipeTransferReq(event.convertToTablet(), event.isAligned());
-          batchBuilder.tryCacheReq(tabletReq, event);
-          if (batchBuilder.needSend()) {
-            doTransferInBatch(client);
-          }
-        } else {
-          doTransfer(client, event);
-        }
+        doTransfer(client, (PipeRawTabletInsertionEvent) tabletInsertionEvent);
       } else {
         LOGGER.warn(
             "IoTDBThriftSyncConnector only support "
@@ -255,6 +230,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       doTransfer(client, (PipeTsFileInsertionEvent) tsFileInsertionEvent);
     } catch (TException e) {
       isClientAlive.set(clientIndex, false);
+
       throw new PipeConnectionException(
           String.format(
               "Network error when transfer tsfile insertion event %s, because %s.",
@@ -285,6 +261,19 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       IoTDBThriftSyncConnectorClient client,
       PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, TException, WALPipeException {
+    if (isTabletBatchModeEnabled) {
+      // Init last send time to record the first element
+      batchBuilder.initLastSendTime();
+      PipeTransferInsertNodeReq insertNodeReq =
+          PipeTransferInsertNodeReq.toTPipeTransferReq(event.getInsertNode());
+
+      // To avoid redundant event when retrying
+      batchBuilder.tryCacheReq(insertNodeReq, event);
+      if (batchBuilder.needSend()) {
+        doTransferInBatch(client);
+      }
+    }
+
     final TPipeTransferResp resp =
         client.pipeTransfer(
             PipeTransferInsertNodeReq.toTPipeTransferReq(
@@ -302,6 +291,17 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       IoTDBThriftSyncConnectorClient client,
       PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException, TException, IOException {
+    if (isTabletBatchModeEnabled) {
+      // Init last send time to record the first element
+      batchBuilder.initLastSendTime();
+      PipeTransferTabletReq tabletReq =
+          PipeTransferTabletReq.toTPipeTransferReq(event.convertToTablet(), event.isAligned());
+      batchBuilder.tryCacheReq(tabletReq, event);
+      if (batchBuilder.needSend()) {
+        doTransferInBatch(client);
+      }
+    }
+
     final TPipeTransferResp resp =
         client.pipeTransfer(
             PipeTransferTabletReq.toTPipeTransferReq(

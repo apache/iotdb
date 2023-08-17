@@ -235,6 +235,7 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
   }
 
   /////////////////////////////// Air Gap ///////////////////////////////
+
   public static byte[] toTPipeTransferTabletBytes(Tablet tablet, boolean isAligned)
       throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
@@ -246,6 +247,8 @@ public class PipeTransferTabletReq extends TPipeTransferReq {
       return byteArrayOutputStream.toByteArray();
     }
   }
+
+  /////////////////////////////// Object ///////////////////////////////
 
   @Override
   public boolean equals(Object obj) {

@@ -80,6 +80,7 @@ public class PipeTransferInsertNodeReq extends TPipeTransferReq {
       statement.setMeasurementSchemas(node.getMeasurementSchemas());
       return statement;
     }
+
     throw new UnsupportedOperationException(
         String.format(
             "unknown InsertNode type %s when constructing statement from insert node.",
