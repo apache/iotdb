@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DuplicateInsertException;
@@ -129,6 +131,12 @@ public abstract class InsertBaseStatement extends Statement {
   @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
+  }
+
+  @Override
+  public boolean checkPermissionBeforeProcess(String userName) {
+    return AuthorityChecker.checkFullPathListPermission(
+        userName, getPaths(), PrivilegeType.WRITE_DATA.ordinal());
   }
 
   public abstract ISchemaValidation getSchemaValidation();

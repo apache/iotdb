@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -55,6 +57,12 @@ public class InsertStatement extends Statement {
       ret.add(fullPath);
     }
     return ret;
+  }
+
+  @Override
+  public boolean checkPermissionBeforeProcess(String userName) {
+    return AuthorityChecker.checkFullPathListPermission(
+        userName, getPaths(), PrivilegeType.WRITE_DATA.ordinal());
   }
 
   public PartialPath getDevice() {
