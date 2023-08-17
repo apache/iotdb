@@ -51,6 +51,7 @@ import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -1750,21 +1751,23 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         peers,
         regionId);
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    ConsensusGenericResponse resp;
-    if (regionId instanceof DataRegionId) {
-      resp = DataRegionConsensusImpl.getInstance().createLocalPeer(regionId, peers);
-    } else {
-      resp = SchemaRegionConsensusImpl.getInstance().createLocalPeer(regionId, peers);
-    }
-    if (!resp.isSuccess()) {
+    try {
+      if (regionId instanceof DataRegionId) {
+        DataRegionConsensusImpl.getInstance().createLocalPeer(regionId, peers);
+      } else {
+        SchemaRegionConsensusImpl.getInstance().createLocalPeer(regionId, peers);
+      }
+    } catch (ConsensusException e) {
+      LOGGER.error(
+          "Something wrong happened while calling consensus layer's createLocalPeer API.", e);
       LOGGER.warn(
           "{}, CreateNewRegionPeer error, peers: {}, regionId: {}, errorMessage",
           REGION_MIGRATE_PROCESS,
           peers,
           regionId,
-          resp.getException());
+          e);
       status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-      status.setMessage(resp.getException().getMessage());
+      status.setMessage(e.getMessage());
       return status;
     }
     LOGGER.info(

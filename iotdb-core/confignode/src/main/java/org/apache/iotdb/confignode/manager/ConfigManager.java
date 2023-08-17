@@ -172,6 +172,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelStateReq;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateAlterOperationUtil;
@@ -1135,8 +1136,9 @@ public class ConfigManager implements IManager {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         LOGGER.warn("Unexpected interruption during retry creating peer for consensus group");
-      } catch (Exception e) {
-        LOGGER.error("Failed to create peer for consensus group", e);
+      } catch (ConsensusException e) {
+        LOGGER.error(
+            "Something wrong happened while calling consensus layer's createLocalPeer API.", e);
         break;
       }
     }

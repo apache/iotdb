@@ -116,9 +116,11 @@ public class RatisConsensusTest {
     servers.get(0).createLocalPeer(group.getGroupId(), original);
     doConsensus(servers.get(0), group.getGroupId(), 10, 10);
 
-    ConsensusGenericResponse resp = servers.get(0).createLocalPeer(group.getGroupId(), original);
-    Assert.assertFalse(resp.isSuccess());
-    Assert.assertTrue(resp.getException() instanceof RatisRequestFailedException);
+    try {
+      servers.get(0).createLocalPeer(group.getGroupId(), original);
+    } catch (ConsensusException e) {
+      Assert.assertTrue(e instanceof RatisRequestFailedException);
+    }
 
     // add 2 members
     servers.get(1).createLocalPeer(group.getGroupId(), Collections.emptyList());
