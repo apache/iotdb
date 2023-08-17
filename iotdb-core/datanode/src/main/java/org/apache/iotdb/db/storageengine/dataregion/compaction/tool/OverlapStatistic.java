@@ -49,6 +49,9 @@ public class OverlapStatistic {
     if (summary.equals(new SequenceFileTaskSummary())) {
       return;
     }
+    if (summary.overlapChunkGroup > 0) {
+      this.overlappedSequenceFiles += 1;
+    }
     this.overlappedChunkGroupsInSequenceFile += summary.overlapChunkGroup;
     this.totalChunkGroupsInSequenceFile += summary.totalChunkGroups;
     this.overlappedChunksInSequenceFile += summary.overlapChunk;

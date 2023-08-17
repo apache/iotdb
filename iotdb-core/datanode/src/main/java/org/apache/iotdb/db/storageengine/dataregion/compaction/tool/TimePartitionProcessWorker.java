@@ -39,7 +39,8 @@ public class TimePartitionProcessWorker {
   public void run(CountDownLatch latch) {
     new Thread(
             () -> {
-              SequenceFileSubTaskThreadExecutor fileProcessTaskExecutor = new SequenceFileSubTaskThreadExecutor(10);
+              SequenceFileSubTaskThreadExecutor fileProcessTaskExecutor =
+                  new SequenceFileSubTaskThreadExecutor(10);
               while (!workerTaskList.isEmpty()) {
                 TimePartitionProcessTask task = workerTaskList.remove(0);
                 OverlapStatistic partialRet = task.processTimePartition(fileProcessTaskExecutor);
