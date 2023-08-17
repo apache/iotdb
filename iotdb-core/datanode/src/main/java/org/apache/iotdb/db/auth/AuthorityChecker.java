@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.protocol.session.IClientSession;
@@ -248,5 +249,33 @@ public class AuthorityChecker {
         logger.error("Unrecognizable operator type ({}) for AuthorityChecker.", type);
         return new int[] {-1};
     }
+  }
+
+  public static boolean checkFullPathPermission(
+      String username, PartialPath fullPath, int permission) {
+    // TODO
+    return true;
+  }
+
+  public static boolean checkFullPathListPermission(
+      String username, List<PartialPath> fullPaths, int permission) {
+    // TODO
+    return true;
+  }
+
+  public static boolean checkPatternPermission(
+      String username, List<PartialPath> pathPatterns, int permission) {
+    // TODO
+    return true;
+  }
+
+  public static PathPatternTree getAuthorizedPathTree(String username, int permission) {
+    // TODO
+    return null;
+  }
+
+  public static boolean checkSystemPermission(String username, int permission) {
+    // TODO
+    return true;
   }
 }

@@ -16,52 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.queryengine.plan.statement;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
+import org.apache.iotdb.commons.path.PathPatternTree;
 
-import java.util.List;
+public abstract class AuthorityInformationStatement extends Statement {
+  protected PathPatternTree authorityTree;
 
-/**
- * This class is a superclass of all statements.
- *
- * <p>A Statement containing all semantic information of an SQL. It is obtained by traversing the
- * AST via {@link ASTVisitor}.
- */
-public abstract class Statement extends StatementNode {
-
-  protected StatementType statementType = StatementType.NULL;
-
-  protected boolean isDebug;
-
-  protected Statement() {}
-
-  public void setType(StatementType statementType) {
-    this.statementType = statementType;
+  protected AuthorityInformationStatement(PathPatternTree authorityTree) {
+    this.authorityTree = authorityTree;
   }
 
-  public StatementType getType() {
-    return statementType;
-  }
-
-  public boolean isDebug() {
-    return isDebug;
-  }
-
-  public void setDebug(boolean debug) {
-    isDebug = debug;
-  }
-
-  public boolean isQuery() {
-    return false;
-  }
-
-  public abstract List<PartialPath> getPaths();
-
-  // TODO
   public boolean checkPermissionBeforeProcess(String userName) {
+    // check nothing before process
     return true;
+  }
+
+  public PathPatternTree getAuthorityTree() {
+    return authorityTree;
   }
 }

@@ -104,6 +104,13 @@ public class PathPatternTree {
     }
   }
 
+  /** Return the result of intersection between this and another PathPatternTree */
+  public static PathPatternTree intersectWithAnother(
+      PathPatternTree origin, PathPatternTree anotherTree) {
+    // TODO
+    return origin;
+  }
+
   /** Construct tree according to the pathPatternList. */
   public void constructTree() {
     for (PartialPath path : pathPatternList) {

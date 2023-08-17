@@ -19,14 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowType;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.AuthorityInformationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillComponent;
@@ -70,7 +72,7 @@ import java.util.Set;
  *   <li>[{ALIGN BY DEVICE | DISABLE ALIGN}]
  * </ul>
  */
-public class QueryStatement extends Statement {
+public class QueryStatement extends AuthorityInformationStatement {
 
   private SelectComponent selectComponent;
   private FromComponent fromComponent;
@@ -115,6 +117,8 @@ public class QueryStatement extends Statement {
   private boolean useWildcard = true;
 
   public QueryStatement() {
+    // TODO transmit user
+    super(AuthorityChecker.getAuthorizedPathTree(null, PrivilegeType.READ_DATA.ordinal()));
     this.statementType = StatementType.QUERY;
   }
 
@@ -133,6 +137,12 @@ public class QueryStatement extends Statement {
       authPaths.addAll(ExpressionAnalyzer.concatExpressionWithSuffixPaths(expression, prefixPaths));
     }
     return new ArrayList<>(authPaths);
+  }
+
+  @Override
+  public boolean checkPermissionBeforeProcess(String userName) {
+    // check nothing before process
+    return true;
   }
 
   public SelectComponent getSelectComponent() {
