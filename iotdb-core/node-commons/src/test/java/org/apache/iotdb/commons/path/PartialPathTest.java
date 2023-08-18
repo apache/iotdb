@@ -697,7 +697,6 @@ public class PartialPathTest {
         new PartialPath("root.test.dac.device1.**"),
         new HashSet<PartialPath>() {
           {
-            add(new PartialPath("root.test.dac.device1"));
             add(new PartialPath("root.test.dac.device1.d*"));
             add(new PartialPath("root.test.dac.device1.**.d*"));
           }
@@ -707,7 +706,6 @@ public class PartialPathTest {
         new PartialPath("root.test.dac.device1.**"),
         new HashSet<PartialPath>() {
           {
-            add(new PartialPath("root.test.dac.device1"));
             add(new PartialPath("root.test.dac.device1.**"));
           }
         });
@@ -734,11 +732,12 @@ public class PartialPathTest {
         new PartialPath("root.sg1.d1.**"),
         new HashSet<PartialPath>() {
           {
-            add(new PartialPath("root.sg1.d1"));
             add(new PartialPath("root.sg1.d1.d*"));
             add(new PartialPath("root.sg1.d1.**.d*"));
           }
         });
+    checkIntersect(
+        new PartialPath("root.sg1.d1"), new PartialPath("root.sg1.d1.**"), Collections.emptySet());
     checkIntersect(
         new PartialPath("root.sg1.d2.s1"),
         new PartialPath("root.sg1.d1.**"),
@@ -748,6 +747,9 @@ public class PartialPathTest {
   private void checkIntersect(PartialPath pattern, PartialPath prefix, Set<PartialPath> expected) {
     List<PartialPath> actual = pattern.intersectWithPrefixPattern(prefix);
     for (PartialPath path : actual) {
+      if (!expected.contains(path)) {
+        System.out.println(path);
+      }
       Assert.assertTrue(expected.remove(path));
     }
     Assert.assertTrue(expected.isEmpty());

@@ -508,6 +508,10 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     boolean[][] dp = new boolean[nodes1.length + 1][nodes2.length + 1];
     dp[0][0] = true;
     for (int i = 1; i <= nodes1.length; i++) {
+      boolean prune = false; //
+      // prune if we've already found that these two path are never overlapped in the beginning
+      // steps.
+      // e.g. root.db1.**.s1 and root.db2.**.s1
       for (int j = 1; j <= nodes2.length; j++) {
         if (nodes1[i - 1].equals(MULTI_LEVEL_PATH_WILDCARD)
             || nodes2[j - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
@@ -535,10 +539,14 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
               || (PathPatternUtil.hasWildcard(nodes2[j - 1])
                   && PathPatternUtil.isNodeMatch(nodes2[j - 1], nodes1[i - 1]))
               || nodes1[i - 1].equals(nodes2[j - 1])) {
-            // if nodes1[i-1] and nodes[2] is matched, dp[i][j] = dp[i-1][j-1]
+            // if nodes1[i-1] and nodes[j-1] is matched, dp[i][j] = dp[i-1][j-1]
             dp[i][j] |= dp[i - 1][j - 1];
           }
         }
+        prune |= dp[i][j];
+      }
+      if (!prune) {
+        break;
       }
     }
 
@@ -604,42 +612,44 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     boolean[] matchIndex = new boolean[thisLength];
     matchIndex[0] = true; // "root" must match "root"
 
-    // dp[i][j] means if nodes[0:i) matches prefixFullPath[0:j)
+    // dp[i][j] means if nodes[0:i] matches prefixFullPath[0:j]
     // for example: "root.**.d1.**" intersect "root.sg1.d1(.**)"
-    // dp[i][j] = (nodes[i]=="**"&&dp[i][j-1]) || (nodes[i]==prefixFullPath[j]&&dp[i-1][j-1])
+    // dp[i][j] = (nodes[i]=="**"&&dp[i][j-1]) || (nodes[i] matches prefixFullPath[j]&&dp[i-1][j-1])
     // 1 0 0 0 |→| 1 0 0 0 |→| 1 0 0 0
     // 0 0 0 0 |↓| 0 1 0 0 |→| 0 1 0 0
     // 0 0 0 0 |↓| 0 0 0 0 |↓| 0 1 1 0
     // Since the derivation of the next row depends only on the previous row, the calculation can
     // be performed using a one-dimensional array named "matchIndex"
     for (int i = 1; i < prefixFullPath.length; i++) {
-      boolean[] newMatchIndex = new boolean[thisLength];
-      for (int j = 1; j < thisLength; j++) {
+      for (int j = thisLength - 1; j >= 1; j--) {
         if (nodes[j].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-          newMatchIndex[j] = matchIndex[j] || matchIndex[j - 1];
+          matchIndex[j] = matchIndex[j] || matchIndex[j - 1];
         } else if (PathPatternUtil.isNodeMatch(nodes[j], prefixFullPath[i])) {
-          newMatchIndex[j] = matchIndex[j - 1];
+          matchIndex[j] = matchIndex[j - 1];
+        } else {
+          matchIndex[j] = false;
         }
       }
-      matchIndex = newMatchIndex;
     }
     // Scan in reverse order to construct the result set.
     // The structure of the result set is prefixFullPath+remaining nodes. 【E.g.root.sg1.d1 + **】
     // It can be pruned if the remaining nodes start with **.
     List<PartialPath> res = new ArrayList<>();
-    for (int j = matchIndex.length - 1; j >= 0; j--) {
-      if (matchIndex[j]) {
-        res.add(
-            new PartialPath(
-                ArrayUtils.addAll(prefixFullPath, Arrays.copyOfRange(nodes, j + 1, thisLength))));
-        if (j + 1 < thisLength && nodes[j + 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-          break;
-        }
-        if (nodes[j].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+    if (matchIndex[thisLength - 1] && nodes[thisLength - 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+      res.add(new PartialPath(ArrayUtils.addAll(prefixFullPath, nodes[thisLength - 1])));
+    } else {
+      for (int j = thisLength - 2; j > 0; j--) {
+        if (matchIndex[j]) {
           res.add(
               new PartialPath(
-                  ArrayUtils.addAll(prefixFullPath, Arrays.copyOfRange(nodes, j, thisLength))));
+                  ArrayUtils.addAll(prefixFullPath, Arrays.copyOfRange(nodes, j + 1, thisLength))));
+          if (nodes[j + 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+            break;
+          }
           if (nodes[j].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+            res.add(
+                new PartialPath(
+                    ArrayUtils.addAll(prefixFullPath, Arrays.copyOfRange(nodes, j, thisLength))));
             break;
           }
         }
