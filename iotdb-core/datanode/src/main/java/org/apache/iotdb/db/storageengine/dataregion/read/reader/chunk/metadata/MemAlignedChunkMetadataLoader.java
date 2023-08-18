@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.DiskAlignedChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -41,16 +42,26 @@ public class MemAlignedChunkMetadataLoader implements IChunkMetadataLoader {
   private final PartialPath seriesPath;
   private final QueryContext context;
   private final Filter timeFilter;
+  // only used for limit and offset push down optimizer, if we select all columns from aligned
+  // device, we
+  // can use statistics to skip.
+  // it's only exact while using limit & offset push down
+  private final boolean queryAllSensors;
 
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
 
   public MemAlignedChunkMetadataLoader(
-      TsFileResource resource, PartialPath seriesPath, QueryContext context, Filter timeFilter) {
+      TsFileResource resource,
+      PartialPath seriesPath,
+      QueryContext context,
+      Filter timeFilter,
+      boolean queryAllSensors) {
     this.resource = resource;
     this.seriesPath = seriesPath;
     this.context = context;
     this.timeFilter = timeFilter;
+    this.queryAllSensors = queryAllSensors;
   }
 
   @Override
@@ -66,7 +77,8 @@ public class MemAlignedChunkMetadataLoader implements IChunkMetadataLoader {
             if (chunkMetadata.needSetChunkLoader()) {
               chunkMetadata.setFilePath(resource.getTsFilePath());
               chunkMetadata.setClosed(resource.isClosed());
-              chunkMetadata.setChunkLoader(new DiskAlignedChunkLoader(context.isDebug()));
+              chunkMetadata.setChunkLoader(
+                  new DiskAlignedChunkLoader(context.isDebug(), queryAllSensors));
             }
           });
 
@@ -76,7 +88,8 @@ public class MemAlignedChunkMetadataLoader implements IChunkMetadataLoader {
       List<ReadOnlyMemChunk> memChunks = resource.getReadOnlyMemChunk(seriesPath);
       if (memChunks != null) {
         for (ReadOnlyMemChunk readOnlyMemChunk : memChunks) {
-          if (!memChunks.isEmpty()) {
+          if (!readOnlyMemChunk.isEmpty()) {
+            ((AlignedReadOnlyMemChunk) readOnlyMemChunk).setQueryAllSensors(queryAllSensors);
             chunkMetadataList.add(readOnlyMemChunk.getChunkMetaData());
           }
         }
