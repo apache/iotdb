@@ -21,13 +21,12 @@ package org.apache.iotdb.db.pipe.connector.protocol.websocket;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
@@ -35,7 +34,6 @@ import org.java_websocket.server.WebSocketServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -61,7 +59,12 @@ public class WebSocketConnectorServer extends WebSocketServer {
 
   @Override
   public void onOpen(WebSocket webSocket, ClientHandshake clientHandshake) {
-    LOGGER.info("The websocket server has been started!");
+    String log =
+        String.format(
+            "The connection from client %s:%d has been opened!",
+            webSocket.getRemoteSocketAddress().getHostName(),
+            webSocket.getRemoteSocketAddress().getPort());
+    LOGGER.info(log);
   }
 
   @Override
@@ -76,7 +79,12 @@ public class WebSocketConnectorServer extends WebSocketServer {
 
   @Override
   public void onMessage(WebSocket webSocket, String s) {
-    String log = String.format("Received a message `%s` from %s:%d", s, webSocket.getRemoteSocketAddress().getHostName(), webSocket.getRemoteSocketAddress().getPort());
+    String log =
+        String.format(
+            "Received a message `%s` from %s:%d",
+            s,
+            webSocket.getRemoteSocketAddress().getHostName(),
+            webSocket.getRemoteSocketAddress().getPort());
     LOGGER.info(log);
     if (s.startsWith("START")) {
       handleStart(webSocket);
@@ -89,39 +97,52 @@ public class WebSocketConnectorServer extends WebSocketServer {
 
   @Override
   public void onError(WebSocket webSocket, Exception e) {
-    String log =
-        String.format(
-            "Got an error %s from %s:%d",
-            e.getMessage(),
-            webSocket.getRemoteSocketAddress().getAddress(),
-            webSocket.getRemoteSocketAddress().getPort());
+    String log = null;
+    if (webSocket.getRemoteSocketAddress() != null) {
+      log =
+          String.format(
+              "Got an error `%s` from %s:%d",
+              e.getMessage(),
+              webSocket.getLocalSocketAddress().getHostName(),
+              webSocket.getLocalSocketAddress().getPort());
+    } else {
+      log = String.format("Got an error `%s` from client", e.getMessage());
+    }
     LOGGER.error(log);
   }
 
   @Override
-  public void onStart() {}
+  public void onStart() {
+    String log =
+        String.format(
+            "The websocket server %s:%d has been started!",
+            this.getAddress().getHostName(), this.getPort());
+    LOGGER.error(log);
+  }
 
   public void addEvent(Pair<Long, Event> event) {
-    synchronized (events) {
-      while (events.size() >= 50) {
-        try {
-          wait();
-        } catch (InterruptedException e) {
-          throw new RuntimeException(e);
+    if (events.size() >= 50) {
+      synchronized (events) {
+        while (events.size() >= 50) {
+          try {
+            events.wait();
+          } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+          }
         }
       }
-      events.put(event);
     }
+    events.put(event);
   }
 
   private void handleStart(WebSocket webSocket) {
     try {
       ArrayList<WebSocket> webSockets = new ArrayList<>();
       webSockets.add(webSocket);
+      Pair<Long, Event> eventPair = events.take();
       synchronized (events) {
-        Pair<Long, Event> eventPair = events.take();
+        events.notifyAll();
         transfer(eventPair, webSockets);
-        notify();
       }
     } catch (InterruptedException e) {
       String log = String.format("The event can't be taken, because: %s", e.getMessage());
@@ -158,9 +179,10 @@ public class WebSocketConnectorServer extends WebSocketServer {
         tabletBuffer = ((PipeInsertNodeTabletInsertionEvent) event).convertToTablet().serialize();
       } else if (event instanceof PipeRawTabletInsertionEvent) {
         tabletBuffer = ((PipeRawTabletInsertionEvent) event).convertToTablet().serialize();
-      } else if (event instanceof TsFileInsertionEvent) {
-        Iterable<TabletInsertionEvent> subEvents =
-            ((TsFileInsertionEvent) event).toTabletInsertionEvents();
+      } else if (event instanceof PipeTsFileInsertionEvent) {
+        PipeTsFileInsertionEvent tsFileInsertionEvent = (PipeTsFileInsertionEvent) event;
+        tsFileInsertionEvent.waitForTsFileClose();
+        Iterable<TabletInsertionEvent> subEvents = tsFileInsertionEvent.toTabletInsertionEvents();
         for (TabletInsertionEvent subEvent : subEvents) {
           tabletBuffer = ((PipeRawTabletInsertionEvent) subEvent).convertToTablet().serialize();
         }
@@ -172,12 +194,23 @@ public class WebSocketConnectorServer extends WebSocketServer {
       if (tabletBuffer == null) {
         return;
       }
-      ByteBuffer payload = ByteBuffer.allocate(Long.BYTES + tabletBuffer.capacity());
-      ReadWriteIOUtils.write(commitId, payload);
+      ByteBuffer payload = ByteBuffer.allocate(Long.BYTES + tabletBuffer.limit());
+      payload.putLong(commitId);
       payload.put(tabletBuffer);
+      payload.flip();
       this.broadcast(payload, webSockets);
       eventMap.put(eventPair.getLeft(), eventPair.getRight());
-    } catch (IOException e) {
+      String log =
+          String.format(
+              "Transferred a message to client %s:%d",
+              webSockets.get(0).getRemoteSocketAddress().getAddress().getHostName(),
+              webSockets.get(0).getRemoteSocketAddress().getPort());
+      LOGGER.info(log);
+    } catch (InterruptedException e) {
+      events.put(eventPair);
+      Thread.currentThread().interrupt();
+      throw new PipeException(e.getMessage());
+    } catch (Exception e) {
       events.put(eventPair);
       throw new PipeException(e.getMessage());
     }

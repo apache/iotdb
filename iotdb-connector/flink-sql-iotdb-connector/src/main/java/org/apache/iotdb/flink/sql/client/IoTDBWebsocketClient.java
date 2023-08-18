@@ -19,18 +19,20 @@
 package org.apache.iotdb.flink.sql.client;
 
 import org.apache.iotdb.flink.sql.function.IoTDBCDCSourceFunction;
+import org.apache.iotdb.flink.sql.wrapper.TabletWrapper;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
-import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.nio.ByteBuffer;
 
 public class IoTDBWebsocketClient extends WebSocketClient {
-  private IoTDBCDCSourceFunction function;
-  private SourceContext ctx;
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBWebsocketClient.class);
+  private final IoTDBCDCSourceFunction function;
 
   public IoTDBWebsocketClient(URI uri, IoTDBCDCSourceFunction function) {
     super(uri);
@@ -38,7 +40,11 @@ public class IoTDBWebsocketClient extends WebSocketClient {
   }
 
   @Override
-  public void onOpen(ServerHandshake serverHandshake) {}
+  public void onOpen(ServerHandshake serverHandshake) {
+    String log =
+        String.format("The connection with %s:%d has been created!", uri.getHost(), uri.getPort());
+    LOGGER.info(log);
+  }
 
   @Override
   public void onMessage(String s) {}
@@ -46,24 +52,21 @@ public class IoTDBWebsocketClient extends WebSocketClient {
   @Override
   public void onMessage(ByteBuffer bytes) {
     super.onMessage(bytes);
+    String log = String.format("Received a message from %s:%d", uri.getHost(), uri.getPort());
+    LOGGER.info(log);
     long commitId = bytes.getLong();
-    byte[] tabletBytes = new byte[bytes.capacity() - Long.BYTES];
-    ByteBuffer tabletBuffer = bytes.get(tabletBytes, Long.BYTES, bytes.capacity() - Long.BYTES);
-    Tablet tablet = Tablet.deserialize(tabletBuffer);
-    function.collectTablet(tablet, ctx);
-    this.send(String.format("ACK:%d", commitId));
+    Tablet tablet = Tablet.deserialize(bytes);
+    function.addTabletWrapper(new TabletWrapper(commitId, this, tablet));
   }
 
   @Override
-  public void onClose(int i, String s, boolean b) {}
+  public void onClose(int i, String s, boolean b) {
+    LOGGER.info("The connection has been closed!");
+  }
 
   @Override
   public void onError(Exception e) {
-    e.printStackTrace();
-    throw new RuntimeException(e);
-  }
-
-  public void setContext(SourceContext ctx) {
-    this.ctx = ctx;
+    String log = String.format("Got an error: %s", e.getMessage());
+    LOGGER.error(log);
   }
 }

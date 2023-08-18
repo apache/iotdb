@@ -22,6 +22,7 @@ import org.apache.iotdb.flink.sql.client.IoTDBWebsocketClient;
 import org.apache.iotdb.flink.sql.common.Options;
 import org.apache.iotdb.flink.sql.common.Utils;
 import org.apache.iotdb.flink.sql.wrapper.SchemaWrapper;
+import org.apache.iotdb.flink.sql.wrapper.TabletWrapper;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.Tablet;
@@ -34,64 +35,109 @@ import org.apache.flink.streaming.api.functions.source.RichSourceFunction;
 import org.apache.flink.table.data.GenericRowData;
 import org.apache.flink.table.types.DataType;
 import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.enums.ReadyState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 public class IoTDBCDCSourceFunction<RowData> extends RichSourceFunction<RowData> {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBCDCSourceFunction.class);
   private final List<IoTDBWebsocketClient> socketClients = new ArrayList<>();
-  private final List<Tuple2<String, DataType>> SCHEMA;
-  private final List<String> NODE_URLS;
-  private final String DEVICE;
-  private final List<String> MEASUREMENTS;
+  private final List<String> nodeUrls;
+  private final String device;
+  private final List<String> measurements;
+  private final BlockingQueue<TabletWrapper> tabletWrappers;
+  private transient ExecutorService consumeExecutor;
 
   public IoTDBCDCSourceFunction(ReadableConfig options, SchemaWrapper schemaWrapper) {
-    SCHEMA = schemaWrapper.getSchema();
-    NODE_URLS = Arrays.asList(options.get(Options.NODE_URLS).split(","));
-    DEVICE = options.get(Options.DEVICE);
-    MEASUREMENTS =
-        SCHEMA.stream().map(field -> String.valueOf(field.f0)).collect(Collectors.toList());
+    List<Tuple2<String, DataType>> tableSchema = schemaWrapper.getSchema();
+    nodeUrls = Arrays.asList(options.get(Options.NODE_URLS).split(","));
+    device = options.get(Options.DEVICE);
+    measurements =
+        tableSchema.stream().map(field -> String.valueOf(field.f0)).collect(Collectors.toList());
+
+    tabletWrappers = new ArrayBlockingQueue<>(nodeUrls.size());
   }
 
   @Override
   public void open(Configuration parameters) throws Exception {
     super.open(parameters);
-    for (String nodeUrl : NODE_URLS) {
-      socketClients.add(new IoTDBWebsocketClient(new URI(String.format("ws://%s", nodeUrl)), this));
+    consumeExecutor = Executors.newFixedThreadPool(1);
+    for (String nodeUrl : nodeUrls) {
+      URI uri = new URI(String.format("ws://%s", nodeUrl));
+      socketClients.add(initAndGet(uri));
     }
   }
 
   @Override
-  public void run(SourceContext<RowData> ctx) {
-    socketClients.forEach(
-        socketClient -> {
-          socketClient.setContext(ctx);
-          socketClient.connect();
-          while (true) {
-            if (socketClient.isOpen()) {
-              socketClient.send("START");
-              break;
-            }
+  public void run(SourceContext<RowData> ctx) throws InterruptedException, URISyntaxException {
+    consumeExecutor.submit(new ConsumeRunnable(ctx));
+    consumeExecutor.shutdown();
+    while (true) {
+      for (int i = 0; i < socketClients.size(); i++) {
+        if (socketClients.get(i).getReadyState().equals(ReadyState.CLOSED)) {
+          String nodeUrl = nodeUrls.get(i);
+          try {
+            URI uri = new URI(String.format("ws://%s", nodeUrl));
+            socketClients.set(i, initAndGet(uri));
+          } catch (URISyntaxException e) {
+            String log = String.format("Unable to create an URI by nodeUrl: %s", nodeUrl);
+            LOGGER.error(log);
+            throw e;
           }
-        });
+        }
+      }
+    }
   }
 
   @Override
   public void cancel() {
-    if (socketClients != null) {
-      socketClients.forEach(WebSocketClient::close);
+    socketClients.forEach(WebSocketClient::close);
+  }
+
+  public void addTabletWrapper(TabletWrapper tabletWrapper) {
+    try {
+      this.tabletWrappers.put(tabletWrapper);
+    } catch (InterruptedException e) {
+      String host = tabletWrapper.getWebsocketClient().getRemoteSocketAddress().getHostName();
+      int port = tabletWrapper.getWebsocketClient().getRemoteSocketAddress().getPort();
+      String log =
+          String.format(
+              "The tablet from %s:%d can't be put into queue, because: %s",
+              host, port, e.getMessage());
+      LOGGER.warn(log);
+      Thread.currentThread().interrupt();
     }
   }
 
+  private IoTDBWebsocketClient initAndGet(URI uri) throws InterruptedException {
+    IoTDBWebsocketClient client = new IoTDBWebsocketClient(uri, this);
+    client.connect();
+    while (!client.getReadyState().equals(ReadyState.OPEN)) {
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw e;
+      }
+    }
+    client.send("START");
+    return client;
+  }
+
   public void collectTablet(Tablet tablet, SourceContext<RowData> ctx) {
-    if (!DEVICE.equals(tablet.deviceId)) {
+    if (!device.equals(tablet.deviceId)) {
       return;
     }
     List<MeasurementSchema> schemas = tablet.getSchemas();
@@ -108,7 +154,7 @@ public class IoTDBCDCSourceFunction<RowData> extends RichSourceFunction<RowData>
     for (int i = 0; i < rowSize; i++) {
       ArrayList<Object> row = new ArrayList<>();
       row.add(tablet.timestamps[i]);
-      for (String measurement : MEASUREMENTS) {
+      for (String measurement : measurements) {
         if (values.get(measurement).getLeft() == null
             || !values.get(measurement).getLeft().isMarked(i)) {
           row.add(values.get(measurement).getRight().get(i));
@@ -118,6 +164,30 @@ public class IoTDBCDCSourceFunction<RowData> extends RichSourceFunction<RowData>
       }
       RowData rowData = (RowData) GenericRowData.of(row.toArray());
       ctx.collect(rowData);
+    }
+  }
+
+  private class ConsumeRunnable implements Runnable {
+    SourceContext<RowData> context;
+
+    public ConsumeRunnable(SourceContext<RowData> context) {
+      this.context = context;
+    }
+
+    @Override
+    public void run() {
+      while (true) {
+        try {
+          TabletWrapper tabletWrapper = tabletWrappers.take();
+          collectTablet(tabletWrapper.getTablet(), context);
+          tabletWrapper
+              .getWebsocketClient()
+              .send(String.format("ACK:%d", tabletWrapper.getCommitId()));
+        } catch (InterruptedException e) {
+          LOGGER.warn("The tablet can't be taken from queue!");
+          Thread.currentThread().interrupt();
+        }
+      }
     }
   }
 }

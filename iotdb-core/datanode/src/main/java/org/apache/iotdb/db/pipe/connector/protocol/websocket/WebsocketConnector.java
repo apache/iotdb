@@ -2,6 +2,9 @@ package org.apache.iotdb.db.pipe.connector.protocol.websocket;
 
 import org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -25,6 +28,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class WebsocketConnector implements PipeConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(WebsocketConnector.class);
   private WebSocketConnectorServer server;
+  private int port;
 
   public final AtomicLong commitIdGenerator = new AtomicLong(0);
   private final AtomicLong lastCommitId = new AtomicLong(0);
@@ -37,29 +41,50 @@ public class WebsocketConnector implements PipeConnector {
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
-    int cdcPort =
+    port =
         parameters.getIntOrDefault(
             PipeConnectorConstant.CONNECTOR_WEBSOCKET_PORT_KEY,
             PipeConnectorConstant.CONNECTOR_WEBSOCKET_PORT_DEFAULT_VALUE);
-    server = new WebSocketConnectorServer(new InetSocketAddress(cdcPort), this);
-    server.start();
   }
 
   @Override
-  public void handshake() throws Exception {}
+  public void handshake() throws Exception {
+    if (server == null) {
+      server = new WebSocketConnectorServer(new InetSocketAddress(port), this);
+      server.start();
+    }
+  }
 
   @Override
   public void heartbeat() throws Exception {}
 
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) {
+    if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
+        && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
+      LOGGER.warn(
+          "WebsocketConnector only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
+              + "Current event: {}.",
+          tabletInsertionEvent);
+      return;
+    }
     long commitId = commitIdGenerator.incrementAndGet();
+    ((EnrichedEvent) tabletInsertionEvent)
+        .increaseReferenceCount(WebsocketConnector.class.getName());
     server.addEvent(new Pair<>(commitId, tabletInsertionEvent));
   }
 
   @Override
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
+    if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
+      LOGGER.warn(
+          "WebsocketConnector only support PipeTsFileInsertionEvent. Current event: {}.",
+          tsFileInsertionEvent);
+      return;
+    }
     long commitId = commitIdGenerator.incrementAndGet();
+    ((EnrichedEvent) tsFileInsertionEvent)
+        .increaseReferenceCount(WebsocketConnector.class.getName());
     server.addEvent(new Pair<>(commitId, tsFileInsertionEvent));
   }
 
