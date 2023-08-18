@@ -314,10 +314,12 @@ public class PartitionCache {
       List<String> devicePaths,
       boolean tryToFetch,
       boolean isAutoCreate) {
-    // miss when devicePath contains *
-    for (String devicePath : devicePaths) {
-      if (devicePath.contains("*")) {
-        return;
+    if (!isAutoCreate) {
+      // miss when devicePath contains *
+      for (String devicePath : devicePaths) {
+        if (devicePath.contains("*")) {
+          return;
+        }
       }
     }
     // first try to hit database in fast-fail way
