@@ -22,9 +22,9 @@ package org.apache.iotdb.db.pipe.event.common.tablet;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -42,6 +42,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   private final EnrichedEvent sourceEvent;
   private TabletInsertionDataContainer dataContainer;
 
+  @TestOnly
   public PipeRawTabletInsertionEvent(Tablet tablet, boolean isAligned) {
     this(tablet, isAligned, null, null, false, null);
   }
@@ -50,11 +51,12 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
       Tablet tablet,
       boolean isAligned,
       PipeTaskMeta pipeTaskMeta,
-      PipeTsFileInsertionEvent sourceEvent,
+      EnrichedEvent sourceEvent,
       boolean needToReport) {
     this(tablet, isAligned, pipeTaskMeta, sourceEvent, needToReport, null);
   }
 
+  @TestOnly
   public PipeRawTabletInsertionEvent(Tablet tablet, boolean isAligned, String pattern) {
     this(tablet, isAligned, null, null, false, pattern);
   }
@@ -107,7 +109,8 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   @Override
   public Iterable<TabletInsertionEvent> processRowByRow(BiConsumer<Row, RowCollector> consumer) {
     if (dataContainer == null) {
-      dataContainer = new TabletInsertionDataContainer(tablet, isAligned, getPattern());
+      dataContainer =
+          new TabletInsertionDataContainer(pipeTaskMeta, this, tablet, isAligned, getPattern());
     }
     return dataContainer.processRowByRow(consumer);
   }
@@ -115,7 +118,8 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   @Override
   public Iterable<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer) {
     if (dataContainer == null) {
-      dataContainer = new TabletInsertionDataContainer(tablet, isAligned, getPattern());
+      dataContainer =
+          new TabletInsertionDataContainer(pipeTaskMeta, this, tablet, isAligned, getPattern());
     }
     return dataContainer.processTablet(consumer);
   }
@@ -136,7 +140,8 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
     // if notNullPattern is not "root", we need to convert the tablet
     if (dataContainer == null) {
-      dataContainer = new TabletInsertionDataContainer(tablet, isAligned, notNullPattern);
+      dataContainer =
+          new TabletInsertionDataContainer(pipeTaskMeta, this, tablet, isAligned, notNullPattern);
     }
     return dataContainer.convertToTablet();
   }

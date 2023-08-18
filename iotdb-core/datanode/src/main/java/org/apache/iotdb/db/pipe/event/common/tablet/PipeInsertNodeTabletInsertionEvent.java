@@ -120,7 +120,8 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   public Iterable<TabletInsertionEvent> processRowByRow(BiConsumer<Row, RowCollector> consumer) {
     try {
       if (dataContainer == null) {
-        dataContainer = new TabletInsertionDataContainer(getInsertNode(), getPattern());
+        dataContainer =
+            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), getPattern());
       }
       return dataContainer.processRowByRow(consumer);
     } catch (Exception e) {
@@ -132,7 +133,8 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   public Iterable<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer) {
     try {
       if (dataContainer == null) {
-        dataContainer = new TabletInsertionDataContainer(getInsertNode(), getPattern());
+        dataContainer =
+            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), getPattern());
       }
       return dataContainer.processTablet(consumer);
     } catch (Exception e) {
@@ -149,7 +151,8 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   public Tablet convertToTablet() {
     try {
       if (dataContainer == null) {
-        dataContainer = new TabletInsertionDataContainer(getInsertNode(), getPattern());
+        dataContainer =
+            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), getPattern());
       }
       return dataContainer.convertToTablet();
     } catch (Exception e) {

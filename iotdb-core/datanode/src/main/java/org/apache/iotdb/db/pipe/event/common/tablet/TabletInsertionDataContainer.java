@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.pipe.event.common.tablet;
 
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRowCollector;
-import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
@@ -49,8 +49,8 @@ public class TabletInsertionDataContainer {
 
   private String deviceId;
   private boolean isAligned;
-  private final PipeTaskMeta pipeTaskMeta = null; // used to report progress
-  private final PipeTsFileInsertionEvent sourceEvent = null; // used to report progress
+  private final PipeTaskMeta pipeTaskMeta; // used to report progress
+  private final EnrichedEvent sourceEvent; // used to report progress
   private MeasurementSchema[] measurementSchemaList;
   private String[] columnNameStringList;
 
@@ -64,6 +64,13 @@ public class TabletInsertionDataContainer {
   private Tablet tablet;
 
   public TabletInsertionDataContainer(InsertNode insertNode, String pattern) {
+    this(null, null, insertNode, pattern);
+  }
+
+  public TabletInsertionDataContainer(
+      PipeTaskMeta pipeTaskMeta, EnrichedEvent sourceEvent, InsertNode insertNode, String pattern) {
+    this.pipeTaskMeta = pipeTaskMeta;
+    this.sourceEvent = sourceEvent;
     if (insertNode instanceof InsertRowNode) {
       parse((InsertRowNode) insertNode, pattern);
     } else if (insertNode instanceof InsertTabletNode) {
@@ -74,7 +81,14 @@ public class TabletInsertionDataContainer {
     }
   }
 
-  public TabletInsertionDataContainer(Tablet tablet, boolean isAligned, String pattern) {
+  public TabletInsertionDataContainer(
+      PipeTaskMeta pipeTaskMeta,
+      EnrichedEvent sourceEvent,
+      Tablet tablet,
+      boolean isAligned,
+      String pattern) {
+    this.pipeTaskMeta = pipeTaskMeta;
+    this.sourceEvent = sourceEvent;
     parse(tablet, isAligned, pattern);
   }
 
@@ -309,7 +323,7 @@ public class TabletInsertionDataContainer {
       return Collections.emptyList();
     }
 
-    final PipeRowCollector rowCollector = new PipeRowCollector();
+    final PipeRowCollector rowCollector = new PipeRowCollector(pipeTaskMeta, sourceEvent);
     for (int i = 0; i < rowCount; i++) {
       consumer.accept(
           new PipeRow(
@@ -328,7 +342,7 @@ public class TabletInsertionDataContainer {
   }
 
   public Iterable<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer) {
-    final PipeRowCollector rowCollector = new PipeRowCollector();
+    final PipeRowCollector rowCollector = new PipeRowCollector(pipeTaskMeta, sourceEvent);
     consumer.accept(convertToTablet(), rowCollector);
     return rowCollector.convertToTabletInsertionEvents();
   }

@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.pipe.event.common.row;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
@@ -37,6 +39,13 @@ public class PipeRowCollector implements RowCollector {
   private final List<TabletInsertionEvent> tabletInsertionEventList = new ArrayList<>();
   private Tablet tablet = null;
   private boolean isAligned = false;
+  private final PipeTaskMeta pipeTaskMeta; // used to report progress
+  private final EnrichedEvent sourceEvent; // used to report progress
+
+  public PipeRowCollector(PipeTaskMeta pipeTaskMeta, EnrichedEvent sourceEvent) {
+    this.pipeTaskMeta = pipeTaskMeta;
+    this.sourceEvent = sourceEvent;
+  }
 
   @Override
   public void collectRow(Row row) {
@@ -85,7 +94,8 @@ public class PipeRowCollector implements RowCollector {
 
   private void collectTabletInsertionEvent() {
     if (tablet != null) {
-      tabletInsertionEventList.add(new PipeRawTabletInsertionEvent(tablet, isAligned));
+      tabletInsertionEventList.add(
+          new PipeRawTabletInsertionEvent(tablet, isAligned, pipeTaskMeta, sourceEvent, true));
     }
     this.tablet = null;
   }
