@@ -44,17 +44,17 @@ import java.util.concurrent.locks.ReentrantLock;
 public class OverlapStatisticTool {
 
   private static final String WORKER_NUM_ARG = "worker_num";
+  public static final int DEFAULT_WORKER_NUM = 4;
   private static final String SUB_TASK_NUM_ARG = "sub_task_num";
+  public static final int DEFAULT_WORKER_SUB_TASK_NUM = 1;
   private static final String DATA_DIRS_ARG = "data_dirs";
-  public static int DEFAULT_WORKER_NUM = 4;
-  public static int DEFAULT_WORKER_SUB_TASK_NUM = 1;
-  public static long seqFileCount = 0;
 
   public static int workerNum;
   public static int subTaskNum;
   public static List<String> dataDirs;
 
   public static Lock outputInfolock = new ReentrantLock();
+  public static long seqFileCount = 0;
   public static long processedTimePartitionCount = 0;
   public static long processedSeqFileCount = 0;
   public static final Map<String, Pair<List<String>, List<String>>> timePartitionFileMap =
@@ -162,7 +162,6 @@ public class OverlapStatisticTool {
         statistic.merge(partialRet);
       }
     }
-    System.out.println();
     PrintUtil.printOneStatistics(statistic, "All EXECUTED");
   }
 

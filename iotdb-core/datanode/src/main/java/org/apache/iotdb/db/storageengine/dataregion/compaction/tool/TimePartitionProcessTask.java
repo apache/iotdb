@@ -48,7 +48,6 @@ public class TimePartitionProcessTask {
         processSequenceSpaceAsync(fileTaskExecutor, unseqSpaceStatistics, timePartitionFiles.left);
     // 更新并打印进度
     OverlapStatisticTool.outputInfolock.lock();
-    System.out.println();
     OverlapStatisticTool.processedTimePartitionCount += 1;
     OverlapStatisticTool.processedSeqFileCount += partialRet.totalSequenceFile;
     PrintUtil.printOneStatistics(partialRet, timePartition);

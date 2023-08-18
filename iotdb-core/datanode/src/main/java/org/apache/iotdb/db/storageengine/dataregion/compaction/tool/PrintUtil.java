@@ -23,6 +23,7 @@ class PrintUtil {
   static String[] header = {"", "Total", "Overlap", "Overlap/Total"};
 
   public static void printOneStatistics(OverlapStatistic overlapStatistic, String label) {
+    System.out.println();
     printTableLog(overlapStatistic);
     printProgressLog(label, overlapStatistic);
   }
