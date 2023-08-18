@@ -238,9 +238,7 @@ public class IoTDBUDFManagementIT {
         while (resultSet.next()) {
           ++count;
         }
-        Assert.assertEquals(
-            2 + NATIVE_FUNCTIONS_COUNT + BUILTIN_FUNCTIONS_COUNT + BUILTIN_SCALAR_FUNCTIONS_COUNT,
-            count);
+        Assert.assertEquals(2 + NATIVE_FUNCTIONS_COUNT + BUILTIN_FUNCTIONS_COUNT, count);
         assertEquals(3, resultSet.getMetaData().getColumnCount());
         statement.execute("drop function udf");
         statement.execute("drop function udf1");
