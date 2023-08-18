@@ -92,16 +92,12 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
               jarFile != null);
 
           TSStatus response;
-          try {
-            response =
-                configManager
-                    .getConsensusManager()
-                    .write(new AddTriggerInTablePlan(triggerInformation, jarFile));
-          } catch (ConsensusException e) {
-            LOG.warn("Something wrong happened while calling consensus layer's write API.", e);
-            response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-            response.setMessage(e.getMessage());
-          }
+
+          response =
+              configManager
+                  .getConsensusManager()
+                  .write(new AddTriggerInTablePlan(triggerInformation, jarFile));
+
           if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             throw new TriggerManagementException(response.getMessage());
           }

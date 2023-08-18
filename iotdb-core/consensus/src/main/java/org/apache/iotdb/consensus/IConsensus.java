@@ -35,25 +35,35 @@ import java.util.List;
 @ThreadSafe
 public interface IConsensus {
 
-  /** Start the consensus module */
+  /**
+   * Start the consensus module.
+   *
+   * @throws IOException When start consensus errors.
+   */
   void start() throws IOException;
 
-  /** Stop the consensus module */
+  /**
+   * Stop the consensus module.
+   *
+   * @throws IOException When stop consensus errors.
+   */
   void stop() throws IOException;
 
   /**
-   * Write data to the corresponding consensus group
+   * Write data to the corresponding consensus group.
    *
    * @param groupId the consensus group this request belongs
    * @param request write request
+   * @throws ConsensusException When write doesn't success
    */
   TSStatus write(ConsensusGroupId groupId, IConsensusRequest request) throws ConsensusException;
 
   /**
-   * Read data from the corresponding consensus group
+   * Read data from the corresponding consensus group.
    *
    * @param groupId the consensus group this request belongs
    * @param request read request
+   * @throws ConsensusException When read doesn't success
    */
   DataSet read(ConsensusGroupId groupId, IConsensusRequest request) throws ConsensusException;
 
@@ -69,6 +79,7 @@ public interface IConsensus {
    *
    * @param groupId the consensus group this Peer belongs
    * @param peers other known peers in this group
+   * @throws ConsensusException When createLocalPeer doesn't success
    */
   void createLocalPeer(ConsensusGroupId groupId, List<Peer> peers) throws ConsensusException;
 
@@ -80,6 +91,7 @@ public interface IConsensus {
    * #removeRemotePeer(ConsensusGroupId, Peer)}).
    *
    * @param groupId the consensus group this Peer used to belong
+   * @throws ConsensusException When deleteLocalPeer doesn't success
    */
   void deleteLocalPeer(ConsensusGroupId groupId) throws ConsensusException;
 
@@ -95,6 +107,7 @@ public interface IConsensus {
    *
    * @param groupId the consensus group this peer belongs
    * @param peer the newly added peer
+   * @throws ConsensusException When addRemotePeer doesn't success
    */
   void addRemotePeer(ConsensusGroupId groupId, Peer peer) throws ConsensusException;
 
@@ -107,6 +120,7 @@ public interface IConsensus {
    *
    * @param groupId the consensus group this peer belongs
    * @param peer the peer to be removed
+   * @throws ConsensusException When removeRemotePeer doesn't success
    */
   void removeRemotePeer(ConsensusGroupId groupId, Peer peer) throws ConsensusException;
 

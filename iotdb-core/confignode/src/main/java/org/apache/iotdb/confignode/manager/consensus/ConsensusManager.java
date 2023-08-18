@@ -257,6 +257,7 @@ public class ConsensusManager {
    * Create peer in new node to build consensus group.
    *
    * @param configNodeLocations All registered ConfigNodes
+   * @throws ConsensusException When addPeer doesn't success
    */
   public void createPeerForConsensusGroup(List<TConfigNodeLocation> configNodeLocations)
       throws ConsensusException {
@@ -313,12 +314,20 @@ public class ConsensusManager {
     }
   }
 
-  /** Transmit PhysicalPlan to confignode.consensus.statemachine */
+  /**
+   * Transmit PhysicalPlan to confignode.consensus.statemachine
+   *
+   * @throws ConsensusException When write doesn't success
+   */
   public TSStatus write(ConfigPhysicalPlan plan) throws ConsensusException {
     return consensusImpl.write(DEFAULT_CONSENSUS_GROUP_ID, plan);
   }
 
-  /** Transmit PhysicalPlan to confignode.consensus.statemachine */
+  /**
+   * Transmit PhysicalPlan to confignode.consensus.statemachine
+   *
+   * @throws ConsensusException When read doesn't success
+   */
   public DataSet read(ConfigPhysicalPlan plan) throws ConsensusException {
     return consensusImpl.read(DEFAULT_CONSENSUS_GROUP_ID, plan);
   }

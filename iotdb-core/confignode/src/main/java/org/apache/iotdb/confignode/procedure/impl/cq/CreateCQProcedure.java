@@ -65,6 +65,9 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
 
   private long firstExecutionTime;
 
+  private static final String CONSENSUS_WRITE_ERROR =
+      "Something wrong happened while calling consensus layer's write API.";
+
   public CreateCQProcedure(ScheduledExecutorService executor) {
     super();
     this.executor = executor;
@@ -126,7 +129,7 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
               .getConsensusManager()
               .write(new AddCQPlan(req, md5, firstExecutionTime));
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
     }
@@ -147,7 +150,7 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
     try {
       res = env.getConfigManager().getConsensusManager().write(new ActiveCQPlan(req.cqId, md5));
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
     }
@@ -177,7 +180,7 @@ public class CreateCQProcedure extends AbstractNodeProcedure<CreateCQState> {
         try {
           res = env.getConfigManager().getConsensusManager().write(new DropCQPlan(req.cqId, md5));
         } catch (ConsensusException e) {
-          LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+          LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
           res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
           res.setMessage(e.getMessage());
         }

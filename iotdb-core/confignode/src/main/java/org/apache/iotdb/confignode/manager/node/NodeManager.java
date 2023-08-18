@@ -107,6 +107,9 @@ public class NodeManager {
 
   private final ReentrantLock removeConfigNodeLock;
 
+  private static final String CONSENSUS_WRITE_ERROR =
+      "Something wrong happened while calling consensus layer's write API.";
+
   public NodeManager(IManager configManager, NodeInfo nodeInfo) {
     this.configManager = configManager;
     this.nodeInfo = nodeInfo;
@@ -252,7 +255,7 @@ public class NodeManager {
     try {
       getConsensusManager().write(registerDataNodePlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
     }
 
     // update datanode's versionInfo
@@ -261,7 +264,7 @@ public class NodeManager {
     try {
       getConsensusManager().write(updateVersionInfoPlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
     }
 
     // Bind DataNode metrics
@@ -291,7 +294,7 @@ public class NodeManager {
       try {
         getConsensusManager().write(updateDataNodePlan);
       } catch (ConsensusException e) {
-        LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+        LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       }
     }
     TNodeVersionInfo versionInfo = nodeInfo.getVersionInfo(nodeId);
@@ -302,7 +305,7 @@ public class NodeManager {
       try {
         getConsensusManager().write(updateVersionInfoPlan);
       } catch (ConsensusException e) {
-        LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+        LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       }
     }
 
@@ -553,14 +556,14 @@ public class NodeManager {
     try {
       getConsensusManager().write(applyConfigNodePlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
     }
     UpdateVersionInfoPlan updateVersionInfoPlan =
         new UpdateVersionInfoPlan(versionInfo, configNodeLocation.getConfigNodeId());
     try {
       getConsensusManager().write(updateVersionInfoPlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
     }
   }
 

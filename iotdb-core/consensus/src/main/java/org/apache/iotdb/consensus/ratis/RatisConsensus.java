@@ -321,7 +321,7 @@ class RatisConsensus implements IConsensus {
     return writeResult;
   }
 
-  /** Read directly from LOCAL COPY notice: */
+  /** Read directly from LOCAL COPY notice. */
   @Override
   public DataSet read(ConsensusGroupId groupId, IConsensusRequest request)
       throws ConsensusException {
@@ -498,12 +498,7 @@ class RatisConsensus implements IConsensus {
             .filter(raftPeer -> !raftPeer.equals(peerToRemove))
             .collect(Collectors.toList());
 
-    RaftClientReply reply;
-    try {
-      reply = sendReconfiguration(RaftGroup.valueOf(raftGroupId, newConfig));
-    } catch (RatisRequestFailedException e) {
-      throw e;
-    }
+    sendReconfiguration(RaftGroup.valueOf(raftGroupId, newConfig));
   }
 
   /**

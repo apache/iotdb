@@ -114,6 +114,12 @@ public class ClusterSchemaManager {
   private final ClusterSchemaQuotaStatistics schemaQuotaStatistics;
   private final ReentrantLock createDatabaseLock = new ReentrantLock();
 
+  private static final String CONSENSUS_READ_ERROR =
+      "Something wrong happened while calling consensus layer's read API.";
+
+  private static final String CONSENSUS_WRITE_ERROR =
+      "Something wrong happened while calling consensus layer's write API.";
+
   public ClusterSchemaManager(
       IManager configManager,
       ClusterSchemaInfo clusterSchemaInfo,
@@ -160,7 +166,7 @@ public class ClusterSchemaManager {
       // Adjust the maximum RegionGroup number of each Database
       adjustMaxRegionGroupNum();
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       result.setMessage(e.getMessage());
     } catch (MetadataException metadataException) {
@@ -228,7 +234,7 @@ public class ClusterSchemaManager {
     try {
       return getConsensusManager().write(databaseSchemaPlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       result.setMessage(e.getMessage());
       return result;
@@ -241,7 +247,7 @@ public class ClusterSchemaManager {
     try {
       result = getConsensusManager().write(deleteDatabasePlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       result.setMessage(e.getMessage());
     }
@@ -262,7 +268,7 @@ public class ClusterSchemaManager {
     try {
       return (CountDatabaseResp) getConsensusManager().read(countDatabasePlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       CountDatabaseResp response = new CountDatabaseResp();
@@ -283,7 +289,7 @@ public class ClusterSchemaManager {
     try {
       resp = (DatabaseSchemaResp) getConsensusManager().read(getStorageGroupPlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       resp = new DatabaseSchemaResp();
@@ -307,7 +313,7 @@ public class ClusterSchemaManager {
     try {
       databaseSchemaResp = (DatabaseSchemaResp) getConsensusManager().read(getStorageGroupPlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       databaseSchemaResp = new DatabaseSchemaResp();
@@ -421,7 +427,7 @@ public class ClusterSchemaManager {
     try {
       return getConsensusManager().write(setTTLPlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       result.setMessage(e.getMessage());
       return result;
@@ -434,7 +440,7 @@ public class ClusterSchemaManager {
     try {
       return getConsensusManager().write(setSchemaReplicationFactorPlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       result.setMessage(e.getMessage());
       return result;
@@ -447,7 +453,7 @@ public class ClusterSchemaManager {
     try {
       return getConsensusManager().write(setDataReplicationFactorPlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       result.setMessage(e.getMessage());
       return result;
@@ -460,7 +466,7 @@ public class ClusterSchemaManager {
     try {
       return getConsensusManager().write(setTimePartitionIntervalPlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       result.setMessage(e.getMessage());
       return result;
@@ -553,7 +559,7 @@ public class ClusterSchemaManager {
     try {
       getConsensusManager().write(adjustMaxRegionGroupNumPlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
     }
   }
 
@@ -711,7 +717,7 @@ public class ClusterSchemaManager {
     try {
       return getConsensusManager().write(createSchemaTemplatePlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return res;
@@ -729,7 +735,7 @@ public class ClusterSchemaManager {
     try {
       templateResp = (TemplateInfoResp) getConsensusManager().read(getAllSchemaTemplatePlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       templateResp = new TemplateInfoResp();
@@ -753,7 +759,7 @@ public class ClusterSchemaManager {
     try {
       templateResp = (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       templateResp = new TemplateInfoResp();
@@ -777,7 +783,7 @@ public class ClusterSchemaManager {
     try {
       pathInfoResp = (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       pathInfoResp = new PathInfoResp();
@@ -803,8 +809,8 @@ public class ClusterSchemaManager {
           (AllTemplateSetInfoResp) getConsensusManager().read(new GetAllTemplateSetInfoPlan());
       return resp.getTemplateInfo();
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
-      return null;
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
+      return new byte[] {};
     }
   }
 
@@ -813,7 +819,7 @@ public class ClusterSchemaManager {
       return (TemplateSetInfoResp)
           getConsensusManager().read(new GetTemplateSetInfoPlan(patternList));
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       TemplateSetInfoResp response = new TemplateSetInfoResp();
@@ -828,7 +834,7 @@ public class ClusterSchemaManager {
     try {
       templateResp = (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       templateResp = new TemplateInfoResp();
@@ -851,7 +857,7 @@ public class ClusterSchemaManager {
     try {
       pathInfoResp = (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       pathInfoResp = new PathInfoResp();
@@ -879,7 +885,7 @@ public class ClusterSchemaManager {
     try {
       return getConsensusManager().write(new PreUnsetSchemaTemplatePlan(templateId, path));
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       result.setMessage(e.getMessage());
       return result;
@@ -890,7 +896,7 @@ public class ClusterSchemaManager {
     try {
       return getConsensusManager().write(new RollbackPreUnsetSchemaTemplatePlan(templateId, path));
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       result.setMessage(e.getMessage());
       return result;
@@ -901,7 +907,7 @@ public class ClusterSchemaManager {
     try {
       return getConsensusManager().write(new UnsetSchemaTemplatePlan(templateId, path));
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       result.setMessage(e.getMessage());
       return result;
@@ -916,7 +922,7 @@ public class ClusterSchemaManager {
     try {
       templateInfoResp = (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       templateInfoResp = new TemplateInfoResp();
@@ -937,7 +943,7 @@ public class ClusterSchemaManager {
     try {
       pathInfoResp = (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       pathInfoResp = new PathInfoResp();
@@ -956,7 +962,7 @@ public class ClusterSchemaManager {
     try {
       return getConsensusManager().write(new DropSchemaTemplatePlan(templateName));
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       TSStatus result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       result.setMessage(e.getMessage());
       return result;
@@ -1004,7 +1010,7 @@ public class ClusterSchemaManager {
     try {
       status = getConsensusManager().write(extendSchemaTemplatePlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     }

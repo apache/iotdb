@@ -79,6 +79,9 @@ public class SetTemplateProcedure
   private String templateName;
   private String templateSetPath;
 
+  private static final String CONSENSUS_WRITE_ERROR =
+      "Something wrong happened while calling consensus layer's write API.";
+
   public SetTemplateProcedure() {
     super();
   }
@@ -177,7 +180,7 @@ public class SetTemplateProcedure
     try {
       status = env.getConfigManager().getConsensusManager().write(preSetSchemaTemplatePlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     }
@@ -343,7 +346,7 @@ public class SetTemplateProcedure
     try {
       status = env.getConfigManager().getConsensusManager().write(commitSetSchemaTemplatePlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     }
@@ -446,7 +449,7 @@ public class SetTemplateProcedure
     try {
       status = env.getConfigManager().getConsensusManager().write(preSetSchemaTemplatePlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     }
@@ -503,7 +506,7 @@ public class SetTemplateProcedure
     try {
       status = env.getConfigManager().getConsensusManager().write(commitSetSchemaTemplatePlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     }

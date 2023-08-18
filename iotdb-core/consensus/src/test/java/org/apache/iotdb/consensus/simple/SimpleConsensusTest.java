@@ -43,6 +43,7 @@ import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
 
 import org.apache.ratis.util.FileUtils;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -230,7 +231,7 @@ public class SimpleConsensusTest {
     try {
       consensusImpl.addRemotePeer(
           dataRegionId, new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667)));
-      assert false;
+      Assert.fail("Can't add peer in SimpleConsensus.");
     } catch (ConsensusException e) {
       assert true;
     }
@@ -241,7 +242,7 @@ public class SimpleConsensusTest {
     try {
       consensusImpl.removeRemotePeer(
           dataRegionId, new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667)));
-      assert false;
+      Assert.fail("Can't remove peer in SimpleConsensus.");
     } catch (ConsensusException e) {
       assert true;
     }
@@ -252,7 +253,7 @@ public class SimpleConsensusTest {
     try {
       consensusImpl.transferLeader(
           dataRegionId, new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667)));
-      assert false;
+      Assert.fail("Can't transfer leader in SimpleConsensus.");
     } catch (ConsensusException e) {
       assert true;
     }
@@ -262,7 +263,7 @@ public class SimpleConsensusTest {
   public void triggerSnapshot() {
     try {
       consensusImpl.triggerSnapshot(dataRegionId);
-      assert false;
+      Assert.fail("Can't trigger snapshot in SimpleConsensus.");
     } catch (ConsensusException e) {
       assert true;
     }

@@ -130,6 +130,12 @@ public class PartitionManager {
 
   private SeriesPartitionExecutor executor;
 
+  private static final String CONSENSUS_READ_ERROR =
+      "Something wrong happened while calling consensus layer's read API.";
+
+  private static final String CONSENSUS_WRITE_ERROR =
+      "Something wrong happened while calling consensus layer's write API.";
+
   /** Region cleaner. */
   // Monitor for leadership change
   private final Object scheduleMonitor = new Object();
@@ -168,7 +174,7 @@ public class PartitionManager {
     try {
       return (SchemaPartitionResp) getConsensusManager().read(req);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new SchemaPartitionResp(res, false, Collections.emptyMap());
@@ -186,7 +192,7 @@ public class PartitionManager {
     try {
       return (DataPartitionResp) getConsensusManager().read(req);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new DataPartitionResp(res, false, Collections.emptyMap());
@@ -902,7 +908,7 @@ public class PartitionManager {
     try {
       return (SchemaNodeManagementResp) getConsensusManager().read(physicalPlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       SchemaNodeManagementResp resp = new SchemaNodeManagementResp();
@@ -918,7 +924,7 @@ public class PartitionManager {
     try {
       getConsensusManager().write(preDeleteDatabasePlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
     }
   }
 
@@ -963,7 +969,7 @@ public class PartitionManager {
       return regionInfoListResp;
 
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       RegionInfoListResp resp = new RegionInfoListResp();
@@ -991,7 +997,7 @@ public class PartitionManager {
     try {
       return getConsensusManager().write(req);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return res;
@@ -1019,7 +1025,7 @@ public class PartitionManager {
     try {
       return (GetRegionIdResp) getConsensusManager().read(plan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new GetRegionIdResp(res, Collections.emptyList());
@@ -1046,7 +1052,7 @@ public class PartitionManager {
     try {
       return (GetTimeSlotListResp) getConsensusManager().read(plan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new GetTimeSlotListResp(res, Collections.emptyList());
@@ -1073,7 +1079,7 @@ public class PartitionManager {
     try {
       return (CountTimeSlotListResp) getConsensusManager().read(plan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new CountTimeSlotListResp(res, 0);
@@ -1085,7 +1091,7 @@ public class PartitionManager {
     try {
       return (GetSeriesSlotListResp) getConsensusManager().read(plan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new GetSeriesSlotListResp(res, Collections.emptyList());
@@ -1304,8 +1310,7 @@ public class PartitionManager {
                     getConsensusManager()
                         .write(new PollSpecificRegionMaintainTaskPlan(successfulTask));
                   } catch (ConsensusException e) {
-                    LOGGER.warn(
-                        "Something wrong happened while calling consensus layer's write API.", e);
+                    LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
                   }
 
                   if (successfulTask.size() < selectedRegionMaintainTask.size()) {

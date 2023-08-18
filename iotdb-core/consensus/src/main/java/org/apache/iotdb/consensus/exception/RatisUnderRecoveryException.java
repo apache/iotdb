@@ -24,7 +24,8 @@ public class RatisUnderRecoveryException extends ConsensusException {
 
   public RatisUnderRecoveryException(Throwable cause) {
     super(
-        "Raft Server is redoing Raft Log and cannot serve read requests now. Please try read later: "
+        "Raft Server is redoing Raft Log and cannot serve read requests now. "
+            + "Please try read later: "
             + cause,
         cause);
   }
