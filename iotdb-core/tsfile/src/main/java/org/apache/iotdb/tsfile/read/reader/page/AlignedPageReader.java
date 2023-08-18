@@ -50,6 +50,12 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
   private final List<ValuePageReader> valuePageReaderList;
   private final int valueCount;
 
+  // only used for limit and offset push down optimizer, if we select all columns from aligned
+  // device, we
+  // can use statistics to skip.
+  // it's only exact while using limit & offset push down
+  private final boolean queryAllSensors;
+
   private Filter filter;
   private PaginationController paginationController = UNLIMITED_PAGINATION_CONTROLLER;
 
@@ -67,7 +73,8 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
       List<ByteBuffer> valuePageDataList,
       List<TSDataType> valueDataTypeList,
       List<Decoder> valueDecoderList,
-      Filter filter) {
+      Filter filter,
+      boolean queryAllSensors) {
     timePageReader = new TimePageReader(timePageHeader, timePageData, timeDecoder);
     isModified = timePageReader.isModified();
     valuePageReaderList = new ArrayList<>(valuePageHeaderList.size());
@@ -87,6 +94,7 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
     }
     this.filter = filter;
     this.valueCount = valuePageReaderList.size();
+    this.queryAllSensors = queryAllSensors;
   }
 
   @Override
@@ -118,29 +126,38 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
   }
 
   private boolean pageSatisfy() {
-    if (filter != null) {
-      // TODO accept valueStatisticsList to filter
-      return filter.satisfy(getStatistics());
-    } else {
-      // For aligned series, When we only query some measurements under an aligned device, if the
-      // values of these queried measurements at a timestamp are all null, the timestamp will not be
-      // selected.
+    Statistics statistics = getStatistics();
+    if (filter == null || filter.allSatisfy(statistics)) {
+      // For aligned series, When we only query some measurements under an aligned device, if any
+      // values of these queried measurements has the same value count as the time column, the
+      // timestamp will be selected.
       // NOTE: if we change the query semantic in the future for aligned series, we need to remove
       // this check here.
       long rowCount = getTimeStatistics().getCount();
-      for (Statistics statistics : getValueStatisticsList()) {
-        if (statistics == null || statistics.hasNullValue(rowCount)) {
-          return true;
+      boolean canUse = queryAllSensors || getValueStatisticsList().isEmpty();
+      if (!canUse) {
+        for (Statistics vStatistics : getValueStatisticsList()) {
+          if (vStatistics != null && !vStatistics.hasNullValue(rowCount)) {
+            canUse = true;
+            break;
+          }
         }
+      }
+      if (!canUse) {
+        return true;
       }
       // When the number of points in all value pages is the same as that in the time page, it means
       // that there is no null value, and all timestamps will be selected.
       if (paginationController.hasCurOffset(rowCount)) {
         paginationController.consumeOffset(rowCount);
         return false;
+      } else {
+        return true;
       }
+    } else {
+      // TODO accept valueStatisticsList to filter
+      return filter.satisfy(statistics);
     }
-    return true;
   }
 
   @Override

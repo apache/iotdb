@@ -20,6 +20,7 @@
 package org.apache.iotdb.session.pool;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.isession.pool.ISessionPool;
 import org.apache.iotdb.isession.pool.SessionDataSetWrapper;
@@ -48,9 +49,10 @@ import org.junit.Before;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
-import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
+import org.powermock.reflect.Whitebox;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -61,14 +63,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentLinkedDeque;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class SessionPoolTest {
@@ -125,18 +125,25 @@ public class SessionPoolTest {
     MockitoAnnotations.initMocks(this);
     execResp.queryResult = FakedFirstFetchTsBlockResult();
 
-    when(client.executeStatementV2(any(TSExecuteStatementReq.class))).thenReturn(execResp);
-    when(execResp.getQueryId()).thenReturn(queryId);
-    when(execResp.getStatus()).thenReturn(successStatus);
+    Mockito.when(client.executeStatementV2(any(TSExecuteStatementReq.class))).thenReturn(execResp);
+    Mockito.when(execResp.getQueryId()).thenReturn(queryId);
+    Mockito.when(execResp.getStatus()).thenReturn(successStatus);
 
-    when(client.fetchMetadata(any(TSFetchMetadataReq.class))).thenReturn(fetchMetadataResp);
-    when(fetchMetadataResp.getStatus()).thenReturn(successStatus);
+    Mockito.when(client.fetchMetadata(any(TSFetchMetadataReq.class))).thenReturn(fetchMetadataResp);
+    Mockito.when(fetchMetadataResp.getStatus()).thenReturn(successStatus);
 
-    when(client.fetchResultsV2(any(TSFetchResultsReq.class))).thenReturn(fetchResultsResp);
-    when(fetchResultsResp.getStatus()).thenReturn(successStatus);
+    Mockito.when(client.fetchResultsV2(any(TSFetchResultsReq.class))).thenReturn(fetchResultsResp);
+    Mockito.when(fetchResultsResp.getStatus()).thenReturn(successStatus);
 
     TSStatus closeResp = successStatus;
-    when(client.closeOperation(any(TSCloseOperationReq.class))).thenReturn(closeResp);
+    Mockito.when(client.closeOperation(any(TSCloseOperationReq.class))).thenReturn(closeResp);
+
+    sessionPool = new SessionPool("host", 11, "user", "password", 10);
+    ConcurrentLinkedDeque<ISession> queue = new ConcurrentLinkedDeque<>();
+    queue.add(session);
+
+    // 设置 SessionPool 对象的内部状态
+    Whitebox.setInternalState(sessionPool, "queue", queue);
   }
 
   @After
@@ -145,8 +152,21 @@ public class SessionPoolTest {
     sessionPool.close();
   }
 
+  @Test(expected = StatementExecutionException.class)
+  public void testInsertAlignedTabletsWithStatementExecutionException()
+      throws IoTDBConnectionException, StatementExecutionException {
+    ISessionPool sessionPool = Mockito.mock(ISessionPool.class);
+    Map<String, Tablet> tablets = new HashMap<>();
+    boolean sorted = true;
+    doThrow(new StatementExecutionException(""))
+        .when(sessionPool)
+        .insertAlignedTablets(tablets, sorted);
+    sessionPool.insertAlignedTablets(tablets, sorted);
+  }
+
   @Test
-  public void testInsertRecords() throws IoTDBConnectionException, StatementExecutionException {
+  public void testInsertRecords() throws Exception {
+    // 调用 insertRecords 方法
     List<String> deviceIds = Arrays.asList("device1", "device2");
     List<Long> timeList = Arrays.asList(1L, 2L);
     List<List<String>> measurementsList =
@@ -158,33 +178,15 @@ public class SessionPoolTest {
             Arrays.asList(TSDataType.DOUBLE, TSDataType.DOUBLE));
     List<List<Object>> valuesList =
         Arrays.asList(Arrays.asList(25.0f, 50.0f), Arrays.asList(220.0, 1.5));
-
     sessionPool.insertRecords(deviceIds, timeList, measurementsList, typesList, valuesList);
-
-    verify(sessionPool, times(1))
-        .insertRecords(
-            ArgumentMatchers.eq(deviceIds),
-            ArgumentMatchers.eq(timeList),
-            ArgumentMatchers.eq(measurementsList),
-            ArgumentMatchers.eq(typesList),
-            ArgumentMatchers.eq(valuesList));
-  }
-
-  @Test(expected = StatementExecutionException.class)
-  public void testInsertAlignedTabletsWithStatementExecutionException()
-      throws IoTDBConnectionException, StatementExecutionException {
-    Map<String, Tablet> tablets = new HashMap<>();
-    boolean sorted = true;
-    doThrow(new StatementExecutionException(""))
-        .when(sessionPool)
-        .insertAlignedTablets(tablets, sorted);
-    sessionPool.insertAlignedTablets(tablets, sorted);
+    assertEquals(
+        1,
+        ((ConcurrentLinkedDeque<ISession>) Whitebox.getInternalState(sessionPool, "queue")).size());
   }
 
   @Test
   public void testExecuteQueryStatement()
       throws IoTDBConnectionException, StatementExecutionException {
-    // 构造测试数据
     String testSql = "select s2,s1,s0,s2 from root.vehicle.d0 ";
 
     List<String> columns = new ArrayList<>();
@@ -199,14 +201,14 @@ public class SessionPoolTest {
     dataTypeList.add("INT32");
     dataTypeList.add("FLOAT");
 
-    when(execResp.isSetColumns()).thenReturn(true);
-    when(execResp.getColumns()).thenReturn(columns);
-    when(execResp.isSetDataTypeList()).thenReturn(true);
-    when(execResp.getDataTypeList()).thenReturn(dataTypeList);
-    when(execResp.isSetOperationType()).thenReturn(true);
-    when(execResp.getOperationType()).thenReturn("QUERY");
-    when(execResp.isSetQueryId()).thenReturn(true);
-    when(execResp.getQueryId()).thenReturn(queryId);
+    Mockito.when(execResp.isSetColumns()).thenReturn(true);
+    Mockito.when(execResp.getColumns()).thenReturn(columns);
+    Mockito.when(execResp.isSetDataTypeList()).thenReturn(true);
+    Mockito.when(execResp.getDataTypeList()).thenReturn(dataTypeList);
+    Mockito.when(execResp.isSetOperationType()).thenReturn(true);
+    Mockito.when(execResp.getOperationType()).thenReturn("QUERY");
+    Mockito.when(execResp.isSetQueryId()).thenReturn(true);
+    Mockito.when(execResp.getQueryId()).thenReturn(queryId);
 
     SessionDataSet sessionDataSet =
         new SessionDataSet(
@@ -223,8 +225,8 @@ public class SessionPoolTest {
             10,
             true,
             10);
-    when(sessionPool.executeQueryStatement(any(String.class)))
-        .thenReturn(new SessionDataSetWrapper(sessionDataSet, session, sessionPool));
+
+    Mockito.when(session.executeQueryStatement(any(String.class))).thenReturn(sessionDataSet);
 
     SessionDataSetWrapper sessionDataSetWrapper = sessionPool.executeQueryStatement(testSql);
     List<String> columnNames = sessionDataSetWrapper.getColumnNames();

@@ -202,7 +202,11 @@ public class FileLoaderUtils {
    * @throws IOException IOException may be thrown while reading it from disk.
    */
   public static AlignedTimeSeriesMetadata loadTimeSeriesMetadata(
-      TsFileResource resource, AlignedPath alignedPath, QueryContext context, Filter filter)
+      TsFileResource resource,
+      AlignedPath alignedPath,
+      QueryContext context,
+      Filter filter,
+      boolean queryAllSensors)
       throws IOException {
     final long t1 = System.nanoTime();
     boolean loadFromMem = false;
@@ -210,14 +214,16 @@ public class FileLoaderUtils {
       AlignedTimeSeriesMetadata alignedTimeSeriesMetadata;
       // If the tsfile is closed, we need to load from tsfile
       if (resource.isClosed()) {
-        alignedTimeSeriesMetadata = loadFromDisk(resource, alignedPath, context, filter);
+        alignedTimeSeriesMetadata =
+            loadFromDisk(resource, alignedPath, context, filter, queryAllSensors);
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
         alignedTimeSeriesMetadata =
             (AlignedTimeSeriesMetadata) resource.getTimeSeriesMetadata(alignedPath);
         if (alignedTimeSeriesMetadata != null) {
           alignedTimeSeriesMetadata.setChunkMetadataLoader(
-              new MemAlignedChunkMetadataLoader(resource, alignedPath, context, filter));
+              new MemAlignedChunkMetadataLoader(
+                  resource, alignedPath, context, filter, queryAllSensors));
         }
       }
 
@@ -253,7 +259,11 @@ public class FileLoaderUtils {
   }
 
   private static AlignedTimeSeriesMetadata loadFromDisk(
-      TsFileResource resource, AlignedPath alignedPath, QueryContext context, Filter filter)
+      TsFileResource resource,
+      AlignedPath alignedPath,
+      QueryContext context,
+      Filter filter,
+      boolean queryAllSensors)
       throws IOException {
     AlignedTimeSeriesMetadata alignedTimeSeriesMetadata = null;
     // load all the TimeseriesMetadata of vector, the first one is for time column and the
@@ -281,28 +291,8 @@ public class FileLoaderUtils {
         alignedTimeSeriesMetadata =
             new AlignedTimeSeriesMetadata(timeColumn, Collections.emptyList());
         alignedTimeSeriesMetadata.setChunkMetadataLoader(
-            new DiskAlignedChunkMetadataLoader(resource, alignedPath, context, filter));
-      } else {
-        List<TimeseriesMetadata> valueTimeSeriesMetadataList =
-            new ArrayList<>(valueMeasurementList.size());
-        // if all the queried aligned sensors does not exist, we will return null
-        boolean exist = false;
-        for (String valueMeasurement : valueMeasurementList) {
-          TimeseriesMetadata valueColumn =
-              cache.get(
-                  new TimeSeriesMetadataCacheKey(filePath, deviceId, valueMeasurement),
-                  allSensors,
-                  resource.getTimeIndexType() != 1,
-                  isDebug);
-          exist = (exist || (valueColumn != null));
-          valueTimeSeriesMetadataList.add(valueColumn);
-        }
-        if (exist) {
-          alignedTimeSeriesMetadata =
-              new AlignedTimeSeriesMetadata(timeColumn, valueTimeSeriesMetadataList);
-          alignedTimeSeriesMetadata.setChunkMetadataLoader(
-              new DiskAlignedChunkMetadataLoader(resource, alignedPath, context, filter));
-        }
+            new DiskAlignedChunkMetadataLoader(
+                resource, alignedPath, context, filter, queryAllSensors));
       }
     }
     return alignedTimeSeriesMetadata;

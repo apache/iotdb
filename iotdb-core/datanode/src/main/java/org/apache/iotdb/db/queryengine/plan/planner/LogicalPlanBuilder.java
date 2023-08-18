@@ -99,7 +99,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import com.google.common.base.Function;
-import org.apache.commons.lang.Validate;
+import org.apache.commons.lang3.Validate;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -168,7 +168,10 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planRawDataSource(
-      Set<Expression> sourceExpressions, Ordering scanOrder, Filter timeFilter) {
+      Set<Expression> sourceExpressions,
+      Ordering scanOrder,
+      Filter timeFilter,
+      boolean lastLevelUseWildcard) {
     List<PlanNode> sourceNodeList = new ArrayList<>();
     List<PartialPath> selectedPaths =
         sourceExpressions.stream()
@@ -187,7 +190,10 @@ public class LogicalPlanBuilder {
       } else if (path instanceof AlignedPath) { // aligned series
         AlignedSeriesScanNode alignedSeriesScanNode =
             new AlignedSeriesScanNode(
-                context.getQueryId().genPlanNodeId(), (AlignedPath) path, scanOrder);
+                context.getQueryId().genPlanNodeId(),
+                (AlignedPath) path,
+                scanOrder,
+                lastLevelUseWildcard);
         alignedSeriesScanNode.setTimeFilter(timeFilter);
         // TODO: push down value filter
         alignedSeriesScanNode.setValueFilter(timeFilter);

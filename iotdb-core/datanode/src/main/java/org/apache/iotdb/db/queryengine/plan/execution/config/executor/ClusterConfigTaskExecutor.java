@@ -268,16 +268,17 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         // If database already exists when loading, we do not throw exceptions to avoid printing too
         // many logs
-        if ((TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()
-            && databaseSchemaStatement.getEnablePrintExceptionLog())) {
+        if (TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()
+            && !databaseSchemaStatement.getEnablePrintExceptionLog()) {
+          future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+        } else {
           LOGGER.warn(
               "Failed to execute create database {} in config node, status is {}.",
               databaseSchemaStatement.getDatabasePath(),
               tsStatus);
           future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
-        } else {
-          future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
         }
+
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }

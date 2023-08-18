@@ -156,6 +156,11 @@ checkDataNodePortUsages () {
     echo "Warning: If you do not use sudo, the checking may not detect all the occupied ports."
   fi
   occupied=false
+  dn_rpc_port=6667
+  dn_internal_port=10730
+  dn_mpp_data_exchange_port=10740
+  dn_schema_region_consensus_port=10750
+  dn_data_region_consensus_port=10760
   if [ -f "$IOTDB_CONF/iotdb-datanode.properties" ]; then
     dn_rpc_port=$(sed '/^dn_rpc_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-datanode.properties)
     dn_internal_port=$(sed '/^dn_internal_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-datanode.properties)
@@ -170,11 +175,7 @@ checkDataNodePortUsages () {
     dn_data_region_consensus_port=$(sed '/^dn_data_region_consensus_port=/!d;s/.*=//' "${IOTDB_CONF}"/iotdb-datanode.properties)
   else
     echo "Warning: cannot find iotdb-datanode.properties, check the default configuration"
-    dn_rpc_port=6667
-    dn_internal_port=10730
-    dn_mpp_data_exchange_port=10740
-    dn_schema_region_consensus_port=10750
-    dn_data_region_consensus_port=10760
+
   fi
   if type lsof >/dev/null 2>&1; then
     PID=$(lsof -t -i:"${dn_rpc_port}" -sTCP:LISTEN)
@@ -244,6 +245,8 @@ checkConfigNodePortUsages () {
     echo "Warning: If you do not use sudo, the checking may not detect all the occupied ports."
   fi
   occupied=false
+  cn_internal_port=10710
+  cn_consensus_port=10720
   if [ -f "$CONFIGNODE_CONF/iotdb-confignode.properties" ]; then
     cn_internal_port=$(sed '/^cn_internal_port=/!d;s/.*=//' "${CONFIGNODE_CONF}"/iotdb-confignode.properties)
     cn_consensus_port=$(sed '/^cn_consensus_port=/!d;s/.*=//' "${CONFIGNODE_CONF}"/iotdb-confignode.properties)
@@ -252,8 +255,6 @@ checkConfigNodePortUsages () {
     cn_consensus_port=$(sed '/^cn_consensus_port=/!d;s/.*=//' "${CONFIGNODE_HOME}"/conf/iotdb-confignode.properties)
   else
     echo "Cannot find iotdb-confignode.properties, check the default configuration"
-    cn_internal_port=10710
-    cn_consensus_port=10720
   fi
   if type lsof >/dev/null 2>&1; then
     PID=$(lsof -t -i:"${cn_internal_port}" -sTCP:LISTEN)
