@@ -46,48 +46,48 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class IoTDBLookupFunction extends TableFunction<RowData> {
-  private final List<Tuple2<String, DataType>> SCHEMA;
-  private final int CACHE_MAX_ROWS;
-  private final int CACHE_TTL_SEC;
-  private final List<String> NODE_URLS;
-  private final String USER;
-  private final String PASSWORD;
-  private final String DEVICE;
-  private final List<String> MEASUREMENTS;
+  private final List<Tuple2<String, DataType>> schema;
+  private final int cacheMaxRows;
+  private final int cacheTTLSec;
+  private final List<String> nodeUrls;
+  private final String user;
+  private final String password;
+  private final String device;
+  private final List<String> measurements;
   private Session session;
 
   private transient Cache<RowData, RowData> cache;
 
   public IoTDBLookupFunction(ReadableConfig options, SchemaWrapper schemaWrapper) {
-    this.SCHEMA = schemaWrapper.getSchema();
+    this.schema = schemaWrapper.getSchema();
 
-    CACHE_MAX_ROWS = options.get(Options.LOOKUP_CACHE_MAX_ROWS);
+    cacheMaxRows = options.get(Options.LOOKUP_CACHE_MAX_ROWS);
 
-    CACHE_TTL_SEC = options.get(Options.LOOKUP_CACHE_TTL_SEC);
+    cacheTTLSec = options.get(Options.LOOKUP_CACHE_TTL_SEC);
 
-    NODE_URLS = Arrays.asList(options.get(Options.NODE_URLS).split(","));
+    nodeUrls = Arrays.asList(options.get(Options.NODE_URLS).split(","));
 
-    USER = options.get(Options.USER);
+    user = options.get(Options.USER);
 
-    PASSWORD = options.get(Options.PASSWORD);
+    password = options.get(Options.PASSWORD);
 
-    DEVICE = options.get(Options.DEVICE);
+    device = options.get(Options.DEVICE);
 
-    MEASUREMENTS =
-        SCHEMA.stream().map(field -> String.valueOf(field.f0)).collect(Collectors.toList());
+    measurements =
+        schema.stream().map(field -> String.valueOf(field.f0)).collect(Collectors.toList());
   }
 
   @Override
   public void open(FunctionContext context) throws Exception {
     super.open(context);
-    session = new Session.Builder().nodeUrls(NODE_URLS).username(USER).password(PASSWORD).build();
+    session = new Session.Builder().nodeUrls(nodeUrls).username(user).password(password).build();
     session.open(false);
 
-    if (CACHE_MAX_ROWS > 0 && CACHE_TTL_SEC > 0) {
+    if (cacheMaxRows > 0 && cacheTTLSec > 0) {
       cache =
           CacheBuilder.newBuilder()
-              .expireAfterAccess(CACHE_TTL_SEC, TimeUnit.SECONDS)
-              .maximumSize(CACHE_MAX_ROWS)
+              .expireAfterAccess(cacheTTLSec, TimeUnit.SECONDS)
+              .maximumSize(cacheMaxRows)
               .build();
     }
   }
@@ -118,28 +118,28 @@ public class IoTDBLookupFunction extends TableFunction<RowData> {
     String sql =
         String.format(
             "SELECT %s FROM %s WHERE TIME=%d",
-            StringUtils.join(MEASUREMENTS, ','), DEVICE, timestamp);
+            StringUtils.join(measurements, ','), device, timestamp);
     SessionDataSet dataSet = session.executeQueryStatement(sql);
     List<String> columnNames = dataSet.getColumnNames();
     columnNames.remove("Time");
-    RowRecord record = dataSet.next();
-    if (record == null) {
+    RowRecord rowRecord = dataSet.next();
+    if (rowRecord == null) {
       ArrayList<Object> values = new ArrayList<>();
       values.add(timestamp);
-      for (int i = 0; i < SCHEMA.size(); i++) {
+      for (int i = 0; i < schema.size(); i++) {
         values.add(null);
       }
       GenericRowData rowData = GenericRowData.of(values.toArray());
       collect(rowData);
       return;
     }
-    List<Field> fields = record.getFields();
+    List<Field> fields = rowRecord.getFields();
 
     ArrayList<Object> values = new ArrayList<>();
     values.add(timestamp);
-    for (Tuple2<String, DataType> filed : SCHEMA) {
+    for (Tuple2<String, DataType> filed : schema) {
       values.add(
-          Utils.getValue(fields.get(columnNames.indexOf(DEVICE + '.' + filed.f0)), filed.f1));
+          Utils.getValue(fields.get(columnNames.indexOf(device + '.' + filed.f0)), filed.f1));
     }
 
     GenericRowData rowData = GenericRowData.of(values.toArray());

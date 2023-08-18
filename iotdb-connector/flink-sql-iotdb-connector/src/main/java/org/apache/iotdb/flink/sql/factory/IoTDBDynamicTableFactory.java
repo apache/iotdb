@@ -46,17 +46,16 @@ import java.util.Set;
 
 public class IoTDBDynamicTableFactory
     implements DynamicTableSourceFactory, DynamicTableSinkFactory {
-  private final HashSet<DataType> supportedDataTypes =
-      new HashSet<DataType>() {
-        {
-          add(DataTypes.INT());
-          add(DataTypes.BIGINT());
-          add(DataTypes.FLOAT());
-          add(DataTypes.DOUBLE());
-          add(DataTypes.BOOLEAN());
-          add(DataTypes.STRING());
-        }
-      };
+  private static final HashSet<DataType> supportedDataTypes = new HashSet<>();
+
+  static {
+    supportedDataTypes.add(DataTypes.INT());
+    supportedDataTypes.add(DataTypes.BIGINT());
+    supportedDataTypes.add(DataTypes.FLOAT());
+    supportedDataTypes.add(DataTypes.DOUBLE());
+    supportedDataTypes.add(DataTypes.BOOLEAN());
+    supportedDataTypes.add(DataTypes.STRING());
+  }
 
   @Override
   public DynamicTableSource createDynamicTableSource(Context context) {
@@ -153,7 +152,7 @@ public class IoTDBDynamicTableFactory
       }
     }
 
-    List<String> nodeUrls = Arrays.asList(options.get(Options.NODE_URLS).toString().split(","));
+    List<String> nodeUrls = Arrays.asList(options.get(Options.NODE_URLS).split(","));
     for (String nodeUrl : nodeUrls) {
       String[] split = nodeUrl.split(":");
       if (split.length != 2) {

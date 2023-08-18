@@ -45,24 +45,24 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class IoTDBBoundedScanFunction extends RichInputFormat<RowData, InputSplit> {
-  private final ReadableConfig OPTIONS;
-  private final List<Tuple2<String, DataType>> SCHEMA;
-  private final String DEVICE;
-  private final long LOWER_BOUND;
-  private final long UPPER_BOUND;
-  private final List<String> MEASUREMENTS;
+  private final ReadableConfig options;
+  private final List<Tuple2<String, DataType>> tableSchema;
+  private final String device;
+  private final long lowerBound;
+  private final long upperBound;
+  private final List<String> measurements;
   private Session session;
   private SessionDataSet dataSet;
   private List<String> columnTypes;
 
   public IoTDBBoundedScanFunction(ReadableConfig options, SchemaWrapper schemaWrapper) {
-    OPTIONS = options;
-    SCHEMA = schemaWrapper.getSchema();
-    DEVICE = options.get(Options.DEVICE);
-    LOWER_BOUND = options.get(Options.SCAN_BOUNDED_LOWER_BOUND);
-    UPPER_BOUND = options.get(Options.SCAN_BOUNDED_UPPER_BOUND);
-    MEASUREMENTS =
-        SCHEMA.stream().map(field -> String.valueOf(field.f0)).collect(Collectors.toList());
+    this.options = options;
+    tableSchema = schemaWrapper.getSchema();
+    device = options.get(Options.DEVICE);
+    lowerBound = options.get(Options.SCAN_BOUNDED_LOWER_BOUND);
+    upperBound = options.get(Options.SCAN_BOUNDED_UPPER_BOUND);
+    measurements =
+        tableSchema.stream().map(field -> String.valueOf(field.f0)).collect(Collectors.toList());
   }
 
   @Override
@@ -89,9 +89,9 @@ public class IoTDBBoundedScanFunction extends RichInputFormat<RowData, InputSpli
   public void openInputFormat() throws IOException {
     session =
         new Session.Builder()
-            .nodeUrls(Arrays.asList(OPTIONS.get(Options.NODE_URLS).split(",")))
-            .username(OPTIONS.get(Options.USER))
-            .password(OPTIONS.get(Options.PASSWORD))
+            .nodeUrls(Arrays.asList(options.get(Options.NODE_URLS).split(",")))
+            .username(options.get(Options.USER))
+            .password(options.get(Options.PASSWORD))
             .build();
 
     try {
@@ -104,23 +104,23 @@ public class IoTDBBoundedScanFunction extends RichInputFormat<RowData, InputSpli
   @Override
   public void open(InputSplit inputSplit) throws IOException {
     String sql;
-    if (LOWER_BOUND < 0L && UPPER_BOUND < 0L) {
-      sql = String.format("SELECT %s FROM %s", String.join(",", MEASUREMENTS), DEVICE);
-    } else if (LOWER_BOUND < 0L && UPPER_BOUND > 0L) {
+    if (lowerBound < 0L && upperBound < 0L) {
+      sql = String.format("SELECT %s FROM %s", String.join(",", measurements), device);
+    } else if (lowerBound < 0L && upperBound > 0L) {
       sql =
           String.format(
               "SELECT %s FROM %s WHERE TIME <= %d",
-              String.join(",", MEASUREMENTS), DEVICE, UPPER_BOUND);
-    } else if (LOWER_BOUND > 0L && UPPER_BOUND < 0L) {
+              String.join(",", measurements), device, upperBound);
+    } else if (lowerBound > 0L && upperBound < 0L) {
       sql =
           String.format(
               "SELECT %s FROM %s WHERE TIME >= %d",
-              String.join(",", MEASUREMENTS), DEVICE, LOWER_BOUND);
+              String.join(",", measurements), device, lowerBound);
     } else {
       sql =
           String.format(
               "SELECT %s FROM %s WHERE TIME >= %d AND TIME <= %d",
-              String.join(",", MEASUREMENTS), DEVICE, LOWER_BOUND, UPPER_BOUND);
+              String.join(",", measurements), device, lowerBound, upperBound);
     }
     try {
       dataSet = session.executeQueryStatement(sql);
@@ -142,8 +142,8 @@ public class IoTDBBoundedScanFunction extends RichInputFormat<RowData, InputSpli
   @Override
   public RowData nextRecord(RowData rowData) throws IOException {
     try {
-      RowRecord record = dataSet.next();
-      return Utils.convert(record, columnTypes);
+      RowRecord rowRecord = dataSet.next();
+      return Utils.convert(rowRecord, columnTypes);
     } catch (StatementExecutionException | IoTDBConnectionException e) {
       throw new RuntimeException(e);
     }

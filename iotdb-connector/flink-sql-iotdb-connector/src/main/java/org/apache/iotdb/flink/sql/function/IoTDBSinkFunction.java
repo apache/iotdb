@@ -21,7 +21,6 @@ package org.apache.iotdb.flink.sql.function;
 import org.apache.iotdb.flink.sql.common.Options;
 import org.apache.iotdb.flink.sql.common.Utils;
 import org.apache.iotdb.flink.sql.wrapper.SchemaWrapper;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -41,82 +40,76 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public class IoTDBSinkFunction implements SinkFunction<RowData> {
-  private final List<Tuple2<String, DataType>> SCHEMA;
-  private final List<String> NODE_URLS;
-  private final String USER;
-  private final String PASSWORD;
-  private final String DEVICE;
-  private final Boolean ALIGNED;
-  private final List<String> MEASUREMENTS;
-  private final List<TSDataType> DATA_TYPES;
-  private final Map<DataType, TSDataType> TYPE_MAP =
-      new HashMap<DataType, TSDataType>() {
-        {
-          put(DataTypes.INT(), TSDataType.INT32);
-          put(DataTypes.BIGINT(), TSDataType.INT64);
-          put(DataTypes.FLOAT(), TSDataType.FLOAT);
-          put(DataTypes.DOUBLE(), TSDataType.DOUBLE);
-          put(DataTypes.BOOLEAN(), TSDataType.BOOLEAN);
-          put(DataTypes.STRING(), TSDataType.TEXT);
-        }
-      };
+  private final List<Tuple2<String, DataType>> schema;
+  private final List<String> nodeUrls;
+  private final String user;
+  private final String password;
+  private final String device;
+  private final boolean aligned;
+  private final List<String> measurements;
+  private final List<TSDataType> dataTypes;
+  private static final Map<DataType, TSDataType> TYPE_MAP = new HashMap<>();
 
   private static Session session;
 
-  public IoTDBSinkFunction(ReadableConfig options, SchemaWrapper schemaWrapper)
-      throws IoTDBConnectionException {
+  static {
+    TYPE_MAP.put(DataTypes.INT(), TSDataType.INT32);
+    TYPE_MAP.put(DataTypes.BIGINT(), TSDataType.INT64);
+    TYPE_MAP.put(DataTypes.FLOAT(), TSDataType.FLOAT);
+    TYPE_MAP.put(DataTypes.DOUBLE(), TSDataType.DOUBLE);
+    TYPE_MAP.put(DataTypes.BOOLEAN(), TSDataType.BOOLEAN);
+    TYPE_MAP.put(DataTypes.STRING(), TSDataType.TEXT);
+  }
+
+  public IoTDBSinkFunction(ReadableConfig options, SchemaWrapper schemaWrapper) {
     // get schema
-    this.SCHEMA = schemaWrapper.getSchema();
+    this.schema = schemaWrapper.getSchema();
     // get options
-    NODE_URLS = Arrays.asList(options.get(Options.NODE_URLS).split(","));
-    USER = options.get(Options.USER);
-    PASSWORD = options.get(Options.PASSWORD);
-    DEVICE = options.get(Options.DEVICE);
-    ALIGNED = options.get(Options.ALIGNED);
+    nodeUrls = Arrays.asList(options.get(Options.NODE_URLS).split(","));
+    user = options.get(Options.USER);
+    password = options.get(Options.PASSWORD);
+    device = options.get(Options.DEVICE);
+    aligned = options.get(Options.ALIGNED);
     // get measurements and data types from schema
-    MEASUREMENTS =
-        SCHEMA.stream().map(field -> String.valueOf(field.f0)).collect(Collectors.toList());
-    DATA_TYPES = SCHEMA.stream().map(field -> TYPE_MAP.get(field.f1)).collect(Collectors.toList());
+    measurements =
+        schema.stream().map(field -> String.valueOf(field.f0)).collect(Collectors.toList());
+    dataTypes = schema.stream().map(field -> TYPE_MAP.get(field.f1)).collect(Collectors.toList());
   }
 
   @Override
   public void invoke(RowData rowData, Context context) throws Exception {
     // open the session if the session has not been opened
     if (session == null) {
-      session = new Session.Builder().nodeUrls(NODE_URLS).username(USER).password(PASSWORD).build();
+      session = new Session.Builder().nodeUrls(nodeUrls).username(user).password(password).build();
       session.open(false);
     }
     // load data from RowData
     if (rowData.getRowKind().equals(RowKind.INSERT)
         || rowData.getRowKind().equals(RowKind.UPDATE_AFTER)) {
       long timestamp = rowData.getLong(0);
-      ArrayList<String> measurements = new ArrayList<>();
-      ArrayList<TSDataType> dataTypes = new ArrayList<>();
+      ArrayList<String> measurementsOfRow = new ArrayList<>();
+      ArrayList<TSDataType> dataTypesOfRow = new ArrayList<>();
       ArrayList<Object> values = new ArrayList<>();
-      for (int i = 0; i < MEASUREMENTS.size(); i++) {
-        Object value = Utils.getValue(rowData, SCHEMA.get(i).f1, i + 1);
+      for (int i = 0; i < this.measurements.size(); i++) {
+        Object value = Utils.getValue(rowData, schema.get(i).f1, i + 1);
         if (value == null) {
           continue;
         }
-        measurements.add(MEASUREMENTS.get(i));
-        dataTypes.add(DATA_TYPES.get(i));
+        measurementsOfRow.add(this.measurements.get(i));
+        dataTypesOfRow.add(this.dataTypes.get(i));
         values.add(value);
       }
       // insert data
-      if (ALIGNED) {
-        session.insertAlignedRecord(DEVICE, timestamp, measurements, dataTypes, values);
+      if (aligned) {
+        session.insertAlignedRecord(device, timestamp, measurementsOfRow, dataTypesOfRow, values);
       } else {
-        session.insertRecord(DEVICE, timestamp, measurements, dataTypes, values);
+        session.insertRecord(device, timestamp, measurementsOfRow, dataTypesOfRow, values);
       }
     } else if (rowData.getRowKind().equals(RowKind.DELETE)) {
-      ArrayList<String> paths =
-          new ArrayList<String>() {
-            {
-              for (String measurement : MEASUREMENTS) {
-                add(String.format("%s.%s", DEVICE, measurement));
-              }
-            }
-          };
+      ArrayList<String> paths = new ArrayList<>();
+      for (String measurement : measurements) {
+        paths.add(String.format("%s.%s", device, measurement));
+      }
       session.deleteData(paths, rowData.getLong(0));
     } else if (rowData.getRowKind().equals(RowKind.UPDATE_BEFORE)) {
       // do nothing
