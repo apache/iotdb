@@ -92,7 +92,8 @@ public class IoTDBShutdownHook extends Thread {
                   DataRegionConsensusImpl.getInstance().triggerSnapshot(id);
                 } catch (ConsensusException e) {
                   logger.warn(
-                      "Something wrong happened while calling consensus layer's triggerSnapshot API.",
+                      "Something wrong happened while calling consensus layer's "
+                          + "triggerSnapshot API.",
                       e);
                 }
               });

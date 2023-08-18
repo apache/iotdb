@@ -254,15 +254,14 @@ public class RegionWriteExecutor {
                 TSStatusCode.TRIGGER_FIRE_ERROR.getStatusCode(),
                 "Failed to complete the insertion because trigger error before the insertion.");
       } else {
-        boolean hasFailedTriggerBeforeInsertion =
-            result.equals(TriggerFireResult.FAILED_NO_TERMINATION);
-
         long startWriteTime = System.nanoTime();
         status = dataRegionConsensus.write(groupId, planNode);
         PERFORMANCE_OVERVIEW_METRICS.recordScheduleStorageCost(System.nanoTime() - startWriteTime);
 
         // fire Trigger after the insertion
         startTime = System.nanoTime();
+        boolean hasFailedTriggerBeforeInsertion =
+            result.equals(TriggerFireResult.FAILED_NO_TERMINATION);
         result = triggerFireVisitor.process(planNode, TriggerEvent.AFTER_INSERT);
         if (hasFailedTriggerBeforeInsertion || !result.equals(TriggerFireResult.SUCCESS)) {
           status =
