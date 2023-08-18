@@ -22,7 +22,9 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.pipe.connector.builder.IoTDBBatchBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferBatchReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
@@ -54,6 +56,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_DELAY_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_DELAY_KEY;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_SIZE_DEFAULT_VALUE;
+import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_SIZE_KEY;
+
 public class IoTDBThriftSyncConnector extends IoTDBConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftSyncConnector.class);
@@ -69,13 +76,26 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     // Do nothing
   }
 
+  private IoTDBBatchBuilder batchBuilder;
+
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
+
     for (int i = 0; i < nodeUrls.size(); i++) {
       isClientAlive.add(false);
       clients.add(null);
+    }
+
+    if (isTabletBatchModeEnabled) {
+      batchBuilder =
+          new IoTDBBatchBuilder(
+              parameters.getIntOrDefault(
+                      CONNECTOR_IOTDB_BATCH_DELAY_KEY, CONNECTOR_IOTDB_BATCH_DELAY_DEFAULT_VALUE)
+                  * 1000,
+              parameters.getLongOrDefault(
+                  CONNECTOR_IOTDB_BATCH_SIZE_KEY, CONNECTOR_IOTDB_BATCH_SIZE_DEFAULT_VALUE));
     }
   }
 
@@ -89,7 +109,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       final String ip = nodeUrls.get(i).getIp();
       final int port = nodeUrls.get(i).getPort();
 
-      // close the client if necessary
+      // Close the client if necessary
       if (clients.get(i) != null) {
         try {
           clients.set(i, null).close();
@@ -168,7 +188,11 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     final IoTDBThriftSyncConnectorClient client = clients.get(clientIndex);
 
     try {
-      if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+      if (isTabletBatchModeEnabled) {
+        if (batchBuilder.handleInsertionEventAndReturnNeedSend(tabletInsertionEvent)) {
+          doTransferInBatch(client);
+        }
+      } else if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         doTransfer(client, (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
       } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
         doTransfer(client, (PipeRawTabletInsertionEvent) tabletInsertionEvent);
@@ -221,10 +245,24 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     LOGGER.warn("IoTDBThriftSyncConnector does not support transfer generic event: {}.", event);
   }
 
+  private void doTransferInBatch(IoTDBThriftSyncConnectorClient client)
+      throws IOException, TException {
+    final TPipeTransferResp resp =
+        client.pipeTransfer(
+            PipeTransferBatchReq.toTPipeTransferReq(batchBuilder.gettPipeTransferReqs()));
+
+    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(
+          String.format("Transfer in batch mode occurs error, result status %s", resp.status));
+    }
+    batchBuilder.clearBatchCaches();
+  }
+
   private void doTransfer(
       IoTDBThriftSyncConnectorClient client,
       PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, TException, WALPipeException {
+
     final TPipeTransferResp resp =
         client.pipeTransfer(
             PipeTransferInsertNodeReq.toTPipeTransferReq(
@@ -242,6 +280,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       IoTDBThriftSyncConnectorClient client,
       PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException, TException, IOException {
+
     final TPipeTransferResp resp =
         client.pipeTransfer(
             PipeTransferTabletReq.toTPipeTransferReq(

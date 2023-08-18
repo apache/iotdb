@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.PipeRequestType;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferBatchReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
@@ -38,12 +39,15 @@ import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +58,8 @@ import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
 
@@ -73,37 +79,48 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
   @Override
   public synchronized TPipeTransferResp receive(
       TPipeTransferReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
-    final short rawRequestType = req.getType();
-    if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
-      switch (PipeRequestType.valueOf(rawRequestType)) {
-        case HANDSHAKE:
-          return handleTransferHandshake(PipeTransferHandshakeReq.fromTPipeTransferReq(req));
-        case TRANSFER_INSERT_NODE:
-          return handleTransferInsertNode(
-              PipeTransferInsertNodeReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
-        case TRANSFER_TABLET:
-          return handleTransferTablet(
-              PipeTransferTabletReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
-        case TRANSFER_FILE_PIECE:
-          return handleTransferFilePiece(
-              PipeTransferFilePieceReq.fromTPipeTransferReq(req),
-              req instanceof AirGapPseudoTPipeTransferRequest);
-        case TRANSFER_FILE_SEAL:
-          return handleTransferFileSeal(
-              PipeTransferFileSealReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
-        default:
-          break;
+    try {
+      final short rawRequestType = req.getType();
+      if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
+        switch (PipeRequestType.valueOf(rawRequestType)) {
+          case HANDSHAKE:
+            return handleTransferHandshake(PipeTransferHandshakeReq.fromTPipeTransferReq(req));
+          case TRANSFER_INSERT_NODE:
+            return handleTransferInsertNode(
+                PipeTransferInsertNodeReq.fromTPipeTransferReq(req),
+                partitionFetcher,
+                schemaFetcher);
+          case TRANSFER_TABLET:
+            return handleTransferTablet(
+                PipeTransferTabletReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
+          case TRANSFER_BATCH:
+            return handleTransferBatch(
+                PipeTransferBatchReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
+          case TRANSFER_FILE_PIECE:
+            return handleTransferFilePiece(
+                PipeTransferFilePieceReq.fromTPipeTransferReq(req),
+                req instanceof AirGapPseudoTPipeTransferRequest);
+          case TRANSFER_FILE_SEAL:
+            return handleTransferFileSeal(
+                PipeTransferFileSealReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
+          default:
+            break;
+        }
       }
-    }
 
-    // unknown request type, which means the request can not be handled by this receiver,
-    // maybe the version of the receiver is not compatible with the sender
-    final TSStatus status =
-        RpcUtils.getStatus(
-            TSStatusCode.PIPE_TYPE_ERROR,
-            String.format("Unknown PipeRequestType %s.", rawRequestType));
-    LOGGER.warn("Unknown PipeRequestType, response status = {}.", status);
-    return new TPipeTransferResp(status);
+      // Unknown request type, which means the request can not be handled by this receiver,
+      // maybe the version of the receiver is not compatible with the sender
+      final TSStatus status =
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_TYPE_ERROR,
+              String.format("Unknown PipeRequestType %s.", rawRequestType));
+      LOGGER.warn("Unknown PipeRequestType, response status = {}.", status);
+      return new TPipeTransferResp(status);
+    } catch (IOException e) {
+      String error = String.format("Serialization error during pipe receiving, %s", e);
+      LOGGER.warn(error);
+      return new TPipeTransferResp(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, error));
+    }
   }
 
   private TPipeTransferResp handleTransferHandshake(PipeTransferHandshakeReq req) {
@@ -182,6 +199,24 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
         statement.isEmpty()
             ? RpcUtils.SUCCESS_STATUS
             : executeStatement(statement, partitionFetcher, schemaFetcher));
+  }
+
+  private TPipeTransferResp handleTransferBatch(
+      PipeTransferBatchReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
+    Pair<InsertRowsStatement, InsertMultiTabletsStatement> statementPair =
+        req.constructStatementPair();
+    return new TPipeTransferResp(
+        RpcUtils.squashResponseStatusList(
+            Stream.of(
+                    statementPair.getLeft().isEmpty()
+                        ? RpcUtils.SUCCESS_STATUS
+                        : executeStatement(
+                            statementPair.getLeft(), partitionFetcher, schemaFetcher),
+                    statementPair.getRight().isEmpty()
+                        ? RpcUtils.SUCCESS_STATUS
+                        : executeStatement(
+                            statementPair.getRight(), partitionFetcher, schemaFetcher))
+                .collect(Collectors.toList())));
   }
 
   private TPipeTransferResp handleTransferFilePiece(
