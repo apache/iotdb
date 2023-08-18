@@ -50,6 +50,8 @@ public class PipeConnectorConstant {
 
   public static final String CONNECTOR_IOTDB_SYNC_CONNECTOR_VERSION_KEY = "connector.version";
   public static final String CONNECTOR_IOTDB_SYNC_CONNECTOR_VERSION_DEFAULT_VALUE = "1.1";
+  public static final String CONNECTOR_WEBSOCKET_PORT_KEY = "connector.websocket.port";
+  public static final int CONNECTOR_WEBSOCKET_PORT_DEFAULT_VALUE = 8080;
 
   private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");
