@@ -27,7 +27,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -327,18 +326,6 @@ public class IoTDBCountTimeIT {
         retArray);
     resultSetEqualTest(
         "select count_time(*) from root.condition.d2,root.condition.d1 group by condition(state=1, KEEP>=2, ignoreNull=false) align by device;",
-        expectedHeader,
-        retArray);
-  }
-
-  @Ignore
-  @Test
-  public void havingTest() {
-    // align by time
-    String[] expectedHeader = new String[] {"Time,count_time(s1),count(root.having.d1.s1)"};
-    String[] retArray = new String[] {"4,2,2,"};
-    resultSetEqualTest(
-        "select count_time(s1), count(s1) from root.having.d1 group by([0, 10), 2ms) having count_time(s1) > 1;",
         expectedHeader,
         retArray);
   }

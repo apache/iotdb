@@ -493,8 +493,8 @@ public class QueryStatement extends Statement {
   public static final String COUNT_TIME_CAN_ONLY_EXIST_ONE_IN_SELECT =
       "Count_time aggregation function can only exist one in select clause.";
 
-  public static final String COUNT_TIME_CAN_ONLY_EXIST_ONE_IN_HAVING =
-      "Count_time aggregation function can only exist once in select clause.";
+  public static final String COUNT_TIME_NOT_SUPPORT_USE_WITH_HAVING =
+      "Count_time aggregation function can not be used with having clause.";
 
   @SuppressWarnings({"squid:S3776", "squid:S6541"}) // Suppress high Cognitive Complexity warning
   public void semanticCheck() {
@@ -589,9 +589,10 @@ public class QueryStatement extends Statement {
         throw new SemanticException(
             "Expression of HAVING clause can not be used in NonAggregationQuery");
       }
-      if (isCountTimeAggregation
-          || havingExpression.toString().toLowerCase().contains(COUNT_TIME)) {
-        checkCountTimeValidationInHaving(havingExpression, selectComponent.getResultColumns());
+      if (havingExpression.toString().toLowerCase().contains(COUNT_TIME)) {
+        if (!new CountTimeAggregationAmountVisitor().process(havingExpression, null).isEmpty()) {
+          throw new SemanticException(COUNT_TIME_NOT_SUPPORT_USE_WITH_HAVING);
+        }
       }
       try {
         if (isGroupByLevel()) {
@@ -734,16 +735,7 @@ public class QueryStatement extends Statement {
   }
 
   private void checkCountTimeValidationInSelect(Expression expression, Set<String> outputColumn) {
-    CountTimeAggregationAmountVisitor countTimeAggregationAmountVisitor =
-        new CountTimeAggregationAmountVisitor();
-
-    List<Expression> expressions = countTimeAggregationAmountVisitor.process(expression, null);
-    int countTimeAggSize = 0;
-    for (Expression e : expressions) {
-      if (COUNT_TIME.equalsIgnoreCase(((FunctionExpression) e).getFunctionName())) {
-        countTimeAggSize++;
-      }
-    }
+    int countTimeAggSize = new CountTimeAggregationAmountVisitor().process(expression, null).size();
 
     if (countTimeAggSize > 1) {
       // e.g. select count_time(*) + count_time(*) from root.**
@@ -768,40 +760,9 @@ public class QueryStatement extends Statement {
       }
 
       setCountTimeAggregation(true);
-    }
-  }
 
-  private void checkCountTimeValidationInHaving(
-      Expression expression, List<ResultColumn> resultColumns) {
-    CountTimeAggregationAmountVisitor countTimeAggregationAmountVisitor =
-        new CountTimeAggregationAmountVisitor();
-
-    List<Expression> havingExpressions =
-        countTimeAggregationAmountVisitor.process(expression, null);
-    int countTimeAggSizeInHaving = 0;
-    for (Expression e : havingExpressions) {
-      if (COUNT_TIME.equalsIgnoreCase(((FunctionExpression) e).getFunctionName())) {
-        countTimeAggSizeInHaving++;
-      }
-    }
-
-    if (countTimeAggSizeInHaving > 1) {
-      // e.g. having count_time(*) + count_time(*)
-      throw new SemanticException(COUNT_TIME_CAN_ONLY_EXIST_ONE_IN_HAVING);
-    } else if (countTimeAggSizeInHaving == 1) {
-      // e.g. having count(s1) + count_time(*)
-      if (havingExpressions.size() > 1) {
-        throw new SemanticException(COUNT_TIME_NOT_SUPPORT_USED_WITH_OTHER_OPERATION);
-      }
-
-      if (!isCountTimeAggregation) {
-        // e.g. select sum(s1) from root.** having count_time(*)
-        throw new SemanticException(COUNT_TIME_NOT_SUPPORT_USED_WITH_OTHER_OPERATION);
-      }
-    } else {
-      // e.g. select count_time(*) from root.sg.* having count(*) > 1
-      if (isCountTimeAggregation) {
-        throw new SemanticException(COUNT_TIME_NOT_SUPPORT_USED_WITH_OTHER_OPERATION);
+      if (hasHaving()) {
+        throw new SemanticException(COUNT_TIME_NOT_SUPPORT_USE_WITH_HAVING);
       }
     }
   }

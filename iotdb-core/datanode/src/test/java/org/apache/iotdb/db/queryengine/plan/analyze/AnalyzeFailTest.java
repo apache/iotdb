@@ -40,6 +40,7 @@ import static org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement
 import static org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement.COUNT_TIME_NOT_SUPPORT_GROUP_BY_LEVEL;
 import static org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement.COUNT_TIME_NOT_SUPPORT_GROUP_BY_TAG;
 import static org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement.COUNT_TIME_NOT_SUPPORT_USED_WITH_OTHER_OPERATION;
+import static org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement.COUNT_TIME_NOT_SUPPORT_USE_WITH_HAVING;
 import static org.junit.Assert.fail;
 
 public class AnalyzeFailTest {
@@ -181,23 +182,11 @@ public class AnalyzeFailTest {
         "select count_time(* + *) from root.sg.*;", COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD);
 
     assertAnalyzeSemanticException(
-        "select count_time(*) from root.sg.* having count_time(s1) > 1;",
-        COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD);
+        "select count_time(*) / 2 from root.sg.*;",
+        COUNT_TIME_NOT_SUPPORT_USED_WITH_OTHER_OPERATION);
 
     assertAnalyzeSemanticException(
         "select sum(s1) / count_time(*) from root.sg.*;",
-        COUNT_TIME_NOT_SUPPORT_USED_WITH_OTHER_OPERATION);
-
-    assertAnalyzeSemanticException(
-        "select count_time(*) from root.sg.* having count(s1) + count_time(*) > 1;",
-        COUNT_TIME_NOT_SUPPORT_USED_WITH_OTHER_OPERATION);
-
-    assertAnalyzeSemanticException(
-        "select count_time(*) / 2 from root.sg.* having count_time(*) > 1;",
-        COUNT_TIME_NOT_SUPPORT_USED_WITH_OTHER_OPERATION);
-
-    assertAnalyzeSemanticException(
-        "select count_time(*) from root.sg.* having count(*) > 1;",
         COUNT_TIME_NOT_SUPPORT_USED_WITH_OTHER_OPERATION);
 
     assertAnalyzeSemanticException(
@@ -219,6 +208,18 @@ public class AnalyzeFailTest {
     assertAnalyzeSemanticException(
         "select COUNT_TIME(*),COUNT_time(*) from root.sg.d1,root.sg.d2;",
         COUNT_TIME_CAN_ONLY_EXIST_ONE_IN_SELECT);
+
+    assertAnalyzeSemanticException(
+        "select count_time(*) from root.sg.* having count(*) > 1;",
+        COUNT_TIME_NOT_SUPPORT_USE_WITH_HAVING);
+
+    assertAnalyzeSemanticException(
+        "select count_time(*) from root.sg.* having count_time(s1) > 1;",
+        COUNT_TIME_NOT_SUPPORT_USE_WITH_HAVING);
+
+    assertAnalyzeSemanticException(
+        "select count_time(*) from root.sg.* having count_time(*) > 1;",
+        COUNT_TIME_NOT_SUPPORT_USE_WITH_HAVING);
   }
 
   private void assertAnalyzeSemanticException(String sql, String message) {

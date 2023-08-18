@@ -41,9 +41,10 @@ public class CountTimeAggregationAmountVisitor extends CollectVisitor {
       if (!"*".equals(functionExpression.getExpressions().get(0).toString())) {
         throw new SemanticException(COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD);
       }
+      return Collections.singletonList(functionExpression);
     }
 
-    return Collections.singletonList(functionExpression);
+    return Collections.emptyList();
   }
 
   @Override
