@@ -51,16 +51,27 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
   // time filter or value filter, only used to check time range
   private final Filter filter;
 
+  // only used for limit and offset push down optimizer, if we select all columns from aligned
+  // device, we
+  // can use statistics to skip.
+  // it's only exact while using limit & offset push down
+  private final boolean queryAllSensors;
+
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
 
   public DiskAlignedChunkMetadataLoader(
-      TsFileResource resource, AlignedPath seriesPath, QueryContext context, Filter filter) {
+      TsFileResource resource,
+      AlignedPath seriesPath,
+      QueryContext context,
+      Filter filter,
+      boolean queryAllSensors) {
     this.resource = resource;
     this.seriesPath = seriesPath;
     this.context = context;
     this.filter = filter;
+    this.queryAllSensors = queryAllSensors;
   }
 
   @Override
@@ -111,7 +122,8 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
             if (chunkMetadata.needSetChunkLoader()) {
               chunkMetadata.setFilePath(resource.getTsFilePath());
               chunkMetadata.setClosed(resource.isClosed());
-              chunkMetadata.setChunkLoader(new DiskAlignedChunkLoader(context.isDebug()));
+              chunkMetadata.setChunkLoader(
+                  new DiskAlignedChunkLoader(context.isDebug(), queryAllSensors));
             }
           });
 

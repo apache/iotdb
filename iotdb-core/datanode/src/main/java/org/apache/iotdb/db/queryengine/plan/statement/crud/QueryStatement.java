@@ -114,6 +114,10 @@ public class QueryStatement extends Statement {
 
   private boolean useWildcard = true;
 
+  // used for limit and offset push down optimizer, if we select all columns from aligned device, we
+  // can use statistics to skip
+  private boolean lastLevelUseWildcard = false;
+
   public QueryStatement() {
     this.statementType = StatementType.QUERY;
   }
@@ -470,6 +474,14 @@ public class QueryStatement extends Statement {
 
   public boolean useWildcard() {
     return useWildcard;
+  }
+
+  public boolean isLastLevelUseWildcard() {
+    return lastLevelUseWildcard;
+  }
+
+  public void setLastLevelUseWildcard(boolean lastLevelUseWildcard) {
+    this.lastLevelUseWildcard = lastLevelUseWildcard;
   }
 
   public static final String RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG =

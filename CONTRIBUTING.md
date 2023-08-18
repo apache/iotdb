@@ -130,7 +130,7 @@ Recommended use Intellij idea.
 mvn clean package -DskipTests
 ``` 
 
-Mark `iotdb-core/antlr/target/generated-sources/antlr4` and `iotdb-protocol/thrift/target/generated-sources/thrift` as `Source Root`.
+Mark `iotdb-core/antlr/target/generated-sources/antlr4` and `iotdb-protocol/thrift-datanode/target/generated-sources/thrift` as `Source Root`.
 
 * Server main function：`iotdb-core/datanode/src/main/java/org/apache/iotdb/db/service/DataNode`, can be started in debug mode.
 * Cli：`iotdb-client/cli/src/main/java/org/apache/iotdb/cli/`，Use Cli for linux and WinCli for windows, you can start directly with the parameter "`-h 127.0.0.1 -p 6667 -u root -pw root`"

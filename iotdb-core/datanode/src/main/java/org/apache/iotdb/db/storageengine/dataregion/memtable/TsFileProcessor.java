@@ -464,42 +464,53 @@ public class TsFileProcessor {
     long memTableIncrement = 0L;
     long textDataIncrement = 0L;
     long chunkMetadataIncrement = 0L;
-    AlignedWritableMemChunk alignedMemChunk = null;
     // get device id
     IDeviceID deviceID = getDeviceID(deviceId);
-
     if (workMemTable.checkIfChunkDoesNotExist(deviceID, AlignedPath.VECTOR_PLACEHOLDER)) {
+      // for new device of this mem table
       // ChunkMetadataIncrement
       chunkMetadataIncrement +=
           ChunkMetadata.calculateRamSize(AlignedPath.VECTOR_PLACEHOLDER, TSDataType.VECTOR)
               * dataTypes.length;
       memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(dataTypes);
+      for (int i = 0; i < dataTypes.length; i++) {
+        // skip failed Measurements
+        if (dataTypes[i] == null || measurements[i] == null) {
+          continue;
+        }
+        // TEXT data mem size
+        if (dataTypes[i] == TSDataType.TEXT && values[i] != null) {
+          textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
+        }
+      }
     } else {
-      // here currentChunkPointNum >= 1
-      long currentChunkPointNum =
-          workMemTable.getCurrentTVListSize(deviceID, AlignedPath.VECTOR_PLACEHOLDER);
-      memTableIncrement +=
-          (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
-              ? AlignedTVList.alignedTvListArrayMemCost(dataTypes)
-              : 0;
-      alignedMemChunk =
+      // for existed device of this mem table
+      AlignedWritableMemChunk alignedMemChunk =
           ((AlignedWritableMemChunkGroup) workMemTable.getMemTableMap().get(deviceID))
               .getAlignedMemChunk();
-    }
-    for (int i = 0; i < dataTypes.length; i++) {
-      // skip failed Measurements
-      if (dataTypes[i] == null || measurements[i] == null) {
-        continue;
+      List<TSDataType> dataTypesInTVList = new ArrayList<>();
+      for (int i = 0; i < dataTypes.length; i++) {
+        // skip failed Measurements
+        if (dataTypes[i] == null || measurements[i] == null) {
+          continue;
+        }
+
+        // extending the column of aligned mem chunk
+        if (!alignedMemChunk.containsMeasurement(measurements[i])) {
+          memTableIncrement +=
+              (alignedMemChunk.alignedListSize() / PrimitiveArrayManager.ARRAY_SIZE + 1)
+                  * AlignedTVList.valueListArrayMemCost(dataTypes[i]);
+          dataTypesInTVList.add(dataTypes[i]);
+        }
+        // TEXT data mem size
+        if (dataTypes[i] == TSDataType.TEXT && values[i] != null) {
+          textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
+        }
       }
-      // extending the column of aligned mem chunk
-      if (alignedMemChunk != null && !alignedMemChunk.containsMeasurement(measurements[i])) {
-        memTableIncrement +=
-            (alignedMemChunk.alignedListSize() / PrimitiveArrayManager.ARRAY_SIZE + 1)
-                * dataTypes[i].getDataTypeSize();
-      }
-      // TEXT data mem size
-      if (dataTypes[i] == TSDataType.TEXT && values[i] != null) {
-        textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
+      // here currentChunkPointNum >= 1
+      if ((alignedMemChunk.alignedListSize() % PrimitiveArrayManager.ARRAY_SIZE) == 0) {
+        dataTypesInTVList.addAll(((AlignedTVList) alignedMemChunk.getTVList()).getTsDataTypes());
+        memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(dataTypesInTVList);
       }
     }
     updateMemoryInfo(memTableIncrement, chunkMetadataIncrement, textDataIncrement);
@@ -586,8 +597,9 @@ public class TsFileProcessor {
         long acquireArray =
             (end - start - 1 + (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE))
                 / PrimitiveArrayManager.ARRAY_SIZE;
-        memIncrements[0] +=
-            acquireArray == 0 ? 0 : acquireArray * TVList.tvListArrayMemCost(dataType);
+        if (acquireArray != 0) {
+          memIncrements[0] += acquireArray * TVList.tvListArrayMemCost(dataType);
+        }
       }
     }
     // TEXT data size
@@ -605,7 +617,6 @@ public class TsFileProcessor {
       int end,
       long[] memIncrements,
       Object[] columns) {
-    AlignedWritableMemChunk vectorMemChunk = null;
     // memIncrements = [memTable, text, chunk metadata] respectively
     if (workMemTable.checkIfChunkDoesNotExist(deviceId, AlignedPath.VECTOR_PLACEHOLDER)) {
       // ChunkMetadataIncrement
@@ -615,43 +626,60 @@ public class TsFileProcessor {
       memIncrements[0] +=
           ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
               * AlignedTVList.alignedTvListArrayMemCost(dataTypes);
-    } else {
-      int currentChunkPointNum =
-          (int) workMemTable.getCurrentTVListSize(deviceId, AlignedPath.VECTOR_PLACEHOLDER);
-      if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
-        memIncrements[0] +=
-            ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
-                * AlignedTVList.alignedTvListArrayMemCost(dataTypes);
-      } else {
-        int acquireArray =
-            (end - start - 1 + (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE))
-                / PrimitiveArrayManager.ARRAY_SIZE;
-        memIncrements[0] +=
-            acquireArray == 0
-                ? 0
-                : acquireArray * AlignedTVList.alignedTvListArrayMemCost(dataTypes);
+      for (int i = 0; i < dataTypes.length; i++) {
+        TSDataType dataType = dataTypes[i];
+        String measurement = measurementIds[i];
+        Object column = columns[i];
+        if (dataType == null || column == null || measurement == null) {
+          continue;
+        }
+        // TEXT data size
+        if (dataType == TSDataType.TEXT) {
+          Binary[] binColumn = (Binary[]) columns[i];
+          memIncrements[1] += MemUtils.getBinaryColumnSize(binColumn, start, end);
+        }
       }
-      vectorMemChunk =
+
+    } else {
+      AlignedWritableMemChunk alignedMemChunk =
           ((AlignedWritableMemChunkGroup) workMemTable.getMemTableMap().get(deviceId))
               .getAlignedMemChunk();
-    }
-    for (int i = 0; i < dataTypes.length; i++) {
-      TSDataType dataType = dataTypes[i];
-      String measurement = measurementIds[i];
-      Object column = columns[i];
-      if (dataType == null || column == null || measurement == null) {
-        continue;
+      List<TSDataType> dataTypesInTVList = new ArrayList<>();
+      for (int i = 0; i < dataTypes.length; i++) {
+        TSDataType dataType = dataTypes[i];
+        String measurement = measurementIds[i];
+        Object column = columns[i];
+        if (dataType == null || column == null || measurement == null) {
+          continue;
+        }
+        // extending the column of aligned mem chunk
+        if (!alignedMemChunk.containsMeasurement(measurementIds[i])) {
+          memIncrements[0] +=
+              (alignedMemChunk.alignedListSize() / PrimitiveArrayManager.ARRAY_SIZE + 1)
+                  * AlignedTVList.valueListArrayMemCost(dataType);
+          dataTypesInTVList.add(dataType);
+        }
+        // TEXT data size
+        if (dataType == TSDataType.TEXT) {
+          Binary[] binColumn = (Binary[]) columns[i];
+          memIncrements[1] += MemUtils.getBinaryColumnSize(binColumn, start, end);
+        }
       }
-      // extending the column of aligned mem chunk
-      if (vectorMemChunk != null && !vectorMemChunk.containsMeasurement(measurementIds[i])) {
+      long acquireArray;
+      if (alignedMemChunk.alignedListSize() % PrimitiveArrayManager.ARRAY_SIZE == 0) {
+        acquireArray = (end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1L;
+      } else {
+        acquireArray =
+            (end
+                    - start
+                    - 1
+                    + (alignedMemChunk.alignedListSize() % PrimitiveArrayManager.ARRAY_SIZE))
+                / PrimitiveArrayManager.ARRAY_SIZE;
+      }
+      if (acquireArray != 0) {
+        dataTypesInTVList.addAll(((AlignedTVList) alignedMemChunk.getTVList()).getTsDataTypes());
         memIncrements[0] +=
-            (vectorMemChunk.alignedListSize() / PrimitiveArrayManager.ARRAY_SIZE + 1)
-                * dataType.getDataTypeSize();
-      }
-      // TEXT data size
-      if (dataType == TSDataType.TEXT) {
-        Binary[] binColumn = (Binary[]) columns[i];
-        memIncrements[1] += MemUtils.getBinaryColumnSize(binColumn, start, end);
+            acquireArray * AlignedTVList.alignedTvListArrayMemCost(dataTypesInTVList);
       }
     }
   }

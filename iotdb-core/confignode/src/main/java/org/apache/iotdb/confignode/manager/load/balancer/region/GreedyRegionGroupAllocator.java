@@ -25,6 +25,9 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -36,6 +39,8 @@ import static java.util.Map.Entry.comparingByValue;
 
 /** Allocate Region Greedily */
 public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(GreedyRegionGroupAllocator.class);
 
   private static final AtomicInteger ZERO = new AtomicInteger(0);
 
@@ -62,6 +67,7 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
       Map<Integer, Double> freeDiskSpaceMap,
       List<TRegionReplicaSet> allocatedRegionGroups) {
+
     // Map<DataNodeId, Region count>
     Map<Integer, AtomicInteger> regionCounter = new ConcurrentHashMap<>();
     allocatedRegionGroups.forEach(
@@ -87,16 +93,29 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
                         regionCounter.getOrDefault(dataNodeId, ZERO).get(),
                         freeDiskSpaceMap.getOrDefault(dataNodeId, 0d))));
 
-    return priorityMap.entrySet().stream()
-        .sorted(
-            comparingByValue(
-                (o1, o2) ->
-                    !Objects.equals(o1.getLeft(), o2.getLeft())
-                        // Compare the first key(The number of Regions) by ascending order
-                        ? o1.getLeft() - o2.getLeft()
-                        // Compare the second key(The free disk space) by descending order
-                        : (int) (o2.getRight() - o1.getRight())))
-        .map(entry -> entry.getKey().deepCopy())
-        .collect(Collectors.toList());
+    // Sort weightList
+    List<TDataNodeLocation> result =
+        priorityMap.entrySet().stream()
+            .sorted(
+                comparingByValue(
+                    (o1, o2) ->
+                        !Objects.equals(o1.getLeft(), o2.getLeft())
+                            // Compare the first key(The number of Regions) by ascending order
+                            ? o1.getLeft() - o2.getLeft()
+                            // Compare the second key(The free disk space) by descending order
+                            : (int) (o2.getRight() - o1.getRight())))
+            .map(entry -> entry.getKey().deepCopy())
+            .collect(Collectors.toList());
+
+    // Record weightList
+    for (TDataNodeLocation dataNodeLocation : result) {
+      LOGGER.info(
+          "[RegionGroupWeightList] DataNodeId: {}, RegionCount: {}, FreeDiskSpace: {}",
+          dataNodeLocation.getDataNodeId(),
+          priorityMap.get(dataNodeLocation).getLeft(),
+          priorityMap.get(dataNodeLocation).getRight());
+    }
+
+    return result;
   }
 }

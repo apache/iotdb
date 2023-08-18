@@ -230,7 +230,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
               .planRawDataSource(
                   sourceExpressions,
                   queryStatement.getResultTimeOrder(),
-                  analysis.getGlobalTimeFilter())
+                  analysis.getGlobalTimeFilter(),
+                  analysis.isLastLevelUseWildcard())
               .planWhereAndSourceTransform(
                   whereExpression,
                   sourceTransformExpressions,
@@ -251,7 +252,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 .planRawDataSource(
                     sourceExpressions,
                     queryStatement.getResultTimeOrder(),
-                    analysis.getGlobalTimeFilter())
+                    analysis.getGlobalTimeFilter(),
+                    analysis.isLastLevelUseWildcard())
                 .planWhereAndSourceTransform(
                     whereExpression,
                     sourceTransformExpressions,
