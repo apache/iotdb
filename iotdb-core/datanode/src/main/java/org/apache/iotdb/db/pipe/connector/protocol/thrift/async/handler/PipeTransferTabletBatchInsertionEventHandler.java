@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler;
 
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
+import org.apache.iotdb.db.pipe.connector.builder.IoTDBBatchBuilder;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -33,7 +34,6 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class PipeTransferTabletBatchInsertionEventHandler
@@ -49,13 +49,10 @@ public class PipeTransferTabletBatchInsertionEventHandler
   private final IoTDBThriftAsyncConnector connector;
 
   public PipeTransferTabletBatchInsertionEventHandler(
-      List<Long> requestCommitIds,
-      List<Event> events,
-      TPipeTransferReq req,
-      IoTDBThriftAsyncConnector connector) {
+      IoTDBBatchBuilder batchBuilder, TPipeTransferReq req, IoTDBThriftAsyncConnector connector) {
     // Deep copy to keep Ids' and events' reference
-    this.requestCommitIds = new ArrayList<>(requestCommitIds);
-    this.events = new ArrayList<>(events);
+    this.requestCommitIds = batchBuilder.copyCommitIds();
+    this.events = batchBuilder.copyEvents();
     this.req = req;
     this.connector = connector;
   }

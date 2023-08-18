@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.connector.builder.IoTDBThriftBatchSyncBuilder;
+import org.apache.iotdb.db.pipe.connector.builder.IoTDBBatchBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferBatchReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
@@ -60,7 +60,6 @@ import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CON
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_DELAY_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_SIZE_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_SIZE_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_MODE_BATCH;
 
 public class IoTDBThriftSyncConnector extends IoTDBConnector {
 
@@ -77,7 +76,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     // Do nothing
   }
 
-  private IoTDBThriftBatchSyncBuilder batchBuilder;
+  private IoTDBBatchBuilder batchBuilder;
 
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
@@ -91,14 +90,12 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
 
     if (isTabletBatchModeEnabled) {
       batchBuilder =
-          new IoTDBThriftBatchSyncBuilder(
+          new IoTDBBatchBuilder(
               parameters.getIntOrDefault(
                       CONNECTOR_IOTDB_BATCH_DELAY_KEY, CONNECTOR_IOTDB_BATCH_DELAY_DEFAULT_VALUE)
                   * 1000,
               parameters.getLongOrDefault(
-                      CONNECTOR_IOTDB_BATCH_SIZE_KEY, CONNECTOR_IOTDB_BATCH_SIZE_DEFAULT_VALUE)
-                  * 1024
-                  * 1024);
+                  CONNECTOR_IOTDB_BATCH_SIZE_KEY, CONNECTOR_IOTDB_BATCH_SIZE_DEFAULT_VALUE));
     }
   }
 
@@ -191,7 +188,11 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     final IoTDBThriftSyncConnectorClient client = clients.get(clientIndex);
 
     try {
-      if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+      if (isTabletBatchModeEnabled) {
+        if (batchBuilder.handleInsertionEventAndReturnNeedSend(tabletInsertionEvent)) {
+          doTransferInBatch(client);
+        }
+      } else if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         doTransfer(client, (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
       } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
         doTransfer(client, (PipeRawTabletInsertionEvent) tabletInsertionEvent);
@@ -261,18 +262,6 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       IoTDBThriftSyncConnectorClient client,
       PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, TException, WALPipeException {
-    if (isTabletBatchModeEnabled) {
-      // Init last send time to record the first element
-      batchBuilder.initLastSendTime();
-      PipeTransferInsertNodeReq insertNodeReq =
-          PipeTransferInsertNodeReq.toTPipeTransferReq(event.getInsertNode());
-
-      // To avoid redundant event when retrying
-      batchBuilder.tryCacheReq(insertNodeReq, event);
-      if (batchBuilder.needSend()) {
-        doTransferInBatch(client);
-      }
-    }
 
     final TPipeTransferResp resp =
         client.pipeTransfer(
@@ -291,16 +280,6 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       IoTDBThriftSyncConnectorClient client,
       PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException, TException, IOException {
-    if (isTabletBatchModeEnabled) {
-      // Init last send time to record the first element
-      batchBuilder.initLastSendTime();
-      PipeTransferTabletReq tabletReq =
-          PipeTransferTabletReq.toTPipeTransferReq(event.convertToTablet(), event.isAligned());
-      batchBuilder.tryCacheReq(tabletReq, event);
-      if (batchBuilder.needSend()) {
-        doTransferInBatch(client);
-      }
-    }
 
     final TPipeTransferResp resp =
         client.pipeTransfer(
