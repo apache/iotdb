@@ -407,6 +407,17 @@ public class ConfigNodeProcedureEnv {
             NodeType.DataNode,
             dataNodeLocation.getDataNodeId(),
             NodeHeartbeatSample.generateDefaultSample(NodeStatus.Removing));
+    // Force update RegionStatus to Removing
+    getPartitionManager()
+        .getAllReplicaSets(dataNodeLocation.getDataNodeId())
+        .forEach(
+            replicaSet ->
+                getLoadManager()
+                    .forceUpdateRegionGroupCache(
+                        replicaSet.getRegionId(),
+                        Collections.singletonMap(
+                            dataNodeLocation.getDataNodeId(),
+                            RegionHeartbeatSample.generateDefaultSample(RegionStatus.Removing))));
   }
 
   /**

@@ -263,6 +263,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private boolean useWildcard = false;
 
+  private boolean lastLevelUseWildcard = false;
+
   public void setZoneId(ZoneId zoneId) {
     this.zoneId = zoneId;
   }
@@ -1390,6 +1392,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     queryStatement.setUseWildcard(useWildcard);
+    queryStatement.setLastLevelUseWildcard(lastLevelUseWildcard);
     return queryStatement;
   }
 
@@ -1937,6 +1940,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       for (int i = 0; i < nodeNames.size(); i++) {
         path[i] = parseNodeName(nodeNames.get(i));
       }
+    }
+    if (!lastLevelUseWildcard
+        && !nodeNames.isEmpty()
+        && !nodeNames.get(nodeNames.size() - 1).wildcard().isEmpty()) {
+      lastLevelUseWildcard = true;
     }
     return new PartialPath(path);
   }

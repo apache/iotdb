@@ -46,12 +46,17 @@ public class AlignedSeriesScanOperator extends AbstractDataSourceOperator {
       PlanNodeId sourceId,
       AlignedPath seriesPath,
       Ordering scanOrder,
-      SeriesScanOptions seriesScanOptions) {
+      SeriesScanOptions seriesScanOptions,
+      boolean queryAllSensors) {
     this.sourceId = sourceId;
     this.operatorContext = context;
     this.seriesScanUtil =
         new AlignedSeriesScanUtil(
-            seriesPath, scanOrder, seriesScanOptions, context.getInstanceContext());
+            seriesPath,
+            scanOrder,
+            seriesScanOptions,
+            context.getInstanceContext(),
+            queryAllSensors);
     // time + all value columns
     this.builder = new TsBlockBuilder(seriesScanUtil.getTsDataTypeList());
     this.valueColumnCount = seriesPath.getColumnNum();

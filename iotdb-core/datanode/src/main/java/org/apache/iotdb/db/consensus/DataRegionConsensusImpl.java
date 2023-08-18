@@ -175,6 +175,13 @@ public class DataRegionConsensusImpl {
                                     .setBufferByteLimit(
                                         CONF.getDataRatisConsensusLogAppenderBufferSizeMax())
                                     .build())
+                            .setRead(
+                                RatisConfig.Read.newBuilder()
+                                    // use thrift connection timeout to unify read timeout
+                                    .setReadTimeout(
+                                        TimeDuration.valueOf(
+                                            CONF.getConnectionTimeoutInMS(), TimeUnit.MILLISECONDS))
+                                    .build())
                             .build())
                     .build(),
                 DataRegionConsensusImplHolder::createDataRegionStateMachine)

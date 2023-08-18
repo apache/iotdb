@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
@@ -62,6 +64,7 @@ public class ConsensusManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConsensusManager.class);
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+  private static final CommonConfig COMMON_CONF = CommonDescriptor.getInstance().getConfig();
   private static final int SEED_CONFIG_NODE_ID = 0;
   /** There is only one ConfigNodeGroup */
   public static final ConsensusGroupId DEFAULT_CONSENSUS_GROUP_ID =
@@ -179,6 +182,14 @@ public class ConsensusManager {
                               .setImpl(
                                   RatisConfig.Impl.newBuilder()
                                       .setTriggerSnapshotFileSize(CONF.getConfigNodeRatisLogMax())
+                                      .build())
+                              .setRead(
+                                  RatisConfig.Read.newBuilder()
+                                      // use thrift connection timeout to unify read timeout
+                                      .setReadTimeout(
+                                          TimeDuration.valueOf(
+                                              COMMON_CONF.getConnectionTimeoutInMS(),
+                                              TimeUnit.MILLISECONDS))
                                       .build())
                               .build())
                       .setStorageDir(CONF.getConsensusDir())

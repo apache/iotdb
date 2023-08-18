@@ -28,7 +28,7 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.ratis.util.TimeDuration;
@@ -118,7 +118,7 @@ public class RatisConsensusTest {
     try {
       servers.get(0).createLocalPeer(group.getGroupId(), original);
     } catch (ConsensusException e) {
-      Assert.assertTrue(e instanceof RatisRequestFailedException);
+      Assert.assertTrue(e instanceof ConsensusGroupAlreadyExistException);
     }
 
     // add 2 members

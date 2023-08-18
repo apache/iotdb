@@ -93,7 +93,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -126,7 +125,6 @@ class RatisConsensus implements IConsensus {
 
   private static final int DEFAULT_WAIT_LEADER_READY_TIMEOUT = (int) TimeUnit.SECONDS.toMillis(20);
 
-  private final ExecutorService addExecutor;
   private final ScheduledExecutorService diskGuardian;
   private final long triggerSnapshotThreshold;
 
@@ -156,7 +154,6 @@ class RatisConsensus implements IConsensus {
     this.ratisMetricSet = new RatisMetricSet();
 
     this.triggerSnapshotThreshold = this.config.getImpl().getTriggerSnapshotFileSize();
-    addExecutor = IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.RATIS_ADD.getName());
     diskGuardian =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
             ThreadName.RATIS_BG_DISK_GUARDIAN.getName());
@@ -189,10 +186,8 @@ class RatisConsensus implements IConsensus {
 
   @Override
   public synchronized void stop() throws IOException {
-    addExecutor.shutdown();
     diskGuardian.shutdown();
     try {
-      addExecutor.awaitTermination(5, TimeUnit.SECONDS);
       diskGuardian.awaitTermination(5, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
       logger.warn("{}: interrupted when shutting down add Executor with exception {}", this, e);
@@ -200,8 +195,8 @@ class RatisConsensus implements IConsensus {
     } finally {
       clientManager.close();
       server.close();
+      MetricService.getInstance().removeMetricSet(this.ratisMetricSet);
     }
-    MetricService.getInstance().removeMetricSet(this.ratisMetricSet);
   }
 
   private boolean shouldRetry(RaftClientReply reply) {

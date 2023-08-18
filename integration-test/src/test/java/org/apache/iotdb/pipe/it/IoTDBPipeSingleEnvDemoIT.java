@@ -39,7 +39,7 @@ import java.util.Map;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT1.class})
-public class IoTDBPipeSingleDemoIT {
+public class IoTDBPipeSingleEnvDemoIT {
   @Before
   public void setUp() throws Exception {
     MultiEnvFactory.createEnv(1);
