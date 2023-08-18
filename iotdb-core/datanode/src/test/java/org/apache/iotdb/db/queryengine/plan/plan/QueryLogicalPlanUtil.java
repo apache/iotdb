@@ -172,7 +172,10 @@ public class QueryLogicalPlanUtil {
             Ordering.ASC));
     sourceNodeList.add(
         new AlignedSeriesScanNode(
-            queryId.genPlanNodeId(), (AlignedPath) schemaMap.get("root.sg.d2.a"), Ordering.ASC));
+            queryId.genPlanNodeId(),
+            (AlignedPath) schemaMap.get("root.sg.d2.a"),
+            Ordering.ASC,
+            false));
 
     for (PlanNode sourceNode : sourceNodeList) {
       if (sourceNode instanceof SeriesScanNode) {
