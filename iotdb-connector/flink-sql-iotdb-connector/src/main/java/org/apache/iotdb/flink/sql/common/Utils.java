@@ -31,7 +31,10 @@ import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.data.StringData;
 import org.apache.flink.table.types.DataType;
 
+import java.io.IOException;
 import java.lang.reflect.Array;
+import java.net.Socket;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -52,7 +55,8 @@ public class Utils {
       } else if ("TEXT".equals(dataType)) {
         return StringData.fromString(value.getStringValue());
       } else {
-        throw new UnsupportedDataTypeException("IoTDB don't support the data type: " + dataType);
+        String exception = String.format("IoTDB don't support the data type: %s", dataType);
+        throw new UnsupportedDataTypeException(exception);
       }
     } catch (NullFieldException e) {
       return null;
@@ -100,7 +104,7 @@ public class Utils {
   }
 
   public static boolean isNumeric(String s) {
-    Pattern pattern = Pattern.compile("[0-9]*");
+    Pattern pattern = Pattern.compile("\\d*");
     return pattern.matcher(s).matches();
   }
 
@@ -128,5 +132,14 @@ public class Utils {
       }
     }
     return objects;
+  }
+
+  public static boolean isURIAvailable(URI uri) {
+    try {
+      new Socket(uri.getHost(), uri.getPort()).close();
+      return true;
+    } catch (IOException e) {
+      return false;
+    }
   }
 }
