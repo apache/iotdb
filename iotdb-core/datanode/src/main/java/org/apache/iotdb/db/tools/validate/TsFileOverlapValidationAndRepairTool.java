@@ -19,14 +19,15 @@
 
 package org.apache.iotdb.db.tools.validate;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -40,6 +41,7 @@ public class TsFileOverlapValidationAndRepairTool {
   private static final Set<File> toMoveFiles = new HashSet<>();
   private static int overlapTsFileNum = 0;
   private static int totalTsFileNum = 0;
+
   public static void main(String[] args) throws IOException {
     if (args.length == 0) {
       System.out.println("Please input sequence data dir path.");
@@ -51,11 +53,12 @@ public class TsFileOverlapValidationAndRepairTool {
     if (!confirmMoveOverlapFilesToUnsequenceSpace()) {
       return;
     }
-    moveOverlapFiles();
+    moveOverlapFilesToUnsequenceSpace(toMoveFiles);
   }
 
   private static boolean confirmMoveOverlapFilesToUnsequenceSpace() {
-    System.out.printf("Overlap tsfile num is %d, total tsfile num is %d\n", overlapTsFileNum, totalTsFileNum);
+    System.out.printf(
+        "Overlap tsfile num is %d, total tsfile num is %d\n", overlapTsFileNum, totalTsFileNum);
     System.out.println("Corresponding file num is " + toMoveFiles.size());
     if (overlapTsFileNum == 0) {
       return false;
@@ -66,7 +69,7 @@ public class TsFileOverlapValidationAndRepairTool {
     return "y".equals(input);
   }
 
-  private static void moveOverlapFiles() {
+  private static void moveOverlapFilesToUnsequenceSpace(Set<File> toMoveFiles) {
     for (File f : toMoveFiles) {
       if (!f.exists()) {
         System.out.println(f.getAbsolutePath() + "is not exist in repairing");
@@ -79,7 +82,10 @@ public class TsFileOverlapValidationAndRepairTool {
       if (sequenceDirIndex == -1) {
         continue;
       }
-      String moveToPath = filePath.substring(0, sequenceDirIndex) + replaceToStr + filePath.substring(sequenceDirIndex + replaceStr.length());
+      String moveToPath =
+          filePath.substring(0, sequenceDirIndex)
+              + replaceToStr
+              + filePath.substring(sequenceDirIndex + replaceStr.length());
       File targetFile = new File(moveToPath);
       File targetParentFile = targetFile.getParentFile();
       if (targetParentFile.exists()) {
@@ -93,7 +99,7 @@ public class TsFileOverlapValidationAndRepairTool {
     }
   }
 
-  public static void validateSequenceDataDir(File sequenceDataDir) throws IOException {
+  private static void validateSequenceDataDir(File sequenceDataDir) throws IOException {
     for (File sg : Objects.requireNonNull(sequenceDataDir.listFiles())) {
       if (!sg.isDirectory()) {
         continue;
@@ -106,28 +112,30 @@ public class TsFileOverlapValidationAndRepairTool {
           if (!timePartitionDir.isDirectory()) {
             continue;
           }
-          checkTimePartitionHasOverlap(timePartitionDir);
+          List<TsFileResource> resources = loadSortedTsFileResources(timePartitionDir);
+          if (resources.isEmpty()) {
+            continue;
+          }
+          overlapTsFileNum += checkTimePartitionHasOverlap(resources);
         }
       }
     }
   }
 
-  private static void checkTimePartitionHasOverlap(File timePartitionDir) throws IOException {
-    List<TsFileResource> resources = loadSortedTsFileResources(timePartitionDir);
-    if (resources.isEmpty()) {
-      return;
-    }
+  public static int checkTimePartitionHasOverlap(List<TsFileResource> resources) {
+    int overlapTsFileNum = 0;
     Map<String, Long> deviceEndTimeMap = new HashMap<>();
     Map<String, TsFileResource> deviceLastExistTsFileMap = new HashMap<>();
     for (TsFileResource resource : resources) {
       Set<String> devices = resource.getDevices();
       boolean fileHasOverlap = false;
+      // check overlap
       for (String device : devices) {
         long deviceStartTimeInCurrentFile = resource.getStartTime(device);
-        long deviceEndTimeInCurrentFile = resource.getEndTime(device);
-        if (!deviceLastExistTsFileMap.containsKey(device)) {
-          deviceEndTimeMap.put(device, deviceEndTimeInCurrentFile);
-          deviceLastExistTsFileMap.put(device, resource);
+        if (deviceStartTimeInCurrentFile > resource.getEndTime(device)) {
+          continue;
+        }
+        if (!deviceEndTimeMap.containsKey(device)) {
           continue;
         }
         long deviceEndTimeInPreviousFile = deviceEndTimeMap.get(device);
@@ -140,17 +148,27 @@ public class TsFileOverlapValidationAndRepairTool {
               device,
               deviceEndTimeInPreviousFile,
               deviceStartTimeInCurrentFile);
-          if (!fileHasOverlap) {
-            recordOverlapTsFile(resource);
-            fileHasOverlap = true;
+          fileHasOverlap = true;
+          recordOverlapTsFile(resource);
+          overlapTsFileNum++;
+          break;
+        }
+      }
+      // update end time map
+      if (!fileHasOverlap) {
+        for (String device : devices) {
+          long deviceEndTimeInCurrentFile = resource.getEndTime(device);
+          if (!deviceLastExistTsFileMap.containsKey(device)) {
+            deviceEndTimeMap.put(device, deviceEndTimeInCurrentFile);
+            deviceLastExistTsFileMap.put(device, resource);
+            continue;
           }
+          deviceEndTimeMap.put(device, resource.getEndTime(device));
+          deviceLastExistTsFileMap.put(device, resource);
         }
-        if (deviceEndTimeInCurrentFile > deviceEndTimeInPreviousFile) {
-          deviceEndTimeMap.put(device, deviceEndTimeInCurrentFile);
-        }
-        deviceLastExistTsFileMap.put(device, resource);
       }
     }
+    return overlapTsFileNum;
   }
 
   private static void recordOverlapTsFile(TsFileResource overlapFile) {
@@ -161,20 +179,34 @@ public class TsFileOverlapValidationAndRepairTool {
     if (modsFile.exists()) {
       toMoveFiles.add(new File(modsFile.getFilePath()));
     }
-    overlapTsFileNum++;
   }
 
-  public static List<TsFileResource> loadSortedTsFileResources(File timePartitionDir) throws IOException {
+  private static List<TsFileResource> loadSortedTsFileResources(File timePartitionDir)
+      throws IOException {
     List<TsFileResource> resources = new ArrayList<>();
     for (File tsfile : Objects.requireNonNull(timePartitionDir.listFiles())) {
-      if (!tsfile.getAbsolutePath().endsWith(TsFileConstant.TSFILE_SUFFIX) || !tsfile.isFile()) {
+      String filePath = tsfile.getAbsolutePath();
+      // has compaction log
+      if (filePath.endsWith(CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX)
+          || filePath.endsWith(CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX)) {
+        System.out.println(
+            "Time partition "
+                + timePartitionDir.getName()
+                + " is skipped because a compaction is not finished");
+        return Collections.emptyList();
+      }
+
+      if (!filePath.endsWith(TsFileConstant.TSFILE_SUFFIX) || !tsfile.isFile()) {
         continue;
       }
       String resourcePath = tsfile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX;
+
       if (!new File(resourcePath).exists()) {
-        System.out.println(tsfile.getAbsolutePath() + " is skipped because resource file is not exist.");
+        System.out.println(
+            tsfile.getAbsolutePath() + " is skipped because resource file is not exist.");
         continue;
       }
+
       TsFileResource resource = new TsFileResource();
       resource.setFile(tsfile);
       resource.deserialize();
@@ -189,11 +221,10 @@ public class TsFileOverlapValidationAndRepairTool {
                   Long.parseLong(f2.getTsFile().getName().split("-")[0]));
           return timeDiff == 0
               ? Long.compareUnsigned(
-              Long.parseLong(f1.getTsFile().getName().split("-")[1]),
-              Long.parseLong(f2.getTsFile().getName().split("-")[1]))
+                  Long.parseLong(f1.getTsFile().getName().split("-")[1]),
+                  Long.parseLong(f2.getTsFile().getName().split("-")[1]))
               : timeDiff;
         });
-
 
     totalTsFileNum += resources.size();
     return resources;
