@@ -117,6 +117,65 @@ public class PipeTaskAgent {
 
   ////////////////////////// Pipe Task Management Entry //////////////////////////
 
+  public synchronized TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChanges(
+      PipeMeta pipeMetaFromConfigNode) {
+    acquireWriteLock();
+    try {
+      return handleSinglePipeMetaChangesInternal(pipeMetaFromConfigNode);
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  private TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChangesInternal(
+      PipeMeta pipeMetaFromConfigNode) {
+    // Do nothing if data node is removing or removed
+    if (PipeAgent.runtime().isShutdown()) {
+      return null;
+    }
+
+    try {
+      executeSinglePipeMetaChanges(pipeMetaFromConfigNode);
+      return null;
+    } catch (Exception e) {
+      final String pipeName = pipeMetaFromConfigNode.getStaticMeta().getPipeName();
+      final String errorMessage =
+          String.format(
+              "Failed to handle single pipe meta changes for %s, because %s",
+              pipeName, e.getMessage());
+      LOGGER.warn("Failed to handle single pipe meta changes for {}", pipeName, e);
+      return new TPushPipeMetaRespExceptionMessage(
+          pipeName, errorMessage, System.currentTimeMillis());
+    }
+  }
+
+  public synchronized TPushPipeMetaRespExceptionMessage handleDropPipe(String pipeName) {
+    acquireWriteLock();
+    try {
+      return handleDropPipeInternal(pipeName);
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  private TPushPipeMetaRespExceptionMessage handleDropPipeInternal(String pipeName) {
+    // Do nothing if data node is removing or removed
+    if (PipeAgent.runtime().isShutdown()) {
+      return null;
+    }
+
+    try {
+      dropPipe(pipeName);
+      return null;
+    } catch (Exception e) {
+      final String errorMessage =
+          String.format("Failed to drop pipe %s, because %s", pipeName, e.getMessage());
+      LOGGER.warn("Failed to drop pipe {}", pipeName, e);
+      return new TPushPipeMetaRespExceptionMessage(
+          pipeName, errorMessage, System.currentTimeMillis());
+    }
+  }
+
   public synchronized List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChanges(
       List<PipeMeta> pipeMetaListFromConfigNode) {
     acquireWriteLock();
@@ -139,41 +198,10 @@ public class PipeTaskAgent {
     // Iterate through pipe meta list from config node, check if pipe meta exists on data node
     // or has changed
     for (final PipeMeta metaFromConfigNode : pipeMetaListFromConfigNode) {
-      final String pipeName = metaFromConfigNode.getStaticMeta().getPipeName();
-
       try {
-        final PipeMeta metaOnDataNode = pipeMetaKeeper.getPipeMeta(pipeName);
-
-        // If pipe meta does not exist on data node, create a new pipe
-        if (metaOnDataNode == null) {
-          if (createPipe(metaFromConfigNode)) {
-            // If the status recorded in config node is RUNNING, start the pipe
-            startPipe(pipeName, metaFromConfigNode.getStaticMeta().getCreationTime());
-          }
-          // If the status recorded in config node is STOPPED or DROPPED, do nothing
-          continue;
-        }
-
-        // If pipe meta exists on data node, check if it has changed
-        final PipeStaticMeta staticMetaOnDataNode = metaOnDataNode.getStaticMeta();
-        final PipeStaticMeta staticMetaFromConfigNode = metaFromConfigNode.getStaticMeta();
-
-        // First check if pipe static meta has changed, if so, drop the pipe and create a new one
-        if (!staticMetaOnDataNode.equals(staticMetaFromConfigNode)) {
-          dropPipe(pipeName);
-          if (createPipe(metaFromConfigNode)) {
-            startPipe(pipeName, metaFromConfigNode.getStaticMeta().getCreationTime());
-          }
-          // If the status is STOPPED or DROPPED, do nothing
-          continue;
-        }
-
-        // Then check if pipe runtime meta has changed, if so, update the pipe
-        final PipeRuntimeMeta runtimeMetaOnDataNode = metaOnDataNode.getRuntimeMeta();
-        final PipeRuntimeMeta runtimeMetaFromConfigNode = metaFromConfigNode.getRuntimeMeta();
-        handlePipeRuntimeMetaChanges(
-            staticMetaFromConfigNode, runtimeMetaFromConfigNode, runtimeMetaOnDataNode);
+        executeSinglePipeMetaChanges(metaFromConfigNode);
       } catch (Exception e) {
+        final String pipeName = metaFromConfigNode.getStaticMeta().getPipeName();
         final String errorMessage =
             String.format(
                 "Failed to handle pipe meta changes for %s, because %s", pipeName, e.getMessage());
@@ -205,7 +233,42 @@ public class PipeTaskAgent {
     return exceptionMessages;
   }
 
-  private void handlePipeRuntimeMetaChanges(
+  private void executeSinglePipeMetaChanges(final PipeMeta metaFromConfigNode) {
+    final String pipeName = metaFromConfigNode.getStaticMeta().getPipeName();
+    final PipeMeta metaOnDataNode = pipeMetaKeeper.getPipeMeta(pipeName);
+
+    // If pipe meta does not exist on data node, create a new pipe
+    if (metaOnDataNode == null) {
+      if (createPipe(metaFromConfigNode)) {
+        // If the status recorded in config node is RUNNING, start the pipe
+        startPipe(pipeName, metaFromConfigNode.getStaticMeta().getCreationTime());
+      }
+      // If the status recorded in config node is STOPPED or DROPPED, do nothing
+      return;
+    }
+
+    // If pipe meta exists on data node, check if it has changed
+    final PipeStaticMeta staticMetaOnDataNode = metaOnDataNode.getStaticMeta();
+    final PipeStaticMeta staticMetaFromConfigNode = metaFromConfigNode.getStaticMeta();
+
+    // First check if pipe static meta has changed, if so, drop the pipe and create a new one
+    if (!staticMetaOnDataNode.equals(staticMetaFromConfigNode)) {
+      dropPipe(pipeName);
+      if (createPipe(metaFromConfigNode)) {
+        startPipe(pipeName, metaFromConfigNode.getStaticMeta().getCreationTime());
+      }
+      // If the status is STOPPED or DROPPED, do nothing
+      return;
+    }
+
+    // Then check if pipe runtime meta has changed, if so, update the pipe
+    final PipeRuntimeMeta runtimeMetaOnDataNode = metaOnDataNode.getRuntimeMeta();
+    final PipeRuntimeMeta runtimeMetaFromConfigNode = metaFromConfigNode.getRuntimeMeta();
+    executeSinglePipeRuntimeMetaChanges(
+        staticMetaFromConfigNode, runtimeMetaFromConfigNode, runtimeMetaOnDataNode);
+  }
+
+  private void executeSinglePipeRuntimeMetaChanges(
       @NotNull PipeStaticMeta pipeStaticMeta,
       @NotNull PipeRuntimeMeta runtimeMetaFromConfigNode,
       @NotNull PipeRuntimeMeta runtimeMetaOnDataNode) {

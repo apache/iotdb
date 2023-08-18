@@ -180,6 +180,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
+import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
@@ -217,6 +218,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -950,6 +952,31 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               .setExceptionMessages(exceptionMessages);
     } catch (Exception e) {
       LOGGER.error("Error occurred when pushing pipe meta", e);
+      return new TPushPipeMetaResp()
+          .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()));
+    }
+  }
+
+  @Override
+  public TPushPipeMetaResp pushSinglePipeMeta(TPushSinglePipeMetaReq req) {
+    try {
+      TPushPipeMetaRespExceptionMessage exceptionMessage;
+      if (req.isSetPipeNameToDrop()) {
+        exceptionMessage = PipeAgent.task().handleDropPipe(req.getPipeNameToDrop());
+      } else if (req.isSetPipeMeta()) {
+        final PipeMeta pipeMeta = PipeMeta.deserialize(ByteBuffer.wrap(req.getPipeMeta()));
+        exceptionMessage = PipeAgent.task().handleSinglePipeMetaChanges(pipeMeta);
+      } else {
+        throw new Exception("Invalid TPushSinglePipeMetaReq");
+      }
+      return exceptionMessage == null
+          ? new TPushPipeMetaResp()
+              .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
+          : new TPushPipeMetaResp()
+              .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()))
+              .setExceptionMessages(Collections.singletonList(exceptionMessage));
+    } catch (Exception e) {
+      LOGGER.error("Error occurred when pushing single pipe meta", e);
       return new TPushPipeMetaResp()
           .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()));
     }
