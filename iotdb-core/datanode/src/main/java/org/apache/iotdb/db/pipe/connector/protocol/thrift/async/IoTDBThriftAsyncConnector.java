@@ -59,6 +59,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
+import java.io.IOException;
 import java.util.Comparator;
 import java.util.Optional;
 import java.util.PriorityQueue;
@@ -144,6 +145,21 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
           "IoTDBThriftAsyncConnector only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
               + "Current event: {}.",
           tabletInsertionEvent);
+      return;
+    }
+
+    if (((EnrichedEvent) tabletInsertionEvent).getShouldConvert()) {
+      for (TabletInsertionEvent event :
+          tabletInsertionEvent.processRowByRow(
+              (row, rowCollector) -> {
+                try {
+                  rowCollector.collectRow(row);
+                } catch (IOException e) {
+                  throw new PipeException("Failed to collect row", e);
+                }
+              })) {
+        transfer(event);
+      }
       return;
     }
 
@@ -235,6 +251,14 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       LOGGER.warn(
           "IoTDBThriftAsyncConnector only support PipeTsFileInsertionEvent. Current event: {}.",
           tsFileInsertionEvent);
+      return;
+    }
+
+    if (((EnrichedEvent) tsFileInsertionEvent).getShouldConvert()) {
+      for (final TabletInsertionEvent tabletInsertionEvent :
+          tsFileInsertionEvent.toTabletInsertionEvents()) {
+        transfer(tabletInsertionEvent);
+      }
       return;
     }
 
