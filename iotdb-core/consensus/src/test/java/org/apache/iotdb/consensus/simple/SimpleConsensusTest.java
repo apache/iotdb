@@ -53,7 +53,6 @@ import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class SimpleConsensusTest {
@@ -270,65 +269,37 @@ public class SimpleConsensusTest {
   }
 
   @Test
-  public void write() {
-    try {
-      consensusImpl.createLocalPeer(
-          dataRegionId,
-          Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
-    } catch (ConsensusException e) {
-      throw new RuntimeException(e);
-    }
+  public void write() throws ConsensusException {
 
-    try {
-      consensusImpl.createLocalPeer(
-          schemaRegionId,
-          Collections.singletonList(new Peer(schemaRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
-    } catch (ConsensusException e) {
-      throw new RuntimeException(e);
-    }
+    consensusImpl.createLocalPeer(
+        dataRegionId,
+        Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
 
-    try {
-      consensusImpl.createLocalPeer(
-          configId,
-          Collections.singletonList(new Peer(configId, 1, new TEndPoint("0.0.0.0", 6667))));
-    } catch (ConsensusException e) {
-      throw new RuntimeException(e);
-    }
+    consensusImpl.createLocalPeer(
+        schemaRegionId,
+        Collections.singletonList(new Peer(schemaRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
+
+    consensusImpl.createLocalPeer(
+        configId, Collections.singletonList(new Peer(configId, 1, new TEndPoint("0.0.0.0", 6667))));
 
     // test new TestStateMachine(true), should return 1;
-    try {
-      TSStatus response4 = consensusImpl.write(dataRegionId, entry1);
-      assertNotNull(response4);
-      assertEquals(-1, response4.getCode());
-    } catch (ConsensusException e) {
-      throw new RuntimeException(e);
-    }
+    TSStatus response4 = consensusImpl.write(dataRegionId, entry1);
+    assertNotNull(response4);
+    assertEquals(-1, response4.getCode());
 
     // test new TestStateMachine(false), should return -1;
-    try {
-      TSStatus response5 = consensusImpl.write(schemaRegionId, entry1);
-      assertNotNull(response5);
-      assertEquals(1, response5.getCode());
-    } catch (ConsensusException e) {
-      throw new RuntimeException(e);
-    }
+    TSStatus response5 = consensusImpl.write(schemaRegionId, entry1);
+    assertNotNull(response5);
+    assertEquals(1, response5.getCode());
 
     // test new EmptyStateMachine(), should return 0;
-    try {
-      TSStatus response6 = consensusImpl.write(configId, entry1);
-      assertNull(response6);
-      assertEquals(0, response6.getCode());
-    } catch (ConsensusException e) {
-      throw new RuntimeException(e);
-    }
+    TSStatus response6 = consensusImpl.write(configId, entry1);
+    assertNotNull(response6);
+    assertEquals(0, response6.getCode());
 
     // test ByteBufferConsensusRequest, should return 0;
-    try {
-      TSStatus response7 = consensusImpl.write(dataRegionId, entry2);
-      assertNull(response7);
-      assertEquals(0, response7.getCode());
-    } catch (ConsensusException e) {
-      throw new RuntimeException(e);
-    }
+    TSStatus response7 = consensusImpl.write(dataRegionId, entry2);
+    assertNotNull(response7);
+    assertEquals(0, response7.getCode());
   }
 }

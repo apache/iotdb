@@ -80,20 +80,16 @@ public class RegionWriteExecutorTest {
         .thenReturn(new ReentrantReadWriteLock());
 
     TSStatus writeResponse = Mockito.mock(TSStatus.class);
-    Mockito.when(dataRegionConsensus.write(dataRegionGroupId, planNode)).thenReturn(writeResponse);
+    Mockito.when(writeResponse.getCode()).thenReturn(TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
-    Mockito.when(writeResponse).thenReturn(null);
-
+    Mockito.when(triggerFireVisitor.process(planNode, TriggerEvent.BEFORE_INSERT))
+        .thenReturn(TriggerFireResult.TERMINATION);
     RegionExecutionResult res = executor.execute(dataRegionGroupId, planNode);
     assertFalse(res.isAccepted());
 
     Mockito.when(triggerFireVisitor.process(planNode, TriggerEvent.BEFORE_INSERT))
-        .thenReturn(TriggerFireResult.TERMINATION);
-    res = executor.execute(dataRegionGroupId, planNode);
-    assertFalse(res.isAccepted());
-
-    Mockito.when(triggerFireVisitor.process(planNode, TriggerEvent.BEFORE_INSERT))
         .thenReturn(TriggerFireResult.SUCCESS);
+    Mockito.when(dataRegionConsensus.write(dataRegionGroupId, planNode)).thenReturn(writeResponse);
     Mockito.when(triggerFireVisitor.process(planNode, TriggerEvent.AFTER_INSERT))
         .thenReturn(TriggerFireResult.TERMINATION);
     res = executor.execute(dataRegionGroupId, planNode);
@@ -101,10 +97,13 @@ public class RegionWriteExecutorTest {
 
     Mockito.when(triggerFireVisitor.process(planNode, TriggerEvent.AFTER_INSERT))
         .thenReturn(TriggerFireResult.SUCCESS);
-    Mockito.when(writeResponse)
-        .thenReturn(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     res = executor.execute(dataRegionGroupId, planNode);
     assertTrue(res.isAccepted());
+
+    Mockito.when(dataRegionConsensus.write(dataRegionGroupId, planNode))
+        .thenThrow(new ConsensusException("Error!"));
+    res = executor.execute(dataRegionGroupId, planNode);
+    assertFalse(res.isAccepted());
   }
 
   private InsertRowNode getInsertRowNode() throws IllegalPathException {
