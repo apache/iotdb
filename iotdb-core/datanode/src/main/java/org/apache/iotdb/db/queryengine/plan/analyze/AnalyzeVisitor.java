@@ -254,13 +254,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           // remove the device which won't appear in resultSet after limit/offset
           deviceSet = pushDownLimitOffsetInGroupByTimeForDevice(deviceSet, queryStatement);
         }
-        analysis.setDeviceSet(deviceSet);
 
         analyzeDeviceToWhere(analysis, queryStatement, schemaTree, deviceSet);
         outputExpressions = analyzeSelect(analysis, queryStatement, schemaTree, deviceSet);
         if (deviceSet.isEmpty()) {
           return finishQuery(queryStatement, analysis);
         }
+        analysis.setDeviceSet(deviceSet);
 
         analyzeDeviceToGroupBy(analysis, queryStatement, schemaTree, deviceSet);
         analyzeDeviceToOrderBy(analysis, queryStatement, schemaTree, deviceSet);
@@ -564,7 +564,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     ColumnPaginationController paginationController =
         new ColumnPaginationController(
             queryStatement.getSeriesLimit(), queryStatement.getSeriesOffset(), false);
-    Set<PartialPath> noMeasurementDevices = new HashSet<>(deviceSet);
 
     for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
       Expression selectExpression = resultColumn.getExpression();
@@ -580,7 +579,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         if (selectExpressionsOfOneDevice.isEmpty()) {
           continue;
         }
-        noMeasurementDevices.remove(device);
         updateMeasurementToDeviceSelectExpressions(
             analysis, measurementToDeviceSelectExpressions, device, selectExpressionsOfOneDevice);
       }
@@ -628,6 +626,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     // remove devices without measurements to compute
+    Set<PartialPath> noMeasurementDevices = new HashSet<>();
+    for (PartialPath device : deviceSet) {
+      if (!deviceToSelectExpressions.containsKey(device.getFullPath())) {
+        noMeasurementDevices.add(device);
+      }
+    }
     deviceSet.removeAll(noMeasurementDevices);
 
     // when the select expression of any device is empty,
