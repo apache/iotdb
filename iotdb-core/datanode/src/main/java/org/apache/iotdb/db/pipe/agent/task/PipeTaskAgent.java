@@ -134,9 +134,9 @@ public class PipeTaskAgent {
       return null;
     }
 
-    TPushPipeMetaRespExceptionMessage exceptionMessage = null;
     try {
       executeSinglePipeMetaChanges(pipeMetaFromConfigNode);
+      return null;
     } catch (Exception e) {
       final String pipeName = pipeMetaFromConfigNode.getStaticMeta().getPipeName();
       final String errorMessage =
@@ -144,10 +144,9 @@ public class PipeTaskAgent {
               "Failed to handle single pipe meta changes for %s, because %s",
               pipeName, e.getMessage());
       LOGGER.warn("Failed to handle single pipe meta changes for {}", pipeName, e);
-      exceptionMessage =
-          new TPushPipeMetaRespExceptionMessage(pipeName, errorMessage, System.currentTimeMillis());
+      return new TPushPipeMetaRespExceptionMessage(
+          pipeName, errorMessage, System.currentTimeMillis());
     }
-    return exceptionMessage;
   }
 
   public synchronized TPushPipeMetaRespExceptionMessage handleDropPipe(String pipeName) {
@@ -165,17 +164,16 @@ public class PipeTaskAgent {
       return null;
     }
 
-    TPushPipeMetaRespExceptionMessage exceptionMessage = null;
     try {
       dropPipe(pipeName);
+      return null;
     } catch (Exception e) {
       final String errorMessage =
           String.format("Failed to drop pipe %s, because %s", pipeName, e.getMessage());
       LOGGER.warn("Failed to drop pipe {}", pipeName, e);
-      exceptionMessage =
-          new TPushPipeMetaRespExceptionMessage(pipeName, errorMessage, System.currentTimeMillis());
+      return new TPushPipeMetaRespExceptionMessage(
+          pipeName, errorMessage, System.currentTimeMillis());
     }
-    return exceptionMessage;
   }
 
   public synchronized List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChanges(

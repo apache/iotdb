@@ -686,11 +686,11 @@ public class ConfigNodeProcedureEnv {
     return clientHandler.getResponseMap();
   }
 
-  public Map<Integer, TPushPipeMetaResp> dropPipeOnDataNodes(String pipeNameToDrop) {
+  public Map<Integer, TPushPipeMetaResp> dropSinglePipeOnDataNodes(String pipeNameToDrop) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TPushSinglePipeMetaReq request =
-        new TPushSinglePipeMetaReq().setPipeMeta(new byte[0]).setPipeNameToDrop(pipeNameToDrop);
+        new TPushSinglePipeMetaReq().setPipeNameToDrop(pipeNameToDrop);
 
     final AsyncClientHandler<TPushSinglePipeMetaReq, TPushPipeMetaResp> clientHandler =
         new AsyncClientHandler<>(

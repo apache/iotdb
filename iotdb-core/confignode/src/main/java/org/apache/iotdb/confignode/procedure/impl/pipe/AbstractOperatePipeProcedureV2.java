@@ -354,9 +354,9 @@ public abstract class AbstractOperatePipeProcedureV2
    * @param env ConfigNodeProcedureEnv
    * @return The responseMap after pushing pipe meta
    */
-  protected Map<Integer, TPushPipeMetaResp> dropPipeOnDataNodes(
+  protected Map<Integer, TPushPipeMetaResp> dropSinglePipeOnDataNodes(
       String pipeName, ConfigNodeProcedureEnv env) {
-    return env.dropPipeOnDataNodes(pipeName);
+    return env.dropSinglePipeOnDataNodes(pipeName);
   }
 
   @Override
