@@ -96,8 +96,14 @@ public class PipeRuntimeAgent implements IService {
   }
 
   ////////////////////// Recover ProgressIndex Assigner //////////////////////
-
   public void assignRecoverProgressIndexForTsFileRecovery(TsFileResource tsFileResource) {
+    tsFileResource.recoverProgressIndex(
+        new RecoverProgressIndex(
+            DATA_NODE_ID,
+            simpleConsensusProgressIndexAssigner.getSimpleProgressIndexForTsFileRecovery()));
+  }
+
+  public void assignUpdateProgressIndexForTsFileRecovery(TsFileResource tsFileResource) {
     tsFileResource.updateProgressIndex(
         new RecoverProgressIndex(
             DATA_NODE_ID,
