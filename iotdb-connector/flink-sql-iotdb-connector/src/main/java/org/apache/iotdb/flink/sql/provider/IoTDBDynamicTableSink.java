@@ -20,7 +20,6 @@ package org.apache.iotdb.flink.sql.provider;
 
 import org.apache.iotdb.flink.sql.function.IoTDBSinkFunction;
 import org.apache.iotdb.flink.sql.wrapper.SchemaWrapper;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 
 import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.table.api.TableSchema;
@@ -50,11 +49,7 @@ public class IoTDBDynamicTableSink implements DynamicTableSink {
 
   @Override
   public SinkRuntimeProvider getSinkRuntimeProvider(Context context) {
-    try {
-      return SinkFunctionProvider.of(new IoTDBSinkFunction(options, new SchemaWrapper(schema)));
-    } catch (IoTDBConnectionException e) {
-      throw new RuntimeException(e);
-    }
+    return SinkFunctionProvider.of(new IoTDBSinkFunction(options, new SchemaWrapper(schema)));
   }
 
   @Override
