@@ -22,7 +22,9 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
@@ -225,10 +227,22 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       IoTDBThriftSyncConnectorClient client,
       PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, TException, WALPipeException {
-    final TPipeTransferResp resp =
-        client.pipeTransfer(
-            PipeTransferInsertNodeReq.toTPipeTransferReq(
-                pipeInsertNodeTabletInsertionEvent.getInsertNode()));
+    final TPipeTransferResp resp;
+
+    if (pipeInsertNodeTabletInsertionEvent
+            .getPattern()
+            .equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE)
+        && pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCache() == null) {
+      resp =
+          client.pipeTransfer(
+              PipeTransferBinaryReq.toTPipeTransferReq(
+                  pipeInsertNodeTabletInsertionEvent.getByteBuffer()));
+    } else {
+      resp =
+          client.pipeTransfer(
+              PipeTransferInsertNodeReq.toTPipeTransferReq(
+                  pipeInsertNodeTabletInsertionEvent.getInsertNode()));
+    }
 
     if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(

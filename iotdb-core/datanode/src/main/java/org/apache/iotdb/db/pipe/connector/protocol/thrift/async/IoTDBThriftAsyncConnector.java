@@ -27,6 +27,8 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletReq;
@@ -49,6 +51,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -152,12 +155,26 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
     if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
           (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
-      final PipeTransferInsertNodeReq pipeTransferInsertNodeReq =
-          PipeTransferInsertNodeReq.toTPipeTransferReq(
-              pipeInsertNodeTabletInsertionEvent.getInsertNode());
+
+      final TPipeTransferReq pipeTransferReq;
+
+      if (pipeInsertNodeTabletInsertionEvent
+              .getPattern()
+              .equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE)
+          && pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCache() == null) {
+        pipeTransferReq =
+            PipeTransferBinaryReq.toTPipeTransferReq(
+                pipeInsertNodeTabletInsertionEvent.getByteBuffer());
+
+      } else {
+        pipeTransferReq =
+            PipeTransferInsertNodeReq.toTPipeTransferReq(
+                pipeInsertNodeTabletInsertionEvent.getInsertNode());
+      }
+
       final PipeTransferInsertNodeTabletInsertionEventHandler pipeTransferInsertNodeReqHandler =
           new PipeTransferInsertNodeTabletInsertionEventHandler(
-              requestCommitId, pipeInsertNodeTabletInsertionEvent, pipeTransferInsertNodeReq, this);
+              requestCommitId, pipeInsertNodeTabletInsertionEvent, pipeTransferReq, this);
 
       transfer(requestCommitId, pipeTransferInsertNodeReqHandler);
     } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent

@@ -29,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -118,6 +119,31 @@ public class WALEntryHandler {
     return node;
   }
 
+  public InsertNode getWALEntryValue() {
+    return value instanceof InsertNode ? (InsertNode) value : null;
+  }
+
+  public ByteBuffer getBuffer() throws WALPipeException {
+    // wait until the position is ready
+    while (!walEntryPosition.canRead()) {
+      try {
+        synchronized (this) {
+          this.wait();
+        }
+      } catch (InterruptedException e) {
+        logger.warn("Interrupted when waiting for result.", e);
+        Thread.currentThread().interrupt();
+      }
+    }
+
+    final ByteBuffer buffer = readByteBufferFromWALFile();
+    if (buffer == null) {
+      throw new WALPipeException(
+          String.format("Fail to get the wal value of the position %s.", walEntryPosition));
+    }
+    return buffer;
+  }
+
   private InsertNode readFromOriginalWALFile() throws WALPipeException {
     try {
       return walEntryPosition.readInsertNodeViaCache();
@@ -129,6 +155,14 @@ public class WALEntryHandler {
   private InsertNode readFromHardlinkFile() throws WALPipeException {
     try {
       return walEntryPosition.readInsertNodeViaCache();
+    } catch (Exception e) {
+      throw new WALPipeException("Fail to get value because the file content isn't correct.", e);
+    }
+  }
+
+  private ByteBuffer readByteBufferFromWALFile() throws WALPipeException {
+    try {
+      return walEntryPosition.readByteBufferViaCache();
     } catch (Exception e) {
       throw new WALPipeException("Fail to get value because the file content isn't correct.", e);
     }

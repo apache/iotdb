@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.PipeRequestType;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
@@ -81,6 +82,9 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
         case TRANSFER_INSERT_NODE:
           return handleTransferInsertNode(
               PipeTransferInsertNodeReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
+        case TRANSFER_BINARY:
+          return handleTransferBinary(
+              PipeTransferBinaryReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
         case TRANSFER_TABLET:
           return handleTransferTablet(
               PipeTransferTabletReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
@@ -171,6 +175,12 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
       PipeTransferInsertNodeReq req,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
+    return new TPipeTransferResp(
+        executeStatement(req.constructStatement(), partitionFetcher, schemaFetcher));
+  }
+
+  private TPipeTransferResp handleTransferBinary(
+      PipeTransferBinaryReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
     return new TPipeTransferResp(
         executeStatement(req.constructStatement(), partitionFetcher, schemaFetcher));
   }

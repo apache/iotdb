@@ -556,7 +556,7 @@ public class IoTDBConfig {
   private long allocateMemoryForTimePartitionInfo = allocateMemoryForStorageEngine * 8 / 10 / 20;
 
   /** Memory allocated proportion for wal pipe cache */
-  private long allocateMemoryForWALPipeCache = allocateMemoryForConsensus / 10;
+  private long allocateMemoryForWALPipeCache = allocateMemoryForConsensus;
 
   /**
    * If true, we will estimate each query's possible memory footprint before executing it and deny

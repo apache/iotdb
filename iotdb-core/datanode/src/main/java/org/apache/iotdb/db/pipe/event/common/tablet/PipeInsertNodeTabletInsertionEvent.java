@@ -35,6 +35,7 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.util.function.BiConsumer;
 
 public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
@@ -68,6 +69,15 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
 
   public InsertNode getInsertNode() throws WALPipeException {
     return walEntryHandler.getValue();
+  }
+
+  public ByteBuffer getByteBuffer() throws WALPipeException {
+    return walEntryHandler.getBuffer();
+  }
+
+  // This method is a pre-determination of whether to use binary transfers
+  public InsertNode getInsertNodeViaCache() throws WALPipeException {
+    return walEntryHandler.getWALEntryValue();
   }
 
   /////////////////////////// EnrichedEvent ///////////////////////////
