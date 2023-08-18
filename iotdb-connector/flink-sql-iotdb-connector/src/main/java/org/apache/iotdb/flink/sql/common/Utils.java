@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 public class Utils {
+  private Utils() {}
   public static Object getValue(Field value, String dataType) {
     try {
       if ("INT32".equals(dataType)) {
@@ -108,10 +109,10 @@ public class Utils {
     return pattern.matcher(s).matches();
   }
 
-  public static RowData convert(RowRecord record, List<String> columnTypes) {
+  public static RowData convert(RowRecord rowRecord, List<String> columnTypes) {
     ArrayList<Object> values = new ArrayList<>();
-    values.add(record.getTimestamp());
-    List<Field> fields = record.getFields();
+    values.add(rowRecord.getTimestamp());
+    List<Field> fields = rowRecord.getFields();
     for (int i = 0; i < fields.size(); i++) {
       values.add(getValue(fields.get(i), columnTypes.get(i + 1)));
     }
@@ -123,12 +124,10 @@ public class Utils {
     ArrayList<Object> objects = new ArrayList<>();
     int length = Array.getLength(obj);
     for (int i = 0; i < length; i++) {
-      switch (dataType) {
-        case TEXT:
-          objects.add(StringData.fromString(((Binary) Array.get(obj, i)).getStringValue()));
-          break;
-        default:
-          objects.add(Array.get(obj, i));
+      if (dataType == TSDataType.TEXT) {
+        objects.add(StringData.fromString(((Binary) Array.get(obj, i)).getStringValue()));
+      } else {
+        objects.add(Array.get(obj, i));
       }
     }
     return objects;

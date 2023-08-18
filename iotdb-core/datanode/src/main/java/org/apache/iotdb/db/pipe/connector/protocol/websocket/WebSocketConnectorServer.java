@@ -127,7 +127,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
           try {
             events.wait();
           } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+            Thread.currentThread().interrupt();
           }
         }
       }
