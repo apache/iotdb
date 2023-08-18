@@ -407,8 +407,6 @@ public class WALNode implements IWALNode {
         WRITING_METRICS.recordMemTableRamWhenCauseFlush(identifier, oldestMemTableTVListsRamCost);
       } else {
         snapshotMemTable(dataRegion, oldestTsFile, oldestMemTableInfo);
-        WRITING_METRICS.recordMemTableRamWhenCauseSnapshot(
-            identifier, oldestMemTableTVListsRamCost);
       }
       return true;
     }
@@ -457,8 +455,8 @@ public class WALNode implements IWALNode {
           "CheckpointManager$DeleteOutdatedFileTask.snapshotOrFlushOldestMemTable");
       try {
         // make sure snapshot is made before memTable flush operation
-        synchronized (memTable) {
-          if (memTable.getFlushStatus() != FlushStatus.WORKING) {
+        synchronized (this) {
+          if (memTable != null && memTable.getFlushStatus() != FlushStatus.WORKING) {
             return;
           }
 
@@ -485,6 +483,7 @@ public class WALNode implements IWALNode {
           // it's low-risk to block writes awhile because this memTable accumulates slowly
           if (flushListener.waitForResult() == Status.FAILURE) {
             logger.error("Fail to snapshot memTable of {}", tsFile, flushListener.getCause());
+            return;
           }
           logger.info(
               "WAL node-{} snapshots memTable-{} to wal files because Effective information ratio {} is below wal min effective info ratio {}, memTable size is {}.",
@@ -493,6 +492,8 @@ public class WALNode implements IWALNode {
               effectiveInfoRatio,
               config.getWalMinEffectiveInfoRatio(),
               memTable.getTVListsRamCost());
+          WRITING_METRICS.recordMemTableRamWhenCauseSnapshot(
+              identifier, memTable.getTVListsRamCost());
         }
       } finally {
         dataRegion.writeUnlock();
