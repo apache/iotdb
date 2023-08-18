@@ -82,7 +82,7 @@ public class TsFileAlignedSeriesReaderIterator {
     }
 
     AlignedChunkReader chunkReader =
-        new AlignedChunkReader(timeChunk, Arrays.asList(valueChunks), null);
+        new AlignedChunkReader(timeChunk, Arrays.asList(valueChunks), null, false);
 
     return new NextAlignedChunkInfo(chunkReader, totalSize, notNullChunkNum, totalPointNum);
   }

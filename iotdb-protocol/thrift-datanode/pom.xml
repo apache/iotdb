@@ -27,8 +27,8 @@
         <version>1.3.0-SNAPSHOT</version>
     </parent>
     <artifactId>iotdb-thrift</artifactId>
-    <name>IoTDB: Protocol: Thrift RPC</name>
-    <description>RPC (Thrift) framework for client and server.</description>
+    <name>IoTDB: Protocol: Thrift Data Node</name>
+    <description>RPC (Thrift) framework for client and DataNodes.</description>
     <build>
         <plugins>
             <!--
