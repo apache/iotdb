@@ -212,6 +212,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
       throw new PipeException(e.getMessage());
     } catch (Exception e) {
       events.put(eventPair);
+      e.printStackTrace();
       throw new PipeException(e.getMessage());
     }
   }

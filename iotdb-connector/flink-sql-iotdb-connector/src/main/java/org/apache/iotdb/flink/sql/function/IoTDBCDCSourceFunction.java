@@ -40,7 +40,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -81,21 +80,25 @@ public class IoTDBCDCSourceFunction<RowData> extends RichSourceFunction<RowData>
   }
 
   @Override
-  public void run(SourceContext<RowData> ctx) throws InterruptedException, URISyntaxException {
+  public void run(SourceContext<RowData> ctx) throws InterruptedException {
     consumeExecutor.submit(new ConsumeRunnable(ctx));
     consumeExecutor.shutdown();
     while (true) {
-      for (int i = 0; i < socketClients.size(); i++) {
-        if (socketClients.get(i).getReadyState().equals(ReadyState.CLOSED)) {
-          String nodeUrl = nodeUrls.get(i);
-          try {
-            URI uri = new URI(String.format("ws://%s", nodeUrl));
-            socketClients.set(i, initAndGet(uri));
-          } catch (URISyntaxException e) {
-            String log = String.format("Unable to create an URI by nodeUrl: %s", nodeUrl);
-            LOGGER.error(log);
-            throw e;
+      for (IoTDBWebsocketClient socketClient : socketClients) {
+        if (socketClient.getReadyState().equals(ReadyState.CLOSED)) {
+          while (!Utils.isURIAvailable(socketClient.getURI())) {
+            String log =
+                String.format(
+                    "The URI %s:%d is not available now, sleep 5 seconds.",
+                    socketClient.getURI().getHost(), socketClient.getURI().getPort());
+            LOGGER.warn(log);
+            Thread.sleep(5000);
           }
+          socketClient.reconnect();
+          while (!socketClient.getReadyState().equals(ReadyState.OPEN)) {
+            Thread.sleep(1000);
+          }
+          socketClient.send("START");
         }
       }
     }
@@ -122,15 +125,17 @@ public class IoTDBCDCSourceFunction<RowData> extends RichSourceFunction<RowData>
   }
 
   private IoTDBWebsocketClient initAndGet(URI uri) throws InterruptedException {
+    while (!Utils.isURIAvailable(uri)) {
+      String log =
+          String.format(
+              "The URI %s:%d is not available now, sleep 5 seconds.", uri.getHost(), uri.getPort());
+      LOGGER.warn(log);
+      Thread.sleep(5000);
+    }
     IoTDBWebsocketClient client = new IoTDBWebsocketClient(uri, this);
     client.connect();
     while (!client.getReadyState().equals(ReadyState.OPEN)) {
-      try {
-        Thread.sleep(1000);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw e;
-      }
+      Thread.sleep(1000);
     }
     client.send("START");
     return client;
