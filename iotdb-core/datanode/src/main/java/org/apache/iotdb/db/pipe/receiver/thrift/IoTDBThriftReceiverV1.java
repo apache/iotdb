@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.PipeRequestType;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
@@ -30,7 +31,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletReq;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBThriftConnectorRequestVersion;
+import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
@@ -87,7 +88,9 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
           return handleTransferTablet(
               PipeTransferTabletReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
         case TRANSFER_FILE_PIECE:
-          return handleTransferFilePiece(PipeTransferFilePieceReq.fromTPipeTransferReq(req));
+          return handleTransferFilePiece(
+              PipeTransferFilePieceReq.fromTPipeTransferReq(req),
+              req instanceof AirGapPseudoTPipeTransferRequest);
         case TRANSFER_FILE_SEAL:
           return handleTransferFileSeal(
               PipeTransferFileSealReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
@@ -184,11 +187,20 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
             : executeStatement(statement, partitionFetcher, schemaFetcher));
   }
 
-  private TPipeTransferResp handleTransferFilePiece(PipeTransferFilePieceReq req) {
+  private TPipeTransferResp handleTransferFilePiece(
+      PipeTransferFilePieceReq req, boolean isRequestThroughAirGap) {
     try {
       updateWritingFileIfNeeded(req.getFileName());
 
       if (!isWritingFileOffsetCorrect(req.getStartWritingOffset())) {
+        if (isRequestThroughAirGap) {
+          // If the request is through air gap, the sender will resend the file piece from the
+          // beginning of the file.
+          // So the receiver should reset the offset of the writing file to the beginning of the
+          // file.
+          writingFileWriter.setLength(0);
+        }
+
         final TSStatus status =
             RpcUtils.getStatus(
                 TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET,
@@ -498,7 +510,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
   }
 
   @Override
-  public IoTDBThriftConnectorRequestVersion getVersion() {
-    return IoTDBThriftConnectorRequestVersion.VERSION_1;
+  public IoTDBConnectorRequestVersion getVersion() {
+    return IoTDBConnectorRequestVersion.VERSION_1;
   }
 }

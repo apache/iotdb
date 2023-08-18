@@ -112,7 +112,6 @@
             we'll stay at 0.14.1.
         -->
         <thrift.version>0.14.1</thrift.version>
-        <airline.version>0.8</airline.version>
         <jackson.version>2.13.5</jackson.version>
         <disrupter.version>3.4.2</disrupter.version>
         <jackson.databind.version>2.13.4.2</jackson.databind.version>
@@ -124,7 +123,7 @@
         <common.logging.version>1.1.3</common.logging.version>
         <common.pool2.version>2.11.1</common.pool2.version>
         <org.slf4j.version>1.7.36</org.slf4j.version>
-        <guava.version>24.1.1</guava.version>
+        <guava.version>32.1.2-jre</guava.version>
         <jline.version>3.21.0</jline.version>
         <jetty.version>9.4.51.v20230217</jetty.version>
         <dropwizard.metrics.version>4.2.7</dropwizard.metrics.version>
@@ -166,7 +165,6 @@
         <javax.annotation-api.version>1.3.2</javax.annotation-api.version>
         <log4j.version>1.2.24</log4j.version>
         <lz4-java.version>1.8.0</lz4-java.version>
-        <jaxb-runtime.version>3.0.2</jaxb-runtime.version>
         <mockito-core.version>2.23.4</mockito-core.version>
         <objenesis.version>3.2</objenesis.version>
         <powermock-core.version>2.0.9</powermock-core.version>
@@ -252,7 +250,7 @@
             <dependency>
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
-                <version>[${guava.version},)</version>
+                <version>${guava.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.lmax</groupId>
@@ -398,22 +396,6 @@
                 <version>${jackson-core-asl.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.glassfish.jaxb</groupId>
-                <artifactId>jaxb-runtime</artifactId>
-                <version>${jaxb-runtime.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>jakarta.activation</groupId>
-                        <artifactId>jakarta.activation-api</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <!--            <dependency>
-                <groupId>org.javassist</groupId>
-                <artifactId>javassist</artifactId>
-                <version>3.24.1-GA</version>
-            </dependency>-->
-            <dependency>
                 <groupId>org.mockito</groupId>
                 <artifactId>mockito-core</artifactId>
                 <version>${mockito-core.version}</version>
@@ -503,11 +485,6 @@
                 <groupId>io.airlift</groupId>
                 <artifactId>units</artifactId>
                 <version>${io.airlift.units.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.airlift</groupId>
-                <artifactId>airline</artifactId>
-                <version>${airline.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.airlift</groupId>
@@ -777,7 +754,7 @@
                 <plugin>
                     <groupId>com.googlecode.maven-download-plugin</groupId>
                     <artifactId>download-maven-plugin</artifactId>
-                    <version>1.6.7</version>
+                    <version>1.6.8</version>
                 </plugin>
                 <plugin>
                     <groupId>com.googlecode.cmake-maven-project</groupId>
@@ -811,7 +788,7 @@
                     <sourceDirectories>
                         <!-- put all source folders not in src/main/java here-->
                         <sourceDirectory>iotdb-core/antlr/target/generated-sources/antlr4</sourceDirectory>
-                        <sourceDirectory>iotdb-protocol/thrift/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>iotdb-protocol/thrift-datanode/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/thrift-commons/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/thrift-confignode/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/thrift-iot-consensus/target/generated-sources/thrift</sourceDirectory>
@@ -1225,10 +1202,6 @@
                 <dependency>
                     <groupId>javax.xml.bind</groupId>
                     <artifactId>jaxb-api</artifactId>
-                </dependency>
-                <dependency>
-                    <groupId>org.glassfish.jaxb</groupId>
-                    <artifactId>jaxb-runtime</artifactId>
                 </dependency>
             </dependencies>
         </profile>

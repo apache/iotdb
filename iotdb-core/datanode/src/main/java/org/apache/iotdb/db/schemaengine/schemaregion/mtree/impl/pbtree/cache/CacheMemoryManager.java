@@ -86,6 +86,10 @@ public class CacheMemoryManager {
     return cacheManager;
   }
 
+  public void clearCachedMTreeStore(CachedMTreeStore store) {
+    storeList.remove(store);
+  }
+
   public void init(ISchemaEngineStatistics engineStatistics) {
     flushSemaphore = new FiniteSemaphore(2, 0);
     releaseSemaphore = new FiniteSemaphore(2, 0);

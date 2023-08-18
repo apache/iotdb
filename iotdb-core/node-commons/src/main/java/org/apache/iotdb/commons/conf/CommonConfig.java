@@ -180,6 +180,9 @@ public class CommonConfig {
   private long pipeMetaSyncerAutoRestartPipeCheckIntervalRound = 1;
   private boolean pipeAutoRestartEnabled = true;
 
+  private boolean pipeAirGapReceiverEnabled = false;
+  private int pipeAirGapReceiverPort = 9780;
+
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
 
@@ -700,6 +703,22 @@ public class CommonConfig {
       long pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs) {
     this.pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs =
         pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs;
+  }
+
+  public void setPipeAirGapReceiverEnabled(boolean pipeAirGapReceiverEnabled) {
+    this.pipeAirGapReceiverEnabled = pipeAirGapReceiverEnabled;
+  }
+
+  public boolean getPipeAirGapReceiverEnabled() {
+    return pipeAirGapReceiverEnabled;
+  }
+
+  public void setPipeAirGapReceiverPort(int pipeAirGapReceiverPort) {
+    this.pipeAirGapReceiverPort = pipeAirGapReceiverPort;
+  }
+
+  public int getPipeAirGapReceiverPort() {
+    return pipeAirGapReceiverPort;
   }
 
   public String getSchemaEngineMode() {
