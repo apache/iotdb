@@ -41,6 +41,7 @@ import java.util.regex.Pattern;
 
 public class Utils {
   private Utils() {}
+
   public static Object getValue(Field value, String dataType) {
     try {
       if ("INT32".equals(dataType)) {
