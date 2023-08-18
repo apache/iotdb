@@ -46,15 +46,23 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
   private final TsBlock tsBlock;
   private final AlignedChunkMetadata chunkMetadata;
 
+  // only used for limit and offset push down optimizer, if we select all columns from aligned
+  // device, we
+  // can use statistics to skip.
+  // it's only exact while using limit & offset push down
+  private final boolean queryAllSensors;
+
   private Filter valueFilter;
   private PaginationController paginationController = UNLIMITED_PAGINATION_CONTROLLER;
 
   private TsBlockBuilder builder;
 
-  public MemAlignedPageReader(TsBlock tsBlock, AlignedChunkMetadata chunkMetadata, Filter filter) {
+  public MemAlignedPageReader(
+      TsBlock tsBlock, AlignedChunkMetadata chunkMetadata, Filter filter, boolean queryAllSensors) {
     this.tsBlock = tsBlock;
     this.chunkMetadata = chunkMetadata;
     this.valueFilter = filter;
+    this.queryAllSensors = queryAllSensors;
   }
 
   @Override
@@ -101,16 +109,23 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
   private boolean pageSatisfy() {
     Statistics<? extends Serializable> statistics = getStatistics();
     if (valueFilter == null || valueFilter.allSatisfy(statistics)) {
-      // For aligned series, When we only read some measurements under an aligned device, if the
-      // values of these queried measurements at a timestamp are all null, the timestamp will not be
-      // selected.
-      // NOTE: if we change the read semantic in the future for aligned series, we need to remove
+      // For aligned series, When we only query some measurements under an aligned device, if any
+      // values of these queried measurements has the same value count as the time column, the
+      // timestamp will be selected.
+      // NOTE: if we change the query semantic in the future for aligned series, we need to remove
       // this check here.
       long rowCount = getTimeStatistics().getCount();
-      for (Statistics<? extends Serializable> vStatistics : getValueStatisticsList()) {
-        if (vStatistics == null || vStatistics.hasNullValue(rowCount)) {
-          return true;
+      boolean canUse = queryAllSensors || getValueStatisticsList().isEmpty();
+      if (!canUse) {
+        for (Statistics<? extends Serializable> vStatistics : getValueStatisticsList()) {
+          if (vStatistics != null && !vStatistics.hasNullValue(rowCount)) {
+            canUse = true;
+            break;
+          }
         }
+      }
+      if (!canUse) {
+        return true;
       }
       // When the number of points in all value pages is the same as that in the time page, it means
       // that there is no null value, and all timestamps will be selected.
