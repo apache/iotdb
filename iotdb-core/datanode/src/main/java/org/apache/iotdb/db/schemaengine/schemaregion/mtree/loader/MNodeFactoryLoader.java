@@ -87,27 +87,42 @@ public class MNodeFactoryLoader {
         new Reflections(
             new ConfigurationBuilder().forPackages(scanPackages.toArray(new String[0])));
     Set<Class<?>> nodeFactorySet = reflections.getTypesAnnotatedWith(MNodeFactory.class);
+    IMNodeFactory res = null;
+    int priority = Integer.MIN_VALUE;
     for (Class<?> nodeFactory : nodeFactorySet) {
       if (isGenericMatch(nodeFactory, nodeType) && isEnvMatch(nodeFactory, env)) {
         try {
-          return (IMNodeFactory) nodeFactory.getDeclaredConstructor().newInstance();
+          MNodeFactory annotationInfo = nodeFactory.getAnnotation(MNodeFactory.class);
+          if (annotationInfo.priority() > priority) {
+            res = (IMNodeFactory) nodeFactory.getDeclaredConstructor().newInstance();
+          }
         } catch (Exception e) {
           throw new SchemaExecutionException(e);
         }
       }
+    }
+    if (res != null) {
+      return res;
     }
     // if no satisfied MNodeFactory in customer env found, use default env
     for (Class<?> nodeFactory : nodeFactorySet) {
       if (isGenericMatch(nodeFactory, nodeType)
           && isEnvMatch(nodeFactory, SchemaConstant.DEFAULT_MNODE_FACTORY_ENV)) {
         try {
-          return (IMNodeFactory) nodeFactory.getDeclaredConstructor().newInstance();
+          MNodeFactory annotationInfo = nodeFactory.getAnnotation(MNodeFactory.class);
+          if (annotationInfo.priority() > priority) {
+            res = (IMNodeFactory) nodeFactory.getDeclaredConstructor().newInstance();
+          }
         } catch (Exception e) {
           throw new SchemaExecutionException(e);
         }
       }
     }
-    throw new SchemaExecutionException("No satisfied MNodeFactory found");
+    if (res != null) {
+      return res;
+    } else {
+      throw new SchemaExecutionException("No satisfied MNodeFactory found");
+    }
   }
 
   public boolean isGenericMatch(Class<?> factory, Class<?> targetType) {

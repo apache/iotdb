@@ -28,4 +28,11 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE)
 public @interface MNodeFactory {
   String env() default "IoTDB";
+
+  /**
+   * The higher the number, the higher the priority.
+   *
+   * @return the priority of this class.
+   */
+  int priority() default 0;
 }
