@@ -191,7 +191,8 @@ public class OperatorMemoryTest {
               planNodeId,
               alignedPath,
               Ordering.ASC,
-              SeriesScanOptions.getDefaultSeriesScanOptions(alignedPath));
+              SeriesScanOptions.getDefaultSeriesScanOptions(alignedPath),
+              false);
 
       long maxPeekMemory =
           Math.max(

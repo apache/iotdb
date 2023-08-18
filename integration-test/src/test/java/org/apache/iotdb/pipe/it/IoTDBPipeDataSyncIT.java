@@ -116,9 +116,9 @@ public class IoTDBPipeDataSyncIT {
           Statement statement = connection.createStatement()) {
         await()
             .atMost(600, TimeUnit.SECONDS)
-            .until(
+            .untilAsserted(
                 () ->
-                    TestUtils.isResultSetEqual(
+                    TestUtils.assertResultSetEqual(
                         statement.executeQuery("select * from root.**"),
                         "Time,root.vehicle.d0.s1,",
                         Collections.singleton("0,1.0,")));
