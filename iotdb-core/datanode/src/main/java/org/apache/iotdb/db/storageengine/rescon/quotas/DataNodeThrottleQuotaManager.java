@@ -85,6 +85,7 @@ public class DataNodeThrottleQuotaManager {
       case BATCH_INSERT_ONE_DEVICE:
       case BATCH_INSERT_ROWS:
       case MULTI_BATCH_INSERT:
+      case PIPE_ENRICHED_INSERT:
         return checkQuota(userName, 1, 0, s);
       case QUERY:
       case GROUP_BY_TIME:

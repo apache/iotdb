@@ -796,13 +796,14 @@ public class StorageEngine implements IService {
     return RpcUtils.SUCCESS_STATUS;
   }
 
-  public TSStatus executeLoadCommand(LoadTsFileScheduler.LoadCommand loadCommand, String uuid) {
+  public TSStatus executeLoadCommand(
+      LoadTsFileScheduler.LoadCommand loadCommand, String uuid, boolean isGeneratedByPipe) {
     TSStatus status = new TSStatus();
 
     try {
       switch (loadCommand) {
         case EXECUTE:
-          if (getLoadTsFileManager().loadAll(uuid)) {
+          if (getLoadTsFileManager().loadAll(uuid, isGeneratedByPipe)) {
             status = RpcUtils.SUCCESS_STATUS;
           } else {
             status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
