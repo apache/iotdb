@@ -47,6 +47,7 @@ import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -292,6 +293,28 @@ public class FileLoaderUtils {
         alignedTimeSeriesMetadata.setChunkMetadataLoader(
             new DiskAlignedChunkMetadataLoader(
                 resource, alignedPath, context, filter, queryAllSensors));
+      } else {
+        List<TimeseriesMetadata> valueTimeSeriesMetadataList =
+            new ArrayList<>(valueMeasurementList.size());
+        // if all the queried aligned sensors does not exist, we will return null
+        boolean exist = false;
+        for (String valueMeasurement : valueMeasurementList) {
+          TimeseriesMetadata valueColumn =
+              cache.get(
+                  new TimeSeriesMetadataCacheKey(filePath, deviceId, valueMeasurement),
+                  allSensors,
+                  resource.getTimeIndexType() != 1,
+                  isDebug);
+          exist = (exist || (valueColumn != null));
+          valueTimeSeriesMetadataList.add(valueColumn);
+        }
+        if (exist) {
+          alignedTimeSeriesMetadata =
+              new AlignedTimeSeriesMetadata(timeColumn, valueTimeSeriesMetadataList);
+          alignedTimeSeriesMetadata.setChunkMetadataLoader(
+              new DiskAlignedChunkMetadataLoader(
+                  resource, alignedPath, context, filter, queryAllSensors));
+        }
       }
     }
     return alignedTimeSeriesMetadata;
