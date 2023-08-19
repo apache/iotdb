@@ -69,6 +69,17 @@ public class LoadTsFileStatement extends Statement {
     sortTsFiles(tsFiles);
   }
 
+  protected LoadTsFileStatement() {
+    this.file = null;
+    this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
+    this.verifySchema = true;
+    this.deleteAfterLoad = true;
+    this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+    this.tsFiles = new ArrayList<>();
+    this.resources = new ArrayList<>();
+    this.statementType = StatementType.MULTI_BATCH_INSERT;
+  }
+
   private void findAllTsFile(File file) {
     final File[] files = file.listFiles();
     if (files == null) {
