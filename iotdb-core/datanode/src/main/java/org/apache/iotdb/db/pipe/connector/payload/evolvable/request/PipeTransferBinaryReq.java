@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.request;
 
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.PipeRequestType;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.IoTDBThriftConnectorRequestVersion;
+import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -97,7 +97,7 @@ public class PipeTransferBinaryReq extends TPipeTransferReq {
     final PipeTransferBinaryReq req = new PipeTransferBinaryReq();
 
     req.byteBuffer = byteBuffer;
-    req.version = IoTDBThriftConnectorRequestVersion.VERSION_1.getVersion();
+    req.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
     req.type = PipeRequestType.TRANSFER_BINARY.getType();
     req.body = byteBuffer;
 

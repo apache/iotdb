@@ -1864,7 +1864,7 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForConsensus(long allocateMemoryForConsensus) {
     this.allocateMemoryForConsensus = allocateMemoryForConsensus;
-    this.allocateMemoryForWALPipeCache = allocateMemoryForConsensus / 10;
+    this.allocateMemoryForWALPipeCache = allocateMemoryForConsensus;
   }
 
   public long getAllocateMemoryForRead() {
