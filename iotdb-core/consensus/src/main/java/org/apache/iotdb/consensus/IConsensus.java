@@ -25,6 +25,10 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
+import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
+import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
 
 import javax.annotation.concurrent.ThreadSafe;
 
@@ -38,14 +42,14 @@ public interface IConsensus {
   /**
    * Start the consensus module.
    *
-   * @throws IOException When start consensus errors.
+   * @throws IOException when start consensus errors.
    */
   void start() throws IOException;
 
   /**
    * Stop the consensus module.
    *
-   * @throws IOException When stop consensus errors.
+   * @throws IOException when stop consensus errors.
    */
   void stop() throws IOException;
 
@@ -54,7 +58,9 @@ public interface IConsensus {
    *
    * @param groupId the consensus group this request belongs
    * @param request write request
-   * @throws ConsensusException When write doesn't success
+   * @throws ConsensusGroupNotExistException when the specified consensus group doesn't exist
+   * @throws ConsensusException when write doesn't success with other reasons
+   * @return write result
    */
   TSStatus write(ConsensusGroupId groupId, IConsensusRequest request) throws ConsensusException;
 
@@ -63,7 +69,9 @@ public interface IConsensus {
    *
    * @param groupId the consensus group this request belongs
    * @param request read request
-   * @throws ConsensusException When read doesn't success
+   * @throws ConsensusGroupNotExistException when the specified consensus group doesn't exist
+   * @throws ConsensusException when read doesn't success with other reasons
+   * @return read result
    */
   DataSet read(ConsensusGroupId groupId, IConsensusRequest request) throws ConsensusException;
 
@@ -79,7 +87,10 @@ public interface IConsensus {
    *
    * @param groupId the consensus group this Peer belongs
    * @param peers other known peers in this group
-   * @throws ConsensusException When createLocalPeer doesn't success
+   * @throws ConsensusGroupAlreadyExistException when group already exists
+   * @throws IllegalPeerNumException when the peer num is illegal
+   * @throws IllegalPeerEndpointException when peers don't contain local node
+   * @throws ConsensusException when createLocalPeer doesn't success with other reasons
    */
   void createLocalPeer(ConsensusGroupId groupId, List<Peer> peers) throws ConsensusException;
 
@@ -91,7 +102,7 @@ public interface IConsensus {
    * #removeRemotePeer(ConsensusGroupId, Peer)}).
    *
    * @param groupId the consensus group this Peer used to belong
-   * @throws ConsensusException When deleteLocalPeer doesn't success
+   * @throws ConsensusException when deleteLocalPeer doesn't success with other reasons
    */
   void deleteLocalPeer(ConsensusGroupId groupId) throws ConsensusException;
 
@@ -107,7 +118,7 @@ public interface IConsensus {
    *
    * @param groupId the consensus group this peer belongs
    * @param peer the newly added peer
-   * @throws ConsensusException When addRemotePeer doesn't success
+   * @throws ConsensusException when addRemotePeer doesn't success with other reasons
    */
   void addRemotePeer(ConsensusGroupId groupId, Peer peer) throws ConsensusException;
 
@@ -120,13 +131,14 @@ public interface IConsensus {
    *
    * @param groupId the consensus group this peer belongs
    * @param peer the peer to be removed
-   * @throws ConsensusException When removeRemotePeer doesn't success
+   * @throws ConsensusException when removeRemotePeer doesn't success with other reasons
    */
   void removeRemotePeer(ConsensusGroupId groupId, Peer peer) throws ConsensusException;
 
-  // management API
+  /** management API */
   void transferLeader(ConsensusGroupId groupId, Peer newLeader) throws ConsensusException;
 
+  /** */
   void triggerSnapshot(ConsensusGroupId groupId) throws ConsensusException;
 
   boolean isLeader(ConsensusGroupId groupId);

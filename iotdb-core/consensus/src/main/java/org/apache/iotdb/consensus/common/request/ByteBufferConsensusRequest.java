@@ -21,12 +21,12 @@ package org.apache.iotdb.consensus.common.request;
 
 import java.nio.ByteBuffer;
 
-/*
-In general, for the requests from the leader, we can directly strong-cast the class to reduce
-the cost of deserialization during the execution of the leader state machine. For the requests
-received by the followers, the responsibility of deserialization can generally be transferred
-to the state machine layer
-*/
+/**
+ * In general, for the requests from the leader, we can directly strong-cast the class to reduce the
+ * cost of deserialization during the execution of the leader state machine. For the requests
+ * received by the followers, the responsibility of deserialization can generally be transferred to
+ * the state machine layer
+ */
 public class ByteBufferConsensusRequest implements IConsensusRequest {
 
   private final ByteBuffer byteBuffer;

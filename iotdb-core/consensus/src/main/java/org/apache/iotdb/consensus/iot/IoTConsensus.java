@@ -92,25 +92,25 @@ public class IoTConsensus implements IConsensus {
     this.thisNode = config.getThisNodeEndPoint();
     this.thisNodeId = config.getThisNodeId();
     this.storageDir = new File(config.getStorageDir());
-    this.config = config.getIoTConsensusConfig();
+    this.config = config.getIotConsensusConfig();
     this.registry = registry;
-    this.service = new IoTConsensusRPCService(thisNode, config.getIoTConsensusConfig());
+    this.service = new IoTConsensusRPCService(thisNode, config.getIotConsensusConfig());
     this.clientManager =
         new IClientManager.Factory<TEndPoint, AsyncIoTConsensusServiceClient>()
             .createClientManager(
-                new AsyncIoTConsensusServiceClientPoolFactory(config.getIoTConsensusConfig()));
+                new AsyncIoTConsensusServiceClientPoolFactory(config.getIotConsensusConfig()));
     this.syncClientManager =
         new IClientManager.Factory<TEndPoint, SyncIoTConsensusServiceClient>()
             .createClientManager(
-                new SyncIoTConsensusServiceClientPoolFactory(config.getIoTConsensusConfig()));
+                new SyncIoTConsensusServiceClientPoolFactory(config.getIotConsensusConfig()));
     this.retryService =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
             ThreadName.LOG_DISPATCHER_RETRY_EXECUTOR.getName());
     // init IoTConsensus memory manager
     IoTConsensusMemoryManager.getInstance()
         .init(
-            config.getIoTConsensusConfig().getReplication().getAllocateMemoryForConsensus(),
-            config.getIoTConsensusConfig().getReplication().getAllocateMemoryForQueue());
+            config.getIotConsensusConfig().getReplication().getAllocateMemoryForConsensus(),
+            config.getIotConsensusConfig().getReplication().getAllocateMemoryForQueue());
   }
 
   @Override

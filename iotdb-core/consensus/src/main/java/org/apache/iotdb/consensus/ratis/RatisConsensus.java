@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
@@ -44,7 +45,6 @@ import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
-import org.apache.iotdb.consensus.exception.NodeReadOnlyException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
@@ -53,6 +53,7 @@ import org.apache.iotdb.consensus.ratis.metrics.RatisMetricSet;
 import org.apache.iotdb.consensus.ratis.metrics.RatisMetricsManager;
 import org.apache.iotdb.consensus.ratis.utils.RatisLogMonitor;
 import org.apache.iotdb.consensus.ratis.utils.Utils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.pool2.KeyedObjectPool;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
@@ -269,7 +270,7 @@ class RatisConsensus implements IConsensus {
       } catch (Exception e) {
         logger.warn("leader {} read only, force step down failed due to {}", myself, e);
       }
-      throw new NodeReadOnlyException(myself);
+      return StatusUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY);
     }
 
     // serialize request into Message
