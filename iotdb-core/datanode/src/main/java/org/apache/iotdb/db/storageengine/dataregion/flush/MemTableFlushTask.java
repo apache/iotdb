@@ -61,6 +61,8 @@ public class MemTableFlushTask {
       FlushSubTaskPoolManager.getInstance();
   private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  /* storage group name -> <latest time, points>*/
+  private static final Map<String, Pair<Long, Long>> flushPointsCache = new ConcurrentHashMap<>();
   private final Future<?> encodingTaskFuture;
   private final Future<?> ioTaskFuture;
   private RestorableTsFileIOWriter writer;
@@ -70,7 +72,6 @@ public class MemTableFlushTask {
       (config.isEnableMemControl() && SystemInfo.getInstance().isEncodingFasterThanIo())
           ? new LinkedBlockingQueue<>(config.getIoTaskQueueSizeForFlushing())
           : new LinkedBlockingQueue<>();
-  private final Map<String, Pair<Long, Long>> flushPointsCache;
 
   private String storageGroup;
   private String dataRegionId;
@@ -96,7 +97,6 @@ public class MemTableFlushTask {
     this.dataRegionId = dataRegionId;
     this.encodingTaskFuture = SUB_TASK_POOL_MANAGER.submit(encodingTask);
     this.ioTaskFuture = SUB_TASK_POOL_MANAGER.submit(ioTask);
-    this.flushPointsCache = new ConcurrentHashMap<>();
     LOGGER.debug(
         "flush task of database {} memtable is created, flushing to file {}.",
         storageGroup,
@@ -283,35 +283,7 @@ public class MemTableFlushTask {
             Thread.currentThread().interrupt();
           }
 
-          if (!storageGroup.startsWith(IoTDBConfig.SYSTEM_DATABASE)) {
-            int lastIndex = storageGroup.lastIndexOf("-");
-            if (lastIndex == -1) {
-              lastIndex = storageGroup.length();
-            }
-            String storageGroupName = storageGroup.substring(0, lastIndex);
-            long currentTime = DateTimeUtils.currentTime();
-            long points = memTable.getTotalPointsNum();
-            Pair<Long, Long> previousPair = flushPointsCache.get(storageGroupName);
-            if (previousPair != null) {
-              if (previousPair.left == currentTime) {
-                points += previousPair.right;
-              } else {
-                flushPointsCache.put(storageGroupName, new Pair<>(currentTime, points));
-              }
-            }
-            MetricService.getInstance()
-                .gaugeWithInternalReportAsync(
-                    points,
-                    Metric.POINTS.toString(),
-                    MetricLevel.CORE,
-                    currentTime,
-                    Tag.DATABASE.toString(),
-                    storageGroup.substring(0, lastIndex),
-                    Tag.TYPE.toString(),
-                    "flush",
-                    Tag.REGION.toString(),
-                    dataRegionId);
-          }
+          recordFlushPointsMetric();
 
           LOGGER.info(
               "Database {}, flushing memtable {} into disk: Encoding data cost " + "{} ms.",
@@ -321,6 +293,47 @@ public class MemTableFlushTask {
           WRITING_METRICS.recordFlushCost(WritingMetrics.FLUSH_STAGE_ENCODING, memSerializeTime);
         }
       };
+
+  private void recordFlushPointsMetric() {
+    if (storageGroup.startsWith(IoTDBConfig.SYSTEM_DATABASE)) {
+      return;
+    }
+    int lastIndex = storageGroup.lastIndexOf("-");
+    if (lastIndex == -1) {
+      lastIndex = storageGroup.length();
+    }
+    String storageGroupName = storageGroup.substring(0, lastIndex);
+    long currentTime = DateTimeUtils.currentTime();
+    long currentPoints = memTable.getTotalPointsNum();
+    // compute the flush points
+    long points =
+        flushPointsCache.compute(
+                storageGroupName,
+                (storageGroup, previousPair) -> {
+                  if (previousPair == null || previousPair.left != currentTime) {
+                    // if previousPair is null or previousPair.latestTime not equals currentTime,
+                    // then create a new pair
+                    return new Pair<>(currentTime, currentPoints);
+                  } else {
+                    // if previousPair.latestTime equals currentTime, then accumulate the points
+                    return new Pair<>(currentTime, previousPair.right + currentPoints);
+                  }
+                })
+            .right;
+    // record the flush points
+    MetricService.getInstance()
+        .gaugeWithInternalReportAsync(
+            points,
+            Metric.POINTS.toString(),
+            MetricLevel.CORE,
+            currentTime,
+            Tag.DATABASE.toString(),
+            storageGroup.substring(0, lastIndex),
+            Tag.TYPE.toString(),
+            "flush",
+            Tag.REGION.toString(),
+            dataRegionId);
+  }
 
   /** io task (third task of pipeline) */
   @SuppressWarnings("squid:S135")
