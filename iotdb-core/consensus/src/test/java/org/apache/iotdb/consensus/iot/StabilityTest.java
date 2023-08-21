@@ -85,19 +85,21 @@ public class StabilityTest {
 
   @Test
   public void allTest() throws Exception {
+    addConsensusGroup();
+    removeConsensusGroup();
     peerTest();
+    transferLeader();
     snapshotTest();
     snapshotUpgradeTest();
   }
 
-  @Test
   public void addConsensusGroup() {
     try {
       consensusImpl.createLocalPeer(
           dataRegionId,
           Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
     } catch (ConsensusException e) {
-      throw new RuntimeException(e);
+      Assert.fail();
     }
 
     try {
@@ -123,7 +125,6 @@ public class StabilityTest {
     }
   }
 
-  @Test
   public void removeConsensusGroup() throws ConsensusException {
     try {
       consensusImpl.deleteLocalPeer(dataRegionId);
@@ -136,7 +137,7 @@ public class StabilityTest {
           dataRegionId,
           Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
     } catch (ConsensusException e) {
-      throw new RuntimeException(e);
+      Assert.fail();
     }
 
     consensusImpl.deleteLocalPeer(dataRegionId);
@@ -159,7 +160,6 @@ public class StabilityTest {
     consensusImpl.deleteLocalPeer(dataRegionId);
   }
 
-  @Test
   public void transferLeader() {
     try {
       consensusImpl.transferLeader(
