@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
@@ -194,7 +195,7 @@ public class IoTDBDescriptor {
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
             .updateRpcInstance(
-                conf.getClusterName(), NodeType.DATANODE, IoTDBConfig.SYSTEM_DATABASE);
+                conf.getClusterName(), NodeType.DATANODE, SchemaConstant.SYSTEM_DATABASE);
       }
     } else {
       logger.warn(

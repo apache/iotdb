@@ -20,7 +20,7 @@ package org.apache.iotdb.confignode.persistence.schema.mnode.info;
 
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.BasicMNodeInfo;
 
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.NON_TEMPLATE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
 
 public class ConfigMNodeInfo extends BasicMNodeInfo {
   /**
