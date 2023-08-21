@@ -118,6 +118,11 @@ public class QueryStatement extends Statement {
   // can use statistics to skip
   private boolean lastLevelUseWildcard = false;
 
+  // used in limit/offset push down optimizer, if the result set is empty after pushing down in
+  // ASTVisitor,
+  // we can skip the query
+  private boolean isResultSetEmpty = false;
+
   public QueryStatement() {
     this.statementType = StatementType.QUERY;
   }
@@ -193,6 +198,14 @@ public class QueryStatement extends Statement {
 
   public void setRowOffset(long rowOffset) {
     this.rowOffset = rowOffset;
+  }
+
+  public boolean isResultSetEmpty() {
+    return isResultSetEmpty;
+  }
+
+  public void setResultSetEmpty(boolean resultSetEmpty) {
+    isResultSetEmpty = resultSetEmpty;
   }
 
   public long getSeriesLimit() {

@@ -38,13 +38,11 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedSeri
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
-import org.apache.iotdb.db.queryengine.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -286,7 +284,7 @@ public class LimitOffsetPushDown implements PlanOptimizer {
       groupByTimeComponent.setStartTime(startTime);
     } else {
       // finish the query, resultSet is empty
-      queryStatement.setFromComponent(new FromComponent());
+      queryStatement.setResultSetEmpty(true);
     }
     queryStatement.setRowLimit(0);
     queryStatement.setRowOffset(0);
@@ -319,7 +317,8 @@ public class LimitOffsetPushDown implements PlanOptimizer {
             / groupByTimeComponent.getSlidingStep();
     if (size == 0 || size * deviceNames.size() <= queryStatement.getRowOffset()) {
       // resultSet is empty
-      return Collections.emptyList();
+      queryStatement.setResultSetEmpty(true);
+      return deviceNames;
     }
 
     long limitSize = queryStatement.getRowLimit();

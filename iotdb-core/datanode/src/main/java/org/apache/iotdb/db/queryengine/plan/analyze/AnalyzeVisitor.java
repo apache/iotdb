@@ -1686,6 +1686,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return;
     }
 
+    if (queryStatement.isResultSetEmpty()) {
+      analysis.setFinishQueryAfterAnalyze(true);
+    }
+
     GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
     if ((groupByTimeComponent.isIntervalByMonth() || groupByTimeComponent.isSlidingStepByMonth())
         && queryStatement.getResultTimeOrder() == Ordering.DESC) {
