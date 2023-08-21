@@ -141,11 +141,12 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
         && !isFileOverlapped()
         && !firstTimeSeriesMetadata.isModified()) {
       Filter queryFilter = scanOptions.getQueryFilter();
-      Statistics statistics = firstTimeSeriesMetadata.getStatistics();
-      if (queryFilter == null || queryFilter.allSatisfy(statistics)) {
+      if (queryFilter != null) {
+        if (!queryFilter.satisfy(firstTimeSeriesMetadata.getStatistics())) {
+          skipCurrentFile();
+        }
+      } else {
         skipOffsetByTimeSeriesMetadata();
-      } else if (!queryFilter.satisfy(statistics)) {
-        skipCurrentFile();
       }
     }
   }
@@ -177,11 +178,12 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
   protected void filterFirstChunkMetadata() throws IOException {
     if (firstChunkMetadata != null && !isChunkOverlapped() && !firstChunkMetadata.isModified()) {
       Filter queryFilter = scanOptions.getQueryFilter();
-      Statistics statistics = firstChunkMetadata.getStatistics();
-      if (queryFilter == null || queryFilter.allSatisfy(statistics)) {
+      if (queryFilter != null) {
+        if (!queryFilter.satisfy(firstChunkMetadata.getStatistics())) {
+          skipCurrentChunk();
+        }
+      } else {
         skipOffsetByChunkMetadata();
-      } else if (!queryFilter.satisfy(statistics)) {
-        skipCurrentChunk();
       }
     }
   }

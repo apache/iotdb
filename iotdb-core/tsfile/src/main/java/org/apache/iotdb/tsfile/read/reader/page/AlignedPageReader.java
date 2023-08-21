@@ -118,16 +118,18 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
   }
 
   private boolean pageSatisfy() {
-    Statistics statistics = getStatistics();
-    if (filter == null || filter.allSatisfy(statistics)) {
+    if (filter != null) {
+      // TODO accept valueStatisticsList to filter
+      return filter.satisfy(getStatistics());
+    } else {
       // For aligned series, When we only query some measurements under an aligned device, if the
       // values of these queried measurements at a timestamp are all null, the timestamp will not be
       // selected.
       // NOTE: if we change the query semantic in the future for aligned series, we need to remove
       // this check here.
       long rowCount = getTimeStatistics().getCount();
-      for (Statistics vStatistics : getValueStatisticsList()) {
-        if (vStatistics == null || vStatistics.hasNullValue(rowCount)) {
+      for (Statistics statistics : getValueStatisticsList()) {
+        if (statistics == null || statistics.hasNullValue(rowCount)) {
           return true;
         }
       }
@@ -136,13 +138,9 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
       if (paginationController.hasCurOffset(rowCount)) {
         paginationController.consumeOffset(rowCount);
         return false;
-      } else {
-        return true;
       }
-    } else {
-      // TODO accept valueStatisticsList to filter
-      return filter.satisfy(statistics);
     }
+    return true;
   }
 
   @Override
