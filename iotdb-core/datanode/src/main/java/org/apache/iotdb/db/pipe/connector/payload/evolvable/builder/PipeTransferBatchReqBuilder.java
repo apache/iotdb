@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.connector.builder;
+package org.apache.iotdb.db.pipe.connector.payload.evolvable.builder;
 
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletReq;
@@ -35,7 +35,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class IoTDBBatchBuilder {
+public class PipeTransferBatchReqBuilder {
 
   private final List<TPipeTransferReq> tPipeTransferReqs = new ArrayList<>();
   private final List<EnrichedEvent> events = new ArrayList<>();
@@ -48,7 +48,7 @@ public class IoTDBBatchBuilder {
   private final List<Long> requestCommitIds = new ArrayList<>();
   private long batchCommitId = 0;
 
-  public IoTDBBatchBuilder(int maxDelayInMs, long batchSizeInBytes) {
+  public PipeTransferBatchReqBuilder(int maxDelayInMs, long batchSizeInBytes) {
     this.maxDelayInMs = maxDelayInMs;
     this.batchSizeInBytes = batchSizeInBytes;
   }

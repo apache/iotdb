@@ -47,7 +47,7 @@ public abstract class IoTDBConnector implements PipeConnector {
 
   protected final List<TEndPoint> nodeUrls = new ArrayList<>();
 
-  protected boolean isTabletBatchModeEnabled = false;
+  protected boolean isTabletBatchModeEnabled = true;
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
