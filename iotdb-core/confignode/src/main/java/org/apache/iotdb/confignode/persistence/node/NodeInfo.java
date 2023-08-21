@@ -95,6 +95,8 @@ public class NodeInfo implements SnapshotProcessor {
   private final Map<Integer, TDataNodeConfiguration> registeredDataNodes;
 
   private final Map<Integer, TNodeVersionInfo> nodeVersionInfo;
+  private static final TNodeVersionInfo UNKNOWN_NODE_VERSION_INFO =
+      new TNodeVersionInfo("Unknown", "Unknown");
   private static final String SNAPSHOT_FILENAME = "node_info.bin";
 
   public NodeInfo() {
@@ -129,6 +131,7 @@ public class NodeInfo implements SnapshotProcessor {
         }
       }
       registeredDataNodes.put(info.getLocation().getDataNodeId(), info);
+      nodeVersionInfo.put(info.getLocation().getDataNodeId(), UNKNOWN_NODE_VERSION_INFO);
       result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       if (nextNodeId.get() < MINIMUM_DATANODE) {
         result.setMessage(
@@ -312,6 +315,8 @@ public class NodeInfo implements SnapshotProcessor {
           applyConfigNodePlan.getConfigNodeLocation().getConfigNodeId(),
           applyConfigNodePlan.getConfigNodeLocation());
       SystemPropertiesUtils.storeConfigNodeList(new ArrayList<>(registeredConfigNodes.values()));
+      nodeVersionInfo.put(
+          applyConfigNodePlan.getConfigNodeLocation().getConfigNodeId(), UNKNOWN_NODE_VERSION_INFO);
       LOGGER.info(
           "Successfully apply ConfigNode: {}. Current ConfigNodeGroup: {}",
           applyConfigNodePlan.getConfigNodeLocation(),
@@ -421,7 +426,7 @@ public class NodeInfo implements SnapshotProcessor {
   public TNodeVersionInfo getVersionInfo(int nodeId) {
     versionInfoReadWriteLock.readLock().lock();
     try {
-      return nodeVersionInfo.getOrDefault(nodeId, new TNodeVersionInfo("Unknown", "Unknown"));
+      return nodeVersionInfo.getOrDefault(nodeId, UNKNOWN_NODE_VERSION_INFO);
     } finally {
       versionInfoReadWriteLock.readLock().unlock();
     }
@@ -550,6 +555,7 @@ public class NodeInfo implements SnapshotProcessor {
       TConfigNodeLocation configNodeLocation = new TConfigNodeLocation();
       configNodeLocation.read(protocol);
       registeredConfigNodes.put(configNodeId, configNodeLocation);
+      nodeVersionInfo.put(configNodeId, UNKNOWN_NODE_VERSION_INFO);
       size--;
     }
   }
@@ -562,6 +568,7 @@ public class NodeInfo implements SnapshotProcessor {
       TDataNodeConfiguration dataNodeInfo = new TDataNodeConfiguration();
       dataNodeInfo.read(protocol);
       registeredDataNodes.put(dataNodeId, dataNodeInfo);
+      nodeVersionInfo.put(dataNodeId, UNKNOWN_NODE_VERSION_INFO);
       size--;
     }
   }
