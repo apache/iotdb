@@ -98,6 +98,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedInsertBaseStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedLoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalBatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
@@ -2425,6 +2427,37 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
   }
 
+  @Override
+  public Analysis visitPipeEnrichedInsert(
+      PipeEnrichedInsertBaseStatement pipeEnrichedInsertBaseStatement, MPPQueryContext context) {
+    Analysis analysis;
+
+    final InsertBaseStatement insertBaseStatement =
+        pipeEnrichedInsertBaseStatement.getInsertBaseStatement();
+    if (insertBaseStatement instanceof InsertTabletStatement) {
+      analysis = visitInsertTablet((InsertTabletStatement) insertBaseStatement, context);
+    } else if (insertBaseStatement instanceof InsertMultiTabletsStatement) {
+      analysis =
+          visitInsertMultiTablets((InsertMultiTabletsStatement) insertBaseStatement, context);
+    } else if (insertBaseStatement instanceof InsertRowStatement) {
+      analysis = visitInsertRow((InsertRowStatement) insertBaseStatement, context);
+    } else if (insertBaseStatement instanceof InsertRowsStatement) {
+      analysis = visitInsertRows((InsertRowsStatement) insertBaseStatement, context);
+    } else if (insertBaseStatement instanceof InsertRowsOfOneDeviceStatement) {
+      analysis =
+          visitInsertRowsOfOneDevice((InsertRowsOfOneDeviceStatement) insertBaseStatement, context);
+    } else {
+      throw new UnsupportedOperationException(
+          "Unsupported insert statement type: " + insertBaseStatement.getClass().getName());
+    }
+
+    // statement may be changed because of logical view
+    pipeEnrichedInsertBaseStatement.setInsertBaseStatement(
+        (InsertBaseStatement) analysis.getStatement());
+    analysis.setStatement(pipeEnrichedInsertBaseStatement);
+    return analysis;
+  }
+
   private void validateSchema(
       Analysis analysis, InsertBaseStatement insertStatement, MPPQueryContext context) {
     final long startTime = System.nanoTime();
@@ -2476,6 +2509,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitLoadFile(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
     return new LoadTsfileAnalyzer(loadTsFileStatement, context, partitionFetcher, schemaFetcher)
         .analyzeFileByFile();
+  }
+
+  @Override
+  public Analysis visitPipeEnrichedLoadFile(
+      PipeEnrichedLoadTsFileStatement pipeEnrichedLoadTsFileStatement, MPPQueryContext context) {
+    final Analysis analysis =
+        visitLoadFile(pipeEnrichedLoadTsFileStatement.getLoadTsFileStatement(), context);
+    analysis.setStatement(pipeEnrichedLoadTsFileStatement);
+    return analysis;
   }
 
   /** get analysis according to statement and params */
