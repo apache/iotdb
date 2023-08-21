@@ -27,8 +27,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
-import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
+import org.apache.iotdb.consensus.exception.*;
 import org.apache.iotdb.consensus.iot.util.TestStateMachine;
 
 import org.apache.ratis.util.FileUtils;
@@ -41,6 +40,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 
+import static org.junit.Assert.assertTrue;
+
 public class StabilityTest {
 
   private final ConsensusGroupId dataRegionId = new DataRegionId(1);
@@ -49,7 +50,7 @@ public class StabilityTest {
 
   private IConsensus consensusImpl;
 
-  private final int basePort = 9000;
+  private final int basePort = 6667;
 
   public void constructConsensus() throws IOException {
     consensusImpl =
@@ -89,6 +90,58 @@ public class StabilityTest {
     snapshotUpgradeTest();
   }
 
+  @Test
+  public void addConsensusGroup() {
+    try {
+      consensusImpl.createLocalPeer(
+          dataRegionId,
+          Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
+    } catch (ConsensusException e) {
+      throw new RuntimeException(e);
+    }
+
+    try {
+      consensusImpl.createLocalPeer(
+          dataRegionId,
+          Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
+    } catch (ConsensusException e) {
+      assertTrue(e instanceof ConsensusGroupAlreadyExistException);
+    }
+
+    try {
+      consensusImpl.createLocalPeer(dataRegionId, Collections.emptyList());
+    } catch (ConsensusException e) {
+      assertTrue(e instanceof IllegalPeerNumException);
+    }
+
+    try {
+      consensusImpl.createLocalPeer(
+          dataRegionId,
+          Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.1", 6667))));
+    } catch (ConsensusException e) {
+      assertTrue(e instanceof IllegalPeerEndpointException);
+    }
+  }
+
+  @Test
+  public void removeConsensusGroup() throws ConsensusException {
+    try {
+      consensusImpl.deleteLocalPeer(dataRegionId);
+    } catch (ConsensusException e) {
+      assertTrue(e instanceof ConsensusGroupNotExistException);
+    }
+
+    try {
+      consensusImpl.createLocalPeer(
+          dataRegionId,
+          Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
+    } catch (ConsensusException e) {
+      throw new RuntimeException(e);
+    }
+
+    consensusImpl.deleteLocalPeer(dataRegionId);
+  }
+
   public void peerTest() throws Exception {
     consensusImpl.createLocalPeer(
         dataRegionId,
@@ -104,6 +157,17 @@ public class StabilityTest {
         dataRegionId,
         Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort))));
     consensusImpl.deleteLocalPeer(dataRegionId);
+  }
+
+  @Test
+  public void transferLeader() {
+    try {
+      consensusImpl.transferLeader(
+          dataRegionId, new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667)));
+      Assert.fail("Can't transfer leader in SimpleConsensus.");
+    } catch (ConsensusException e) {
+      assert true;
+    }
   }
 
   public void snapshotTest() throws IOException, ConsensusException {
