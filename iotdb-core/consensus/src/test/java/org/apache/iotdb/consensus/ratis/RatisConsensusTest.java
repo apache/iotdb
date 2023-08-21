@@ -120,6 +120,7 @@ public class RatisConsensusTest {
 
     try {
       servers.get(0).createLocalPeer(group.getGroupId(), original);
+      Assert.fail();
     } catch (ConsensusException e) {
       Assert.assertTrue(e instanceof ConsensusGroupAlreadyExistException);
     }
@@ -140,6 +141,7 @@ public class RatisConsensusTest {
   public void removeMemberFromGroup() throws Exception {
     try {
       servers.get(0).deleteLocalPeer(group.getGroupId());
+      Assert.fail();
     } catch (ConsensusException e) {
       Assert.assertTrue(e instanceof ConsensusGroupNotExistException);
     }
@@ -162,6 +164,7 @@ public class RatisConsensusTest {
   public void oneMemberGroupChange() throws Exception {
     try {
       servers.get(0).addRemotePeer(group.getGroupId(), peers.get(0));
+      Assert.fail();
     } catch (ConsensusException e) {
       Assert.assertTrue(e instanceof ConsensusGroupNotExistException);
     }
@@ -172,6 +175,7 @@ public class RatisConsensusTest {
     servers.get(0).addRemotePeer(group.getGroupId(), peers.get(1));
     try {
       servers.get(0).addRemotePeer(group.getGroupId(), peers.get(1));
+      Assert.fail();
     } catch (ConsensusException e) {
       Assert.assertTrue(e instanceof PeerAlreadyInConsensusGroupException);
     }
@@ -179,6 +183,7 @@ public class RatisConsensusTest {
     servers.get(0).removeRemotePeer(group.getGroupId(), peers.get(0));
     try {
       servers.get(0).removeRemotePeer(group.getGroupId(), peers.get(0));
+      Assert.fail();
     } catch (ConsensusException e) {
       Assert.assertTrue(e instanceof PeerNotInConsensusGroupException);
     }
@@ -186,6 +191,7 @@ public class RatisConsensusTest {
     servers.get(0).deleteLocalPeer(group.getGroupId());
     try {
       servers.get(0).removeRemotePeer(group.getGroupId(), peers.get(0));
+      Assert.fail();
     } catch (ConsensusException e) {
       Assert.assertTrue(e instanceof ConsensusGroupNotExistException);
     }

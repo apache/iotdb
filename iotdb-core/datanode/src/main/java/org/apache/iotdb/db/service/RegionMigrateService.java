@@ -35,6 +35,8 @@ import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
+import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -227,7 +229,10 @@ public class RegionMigrateService implements IService {
           if (addPeerSucceed) {
             break;
           }
-        } catch (Throwable e) {
+        } catch (PeerAlreadyInConsensusGroupException e) {
+          addPeerSucceed = true;
+          break;
+        } catch (Exception e) {
           addPeerSucceed = false;
           throwable = e;
           taskLogger.error(
@@ -314,7 +319,10 @@ public class RegionMigrateService implements IService {
           if (removePeerSucceed) {
             break;
           }
-        } catch (Throwable e) {
+        } catch (PeerNotInConsensusGroupException e) {
+          removePeerSucceed = true;
+          break;
+        } catch (Exception e) {
           removePeerSucceed = false;
           throwable = e;
           taskLogger.error(

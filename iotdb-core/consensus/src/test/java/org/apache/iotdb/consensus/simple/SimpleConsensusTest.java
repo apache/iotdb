@@ -176,6 +176,7 @@ public class SimpleConsensusTest {
       consensusImpl.createLocalPeer(
           dataRegionId,
           Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
+      Assert.fail();
     } catch (ConsensusException e) {
       assertTrue(e instanceof ConsensusGroupAlreadyExistException);
     }
@@ -186,6 +187,7 @@ public class SimpleConsensusTest {
           Arrays.asList(
               new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667)),
               new Peer(dataRegionId, 1, new TEndPoint("0.0.0.1", 6667))));
+      Assert.fail();
     } catch (ConsensusException e) {
       assertTrue(e instanceof IllegalPeerNumException);
     }
@@ -194,6 +196,7 @@ public class SimpleConsensusTest {
       consensusImpl.createLocalPeer(
           dataRegionId,
           Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.1", 6667))));
+      Assert.fail();
     } catch (ConsensusException e) {
       assertTrue(e instanceof IllegalPeerEndpointException);
     }
@@ -211,6 +214,7 @@ public class SimpleConsensusTest {
   public void removeConsensusGroup() throws ConsensusException {
     try {
       consensusImpl.deleteLocalPeer(dataRegionId);
+      Assert.fail();
     } catch (ConsensusException e) {
       assertTrue(e instanceof ConsensusGroupNotExistException);
     }
@@ -219,11 +223,10 @@ public class SimpleConsensusTest {
       consensusImpl.createLocalPeer(
           dataRegionId,
           Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
+      consensusImpl.deleteLocalPeer(dataRegionId);
     } catch (ConsensusException e) {
       Assert.fail();
     }
-
-    consensusImpl.deleteLocalPeer(dataRegionId);
   }
 
   @Test
@@ -233,7 +236,7 @@ public class SimpleConsensusTest {
           dataRegionId, new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667)));
       Assert.fail("Can't add peer in SimpleConsensus.");
     } catch (ConsensusException e) {
-      assert true;
+      // not handle
     }
   }
 
@@ -244,7 +247,7 @@ public class SimpleConsensusTest {
           dataRegionId, new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667)));
       Assert.fail("Can't remove peer in SimpleConsensus.");
     } catch (ConsensusException e) {
-      assert true;
+      // not handle
     }
   }
 
@@ -255,7 +258,7 @@ public class SimpleConsensusTest {
           dataRegionId, new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667)));
       Assert.fail("Can't transfer leader in SimpleConsensus.");
     } catch (ConsensusException e) {
-      assert true;
+      // not handle
     }
   }
 
@@ -265,7 +268,7 @@ public class SimpleConsensusTest {
       consensusImpl.triggerSnapshot(dataRegionId);
       Assert.fail("Can't trigger snapshot in SimpleConsensus.");
     } catch (ConsensusException e) {
-      assert true;
+      // not handle
     }
   }
 

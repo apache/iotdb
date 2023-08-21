@@ -53,7 +53,6 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
-import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
@@ -1425,7 +1424,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       try {
         SchemaRegionConsensusImpl.getInstance().deleteLocalPeer(consensusGroupId);
       } catch (ConsensusException e) {
-        if (!(e instanceof PeerNotInConsensusGroupException)) {
+        if (!(e instanceof ConsensusGroupNotExistException)) {
           return RpcUtils.getStatus(TSStatusCode.DELETE_REGION_ERROR, e.getMessage());
         }
       }
@@ -1768,8 +1767,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         status.setMessage(e.getMessage());
         return status;
       }
-      LOGGER.error(
-          "Something wrong happened while calling consensus layer's createLocalPeer API.", e);
     }
     LOGGER.info(
         "{}, Succeed to createNewRegionPeer {} for region {}",

@@ -177,7 +177,7 @@ class RatisConsensus implements IConsensus {
             .setProperties(properties)
             .setStateMachineRegistry(
                 raftGroupId ->
-                    new org.apache.iotdb.consensus.ratis.ApplicationStateMachineProxy(
+                    new ApplicationStateMachineProxy(
                         registry.apply(Utils.fromRaftGroupIdToConsensusGroupId(raftGroupId)),
                         raftGroupId,
                         canServeStaleRead))
@@ -409,7 +409,7 @@ class RatisConsensus implements IConsensus {
     RaftGroup group = buildRaftGroup(groupId, peers);
     RaftGroup clientGroup =
         group.getPeers().isEmpty() ? RaftGroup.valueOf(group.getGroupId(), myself) : group;
-    try (org.apache.iotdb.consensus.ratis.RatisClient client = getRaftClient(clientGroup)) {
+    try (RatisClient client = getRaftClient(clientGroup)) {
       RaftClientReply reply =
           client.getRaftClient().getGroupManagementApi(myself.getId()).add(group);
       if (!reply.isSuccess()) {
@@ -551,7 +551,7 @@ class RatisConsensus implements IConsensus {
     }
 
     RaftClientReply reply;
-    try (org.apache.iotdb.consensus.ratis.RatisClient client = getRaftClient(raftGroup)) {
+    try (RatisClient client = getRaftClient(raftGroup)) {
       RaftClientReply configChangeReply =
           client.getRaftClient().admin().setConfiguration(newConfiguration);
       if (!configChangeReply.isSuccess()) {
@@ -574,7 +574,7 @@ class RatisConsensus implements IConsensus {
   }
 
   private RaftClientReply transferLeader(RaftGroup group, RaftPeer newLeader) throws Exception {
-    try (org.apache.iotdb.consensus.ratis.RatisClient client = getRaftClient(group)) {
+    try (RatisClient client = getRaftClient(group)) {
       return client
           .getRaftClient()
           .admin()

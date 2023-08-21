@@ -111,12 +111,14 @@ public class StabilityTest {
       consensusImpl.createLocalPeer(
           dataRegionId,
           Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
+      Assert.fail();
     } catch (ConsensusException e) {
       assertTrue(e instanceof ConsensusGroupAlreadyExistException);
     }
 
     try {
       consensusImpl.createLocalPeer(dataRegionId, Collections.emptyList());
+      Assert.fail();
     } catch (ConsensusException e) {
       assertTrue(e instanceof IllegalPeerNumException);
     }
@@ -125,6 +127,7 @@ public class StabilityTest {
       consensusImpl.createLocalPeer(
           dataRegionId,
           Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.1", 6667))));
+      Assert.fail();
     } catch (ConsensusException e) {
       assertTrue(e instanceof IllegalPeerEndpointException);
     }
@@ -133,6 +136,7 @@ public class StabilityTest {
   public void removeConsensusGroup() throws ConsensusException {
     try {
       consensusImpl.deleteLocalPeer(dataRegionId);
+      Assert.fail();
     } catch (ConsensusException e) {
       assertTrue(e instanceof ConsensusGroupNotExistException);
     }
@@ -141,11 +145,10 @@ public class StabilityTest {
       consensusImpl.createLocalPeer(
           dataRegionId,
           Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
+      consensusImpl.deleteLocalPeer(dataRegionId);
     } catch (ConsensusException e) {
       Assert.fail();
     }
-
-    consensusImpl.deleteLocalPeer(dataRegionId);
   }
 
   public void peerTest() throws Exception {
@@ -171,11 +174,11 @@ public class StabilityTest {
           dataRegionId, new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667)));
       Assert.fail("Can't transfer leader in SimpleConsensus.");
     } catch (ConsensusException e) {
-      assert true;
+      // not handle
     }
   }
 
-  public void snapshotTest() throws IOException, ConsensusException {
+  public void snapshotTest() throws ConsensusException {
     consensusImpl.createLocalPeer(
         dataRegionId,
         Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", basePort))));

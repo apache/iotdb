@@ -90,6 +90,7 @@ public class RecoveryTest {
       consensusImpl.createLocalPeer(
           schemaRegionId,
           Collections.singletonList(new Peer(schemaRegionId, 1, new TEndPoint("0.0.0.0", 9000))));
+      Assert.fail();
     } catch (ConsensusException e) {
       Assert.assertEquals(
           e.getMessage(), new ConsensusGroupAlreadyExistException(schemaRegionId).getMessage());

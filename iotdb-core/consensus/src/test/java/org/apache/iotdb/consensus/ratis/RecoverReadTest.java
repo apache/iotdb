@@ -218,6 +218,7 @@ public class RecoverReadTest {
     // query during redo: get exception that ratis is under recovery
     try {
       TestUtils.doRead(miniCluster.getServer(0), gid);
+      Assert.fail();
     } catch (ConsensusException e) {
       Assert.assertTrue(e instanceof RatisUnderRecoveryException);
     }
@@ -252,6 +253,7 @@ public class RecoverReadTest {
     // query during redo: get exception that ratis is under recovery
     try {
       TestUtils.doRead(miniCluster.getServer(0), gid);
+      Assert.fail();
     } catch (ConsensusException e) {
       Assert.assertTrue(e instanceof RatisUnderRecoveryException);
     }

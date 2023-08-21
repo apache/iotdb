@@ -24,17 +24,17 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 
 import java.util.Objects;
 
-// we abstract this class to hide word `ConsensusGroup` for IoTDB StorageEngine/SchemaEngine
+/** we abstract this class to hide word `ConsensusGroup` for IoTDB StorageEngine/SchemaEngine */
 public abstract class ConsensusGroupId {
 
   protected int id;
 
-  // return specific id
+  /** @return specific id */
   public int getId() {
     return id;
   }
 
-  // return specific type
+  /** @return specific type */
   public abstract TConsensusGroupType getType();
 
   public TConsensusGroupId convertToTConsensusGroupId() {
@@ -65,6 +65,10 @@ public abstract class ConsensusGroupId {
 
   public static class Factory {
 
+    private Factory() {
+      // empty constructor
+    }
+
     public static ConsensusGroupId create(int type, int id) {
       ConsensusGroupId groupId;
       if (type == TConsensusGroupType.DataRegion.getValue()) {
@@ -84,25 +88,5 @@ public abstract class ConsensusGroupId {
         TConsensusGroupId tConsensusGroupId) {
       return create(tConsensusGroupId.getType().getValue(), tConsensusGroupId.getId());
     }
-  }
-
-  public static String formatTConsensusGroupId(TConsensusGroupId groupId) {
-    StringBuilder format = new StringBuilder();
-
-    switch (groupId.getType()) {
-      case SchemaRegion:
-        format.append("SchemaRegion");
-        break;
-      case DataRegion:
-        format.append("DataRegion");
-        break;
-      case ConfigRegion:
-        format.append("ConfigRegion");
-        break;
-    }
-
-    format.append("(").append(groupId.getId()).append(")");
-
-    return format.toString();
   }
 }
