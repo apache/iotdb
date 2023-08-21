@@ -170,6 +170,7 @@ public class PointPriorityReader {
    * Add a new overlapped page.
    *
    * @throws IOException if io errors occurred
+   * @return whether page is added into the queue
    */
   public boolean addNewPageIfPageNotEmpty(PageElement pageElement) throws IOException {
     if (currentPointElement != null) {
