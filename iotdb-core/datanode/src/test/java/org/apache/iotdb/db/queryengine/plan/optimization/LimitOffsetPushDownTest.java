@@ -51,7 +51,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.add;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.function;
@@ -407,7 +406,7 @@ public class LimitOffsetPushDownTest {
     Assert.assertEquals(rowOffset, statement.getRowOffset());
 
     int index = 0;
-    Set<PartialPath> deviceSetInAnalysis = analysis.getDeviceSet();
+    List<PartialPath> deviceSetInAnalysis = analysis.getDeviceSet();
     for (PartialPath path : deviceSetInAnalysis) {
       Assert.assertEquals(path.getFullPath(), deviceSet.get(index));
       index++;
