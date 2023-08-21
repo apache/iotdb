@@ -169,7 +169,7 @@ public class SimpleConsensusTest {
           dataRegionId,
           Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
     } catch (ConsensusException e) {
-      throw new RuntimeException(e);
+      Assert.fail();
     }
 
     try {
@@ -203,7 +203,7 @@ public class SimpleConsensusTest {
           schemaRegionId,
           Collections.singletonList(new Peer(schemaRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
     } catch (ConsensusException e) {
-      throw new RuntimeException(e);
+      Assert.fail();
     }
   }
 
@@ -220,7 +220,7 @@ public class SimpleConsensusTest {
           dataRegionId,
           Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
     } catch (ConsensusException e) {
-      throw new RuntimeException(e);
+      Assert.fail();
     }
 
     consensusImpl.deleteLocalPeer(dataRegionId);
