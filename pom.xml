@@ -1301,17 +1301,6 @@
                                 </configuration>
                             </execution>
                             <execution>
-                                <id>generate-thrift-sources-nodejs</id>
-                                <phase>generate-sources</phase>
-                                <goals>
-                                    <goal>compile</goal>
-                                </goals>
-                                <configuration>
-                                    <generator>js:node</generator>
-                                    <outputDirectory>${project.build.directory}/generated-sources-nodejs/</outputDirectory>
-                                </configuration>
-                            </execution>
-                            <execution>
                                 <id>generate-thrift-sources-python</id>
                                 <phase>generate-sources</phase>
                                 <goals>
