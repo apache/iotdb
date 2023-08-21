@@ -118,8 +118,7 @@ class RatisConsensus implements IConsensus {
   private final RaftProperties properties = new RaftProperties();
   private final RaftClientRpc clientRpc;
 
-  private final IClientManager<RaftGroup, org.apache.iotdb.consensus.ratis.RatisClient>
-      clientManager;
+  private final IClientManager<RaftGroup, RatisClient> clientManager;
 
   private final Map<RaftGroupId, RaftGroup> lastSeen = new ConcurrentHashMap<>();
 
@@ -167,7 +166,7 @@ class RatisConsensus implements IConsensus {
             ThreadName.RATIS_BG_DISK_GUARDIAN.getName());
 
     clientManager =
-        new IClientManager.Factory<RaftGroup, org.apache.iotdb.consensus.ratis.RatisClient>()
+        new IClientManager.Factory<RaftGroup, RatisClient>()
             .createClientManager(new RatisClientPoolFactory());
 
     clientRpc = new GrpcFactory(new Parameters()).newRaftClientRpc(ClientId.randomId(), properties);
@@ -251,8 +250,8 @@ class RatisConsensus implements IConsensus {
     return writeWithRetry(() -> server.submitClientRequest(request));
   }
 
-  private RaftClientReply writeRemotelyWithRetry(
-      org.apache.iotdb.consensus.ratis.RatisClient client, Message message) throws IOException {
+  private RaftClientReply writeRemotelyWithRetry(RatisClient client, Message message)
+      throws IOException {
     return writeWithRetry(() -> client.getRaftClient().io().send(message));
   }
 
@@ -293,11 +292,8 @@ class RatisConsensus implements IConsensus {
           RatisMetricsManager.getInstance().startWriteLocallyTimer(consensusGroupType)) {
         RaftClientReply localServerReply = writeLocallyWithRetry(clientRequest);
         if (localServerReply.isSuccess()) {
-          org.apache.iotdb.consensus.ratis.ResponseMessage responseMessage =
-              (org.apache.iotdb.consensus.ratis.ResponseMessage) localServerReply.getMessage();
-          return Optional.ofNullable(responseMessage.getContentHolder())
-              .map(TSStatus.class::cast)
-              .orElse(null);
+          ResponseMessage responseMessage = (ResponseMessage) localServerReply.getMessage();
+          return (TSStatus) responseMessage.getContentHolder();
         }
         NotLeaderException ex = localServerReply.getNotLeaderException();
         if (ex != null) {
@@ -312,7 +308,7 @@ class RatisConsensus implements IConsensus {
     TSStatus writeResult;
     try (AutoCloseable ignored =
             RatisMetricsManager.getInstance().startWriteRemotelyTimer(consensusGroupType);
-        org.apache.iotdb.consensus.ratis.RatisClient client = getRaftClient(raftGroup)) {
+        RatisClient client = getRaftClient(raftGroup)) {
       RaftClientReply reply = writeRemotelyWithRetry(client, message);
       if (!reply.isSuccess()) {
         throw new RatisRequestFailedException(reply.getException());
@@ -329,7 +325,11 @@ class RatisConsensus implements IConsensus {
     return writeResult;
   }
 
-  /** Read directly from LOCAL COPY notice. */
+  /**
+   * Read directly from LOCAL COPY notice, although we do some optimizations to try to ensure
+   * linearizable (such as enforcing linearizable reads when the leader transfers), linearizable can
+   * be violated in some extreme cases.
+   */
   @Override
   public DataSet read(ConsensusGroupId groupId, IConsensusRequest request)
       throws ConsensusException {
@@ -361,11 +361,8 @@ class RatisConsensus implements IConsensus {
       throw new RatisRequestFailedException(e);
     }
     Message ret = reply.getMessage();
-    org.apache.iotdb.consensus.ratis.ResponseMessage readResponseMessage =
-        (org.apache.iotdb.consensus.ratis.ResponseMessage) ret;
-    return Optional.ofNullable(readResponseMessage.getContentHolder())
-        .map(DataSet.class::cast)
-        .orElse(null);
+    ResponseMessage readResponseMessage = (ResponseMessage) ret;
+    return (DataSet) readResponseMessage.getContentHolder();
   }
 
   /** return a success raft client reply or throw an Exception */
