@@ -32,7 +32,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.NON_TEMPLATE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
 
 /**
  * TraverserIterator for traversing device node. The iterator returns the filtered child nodes in

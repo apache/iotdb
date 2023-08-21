@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
@@ -98,6 +99,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedInsertBaseStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedLoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalBatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
@@ -132,7 +135,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalV
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
-import org.apache.iotdb.db.schemaengine.SchemaConstant;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.utils.TimePartitionUtils;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -2445,6 +2447,37 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
   }
 
+  @Override
+  public Analysis visitPipeEnrichedInsert(
+      PipeEnrichedInsertBaseStatement pipeEnrichedInsertBaseStatement, MPPQueryContext context) {
+    Analysis analysis;
+
+    final InsertBaseStatement insertBaseStatement =
+        pipeEnrichedInsertBaseStatement.getInsertBaseStatement();
+    if (insertBaseStatement instanceof InsertTabletStatement) {
+      analysis = visitInsertTablet((InsertTabletStatement) insertBaseStatement, context);
+    } else if (insertBaseStatement instanceof InsertMultiTabletsStatement) {
+      analysis =
+          visitInsertMultiTablets((InsertMultiTabletsStatement) insertBaseStatement, context);
+    } else if (insertBaseStatement instanceof InsertRowStatement) {
+      analysis = visitInsertRow((InsertRowStatement) insertBaseStatement, context);
+    } else if (insertBaseStatement instanceof InsertRowsStatement) {
+      analysis = visitInsertRows((InsertRowsStatement) insertBaseStatement, context);
+    } else if (insertBaseStatement instanceof InsertRowsOfOneDeviceStatement) {
+      analysis =
+          visitInsertRowsOfOneDevice((InsertRowsOfOneDeviceStatement) insertBaseStatement, context);
+    } else {
+      throw new UnsupportedOperationException(
+          "Unsupported insert statement type: " + insertBaseStatement.getClass().getName());
+    }
+
+    // statement may be changed because of logical view
+    pipeEnrichedInsertBaseStatement.setInsertBaseStatement(
+        (InsertBaseStatement) analysis.getStatement());
+    analysis.setStatement(pipeEnrichedInsertBaseStatement);
+    return analysis;
+  }
+
   private void validateSchema(
       Analysis analysis, InsertBaseStatement insertStatement, MPPQueryContext context) {
     final long startTime = System.nanoTime();
@@ -2496,6 +2529,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitLoadFile(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
     return new LoadTsfileAnalyzer(loadTsFileStatement, context, partitionFetcher, schemaFetcher)
         .analyzeFileByFile();
+  }
+
+  @Override
+  public Analysis visitPipeEnrichedLoadFile(
+      PipeEnrichedLoadTsFileStatement pipeEnrichedLoadTsFileStatement, MPPQueryContext context) {
+    final Analysis analysis =
+        visitLoadFile(pipeEnrichedLoadTsFileStatement.getLoadTsFileStatement(), context);
+    analysis.setStatement(pipeEnrichedLoadTsFileStatement);
+    return analysis;
   }
 
   /** get analysis according to statement and params */

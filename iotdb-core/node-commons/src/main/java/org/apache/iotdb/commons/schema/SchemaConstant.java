@@ -16,11 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.schemaengine;
+package org.apache.iotdb.commons.schema;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 
 public class SchemaConstant {
 
@@ -52,11 +51,12 @@ public class SchemaConstant {
   public static final String TAG_LOG_SNAPSHOT_TMP = "tlog.txt.snapshot.tmp";
   public static final String MTREE_SNAPSHOT = "mtree.snapshot";
   public static final String MTREE_SNAPSHOT_TMP = "mtree.snapshot.tmp";
+  public static final String SYSTEM_DATABASE = "root.__system";
 
   public static final String[] ALL_RESULT_NODES = new String[] {"root", "**"};
   public static final PartialPath ALL_MATCH_PATTERN = new PartialPath(new String[] {"root", "**"});
   public static final PartialPath SYSTEM_DATABASE_PATTERN =
-      new PartialPath(IoTDBConfig.SYSTEM_DATABASE.split("\\."));
+      new PartialPath(SYSTEM_DATABASE.split("\\."));
 
   public static final int NON_TEMPLATE = -1;
   public static final int ALL_TEMPLATE = -2;

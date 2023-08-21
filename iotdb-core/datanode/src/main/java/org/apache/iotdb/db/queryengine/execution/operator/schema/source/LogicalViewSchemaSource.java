@@ -39,7 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.ALL_MATCH_PATTERN;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 
 public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaInfo> {
 

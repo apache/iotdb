@@ -47,6 +47,10 @@ public class PipeDataRegionAssigner {
         .match(event)
         .forEach(
             extractor -> {
+              if (event.getEvent().isGeneratedByPipe() && !extractor.isForwardingPipeRequests()) {
+                return;
+              }
+
               final PipeRealtimeEvent copiedEvent =
                   event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
                       extractor.getPipeTaskMeta(), extractor.getPattern());
