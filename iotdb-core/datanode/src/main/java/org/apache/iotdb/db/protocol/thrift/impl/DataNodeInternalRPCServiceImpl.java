@@ -51,7 +51,8 @@ import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.commons.udf.service.UDFManagementService;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
-import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
@@ -180,6 +181,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
+import org.apache.iotdb.mpp.rpc.thrift.TPushSinglePipeMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
@@ -217,6 +219,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -401,12 +404,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TLoadResp sendLoadCommand(TLoadCommandReq req) {
-
-    TSStatus resultStatus =
+    return createTLoadResp(
         StorageEngine.getInstance()
             .executeLoadCommand(
-                LoadTsFileScheduler.LoadCommand.values()[req.commandType], req.uuid);
-    return createTLoadResp(resultStatus);
+                LoadTsFileScheduler.LoadCommand.values()[req.commandType],
+                req.uuid,
+                req.isSetIsGeneratedByPipe() && req.isGeneratedByPipe));
   }
 
   private TLoadResp createTLoadResp(TSStatus resultStatus) {
@@ -956,6 +959,31 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public TPushPipeMetaResp pushSinglePipeMeta(TPushSinglePipeMetaReq req) {
+    try {
+      TPushPipeMetaRespExceptionMessage exceptionMessage;
+      if (req.isSetPipeNameToDrop()) {
+        exceptionMessage = PipeAgent.task().handleDropPipe(req.getPipeNameToDrop());
+      } else if (req.isSetPipeMeta()) {
+        final PipeMeta pipeMeta = PipeMeta.deserialize(ByteBuffer.wrap(req.getPipeMeta()));
+        exceptionMessage = PipeAgent.task().handleSinglePipeMetaChanges(pipeMeta);
+      } else {
+        throw new Exception("Invalid TPushSinglePipeMetaReq");
+      }
+      return exceptionMessage == null
+          ? new TPushPipeMetaResp()
+              .setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
+          : new TPushPipeMetaResp()
+              .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()))
+              .setExceptionMessages(Collections.singletonList(exceptionMessage));
+    } catch (Exception e) {
+      LOGGER.error("Error occurred when pushing single pipe meta", e);
+      return new TPushPipeMetaResp()
+          .setStatus(new TSStatus(TSStatusCode.PIPE_PUSH_META_ERROR.getStatusCode()));
+    }
+  }
+
+  @Override
   public TPipeHeartbeatResp pipeHeartbeat(TPipeHeartbeatReq req) throws TException {
     final TPipeHeartbeatResp resp = new TPipeHeartbeatResp();
     PipeAgent.task().collectPipeMetaList(req, resp);
@@ -1417,7 +1445,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       ConsensusGenericResponse response =
           DataRegionConsensusImpl.getInstance().deletePeer(consensusGroupId);
       if (!response.isSuccess()
-          && !(response.getException() instanceof PeerNotInConsensusGroupException)) {
+          && !(response.getException() instanceof ConsensusGroupNotExistException)) {
         return RpcUtils.getStatus(
             TSStatusCode.DELETE_REGION_ERROR, response.getException().getMessage());
       }
@@ -1426,7 +1454,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       ConsensusGenericResponse response =
           SchemaRegionConsensusImpl.getInstance().deletePeer(consensusGroupId);
       if (!response.isSuccess()
-          && !(response.getException() instanceof PeerNotInConsensusGroupException)) {
+          && !(response.getException() instanceof ConsensusGroupNotExistException)) {
         return RpcUtils.getStatus(
             TSStatusCode.DELETE_REGION_ERROR, response.getException().getMessage());
       }
@@ -1759,7 +1787,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     } else {
       resp = SchemaRegionConsensusImpl.getInstance().createPeer(regionId, peers);
     }
-    if (!resp.isSuccess()) {
+    if (!resp.isSuccess()
+        && !(resp.getException() instanceof ConsensusGroupAlreadyExistException)) {
       LOGGER.warn(
           "{}, CreateNewRegionPeer error, peers: {}, regionId: {}, errorMessage",
           REGION_MIGRATE_PROCESS,

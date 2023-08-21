@@ -88,7 +88,7 @@ public class CheckpointManager implements AutoCloseable {
     logHeader();
   }
 
-  private List<MemTableInfo> snapshotMemTableInfos() {
+  public List<MemTableInfo> snapshotMemTableInfos() {
     infoLock.lock();
     try {
       return new ArrayList<>(memTableId2Info.values());

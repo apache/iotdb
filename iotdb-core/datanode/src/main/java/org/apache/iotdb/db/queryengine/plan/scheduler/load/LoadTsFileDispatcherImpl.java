@@ -40,13 +40,13 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePie
 import org.apache.iotdb.db.queryengine.plan.scheduler.FragInstanceDispatchResult;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IFragInstanceDispatcher;
 import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
 import org.apache.iotdb.mpp.rpc.thrift.TTsFilePieceReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import io.airlift.concurrent.SetThreadName;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,16 +68,19 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       internalServiceClientManager;
   private final ExecutorService executor;
+  private final boolean isGeneratedByPipe;
 
   private static final String NODE_CONNECTION_ERROR = "can't connect to node {}";
 
   public LoadTsFileDispatcherImpl(
-      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
+      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager,
+      boolean isGeneratedByPipe) {
     this.internalServiceClientManager = internalServiceClientManager;
     this.localhostIpAddr = IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
     this.localhostInternalPort = IoTDBDescriptor.getInstance().getConfig().getInternalPort();
     this.executor =
         IoTDBThreadPoolFactory.newCachedThreadPool(LoadTsFileDispatcherImpl.class.getName());
+    this.isGeneratedByPipe = isGeneratedByPipe;
   }
 
   public void setUuid(String uuid) {
@@ -178,7 +181,8 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
         StorageEngine.getInstance()
             .executeLoadCommand(
                 LoadTsFileScheduler.LoadCommand.values()[loadCommandReq.commandType],
-                loadCommandReq.uuid);
+                loadCommandReq.uuid,
+                loadCommandReq.isSetIsGeneratedByPipe() && loadCommandReq.isGeneratedByPipe);
     if (!RpcUtils.SUCCESS_STATUS.equals(resultStatus)) {
       throw new FragmentInstanceDispatchException(resultStatus);
     }
@@ -211,7 +215,8 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
             .getDataRegion((DataRegionId) groupId)
             .loadNewTsFile(
                 ((LoadSingleTsFileNode) planNode).getTsFileResource(),
-                ((LoadSingleTsFileNode) planNode).isDeleteAfterLoad());
+                ((LoadSingleTsFileNode) planNode).isDeleteAfterLoad(),
+                isGeneratedByPipe);
       } catch (LoadFileException e) {
         logger.warn(String.format("Load TsFile Node %s error.", planNode), e);
         TSStatus resultStatus = new TSStatus();

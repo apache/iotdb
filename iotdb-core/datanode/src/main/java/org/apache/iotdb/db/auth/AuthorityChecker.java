@@ -207,6 +207,7 @@ public class AuthorityChecker {
       case BATCH_INSERT_ONE_DEVICE:
       case BATCH_INSERT_ROWS:
       case MULTI_BATCH_INSERT:
+      case PIPE_ENRICHED_INSERT:
         return new int[] {PrivilegeType.WRITE_DATA.ordinal()};
       case CREATE_USER:
       case DELETE_USER:

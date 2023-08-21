@@ -21,7 +21,6 @@ package org.apache.iotdb.commons.client.mock;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
@@ -49,9 +48,6 @@ public class MockInternalRPCService extends ThriftService implements MockInterna
   @Override
   public void initSyncedServiceImpl(Object mockedProcessor) {
     this.mockedProcessor = (IDataNodeRPCService.Iface) mockedProcessor;
-    super.mbeanName =
-        String.format(
-            "%s:%s=%s", this.getClass().getPackage(), IoTDBConstant.JMX_TYPE, getID().getJmxName());
     super.initSyncedServiceImpl(this.mockedProcessor);
   }
 

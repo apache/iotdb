@@ -31,9 +31,11 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
+import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
@@ -108,7 +110,10 @@ public class DataNode implements DataNodeMBean {
 
   private final String mbeanName =
       String.format(
-          "%s:%s=%s", "org.apache.iotdb.datanode.service", IoTDBConstant.JMX_TYPE, "DataNode");
+          "%s:%s=%s",
+          IoTDBConstant.IOTDB_SERVICE_JMX_NAME,
+          IoTDBConstant.JMX_TYPE,
+          ServiceType.DATA_NODE.getJmxName());
 
   private static final File SYSTEM_PROPERTIES =
       SystemFileFactory.INSTANCE.getFile(
@@ -885,6 +890,9 @@ public class DataNode implements DataNodeMBean {
     }
     if (IoTDBRestServiceDescriptor.getInstance().getConfig().isEnableRestService()) {
       registerManager.register(RestService.getInstance());
+    }
+    if (PipeConfig.getInstance().getPipeAirGapReceiverEnabled()) {
+      registerManager.register(PipeAgent.receiver().airGap());
     }
   }
 

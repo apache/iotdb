@@ -86,6 +86,7 @@ public enum ThreadName {
   ASYNC_DATANODE_HEARTBEAT_CLIENT_POOL("AsyncDataNodeHeartbeatServiceClientPool"),
   // -------------------------- ConfigNode-LoadBalance --------------------------
   CONFIG_NODE_LOAD_STATISTIC("Cluster-LoadStatistics-Service"),
+  CONFIG_NODE_LOAD_PUBLISHER("Cluster-LoadStatistics-Publisher"),
   // -------------------------- ConfigNode-RegionManagement --------------------------
   CONFIG_NODE_REGION_MAINTAINER("IoTDB-Region-Maintainer"),
   // -------------------------- ConfigNode-Recover --------------------------
@@ -102,13 +103,13 @@ public enum ThreadName {
   IOT_CONSENSUS_RPC_PROCESSOR("IoTConsensusRPC-Processor"),
   ASYNC_DATANODE_IOT_CONSENSUS_CLIENT_POOL("AsyncDataNodeIoTConsensusServiceClientPool"),
   LOG_DISPATCHER("LogDispatcher"),
+  LOG_DISPATCHER_RETRY_EXECUTOR("LogDispatcherRetryExecutor"),
   // -------------------------- Ratis --------------------------
   // NOTICE: The thread name of ratis cannot be edited here!
   // We list the thread name here just for distinguishing what module the thread belongs to.
   RAFT_SERVER_PROXY_EXECUTOR("\\d+-impl-thread"),
   RAFT_SERVER_EXECUTOR("\\d+-server-thread"),
   RAFT_SERVER_CLIENT_EXECUTOR("\\d+-client-thread"),
-  RATIS_ADD("Ratis-Add"),
   SEGMENT_RAFT_WORKER("SegmentedRaftLogWorker"),
   STATE_MACHINE_UPDATER("StateMachineUpdater"),
   FOLLOWER_STATE("FollowerState"),
@@ -133,6 +134,7 @@ public enum ThreadName {
   PIPE_ASYNC_CONNECTOR_CLIENT_POOL("Pipe-Async-Connector-Client-Pool"),
   PIPE_ASYNC_CONNECTOR_RETRY_TRIGGER("Pipe-Async-Connector-Retry-Trigger"),
   PIPE_WAL_RESOURCE_TTL_CHECKER("Pipe-WAL-Resource-TTL-Checker"),
+  PIPE_RECEIVER_AIR_GAP_AGENT("Pipe-Receiver-Air-Gap-Agent"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
   STATEFUL_TRIGGER_INFORMATION_UPDATER("Stateful-Trigger-Information-Updater"),
   // -------------------------- JVM --------------------------
@@ -234,7 +236,8 @@ public enum ThreadName {
               IOT_CONSENSUS_RPC_SERVICE,
               IOT_CONSENSUS_RPC_PROCESSOR,
               ASYNC_DATANODE_IOT_CONSENSUS_CLIENT_POOL,
-              LOG_DISPATCHER));
+              LOG_DISPATCHER,
+              LOG_DISPATCHER_RETRY_EXECUTOR));
 
   private static final Set<ThreadName> ratisThreadNames =
       new HashSet<>(
@@ -242,7 +245,6 @@ public enum ThreadName {
               RAFT_SERVER_PROXY_EXECUTOR,
               RAFT_SERVER_EXECUTOR,
               RAFT_SERVER_CLIENT_EXECUTOR,
-              RATIS_ADD,
               SEGMENT_RAFT_WORKER,
               STATE_MACHINE_UPDATER,
               FOLLOWER_STATE,
@@ -269,6 +271,7 @@ public enum ThreadName {
               PIPE_ASYNC_CONNECTOR_CLIENT_POOL,
               PIPE_ASYNC_CONNECTOR_RETRY_TRIGGER,
               PIPE_WAL_RESOURCE_TTL_CHECKER,
+              PIPE_RECEIVER_AIR_GAP_AGENT,
               WINDOW_EVALUATION_SERVICE,
               STATEFUL_TRIGGER_INFORMATION_UPDATER));
 
@@ -310,7 +313,7 @@ public enum ThreadName {
               ASYNC_DATANODE_HEARTBEAT_CLIENT_POOL));
 
   private static final Set<ThreadName> configNodeLoadBalanceThreadNames =
-      new HashSet<>(Arrays.asList(CONFIG_NODE_LOAD_STATISTIC));
+      new HashSet<>(Arrays.asList(CONFIG_NODE_LOAD_STATISTIC, CONFIG_NODE_LOAD_PUBLISHER));
 
   private static final Set<ThreadName> configNodeRegionManagementThreadNames =
       new HashSet<>(Arrays.asList(CONFIG_NODE_REGION_MAINTAINER));

@@ -139,13 +139,11 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
   @Override
   protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws PipeException, IOException {
-    LOGGER.info(
-        "CreatePipeProcedureV2: executeFromOperateOnDataNodes({})",
-        createPipeRequest.getPipeName());
+    final String pipeName = createPipeRequest.getPipeName();
+    LOGGER.info("CreatePipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
     String exceptionMessage =
-        parsePushPipeMetaExceptionForPipe(
-            createPipeRequest.getPipeName(), pushPipeMetaToDataNodes(env));
+        parsePushPipeMetaExceptionForPipe(pipeName, pushSinglePipeMetaToDataNodes(pipeName, env));
     if (!exceptionMessage.isEmpty()) {
       throw new PipeException(
           String.format(
@@ -190,6 +188,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
         "CreatePipeProcedureV2: rollbackFromOperateOnDataNodes({})",
         createPipeRequest.getPipeName());
 
+    // Push all pipe metas to datanode, may be time-consuming
     String exceptionMessage =
         parsePushPipeMetaExceptionForPipe(
             createPipeRequest.getPipeName(), pushPipeMetaToDataNodes(env));

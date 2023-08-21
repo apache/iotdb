@@ -59,7 +59,10 @@ public class RegionCache {
 
     // TODO: Optimize judge logic
     RegionStatus status;
-    if (System.currentTimeMillis() - lastSample.getSendTimestamp() > HEARTBEAT_TIMEOUT_TIME) {
+    if (RegionStatus.Removing.equals(lastSample.getStatus())) {
+      status = RegionStatus.Removing;
+    } else if (System.currentTimeMillis() - lastSample.getSendTimestamp()
+        > HEARTBEAT_TIMEOUT_TIME) {
       status = RegionStatus.Unknown;
     } else {
       status = lastSample.getStatus();

@@ -19,62 +19,10 @@
 
 package org.apache.iotdb.commons.pipe.plugin.builtin.connector;
 
-import org.apache.iotdb.pipe.api.PipeConnector;
-import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
-import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
-import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
-
 /**
  * This class is a placeholder and should not be initialized. It represents the IoTDB Thrift
  * connector. There is a real implementation in the server module but cannot be imported here. The
  * pipe agent in the server module will replace this class with the real implementation when
  * initializing the IoTDB Thrift connector.
  */
-public class IoTDBThriftConnector implements PipeConnector {
-  private static final String PLACEHOLDER_ERROR_MSG =
-      "This class is a placeholder and should not be used.";
-
-  @Override
-  public final void validate(PipeParameterValidator validator) {
-    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
-  }
-
-  @Override
-  public final void customize(
-      PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration) {
-    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
-  }
-
-  @Override
-  public final void handshake() {
-    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
-  }
-
-  @Override
-  public final void heartbeat() {
-    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
-  }
-
-  @Override
-  public final void transfer(TabletInsertionEvent tabletInsertionEvent) {
-    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
-  }
-
-  @Override
-  public final void transfer(TsFileInsertionEvent tsFileInsertionEvent) {
-    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
-  }
-
-  @Override
-  public final void transfer(Event event) {
-    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
-  }
-
-  @Override
-  public final void close() {
-    throw new UnsupportedOperationException(PLACEHOLDER_ERROR_MSG);
-  }
-}
+public class IoTDBThriftConnector extends PlaceholderConnector {}

@@ -486,6 +486,7 @@ public abstract class CacheManager implements ICacheManager {
   public void clear(ICachedMNode root) {
     clearMNodeInMemory(root);
     clearNodeCache();
+    nodeBuffer.setUpdatedStorageGroupMNode(null);
     nodeBuffer.clear();
   }
 

@@ -93,6 +93,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.PipeEnrichedInsertNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
@@ -177,7 +178,9 @@ public enum PlanNodeType {
   ROLLBACK_LOGICAL_VIEW_BLACK_LIST((short) 75),
   DELETE_LOGICAL_VIEW((short) 76),
   LOGICAL_VIEW_SCHEMA_SCAN((short) 77),
-  ALTER_LOGICAL_VIEW((short) 78);
+  ALTER_LOGICAL_VIEW((short) 78),
+  PIPE_ENRICHED_INSERT((short) 79),
+  ;
 
   public static final int BYTES = Short.BYTES;
 
@@ -380,6 +383,8 @@ public enum PlanNodeType {
         return LogicalViewSchemaScanNode.deserialize(buffer);
       case 78:
         return AlterLogicalViewNode.deserialize(buffer);
+      case 79:
+        return PipeEnrichedInsertNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

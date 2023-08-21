@@ -47,4 +47,9 @@ public class RegionHeartbeatSample {
   public RegionStatus getStatus() {
     return status;
   }
+
+  public static RegionHeartbeatSample generateDefaultSample(RegionStatus status) {
+    long currentTime = System.currentTimeMillis();
+    return new RegionHeartbeatSample(currentTime, currentTime, status);
+  }
 }

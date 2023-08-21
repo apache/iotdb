@@ -224,7 +224,8 @@ public class TsFileIntegrityCheckingTool {
                   reader.readMemChunk((ChunkMetadata) valueChunkMetadataList.get(chunkIdx));
               // construct an aligned chunk reader using time chunk and value chunk
               IChunkReader chunkReader =
-                  new AlignedChunkReader(timeChunk, Collections.singletonList(valueChunk), null);
+                  new AlignedChunkReader(
+                      timeChunk, Collections.singletonList(valueChunk), null, false);
               // verify the values
               List<Pair<Long, TsPrimitiveType>> originValue = originDataChunks.get(chunkIdx);
               for (int valIdx = 0; chunkReader.hasNextSatisfiedPage(); ) {

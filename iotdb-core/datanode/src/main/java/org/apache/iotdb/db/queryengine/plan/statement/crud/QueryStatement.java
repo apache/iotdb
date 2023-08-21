@@ -116,6 +116,10 @@ public class QueryStatement extends AuthorityInformationStatement {
 
   private boolean useWildcard = true;
 
+  // used for limit and offset push down optimizer, if we select all columns from aligned device, we
+  // can use statistics to skip
+  private boolean lastLevelUseWildcard = false;
+
   public QueryStatement() {
     // TODO transmit user
     super(AuthorityChecker.getAuthorizedPathTree(null, PrivilegeType.READ_DATA.ordinal()));
@@ -473,6 +477,14 @@ public class QueryStatement extends AuthorityInformationStatement {
 
   public boolean useWildcard() {
     return useWildcard;
+  }
+
+  public boolean isLastLevelUseWildcard() {
+    return lastLevelUseWildcard;
+  }
+
+  public void setLastLevelUseWildcard(boolean lastLevelUseWildcard) {
+    this.lastLevelUseWildcard = lastLevelUseWildcard;
   }
 
   public static final String RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG =

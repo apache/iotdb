@@ -64,6 +64,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedLoadTsFileStatement;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -322,7 +323,8 @@ public class QueryExecution implements IQueryExecution {
               context,
               stateMachine,
               syncInternalServiceClientManager,
-              partitionFetcher);
+              partitionFetcher,
+              rawStatement instanceof PipeEnrichedLoadTsFileStatement);
       this.scheduler.start();
       return;
     }
