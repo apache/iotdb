@@ -41,7 +41,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -126,10 +125,10 @@ public class RatisConsensusTest {
     }
 
     // add 2 members
-    servers.get(1).createLocalPeer(group.getGroupId(), Collections.emptyList());
+    servers.get(1).createLocalPeer(group.getGroupId(), peers.subList(1, 2));
     servers.get(0).addRemotePeer(group.getGroupId(), peers.get(1));
 
-    servers.get(2).createLocalPeer(group.getGroupId(), Collections.emptyList());
+    servers.get(2).createLocalPeer(group.getGroupId(), peers.subList(2, 3));
     servers.get(0).addRemotePeer(group.getGroupId(), peers.get(2));
 
     Assert.assertEquals(
@@ -166,12 +165,12 @@ public class RatisConsensusTest {
       servers.get(0).addRemotePeer(group.getGroupId(), peers.get(0));
       Assert.fail();
     } catch (ConsensusException e) {
-      Assert.assertTrue(e instanceof ConsensusGroupNotExistException);
+      Assert.gassertTrue(e instanceof ConsensusGroupNotExistException);
     }
     servers.get(0).createLocalPeer(group.getGroupId(), peers.subList(0, 1));
     doConsensus(servers.get(0), group.getGroupId(), 10, 10);
 
-    servers.get(1).createLocalPeer(group.getGroupId(), Collections.emptyList());
+    servers.get(1).createLocalPeer(group.getGroupId(), peers.subList(1, 2));
     servers.get(0).addRemotePeer(group.getGroupId(), peers.get(1));
     try {
       servers.get(0).addRemotePeer(group.getGroupId(), peers.get(1));
@@ -179,10 +178,10 @@ public class RatisConsensusTest {
     } catch (ConsensusException e) {
       Assert.assertTrue(e instanceof PeerAlreadyInConsensusGroupException);
     }
-    servers.get(1).transferLeader(group.getGroupId(), peers.get(1));
-    servers.get(0).removeRemotePeer(group.getGroupId(), peers.get(0));
+    servers.get(0).transferLeader(group.getGroupId(), peers.get(1));
+    servers.get(1).removeRemotePeer(group.getGroupId(), peers.get(0));
     try {
-      servers.get(0).removeRemotePeer(group.getGroupId(), peers.get(0));
+      servers.get(1).removeRemotePeer(group.getGroupId(), peers.get(0));
       Assert.fail();
     } catch (ConsensusException e) {
       Assert.assertTrue(e instanceof PeerNotInConsensusGroupException);
@@ -190,7 +189,7 @@ public class RatisConsensusTest {
     Assert.assertEquals(servers.get(1).getLeader(gid).getNodeId(), peers.get(1).getNodeId());
     servers.get(0).deleteLocalPeer(group.getGroupId());
     try {
-      servers.get(0).removeRemotePeer(group.getGroupId(), peers.get(0));
+      servers.get(0).deleteLocalPeer(group.getGroupId());
       Assert.fail();
     } catch (ConsensusException e) {
       Assert.assertTrue(e instanceof ConsensusGroupNotExistException);
@@ -237,7 +236,7 @@ public class RatisConsensusTest {
     doConsensus(servers.get(0), gid, 10, 10);
     servers.get(0).triggerSnapshot(gid);
 
-    servers.get(1).createLocalPeer(gid, Collections.emptyList());
+    servers.get(1).createLocalPeer(gid, peers.subList(1, 2));
     servers.get(0).addRemotePeer(gid, peers.get(1));
 
     doConsensus(servers.get(1), gid, 10, 20);
