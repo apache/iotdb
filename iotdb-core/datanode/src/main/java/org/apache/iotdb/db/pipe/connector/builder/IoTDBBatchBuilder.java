@@ -24,7 +24,9 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletBatchInsertionEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -58,13 +60,13 @@ public class IoTDBBatchBuilder {
   /////////////////////////////// Sync Interface ///////////////////////////////
 
   public boolean handleInsertionEventAndReturnNeedSend(TabletInsertionEvent event)
-      throws IOException {
+      throws IOException, WALPipeException {
     // Init last send time to record the first element
     initLastSendTime();
     tryCacheReq(
-        event instanceof PipeTransferInsertNodeReq
+        event instanceof PipeInsertNodeTabletInsertionEvent
             ? PipeTransferInsertNodeReq.toTPipeTransferReq(
-                ((PipeTransferInsertNodeReq) event).getInsertNode())
+                ((PipeInsertNodeTabletInsertionEvent) event).getInsertNode())
             : PipeTransferTabletReq.toTPipeTransferReq(
                 ((PipeRawTabletInsertionEvent) event).convertToTablet(),
                 ((PipeRawTabletInsertionEvent) event).isAligned()),
@@ -75,13 +77,13 @@ public class IoTDBBatchBuilder {
   /////////////////////////////// Async Interface ///////////////////////////////
 
   public boolean handleInsertionEventAndReturnNeedSend(
-      TabletInsertionEvent event, long requestCommitId) throws IOException {
+      TabletInsertionEvent event, long requestCommitId) throws IOException, WALPipeException {
     // Init last send time to record the first element
     initLastSendTime();
     tryCacheReq(
-        event instanceof PipeTransferInsertNodeReq
+        event instanceof PipeInsertNodeTabletInsertionEvent
             ? PipeTransferInsertNodeReq.toTPipeTransferReq(
-                ((PipeTransferInsertNodeReq) event).getInsertNode())
+                ((PipeInsertNodeTabletInsertionEvent) event).getInsertNode())
             : PipeTransferTabletReq.toTPipeTransferReq(
                 ((PipeRawTabletInsertionEvent) event).convertToTablet(),
                 ((PipeRawTabletInsertionEvent) event).isAligned()),
