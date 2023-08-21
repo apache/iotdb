@@ -20,6 +20,7 @@ package org.apache.iotdb.commons.path.fa.dfa.graph;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
 import org.apache.iotdb.commons.path.fa.dfa.DFAState;
@@ -30,6 +31,7 @@ import org.apache.commons.lang3.StringUtils;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
@@ -42,8 +44,18 @@ public class NFAGraph {
   // [transitionIndex][stateIndex]List<IFAState>
   private final List<IFAState>[][] nfaTransitionTable;
 
+  /**
+   * Construct NFA graph for given path pattern.
+   *
+   * @param pathPattern matched path pattern
+   * @param isPrefix prefix match mode, matched pattern will be pathPattern.** if isPrefix is true
+   * @param transitionMap transitionMap
+   */
   public NFAGraph(
       PartialPath pathPattern, boolean isPrefix, Map<String, IFATransition> transitionMap) {
+    if (isPrefix) {
+      pathPattern = pathPattern.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
+    }
     nfaTransitionTable = new List[transitionMap.size()][pathPattern.getNodeLength() + 1];
     // init start state, curNodeIndex=0
     int curStateIndex = 0;
@@ -51,36 +63,61 @@ public class NFAGraph {
     for (int i = 0; i < transitionMap.size(); i++) {
       nfaTransitionTable[i][0] = new ArrayList<>();
     }
+    buildPattern(pathPattern, transitionMap, new AtomicInteger(0));
+  }
+
+  /**
+   * Construct NFA graph for given path pattern. Only used for authentication now.
+   *
+   * @param patternTree the included PartialPath must be a prefix or a fullPath
+   * @param transitionMap transitionMap
+   */
+  public NFAGraph(PathPatternTree patternTree, Map<String, IFATransition> transitionMap) {
+    List<PartialPath> partialPathList = patternTree.getAllPathPatterns();
+    int maxStateSize = partialPathList.stream().mapToInt(PartialPath::getNodeLength).sum() + 1;
+    nfaTransitionTable = new List[transitionMap.size()][maxStateSize];
+    // init start state, curNodeIndex=0
+    AtomicInteger stateIndexGenerator = new AtomicInteger(0);
+    nfaStateList.add(new DFAState(0));
+    for (int i = 0; i < transitionMap.size(); i++) {
+      nfaTransitionTable[i][0] = new ArrayList<>();
+    }
+    for (PartialPath pathPattern : partialPathList) {
+      buildPattern(pathPattern, transitionMap, stateIndexGenerator);
+    }
+  }
+
+  private void buildPattern(
+      PartialPath pathPattern,
+      Map<String, IFATransition> transitionMap,
+      AtomicInteger stateIndexGenerator) {
     // traverse pathPattern and construct NFA
+    int prevIndex = 0;
     for (int i = 0; i < pathPattern.getNodeLength(); i++) {
       String node = pathPattern.getNodes()[i];
       // if it is tail node, transit to final state
       DFAState state =
           i == pathPattern.getNodeLength() - 1
-              ? new DFAState(++curStateIndex, true)
-              : new DFAState(++curStateIndex);
+              ? new DFAState(stateIndexGenerator.incrementAndGet(), true)
+              : new DFAState(stateIndexGenerator.incrementAndGet());
       nfaStateList.add(state);
       for (int j = 0; j < transitionMap.size(); j++) {
-        nfaTransitionTable[j][curStateIndex] = new ArrayList<>();
+        nfaTransitionTable[j][state.getIndex()] = new ArrayList<>();
       }
       // construct transition
       if (IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(node)) {
         for (IFATransition transition : transitionMap.values()) {
-          nfaTransitionTable[transition.getIndex()][curStateIndex - 1].add(state);
+          nfaTransitionTable[transition.getIndex()][prevIndex].add(state);
         }
       } else if (IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(node)) {
         for (IFATransition transition : transitionMap.values()) {
-          nfaTransitionTable[transition.getIndex()][curStateIndex - 1].add(state);
-          nfaTransitionTable[transition.getIndex()][curStateIndex].add(state);
+          nfaTransitionTable[transition.getIndex()][prevIndex].add(state);
+          nfaTransitionTable[transition.getIndex()][state.getIndex()].add(state);
         }
       } else {
-        nfaTransitionTable[transitionMap.get(node).getIndex()][curStateIndex - 1].add(state);
+        nfaTransitionTable[transitionMap.get(node).getIndex()][prevIndex].add(state);
       }
-      if (isPrefix && i == pathPattern.getNodeLength() - 1) {
-        for (IFATransition transition : transitionMap.values()) {
-          nfaTransitionTable[transition.getIndex()][curStateIndex].add(state);
-        }
-      }
+      prevIndex = state.getIndex();
     }
   }
 

@@ -31,6 +31,11 @@ import java.util.Objects;
  */
 public interface IPatternFA {
 
+  // TODO: move to SchemaConstant
+  static IPatternFA MATCH_ALL_FA =
+      FAFactory.getInstance()
+          .constructDFA(new Builder().pattern(new PartialPath(new String[] {"root", "**"})));
+
   /**
    * @param state the source state of the returned transitions
    * @return transitions, that the given state has and only match one specified event rather than

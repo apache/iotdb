@@ -32,9 +32,13 @@ public class StateSingleMatchInfo implements IStateMatchInfo {
 
   private final IFAState matchedState;
 
-  public StateSingleMatchInfo(IPatternFA patternFA, IFAState matchedState) {
+  private final IFAState spaceFilterState;
+
+  public StateSingleMatchInfo(
+      IPatternFA patternFA, IFAState matchedState, IFAState spaceFilterState) {
     this.patternFA = patternFA;
     this.matchedState = matchedState;
+    this.spaceFilterState = spaceFilterState;
   }
 
   @Override
@@ -99,5 +103,10 @@ public class StateSingleMatchInfo implements IStateMatchInfo {
   @Override
   public void setSourceTransitionIterator(Iterator<IFATransition> sourceTransitionIterator) {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public IFAState getSpaceMatchedState() {
+    return spaceFilterState;
   }
 }

@@ -34,6 +34,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -68,6 +69,50 @@ public class PatternDFATest {
     }
     // 2. build NFA
     NFAGraph nfaGraph = new NFAGraph(pathPattern, false, transitionMap);
+    nfaGraph.print(transitionMap);
+    // 3. NFA to DFA
+    DFAGraph dfaGraph = new DFAGraph(nfaGraph, transitionMap.values());
+    dfaGraph.print(transitionMap);
+  }
+
+  @Test
+  @Ignore
+  public void printFASketch2() throws IllegalPathException {
+    // Map<AcceptEvent, IFATransition>
+    Map<String, IFATransition> transitionMap = new HashMap<>();
+    List<PartialPath> partialPathList =
+        Arrays.asList(
+            new PartialPath("root.sg2.**"),
+            new PartialPath("root.sg1.d1.**"),
+            new PartialPath("root.sg1.d2.**"),
+            new PartialPath("root.sg1.d2.s1"));
+    PathPatternTree patternTree = new PathPatternTree();
+    for (PartialPath pathPattern : partialPathList) {
+      patternTree.appendPathPattern(pathPattern);
+    }
+    patternTree.constructTree();
+    // 1. build transition
+    boolean wildcard = false;
+    AtomicInteger transitionIndex = new AtomicInteger();
+    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      for (String node : pathPattern.getNodes()) {
+        if (IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(node)
+            || IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(node)) {
+          wildcard = true;
+        } else {
+          transitionMap.computeIfAbsent(
+              node, i -> new DFAPreciseTransition(transitionIndex.getAndIncrement(), node));
+        }
+      }
+    }
+    if (wildcard) {
+      IFATransition transition =
+          new DFAWildcardTransition(
+              transitionIndex.getAndIncrement(), new ArrayList<>(transitionMap.keySet()));
+      transitionMap.put(transition.getAcceptEvent(), transition);
+    }
+    // 2. build NFA
+    NFAGraph nfaGraph = new NFAGraph(patternTree, transitionMap);
     nfaGraph.print(transitionMap);
     // 3. NFA to DFA
     DFAGraph dfaGraph = new DFAGraph(nfaGraph, transitionMap.values());

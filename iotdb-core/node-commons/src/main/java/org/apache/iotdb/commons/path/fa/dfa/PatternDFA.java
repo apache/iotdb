@@ -84,6 +84,22 @@ public class PatternDFA implements IPatternFA {
     batchMatchTransitionCached = new List[dfaGraph.getStateSize()];
   }
 
+  public IFAState getNextState(IFAState currentState, String acceptEvent) {
+    if (transitionMap.containsKey(acceptEvent)) {
+      return dfaGraph.getNextState(currentState, transitionMap.get(acceptEvent));
+    } else {
+      Iterator<IFATransition> fuzzyMatchTransitionIterator =
+          getFuzzyMatchTransitionIterator(currentState);
+      while (fuzzyMatchTransitionIterator.hasNext()) {
+        IFATransition transition = fuzzyMatchTransitionIterator.next();
+        if (transition.isMatch(acceptEvent)) {
+          return dfaGraph.getNextState(currentState, transition);
+        }
+      }
+    }
+    return null;
+  }
+
   @Override
   public Map<String, IFATransition> getPreciseMatchTransition(IFAState state) {
     if (preciseMatchTransitionCached[state.getIndex()] == null) {
