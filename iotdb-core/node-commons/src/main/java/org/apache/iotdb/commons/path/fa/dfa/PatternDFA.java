@@ -85,6 +85,11 @@ public class PatternDFA implements IPatternFA {
     batchMatchTransitionCached = new List[dfaGraph.getStateSize()];
   }
 
+  /**
+   * Construct PatternDFA for given path pattern. Only used for authentication now.
+   *
+   * @param prefixOrFullPatternTree the included PartialPath must be a prefix or a fullPath
+   */
   public PatternDFA(PathPatternTree prefixOrFullPatternTree) {
     // 1. build transition
     boolean wildcard = false;
