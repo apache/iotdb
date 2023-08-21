@@ -29,6 +29,8 @@ import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
+import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
+import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 
 import javax.annotation.concurrent.ThreadSafe;
 
@@ -42,14 +44,14 @@ public interface IConsensus {
   /**
    * Start the consensus module.
    *
-   * @throws IOException when start consensus errors.
+   * @throws IOException when start consensus errors
    */
   void start() throws IOException;
 
   /**
    * Stop the consensus module.
    *
-   * @throws IOException when stop consensus errors.
+   * @throws IOException when stop consensus errors
    */
   void stop() throws IOException;
 
@@ -58,9 +60,9 @@ public interface IConsensus {
    *
    * @param groupId the consensus group this request belongs
    * @param request write request
+   * @return write result
    * @throws ConsensusGroupNotExistException when the specified consensus group doesn't exist
    * @throws ConsensusException when write doesn't success with other reasons
-   * @return write result
    */
   TSStatus write(ConsensusGroupId groupId, IConsensusRequest request) throws ConsensusException;
 
@@ -69,9 +71,9 @@ public interface IConsensus {
    *
    * @param groupId the consensus group this request belongs
    * @param request read request
+   * @return read result
    * @throws ConsensusGroupNotExistException when the specified consensus group doesn't exist
    * @throws ConsensusException when read doesn't success with other reasons
-   * @return read result
    */
   DataSet read(ConsensusGroupId groupId, IConsensusRequest request) throws ConsensusException;
 
@@ -85,9 +87,9 @@ public interface IConsensus {
    * configuration. createLocalPeer should be called on a node that does not contain any peer of the
    * consensus group, to avoid one node having more than one replica.
    *
-   * @param groupId the consensus group this Peer belongs
+   * @param groupId the consensus group this peer belongs
    * @param peers other known peers in this group
-   * @throws ConsensusGroupAlreadyExistException when group already exists
+   * @throws ConsensusGroupAlreadyExistException when the specified consensus group already exists
    * @throws IllegalPeerNumException when the peer num is illegal
    * @throws IllegalPeerEndpointException when peers don't contain local node
    * @throws ConsensusException when createLocalPeer doesn't success with other reasons
@@ -101,7 +103,8 @@ public interface IConsensus {
    * successfully removing this peer from current consensus group configuration (by calling {@link
    * #removeRemotePeer(ConsensusGroupId, Peer)}).
    *
-   * @param groupId the consensus group this Peer used to belong
+   * @param groupId the consensus group this peer used to belong
+   * @throws ConsensusGroupAlreadyExistException when the specified consensus group doesn't exist
    * @throws ConsensusException when deleteLocalPeer doesn't success with other reasons
    */
   void deleteLocalPeer(ConsensusGroupId groupId) throws ConsensusException;
@@ -118,6 +121,8 @@ public interface IConsensus {
    *
    * @param groupId the consensus group this peer belongs
    * @param peer the newly added peer
+   * @throws PeerAlreadyInConsensusGroupException when the peer has been added into this consensus
+   *     group
    * @throws ConsensusException when addRemotePeer doesn't success with other reasons
    */
   void addRemotePeer(ConsensusGroupId groupId, Peer peer) throws ConsensusException;
@@ -131,19 +136,60 @@ public interface IConsensus {
    *
    * @param groupId the consensus group this peer belongs
    * @param peer the peer to be removed
+   * @throws PeerNotInConsensusGroupException when the peer hasn't yet joined this consensus group
    * @throws ConsensusException when removeRemotePeer doesn't success with other reasons
    */
   void removeRemotePeer(ConsensusGroupId groupId, Peer peer) throws ConsensusException;
 
-  /** management API */
+  // management API
+
+  /**
+   * Transfer the leadership to other peer to meet some load balancing needs.
+   *
+   * @param groupId the consensus group which should execute this command
+   * @param newLeader the target leader peer
+   * @throws ConsensusGroupAlreadyExistException when the specified consensus group doesn't exist
+   * @throws ConsensusException when transferLeader doesn't success with other reasons
+   */
   void transferLeader(ConsensusGroupId groupId, Peer newLeader) throws ConsensusException;
 
-  /** */
+  /**
+   * Trigger the snapshot of the corresponding consensus group.
+   *
+   * @param groupId the consensus group which should execute this command
+   * @throws ConsensusException when triggerSnapshot doesn't success with other reasons
+   */
   void triggerSnapshot(ConsensusGroupId groupId) throws ConsensusException;
 
+  /**
+   * Determine if the current peer is the leader in the corresponding consensus group.
+   *
+   * @param groupId the consensus group
+   * @return true or false
+   */
   boolean isLeader(ConsensusGroupId groupId);
 
+  /**
+   * Determine if the current peer is the leader and already able to provide services in the
+   * corresponding consensus group.
+   *
+   * @param groupId the consensus group
+   * @return true or false
+   */
+  boolean isLeaderReady(ConsensusGroupId groupId);
+
+  /**
+   * Return the leader peer of the corresponding consensus group.
+   *
+   * @param groupId the consensus group
+   * @return return null if group doesn't exist or leader is undetermined, or return leader Peer
+   */
   Peer getLeader(ConsensusGroupId groupId);
 
+  /**
+   * Return all consensus group ids.
+   *
+   * @return consensusGroupId list
+   */
   List<ConsensusGroupId> getAllConsensusGroupIds();
 }

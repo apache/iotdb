@@ -224,6 +224,11 @@ class SimpleConsensus implements IConsensus {
   }
 
   @Override
+  public boolean isLeaderReady(ConsensusGroupId groupId) {
+    return true;
+  }
+
+  @Override
   public Peer getLeader(ConsensusGroupId groupId) {
     if (!stateMachineMap.containsKey(groupId)) {
       return null;

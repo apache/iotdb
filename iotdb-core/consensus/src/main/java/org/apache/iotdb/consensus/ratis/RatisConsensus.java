@@ -45,6 +45,8 @@ import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
+import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
+import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
@@ -110,6 +112,9 @@ class RatisConsensus implements IConsensus {
 
   private final RaftServer server;
 
+  private final TEndPoint thisNode;
+  private final int thisNodeId;
+
   private final RaftProperties properties = new RaftProperties();
   private final RaftClientRpc clientRpc;
 
@@ -141,6 +146,8 @@ class RatisConsensus implements IConsensus {
 
   public RatisConsensus(ConsensusConfig config, IStateMachine.Registry registry)
       throws IOException {
+    this.thisNode = config.getThisNodeEndPoint();
+    this.thisNodeId = config.getThisNodeId();
     myself =
         Utils.fromNodeInfoAndPriorityToRaftPeer(
             config.getThisNodeId(), config.getThisNodeEndPoint(), DEFAULT_PRIORITY);
@@ -395,6 +402,13 @@ class RatisConsensus implements IConsensus {
   @Override
   public void createLocalPeer(ConsensusGroupId groupId, List<Peer> peers)
       throws ConsensusException {
+    int consensusGroupSize = peers.size();
+    if (consensusGroupSize == 0) {
+      throw new IllegalPeerNumException(consensusGroupSize);
+    }
+    if (!peers.contains(new Peer(groupId, thisNodeId, thisNode))) {
+      throw new IllegalPeerEndpointException(thisNode, peers);
+    }
     RaftGroup group = buildRaftGroup(groupId, peers);
     RaftGroup clientGroup =
         group.getPeers().isEmpty() ? RaftGroup.valueOf(group.getGroupId(), myself) : group;
@@ -490,7 +504,7 @@ class RatisConsensus implements IConsensus {
     }
     // pre-condition: peer is a member of groupId
     if (!group.getPeers().contains(peerToRemove)) {
-      throw new PeerNotInConsensusGroupException(groupId, myself);
+      throw new PeerNotInConsensusGroupException(groupId, myself.getAddress());
     }
 
     // update group peer information
@@ -574,16 +588,25 @@ class RatisConsensus implements IConsensus {
   @Override
   public boolean isLeader(ConsensusGroupId groupId) {
     RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
-
-    boolean isLeader;
     try {
-      isLeader = server.getDivision(raftGroupId).getInfo().isLeader();
+      return server.getDivision(raftGroupId).getInfo().isLeader();
     } catch (IOException exception) {
       // if the read fails, simply return not leader
       logger.info("isLeader request failed with exception: ", exception);
-      isLeader = false;
+      return false;
     }
-    return isLeader;
+  }
+
+  @Override
+  public boolean isLeaderReady(ConsensusGroupId groupId) {
+    RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
+    try {
+      return server.getDivision(raftGroupId).getInfo().isLeaderReady();
+    } catch (IOException exception) {
+      // if the read fails, simply return not ready
+      logger.info("isLeaderReady request failed with exception: ", exception);
+      return false;
+    }
   }
 
   private boolean waitUntilLeaderReady(RaftGroupId groupId) {

@@ -44,6 +44,7 @@ import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
+import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.consensus.iot.client.AsyncIoTConsensusServiceClient;
 import org.apache.iotdb.consensus.iot.client.IoTConsensusClientPool.AsyncIoTConsensusServiceClientPoolFactory;
 import org.apache.iotdb.consensus.iot.client.IoTConsensusClientPool.SyncIoTConsensusServiceClientPoolFactory;
@@ -295,7 +296,6 @@ public class IoTConsensus implements IConsensus {
       doSpotClean(peer, impl);
 
     } catch (ConsensusGroupModifyPeerException e) {
-      logger.error(String.format("cannot execute addPeer() for %s", peer), e);
       throw new ConsensusException(e.getMessage());
     }
   }
@@ -314,6 +314,10 @@ public class IoTConsensus implements IConsensus {
         Optional.ofNullable(stateMachineMap.get(groupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
 
+    if (!impl.getConfiguration().contains(peer)) {
+      throw new PeerNotInConsensusGroupException(groupId, peer.toString());
+    }
+
     try {
       // let other peers remove the sync channel with target peer
       impl.notifyPeersToRemoveSyncLogChannel(peer);
@@ -327,8 +331,6 @@ public class IoTConsensus implements IConsensus {
       // wait its SyncLog to complete
       impl.waitTargetPeerUntilSyncLogCompleted(peer);
     } catch (ConsensusGroupModifyPeerException e) {
-      // we only log warning here because sometimes the target peer may already be down
-      logger.warn(String.format("cannot wait %s to complete SyncLog.", peer), e);
       throw new ConsensusException(e.getMessage());
     }
   }
@@ -352,6 +354,11 @@ public class IoTConsensus implements IConsensus {
 
   @Override
   public boolean isLeader(ConsensusGroupId groupId) {
+    return true;
+  }
+
+  @Override
+  public boolean isLeaderReady(ConsensusGroupId groupId) {
     return true;
   }
 
