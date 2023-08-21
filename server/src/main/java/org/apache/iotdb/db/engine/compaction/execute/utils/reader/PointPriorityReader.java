@@ -171,6 +171,7 @@ public class PointPriorityReader {
    * Add a new overlapped page.
    *
    * @throws IOException if io errors occurred
+   * @return whether page is added into the queue
    */
   public boolean addNewPageIfPageNotEmpty(PageElement pageElement) throws IOException {
 >>>>>>> 456839ebb4 (fix PointPriorityReader index out of bound):iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/dataregion/compaction/execute/utils/reader/PointPriorityReader.java

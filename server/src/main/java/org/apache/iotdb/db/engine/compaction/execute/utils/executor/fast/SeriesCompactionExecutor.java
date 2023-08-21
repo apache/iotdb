@@ -241,9 +241,7 @@ public abstract class SeriesCompactionExecutor {
         compactWithOverlapPages();
 =======
         summary.pageOverlapOrModified += 1;
-        boolean allDataInPageIsNull =
-            !pointPriorityReader.addNewPageIfPageNotEmpty(firstPageElement);
-        if (allDataInPageIsNull) {
+        if (pointPriorityReader.addNewPageIfPageNotEmpty(firstPageElement)) {
           compactWithOverlapPages();
         }
 >>>>>>> 456839ebb4 (fix PointPriorityReader index out of bound):iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/dataregion/compaction/execute/utils/executor/fast/SeriesCompactionExecutor.java
@@ -281,8 +279,7 @@ public abstract class SeriesCompactionExecutor {
       pointPriorityReader.addNewPage(pageElement);
 =======
       summary.pageNoneOverlapButDeserialize += 1;
-      boolean allDataInPageIsNull = !pointPriorityReader.addNewPageIfPageNotEmpty(pageElement);
-      if (allDataInPageIsNull) {
+      if (!pointPriorityReader.addNewPageIfPageNotEmpty(pageElement)) {
         return;
       }
 >>>>>>> 456839ebb4 (fix PointPriorityReader index out of bound):iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/dataregion/compaction/execute/utils/executor/fast/SeriesCompactionExecutor.java
