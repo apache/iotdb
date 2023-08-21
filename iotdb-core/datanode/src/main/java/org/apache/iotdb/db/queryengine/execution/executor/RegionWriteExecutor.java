@@ -60,6 +60,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
@@ -214,6 +215,12 @@ public class RegionWriteExecutor {
     @Override
     public RegionExecutionResult visitInsertRowsOfOneDevice(
         InsertRowsOfOneDeviceNode node, WritePlanNodeExecutionContext context) {
+      return executeDataInsert(node, context);
+    }
+
+    @Override
+    public RegionExecutionResult visitPipeEnrichedInsert(
+        PipeEnrichedInsertNode node, WritePlanNodeExecutionContext context) {
       return executeDataInsert(node, context);
     }
 

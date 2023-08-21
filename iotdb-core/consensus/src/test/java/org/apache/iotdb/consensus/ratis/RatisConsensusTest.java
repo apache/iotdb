@@ -165,7 +165,7 @@ public class RatisConsensusTest {
       servers.get(0).addRemotePeer(group.getGroupId(), peers.get(0));
       Assert.fail();
     } catch (ConsensusException e) {
-      Assert.gassertTrue(e instanceof ConsensusGroupNotExistException);
+      Assert.assertTrue(e instanceof ConsensusGroupNotExistException);
     }
     servers.get(0).createLocalPeer(group.getGroupId(), peers.subList(0, 1));
     doConsensus(servers.get(0), group.getGroupId(), 10, 10);
