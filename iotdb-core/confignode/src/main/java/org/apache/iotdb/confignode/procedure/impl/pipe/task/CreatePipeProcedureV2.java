@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
 import org.apache.iotdb.confignode.manager.pipe.PipeManager;
@@ -34,7 +35,6 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -109,7 +109,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                     env.getConfigManager()
                         .getPartitionManager()
                         .getRegionStorageGroup(regionGroupId);
-                if (databaseName != null && !databaseName.equals(IoTDBConfig.SYSTEM_DATABASE)) {
+                if (databaseName != null && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)) {
                   // Pipe only collect user's data, filter metric database here.
                   consensusGroupIdToTaskMetaMap.put(
                       regionGroupId,
