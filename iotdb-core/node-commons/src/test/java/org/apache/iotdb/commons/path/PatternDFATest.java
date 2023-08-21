@@ -80,17 +80,12 @@ public class PatternDFATest {
   public void printFASketch2() throws IllegalPathException {
     // Map<AcceptEvent, IFATransition>
     Map<String, IFATransition> transitionMap = new HashMap<>();
-    //    List<PartialPath> partialPathList =
-    //        Arrays.asList(
-    //            new PartialPath("root.sg2.**"),
-    //            new PartialPath("root.sg1.d1.**"),
-    //            new PartialPath("root.sg1.d2.**"),
-    //            new PartialPath("root.sg1.d2.s1"));
     List<PartialPath> partialPathList =
         Arrays.asList(
-            new PartialPath("root.sg.d1.**"),
-            new PartialPath("root.sg.d2.status"),
-            new PartialPath("root.sg.d2.a.**"));
+            new PartialPath("root.sg2.**"),
+            new PartialPath("root.sg1.d1.**"),
+            new PartialPath("root.sg1.d2.**"),
+            new PartialPath("root.sg1.d2.s1"));
     PathPatternTree patternTree = new PathPatternTree();
     for (PartialPath pathPattern : partialPathList) {
       patternTree.appendPathPattern(pathPattern);
