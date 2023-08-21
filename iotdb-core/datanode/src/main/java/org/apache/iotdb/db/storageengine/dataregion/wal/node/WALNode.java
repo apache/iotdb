@@ -381,7 +381,9 @@ public class WALNode implements IWALNode {
         return false;
       }
       IMemTable oldestMemTable = oldestMemTableInfo.getMemTable();
-
+      if (oldestMemTable == null) {
+        return false;
+      }
       // get memTable's virtual database processor
       File oldestTsFile =
           FSFactoryProducer.getFSFactory().getFile(oldestMemTableInfo.getTsFilePath());
@@ -455,7 +457,7 @@ public class WALNode implements IWALNode {
           "CheckpointManager$DeleteOutdatedFileTask.snapshotOrFlushOldestMemTable");
       try {
         // make sure snapshot is made before memTable flush operation
-        synchronized (this) {
+        synchronized (memTableInfo) {
           if (memTable != null && memTable.getFlushStatus() != FlushStatus.WORKING) {
             return;
           }
