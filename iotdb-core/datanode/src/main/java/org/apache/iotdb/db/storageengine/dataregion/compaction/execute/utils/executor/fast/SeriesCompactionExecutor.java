@@ -244,9 +244,7 @@ public abstract class SeriesCompactionExecutor {
           || firstPageElement.needForceDecoding) {
         // has overlap or modified pages, then deserialize it
         summary.pageOverlapOrModified += 1;
-        boolean allDataInPageIsNull =
-            !pointPriorityReader.addNewPageIfPageNotEmpty(firstPageElement);
-        if (allDataInPageIsNull) {
+        if (pointPriorityReader.addNewPageIfPageNotEmpty(firstPageElement)) {
           compactWithOverlapPages();
         }
       } else {
@@ -279,8 +277,7 @@ public abstract class SeriesCompactionExecutor {
     } else {
       // unsealed page is not large enough or page.endTime > file.endTime, then deserialze it
       summary.pageNoneOverlapButDeserialize += 1;
-      boolean allDataInPageIsNull = !pointPriorityReader.addNewPageIfPageNotEmpty(pageElement);
-      if (allDataInPageIsNull) {
+      if (!pointPriorityReader.addNewPageIfPageNotEmpty(pageElement)) {
         return;
       }
 

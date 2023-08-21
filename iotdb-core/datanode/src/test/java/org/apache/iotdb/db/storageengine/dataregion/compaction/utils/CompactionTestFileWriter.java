@@ -31,12 +31,13 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-public class CompactionTestFileWriter {
+public class CompactionTestFileWriter implements Closeable {
 
   private TsFileResource resource;
   private TsFileIOWriter fileWriter;

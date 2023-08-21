@@ -60,6 +60,7 @@ public class FastCompactionPerformerWithEmptyPageTest extends AbstractCompaction
 
   @Test
   public void test1() throws IOException, IllegalPathException {
+    String device = "root.testsg.d1";
     TsFileResource seqFile1 = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile1)) {
       writer.startChunkGroup("d1");
@@ -71,8 +72,8 @@ public class FastCompactionPerformerWithEmptyPageTest extends AbstractCompaction
       writer.endChunkGroup();
       writer.endFile();
     }
-    seqFile1.updateStartTime("root.testsg.d1", 10);
-    seqFile1.updateEndTime("root.testsg.d1", 50);
+    seqFile1.updateStartTime(device, 10);
+    seqFile1.updateEndTime(device, 50);
     seqFile1.serialize();
     generateModsFile(Arrays.asList(new PartialPath("root.testsg.d1.s1")), seqFile1, 0, 31);
 
@@ -87,8 +88,8 @@ public class FastCompactionPerformerWithEmptyPageTest extends AbstractCompaction
       writer.endChunkGroup();
       writer.endFile();
     }
-    unseqFile1.updateStartTime("root.testsg.d1", 20);
-    unseqFile1.updateEndTime("root.testsg.d1", 34);
+    unseqFile1.updateStartTime(device, 20);
+    unseqFile1.updateEndTime(device, 34);
     unseqFile1.serialize();
 
     CrossSpaceCompactionTask task =
@@ -108,14 +109,14 @@ public class FastCompactionPerformerWithEmptyPageTest extends AbstractCompaction
     }
     TsFileResource result = tsFileManager.getTsFileList(true).get(0);
     result.buildDeviceTimeIndex();
-    Assert.assertEquals(20, result.getStartTime("root.testsg.d1"));
-    Assert.assertEquals(50, result.getEndTime("root.testsg.d1"));
+    Assert.assertEquals(20, result.getStartTime(device));
+    Assert.assertEquals(50, result.getEndTime(device));
 
     validateSeqFiles(true);
 
     try (TsFileSequenceReader reader = new TsFileSequenceReader(result.getTsFilePath())) {
       Map<String, List<ChunkMetadata>> chunkMetadataInDevice =
-          reader.readChunkMetadataInDevice("root.testsg.d1");
+          reader.readChunkMetadataInDevice(device);
       long startTime = Long.MAX_VALUE, endTime = Long.MIN_VALUE;
       List<ChunkMetadata> chunkMetadataList = chunkMetadataInDevice.get("s1");
       for (ChunkMetadata chunkMetadata : chunkMetadataList) {
