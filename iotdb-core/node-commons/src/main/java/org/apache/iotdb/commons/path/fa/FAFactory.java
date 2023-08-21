@@ -41,7 +41,11 @@ public class FAFactory {
     dfaCache =
         Caffeine.newBuilder()
             .maximumSize(DFA_CACHE_SIZE)
-            .build(builder -> new PatternDFA(builder.getPathPattern(), builder.isPrefixMatch()));
+            .build(
+                builder ->
+                    builder.getPathPattern() == null
+                        ? new PatternDFA(builder.getPatternTree())
+                        : new PatternDFA(builder.getPathPattern(), builder.isPrefixMatch()));
   }
 
   public static FAFactory getInstance() {

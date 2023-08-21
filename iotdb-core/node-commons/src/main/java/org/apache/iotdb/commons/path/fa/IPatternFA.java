@@ -20,6 +20,8 @@
 package org.apache.iotdb.commons.path.fa;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.path.fa.dfa.PatternDFA;
 
 import java.util.Iterator;
 import java.util.Map;
@@ -32,9 +34,7 @@ import java.util.Objects;
 public interface IPatternFA {
 
   // TODO: move to SchemaConstant
-  static IPatternFA MATCH_ALL_FA =
-      FAFactory.getInstance()
-          .constructDFA(new Builder().pattern(new PartialPath(new String[] {"root", "**"})));
+  PatternDFA MATCH_ALL_FA = new PatternDFA(new PartialPath(new String[] {"root", "**"}), false);
 
   /**
    * @param state the source state of the returned transitions
@@ -91,12 +91,18 @@ public interface IPatternFA {
 
   final class Builder {
     private PartialPath pathPattern;
+    private PathPatternTree patternTree;
     private boolean isPrefixMatch = false;
 
     public Builder() {}
 
     public Builder pattern(PartialPath pattern) {
       this.pathPattern = pattern;
+      return this;
+    }
+
+    public Builder patternTree(PathPatternTree patternTree) {
+      this.patternTree = patternTree;
       return this;
     }
 
@@ -107,6 +113,10 @@ public interface IPatternFA {
 
     public PartialPath getPathPattern() {
       return pathPattern;
+    }
+
+    public PathPatternTree getPatternTree() {
+      return patternTree;
     }
 
     public boolean isPrefixMatch() {
@@ -127,12 +137,13 @@ public interface IPatternFA {
       if (o == null || getClass() != o.getClass()) return false;
       Builder builder = (Builder) o;
       return isPrefixMatch == builder.isPrefixMatch
-          && Objects.equals(pathPattern, builder.pathPattern);
+          && Objects.equals(pathPattern, builder.pathPattern)
+          && Objects.equals(patternTree, builder.patternTree);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(pathPattern, isPrefixMatch);
+      return Objects.hash(pathPattern, patternTree, isPrefixMatch);
     }
   }
 }

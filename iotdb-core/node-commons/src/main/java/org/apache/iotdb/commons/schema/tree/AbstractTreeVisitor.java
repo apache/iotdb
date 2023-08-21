@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.schema.tree;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
 import org.apache.iotdb.commons.path.fa.IPatternFA;
@@ -75,8 +76,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
   // finite automation constructed from given path pattern or pattern tree
   protected final IPatternFA patternFA;
   // deterministic finite automation for filtering traversed subtrees
-  private final PatternDFA spaceFilterFA;
-  private IFAState currentSpaceFilterState;
+  private final PatternDFA scopeFA;
 
   // run time variables
   // stack to store children iterator of visited ancestor
@@ -103,10 +103,15 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
   protected AbstractTreeVisitor() {
     root = null;
     patternFA = null;
-    spaceFilterFA = null;
+    scopeFA = IPatternFA.MATCH_ALL_FA;
   }
 
   protected AbstractTreeVisitor(N root, PartialPath pathPattern, boolean isPrefixMatch) {
+    this(root, pathPattern, isPrefixMatch, null);
+  }
+
+  protected AbstractTreeVisitor(
+      N root, PartialPath pathPattern, boolean isPrefixMatch, PathPatternTree scope) {
     this.root = root;
 
     boolean usingDFA = false;
@@ -126,7 +131,10 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
         usingDFA
             ? new IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildDFA()
             : new IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildNFA();
-    this.currentSpaceFilterState = null;
+    this.scopeFA =
+        scope == null
+            ? IPatternFA.MATCH_ALL_FA
+            : (PatternDFA) new IPatternFA.Builder().patternTree(scope).buildDFA();
   }
 
   /** This method must be invoked before iteration */
@@ -139,8 +147,8 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
       return;
     }
     IFAState rootState = patternFA.getNextState(initialState, transition);
-    currentSpaceFilterState = spaceFilterFA.getNextState(initialState, root.getName());
-    currentStateMatchInfo = new StateSingleMatchInfo(patternFA, rootState, currentSpaceFilterState);
+    IFAState initScopeState = scopeFA.getNextState(scopeFA.getInitialState(), root.getName());
+    currentStateMatchInfo = new StateSingleMatchInfo(patternFA, rootState, initScopeState);
     visitorStack.push(new VisitorStackEntry(createChildrenIterator(root), 1));
     ancestorStack.add(new AncestorStackEntry(root, currentStateMatchInfo));
   }
@@ -249,17 +257,15 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
       return new TraceBackChildrenIterator(parent, currentStateMatchInfo);
     } else if (currentStateMatchInfo.hasOnlyPreciseMatchTransition()) {
       // the child can be got directly with the precise value of transition
-      return new PreciseMatchChildrenIterator(parent, currentStateMatchInfo.getOneMatchedState());
+      return new PreciseMatchChildrenIterator(parent, currentStateMatchInfo);
     } else if (currentStateMatchInfo.hasNoPreciseMatchTransition()
         && currentStateMatchInfo.isSingleFuzzyMatchTransition()) {
       // only one transition which may match batch children, need to iterate and check all child
-      return new SingleFuzzyMatchChildrenIterator(
-          parent, currentStateMatchInfo.getOneMatchedState());
+      return new SingleFuzzyMatchChildrenIterator(parent, currentStateMatchInfo);
     } else {
       // child may be matched by multi transitions, precise match or fuzzy match,
       // which results in one child match multi state; need to iterate and check all child
-      return new MultiMatchTransitionChildrenIterator(
-          parent, currentStateMatchInfo.getOneMatchedState());
+      return new MultiMatchTransitionChildrenIterator(parent, currentStateMatchInfo);
     }
   }
 
@@ -271,7 +277,6 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
     if (!visitorStack.isEmpty() && visitorStack.peek().level < ancestorStack.size()) {
       AncestorStackEntry ancestorStackEntry = ancestorStack.remove(ancestorStack.size() - 1);
       releaseNode(ancestorStackEntry.node);
-      currentSpaceFilterState = ancestorStackEntry.stateMatchInfo.getSpaceMatchedState();
       if (ancestorStack.size() <= firstAncestorOfTraceback) {
         firstAncestorOfTraceback = -1;
       }
@@ -470,6 +475,14 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
       currentStateMatchInfo = stateMatchInfo;
     }
 
+    protected final IFAState getNextMatchedScopeState(IFAState currentState, N node) {
+      IFAState nextState = scopeFA.getNextState(currentState, node.getName());
+      if (nextState == null && node.getAlias() != null) {
+        return scopeFA.getNextState(currentState, node.getAlias());
+      }
+      return nextState;
+    }
+
     protected abstract void getNext() throws Exception;
 
     protected void close() {
@@ -483,11 +496,13 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
   private class PreciseMatchChildrenIterator extends AbstractChildrenIterator {
     private final N parent;
     private final IFAState sourceState;
+    private final IFAState currentScopeState;
     private final Iterator<IFATransition> transitionIterator;
 
-    private PreciseMatchChildrenIterator(N parent, IFAState sourceState) {
+    private PreciseMatchChildrenIterator(N parent, IStateMatchInfo stateMatchInfo) {
       this.parent = parent;
-      this.sourceState = sourceState;
+      this.sourceState = stateMatchInfo.getOneMatchedState();
+      this.currentScopeState = stateMatchInfo.getScopeMatchedState();
       transitionIterator = patternFA.getPreciseMatchTransitionIterator(sourceState);
     }
 
@@ -500,16 +515,15 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
         if (child == null) {
           continue;
         }
-        IFAState nextSpaceState =
-            spaceFilterFA.getNextState(currentSpaceFilterState, child.getName());
-        if (nextSpaceState == null) {
+        IFAState nextScopeState = getNextMatchedScopeState(currentScopeState, child);
+        if (nextScopeState == null) {
           releaseNode(child);
           continue;
         }
         saveResult(
             child,
             new StateSingleMatchInfo(
-                patternFA, patternFA.getNextState(sourceState, transition), nextSpaceState));
+                patternFA, patternFA.getNextState(sourceState, transition), nextScopeState));
         return;
       }
     }
@@ -523,11 +537,12 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
     private final IFAState sourceState;
     private final IFATransition transition;
     private final N parent;
-
+    private final IFAState currentScopeState;
     private Iterator<N> childrenIterator;
 
-    private SingleFuzzyMatchChildrenIterator(N parent, IFAState sourceState) {
-      this.sourceState = sourceState;
+    private SingleFuzzyMatchChildrenIterator(N parent, IStateMatchInfo stateMatchInfo) {
+      this.sourceState = stateMatchInfo.getOneMatchedState();
+      this.currentScopeState = stateMatchInfo.getScopeMatchedState();
       this.transition = patternFA.getFuzzyMatchTransitionIterator(sourceState).next();
       this.parent = parent;
     }
@@ -544,16 +559,15 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
           releaseNode(child);
           continue;
         }
-        IFAState nextSpaceState =
-            spaceFilterFA.getNextState(currentSpaceFilterState, child.getName());
-        if (nextSpaceState == null) {
+        IFAState nextScopeState = getNextMatchedScopeState(currentScopeState, child);
+        if (nextScopeState == null) {
           releaseNode(child);
           continue;
         }
         saveResult(
             child,
             new StateSingleMatchInfo(
-                patternFA, patternFA.getNextState(sourceState, transition), nextSpaceState));
+                patternFA, patternFA.getNextState(sourceState, transition), nextScopeState));
         return;
       }
     }
@@ -576,11 +590,12 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
     private final IFAState sourceState;
     private final Map<String, IFATransition> preciseMatchTransitionMap;
     private final N parent;
-
+    private final IFAState currentScopeState;
     private Iterator<N> iterator;
 
-    private MultiMatchTransitionChildrenIterator(N parent, IFAState sourceState) {
-      this.sourceState = sourceState;
+    private MultiMatchTransitionChildrenIterator(N parent, IStateMatchInfo stateMatchInfo) {
+      this.sourceState = stateMatchInfo.getOneMatchedState();
+      this.currentScopeState = stateMatchInfo.getScopeMatchedState();
       this.preciseMatchTransitionMap = patternFA.getPreciseMatchTransition(sourceState);
       this.parent = parent;
     }
@@ -597,9 +612,8 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
       IStateMatchInfo stateMatchInfo;
       while (iterator.hasNext()) {
         child = iterator.next();
-        IFAState nextSpaceState =
-            spaceFilterFA.getNextState(currentSpaceFilterState, child.getName());
-        if (nextSpaceState == null) {
+        IFAState nextScopeState = getNextMatchedScopeState(currentScopeState, child);
+        if (nextScopeState == null) {
           releaseNode(child);
           continue;
         }
@@ -628,7 +642,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
           if (patternFA.mayTransitionOverlap() && transitionIterator.hasNext()) {
             stateMatchInfo =
                 new StateMultiMatchInfo(
-                    patternFA, matchedState, transitionIterator, nextSpaceState);
+                    patternFA, matchedState, transitionIterator, nextScopeState);
             firstAncestorOfTraceback = ancestorStack.size();
 
             while (transitionIterator.hasNext()) {
@@ -641,17 +655,17 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
               }
             }
           } else {
-            stateMatchInfo = new StateSingleMatchInfo(patternFA, matchedState, nextSpaceState);
+            stateMatchInfo = new StateSingleMatchInfo(patternFA, matchedState, nextScopeState);
           }
         } else {
           // accept the first matched state, directly save it
           if (patternFA.mayTransitionOverlap() && transitionIterator.hasNext()) {
             stateMatchInfo =
                 new StateMultiMatchInfo(
-                    patternFA, matchedState, transitionIterator, nextSpaceState);
+                    patternFA, matchedState, transitionIterator, nextScopeState);
             firstAncestorOfTraceback = ancestorStack.size();
           } else {
-            stateMatchInfo = new StateSingleMatchInfo(patternFA, matchedState, nextSpaceState);
+            stateMatchInfo = new StateSingleMatchInfo(patternFA, matchedState, nextScopeState);
           }
         }
 
@@ -675,11 +689,12 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
 
     private final N parent;
     private final IStateMatchInfo sourceStateMatchInfo;
-
+    private final IFAState currentScopeState;
     private Iterator<N> iterator;
 
-    TraceBackChildrenIterator(N parent, IStateMatchInfo sourceStateMatchInfo) {
-      this.sourceStateMatchInfo = sourceStateMatchInfo;
+    TraceBackChildrenIterator(N parent, IStateMatchInfo stateMatchInfo) {
+      this.sourceStateMatchInfo = stateMatchInfo;
+      this.currentScopeState = stateMatchInfo.getScopeMatchedState();
       this.parent = parent;
     }
 
@@ -698,14 +713,13 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
       while (iterator.hasNext()) {
 
         child = iterator.next();
-        IFAState nextSpaceState =
-            spaceFilterFA.getNextState(currentSpaceFilterState, child.getName());
-        if (nextSpaceState == null) {
+        IFAState nextScopeState = getNextMatchedScopeState(currentScopeState, child);
+        if (nextScopeState == null) {
           releaseNode(child);
           continue;
         }
 
-        stateMatchInfo = new StateMultiMatchInfo(patternFA, nextSpaceState);
+        stateMatchInfo = new StateMultiMatchInfo(patternFA, nextScopeState);
         if (mayTargetNodeType(child)) {
           for (int i = 0; i < sourceStateMatchInfo.getMatchedStateSize(); i++) {
             sourceState = sourceStateMatchInfo.getMatchedState(i);

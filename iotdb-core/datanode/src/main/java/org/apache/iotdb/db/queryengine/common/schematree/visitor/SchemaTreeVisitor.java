@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.common.schematree.visitor;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.tree.AbstractTreeVisitor;
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode;
 
@@ -33,6 +34,12 @@ public abstract class SchemaTreeVisitor<R> extends AbstractTreeVisitor<SchemaNod
 
   protected SchemaTreeVisitor(SchemaNode root, PartialPath pathPattern, boolean isPrefixMatch) {
     super(root, pathPattern, isPrefixMatch);
+    initStack();
+  }
+
+  protected SchemaTreeVisitor(
+      SchemaNode root, PartialPath pathPattern, boolean isPrefixMatch, PathPatternTree scope) {
+    super(root, pathPattern, isPrefixMatch, scope);
     initStack();
   }
 

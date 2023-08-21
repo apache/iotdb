@@ -32,13 +32,12 @@ public class StateSingleMatchInfo implements IStateMatchInfo {
 
   private final IFAState matchedState;
 
-  private final IFAState spaceFilterState;
+  private final IFAState scopeState;
 
-  public StateSingleMatchInfo(
-      IPatternFA patternFA, IFAState matchedState, IFAState spaceFilterState) {
+  public StateSingleMatchInfo(IPatternFA patternFA, IFAState matchedState, IFAState scopeState) {
     this.patternFA = patternFA;
     this.matchedState = matchedState;
-    this.spaceFilterState = spaceFilterState;
+    this.scopeState = scopeState;
   }
 
   @Override
@@ -106,7 +105,7 @@ public class StateSingleMatchInfo implements IStateMatchInfo {
   }
 
   @Override
-  public IFAState getSpaceMatchedState() {
-    return spaceFilterState;
+  public IFAState getScopeMatchedState() {
+    return scopeState;
   }
 }

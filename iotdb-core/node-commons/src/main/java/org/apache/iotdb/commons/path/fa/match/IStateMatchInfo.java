@@ -77,5 +77,5 @@ public interface IStateMatchInfo {
   /** @param sourceTransitionIterator the iterator of current checking source states' transition */
   void setSourceTransitionIterator(Iterator<IFATransition> sourceTransitionIterator);
 
-  IFAState getSpaceMatchedState();
+  IFAState getScopeMatchedState();
 }

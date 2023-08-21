@@ -38,26 +38,26 @@ public class StateMultiMatchInfo implements IStateMatchInfo {
 
   private boolean hasFinalState = false;
 
-  private final IFAState spaceFilterState;
+  private final IFAState scopeState;
 
-  public StateMultiMatchInfo(IPatternFA patternFA, IFAState spaceFilterState) {
+  public StateMultiMatchInfo(IPatternFA patternFA, IFAState scopeState) {
     this.patternFA = patternFA;
     matchedStateSet = new MatchedStateSet(patternFA.getStateSize());
-    this.spaceFilterState = spaceFilterState;
+    this.scopeState = scopeState;
   }
 
   public StateMultiMatchInfo(
       IPatternFA patternFA,
       IFAState matchedState,
       Iterator<IFATransition> sourceTransitionIterator,
-      IFAState spaceFilterState) {
+      IFAState scopeState) {
     this.patternFA = patternFA;
     matchedStateSet = new MatchedStateSet(patternFA.getStateSize());
     matchedStateSet.add(matchedState);
     sourceStateIndex = 0;
     this.sourceTransitionIterator = sourceTransitionIterator;
     this.hasFinalState = matchedState.isFinal();
-    this.spaceFilterState = spaceFilterState;
+    this.scopeState = scopeState;
   }
 
   @Override
@@ -124,7 +124,7 @@ public class StateMultiMatchInfo implements IStateMatchInfo {
   }
 
   @Override
-  public IFAState getSpaceMatchedState() {
-    return spaceFilterState;
+  public IFAState getScopeMatchedState() {
+    return scopeState;
   }
 }

@@ -53,9 +53,6 @@ public class NFAGraph {
    */
   public NFAGraph(
       PartialPath pathPattern, boolean isPrefix, Map<String, IFATransition> transitionMap) {
-    if (isPrefix) {
-      pathPattern = pathPattern.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
-    }
     nfaTransitionTable = new List[transitionMap.size()][pathPattern.getNodeLength() + 1];
     // init start state, curNodeIndex=0
     int curStateIndex = 0;
@@ -63,17 +60,48 @@ public class NFAGraph {
     for (int i = 0; i < transitionMap.size(); i++) {
       nfaTransitionTable[i][0] = new ArrayList<>();
     }
-    buildPattern(pathPattern, transitionMap, new AtomicInteger(0));
+    // traverse pathPattern and construct NFA
+    for (int i = 0; i < pathPattern.getNodeLength(); i++) {
+      String node = pathPattern.getNodes()[i];
+      // if it is tail node, transit to final state
+      DFAState state =
+          i == pathPattern.getNodeLength() - 1
+              ? new DFAState(++curStateIndex, true)
+              : new DFAState(++curStateIndex);
+      nfaStateList.add(state);
+      for (int j = 0; j < transitionMap.size(); j++) {
+        nfaTransitionTable[j][curStateIndex] = new ArrayList<>();
+      }
+      // construct transition
+      if (IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(node)) {
+        for (IFATransition transition : transitionMap.values()) {
+          nfaTransitionTable[transition.getIndex()][curStateIndex - 1].add(state);
+        }
+      } else if (IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(node)) {
+        for (IFATransition transition : transitionMap.values()) {
+          nfaTransitionTable[transition.getIndex()][curStateIndex - 1].add(state);
+          nfaTransitionTable[transition.getIndex()][curStateIndex].add(state);
+        }
+      } else {
+        nfaTransitionTable[transitionMap.get(node).getIndex()][curStateIndex - 1].add(state);
+      }
+      if (isPrefix && i == pathPattern.getNodeLength() - 1) {
+        for (IFATransition transition : transitionMap.values()) {
+          nfaTransitionTable[transition.getIndex()][curStateIndex].add(state);
+        }
+      }
+    }
   }
 
   /**
    * Construct NFA graph for given path pattern. Only used for authentication now.
    *
-   * @param patternTree the included PartialPath must be a prefix or a fullPath
+   * @param prefixOrFullPatternTree the included PartialPath must be a prefix or a fullPath
    * @param transitionMap transitionMap
    */
-  public NFAGraph(PathPatternTree patternTree, Map<String, IFATransition> transitionMap) {
-    List<PartialPath> partialPathList = patternTree.getAllPathPatterns();
+  public NFAGraph(
+      PathPatternTree prefixOrFullPatternTree, Map<String, IFATransition> transitionMap) {
+    List<PartialPath> partialPathList = prefixOrFullPatternTree.getAllPathPatterns();
     int maxStateSize = partialPathList.stream().mapToInt(PartialPath::getNodeLength).sum() + 1;
     nfaTransitionTable = new List[transitionMap.size()][maxStateSize];
     // init start state, curNodeIndex=0
