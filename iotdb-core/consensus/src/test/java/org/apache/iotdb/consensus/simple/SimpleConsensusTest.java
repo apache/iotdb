@@ -283,12 +283,12 @@ public class SimpleConsensusTest {
     consensusImpl.createLocalPeer(
         configId, Collections.singletonList(new Peer(configId, 1, new TEndPoint("0.0.0.0", 6667))));
 
-    // test new TestStateMachine(true), should return 1;
+    // test new TestStateMachine(false), should return -1;
     TSStatus response4 = consensusImpl.write(dataRegionId, entry1);
     assertNotNull(response4);
     assertEquals(-1, response4.getCode());
 
-    // test new TestStateMachine(false), should return -1;
+    // test new TestStateMachine(true), should return 1;
     TSStatus response5 = consensusImpl.write(schemaRegionId, entry1);
     assertNotNull(response5);
     assertEquals(1, response5.getCode());

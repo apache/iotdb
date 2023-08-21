@@ -27,8 +27,7 @@ import org.apache.iotdb.consensus.common.ConsensusGroup;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.config.RatisConfig;
-import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
+import org.apache.iotdb.consensus.exception.*;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.ratis.util.TimeDuration;
@@ -135,6 +134,11 @@ public class RatisConsensusTest {
 
   @Test
   public void removeMemberFromGroup() throws Exception {
+    try {
+      servers.get(0).deleteLocalPeer(group.getGroupId());
+    } catch (ConsensusException e) {
+      Assert.assertTrue(e instanceof ConsensusGroupNotExistException);
+    }
     servers.get(0).createLocalPeer(group.getGroupId(), group.getPeers());
     servers.get(1).createLocalPeer(group.getGroupId(), group.getPeers());
     servers.get(2).createLocalPeer(group.getGroupId(), group.getPeers());
@@ -152,15 +156,35 @@ public class RatisConsensusTest {
 
   @Test
   public void oneMemberGroupChange() throws Exception {
+    try {
+      servers.get(0).addRemotePeer(group.getGroupId(), peers.get(0));
+    } catch (ConsensusException e) {
+      Assert.assertTrue(e instanceof ConsensusGroupNotExistException);
+    }
     servers.get(0).createLocalPeer(group.getGroupId(), peers.subList(0, 1));
     doConsensus(servers.get(0), group.getGroupId(), 10, 10);
 
     servers.get(1).createLocalPeer(group.getGroupId(), Collections.emptyList());
     servers.get(0).addRemotePeer(group.getGroupId(), peers.get(1));
+    try {
+      servers.get(0).addRemotePeer(group.getGroupId(), peers.get(1));
+    } catch (ConsensusException e) {
+      Assert.assertTrue(e instanceof PeerAlreadyInConsensusGroupException);
+    }
     servers.get(1).transferLeader(group.getGroupId(), peers.get(1));
     servers.get(0).removeRemotePeer(group.getGroupId(), peers.get(0));
+    try {
+      servers.get(0).removeRemotePeer(group.getGroupId(), peers.get(0));
+    } catch (ConsensusException e) {
+      Assert.assertTrue(e instanceof PeerNotInConsensusGroupException);
+    }
     Assert.assertEquals(servers.get(1).getLeader(gid).getNodeId(), peers.get(1).getNodeId());
     servers.get(0).deleteLocalPeer(group.getGroupId());
+    try {
+      servers.get(0).removeRemotePeer(group.getGroupId(), peers.get(0));
+    } catch (ConsensusException e) {
+      Assert.assertTrue(e instanceof ConsensusGroupNotExistException);
+    }
   }
 
   @Test
