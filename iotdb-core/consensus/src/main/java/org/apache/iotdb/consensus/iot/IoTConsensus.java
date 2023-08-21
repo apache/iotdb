@@ -22,8 +22,6 @@ package org.apache.iotdb.consensus.iot;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.RegisterManager;
@@ -66,8 +64,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class IoTConsensus implements IConsensus {
@@ -85,7 +81,6 @@ public class IoTConsensus implements IConsensus {
   private final IoTConsensusConfig config;
   private final IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager;
   private final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager;
-  private final ScheduledExecutorService retryService;
 
   public IoTConsensus(ConsensusConfig config, Registry registry) {
     this.thisNode = config.getThisNodeEndPoint();
@@ -102,9 +97,6 @@ public class IoTConsensus implements IConsensus {
         new IClientManager.Factory<TEndPoint, SyncIoTConsensusServiceClient>()
             .createClientManager(
                 new SyncIoTConsensusServiceClientPoolFactory(config.getIoTConsensusConfig()));
-    this.retryService =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-            ThreadName.LOG_DISPATCHER_RETRY_EXECUTOR.getName());
     // init IoTConsensus memory manager
     IoTConsensusMemoryManager.getInstance()
         .init(
@@ -141,7 +133,6 @@ public class IoTConsensus implements IConsensus {
                   new Peer(consensusGroupId, thisNodeId, thisNode),
                   new ArrayList<>(),
                   registry.apply(consensusGroupId),
-                  retryService,
                   clientManager,
                   syncClientManager,
                   config);
@@ -158,13 +149,6 @@ public class IoTConsensus implements IConsensus {
     clientManager.close();
     syncClientManager.close();
     registerManager.deregisterAll();
-    retryService.shutdown();
-    try {
-      retryService.awaitTermination(5, TimeUnit.SECONDS);
-    } catch (InterruptedException e) {
-      logger.warn("{}: interrupted when shutting down add Executor with exception {}", this, e);
-      Thread.currentThread().interrupt();
-    }
   }
 
   @Override
@@ -230,7 +214,6 @@ public class IoTConsensus implements IConsensus {
                   new Peer(groupId, thisNodeId, thisNode),
                   peers,
                   registry.apply(groupId),
-                  retryService,
                   clientManager,
                   syncClientManager,
                   config);

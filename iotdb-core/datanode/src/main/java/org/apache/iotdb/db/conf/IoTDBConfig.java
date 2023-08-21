@@ -1071,7 +1071,7 @@ public class IoTDBConfig {
   // IoTConsensus Config
   private int maxLogEntriesNumPerBatch = 1024;
   private int maxSizePerBatch = 16 * 1024 * 1024;
-  private int maxPendingBatchesNum = 5;
+  private int maxPendingBatchesNum = 12;
   private double maxMemoryRatioForQueue = 0.6;
 
   /** Pipe related */
