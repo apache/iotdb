@@ -60,8 +60,7 @@ public abstract class Statement extends StatementNode {
 
   public abstract List<PartialPath> getPaths();
 
-  // TODO
   public boolean checkPermissionBeforeProcess(String userName) {
-    return true;
+    return "root".equals(userName);
   }
 }
