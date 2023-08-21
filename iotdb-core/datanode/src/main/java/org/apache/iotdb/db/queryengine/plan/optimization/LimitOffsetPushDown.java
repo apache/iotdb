@@ -43,10 +43,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.GroupByTimeCompo
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 
+import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.List;
 
 /**
  * <b>Optimization phase:</b> Distributed plan planning
@@ -270,7 +269,7 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     long step = groupByTimeComponent.getSlidingStep();
     long interval = groupByTimeComponent.getInterval();
 
-    long size = (long) Math.ceil((endTime - startTime) / (double) step);
+    long size = (endTime - startTime + step - 1) / step;
     if (size > queryStatement.getRowOffset()) {
       long limitSize = queryStatement.getRowLimit();
       long offsetSize = queryStatement.getRowOffset();
@@ -309,48 +308,46 @@ public class LimitOffsetPushDown implements PlanOptimizer {
     return false;
   }
 
-  public static Set<PartialPath> pushDownLimitOffsetInGroupByTimeForDevice(
-      Set<PartialPath> deviceNames, QueryStatement queryStatement) {
+  public static List<PartialPath> pushDownLimitOffsetInGroupByTimeForDevice(
+      List<PartialPath> deviceNames, QueryStatement queryStatement) {
     GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
     long startTime = groupByTimeComponent.getStartTime();
     long endTime = groupByTimeComponent.getEndTime();
 
     long size =
-        (long) Math.ceil((endTime - startTime) / (double) groupByTimeComponent.getSlidingStep());
+        (endTime - startTime + groupByTimeComponent.getSlidingStep() - 1)
+            / groupByTimeComponent.getSlidingStep();
     if (size == 0 || size * deviceNames.size() <= queryStatement.getRowOffset()) {
       // resultSet is empty
-      return Collections.emptySet();
+      return Collections.emptyList();
     }
 
     long limitSize = queryStatement.getRowLimit();
     long offsetSize = queryStatement.getRowOffset();
-    Set<PartialPath> optimizedDeviceNames = new LinkedHashSet<>();
+    List<PartialPath> optimizedDeviceNames = new ArrayList<>();
     int startDeviceIndex = (int) (offsetSize / size);
     int endDeviceIndex =
         limitSize == 0
             ? deviceNames.size() - 1
             : (int)
-                    Math.ceil(
-                        (limitSize - ((startDeviceIndex + 1) * size - offsetSize)) / (double) size)
-                + startDeviceIndex;
+                ((limitSize - ((startDeviceIndex + 1) * size - offsetSize) + size - 1) / size
+                    + startDeviceIndex);
 
-    Iterator<PartialPath> iterator = deviceNames.iterator();
     int index = 0;
     while (index < startDeviceIndex) {
-      iterator.next();
       index++;
     }
     queryStatement.setRowOffset(offsetSize - startDeviceIndex * size);
 
     // if only refer to one device, optimize the time parameter
     if (startDeviceIndex == endDeviceIndex) {
-      optimizedDeviceNames.add(iterator.next());
+      optimizedDeviceNames.add(deviceNames.get(startDeviceIndex));
       if (hasLimitOffset(queryStatement) && queryStatement.isOrderByTimeInDevices()) {
         pushDownLimitOffsetToTimeParameter(queryStatement);
       }
     } else {
-      while (index <= endDeviceIndex && iterator.hasNext()) {
-        optimizedDeviceNames.add(iterator.next());
+      while (index <= endDeviceIndex && index < deviceNames.size()) {
+        optimizedDeviceNames.add(deviceNames.get(index));
         index++;
       }
     }

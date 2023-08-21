@@ -249,7 +249,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       List<Pair<Expression, String>> outputExpressions;
       if (queryStatement.isAlignByDevice()) {
-        Set<PartialPath> deviceSet = analyzeFrom(queryStatement, schemaTree);
+        List<PartialPath> deviceSet = analyzeFrom(queryStatement, schemaTree);
 
         if (canPushDownLimitOffsetInGroupByTimeForDevice(queryStatement)) {
           // remove the device which won't appear in resultSet after limit/offset
@@ -534,7 +534,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return outputExpressionMap;
   }
 
-  private Set<PartialPath> analyzeFrom(QueryStatement queryStatement, ISchemaTree schemaTree) {
+  private List<PartialPath> analyzeFrom(QueryStatement queryStatement, ISchemaTree schemaTree) {
     // device path patterns in FROM clause
     List<PartialPath> devicePatternList = queryStatement.getFromComponent().getPrefixPaths();
 
@@ -548,17 +548,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     return queryStatement.getResultDeviceOrder() == Ordering.ASC
-        ? deviceSet.stream().sorted().collect(Collectors.toCollection(LinkedHashSet::new))
-        : deviceSet.stream()
-            .sorted(Comparator.reverseOrder())
-            .collect(Collectors.toCollection(LinkedHashSet::new));
+        ? deviceSet.stream().sorted().collect(Collectors.toList())
+        : deviceSet.stream().sorted(Comparator.reverseOrder()).collect(Collectors.toList());
   }
 
   private List<Pair<Expression, String>> analyzeSelect(
       Analysis analysis,
       QueryStatement queryStatement,
       ISchemaTree schemaTree,
-      Set<PartialPath> deviceSet) {
+      List<PartialPath> deviceSet) {
     List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
     Map<String, Set<Expression>> deviceToSelectExpressions = new HashMap<>();
 
@@ -734,7 +732,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis,
       QueryStatement queryStatement,
       ISchemaTree schemaTree,
-      Set<PartialPath> deviceSet) {
+      List<PartialPath> deviceSet) {
     if (!queryStatement.hasHaving()) {
       return;
     }
@@ -1198,7 +1196,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis,
       QueryStatement queryStatement,
       ISchemaTree schemaTree,
-      Set<PartialPath> deviceSet) {
+      List<PartialPath> deviceSet) {
     if (!queryStatement.hasWhere()) {
       return;
     }
@@ -1455,7 +1453,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis,
       QueryStatement queryStatement,
       ISchemaTree schemaTree,
-      Set<PartialPath> deviceSet) {
+      List<PartialPath> deviceSet) {
     if (queryStatement.getGroupByComponent() == null) {
       return;
     }
@@ -1528,7 +1526,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Analysis analysis,
       QueryStatement queryStatement,
       ISchemaTree schemaTree,
-      Set<PartialPath> deviceSet) {
+      List<PartialPath> deviceSet) {
     if (!queryStatement.hasOrderByExpression()) {
       return;
     }
@@ -1861,7 +1859,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   private void analyzeInto(
       Analysis analysis,
       QueryStatement queryStatement,
-      Set<PartialPath> deviceSet,
+      List<PartialPath> deviceSet,
       List<Pair<Expression, String>> outputExpressions) {
     if (!queryStatement.isSelectInto()) {
       return;
