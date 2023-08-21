@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import java.util.Collections;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -94,9 +95,7 @@ public class PermissionManager {
       LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
-      PermissionInfoResp response = new PermissionInfoResp();
-      response.setStatus(res);
-      return response;
+      return new PermissionInfoResp(res, Collections.emptyMap());
     }
   }
 

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import java.io.IOException;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -137,7 +138,7 @@ public class TriggerManager {
       return ((TriggerTableResp)
               configManager.getConsensusManager().read(new GetTriggerTablePlan(onlyStateful)))
           .convertToThriftResponse();
-    } catch (Exception e) {
+    } catch (IOException | ConsensusException e) {
       LOGGER.error("Fail to get TriggerTable", e);
       return new TGetTriggerTableResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
@@ -223,7 +224,7 @@ public class TriggerManager {
         }
       }
     } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      LOGGER.warn("Failed in the read/write API executing the consensus layer due to: ", e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return res;
