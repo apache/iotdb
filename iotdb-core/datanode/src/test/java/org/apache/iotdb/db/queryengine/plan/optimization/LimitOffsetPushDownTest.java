@@ -406,7 +406,7 @@ public class LimitOffsetPushDownTest {
     Assert.assertEquals(rowOffset, statement.getRowOffset());
 
     int index = 0;
-    List<PartialPath> deviceSetInAnalysis = analysis.getDeviceSet();
+    List<PartialPath> deviceSetInAnalysis = analysis.getDeviceList();
     for (PartialPath path : deviceSetInAnalysis) {
       Assert.assertEquals(path.getFullPath(), deviceSet.get(index));
       index++;

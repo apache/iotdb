@@ -251,23 +251,23 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       List<Pair<Expression, String>> outputExpressions;
       if (queryStatement.isAlignByDevice()) {
-        List<PartialPath> deviceSet = analyzeFrom(queryStatement, schemaTree);
+        List<PartialPath> deviceList = analyzeFrom(queryStatement, schemaTree);
 
         if (canPushDownLimitOffsetInGroupByTimeForDevice(queryStatement)) {
           // remove the device which won't appear in resultSet after limit/offset
-          deviceSet = pushDownLimitOffsetInGroupByTimeForDevice(deviceSet, queryStatement);
+          deviceList = pushDownLimitOffsetInGroupByTimeForDevice(deviceList, queryStatement);
         }
 
-        analyzeDeviceToWhere(analysis, queryStatement, schemaTree, deviceSet);
-        outputExpressions = analyzeSelect(analysis, queryStatement, schemaTree, deviceSet);
-        if (deviceSet.isEmpty()) {
+        analyzeDeviceToWhere(analysis, queryStatement, schemaTree, deviceList);
+        outputExpressions = analyzeSelect(analysis, queryStatement, schemaTree, deviceList);
+        if (deviceList.isEmpty()) {
           return finishQuery(queryStatement, analysis);
         }
-        analysis.setDeviceSet(deviceSet);
+        analysis.setDeviceList(deviceList);
 
-        analyzeDeviceToGroupBy(analysis, queryStatement, schemaTree, deviceSet);
-        analyzeDeviceToOrderBy(analysis, queryStatement, schemaTree, deviceSet);
-        analyzeHaving(analysis, queryStatement, schemaTree, deviceSet);
+        analyzeDeviceToGroupBy(analysis, queryStatement, schemaTree, deviceList);
+        analyzeDeviceToOrderBy(analysis, queryStatement, schemaTree, deviceList);
+        analyzeHaving(analysis, queryStatement, schemaTree, deviceList);
 
         analyzeDeviceToAggregation(analysis, queryStatement);
         analyzeDeviceToSourceTransform(analysis, queryStatement);
@@ -276,7 +276,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         analyzeDeviceViewOutput(analysis, queryStatement);
         analyzeDeviceViewInput(analysis, queryStatement);
 
-        analyzeInto(analysis, queryStatement, deviceSet, outputExpressions);
+        analyzeInto(analysis, queryStatement, deviceList, outputExpressions);
       } else {
         Map<Integer, List<Pair<Expression, String>>> outputExpressionMap =
             analyzeSelect(analysis, queryStatement, schemaTree);

@@ -134,7 +134,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
 
     if (queryStatement.isAlignByDevice()) {
       Map<String, PlanNode> deviceToSubPlanMap = new LinkedHashMap<>();
-      for (PartialPath device : analysis.getDeviceSet()) {
+      for (PartialPath device : analysis.getDeviceList()) {
         String deviceName = device.getFullPath();
         LogicalPlanBuilder subPlanBuilder = new LogicalPlanBuilder(analysis, context);
         subPlanBuilder =

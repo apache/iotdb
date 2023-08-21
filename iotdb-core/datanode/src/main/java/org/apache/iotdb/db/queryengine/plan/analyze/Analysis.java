@@ -128,7 +128,7 @@ public class Analysis {
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
   // the list of device names
-  private List<PartialPath> deviceSet;
+  private List<PartialPath> deviceList;
 
   // map from output device name to queried devices
   private Map<String, List<String>> outputDeviceToQueriedDevicesMap;
@@ -748,11 +748,11 @@ public class Analysis {
     this.lastLevelUseWildcard = lastLevelUseWildcard;
   }
 
-  public void setDeviceSet(List<PartialPath> deviceSet) {
-    this.deviceSet = deviceSet;
+  public void setDeviceList(List<PartialPath> deviceList) {
+    this.deviceList = deviceList;
   }
 
-  public List<PartialPath> getDeviceSet() {
-    return deviceSet;
+  public List<PartialPath> getDeviceList() {
+    return deviceList;
   }
 }
