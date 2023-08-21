@@ -82,7 +82,9 @@ public class ModelManager {
     try {
       return configManager.getConsensusManager().write(new UpdateModelInfoPlan(req));
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(
+          String.format("Unexpected error happened while updating model %s: ", req.getModelId()),
+          e);
       // consensus layer related errors
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
@@ -94,7 +96,10 @@ public class ModelManager {
     try {
       return configManager.getConsensusManager().write(new UpdateModelStatePlan(req));
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(
+          String.format(
+              "Unexpected error happened while updating state of model %s: ", req.getModelId()),
+          e);
       // consensus layer related errors
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
@@ -107,7 +112,8 @@ public class ModelManager {
       DataSet response = configManager.getConsensusManager().read(new ShowModelPlan(req));
       return ((ModelTableResp) response).convertToThriftResponse();
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      LOGGER.warn(
+          String.format("Unexpected error happened while showing model %s: ", req.getModelId()), e);
       // consensus layer related errors
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
@@ -126,7 +132,8 @@ public class ModelManager {
       DataSet response = configManager.getConsensusManager().read(new ShowTrailPlan(req));
       return ((TrailTableResp) response).convertToThriftResponse();
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      LOGGER.warn(
+          String.format("Unexpected error happened while showing trail %s: ", req.getModelId()), e);
       // consensus layer related errors
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());

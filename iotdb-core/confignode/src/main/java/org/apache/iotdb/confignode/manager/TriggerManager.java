@@ -152,7 +152,7 @@ public class TriggerManager {
               configManager.getConsensusManager().read(new GetTriggerLocationPlan(triggerName)))
           .convertToThriftResponse();
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
       return new TGetLocationForTriggerResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
               .setMessage(e.getMessage()));
@@ -165,7 +165,7 @@ public class TriggerManager {
               configManager.getConsensusManager().read(new GetTriggerJarPlan(req.getJarNameList())))
           .convertToThriftResponse();
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new JarResp(res, Collections.emptyList()).convertToThriftResponse();
@@ -223,7 +223,7 @@ public class TriggerManager {
         }
       }
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return res;

@@ -252,7 +252,7 @@ public class CQScheduleTask implements Runnable {
                   .getConsensusManager()
                   .write(new UpdateCQLastExecTimePlan(cqId, executionTime, md5));
         } catch (ConsensusException e) {
-          LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+          LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
           result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
           result.setMessage(e.getMessage());
         }

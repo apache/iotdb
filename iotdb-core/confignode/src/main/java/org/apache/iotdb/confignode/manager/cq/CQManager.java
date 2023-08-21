@@ -81,7 +81,7 @@ public class CQManager {
     try {
       return configManager.getConsensusManager().write(new DropCQPlan(req.cqId));
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
       // consensus layer related errors
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());

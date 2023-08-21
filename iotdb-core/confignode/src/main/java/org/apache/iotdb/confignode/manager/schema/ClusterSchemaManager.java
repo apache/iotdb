@@ -115,10 +115,10 @@ public class ClusterSchemaManager {
   private final ReentrantLock createDatabaseLock = new ReentrantLock();
 
   private static final String CONSENSUS_READ_ERROR =
-      "Something wrong happened while calling consensus layer's read API.";
+      "Failed in the read API executing the consensus layer due to: ";
 
   private static final String CONSENSUS_WRITE_ERROR =
-      "Something wrong happened while calling consensus layer's write API.";
+      "Failed in the write API executing the consensus layer due to: ";
 
   public ClusterSchemaManager(
       IManager configManager,

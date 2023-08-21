@@ -198,7 +198,7 @@ public class CreateTriggerProcedure extends AbstractNodeProcedure<CreateTriggerS
               .getConsensusManager()
               .write(new DeleteTriggerInTablePlan(triggerInformation.getTriggerName()));
         } catch (ConsensusException e) {
-          LOG.warn("Something wrong happened while calling consensus layer's write API.", e);
+          LOG.warn("Failed in the write API executing the consensus layer due to: ", e);
         }
         break;
 

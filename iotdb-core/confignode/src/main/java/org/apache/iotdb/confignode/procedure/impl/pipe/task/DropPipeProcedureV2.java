@@ -79,7 +79,7 @@ public class DropPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     try {
       response = env.getConfigManager().getConsensusManager().write(new DropPipePlanV2(pipeName));
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
     }

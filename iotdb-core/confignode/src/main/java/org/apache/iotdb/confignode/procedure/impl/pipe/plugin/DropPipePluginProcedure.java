@@ -122,7 +122,7 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
     try {
       env.getConfigManager().getConsensusManager().write(new DropPipePluginPlan(pluginName));
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
     }
 
     setNextState(DropPipePluginState.DROP_ON_DATA_NODES);
@@ -149,7 +149,7 @@ public class DropPipePluginProcedure extends AbstractNodeProcedure<DropPipePlugi
     try {
       env.getConfigManager().getConsensusManager().write(new DropPipePluginPlan(pluginName));
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
     }
 
     setNextState(DropPipePluginState.UNLOCK);

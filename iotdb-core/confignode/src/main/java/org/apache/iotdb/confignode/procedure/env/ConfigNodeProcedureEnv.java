@@ -272,7 +272,7 @@ public class ConfigNodeProcedureEnv {
                     "Remove ConfigNode failed because update ConsensusGroup peer information failed.");
       }
     } catch (ConsensusException e) {
-      LOG.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOG.warn("Failed in the write API executing the consensus layer due to: ", e);
       tsStatus = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       tsStatus.setMessage(e.getMessage());
     }
@@ -556,7 +556,7 @@ public class ConfigNodeProcedureEnv {
     try {
       getConsensusManager().write(createRegionGroupsPlan);
     } catch (ConsensusException e) {
-      LOG.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOG.warn("Failed in the write API executing the consensus layer due to: ", e);
     }
   }
 

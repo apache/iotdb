@@ -168,7 +168,7 @@ public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipeP
     try {
       response = configNodeManager.getConsensusManager().write(createPluginPlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
     }
@@ -238,7 +238,7 @@ public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipeP
           .getConsensusManager()
           .write(new DropPipePluginPlan(pipePluginMeta.getPluginName()));
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
     }
   }
 

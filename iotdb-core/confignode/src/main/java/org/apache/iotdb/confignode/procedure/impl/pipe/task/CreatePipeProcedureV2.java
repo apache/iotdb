@@ -136,7 +136,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
               .getConsensusManager()
               .write(new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta));
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
     }
@@ -191,7 +191,7 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
               .getConsensusManager()
               .write(new DropPipePlanV2(createPipeRequest.getPipeName()));
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
     }

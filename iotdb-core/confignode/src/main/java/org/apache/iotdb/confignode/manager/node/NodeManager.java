@@ -108,7 +108,7 @@ public class NodeManager {
   private final ReentrantLock removeConfigNodeLock;
 
   private static final String CONSENSUS_WRITE_ERROR =
-      "Something wrong happened while calling consensus layer's write API.";
+      "Failed in the write API executing the consensus layer due to: ";
 
   public NodeManager(IManager configManager, NodeInfo nodeInfo) {
     this.configManager = configManager;
@@ -401,7 +401,7 @@ public class NodeManager {
     try {
       return (DataNodeConfigurationResp) getConsensusManager().read(req);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       DataNodeConfigurationResp response = new DataNodeConfigurationResp();

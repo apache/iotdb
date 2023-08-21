@@ -80,7 +80,7 @@ public class SetTemplateProcedure
   private String templateSetPath;
 
   private static final String CONSENSUS_WRITE_ERROR =
-      "Something wrong happened while calling consensus layer's write API.";
+      "Failed in the write API executing the consensus layer due to: ";
 
   public SetTemplateProcedure() {
     super();
@@ -158,7 +158,7 @@ public class SetTemplateProcedure
           (TemplateInfoResp)
               env.getConfigManager().getConsensusManager().read(checkTemplateSettablePlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       resp = new TemplateInfoResp();
@@ -236,7 +236,7 @@ public class SetTemplateProcedure
           (TemplateInfoResp)
               env.getConfigManager().getConsensusManager().read(getSchemaTemplatePlan);
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       templateResp = new TemplateInfoResp();

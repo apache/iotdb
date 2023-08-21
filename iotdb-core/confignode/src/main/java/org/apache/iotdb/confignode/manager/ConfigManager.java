@@ -1137,8 +1137,7 @@ public class ConfigManager implements IManager {
         Thread.currentThread().interrupt();
         LOGGER.warn("Unexpected interruption during retry creating peer for consensus group");
       } catch (ConsensusException e) {
-        LOGGER.error(
-            "Something wrong happened while calling consensus layer's createLocalPeer API.", e);
+        LOGGER.error("Failed to create peer for consensus group", e);
         break;
       }
     }

@@ -165,7 +165,7 @@ public class CreateRegionGroupsProcedure
         try {
           env.getConfigManager().getConsensusManager().write(offerPlan);
         } catch (ConsensusException e) {
-          LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+          LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
         }
         setNextState(CreateRegionGroupsState.ACTIVATE_REGION_GROUPS);
         break;

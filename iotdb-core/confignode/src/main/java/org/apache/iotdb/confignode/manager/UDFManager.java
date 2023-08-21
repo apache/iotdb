@@ -186,7 +186,7 @@ public class UDFManager {
               configManager.getConsensusManager().read(new GetUDFJarPlan(req.getJarNameList())))
           .convertToThriftResponse();
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's read API.", e);
+      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new JarResp(res, Collections.emptyList()).convertToThriftResponse();

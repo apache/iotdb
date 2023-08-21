@@ -84,7 +84,7 @@ public class ConfigProcedureStore implements IProcedureStore {
     try {
       getConsensusManager().write(updateProcedurePlan);
     } catch (ConsensusException e) {
-      LOG.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOG.warn("Failed in the write API executing the consensus layer due to: ", e);
     }
   }
 
@@ -102,7 +102,7 @@ public class ConfigProcedureStore implements IProcedureStore {
     try {
       getConsensusManager().write(deleteProcedurePlan);
     } catch (ConsensusException e) {
-      LOG.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOG.warn("Failed in the write API executing the consensus layer due to: ", e);
     }
   }
 

@@ -94,7 +94,11 @@ public class ClusterQuotaManager {
       }
       return response;
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(
+          String.format(
+              "Unexpected error happened while setting space quota on database: %s ",
+              req.getDatabase()),
+          e);
       // consensus layer related errors
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
@@ -196,7 +200,11 @@ public class ClusterQuotaManager {
       }
       return response;
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn(
+          String.format(
+              "Unexpected error happened while setting throttle quota on user: %s ",
+              req.getUserName()),
+          e);
       // consensus layer related errors
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());

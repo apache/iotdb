@@ -98,7 +98,7 @@ public class PipeHandleMetaChangeProcedure extends AbstractOperatePipeProcedureV
               .getConsensusManager()
               .write(new PipeHandleMetaChangePlan(pipeMetaList));
     } catch (ConsensusException e) {
-      LOGGER.warn("Something wrong happened while calling consensus layer's write API.", e);
+      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
     }
