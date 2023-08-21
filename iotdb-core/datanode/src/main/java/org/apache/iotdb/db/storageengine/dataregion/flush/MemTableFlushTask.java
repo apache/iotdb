@@ -30,7 +30,9 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
@@ -42,10 +44,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 /**
  * flush task to flush one memtable using a pipeline model to flush, which is sort memtable ->
@@ -67,6 +66,7 @@ public class MemTableFlushTask {
       (config.isEnableMemControl() && SystemInfo.getInstance().isEncodingFasterThanIo())
           ? new LinkedBlockingQueue<>(config.getIoTaskQueueSizeForFlushing())
           : new LinkedBlockingQueue<>();
+  private final Map<String, Pair<Long, Long>> flushPointsCache;
 
   private String storageGroup;
   private String dataRegionId;
@@ -92,6 +92,7 @@ public class MemTableFlushTask {
     this.dataRegionId = dataRegionId;
     this.encodingTaskFuture = SUB_TASK_POOL_MANAGER.submit(encodingTask);
     this.ioTaskFuture = SUB_TASK_POOL_MANAGER.submit(ioTask);
+    this.flushPointsCache = new ConcurrentHashMap<>();
     LOGGER.debug(
         "flush task of database {} memtable is created, flushing to file {}.",
         storageGroup,
@@ -283,11 +284,23 @@ public class MemTableFlushTask {
             if (lastIndex == -1) {
               lastIndex = storageGroup.length();
             }
+            String storageGroupName = storageGroup.substring(0, lastIndex);
+            long currentTime = DateTimeUtils.currentTime();
+            long points = memTable.getTotalPointsNum();
+            Pair<Long, Long> previousPair = flushPointsCache.get(storageGroupName);
+            if (previousPair != null) {
+              if (previousPair.left == currentTime) {
+                points += previousPair.right;
+              } else {
+                flushPointsCache.put(storageGroupName, new Pair<>(currentTime, points));
+              }
+            }
             MetricService.getInstance()
                 .gaugeWithInternalReportAsync(
-                    memTable.getTotalPointsNum(),
+                    points,
                     Metric.POINTS.toString(),
                     MetricLevel.CORE,
+                    currentTime,
                     Tag.DATABASE.toString(),
                     storageGroup.substring(0, lastIndex),
                     Tag.TYPE.toString(),
