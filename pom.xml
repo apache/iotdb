@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache</groupId>
         <artifactId>apache</artifactId>
-        <version>23</version>
+        <version>30</version>
     </parent>
     <groupId>org.apache.iotdb</groupId>
     <artifactId>iotdb-parent</artifactId>
@@ -51,6 +51,7 @@
             <url>scm:git:https://gitbox.apache.org/repos/asf/iotdb-website.git</url>
         </site>
     </distributionManagement>
+    <!-- TODO: Remove this after releasing the artifacts -->
     <repositories>
         <repository>
             <id>iotdb-tools-thrift-staging-repo</id>
@@ -1340,29 +1341,12 @@
                     </plugin>
                 </plugins>
             </build>
-            <dependencies>
-                <!-- This ensures the iotdb-tools-thift module is build first -->
-                <dependency>
-                    <groupId>org.apache.iotdb</groupId>
-                    <artifactId>iotdb-tools-thrift</artifactId>
-                    <version>1.3.0-SNAPSHOT</version>
-                    <type>pom</type>
-                    <scope>provided</scope>
-                </dependency>
-            </dependencies>
         </profile>
         <!-- Enable integration-testsuite on demand, as this takes quite a long time to run -->
         <profile>
             <id>with-integration-tests</id>
             <modules>
                 <module>integration-test</module>
-            </modules>
-        </profile>
-        <!-- Enable the building of the tools (Currently this only adds building of the Thrift module) -->
-        <profile>
-            <id>with-tools</id>
-            <modules>
-                <module>tools</module>
             </modules>
         </profile>
         <!-- Make sure the source assembly has the right name -->
