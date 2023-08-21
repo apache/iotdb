@@ -30,7 +30,12 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -93,6 +98,8 @@ public class PipeTransferBinaryReq extends TPipeTransferReq {
     }
   }
 
+  /////////////////////////////// Thrift ///////////////////////////////
+
   public static PipeTransferBinaryReq toTPipeTransferReq(ByteBuffer byteBuffer) {
     final PipeTransferBinaryReq req = new PipeTransferBinaryReq();
 
@@ -114,6 +121,18 @@ public class PipeTransferBinaryReq extends TPipeTransferReq {
 
     return binaryReq;
   }
+
+  /////////////////////////////// Air Gap ///////////////////////////////
+  public static byte[] toTransferInsertNodeBytes(ByteBuffer byteBuffer) throws IOException {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
+      ReadWriteIOUtils.write(PipeRequestType.TRANSFER_BINARY.getType(), outputStream);
+      return BytesUtils.concatByteArray(byteArrayOutputStream.toByteArray(), byteBuffer.array());
+    }
+  }
+
+  /////////////////////////////// Object ///////////////////////////////
 
   @Override
   public boolean equals(Object obj) {

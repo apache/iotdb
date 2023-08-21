@@ -21,7 +21,9 @@ package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapOneByteResponse;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
@@ -226,10 +228,21 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
   private void doTransfer(
       Socket socket, PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, WALPipeException, IOException {
-    if (!send(
-        socket,
-        PipeTransferInsertNodeReq.toTransferInsertNodeBytes(
-            pipeInsertNodeTabletInsertionEvent.getInsertNode()))) {
+    byte[] bytes;
+    if (pipeInsertNodeTabletInsertionEvent
+            .getPattern()
+            .equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE)
+        && pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCache() == null) {
+      bytes =
+          PipeTransferBinaryReq.toTransferInsertNodeBytes(
+              pipeInsertNodeTabletInsertionEvent.getByteBuffer());
+    } else {
+      bytes =
+          PipeTransferInsertNodeReq.toTransferInsertNodeBytes(
+              pipeInsertNodeTabletInsertionEvent.getInsertNode());
+    }
+
+    if (!send(socket, bytes)) {
       throw new PipeException(
           String.format(
               "Transfer PipeInsertNodeTabletInsertionEvent %s error. Socket: %s",
