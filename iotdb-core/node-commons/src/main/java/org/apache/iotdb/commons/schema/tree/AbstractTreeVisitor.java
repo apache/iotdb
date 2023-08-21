@@ -76,7 +76,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
   // finite automation constructed from given path pattern or pattern tree
   protected final IPatternFA patternFA;
   // deterministic finite automation for filtering traversed subtrees
-  private final PatternDFA scopeFA;
+  private final PatternDFA scopeDFA;
 
   // run time variables
   // stack to store children iterator of visited ancestor
@@ -103,7 +103,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
   protected AbstractTreeVisitor() {
     root = null;
     patternFA = null;
-    scopeFA = IPatternFA.MATCH_ALL_FA;
+    scopeDFA = IPatternFA.MATCH_ALL_FA;
   }
 
   protected AbstractTreeVisitor(N root, PartialPath pathPattern, boolean isPrefixMatch) {
@@ -131,7 +131,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
         usingDFA
             ? new IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildDFA()
             : new IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildNFA();
-    this.scopeFA =
+    this.scopeDFA =
         scope == null
             ? IPatternFA.MATCH_ALL_FA
             : (PatternDFA) new IPatternFA.Builder().patternTree(scope).buildDFA();
@@ -147,7 +147,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
       return;
     }
     IFAState rootState = patternFA.getNextState(initialState, transition);
-    IFAState initScopeState = scopeFA.getNextState(scopeFA.getInitialState(), root.getName());
+    IFAState initScopeState = scopeDFA.getNextState(scopeDFA.getInitialState(), root.getName());
     currentStateMatchInfo = new StateSingleMatchInfo(patternFA, rootState, initScopeState);
     visitorStack.push(new VisitorStackEntry(createChildrenIterator(root), 1));
     ancestorStack.add(new AncestorStackEntry(root, currentStateMatchInfo));
@@ -476,9 +476,9 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
     }
 
     protected final IFAState getNextMatchedScopeState(IFAState currentState, N node) {
-      IFAState nextState = scopeFA.getNextState(currentState, node.getName());
+      IFAState nextState = scopeDFA.getNextState(currentState, node.getName());
       if (nextState == null && node.getAlias() != null) {
-        return scopeFA.getNextState(currentState, node.getAlias());
+        return scopeDFA.getNextState(currentState, node.getAlias());
       }
       return nextState;
     }
