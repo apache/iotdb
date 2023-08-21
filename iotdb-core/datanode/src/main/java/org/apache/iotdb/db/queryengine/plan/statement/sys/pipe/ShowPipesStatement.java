@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.sys.pipe;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -54,6 +56,11 @@ public class ShowPipesStatement extends ShowStatement implements IConfigStatemen
   @Override
   public QueryType getQueryType() {
     return QueryType.READ;
+  }
+
+  @Override
+  public boolean checkPermissionBeforeProcess(String userName) {
+    return AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_PIPE.ordinal());
   }
 
   @Override

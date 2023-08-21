@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
@@ -165,6 +167,11 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
   @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
+  }
+
+  @Override
+  public boolean checkPermissionBeforeProcess(String userName) {
+    return AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_CQ.ordinal());
   }
 
   @Override

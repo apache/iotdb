@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -56,5 +58,10 @@ public class DropPipePluginStatement extends Statement implements IConfigStateme
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitDropPipePlugin(this, context);
+  }
+
+  @Override
+  public boolean checkPermissionBeforeProcess(String userName) {
+    return AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_PIPE.ordinal());
   }
 }

@@ -61,8 +61,8 @@ public class DeleteDatabaseStatement extends Statement implements IConfigStateme
 
   @Override
   public boolean checkPermissionBeforeProcess(String userName) {
-    return AuthorityChecker.checkFullPathListPermission(
-        userName, getPaths(), PrivilegeType.MANAGE_DATABASE.ordinal());
+    return AuthorityChecker.checkSystemPermission(
+        userName, PrivilegeType.MANAGE_DATABASE.ordinal());
   }
 
   public List<String> getPrefixPath() {

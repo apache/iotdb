@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -28,6 +30,11 @@ public class ShowVariablesStatement extends ShowStatement implements IConfigStat
   @Override
   public QueryType getQueryType() {
     return QueryType.READ;
+  }
+
+  @Override
+  public boolean checkPermissionBeforeProcess(String userName) {
+    return AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MAINTAIN.ordinal());
   }
 
   @Override
