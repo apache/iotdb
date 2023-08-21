@@ -163,8 +163,17 @@ public class PointPriorityReader {
     return currentPointElement != null || !pointQueue.isEmpty();
   }
 
+<<<<<<< HEAD:server/src/main/java/org/apache/iotdb/db/engine/compaction/execute/utils/reader/PointPriorityReader.java
   /** Add a new overlapped page. */
   public void addNewPage(PageElement pageElement) throws IOException {
+=======
+  /**
+   * Add a new overlapped page.
+   *
+   * @throws IOException if io errors occurred
+   */
+  public boolean addNewPageIfPageNotEmpty(PageElement pageElement) throws IOException {
+>>>>>>> 456839ebb4 (fix PointPriorityReader index out of bound):iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/dataregion/compaction/execute/utils/reader/PointPriorityReader.java
     if (currentPointElement != null) {
       nextPointInOtherPage = Math.min(nextPointInOtherPage, pageElement.startTime);
       if (currentPoint.getTimestamp() >= nextPointInOtherPage) {
@@ -172,6 +181,11 @@ public class PointPriorityReader {
         currentPointElement = null;
       }
     }
-    pointQueue.add(new PointElement(pageElement));
+    PointElement pointElement = new PointElement(pageElement);
+    boolean pageIsNotEmpty = pointElement.hasNext();
+    if (!pageIsNotEmpty) {
+      pointQueue.add(pointElement);
+    }
+    return pageIsNotEmpty;
   }
 }
