@@ -31,7 +31,6 @@ import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
@@ -891,7 +890,6 @@ public class TsFileProcessor {
       IMemTable tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
 
       try {
-        PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(tsFileResource);
         PipeInsertionDataNodeListener.getInstance()
             .listenToTsFile(dataRegionInfo.getDataRegion().getDataRegionId(), tsFileResource);
 

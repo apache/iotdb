@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.extractor.realtime.listener;
 
+import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEventFactory;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.assigner.PipeDataRegionAssigner;
@@ -92,9 +93,11 @@ public class PipeInsertionDataNodeListener {
   //////////////////////////// listen to events ////////////////////////////
 
   public void listenToTsFile(String dataRegionId, TsFileResource tsFileResource) {
-    // We don't judge whether listenToTsFileExtractorCount.get() == 0 here on purpose
-    // because extractors may use tsfile events when some exceptions occur in the
-    // insert nodes listening process.
+    // wo don't judge whether listenToTsFileExtractorCount.get() == 0 here, because
+    // when using SimpleProgressIndex, the tsfile event needs to be assigned to the
+    // extractor even if listenToTsFileExtractorCount.get() == 0 to record the progress
+
+    PipeAgent.runtime().assignSimpleProgressIndexIfNeeded(tsFileResource);
 
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
 
