@@ -36,8 +36,8 @@ public class PathPatternUtil {
     return node.startsWith(ONE_LEVEL_PATH_WILDCARD) || node.endsWith(ONE_LEVEL_PATH_WILDCARD);
   }
 
-  public static boolean hasMultiLevelMatchWildcard(String node) {
-    return node.startsWith(ONE_LEVEL_PATH_WILDCARD);
+  public static boolean isMultiLevelMatchWildcard(String node) {
+    return MULTI_LEVEL_PATH_WILDCARD.equals(node);
   }
 
   /**

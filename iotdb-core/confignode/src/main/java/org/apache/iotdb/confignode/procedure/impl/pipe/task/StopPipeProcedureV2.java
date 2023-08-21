@@ -89,7 +89,7 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     LOGGER.info("StopPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
     String exceptionMessage =
-        parsePushPipeMetaExceptionForPipe(pipeName, pushPipeMetaToDataNodes(env));
+        parsePushPipeMetaExceptionForPipe(pipeName, pushSinglePipeMetaToDataNodes(pipeName, env));
     if (!exceptionMessage.isEmpty()) {
       throw new PipeException(
           String.format("Failed to stop pipe %s, details: %s", pipeName, exceptionMessage));
@@ -126,6 +126,7 @@ public class StopPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       throws PipeException, IOException {
     LOGGER.info("StopPipeProcedureV2: rollbackFromOperateOnDataNodes({})", pipeName);
 
+    // Push all pipe metas to datanode, may be time-consuming
     String exceptionMessage =
         parsePushPipeMetaExceptionForPipe(pipeName, pushPipeMetaToDataNodes(env));
     if (!exceptionMessage.isEmpty()) {
