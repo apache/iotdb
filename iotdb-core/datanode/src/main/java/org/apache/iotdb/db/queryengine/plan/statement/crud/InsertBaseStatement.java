@@ -279,8 +279,7 @@ public abstract class InsertBaseStatement extends Statement {
    *
    * @return map from device path to its measurements.
    */
-  protected final Map<PartialPath, List<Pair<String, Integer>>>
-      getMapFromDeviceToMeasurementAndIndex() {
+  protected Map<PartialPath, List<Pair<String, Integer>>> getMapFromDeviceToMeasurementAndIndex() {
     boolean[] isLogicalView = new boolean[this.measurements.length];
     int[] indexMapToLogicalViewList = new int[this.measurements.length];
     Arrays.fill(isLogicalView, false);

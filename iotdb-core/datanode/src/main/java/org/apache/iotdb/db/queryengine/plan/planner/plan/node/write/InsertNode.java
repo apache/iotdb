@@ -77,6 +77,8 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
 
   protected ProgressIndex progressIndex;
 
+  protected boolean isGeneratedByPipe = false;
+
   protected InsertNode(PlanNodeId id) {
     super(id);
   }
@@ -167,6 +169,14 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
+  }
+
+  public boolean isGeneratedByPipe() {
+    return isGeneratedByPipe;
+  }
+
+  public void markAsGeneratedByPipe() {
+    isGeneratedByPipe = true;
   }
 
   // region Serialization methods for WAL
@@ -274,7 +284,7 @@ public abstract class InsertNode extends WritePlanNode implements ComparableCons
   // region progress index
 
   @Override
-  public final ProgressIndex getProgressIndex() {
+  public ProgressIndex getProgressIndex() {
     return progressIndex;
   }
 

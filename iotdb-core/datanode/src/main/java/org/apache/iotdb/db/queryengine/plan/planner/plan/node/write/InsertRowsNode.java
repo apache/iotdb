@@ -206,6 +206,12 @@ public class InsertRowsNode extends InsertNode {
   }
 
   @Override
+  public void markAsGeneratedByPipe() {
+    isGeneratedByPipe = true;
+    insertRowNodeList.forEach(InsertRowNode::markAsGeneratedByPipe);
+  }
+
+  @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
     Map<TRegionReplicaSet, InsertRowsNode> splitMap = new HashMap<>();
     List<TEndPoint> redirectInfo = new ArrayList<>();
