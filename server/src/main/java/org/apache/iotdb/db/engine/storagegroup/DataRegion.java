@@ -104,6 +104,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.apache.commons.io.FileUtils;
@@ -1920,23 +1921,11 @@ public class DataRegion implements IDataRegionForQuery {
       List<TsFileResource> unsealedTsFileResource = new ArrayList<>();
       separateTsFile(sealedTsFileResource, unsealedTsFileResource);
 
-      deleteDataInFiles(
-          unsealedTsFileResource,
-          deletion,
-          devicePaths,
-          updatedModFiles,
-          timePartitionFilter,
-          deviceMatchInfo);
+      deleteDataInFiles(unsealedTsFileResource, deletion, devicePaths, timePartitionFilter);
       writeUnlock();
       hasReleasedLock = true;
 
-      deleteDataInFiles(
-          sealedTsFileResource,
-          deletion,
-          devicePaths,
-          updatedModFiles,
-          timePartitionFilter,
-          deviceMatchInfo);
+      deleteDataInFiles(sealedTsFileResource, deletion, devicePaths, timePartitionFilter);
 
     } catch (Exception e) {
       throw new IOException(e);
@@ -2068,23 +2057,15 @@ public class DataRegion implements IDataRegionForQuery {
             } else {
               deletion.setFileOffset(tsFileResource.getTsFileSize());
               // write deletion into modification file
-              boolean modFileExists = modFile.exists();
-
-              modFile.write(deletion);
-
+              boolean modFileExists = tsFileResource.getModFile().exists();
+              tsFileResource.getModFile().write(deletion);
               // remember to close mod file
-              modFile.close();
-
-              // if file length greater than 1M,execute compact.
-              modFile.compact();
-
+              tsFileResource.getModFile().close();
               if (!modFileExists) {
-                FileMetrics.getInstance().increaseModFileNum(1);
+                TsFileMetricManager.getInstance().increaseModFileNum(1);
               }
-
-              // The file size may be smaller than the original file, so the increment here may be
-              // negative
-              FileMetrics.getInstance().increaseModFileSize(modFile.getSize() - originSize);
+              TsFileMetricManager.getInstance()
+                  .increaseModFileSize(tsFileResource.getModFile().getSize() - originSize);
             }
           } catch (Throwable t) {
             if (originSize != -1) {

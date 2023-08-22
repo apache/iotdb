@@ -89,7 +89,6 @@ public class ModificationFileTest {
         mFile.write(modifications[i]);
       }
       modificationList = (List<Modification>) mFile.getModifications();
-      mFile.abort();
 
       for (int i = 0; i < 3; i++) {
         assertEquals(modifications[i], modificationList.get(i));
