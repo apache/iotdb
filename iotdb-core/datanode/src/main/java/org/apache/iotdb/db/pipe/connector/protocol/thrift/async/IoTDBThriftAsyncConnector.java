@@ -28,8 +28,8 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftAsyncPipeTransferBatchReqBuilder;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletReq;
@@ -53,7 +53,6 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -161,6 +160,28 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
     }
 
     final long requestCommitId = commitIdGenerator.incrementAndGet();
+
+    // first, if its WALEntryValue is not in cache, then transfer it via binary
+    if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+      final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
+          (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
+
+      if (pipeInsertNodeTabletInsertionEvent
+              .getPattern()
+              .equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE)
+          && pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCache() == null) {
+        final PipeTransferBinaryReq pipeTransferReq =
+            PipeTransferBinaryReq.toTPipeTransferReq(
+                pipeInsertNodeTabletInsertionEvent.getByteBuffer());
+
+        final PipeTransferInsertNodeTabletInsertionEventHandler pipeTransferInsertNodeReqHandler =
+            new PipeTransferInsertNodeTabletInsertionEventHandler(
+                requestCommitId, pipeInsertNodeTabletInsertionEvent, pipeTransferReq, this);
+
+        transfer(requestCommitId, pipeTransferInsertNodeReqHandler);
+        return;
+      }
+    }
 
     if (isTabletBatchModeEnabled) {
       if (tabletBatchBuilder.onEvent(tabletInsertionEvent, requestCommitId)) {
