@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.path.fa.dfa.PatternDFA;
 import org.apache.iotdb.commons.path.fa.match.IStateMatchInfo;
 import org.apache.iotdb.commons.path.fa.match.StateMultiMatchInfo;
 import org.apache.iotdb.commons.path.fa.match.StateSingleMatchInfo;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -103,7 +104,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
   protected AbstractTreeVisitor() {
     root = null;
     patternFA = null;
-    scopeDFA = IPatternFA.MATCH_ALL_FA;
+    scopeDFA = SchemaConstant.ALL_MATCH_DFA;
   }
 
   protected AbstractTreeVisitor(N root, PartialPath pathPattern, boolean isPrefixMatch) {
@@ -133,7 +134,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
             : new IPatternFA.Builder().pattern(pathPattern).isPrefixMatch(isPrefixMatch).buildNFA();
     this.scopeDFA =
         scope == null
-            ? IPatternFA.MATCH_ALL_FA
+            ? SchemaConstant.ALL_MATCH_DFA
             : (PatternDFA) new IPatternFA.Builder().patternTree(scope).buildDFA();
   }
 

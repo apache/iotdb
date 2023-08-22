@@ -20,6 +20,7 @@ package org.apache.iotdb.commons.schema;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.fa.dfa.PatternDFA;
 
 public class SchemaConstant {
 
@@ -54,7 +55,8 @@ public class SchemaConstant {
   public static final String SYSTEM_DATABASE = "root.__system";
 
   public static final String[] ALL_RESULT_NODES = new String[] {"root", "**"};
-  public static final PartialPath ALL_MATCH_PATTERN = new PartialPath(new String[] {"root", "**"});
+  public static final PartialPath ALL_MATCH_PATTERN = new PartialPath(ALL_RESULT_NODES);
+  public static final PatternDFA ALL_MATCH_DFA = new PatternDFA(ALL_MATCH_PATTERN, false);
   public static final PartialPath SYSTEM_DATABASE_PATTERN =
       new PartialPath(SYSTEM_DATABASE.split("\\."));
 

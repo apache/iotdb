@@ -21,7 +21,6 @@ package org.apache.iotdb.commons.path.fa;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.path.fa.dfa.PatternDFA;
 
 import java.util.Iterator;
 import java.util.Map;
@@ -32,9 +31,6 @@ import java.util.Objects;
  * a pattern tree.
  */
 public interface IPatternFA {
-
-  // TODO: move to SchemaConstant
-  PatternDFA MATCH_ALL_FA = new PatternDFA(new PartialPath(new String[] {"root", "**"}), false);
 
   /**
    * @param state the source state of the returned transitions
@@ -101,6 +97,7 @@ public interface IPatternFA {
       return this;
     }
 
+    /** @param patternTree the included PartialPath must be a prefix or a fullPath */
     public Builder patternTree(PathPatternTree patternTree) {
       this.patternTree = patternTree;
       return this;
