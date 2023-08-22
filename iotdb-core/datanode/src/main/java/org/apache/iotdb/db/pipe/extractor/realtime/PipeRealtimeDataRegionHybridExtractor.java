@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.extractor.realtime;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
@@ -53,6 +54,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       extractTabletInsertion(event);
     } else if (eventToExtract instanceof TsFileInsertionEvent) {
       extractTsFileInsertion(event);
+    } else if (eventToExtract instanceof PipeHeartbeatEvent) {
+      extractHeartbeatInsertion(event);
     } else {
       throw new UnsupportedOperationException(
           String.format(
@@ -148,6 +151,25 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
             String.format(
                 "Unsupported state %s for hybrid realtime extractor %s",
                 state, PipeRealtimeDataRegionHybridExtractor.class.getName()));
+    }
+  }
+
+  private void extractHeartbeatInsertion(PipeRealtimeEvent event) {
+    if (!pendingQueue.waitedOffer(event)) {
+      // this would not happen, but just in case.
+      // pendingQueue is unbounded, so it should never reach capacity.
+      final String errorMessage =
+          String.format(
+              "extractHeartbeatInsertion: pending queue of PipeRealtimeDataRegionHybridExtractor %s "
+                  + "has reached capacity, discard Heartbeat event %s, current state %s",
+              this, event, event.getTsFileEpoch().getState(this));
+      LOGGER.warn(errorMessage);
+
+      // Do not report exception since the PipeHeartbeatEvent doesn't affect the correction of pipe
+      // transmission.
+
+      // Ignore the heartbeat event.
+      event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
     }
   }
 

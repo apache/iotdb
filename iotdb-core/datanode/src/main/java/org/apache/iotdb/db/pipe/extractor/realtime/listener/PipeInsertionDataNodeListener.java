@@ -128,6 +128,19 @@ public class PipeInsertionDataNodeListener {
         PipeRealtimeEventFactory.createRealtimeEvent(walEntryHandler, insertNode, tsFileResource));
   }
 
+  public void listenToHeartbeat() {
+    if (listenToInsertNodeExtractorCount.get() == 0 && listenToTsFileExtractorCount.get() == 0) {
+      return;
+    }
+
+    dataRegionId2Assigner
+        .values()
+        .forEach(
+            pipeDataRegionAssigner ->
+                pipeDataRegionAssigner.publishToAssign(
+                    PipeRealtimeEventFactory.createRealtimeEvent()));
+  }
+
   /////////////////////////////// singleton ///////////////////////////////
 
   private PipeInsertionDataNodeListener() {}

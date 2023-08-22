@@ -21,6 +21,8 @@ package org.apache.iotdb.db.pipe.extractor.realtime;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
@@ -45,25 +47,43 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
 
   @Override
   public void extract(PipeRealtimeEvent event) {
-    event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
+    EnrichedEvent enrichedEvent = event.getEvent();
 
-    if (!(event.getEvent() instanceof TsFileInsertionEvent)) {
-      event.decreaseReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName());
-      return;
-    }
+    if (enrichedEvent instanceof TsFileInsertionEvent) {
+      event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
+      if (!pendingQueue.waitedOffer(event)) {
+        // This would not happen, but just in case.
+        // Pending is unbounded, so it should never reach capacity.
+        final String errorMessage =
+            String.format(
+                "extract: pending queue of PipeRealtimeDataRegionTsFileExtractor %s "
+                    + "has reached capacity, discard TsFile event %s, current state %s",
+                this, event, event.getTsFileEpoch().getState(this));
+        LOGGER.error(errorMessage);
+        PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
 
-    if (!pendingQueue.waitedOffer(event)) {
-      // This would not happen, but just in case.
-      // Pending is unbounded, so it should never reach capacity.
-      final String errorMessage =
-          String.format(
-              "extract: pending queue of PipeRealtimeDataRegionTsFileExtractor %s "
-                  + "has reached capacity, discard TsFile event %s, current state %s",
-              this, event, event.getTsFileEpoch().getState(this));
-      LOGGER.error(errorMessage);
-      PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+        // Ignore the event.
+        event.decreaseReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName());
+      }
+    } else if (enrichedEvent instanceof PipeHeartbeatEvent) {
+      if (!pendingQueue.waitedOffer(event)) {
+        // This would not happen, but just in case.
+        // Pending is unbounded, so it should never reach capacity.
+        final String errorMessage =
+            String.format(
+                "extract: pending queue of PipeRealtimeDataRegionTsFileExtractor %s "
+                    + "has reached capacity, discard heartbeat event %s, current state %s",
+                this, event, event.getTsFileEpoch().getState(this));
+        LOGGER.warn(errorMessage);
 
-      // Ignore the event.
+        // Do not report exception since the PipeHeartbeatEvent doesn't affect the correction of
+        // pipe transmission.
+
+        // Ignore the event.
+        event.decreaseReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName());
+      }
+    } else {
+      event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
       event.decreaseReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName());
     }
   }
