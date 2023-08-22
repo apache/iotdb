@@ -37,14 +37,24 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   private final Tablet tablet;
   private final boolean isAligned;
-  private final boolean needToReport;
 
   private final EnrichedEvent sourceEvent;
+  private final boolean needToReport;
+
   private TabletInsertionDataContainer dataContainer;
 
-  @TestOnly
-  public PipeRawTabletInsertionEvent(Tablet tablet, boolean isAligned) {
-    this(tablet, isAligned, null, null, false, null);
+  public PipeRawTabletInsertionEvent(
+      Tablet tablet,
+      boolean isAligned,
+      EnrichedEvent sourceEvent,
+      boolean needToReport,
+      PipeTaskMeta pipeTaskMeta,
+      String pattern) {
+    super(pipeTaskMeta, pattern);
+    this.tablet = Objects.requireNonNull(tablet);
+    this.isAligned = isAligned;
+    this.sourceEvent = sourceEvent;
+    this.needToReport = needToReport;
   }
 
   public PipeRawTabletInsertionEvent(
@@ -53,26 +63,17 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
       PipeTaskMeta pipeTaskMeta,
       EnrichedEvent sourceEvent,
       boolean needToReport) {
-    this(tablet, isAligned, pipeTaskMeta, sourceEvent, needToReport, null);
+    this(tablet, isAligned, sourceEvent, needToReport, pipeTaskMeta, null);
+  }
+
+  @TestOnly
+  public PipeRawTabletInsertionEvent(Tablet tablet, boolean isAligned) {
+    this(tablet, isAligned, null, false, null, null);
   }
 
   @TestOnly
   public PipeRawTabletInsertionEvent(Tablet tablet, boolean isAligned, String pattern) {
-    this(tablet, isAligned, null, null, false, pattern);
-  }
-
-  public PipeRawTabletInsertionEvent(
-      Tablet tablet,
-      boolean isAligned,
-      PipeTaskMeta pipeTaskMeta,
-      EnrichedEvent sourceEvent,
-      boolean needToReport,
-      String pattern) {
-    super(pipeTaskMeta, pattern);
-    this.tablet = Objects.requireNonNull(tablet);
-    this.isAligned = isAligned;
-    this.sourceEvent = sourceEvent;
-    this.needToReport = needToReport;
+    this(tablet, isAligned, null, false, null, pattern);
   }
 
   @Override
@@ -101,7 +102,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       PipeTaskMeta pipeTaskMeta, String pattern) {
     return new PipeRawTabletInsertionEvent(
-        tablet, isAligned, pipeTaskMeta, sourceEvent, needToReport, pattern);
+        tablet, isAligned, sourceEvent, needToReport, pipeTaskMeta, pattern);
   }
 
   @Override

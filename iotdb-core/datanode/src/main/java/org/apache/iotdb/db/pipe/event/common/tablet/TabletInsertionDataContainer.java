@@ -47,10 +47,11 @@ import java.util.stream.IntStream;
 
 public class TabletInsertionDataContainer {
 
-  private String deviceId;
-  private boolean isAligned;
   private final PipeTaskMeta pipeTaskMeta; // used to report progress
   private final EnrichedEvent sourceEvent; // used to report progress
+
+  private String deviceId;
+  private boolean isAligned;
   private MeasurementSchema[] measurementSchemaList;
   private String[] columnNameStringList;
 
@@ -71,6 +72,7 @@ public class TabletInsertionDataContainer {
       PipeTaskMeta pipeTaskMeta, EnrichedEvent sourceEvent, InsertNode insertNode, String pattern) {
     this.pipeTaskMeta = pipeTaskMeta;
     this.sourceEvent = sourceEvent;
+
     if (insertNode instanceof InsertRowNode) {
       parse((InsertRowNode) insertNode, pattern);
     } else if (insertNode instanceof InsertTabletNode) {
@@ -89,6 +91,7 @@ public class TabletInsertionDataContainer {
       String pattern) {
     this.pipeTaskMeta = pipeTaskMeta;
     this.sourceEvent = sourceEvent;
+
     parse(tablet, isAligned, pattern);
   }
 

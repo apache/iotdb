@@ -184,7 +184,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     }
 
     if (((EnrichedEvent) tabletInsertionEvent).shouldParsePattern()) {
-      for (TabletInsertionEvent event :
+      for (final TabletInsertionEvent event :
           tabletInsertionEvent.processRowByRow(
               (row, rowCollector) -> {
                 try {
@@ -235,9 +235,8 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     }
 
     if (((EnrichedEvent) tsFileInsertionEvent).shouldParsePattern()) {
-      for (final TabletInsertionEvent tabletInsertionEvent :
-          tsFileInsertionEvent.toTabletInsertionEvents()) {
-        transfer(tabletInsertionEvent);
+      for (final TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
+        transfer(event);
       }
       return;
     }

@@ -52,11 +52,11 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileInsertionDataContainer.class);
 
-  // used to filter data
-  private final String pattern;
+  private final String pattern; // used to filter data
+  private final IExpression timeFilterExpression; // used to filter data
+
   private final PipeTaskMeta pipeTaskMeta; // used to report progress
   private final EnrichedEvent sourceEvent; // used to report progress
-  private final IExpression timeFilterExpression;
 
   private final TsFileSequenceReader tsFileSequenceReader;
   private final TsFileReader tsFileReader;
@@ -67,26 +67,27 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
   public TsFileInsertionDataContainer(File tsFile, String pattern, long startTime, long endTime)
       throws IOException {
-    this(tsFile, pattern, null, null, startTime, endTime);
+    this(tsFile, pattern, startTime, endTime, null, null);
   }
 
   public TsFileInsertionDataContainer(
       File tsFile,
       String pattern,
-      PipeTaskMeta pipeTaskMeta,
-      EnrichedEvent sourceEvent,
       long startTime,
-      long endTime)
+      long endTime,
+      PipeTaskMeta pipeTaskMeta,
+      EnrichedEvent sourceEvent)
       throws IOException {
     this.pattern = pattern;
-    this.pipeTaskMeta = pipeTaskMeta;
-    this.sourceEvent = sourceEvent;
     timeFilterExpression =
         (startTime == Long.MIN_VALUE && endTime == Long.MAX_VALUE)
             ? null
             : BinaryExpression.and(
                 new GlobalTimeExpression(TimeFilter.gtEq(startTime)),
                 new GlobalTimeExpression(TimeFilter.ltEq(endTime)));
+
+    this.pipeTaskMeta = pipeTaskMeta;
+    this.sourceEvent = sourceEvent;
 
     try {
       tsFileSequenceReader = new TsFileSequenceReader(tsFile.getAbsolutePath());
@@ -193,8 +194,8 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
 
             final Tablet tablet = tabletIterator.next();
             final boolean isAligned = deviceIsAlignedMap.getOrDefault(tablet.deviceId, false);
-            final TabletInsertionEvent next;
 
+            final TabletInsertionEvent next;
             if (!hasNext()) {
               next =
                   new PipeRawTabletInsertionEvent(
@@ -205,7 +206,6 @@ public class TsFileInsertionDataContainer implements AutoCloseable {
                   new PipeRawTabletInsertionEvent(
                       tablet, isAligned, pipeTaskMeta, sourceEvent, false);
             }
-
             return next;
           }
         };

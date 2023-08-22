@@ -138,6 +138,10 @@ public abstract class EnrichedEvent implements Event {
     isPatternParsed = true;
   }
 
+  public void markAsPatternNotParsed() {
+    isPatternParsed = false;
+  }
+
   public abstract EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       PipeTaskMeta pipeTaskMeta, String pattern);
 

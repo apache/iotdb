@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.pipe.processor;
 
-import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeConfiguration;
@@ -49,37 +46,13 @@ public class PipeDoNothingProcessor implements PipeProcessor {
   @Override
   public void process(TabletInsertionEvent tabletInsertionEvent, EventCollector eventCollector)
       throws IOException {
-    if (tabletInsertionEvent instanceof EnrichedEvent) {
-      final EnrichedEvent enrichedEvent = (EnrichedEvent) tabletInsertionEvent;
-      if (enrichedEvent
-          .getPattern()
-          .equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE)) {
-        eventCollector.collect(tabletInsertionEvent);
-      } else {
-        ((EnrichedEvent) tabletInsertionEvent).markAsPatternParsed();
-        eventCollector.collect(tabletInsertionEvent);
-      }
-    } else {
-      eventCollector.collect(tabletInsertionEvent);
-    }
+    eventCollector.collect(tabletInsertionEvent);
   }
 
   @Override
   public void process(TsFileInsertionEvent tsFileInsertionEvent, EventCollector eventCollector)
       throws IOException {
-    if (tsFileInsertionEvent instanceof PipeTsFileInsertionEvent) {
-      final PipeTsFileInsertionEvent enrichedEvent =
-          (PipeTsFileInsertionEvent) tsFileInsertionEvent;
-      if (enrichedEvent.getPattern().equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE)
-          && !enrichedEvent.hasTimeFilter()) {
-        eventCollector.collect(tsFileInsertionEvent);
-      } else {
-        ((PipeTsFileInsertionEvent) tsFileInsertionEvent).markAsPatternParsed();
-        eventCollector.collect(tsFileInsertionEvent);
-      }
-    } else {
-      eventCollector.collect(tsFileInsertionEvent);
-    }
+    eventCollector.collect(tsFileInsertionEvent);
   }
 
   @Override
