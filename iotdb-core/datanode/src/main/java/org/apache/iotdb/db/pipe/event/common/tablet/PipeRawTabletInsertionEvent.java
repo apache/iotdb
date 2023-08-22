@@ -104,6 +104,11 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
         tablet, isAligned, pipeTaskMeta, sourceEvent, needToReport, pattern);
   }
 
+  @Override
+  public boolean isGeneratedByPipe() {
+    throw new UnsupportedOperationException("isGeneratedByPipe() is not supported!");
+  }
+
   /////////////////////////// TabletInsertionEvent ///////////////////////////
 
   @Override

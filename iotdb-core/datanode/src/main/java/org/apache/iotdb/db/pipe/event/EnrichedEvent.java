@@ -39,14 +39,13 @@ public abstract class EnrichedEvent implements Event {
   protected final PipeTaskMeta pipeTaskMeta;
 
   private final String pattern;
-
-  private boolean shouldConvert;
+  private boolean isPatternParsed;
 
   protected EnrichedEvent(PipeTaskMeta pipeTaskMeta, String pattern) {
     referenceCount = new AtomicInteger(0);
     this.pipeTaskMeta = pipeTaskMeta;
     this.pattern = pattern;
-    this.shouldConvert = false;
+    isPatternParsed = getPattern().equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE);
   }
 
   /**
@@ -131,12 +130,12 @@ public abstract class EnrichedEvent implements Event {
     return pattern == null ? PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE : pattern;
   }
 
-  public boolean getShouldConvert() {
-    return shouldConvert;
+  public boolean shouldParsePattern() {
+    return !isPatternParsed;
   }
 
-  public void setShouldConvert(boolean shouldConvert) {
-    this.shouldConvert = shouldConvert;
+  public void markAsPatternParsed() {
+    isPatternParsed = true;
   }
 
   public abstract EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
@@ -144,7 +143,7 @@ public abstract class EnrichedEvent implements Event {
 
   public void reportException(PipeRuntimeException pipeRuntimeException) {
     if (pipeTaskMeta != null) {
-      PipeAgent.runtime().report(this.pipeTaskMeta, pipeRuntimeException);
+      PipeAgent.runtime().report(pipeTaskMeta, pipeRuntimeException);
     }
   }
 

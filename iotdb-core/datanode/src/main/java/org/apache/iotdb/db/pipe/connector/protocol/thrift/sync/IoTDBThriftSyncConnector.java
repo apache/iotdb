@@ -183,8 +183,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       return;
     }
 
-    if (tabletInsertionEvent instanceof EnrichedEvent
-        && ((EnrichedEvent) tabletInsertionEvent).getShouldConvert()) {
+    if (((EnrichedEvent) tabletInsertionEvent).shouldParsePattern()) {
       for (TabletInsertionEvent event :
           tabletInsertionEvent.processRowByRow(
               (row, rowCollector) -> {
@@ -235,7 +234,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       return;
     }
 
-    if (((EnrichedEvent) tsFileInsertionEvent).getShouldConvert()) {
+    if (((EnrichedEvent) tsFileInsertionEvent).shouldParsePattern()) {
       for (final TabletInsertionEvent tabletInsertionEvent :
           tsFileInsertionEvent.toTabletInsertionEvents()) {
         transfer(tabletInsertionEvent);
