@@ -25,6 +25,9 @@ import org.apache.iotdb.commons.structure.BalanceTreeMap;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -33,6 +36,8 @@ import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class DataPartitionPolicyTable {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(DataPartitionPolicyTable.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
   private static final int SERIES_SLOT_NUM = CONF.getSeriesSlotNum();
@@ -69,6 +74,11 @@ public class DataPartitionPolicyTable {
     dataAllotMap.put(seriesPartitionSlot, regionGroupId);
     seriesPartitionSlotCounter.put(
         regionGroupId, seriesPartitionSlotCounter.get(regionGroupId) + 1);
+    LOGGER.info(
+        "[ActivateDataAllotTable] Activate SeriesPartitionSlot {} to RegionGroup {}, SeriesPartitionSlot Count: {}",
+        seriesPartitionSlot,
+        regionGroupId,
+        seriesPartitionSlotCounter.get(regionGroupId));
     return regionGroupId;
   }
 
@@ -102,6 +112,8 @@ public class DataPartitionPolicyTable {
       int mu = SERIES_SLOT_NUM / dataRegionGroups.size();
       for (TSeriesPartitionSlot seriesPartitionSlot : seriesPartitionSlots) {
         if (!dataAllotMap.containsKey(seriesPartitionSlot)) {
+          // Skip unallocated SeriesPartitionSlot
+          // They will be activated when allocating DataPartition
           continue;
         }
 
@@ -109,6 +121,7 @@ public class DataPartitionPolicyTable {
         int seriesPartitionSlotCount = seriesPartitionSlotCounter.get(regionGroupId);
         if (seriesPartitionSlotCount > mu) {
           // Remove from dataAllotMap if the number of SeriesSlots is greater than mu
+          // They will be re-activated when allocating DataPartition
           dataAllotMap.remove(seriesPartitionSlot);
           seriesPartitionSlotCounter.put(regionGroupId, seriesPartitionSlotCount - 1);
         }
@@ -141,6 +154,18 @@ public class DataPartitionPolicyTable {
     } finally {
       dataAllotTableLock.unlock();
     }
+  }
+
+  public void logDataAllotTable(String database) {
+    seriesPartitionSlotCounter
+        .keySet()
+        .forEach(
+            regionGroupId ->
+                LOGGER.info(
+                    "[ReBalanceDataAllotTable] Database: {}, RegionGroupId: {}, SeriesPartitionSlot Count: {}",
+                    database,
+                    regionGroupId,
+                    seriesPartitionSlotCounter.get(regionGroupId)));
   }
 
   public void acquireLock() {
