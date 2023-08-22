@@ -34,9 +34,9 @@ import java.util.Objects;
 
 public class PipeTransferFilePieceReq extends TPipeTransferReq {
 
-  private String fileName;
-  private long startWritingOffset;
-  private byte[] filePiece;
+  private transient String fileName;
+  private transient long startWritingOffset;
+  private transient byte[] filePiece;
 
   private PipeTransferFilePieceReq() {
     // Empty constructor
@@ -93,6 +93,7 @@ public class PipeTransferFilePieceReq extends TPipeTransferReq {
   }
 
   /////////////////////////////// Air Gap ///////////////////////////////
+
   public static byte[] toTPipeTransferBytes(
       String fileName, long startWritingOffset, byte[] filePiece) throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
