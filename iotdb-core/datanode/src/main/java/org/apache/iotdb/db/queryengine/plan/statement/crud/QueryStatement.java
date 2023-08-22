@@ -500,7 +500,8 @@ public class QueryStatement extends Statement {
       "Count_time aggregation function using with group by tag is not supported.";
 
   public static final String COUNT_TIME_NOT_SUPPORT_USED_WITH_OTHER_OPERATION =
-      "Count_time aggregation function used with arithmetic operation or other aggregation is not supported.";
+      "Count_time aggregation function used with arithmetic operation "
+          + "or other aggregation is not supported.";
 
   public static final String COUNT_TIME_CAN_ONLY_EXIST_ONE_IN_SELECT =
       "Count_time aggregation function can only exist one in select clause.";
@@ -601,10 +602,9 @@ public class QueryStatement extends Statement {
         throw new SemanticException(
             "Expression of HAVING clause can not be used in NonAggregationQuery");
       }
-      if (havingExpression.toString().toLowerCase().contains(COUNT_TIME)) {
-        if (!new CountTimeAggregationAmountVisitor().process(havingExpression, null).isEmpty()) {
-          throw new SemanticException(COUNT_TIME_NOT_SUPPORT_USE_WITH_HAVING);
-        }
+      if (havingExpression.toString().toLowerCase().contains(COUNT_TIME)
+          && (!new CountTimeAggregationAmountVisitor().process(havingExpression, null).isEmpty())) {
+        throw new SemanticException(COUNT_TIME_NOT_SUPPORT_USE_WITH_HAVING);
       }
       try {
         if (isGroupByLevel()) {

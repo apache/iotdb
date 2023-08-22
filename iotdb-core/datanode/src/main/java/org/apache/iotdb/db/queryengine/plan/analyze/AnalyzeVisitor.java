@@ -190,7 +190,6 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils.const
 import static org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils.constructTargetMeasurement;
 import static org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils.constructTargetPath;
 import static org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.GetSourcePathsVisitor.getSourcePaths;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME_HEADER;
 
 /** This visitor is used to analyze each type of Statement and returns the {@link Analysis}. */
@@ -667,37 +666,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return outputExpressions;
   }
 
-  private void analyzeSelectOfCountTimeAggregationDeviceView(
-      Analysis analysis, Map<String, Expression> deviceToSelectExpressionsOfOneMeasurement) {
-    Map<String, Set<Expression>> deviceToSourceTransformExpressions =
-        analysis.getDeviceToSourceTransformExpressions();
-
-    for (Map.Entry<String, Expression> entry :
-        deviceToSelectExpressionsOfOneMeasurement.entrySet()) {
-      String deviceName = entry.getKey();
-      Expression selectExpression = entry.getValue();
-
-      List<Expression> allAggregationExpressions = searchAggregationExpressions(selectExpression);
-
-      for (Expression subAggregationExpression : allAggregationExpressions) {
-        if (subAggregationExpression instanceof FunctionExpression
-            && COUNT_TIME.equalsIgnoreCase(
-                ((FunctionExpression) subAggregationExpression).getFunctionName())) {
-
-          for (Expression countTimeSourceExpression :
-              ((FunctionExpression) subAggregationExpression).getCountTimeExpressions()) {
-
-            analyzeExpressionType(analysis, countTimeSourceExpression);
-
-            deviceToSourceTransformExpressions
-                .computeIfAbsent(deviceName, k -> new LinkedHashSet<>())
-                .addAll(countTimeSourceExpression.getExpressions());
-          }
-        }
-      }
-    }
-  }
-
   private void updateDeviceToSelectExpressions(
       Analysis analysis,
       Map<String, Set<Expression>> deviceToSelectExpressions,
@@ -709,7 +677,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       Expression expression = entry.getValue();
 
       Expression lowerCaseExpression = toLowerCaseExpression(expression);
-      // TODO may put duplicate expressions?
       analyzeExpressionType(analysis, lowerCaseExpression);
       deviceToSelectExpressions
           .computeIfAbsent(deviceName, key -> new LinkedHashSet<>())
@@ -1209,7 +1176,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private void analyzeDeviceToSource(Analysis analysis, QueryStatement queryStatement) {
     Map<String, Set<Expression>> deviceToSourceExpressions = new HashMap<>();
-    ;
     Map<String, Set<Expression>> deviceToSourceTransformExpressions =
         analysis.getDeviceToSourceTransformExpressions();
 
