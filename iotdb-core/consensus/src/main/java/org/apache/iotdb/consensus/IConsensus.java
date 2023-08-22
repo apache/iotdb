@@ -90,8 +90,10 @@ public interface IConsensus {
    * @param groupId the consensus group this peer belongs
    * @param peers other known peers in this group
    * @throws ConsensusGroupAlreadyExistException when the specified consensus group already exists
-   * @throws IllegalPeerNumException when the peer num is illegal
-   * @throws IllegalPeerEndpointException when peers don't contain local node
+   * @throws IllegalPeerNumException when the peer num is illegal. The exception is that it is legal
+   *     to pass an empty list for RaftConsensus
+   * @throws IllegalPeerEndpointException when peers don't contain local node. The exception is that
+   *     it is legal to pass an empty list for RaftConsensus
    * @throws ConsensusException when createLocalPeer doesn't success with other reasons
    */
   void createLocalPeer(ConsensusGroupId groupId, List<Peer> peers) throws ConsensusException;
