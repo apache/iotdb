@@ -106,7 +106,7 @@ public interface IConsensus {
    * #removeRemotePeer(ConsensusGroupId, Peer)}).
    *
    * @param groupId the consensus group this peer used to belong
-   * @throws ConsensusGroupAlreadyExistException when the specified consensus group doesn't exist
+   * @throws ConsensusGroupNotExistException when the specified consensus group doesn't exist
    * @throws ConsensusException when deleteLocalPeer doesn't success with other reasons
    */
   void deleteLocalPeer(ConsensusGroupId groupId) throws ConsensusException;
@@ -150,7 +150,7 @@ public interface IConsensus {
    *
    * @param groupId the consensus group which should execute this command
    * @param newLeader the target leader peer
-   * @throws ConsensusGroupAlreadyExistException when the specified consensus group doesn't exist
+   * @throws ConsensusGroupNotExistException when the specified consensus group doesn't exist
    * @throws ConsensusException when transferLeader doesn't success with other reasons
    */
   void transferLeader(ConsensusGroupId groupId, Peer newLeader) throws ConsensusException;
