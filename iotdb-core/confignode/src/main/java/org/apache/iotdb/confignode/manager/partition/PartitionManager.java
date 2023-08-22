@@ -544,7 +544,7 @@ public class PartitionManager {
       float slotCount =
           (float) partitionInfo.getAssignedSeriesPartitionSlotsCount(database)
               + unassignedPartitionSlotsCount;
-      float maxRegionGroupCount =
+      float maxRegionGroupNum =
           getClusterSchemaManager().getMaxRegionGroupNum(database, consensusGroupType);
       float maxSlotCount = CONF.getSeriesSlotNum();
 
@@ -552,36 +552,35 @@ public class PartitionManager {
       // 1. The number of current RegionGroup of the Database is less than the minimum number
       int minRegionGroupNum =
           getClusterSchemaManager().getMinRegionGroupNum(database, consensusGroupType);
-      if (allocatedRegionGroupCount < minRegionGroupNum) {
+      if (allocatedRegionGroupCount < minRegionGroupNum
+          // Ensure the number of RegionGroups is enough
+          // for current SeriesPartitionSlots after extension
+          // Otherwise, more RegionGroups should be extended through case 2.
+          && slotCount <= (maxSlotCount / maxRegionGroupNum) * minRegionGroupNum) {
+
         // Let the sum of unassignedPartitionSlotsCount and allocatedRegionGroupCount
         // no less than the minRegionGroupNum
         int delta =
             (int)
                 Math.min(
                     unassignedPartitionSlotsCount, minRegionGroupNum - allocatedRegionGroupCount);
-        if (slotCount <= (maxSlotCount / maxRegionGroupCount) * minRegionGroupNum) {
-          // Ensure the number of RegionGroups is enough
-          // for current SeriesPartitionSlots after extension
-          allotmentMap.put(database, delta);
-          continue;
-        }
-        // Otherwise, more RegionGroups should be extended through case 2.
+        allotmentMap.put(database, delta);
       }
 
       // 2. The average number of partitions held by each Region will be greater than the
       // expected average number after the partition allocation is completed
-      if (allocatedRegionGroupCount < maxRegionGroupCount
-          && slotCount / allocatedRegionGroupCount > maxSlotCount / maxRegionGroupCount) {
+      if (allocatedRegionGroupCount < maxRegionGroupNum
+          && slotCount / allocatedRegionGroupCount > maxSlotCount / maxRegionGroupNum) {
         // The delta is equal to the smallest integer solution that satisfies the inequality:
-        // slotCount / (allocatedRegionGroupCount + delta) < maxSlotCount / maxRegionGroupCount
+        // slotCount / (allocatedRegionGroupCount + delta) < maxSlotCount / maxRegionGroupNum
         int delta =
             Math.min(
-                (int) (maxRegionGroupCount - allocatedRegionGroupCount),
+                (int) (maxRegionGroupNum - allocatedRegionGroupCount),
                 Math.max(
                     1,
                     (int)
                         Math.ceil(
-                            slotCount * maxRegionGroupCount / maxSlotCount
+                            slotCount * maxRegionGroupNum / maxSlotCount
                                 - allocatedRegionGroupCount)));
         allotmentMap.put(database, delta);
         continue;
@@ -590,7 +589,7 @@ public class PartitionManager {
       // 3. All RegionGroups in the specified Database are disabled currently
       if (allocatedRegionGroupCount
               == filterRegionGroupThroughStatus(database, RegionGroupStatus.Disabled).size()
-          && allocatedRegionGroupCount < maxRegionGroupCount) {
+          && allocatedRegionGroupCount < maxRegionGroupNum) {
         allotmentMap.put(database, 1);
       }
     }
