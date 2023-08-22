@@ -39,7 +39,7 @@ public abstract class EnrichedEvent implements Event {
   protected final PipeTaskMeta pipeTaskMeta;
 
   private final String pattern;
-  private boolean isPatternParsed;
+  private final boolean isPatternParsed;
 
   protected EnrichedEvent(PipeTaskMeta pipeTaskMeta, String pattern) {
     referenceCount = new AtomicInteger(0);
@@ -132,14 +132,6 @@ public abstract class EnrichedEvent implements Event {
 
   public boolean shouldParsePattern() {
     return !isPatternParsed;
-  }
-
-  public void markAsPatternParsed() {
-    isPatternParsed = true;
-  }
-
-  public void markAsPatternNotParsed() {
-    isPatternParsed = false;
   }
 
   public abstract EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(

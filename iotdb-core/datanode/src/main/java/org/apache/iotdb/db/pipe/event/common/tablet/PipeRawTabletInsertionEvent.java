@@ -43,7 +43,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   private TabletInsertionDataContainer dataContainer;
 
-  public PipeRawTabletInsertionEvent(
+  private PipeRawTabletInsertionEvent(
       Tablet tablet,
       boolean isAligned,
       EnrichedEvent sourceEvent,
