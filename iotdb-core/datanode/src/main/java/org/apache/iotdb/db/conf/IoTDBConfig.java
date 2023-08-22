@@ -90,24 +90,23 @@ public class IoTDBConfig {
       "([" + PATH_SEPARATOR + "])?" + NODE_NAME_MATCHER + "(" + PARTIAL_NODE_MATCHER + ")*";
 
   public static final Pattern NODE_PATTERN = Pattern.compile(NODE_MATCHER);
-  public static final String SYSTEM_DATABASE = "root.__system";
 
-  /** whether to enable the mqtt service. */
+  /** Whether to enable the mqtt service. */
   private boolean enableMQTTService = false;
 
-  /** the mqtt service binding host. */
+  /** The mqtt service binding host. */
   private String mqttHost = "127.0.0.1";
 
-  /** the mqtt service binding port. */
+  /** The mqtt service binding port. */
   private int mqttPort = 1883;
 
-  /** the handler pool size for handing the mqtt messages. */
+  /** The handler pool size for handing the mqtt messages. */
   private int mqttHandlerPoolSize = 1;
 
-  /** the mqtt message payload formatter. */
+  /** The mqtt message payload formatter. */
   private String mqttPayloadFormatter = "json";
 
-  /** max mqtt message size. Unit: byte */
+  /** Max mqtt message size. Unit: byte */
   private int mqttMaxMessageSize = 1048576;
 
   /** Rpc binding address. */
@@ -1071,11 +1070,11 @@ public class IoTDBConfig {
   // IoTConsensus Config
   private int maxLogEntriesNumPerBatch = 1024;
   private int maxSizePerBatch = 16 * 1024 * 1024;
-  private int maxPendingBatchesNum = 12;
+  private int maxPendingBatchesNum = 5;
   private double maxMemoryRatioForQueue = 0.6;
 
   /** Pipe related */
-  private String pipeReceiveFileDir =
+  private String pipeReceiverFileDir =
       systemDir + File.separator + "pipe" + File.separator + "receiver";
 
   /** Resource control */
@@ -1209,7 +1208,7 @@ public class IoTDBConfig {
     triggerTemporaryLibDir = addDataHomeDir(triggerTemporaryLibDir);
     pipeDir = addDataHomeDir(pipeDir);
     pipeTemporaryLibDir = addDataHomeDir(pipeTemporaryLibDir);
-    pipeReceiveFileDir = addDataHomeDir(pipeReceiveFileDir);
+    pipeReceiverFileDir = addDataHomeDir(pipeReceiverFileDir);
     mqttDir = addDataHomeDir(mqttDir);
     extPipeDir = addDataHomeDir(extPipeDir);
     queryDir = addDataHomeDir(queryDir);
@@ -3681,12 +3680,12 @@ public class IoTDBConfig {
     return modeMapSizeThreshold;
   }
 
-  public void setPipeReceiverFileDir(String pipeReceiveFileDir) {
-    this.pipeReceiveFileDir = pipeReceiveFileDir;
+  public void setPipeReceiverFileDir(String pipeReceiverFileDir) {
+    this.pipeReceiverFileDir = pipeReceiverFileDir;
   }
 
   public String getPipeReceiverFileDir() {
-    return pipeReceiveFileDir;
+    return pipeReceiverFileDir;
   }
 
   public boolean isQuotaEnable() {

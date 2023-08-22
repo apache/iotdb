@@ -80,6 +80,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.PriorityQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
@@ -112,12 +113,14 @@ public class IoTConsensusServerImpl {
   private final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager;
   private final IoTConsensusServerMetrics ioTConsensusServerMetrics;
   private final String consensusGroupId;
+  private final ScheduledExecutorService retryService;
 
   public IoTConsensusServerImpl(
       String storageDir,
       Peer thisNode,
       List<Peer> configuration,
       IStateMachine stateMachine,
+      ScheduledExecutorService retryService,
       IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager,
       IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager,
       IoTConsensusConfig config) {
@@ -133,6 +136,7 @@ public class IoTConsensusServerImpl {
     } else {
       persistConfiguration();
     }
+    this.retryService = retryService;
     this.config = config;
     this.consensusGroupId = thisNode.getGroupId().toString();
     consensusReqReader = (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
@@ -730,6 +734,10 @@ public class IoTConsensusServerImpl {
 
   public AtomicLong getIndexObject() {
     return searchIndex;
+  }
+
+  public ScheduledExecutorService getRetryService() {
+    return retryService;
   }
 
   public boolean isReadOnly() {

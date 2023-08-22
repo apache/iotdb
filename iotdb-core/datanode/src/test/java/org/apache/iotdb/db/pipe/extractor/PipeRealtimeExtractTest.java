@@ -286,7 +286,8 @@ public class PipeRealtimeExtractTest {
                         null,
                         false),
                     resource);
-            PipeInsertionDataNodeListener.getInstance().listenToTsFile(dataRegionId, resource);
+            PipeInsertionDataNodeListener.getInstance()
+                .listenToTsFile(dataRegionId, resource, false);
           }
         });
   }

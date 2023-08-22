@@ -62,7 +62,8 @@ public class DataMigrationExample {
       throws IoTDBConnectionException, StatementExecutionException, ExecutionException,
           InterruptedException {
 
-    ExecutorService executorService = Executors.newFixedThreadPool(CONCURRENCY + 1);
+    // the thread used for dataMigration must be smaller than session pool size
+    ExecutorService executorService = Executors.newFixedThreadPool(CONCURRENCY);
 
     String path = "root.**";
 

@@ -67,6 +67,10 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
   // offset for result set. The default value is 0
   private long offset;
 
+  // used for limit and offset push down optimizer, if we select all columns from aligned device, we
+  // can use statistics to skip
+  private boolean queryAllSensors = false;
+
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
 
@@ -75,9 +79,11 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
     this.alignedPath = alignedPath;
   }
 
-  public AlignedSeriesScanNode(PlanNodeId id, AlignedPath alignedPath, Ordering scanOrder) {
+  public AlignedSeriesScanNode(
+      PlanNodeId id, AlignedPath alignedPath, Ordering scanOrder, boolean lastLevelUseWildcard) {
     this(id, alignedPath);
     this.scanOrder = scanOrder;
+    this.queryAllSensors = lastLevelUseWildcard;
   }
 
   public AlignedSeriesScanNode(
@@ -88,8 +94,9 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
       @Nullable Filter valueFilter,
       long limit,
       long offset,
-      TRegionReplicaSet dataRegionReplicaSet) {
-    this(id, alignedPath, scanOrder);
+      TRegionReplicaSet dataRegionReplicaSet,
+      boolean lastLevelUseWildcard) {
+    this(id, alignedPath, scanOrder, lastLevelUseWildcard);
     this.timeFilter = timeFilter;
     this.valueFilter = valueFilter;
     this.limit = limit;
@@ -169,6 +176,10 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
     return NO_CHILD_ALLOWED;
   }
 
+  public boolean isQueryAllSensors() {
+    return queryAllSensors;
+  }
+
   @Override
   public void addChild(PlanNode child) {
     throw new UnsupportedOperationException("no child is allowed for AlignedSeriesScanNode");
@@ -184,7 +195,8 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
         getValueFilter(),
         getLimit(),
         getOffset(),
-        this.regionReplicaSet);
+        this.regionReplicaSet,
+        this.queryAllSensors);
   }
 
   @Override
@@ -221,6 +233,7 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
     }
     ReadWriteIOUtils.write(limit, byteBuffer);
     ReadWriteIOUtils.write(offset, byteBuffer);
+    ReadWriteIOUtils.write(queryAllSensors, byteBuffer);
   }
 
   @Override
@@ -242,6 +255,7 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
     }
     ReadWriteIOUtils.write(limit, stream);
     ReadWriteIOUtils.write(offset, stream);
+    ReadWriteIOUtils.write(queryAllSensors, stream);
   }
 
   public static AlignedSeriesScanNode deserialize(ByteBuffer byteBuffer) {
@@ -259,9 +273,18 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
     }
     long limit = ReadWriteIOUtils.readLong(byteBuffer);
     long offset = ReadWriteIOUtils.readLong(byteBuffer);
+    boolean queryAllSensors = ReadWriteIOUtils.readBool(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new AlignedSeriesScanNode(
-        planNodeId, alignedPath, scanOrder, timeFilter, valueFilter, limit, offset, null);
+        planNodeId,
+        alignedPath,
+        scanOrder,
+        timeFilter,
+        valueFilter,
+        limit,
+        offset,
+        null,
+        queryAllSensors);
   }
 
   @Override
@@ -282,6 +305,7 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
         && scanOrder == that.scanOrder
         && Objects.equals(timeFilter, that.timeFilter)
         && Objects.equals(valueFilter, that.valueFilter)
+        && Objects.equals(queryAllSensors, that.queryAllSensors)
         && Objects.equals(regionReplicaSet, that.regionReplicaSet);
   }
 
@@ -295,7 +319,8 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
         valueFilter,
         limit,
         offset,
-        regionReplicaSet);
+        regionReplicaSet,
+        queryAllSensors);
   }
 
   public String toString() {

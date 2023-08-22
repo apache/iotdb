@@ -67,7 +67,8 @@ public enum DataNodeRequestType {
   DROP_PIPE_PLUGIN,
 
   // Pipe Task
-  PUSH_PIPE_META,
+  PIPE_PUSH_ALL_META,
+  PIPE_PUSH_SINGLE_META,
   PIPE_HEARTBEAT,
 
   // CQ
