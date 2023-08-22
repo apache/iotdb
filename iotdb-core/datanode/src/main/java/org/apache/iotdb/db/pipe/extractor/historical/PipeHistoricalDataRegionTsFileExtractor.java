@@ -179,6 +179,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                     resource ->
                         new PipeTsFileInsertionEvent(
                             resource,
+                            false,
                             pipeTaskMeta,
                             pattern,
                             historicalDataExtractionStartTime,
@@ -195,6 +196,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                     resource ->
                         new PipeTsFileInsertionEvent(
                             resource,
+                            false,
                             pipeTaskMeta,
                             pattern,
                             historicalDataExtractionStartTime,

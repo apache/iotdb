@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
-import org.apache.iotdb.pipe.api.event.Event;
 
 import java.util.Map;
 
@@ -69,7 +68,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
     this.device2Measurements = device2Measurements;
   }
 
-  public Event getEvent() {
+  public EnrichedEvent getEvent() {
     return event;
   }
 
@@ -127,6 +126,11 @@ public class PipeRealtimeEvent extends EnrichedEvent {
         this.device2Measurements,
         pipeTaskMeta,
         pattern);
+  }
+
+  @Override
+  public boolean isGeneratedByPipe() {
+    return event.isGeneratedByPipe();
   }
 
   @Override
