@@ -398,7 +398,6 @@ public class CompactionTaskManager implements IService {
     return storageGroupName + "-" + dataRegionId;
   }
 
-  @TestOnly
   public void restart() throws InterruptedException {
     if (IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount() > 0) {
       if (subCompactionTaskExecutionPool != null) {

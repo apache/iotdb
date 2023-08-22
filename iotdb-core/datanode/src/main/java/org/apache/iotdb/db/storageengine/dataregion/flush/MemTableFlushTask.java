@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.flush;
 
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -294,7 +295,7 @@ public class MemTableFlushTask {
       };
 
   private void recordFlushPointsMetric() {
-    if (storageGroup.startsWith(IoTDBConfig.SYSTEM_DATABASE)) {
+    if (storageGroup.startsWith(SchemaConstant.SYSTEM_DATABASE)) {
       return;
     }
     int lastIndex = storageGroup.lastIndexOf("-");
