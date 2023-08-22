@@ -1304,7 +1304,7 @@ public class RegerDeltaSegmentPartition {
         byte[] value0_byte = int2Bytes(delta_segments.get(0).get(1));
         for (byte b : value0_byte) encoded_result.add(b);
 
-        // encode theta
+        // encode min_delta
         byte[] timestamp_min_byte = int2Bytes(raw_length.get(3));
         for (byte b : timestamp_min_byte) encoded_result.add(b);
         byte[] value_min_byte = int2Bytes(raw_length.get(4));
@@ -1427,18 +1427,6 @@ public class RegerDeltaSegmentPartition {
         // encode block size (Integer)
         byte[] block_size_byte = int2Bytes(block_size);
         for (byte b : block_size_byte) encoded_result.add(b);
-        //    String Output_before
-        // ="C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\bit-width\\bit-width-before-test.csv";
-        //    String Output_after
-        // ="C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\bit-width\\bit-width-after-test.csv";
-        //    CsvWriter writer_before = new CsvWriter(Output_before, ',', StandardCharsets.UTF_8);
-        //    CsvWriter writer_after = new CsvWriter(Output_after, ',', StandardCharsets.UTF_8);
-        //    String[] head = {
-        //            "Timestamp bit width",
-        //            "Value bit width"
-        //    };
-        //    writer_before.writeRecord(head); // write header to output file
-        //    writer_after.writeRecord(head);
 
         int count_raw = 0;
         int count_reorder = 0;
@@ -1542,15 +1530,7 @@ public class RegerDeltaSegmentPartition {
                         new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
                 ArrayList<ArrayList<Integer>> ts_block_delta =
                         getEncodeBitsRegression(ts_block, block_size, raw_length);
-                //      for (int j=1;j< ts_block_delta.size();j++) {
-                //        ArrayList<Integer> integers = ts_block_delta.get(j);
-                //        head = new String[]{
-                //                String.valueOf(getBitWith(integers.get(0))),
-                //                String.valueOf(getBitWith(integers.get(1)))
-                //        };
-                //        writer_before.writeRecord(head);
-                //      }
-                // value-order
+
                 quickSort(ts_block, 1, 0, block_size - 1);
                 ArrayList<Integer> reorder_length = new ArrayList<>();
                 ArrayList<ArrayList<Integer>> ts_block_delta_reorder =
@@ -1571,8 +1551,6 @@ public class RegerDeltaSegmentPartition {
 //            i_star = getIStar(ts_block, block_size, 1);
                 j_star = getBeta(ts_block, i_star, block_size, raw_length);
 
-//      System.out.println("i_star"+i_star);
-//          System.out.println("j_star"+j_star);
 
                 int adjust_count = 0;
                 while (j_star != -1 && i_star != -1) {
@@ -1613,106 +1591,7 @@ public class RegerDeltaSegmentPartition {
                     i_star = getIStar(ts_block, block_size, raw_length);
                     if (i_star == j_star) break;
                     j_star = getBeta(ts_block, i_star, block_size, raw_length);
-//        System.out.println("i_star"+i_star);
-//        System.out.println("j_star"+j_star);
-
                 }
-
-
-//            ArrayList<ArrayList<Integer>> first_data_segments = new ArrayList<>();
-//            ArrayList<ArrayList<Integer>> delta_min_segments = new ArrayList<>();
-//            ArrayList<ArrayList<Integer>> delta_segments = new ArrayList<>();
-//            int segment_n = block_size / 17;
-//            for (int segment_i = 0; segment_i < segment_n; segment_i++) {
-//                ArrayList<ArrayList<Integer>> segment_data = new ArrayList<>();
-//                ArrayList<ArrayList<Integer>> segment_data_reorder = new ArrayList<>();
-//                for (int data_i = segment_i * 17; data_i < (segment_i + 1) * 17; data_i++) {
-//                    segment_data.add(ts_block.get(data_i));
-//                }
-//                quickSort(segment_data, 0, 0, 16);
-//                ArrayList<Integer> segment_data_length = new ArrayList<>();
-//                ArrayList<ArrayList<Integer>> segment_data_delta = getEncodeBitsRegression(segment_data, 17, segment_data_length);
-//
-//                quickSort(segment_data, 1, 0, 16);
-//                ArrayList<Integer> segment_data_length_reorder = new ArrayList<>();
-//                ArrayList<ArrayList<Integer>> segment_data_delta_reorder = getEncodeBitsRegression(segment_data, 17, segment_data_length_reorder);
-//
-//                int alpha;
-//                int beta;
-//                if (segment_data_length.get(0) <= segment_data_length_reorder.get(0)) {
-//                    quickSort(segment_data, 0, 0, 16);
-////          count_raw++;
-//                    alpha = getIStar(segment_data, 16, 0);
-//                } else {
-//                    segment_data_length = segment_data_length_reorder;
-////          count_reorder++;
-//                    alpha = getIStar(segment_data, 16, 1);
-//                }
-//                beta = getJStar(segment_data, alpha, 17, segment_data_length, 0);
-//
-//                int adjust_count_segment = 0;
-//                while (beta != -1 && alpha != -1) {
-//                    if (adjust_count_segment < 16) {
-//                        adjust_count_segment++;
-//                    } else {
-//                        break;
-//                    }
-//                    ArrayList<ArrayList<Integer>> old_segment = (ArrayList<ArrayList<Integer>>) segment_data.clone();
-//                    ArrayList<Integer> old_length = (ArrayList<Integer>) segment_data_length.clone();
-//
-//                    ArrayList<Integer> tmp_tv = segment_data.get(alpha);
-//                    if (beta < alpha) {
-//                        for (int u = alpha - 1; u >= beta; u--) {
-//                            ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
-//                            tmp_tv_cur.add(segment_data.get(u).get(0));
-//                            tmp_tv_cur.add(segment_data.get(u).get(1));
-//                            segment_data.set(u + 1, tmp_tv_cur);
-//                        }
-//                    } else {
-//                        for (int u = alpha + 1; u < beta; u++) {
-//                            ArrayList<Integer> tmp_tv_cur = new ArrayList<>();
-//                            tmp_tv_cur.add(segment_data.get(u).get(0));
-//                            tmp_tv_cur.add(segment_data.get(u).get(1));
-//                            segment_data.set(u - 1, tmp_tv_cur);
-//                        }
-//                        beta--;
-//                    }
-//                    segment_data.set(beta, tmp_tv);
-//
-//                    getEncodeBitsRegression(segment_data, 17, segment_data_length);
-//                    if (old_length.get(1) + old_length.get(2) < segment_data_length.get(1) + segment_data_length.get(2)) {
-//                        segment_data = old_segment;
-//                        break;
-//                    }
-//
-//                    alpha = getIStar(segment_data, 17, segment_data_length);
-//                    if (alpha == beta) break;
-//                    beta = getJStar(segment_data, alpha, 17, segment_data_length, 0);
-////        System.out.println("i_star"+i_star);
-////        System.out.println("j_star"+j_star);
-//                }
-//                getEncodeBitsRegressionSegment(segment_data, bit_width_segments, first_data_segments, delta_min_segments, delta_segments);
-//            }
-//
-//            ArrayList<Integer> meta_length = new ArrayList<>();
-//            ArrayList<ArrayList<Integer>> first_data_segments_delta = getEncodeBitsRegression(first_data_segments, first_data_segments.size(), meta_length);
-//            ArrayList<Byte> cur_encoded_result = encode2Bytes(first_data_segments_delta, meta_length, result2);
-//            encoded_result.addAll(cur_encoded_result);
-//
-//            ArrayList<ArrayList<Integer>> delta_min_segments_delta = getEncodeBitsRegression(delta_min_segments, delta_min_segments.size(), meta_length);
-//            cur_encoded_result = encode2Bytes(first_data_segments_delta, meta_length, result2);
-//            encoded_result.addAll(cur_encoded_result);
-//
-//
-//            cur_encoded_result = encodeSegment2Bytes(delta_segments,bit_width_segments,16);
-//            encoded_result.addAll(cur_encoded_result);
-//
-//            cur_encoded_result = encodeBitWidth2Bytes(bit_width_segments);
-//            encoded_result.addAll(cur_encoded_result);
-
-
-//        ArrayList<Integer> raw_length = new ArrayList<>();
-//        ArrayList<ArrayList<Integer>>
 
                 ts_block_delta = getEncodeBitsRegression(ts_block, block_size, raw_length);
                 ArrayList<ArrayList<Integer>> bit_width_segments = new ArrayList<>();
@@ -1751,7 +1630,8 @@ public class RegerDeltaSegmentPartition {
 
             }
 
-        } else {
+        }
+        else {
             if (length_value < length_time) { // order by value performs better
                 System.out.println("type2");
                 data = data_value;
