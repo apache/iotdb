@@ -47,6 +47,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.SelectComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 
+import com.google.common.collect.ImmutableList;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -121,8 +123,6 @@ public class QueryStatement extends AuthorityInformationStatement {
   private boolean lastLevelUseWildcard = false;
 
   public QueryStatement() {
-    // TODO transmit user
-    super(AuthorityChecker.getAuthorizedPathTree(null, PrivilegeType.READ_DATA.ordinal()));
     this.statementType = StatementType.QUERY;
   }
 
@@ -145,7 +145,9 @@ public class QueryStatement extends AuthorityInformationStatement {
 
   @Override
   public boolean checkPermissionBeforeProcess(String userName) {
-    // check nothing before process
+    this.authorityTreeList =
+        ImmutableList.of(
+            AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_DATA.ordinal()));
     return true;
   }
 

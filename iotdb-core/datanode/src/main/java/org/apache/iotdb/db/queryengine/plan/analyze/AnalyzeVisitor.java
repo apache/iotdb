@@ -327,7 +327,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     // concat path and construct path pattern tree
     PathPatternTree patternTree = new PathPatternTree(queryStatement.useWildcard());
     queryStatement = (QueryStatement) new ConcatPathRewriter().rewrite(queryStatement, patternTree);
-    PathPatternTree.intersectWithAnother(patternTree, queryStatement.getAuthorityTree());
     analysis.setStatement(queryStatement);
 
     // request schema fetch API

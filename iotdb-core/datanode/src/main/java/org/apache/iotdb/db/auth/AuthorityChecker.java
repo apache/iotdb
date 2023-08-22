@@ -118,7 +118,7 @@ public class AuthorityChecker {
   public static TSStatus checkAuthority(Statement statement, IClientSession session) {
     long startTime = System.nanoTime();
     try {
-      if (!checkAuthorization(statement, session.getUsername())) {
+      if (!statement.checkPermissionBeforeProcess(session.getUsername())) {
         StringBuilder prompt =
             new StringBuilder("No permissions for this operation, please add privilege ");
         int[] permissions = translateToPermissionId(statement.getType());
@@ -272,7 +272,7 @@ public class AuthorityChecker {
 
   public static PathPatternTree getAuthorizedPathTree(String username, int permission) {
     // TODO
-    return null;
+    return new PathPatternTree();
   }
 
   public static boolean checkSystemPermission(String username, int permission) {

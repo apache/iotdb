@@ -20,19 +20,13 @@ package org.apache.iotdb.db.queryengine.plan.statement;
 
 import org.apache.iotdb.commons.path.PathPatternTree;
 
+import java.util.List;
+
 public abstract class AuthorityInformationStatement extends Statement {
-  protected PathPatternTree authorityTree;
+  protected List<PathPatternTree> authorityTreeList;
 
-  protected AuthorityInformationStatement(PathPatternTree authorityTree) {
-    this.authorityTree = authorityTree;
-  }
-
-  public boolean checkPermissionBeforeProcess(String userName) {
-    // check nothing before process
-    return true;
-  }
-
-  public PathPatternTree getAuthorityTree() {
-    return authorityTree;
+  public PathPatternTree getAuthorityTree(int index) {
+    assert authorityTreeList != null;
+    return authorityTreeList.get(index);
   }
 }

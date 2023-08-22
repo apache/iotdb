@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.path.PathPatternTreeUtils;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -46,7 +47,6 @@ public class ConcatPathRewriter {
   public Statement rewrite(Statement statement, PathPatternTree patternTree)
       throws StatementAnalyzeException {
     QueryStatement queryStatement = (QueryStatement) statement;
-    this.patternTree = patternTree;
 
     // prefix paths in the FROM clause
     List<PartialPath> prefixPaths = queryStatement.getFromComponent().getPrefixPaths();
@@ -102,6 +102,10 @@ public class ConcatPathRewriter {
           queryStatement.getHavingCondition().getPredicate(), prefixPaths, patternTree);
     }
 
+    // only authorized paths are visible for user
+    this.patternTree =
+        PathPatternTreeUtils.intersectWithFullPathPrefixTree(
+            patternTree, queryStatement.getAuthorityTree(0));
     return queryStatement;
   }
 

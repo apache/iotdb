@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+
+import com.google.common.collect.ImmutableList;
 
 import java.io.File;
 import java.util.List;
@@ -53,11 +57,6 @@ public class PipeEnrichedLoadTsFileStatement extends LoadTsFileStatement {
   @Override
   public boolean isQuery() {
     return loadTsFileStatement.isQuery();
-  }
-
-  @Override
-  public boolean isAuthenticationRequired() {
-    return loadTsFileStatement.isAuthenticationRequired();
   }
 
   @Override
@@ -118,6 +117,15 @@ public class PipeEnrichedLoadTsFileStatement extends LoadTsFileStatement {
   @Override
   public List<PartialPath> getPaths() {
     return loadTsFileStatement.getPaths();
+  }
+
+  @Override
+  public boolean checkPermissionBeforeProcess(String userName) {
+    this.authorityTreeList =
+        ImmutableList.of(
+            AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.WRITE_DATA.ordinal()),
+            AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.WRITE_SCHEMA.ordinal()));
+    return true;
   }
 
   @Override
