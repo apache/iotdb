@@ -75,7 +75,8 @@ public class DataPartitionPolicyTable {
     seriesPartitionSlotCounter.put(
         regionGroupId, seriesPartitionSlotCounter.get(regionGroupId) + 1);
     LOGGER.info(
-        "[ActivateDataAllotTable] Activate SeriesPartitionSlot {} to RegionGroup {}, SeriesPartitionSlot Count: {}",
+        "[ActivateDataAllotTable] Activate SeriesPartitionSlot {} "
+            + "to RegionGroup {}, SeriesPartitionSlot Count: {}",
         seriesPartitionSlot,
         regionGroupId,
         seriesPartitionSlotCounter.get(regionGroupId));
@@ -162,7 +163,8 @@ public class DataPartitionPolicyTable {
         .forEach(
             regionGroupId ->
                 LOGGER.info(
-                    "[ReBalanceDataAllotTable] Database: {}, RegionGroupId: {}, SeriesPartitionSlot Count: {}",
+                    "[ReBalanceDataAllotTable] Database: {}, "
+                        + "RegionGroupId: {}, SeriesPartitionSlot Count: {}",
                     database,
                     regionGroupId,
                     seriesPartitionSlotCounter.get(regionGroupId)));
