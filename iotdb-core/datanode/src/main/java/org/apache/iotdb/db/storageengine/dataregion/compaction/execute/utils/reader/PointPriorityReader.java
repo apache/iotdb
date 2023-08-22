@@ -172,7 +172,7 @@ public class PointPriorityReader {
    * @throws IOException if io errors occurred
    * @return whether page is added into the queue
    */
-  public boolean addNewPageIfPageNotEmpty(PageElement pageElement) throws IOException {
+  public boolean addNewPageIfPageNotEmpty(PageElement pageElement) throws IOException, IllegalPathException, WriteProcessException {
     if (currentPointElement != null) {
       nextPointInOtherPage = Math.min(nextPointInOtherPage, pageElement.startTime);
       if (currentPoint.getTimestamp() >= nextPointInOtherPage) {
@@ -184,7 +184,10 @@ public class PointPriorityReader {
     boolean pageIsNotEmpty = pointElement.hasNext();
     if (!pageIsNotEmpty) {
       pointQueue.add(pointElement);
+    } else {
+      removePage.call(pageElement);
     }
+
     return pageIsNotEmpty;
   }
 }
