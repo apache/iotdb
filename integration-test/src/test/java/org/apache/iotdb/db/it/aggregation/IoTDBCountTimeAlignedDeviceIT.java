@@ -23,7 +23,6 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -31,10 +30,8 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
-import static org.apache.iotdb.db.queryengine.plan.expression.visitor.CountTimeAggregationAmountVisitor.COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
@@ -43,76 +40,40 @@ public class IoTDBCountTimeAlignedDeviceIT {
   protected static final String[] SQL_LIST =
       new String[] {
         // test normal query
-        "CREATE DATABASE root.aligned.db;",
-        "CREATE ALIGNED TIMESERIES root.aligned.db.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "CREATE ALIGNED TIMESERIES root.aligned.db.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "CREATE ALIGNED TIMESERIES root.aligned.db.d2.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "CREATE ALIGNED TIMESERIES root.aligned.db.d2.s2 WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "INSERT INTO root.aligned.db.d1(time, s1) VALUES(1, 1);",
-        "INSERT INTO root.aligned.db.d1(time, s2) VALUES(2, 2);",
-        "INSERT INTO root.aligned.db.d2(time, s2) VALUES(1, 1);",
+        "CREATE DATABASE root.aligned;",
+        "CREATE ALIGNED TIMESERIES root.aligned.db.d1(s1 INT32, s2 INT32);",
+        "CREATE ALIGNED TIMESERIES root.aligned.db.d2(s1 INT32, s2 INT32);",
+        "INSERT INTO root.aligned.db.d1(time, s1, s2) ALIGNED VALUES(1, 1, null), (2, null, 2);",
+        "INSERT INTO root.aligned.db.d2(time, s1, s2) ALIGNED VALUES(1, null, 1);",
         // test group by time
-        "CREATE DATABASE root.aligned.downsampling;",
-        "CREATE ALIGNED TIMESERIES root.aligned.downsampling.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "CREATE ALIGNED TIMESERIES root.aligned.downsampling.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "CREATE ALIGNED TIMESERIES root.aligned.downsampling.d2.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "CREATE ALIGNED TIMESERIES root.aligned.downsampling.d2.s2 WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "INSERT INTO root.aligned.downsampling.d1(time, s1) VALUES(0, 0), (4,4), (5,5), (8,8);",
-        "INSERT INTO root.aligned.downsampling.d1(time, s2) VALUES(1, 1), (2,2), (5,5), (7,7), (8,8), (9,9);",
-        "INSERT INTO root.aligned.downsampling.d2(time, s1) VALUES(1, 1), (2,2), (5,5), (7,7), (8,8);",
-        "INSERT INTO root.aligned.downsampling.d2(time, s2) VALUES(0, 0), (4,4), (5,5), (8,8);",
+        "CREATE ALIGNED TIMESERIES root.aligned.downsampling.d1(s1 INT32, s2 INT32);",
+        "CREATE ALIGNED TIMESERIES root.aligned.downsampling.d2(s1 INT32, s2 INT32);",
+        "INSERT INTO root.aligned.downsampling.d1(time, s1, s2) ALIGNED VALUES(0, 0, null), (1, null, 1), "
+            + "(2, null, 2), (4,4,null), (5,5,5), (7,null,7), (8,8,8), (9,null,9);",
+        "INSERT INTO root.aligned.downsampling.d2(time, s1, s2) ALIGNED VALUES(0,null,0) (1, 1, null), (2,2,null), "
+            + "(4,null,4), (5,5,5), (7,7,null), (8,8,8);",
+
         // test group by variation
-        "CREATE DATABASE root.aligned.variation;",
-        "CREATE ALIGNED TIMESERIES root.aligned.variation.d1.state WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "CREATE ALIGNED TIMESERIES root.aligned.variation.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "CREATE ALIGNED TIMESERIES root.aligned.variation.d2.state WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "CREATE ALIGNED TIMESERIES root.aligned.variation.d2.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "INSERT INTO root.aligned.variation.d1(time, state) VALUES(0,0), (1,0), (3,0), (4,0),(5,1),(6,1);",
-        "INSERT INTO root.aligned.variation.d1(time, s1) VALUES(0,0), (2,2), (3,3), (6,6);",
-        "INSERT INTO root.aligned.variation.d2(time, state) VALUES(0,0), (2,1), (3,1), (4,1), (6,1);",
-        "INSERT INTO root.aligned.variation.d2(time, s1) VALUES(1,1), (2,2), (3,3);",
+        "CREATE ALIGNED TIMESERIES root.aligned.variation.d1(state INT32, s1 INT32);",
+        "CREATE ALIGNED TIMESERIES root.aligned.variation.d2(state INT32, s1 INT32);",
+        "INSERT INTO root.aligned.variation.d1(time, state, s1) ALIGNED VALUES(0,0,0), (1,0,null), (2,null,2), (3,0,3), (4,0,null),(5,1,null),(6,1,6);",
+        "INSERT INTO root.aligned.variation.d2(time, state, s1) ALIGNED VALUES(0,0,null), (1,null,1), (2,1,2), (3,1,3), (4,1,null), (6,1,null);",
         // test group by session
-        "CREATE DATABASE root.aligned.session;",
-        "CREATE ALIGNED TIMESERIES root.aligned.session.d1.state WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "CREATE ALIGNED TIMESERIES root.aligned.session.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "CREATE ALIGNED TIMESERIES root.aligned.session.d2.state WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "CREATE ALIGNED TIMESERIES root.aligned.session.d2.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "INSERT INTO root.aligned.session.d1(time, state) VALUES(0,0), (1,0), (20,0), (23,0),(40,0),(55,1),(56,1);",
-        "INSERT INTO root.aligned.session.d1(time, s1) VALUES(0,0), (20,2), (23,3), (56,6);",
-        "INSERT INTO root.aligned.session.d2(time, state) VALUES(0,0), (20,1), (23,1), (40,1), (56,1);",
-        "INSERT INTO root.aligned.session.d2(time, s1) VALUES(1,1), (20,2), (23,3);",
+        "CREATE ALIGNED TIMESERIES root.aligned.session.d1(state INT32, s1 INT32);",
+        "CREATE ALIGNED TIMESERIES root.aligned.session.d2(state INT32, s1 INT32);",
+        "INSERT INTO root.aligned.session.d1(time, state, s1) ALIGNED VALUES(0,0,0), (1,0,null), (20,0,2), (23,0,3),(40,0,null),(55,1,null),(56,1,6);",
+        "INSERT INTO root.aligned.session.d2(time, state, s1) ALIGNED VALUES(0,0,null), (1,null,1), (20,1,2), (23,1,3), (40,1,null), (56,1,null);",
+
         // test group by condition
-        "CREATE DATABASE root.aligned.condition;",
-        "CREATE ALIGNED TIMESERIES root.aligned.condition.d1.state WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "CREATE ALIGNED TIMESERIES root.aligned.condition.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "CREATE ALIGNED TIMESERIES root.aligned.condition.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "CREATE ALIGNED TIMESERIES root.aligned.condition.d2.state WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "CREATE ALIGNED TIMESERIES root.aligned.condition.d2.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "INSERT INTO root.aligned.condition.d1(time, state) VALUES(0,0), (1,1), (23,1),(40,0),(55,1),(56,1);",
-        "INSERT INTO root.aligned.condition.d1(time, s1) VALUES(0,0), (23,3), (56,6);",
-        "INSERT INTO root.aligned.condition.d1(time, s2) VALUES(0,0), (1,1), (20,2), (23,3);",
-        "INSERT INTO root.aligned.condition.d2(time, state) VALUES(0,0), (20,1), (23,1), (40,1), (56,1);",
-        "INSERT INTO root.aligned.condition.d2(time, s1) VALUES(1,1), (20,2), (23,3);",
+        "CREATE ALIGNED TIMESERIES root.aligned.condition.d1(state INT32, s1 INT32, s2 INT32);",
+        "CREATE ALIGNED TIMESERIES root.aligned.condition.d2(state INT32, s1 INT32);",
+        "INSERT INTO root.aligned.condition.d1(time, state, s1, s2) ALIGNED VALUES(0,0,0,0), (1,1,null,1), (20,null,null,2), (23,1,3,3),(40,0,null,null),(55,1,null,null),(56,1,null,6);",
+        "INSERT INTO root.aligned.condition.d2(time, state, s1) ALIGNED VALUES(0,0,null), (1,null,1), (20,1,2), (23,1,3), (40,1,null), (56,1,null);",
         // test having
-        "CREATE DATABASE root.aligned.having;",
-        "CREATE ALIGNED TIMESERIES root.aligned.having.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "CREATE ALIGNED TIMESERIES root.aligned.having.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "CREATE ALIGNED TIMESERIES root.aligned.having.d2.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "CREATE ALIGNED TIMESERIES root.aligned.having.d2.s2 WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "INSERT INTO root.aligned.having.d1(time, s1) VALUES(0, 0), (4,4), (5,5), (8,8);",
-        "INSERT INTO root.aligned.having.d1(time, s2) VALUES(1, 1), (2,2), (5,5), (7,7), (8,8), (9,9);",
-        "INSERT INTO root.aligned.having.d2(time, s1) VALUES(1, 1), (2,2), (5,5), (7,7), (8,8), (9,9);",
-        "INSERT INTO root.aligned.having.d2(time, s2) VALUES(0, 0), (4,4), (5,5), (8,8);",
-        // test aligned
-        "CREATE DATABASE root.aligned.aligned;",
-        "CREATE ALIGNED TIMESERIES root.aligned.aligned.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "CREATE ALIGNED TIMESERIES root.aligned.aligned.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "CREATE ALIGNED TIMESERIES root.aligned.aligned.d2.s1 WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "CREATE ALIGNED TIMESERIES root.aligned.aligned.d2.s2 WITH DATATYPE=INT32, ENCODING=PLAIN;",
-        "INSERT INTO root.aligned.aligned.d1(time, s1) ALIGNED VALUES(0, 0), (4,4), (5,5), (8,8);",
-        "INSERT INTO root.aligned.aligned.d1(time, s2) ALIGNED VALUES(1, 1), (2,2), (5,5), (7,7), (8,8), (9,9);",
-        "INSERT INTO root.aligned.aligned.d2(time, s1) ALIGNED VALUES(1, 1), (2,2), (5,5), (7,7), (8,8);",
-        "INSERT INTO root.aligned.aligned.d2(time, s2) ALIGNED VALUES(0, 0), (4,4), (5,5), (8,8);",
+        "CREATE ALIGNED TIMESERIES root.aligned.having.d1(s1 INT32, s2 INT32);",
+        "CREATE ALIGNED TIMESERIES root.aligned.having.d2(s1 INT32, s2 INT32);",
+        "INSERT INTO root.aligned.having.d1(time, s1, s2) ALIGNED VALUES(0,0,null), (1,null,1), (2,null,2), (4,4,null), (5,5,5), (7,null,7), (8,8,8), (9,null,9);",
+        "INSERT INTO root.aligned.having.d2(time, s1, s2) ALIGNED VALUES(0,null,0), (1,1,null), (2,2,null), (4,null,4), (5,5,5), (7,7,null), (8,8,8), (9,9,null);",
       };
 
   @BeforeClass
@@ -339,12 +300,5 @@ public class IoTDBCountTimeAlignedDeviceIT {
         "select count_time(*) from root.aligned.condition.d2,root.aligned.condition.d1 group by condition(state=1, KEEP>=2, ignoreNull=false) align by device;",
         expectedHeader,
         retArray);
-  }
-
-  @Test
-  public void testUnSupportedSql() {
-    assertTestFail(
-        "SELECT COUNT_TIME(s1) FROM root.aligned.db.**;",
-        TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": " + COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD);
   }
 }
