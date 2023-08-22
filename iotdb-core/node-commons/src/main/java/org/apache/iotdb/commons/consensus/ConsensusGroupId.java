@@ -29,12 +29,20 @@ public abstract class ConsensusGroupId {
 
   protected int id;
 
-  /** @return specific id */
+  /**
+   * getId
+   *
+   * @return specific id.
+   */
   public int getId() {
     return id;
   }
 
-  /** @return specific type */
+  /**
+   * getType
+   *
+   * @return specific type.
+   */
   public abstract TConsensusGroupType getType();
 
   public TConsensusGroupId convertToTConsensusGroupId() {

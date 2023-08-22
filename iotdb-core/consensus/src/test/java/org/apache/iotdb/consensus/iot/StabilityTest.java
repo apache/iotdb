@@ -131,9 +131,15 @@ public class StabilityTest {
     } catch (ConsensusException e) {
       assertTrue(e instanceof IllegalPeerEndpointException);
     }
+
+    try {
+      consensusImpl.deleteLocalPeer(dataRegionId);
+    } catch (ConsensusException e) {
+      Assert.fail();
+    }
   }
 
-  public void removeConsensusGroup() throws ConsensusException {
+  public void removeConsensusGroup() {
     try {
       consensusImpl.deleteLocalPeer(dataRegionId);
       Assert.fail();

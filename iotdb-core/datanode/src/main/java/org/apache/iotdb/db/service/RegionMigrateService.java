@@ -226,13 +226,12 @@ public class RegionMigrateService implements IService {
             Thread.sleep(SLEEP_MILLIS);
           }
           addRegionPeer(regionId, new Peer(regionId, destDataNode.getDataNodeId(), destEndpoint));
-          if (addPeerSucceed) {
-            break;
-          }
         } catch (PeerAlreadyInConsensusGroupException e) {
           addPeerSucceed = true;
-          break;
-        } catch (Exception e) {
+        } catch (InterruptedException e) {
+          throwable = e;
+          Thread.currentThread().interrupt();
+        } catch (ConsensusException e) {
           addPeerSucceed = false;
           throwable = e;
           taskLogger.error(
@@ -242,6 +241,9 @@ public class RegionMigrateService implements IService {
               regionId,
               i,
               e);
+        }
+        if (addPeerSucceed || throwable instanceof InterruptedException) {
+          break;
         }
       }
 
@@ -316,13 +318,12 @@ public class RegionMigrateService implements IService {
           }
           removeRegionPeer(
               regionId, new Peer(regionId, destDataNode.getDataNodeId(), destEndPoint));
-          if (removePeerSucceed) {
-            break;
-          }
         } catch (PeerNotInConsensusGroupException e) {
           removePeerSucceed = true;
-          break;
-        } catch (Exception e) {
+        } catch (InterruptedException e) {
+          throwable = e;
+          Thread.currentThread().interrupt();
+        } catch (ConsensusException e) {
           removePeerSucceed = false;
           throwable = e;
           taskLogger.error(
@@ -332,6 +333,9 @@ public class RegionMigrateService implements IService {
               regionId,
               i,
               e);
+        }
+        if (removePeerSucceed || throwable instanceof InterruptedException) {
+          break;
         }
       }
 
@@ -424,7 +428,7 @@ public class RegionMigrateService implements IService {
         status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
         status.setMessage(errorMsg);
         return status;
-      } catch (Throwable e) {
+      } catch (Exception e) {
         taskLogger.error("{}, deletePeer error, regionId: {}", REGION_MIGRATE_PROCESS, regionId, e);
         status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
         status.setMessage(
@@ -451,7 +455,7 @@ public class RegionMigrateService implements IService {
         } else {
           SchemaEngine.getInstance().deleteSchemaRegion((SchemaRegionId) regionId);
         }
-      } catch (Throwable e) {
+      } catch (Exception e) {
         taskLogger.error("{}, deleteRegion {} error", REGION_MIGRATE_PROCESS, regionId, e);
         status.setCode(TSStatusCode.DELETE_REGION_ERROR.getStatusCode());
         status.setMessage("deleteRegion " + regionId + " error, " + e.getMessage());
@@ -477,7 +481,7 @@ public class RegionMigrateService implements IService {
     TRegionMigrateResultReportReq req = new TRegionMigrateResultReportReq(tRegionId, status);
     try {
       reportRegionMigrateResultToConfigNode(req);
-    } catch (Throwable e) {
+    } catch (Exception e) {
       LOGGER.error(
           "{}, Report region {} migrate result error in reportSucceed, result: {}",
           REGION_MIGRATE_PROCESS,
@@ -498,7 +502,7 @@ public class RegionMigrateService implements IService {
     req.setFailedNodeAndReason(failedNodeAndReason);
     try {
       reportRegionMigrateResultToConfigNode(req);
-    } catch (Throwable e) {
+    } catch (Exception e) {
       LOGGER.error(
           "{}, Report region {} migrate error in reportFailed, result:{}",
           REGION_MIGRATE_PROCESS,
