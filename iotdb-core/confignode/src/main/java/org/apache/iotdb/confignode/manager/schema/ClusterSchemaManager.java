@@ -811,7 +811,7 @@ public class ClusterSchemaManager {
       return resp.getTemplateInfo();
     } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_READ_ERROR, e);
-      return new byte[] {};
+      return new byte[0];
     }
   }
 

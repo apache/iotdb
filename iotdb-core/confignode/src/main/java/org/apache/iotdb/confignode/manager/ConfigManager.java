@@ -1669,7 +1669,7 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? pipeManager.getPipeTaskCoordinator().getAllPipeInfo()
-        : new TGetAllPipeInfoResp().setStatus(status);
+        : new TGetAllPipeInfoResp(status, Collections.emptyList());
   }
 
   @Override
