@@ -76,6 +76,14 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
+
+    if (isTabletBatchModeEnabled) {
+      LOGGER.warn(
+          "Batch mode is enabled by the given parameters. "
+              + "IoTDBAirGapConnector does not support batch mode. "
+              + "Disable batch mode.");
+    }
+
     for (int i = 0; i < nodeUrls.size(); i++) {
       isSocketAlive.add(false);
       sockets.add(null);

@@ -54,7 +54,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.PipeEnriched
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
@@ -94,12 +93,11 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 
@@ -142,11 +140,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     }
 
     if (queryStatement.isAlignByDevice()) {
-      Map<String, PlanNode> deviceToSubPlanMap =
-          queryStatement.getResultDeviceOrder() == Ordering.ASC
-              ? new TreeMap<>()
-              : new TreeMap<>(Collections.reverseOrder());
-      for (String deviceName : analysis.getDeviceToSourceExpressions().keySet()) {
+      Map<String, PlanNode> deviceToSubPlanMap = new LinkedHashMap<>();
+      for (PartialPath device : analysis.getDeviceList()) {
+        String deviceName = device.getFullPath();
         LogicalPlanBuilder subPlanBuilder = new LogicalPlanBuilder(analysis, context);
         subPlanBuilder =
             subPlanBuilder.withNewRoot(
