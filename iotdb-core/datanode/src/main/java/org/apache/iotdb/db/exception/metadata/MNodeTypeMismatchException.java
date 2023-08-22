@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.exception.metadata;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.schemaengine.SchemaConstant;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 
 public class MNodeTypeMismatchException extends MetadataException {
 

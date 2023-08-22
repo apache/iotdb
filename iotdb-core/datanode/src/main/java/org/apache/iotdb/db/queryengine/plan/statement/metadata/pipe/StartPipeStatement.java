@@ -17,47 +17,46 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.statement.sys.pipe;
+package org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowStatement;
 
-public class ShowPipesStatement extends ShowStatement implements IConfigStatement {
-  public ShowPipesStatement() {
-    super();
-    statementType = StatementType.SHOW_PIPES;
-  }
+import java.util.Collections;
+import java.util.List;
+
+public class StartPipeStatement extends Statement implements IConfigStatement {
 
   private String pipeName;
 
-  private boolean whereClause;
+  public StartPipeStatement(StatementType startPipeStatement) {
+    this.statementType = startPipeStatement;
+  }
 
   public String getPipeName() {
     return pipeName;
-  }
-
-  public boolean getWhereClause() {
-    return whereClause;
   }
 
   public void setPipeName(String pipeName) {
     this.pipeName = pipeName;
   }
 
-  public void setWhereClause(boolean whereClause) {
-    this.whereClause = whereClause;
+  @Override
+  public QueryType getQueryType() {
+    return QueryType.WRITE;
   }
 
   @Override
-  public QueryType getQueryType() {
-    return QueryType.READ;
+  public List<PartialPath> getPaths() {
+    return Collections.emptyList();
   }
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitShowPipes(this, context);
+    return visitor.visitStartPipe(this, context);
   }
 }

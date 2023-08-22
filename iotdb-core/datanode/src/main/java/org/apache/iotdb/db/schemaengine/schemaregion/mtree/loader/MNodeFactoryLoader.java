@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader;
 
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.MNodeFactory;
-import org.apache.iotdb.db.schemaengine.SchemaConstant;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
 
