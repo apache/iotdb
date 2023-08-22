@@ -226,6 +226,7 @@ public class RegionMigrateService implements IService {
             Thread.sleep(SLEEP_MILLIS);
           }
           addRegionPeer(regionId, new Peer(regionId, destDataNode.getDataNodeId(), destEndpoint));
+          addPeerSucceed = true;
         } catch (PeerAlreadyInConsensusGroupException e) {
           addPeerSucceed = true;
         } catch (InterruptedException e) {
@@ -318,6 +319,7 @@ public class RegionMigrateService implements IService {
           }
           removeRegionPeer(
               regionId, new Peer(regionId, destDataNode.getDataNodeId(), destEndPoint));
+          removePeerSucceed = true;
         } catch (PeerNotInConsensusGroupException e) {
           removePeerSucceed = true;
         } catch (InterruptedException e) {
