@@ -50,15 +50,53 @@ public class PipeTransferBatchReq extends TPipeTransferReq {
     // Empty constructor
   }
 
+  public Pair<InsertRowsStatement, InsertMultiTabletsStatement> constructStatements() {
+    final InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
+    final InsertMultiTabletsStatement insertMultiTabletsStatement =
+        new InsertMultiTabletsStatement();
+
+    final List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
+    final List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
+
+    for (final PipeTransferInsertNodeReq insertNodeReq : insertNodeReqs) {
+      final Statement insertStatement = insertNodeReq.constructStatement();
+      if (insertStatement instanceof InsertRowStatement) {
+        insertRowStatementList.add((InsertRowStatement) insertStatement);
+      } else if (insertStatement instanceof InsertTabletStatement) {
+        insertTabletStatementList.add((InsertTabletStatement) insertStatement);
+      } else {
+        throw new UnsupportedOperationException(
+            String.format(
+                "unknown InsertBaseStatement %s constructed from the insert node request.",
+                insertNodeReq));
+      }
+    }
+
+    for (final PipeTransferTabletReq tabletReq : tabletReqs) {
+      insertTabletStatementList.add(tabletReq.constructStatement());
+    }
+
+    insertRowsStatement.setInsertRowStatementList(insertRowStatementList);
+    insertMultiTabletsStatement.setInsertTabletStatementList(insertTabletStatementList);
+    return new Pair<>(insertRowsStatement, insertMultiTabletsStatement);
+  }
+
+  /////////////////////////////// Thrift ///////////////////////////////
+
   public static PipeTransferBatchReq toTPipeTransferReq(List<TPipeTransferReq> reqs)
       throws IOException {
     final PipeTransferBatchReq batchReq = new PipeTransferBatchReq();
 
-    for (TPipeTransferReq tReq : reqs) {
-      if (tReq instanceof PipeTransferInsertNodeReq) {
-        batchReq.insertNodeReqs.add((PipeTransferInsertNodeReq) tReq);
-      } else if (tReq instanceof PipeTransferTabletReq) {
-        batchReq.tabletReqs.add((PipeTransferTabletReq) tReq);
+    for (final TPipeTransferReq req : reqs) {
+      if (req instanceof PipeTransferInsertNodeReq) {
+        batchReq.insertNodeReqs.add((PipeTransferInsertNodeReq) req);
+      } else if (req instanceof PipeTransferTabletReq) {
+        batchReq.tabletReqs.add((PipeTransferTabletReq) req);
+      } else {
+        throw new UnsupportedOperationException(
+            String.format(
+                "unknown TPipeTransferReq type %s when constructing PipeTransferBatchReq",
+                req.getType()));
       }
     }
 
@@ -67,12 +105,12 @@ public class PipeTransferBatchReq extends TPipeTransferReq {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(batchReq.insertNodeReqs.size(), outputStream);
-      for (PipeTransferInsertNodeReq insertNodeReq : batchReq.insertNodeReqs) {
+      for (final PipeTransferInsertNodeReq insertNodeReq : batchReq.insertNodeReqs) {
         insertNodeReq.getInsertNode().serialize(outputStream);
       }
 
       ReadWriteIOUtils.write(batchReq.tabletReqs.size(), outputStream);
-      for (PipeTransferTabletReq tabletReq : batchReq.tabletReqs) {
+      for (final PipeTransferTabletReq tabletReq : batchReq.tabletReqs) {
         tabletReq.getTablet().serialize(outputStream);
         ReadWriteIOUtils.write(tabletReq.getIsAligned(), outputStream);
       }
@@ -109,30 +147,7 @@ public class PipeTransferBatchReq extends TPipeTransferReq {
     return batchReq;
   }
 
-  public Pair<InsertRowsStatement, InsertMultiTabletsStatement> constructStatementPair() {
-    InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
-    InsertMultiTabletsStatement insertMultiTabletsStatement = new InsertMultiTabletsStatement();
-
-    List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
-    List<InsertTabletStatement> insertTabletList = new ArrayList<>();
-
-    for (PipeTransferInsertNodeReq insertNodeReq : insertNodeReqs) {
-      Statement insertStatement = insertNodeReq.constructStatement();
-      if (insertStatement instanceof InsertRowStatement) {
-        insertRowStatementList.add((InsertRowStatement) insertStatement);
-      } else if (insertStatement instanceof InsertTabletStatement) {
-        insertTabletList.add((InsertTabletStatement) insertStatement);
-      }
-    }
-
-    for (PipeTransferTabletReq tabletReq : tabletReqs) {
-      insertTabletList.add(tabletReq.constructStatement());
-    }
-
-    insertRowsStatement.setInsertRowStatementList(insertRowStatementList);
-    insertMultiTabletsStatement.setInsertTabletStatementList(insertTabletList);
-    return new Pair<>(insertRowsStatement, insertMultiTabletsStatement);
-  }
+  /////////////////////////////// Object ///////////////////////////////
 
   @Override
   public boolean equals(Object obj) {

@@ -207,7 +207,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
   private TPipeTransferResp handleTransferBatch(
       PipeTransferBatchReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
     Pair<InsertRowsStatement, InsertMultiTabletsStatement> statementPair =
-        req.constructStatementPair();
+        req.constructStatements();
     return new TPipeTransferResp(
         RpcUtils.squashResponseStatusList(
             Stream.of(

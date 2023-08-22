@@ -93,6 +93,7 @@ public class PipeTransferFilePieceReq extends TPipeTransferReq {
   }
 
   /////////////////////////////// Air Gap ///////////////////////////////
+
   public static byte[] toTPipeTransferBytes(
       String fileName, long startWritingOffset, byte[] filePiece) throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();

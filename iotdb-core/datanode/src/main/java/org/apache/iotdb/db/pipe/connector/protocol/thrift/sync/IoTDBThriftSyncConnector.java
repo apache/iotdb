@@ -22,7 +22,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeTransferBatchReqBuilder;
+import org.apache.iotdb.db.pipe.connector.builder.thrift.IoTDBThriftSyncPipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferBatchReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
@@ -56,11 +56,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_DELAY_DEFAULT_VALUE;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_DELAY_KEY;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_SIZE_DEFAULT_VALUE;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_BATCH_SIZE_KEY;
-
 public class IoTDBThriftSyncConnector extends IoTDBConnector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBThriftSyncConnector.class);
@@ -72,11 +67,11 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
 
   private long currentClientIndex = 0;
 
+  private IoTDBThriftSyncPipeTransferBatchReqBuilder tabletBatchBuilder;
+
   public IoTDBThriftSyncConnector() {
     // Do nothing
   }
-
-  private PipeTransferBatchReqBuilder batchBuilder;
 
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
@@ -89,13 +84,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     }
 
     if (isTabletBatchModeEnabled) {
-      batchBuilder =
-          new PipeTransferBatchReqBuilder(
-              parameters.getIntOrDefault(
-                      CONNECTOR_IOTDB_BATCH_DELAY_KEY, CONNECTOR_IOTDB_BATCH_DELAY_DEFAULT_VALUE)
-                  * 1000,
-              parameters.getLongOrDefault(
-                  CONNECTOR_IOTDB_BATCH_SIZE_KEY, CONNECTOR_IOTDB_BATCH_SIZE_DEFAULT_VALUE));
+      tabletBatchBuilder = new IoTDBThriftSyncPipeTransferBatchReqBuilder(parameters);
     }
   }
 
@@ -183,25 +172,30 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
     // PipeProcessor can change the type of TabletInsertionEvent
+    if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
+        && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
+      LOGGER.warn(
+          "IoTDBThriftSyncConnector only support "
+              + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
+              + "Ignore {}.",
+          tabletInsertionEvent);
+      return;
+    }
 
     final int clientIndex = nextClientIndex();
     final IoTDBThriftSyncConnectorClient client = clients.get(clientIndex);
 
     try {
       if (isTabletBatchModeEnabled) {
-        if (batchBuilder.handleInsertionEventAndReturnNeedSend(tabletInsertionEvent)) {
-          doTransferInBatch(client);
+        if (tabletBatchBuilder.onEvent(tabletInsertionEvent)) {
+          doTransfer(client);
         }
-      } else if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-        doTransfer(client, (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
-      } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-        doTransfer(client, (PipeRawTabletInsertionEvent) tabletInsertionEvent);
       } else {
-        LOGGER.warn(
-            "IoTDBThriftSyncConnector only support "
-                + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
-                + "Ignore {}.",
-            tabletInsertionEvent);
+        if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+          doTransfer(client, (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
+        } else {
+          doTransfer(client, (PipeRawTabletInsertionEvent) tabletInsertionEvent);
+        }
       }
     } catch (TException e) {
       isClientAlive.set(clientIndex, false);
@@ -228,6 +222,10 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     final IoTDBThriftSyncConnectorClient client = clients.get(clientIndex);
 
     try {
+      if (isTabletBatchModeEnabled && !tabletBatchBuilder.isEmpty()) {
+        doTransfer(client);
+      }
+
       doTransfer(client, (PipeTsFileInsertionEvent) tsFileInsertionEvent);
     } catch (TException e) {
       isClientAlive.set(clientIndex, false);
@@ -245,24 +243,23 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     LOGGER.warn("IoTDBThriftSyncConnector does not support transfer generic event: {}.", event);
   }
 
-  private void doTransferInBatch(IoTDBThriftSyncConnectorClient client)
-      throws IOException, TException {
+  private void doTransfer(IoTDBThriftSyncConnectorClient client) throws IOException, TException {
     final TPipeTransferResp resp =
         client.pipeTransfer(
-            PipeTransferBatchReq.toTPipeTransferReq(batchBuilder.gettPipeTransferReqs()));
+            PipeTransferBatchReq.toTPipeTransferReq(tabletBatchBuilder.getTPipeTransferReqs()));
 
     if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
-          String.format("Transfer in batch mode occurs error, result status %s", resp.status));
+          String.format("Transfer PipeTransferBatchReq error, result status %s", resp.status));
     }
-    batchBuilder.clearBatchCaches();
+
+    tabletBatchBuilder.onSuccess();
   }
 
   private void doTransfer(
       IoTDBThriftSyncConnectorClient client,
       PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, TException, WALPipeException {
-
     final TPipeTransferResp resp =
         client.pipeTransfer(
             PipeTransferInsertNodeReq.toTPipeTransferReq(
@@ -280,7 +277,6 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       IoTDBThriftSyncConnectorClient client,
       PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException, TException, IOException {
-
     final TPipeTransferResp resp =
         client.pipeTransfer(
             PipeTransferTabletReq.toTPipeTransferReq(

@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler;
 
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.PipeTransferBatchReqBuilder;
+import org.apache.iotdb.db.pipe.connector.builder.thrift.IoTDBThriftAsyncPipeTransferBatchReqBuilder;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferBatchReq;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -44,19 +45,24 @@ public class PipeTransferTabletBatchInsertionEventHandler
 
   private final List<Long> requestCommitIds;
   private final List<Event> events;
-  private final TPipeTransferReq req;
+  private TPipeTransferReq req;
 
   private final IoTDBThriftAsyncConnector connector;
 
   public PipeTransferTabletBatchInsertionEventHandler(
-      PipeTransferBatchReqBuilder batchBuilder,
-      TPipeTransferReq req,
+      IoTDBThriftAsyncPipeTransferBatchReqBuilder batchBuilder,
       IoTDBThriftAsyncConnector connector) {
     // Deep copy to keep Ids' and events' reference
-    this.requestCommitIds = batchBuilder.copyCommitIds();
-    this.events = batchBuilder.copyEvents();
-    this.req = req;
+    this.requestCommitIds = batchBuilder.deepcopyRequestCommitIds();
+    this.events = batchBuilder.deepcopyEvents();
+
     this.connector = connector;
+
+    try {
+      req = PipeTransferBatchReq.toTPipeTransferReq(batchBuilder.getTPipeTransferReqs());
+    } catch (Exception e) {
+      onError(e);
+    }
   }
 
   public void transfer(AsyncPipeDataTransferServiceClient client) throws TException {
@@ -89,6 +95,7 @@ public class PipeTransferTabletBatchInsertionEventHandler
         events,
         requestCommitIds,
         exception);
+
     for (int i = 0; i < events.size(); ++i) {
       connector.addFailureEventToRetryQueue(requestCommitIds.get(i), events.get(i));
     }
