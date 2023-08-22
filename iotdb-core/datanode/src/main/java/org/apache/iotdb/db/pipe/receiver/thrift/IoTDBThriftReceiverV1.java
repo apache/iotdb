@@ -122,7 +122,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
     } catch (IOException e) {
       String error = String.format("Serialization error during pipe receiving, %s", e);
       LOGGER.warn(error);
-      return new TPipeTransferResp(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, error));
+      return new TPipeTransferResp(RpcUtils.getStatus(TSStatusCode.PIPE_ERROR, error));
     }
   }
 
@@ -206,7 +206,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
 
   private TPipeTransferResp handleTransferBatch(
       PipeTransferBatchReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
-    Pair<InsertRowsStatement, InsertMultiTabletsStatement> statementPair =
+    final Pair<InsertRowsStatement, InsertMultiTabletsStatement> statementPair =
         req.constructStatements();
     return new TPipeTransferResp(
         RpcUtils.squashResponseStatusList(

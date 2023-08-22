@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler;
 
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
-import org.apache.iotdb.db.pipe.connector.builder.thrift.IoTDBThriftAsyncPipeTransferBatchReqBuilder;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftAsyncPipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferBatchReq;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
@@ -35,6 +35,7 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.List;
 
 public class PipeTransferTabletBatchInsertionEventHandler
@@ -45,24 +46,19 @@ public class PipeTransferTabletBatchInsertionEventHandler
 
   private final List<Long> requestCommitIds;
   private final List<Event> events;
-  private TPipeTransferReq req;
+  private final TPipeTransferReq req;
 
   private final IoTDBThriftAsyncConnector connector;
 
   public PipeTransferTabletBatchInsertionEventHandler(
-      IoTDBThriftAsyncPipeTransferBatchReqBuilder batchBuilder,
-      IoTDBThriftAsyncConnector connector) {
+      IoTDBThriftAsyncPipeTransferBatchReqBuilder batchBuilder, IoTDBThriftAsyncConnector connector)
+      throws IOException {
     // Deep copy to keep Ids' and events' reference
-    this.requestCommitIds = batchBuilder.deepcopyRequestCommitIds();
-    this.events = batchBuilder.deepcopyEvents();
+    requestCommitIds = batchBuilder.deepcopyRequestCommitIds();
+    events = batchBuilder.deepcopyEvents();
+    req = PipeTransferBatchReq.toTPipeTransferReq(batchBuilder.getTPipeTransferReqs());
 
     this.connector = connector;
-
-    try {
-      req = PipeTransferBatchReq.toTPipeTransferReq(batchBuilder.getTPipeTransferReqs());
-    } catch (Exception e) {
-      onError(e);
-    }
   }
 
   public void transfer(AsyncPipeDataTransferServiceClient client) throws TException {

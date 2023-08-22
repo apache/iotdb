@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.pipe.connector.builder.thrift.IoTDBThriftAsyncPipeTransferBatchReqBuilder;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftAsyncPipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletReq;
@@ -280,7 +280,6 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   @Override
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     transferQueuedEventsIfNecessary();
-    transferBatchedEventsIfNecessary();
 
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       LOGGER.warn(
@@ -330,7 +329,6 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   @Override
   public void transfer(Event event) throws Exception {
     transferQueuedEventsIfNecessary();
-    transferBatchedEventsIfNecessary();
 
     LOGGER.warn("IoTDBThriftAsyncConnector does not support transfer generic event: {}.", event);
   }
@@ -429,20 +427,6 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
     }
 
     return false;
-  }
-
-  private void transferBatchedEventsIfNecessary() {
-    if (isTabletBatchModeEnabled && !tabletBatchBuilder.isEmpty()) {
-      final long requestCommitId = commitIdGenerator.incrementAndGet();
-
-      final PipeTransferTabletBatchInsertionEventHandler
-          pipeTransferTabletBatchInsertionEventHandler =
-              new PipeTransferTabletBatchInsertionEventHandler(tabletBatchBuilder, this);
-
-      transfer(requestCommitId, pipeTransferTabletBatchInsertionEventHandler);
-
-      tabletBatchBuilder.onSuccess();
-    }
   }
 
   /**
