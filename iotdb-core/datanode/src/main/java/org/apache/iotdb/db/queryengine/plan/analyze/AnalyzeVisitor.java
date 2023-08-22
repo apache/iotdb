@@ -325,8 +325,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   private ISchemaTree analyzeSchema(
       QueryStatement queryStatement, Analysis analysis, MPPQueryContext context) {
     // concat path and construct path pattern tree
-    PathPatternTree patternTree = new PathPatternTree(queryStatement.useWildcard());
-    queryStatement = (QueryStatement) new ConcatPathRewriter().rewrite(queryStatement, patternTree);
+    ConcatPathRewriter concatPathRewriter = new ConcatPathRewriter();
+    queryStatement =
+        (QueryStatement)
+            concatPathRewriter.rewrite(
+                queryStatement, new PathPatternTree(queryStatement.useWildcard()));
     analysis.setStatement(queryStatement);
 
     // request schema fetch API
@@ -335,9 +338,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     try {
       logger.debug("[StartFetchSchema]");
       if (queryStatement.isGroupByTag()) {
-        schemaTree = schemaFetcher.fetchSchemaWithTags(patternTree, context);
+        schemaTree =
+            schemaFetcher.fetchSchemaWithTags(concatPathRewriter.getPatternTree(), context);
       } else {
-        schemaTree = schemaFetcher.fetchSchema(patternTree, context);
+        schemaTree = schemaFetcher.fetchSchema(concatPathRewriter.getPatternTree(), context);
       }
 
       // make sure paths in logical view is fetched

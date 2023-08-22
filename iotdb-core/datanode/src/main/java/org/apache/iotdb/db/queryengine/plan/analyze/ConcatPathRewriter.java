@@ -44,10 +44,14 @@ public class ConcatPathRewriter {
 
   private PathPatternTree patternTree;
 
+  public PathPatternTree getPatternTree() {
+    return patternTree;
+  }
+
   public Statement rewrite(Statement statement, PathPatternTree patternTree)
       throws StatementAnalyzeException {
     QueryStatement queryStatement = (QueryStatement) statement;
-
+    this.patternTree = patternTree;
     // prefix paths in the FROM clause
     List<PartialPath> prefixPaths = queryStatement.getFromComponent().getPrefixPaths();
 
