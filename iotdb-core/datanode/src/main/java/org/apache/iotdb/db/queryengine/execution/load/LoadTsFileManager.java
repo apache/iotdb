@@ -133,11 +133,12 @@ public class LoadTsFileManager {
     }
   }
 
-  public boolean loadAll(String uuid) throws IOException, LoadFileException {
+  public boolean loadAll(String uuid, boolean isGeneratedByPipe)
+      throws IOException, LoadFileException {
     if (!uuid2WriterManager.containsKey(uuid)) {
       return false;
     }
-    uuid2WriterManager.get(uuid).loadAll();
+    uuid2WriterManager.get(uuid).loadAll(isGeneratedByPipe);
     clean(uuid);
     return true;
   }
@@ -249,7 +250,7 @@ public class LoadTsFileManager {
       }
     }
 
-    private void loadAll() throws IOException, LoadFileException {
+    private void loadAll(boolean isGeneratedByPipe) throws IOException, LoadFileException {
       if (isClosed) {
         throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
       }
@@ -259,7 +260,10 @@ public class LoadTsFileManager {
           writer.endChunkGroup();
         }
         writer.endFile();
-        entry.getKey().getDataRegion().loadNewTsFile(generateResource(writer), true);
+        entry
+            .getKey()
+            .getDataRegion()
+            .loadNewTsFile(generateResource(writer), true, isGeneratedByPipe);
       }
     }
 

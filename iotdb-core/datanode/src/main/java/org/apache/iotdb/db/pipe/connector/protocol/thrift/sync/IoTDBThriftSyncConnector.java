@@ -25,6 +25,9 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferBinaryReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftSyncPipeTransferBatchReqBuilder;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferBatchReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
@@ -67,6 +70,8 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
 
   private long currentClientIndex = 0;
 
+  private IoTDBThriftSyncPipeTransferBatchReqBuilder tabletBatchBuilder;
+
   public IoTDBThriftSyncConnector() {
     // Do nothing
   }
@@ -75,9 +80,14 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
+
     for (int i = 0; i < nodeUrls.size(); i++) {
       isClientAlive.add(false);
       clients.add(null);
+    }
+
+    if (isTabletBatchModeEnabled) {
+      tabletBatchBuilder = new IoTDBThriftSyncPipeTransferBatchReqBuilder(parameters);
     }
   }
 
@@ -91,7 +101,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       final String ip = nodeUrls.get(i).getIp();
       final int port = nodeUrls.get(i).getPort();
 
-      // close the client if necessary
+      // Close the client if necessary
       if (clients.get(i) != null) {
         try {
           clients.set(i, null).close();
@@ -165,21 +175,30 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
     // PipeProcessor can change the type of TabletInsertionEvent
+    if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
+        && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
+      LOGGER.warn(
+          "IoTDBThriftSyncConnector only support "
+              + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
+              + "Ignore {}.",
+          tabletInsertionEvent);
+      return;
+    }
 
     final int clientIndex = nextClientIndex();
     final IoTDBThriftSyncConnectorClient client = clients.get(clientIndex);
 
     try {
-      if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-        doTransfer(client, (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
-      } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-        doTransfer(client, (PipeRawTabletInsertionEvent) tabletInsertionEvent);
+      if (isTabletBatchModeEnabled) {
+        if (tabletBatchBuilder.onEvent(tabletInsertionEvent)) {
+          doTransfer(client);
+        }
       } else {
-        LOGGER.warn(
-            "IoTDBThriftSyncConnector only support "
-                + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
-                + "Ignore {}.",
-            tabletInsertionEvent);
+        if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+          doTransfer(client, (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
+        } else {
+          doTransfer(client, (PipeRawTabletInsertionEvent) tabletInsertionEvent);
+        }
       }
     } catch (TException e) {
       isClientAlive.set(clientIndex, false);
@@ -206,6 +225,11 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     final IoTDBThriftSyncConnectorClient client = clients.get(clientIndex);
 
     try {
+      // in order to commit in order
+      if (isTabletBatchModeEnabled && !tabletBatchBuilder.isEmpty()) {
+        doTransfer(client);
+      }
+
       doTransfer(client, (PipeTsFileInsertionEvent) tsFileInsertionEvent);
     } catch (TException e) {
       isClientAlive.set(clientIndex, false);
@@ -221,6 +245,19 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
   @Override
   public void transfer(Event event) {
     LOGGER.warn("IoTDBThriftSyncConnector does not support transfer generic event: {}.", event);
+  }
+
+  private void doTransfer(IoTDBThriftSyncConnectorClient client) throws IOException, TException {
+    final TPipeTransferResp resp =
+        client.pipeTransfer(
+            PipeTransferBatchReq.toTPipeTransferReq(tabletBatchBuilder.getTPipeTransferReqs()));
+
+    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(
+          String.format("Transfer PipeTransferBatchReq error, result status %s", resp.status));
+    }
+
+    tabletBatchBuilder.onSuccess();
   }
 
   private void doTransfer(
