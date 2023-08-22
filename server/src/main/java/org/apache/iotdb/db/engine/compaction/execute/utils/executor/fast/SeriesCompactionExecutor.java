@@ -235,16 +235,10 @@ public abstract class SeriesCompactionExecutor {
           || modifiedStatus == ModifiedStatus.PARTIAL_DELETED
           || firstPageElement.needForceDecoding) {
         // has overlap or modified pages, then deserialize it
-<<<<<<< HEAD:server/src/main/java/org/apache/iotdb/db/engine/compaction/execute/utils/executor/fast/SeriesCompactionExecutor.java
         summary.PAGE_OVERLAP_OR_MODIFIED += 1;
-        pointPriorityReader.addNewPage(firstPageElement);
-        compactWithOverlapPages();
-=======
-        summary.pageOverlapOrModified += 1;
         if (pointPriorityReader.addNewPageIfPageNotEmpty(firstPageElement)) {
           compactWithOverlapPages();
         }
->>>>>>> 456839ebb4 (fix PointPriorityReader index out of bound):iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/dataregion/compaction/execute/utils/executor/fast/SeriesCompactionExecutor.java
       } else {
         // has none overlap or modified pages, flush it to chunk writer directly
         summary.PAGE_NONE_OVERLAP += 1;
@@ -274,15 +268,10 @@ public abstract class SeriesCompactionExecutor {
       checkShouldRemoveFile(pageElement);
     } else {
       // unsealed page is not large enough or page.endTime > file.endTime, then deserialze it
-<<<<<<< HEAD:server/src/main/java/org/apache/iotdb/db/engine/compaction/execute/utils/executor/fast/SeriesCompactionExecutor.java
       summary.PAGE_NONE_OVERLAP_BUT_DESERIALIZE += 1;
-      pointPriorityReader.addNewPage(pageElement);
-=======
-      summary.pageNoneOverlapButDeserialize += 1;
       if (!pointPriorityReader.addNewPageIfPageNotEmpty(pageElement)) {
         return;
       }
->>>>>>> 456839ebb4 (fix PointPriorityReader index out of bound):iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/dataregion/compaction/execute/utils/executor/fast/SeriesCompactionExecutor.java
 
       // write data points of the current page into chunk writer
       TimeValuePair point;
@@ -357,13 +346,8 @@ public abstract class SeriesCompactionExecutor {
           || nextPageModifiedStatus == ModifiedStatus.PARTIAL_DELETED
           || nextPageElement.needForceDecoding) {
         // next page is overlapped or modified, then deserialize it
-<<<<<<< HEAD:server/src/main/java/org/apache/iotdb/db/engine/compaction/execute/utils/executor/fast/SeriesCompactionExecutor.java
         summary.PAGE_OVERLAP_OR_MODIFIED++;
-        pointPriorityReader.addNewPage(nextPageElement);
-=======
-        summary.pageOverlapOrModified++;
         pointPriorityReader.addNewPageIfPageNotEmpty(nextPageElement);
->>>>>>> 456839ebb4 (fix PointPriorityReader index out of bound):iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/dataregion/compaction/execute/utils/executor/fast/SeriesCompactionExecutor.java
       } else {
         // has none overlap or modified pages, flush it to chunk writer directly
         summary.PAGE_FAKE_OVERLAP += 1;
