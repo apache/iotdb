@@ -46,6 +46,8 @@ jobs:
           restore-keys: ${{ runner.os }}-m2-
       - name: Build IoTDB server distribution zip, python client and MLNode
         run: mvn -B clean install -pl distribution,iotdb-client/client-py,iotdb-core/mlnode -am -DskipTests
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
       - name: Compile MLNode package
         run: cd iotdb-core/mlnode && poetry build  # use download in the future
       - name: Build IoTDB server docker image
