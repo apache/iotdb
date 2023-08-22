@@ -361,11 +361,7 @@ public class ConfigManager implements IManager {
   @Override
   public TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req) {
     TSStatus status = confirmLeader();
-    // Notice: The Seed-ConfigNode must also have the privilege to do Node restart check.
-    // Otherwise, the IoTDB-cluster will not have the ability to restart from scratch.
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        || ConfigNodeDescriptor.getInstance().isSeedConfigNode()
-        || SystemPropertiesUtils.isSeedConfigNode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       status =
           ClusterNodeStartUtils.confirmNodeRestart(
               NodeType.DataNode,
@@ -377,7 +373,6 @@ public class ConfigManager implements IManager {
         return nodeManager.updateDataNodeIfNecessary(req);
       }
     }
-
     return new TDataNodeRestartResp()
         .setStatus(status)
         .setConfigNodeList(getNodeManager().getRegisteredConfigNodes());
