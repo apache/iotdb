@@ -299,10 +299,6 @@ public class LogDispatcher {
       return stopped;
     }
 
-    public IoTConsensusServerImpl getImpl() {
-      return impl;
-    }
-
     @Override
     public void run() {
       logger.info("{}: Dispatcher for {} starts", impl.getThisNode(), peer);
