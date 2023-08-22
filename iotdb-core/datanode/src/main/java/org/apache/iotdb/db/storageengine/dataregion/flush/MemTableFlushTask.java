@@ -32,7 +32,6 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGr
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
@@ -61,8 +60,8 @@ public class MemTableFlushTask {
       FlushSubTaskPoolManager.getInstance();
   private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  /* storage group name -> <latest time, points>*/
-  private static final Map<String, Pair<Long, Long>> flushPointsCache = new ConcurrentHashMap<>();
+  /* storage group name -> last time */
+  private static final Map<String, Long> flushPointsCache = new ConcurrentHashMap<>();
   private final Future<?> encodingTaskFuture;
   private final Future<?> ioTaskFuture;
   private RestorableTsFileIOWriter writer;
@@ -304,29 +303,24 @@ public class MemTableFlushTask {
     }
     String storageGroupName = storageGroup.substring(0, lastIndex);
     long currentTime = DateTimeUtils.currentTime();
-    long currentPoints = memTable.getTotalPointsNum();
     // compute the flush points
-    long points =
+    long writeTime =
         flushPointsCache.compute(
-                storageGroupName,
-                (storageGroup, previousPair) -> {
-                  if (previousPair == null || previousPair.left != currentTime) {
-                    // if previousPair is null or previousPair.latestTime not equals currentTime,
-                    // then create a new pair
-                    return new Pair<>(currentTime, currentPoints);
-                  } else {
-                    // if previousPair.latestTime equals currentTime, then accumulate the points
-                    return new Pair<>(currentTime, previousPair.right + currentPoints);
-                  }
-                })
-            .right;
+            storageGroupName,
+            (storageGroup, lastTime) -> {
+              if (lastTime == null || lastTime != currentTime) {
+                return currentTime;
+              } else {
+                return currentTime + 1;
+              }
+            });
     // record the flush points
     MetricService.getInstance()
         .gaugeWithInternalReportAsync(
-            points,
+            memTable.getTotalPointsNum(),
             Metric.POINTS.toString(),
             MetricLevel.CORE,
-            currentTime,
+            writeTime,
             Tag.DATABASE.toString(),
             storageGroup.substring(0, lastIndex),
             Tag.TYPE.toString(),
