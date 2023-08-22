@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -72,7 +73,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.exception.metadata.DatabaseAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -148,7 +148,7 @@ public class ClusterSchemaManager {
     try {
       createDatabaseLock.lock();
       clusterSchemaInfo.isDatabaseNameValid(databaseSchemaPlan.getSchema().getName());
-      if (!databaseSchemaPlan.getSchema().getName().equals(IoTDBConfig.SYSTEM_DATABASE)) {
+      if (!databaseSchemaPlan.getSchema().getName().equals(SchemaConstant.SYSTEM_DATABASE)) {
         clusterSchemaInfo.checkDatabaseLimit();
       }
       // Cache DatabaseSchema
@@ -413,7 +413,7 @@ public class ClusterSchemaManager {
 
     for (TDatabaseSchema databaseSchema : databaseSchemaMap.values()) {
       if (!isDatabaseExist(databaseSchema.getName())
-          || databaseSchema.getName().equals(IoTDBConfig.SYSTEM_DATABASE)) {
+          || databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE)) {
         // filter the pre deleted database and the system database
         databaseNum--;
       }
@@ -421,7 +421,7 @@ public class ClusterSchemaManager {
 
     AdjustMaxRegionGroupNumPlan adjustMaxRegionGroupNumPlan = new AdjustMaxRegionGroupNumPlan();
     for (TDatabaseSchema databaseSchema : databaseSchemaMap.values()) {
-      if (databaseSchema.getName().equals(IoTDBConfig.SYSTEM_DATABASE)) {
+      if (databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE)) {
         // filter the system database
         continue;
       }

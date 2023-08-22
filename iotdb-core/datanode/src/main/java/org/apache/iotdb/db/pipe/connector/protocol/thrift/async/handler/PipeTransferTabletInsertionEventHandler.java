@@ -77,7 +77,7 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
 
   @Override
   public void onComplete(TPipeTransferResp response) {
-    // just in case
+    // Just in case
     if (response == null) {
       onError(new PipeException("TPipeTransferResp is null"));
       return;

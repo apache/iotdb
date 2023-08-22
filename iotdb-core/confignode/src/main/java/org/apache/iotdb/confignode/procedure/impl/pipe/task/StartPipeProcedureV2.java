@@ -89,7 +89,7 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     LOGGER.info("StartPipeProcedureV2: executeFromOperateOnDataNodes({})", pipeName);
 
     String exceptionMessage =
-        parsePushPipeMetaExceptionForPipe(pipeName, pushPipeMetaToDataNodes(env));
+        parsePushPipeMetaExceptionForPipe(pipeName, pushSinglePipeMetaToDataNodes(pipeName, env));
     if (!exceptionMessage.isEmpty()) {
       throw new PipeException(
           String.format("Failed to start pipe %s, details: %s", pipeName, exceptionMessage));
@@ -130,6 +130,7 @@ public class StartPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
       throws PipeException, IOException {
     LOGGER.info("StartPipeProcedureV2: rollbackFromOperateOnDataNodes({})", pipeName);
 
+    // Push all pipe metas to datanode, may be time-consuming
     String exceptionMessage =
         parsePushPipeMetaExceptionForPipe(pipeName, pushPipeMetaToDataNodes(env));
     if (!exceptionMessage.isEmpty()) {

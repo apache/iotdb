@@ -147,4 +147,6 @@ public abstract class EnrichedEvent implements Event {
       PipeAgent.runtime().report(this.pipeTaskMeta, pipeRuntimeException);
     }
   }
+
+  public abstract boolean isGeneratedByPipe();
 }
