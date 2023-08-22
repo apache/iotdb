@@ -61,6 +61,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
+import java.io.IOException;
 import java.util.Comparator;
 import java.util.Optional;
 import java.util.PriorityQueue;
@@ -280,6 +281,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   @Override
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     transferQueuedEventsIfNecessary();
+    transferBatchedEventsIfNecessary();
 
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       LOGGER.warn(
@@ -329,6 +331,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   @Override
   public void transfer(Event event) throws Exception {
     transferQueuedEventsIfNecessary();
+    transferBatchedEventsIfNecessary();
 
     LOGGER.warn("IoTDBThriftAsyncConnector does not support transfer generic event: {}.", event);
   }
@@ -462,6 +465,22 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
       retryEventQueue.poll();
     }
+  }
+
+  /** Try its best to commit data in order. Flush can also be a trigger to transfer batched data. */
+  private void transferBatchedEventsIfNecessary() throws IOException {
+    if (!isTabletBatchModeEnabled || tabletBatchBuilder.isEmpty()) {
+      return;
+    }
+
+    final long requestCommitId = commitIdGenerator.incrementAndGet();
+    final PipeTransferTabletBatchInsertionEventHandler
+        pipeTransferTabletBatchInsertionEventHandler =
+            new PipeTransferTabletBatchInsertionEventHandler(tabletBatchBuilder, this);
+
+    transfer(requestCommitId, pipeTransferTabletBatchInsertionEventHandler);
+
+    tabletBatchBuilder.onSuccess();
   }
 
   /**
