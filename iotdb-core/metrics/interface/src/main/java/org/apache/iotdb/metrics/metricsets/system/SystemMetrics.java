@@ -37,20 +37,24 @@ import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class SystemMetrics implements IMetricSet {
   private static final Logger logger = LoggerFactory.getLogger(SystemMetrics.class);
   private static final String SYSTEM = "system";
   private final com.sun.management.OperatingSystemMXBean osMxBean;
   private final Set<FileStore> fileStores = new HashSet<>();
-  private final ArrayList<String> diskDirs;
+  private AtomicReference<List<String>> diskDirs;
 
-  public SystemMetrics(ArrayList<String> diskDirs) {
-    this.diskDirs = diskDirs;
+  public SystemMetrics() {
     this.osMxBean = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+  }
+
+  public void setDiskDirs(List<String> diskDirs) {
+    this.diskDirs = new AtomicReference<>(diskDirs);
   }
 
   @Override
@@ -163,7 +167,7 @@ public class SystemMetrics implements IMetricSet {
   }
 
   private void collectSystemDiskInfo(AbstractMetricService metricService) {
-    for (String diskDir : diskDirs) {
+    for (String diskDir : diskDirs.get()) {
       if (!FSUtils.isLocal(diskDir)) {
         continue;
       }
@@ -213,7 +217,7 @@ public class SystemMetrics implements IMetricSet {
         SystemTag.NAME.toString(),
         SYSTEM);
 
-    diskDirs.clear();
+    diskDirs.get().clear();
     fileStores.clear();
   }
 
@@ -239,5 +243,15 @@ public class SystemMetrics implements IMetricSet {
       }
     }
     return sysFreeSpace;
+  }
+
+  public static SystemMetrics getInstance() {
+    return SystemMetricsHolder.INSTANCE;
+  }
+
+  private static class SystemMetricsHolder {
+    private static final SystemMetrics INSTANCE = new SystemMetrics();
+
+    private SystemMetricsHolder() {}
   }
 }
