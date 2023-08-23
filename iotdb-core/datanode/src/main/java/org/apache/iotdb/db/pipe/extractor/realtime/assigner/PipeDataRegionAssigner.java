@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.pipe.extractor.realtime.assigner;
 
+import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.realtime.matcher.CachedSchemaPatternMatcher;
 import org.apache.iotdb.db.pipe.extractor.realtime.matcher.PipeDataRegionMatcher;
+import org.apache.iotdb.pipe.api.event.dml.heartbeat.HeartbeatEvent;
 
 public class PipeDataRegionAssigner {
 
@@ -39,6 +41,9 @@ public class PipeDataRegionAssigner {
 
   public void publishToAssign(PipeRealtimeEvent event) {
     event.increaseReferenceCount(PipeDataRegionAssigner.class.getName());
+    if (event.getEvent() instanceof HeartbeatEvent) {
+      ((HeartbeatEvent) event.getEvent()).reportDisrupt();
+    }
     disruptor.publish(event);
   }
 
@@ -54,8 +59,16 @@ public class PipeDataRegionAssigner {
               final PipeRealtimeEvent copiedEvent =
                   event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
                       extractor.getPipeTaskMeta(), extractor.getPattern());
+
+              EnrichedEvent enrichedEvent = copiedEvent.getEvent();
+              if (enrichedEvent instanceof HeartbeatEvent) {
+                ((HeartbeatEvent) enrichedEvent).bindPipeName(extractor.getPipeName());
+              }
               copiedEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName());
               extractor.extract(copiedEvent);
+              if (enrichedEvent instanceof HeartbeatEvent) {
+                ((HeartbeatEvent) enrichedEvent).reportExtract();
+              }
             });
     event.gcSchemaInfo();
     event.decreaseReferenceCount(PipeDataRegionAssigner.class.getName());

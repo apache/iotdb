@@ -24,6 +24,7 @@ import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeCo
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.dml.heartbeat.HeartbeatEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
@@ -109,6 +110,18 @@ public interface PipeProcessor extends PipePlugin {
         tsFileInsertionEvent.toTabletInsertionEvents()) {
       process(tabletInsertionEvent, eventCollector);
     }
+  }
+
+  /**
+   * This method is called to process the PipeHeartbeatEvent.
+   *
+   * @param heartbeatEvent PipeHeartbeatEvent to be processed
+   * @param eventCollector used to collect result events after processing
+   * @throws Exception the user can throw errors if necessary
+   */
+  default void process(HeartbeatEvent heartbeatEvent, EventCollector eventCollector)
+      throws Exception {
+    // Do nothing by default
   }
 
   /**

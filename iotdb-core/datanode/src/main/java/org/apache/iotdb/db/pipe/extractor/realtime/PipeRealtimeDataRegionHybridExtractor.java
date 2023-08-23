@@ -22,11 +22,11 @@ package org.apache.iotdb.db.pipe.extractor.realtime;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.dml.heartbeat.HeartbeatEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
@@ -54,7 +54,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       extractTabletInsertion(event);
     } else if (eventToExtract instanceof TsFileInsertionEvent) {
       extractTsFileInsertion(event);
-    } else if (eventToExtract instanceof PipeHeartbeatEvent) {
+    } else if (eventToExtract instanceof HeartbeatEvent) {
       extractHeartbeatInsertion(event);
     } else {
       throw new UnsupportedOperationException(
@@ -191,6 +191,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         suppliedEvent = supplyTabletInsertion(realtimeEvent);
       } else if (eventToSupply instanceof TsFileInsertionEvent) {
         suppliedEvent = supplyTsFileInsertion(realtimeEvent);
+      } else if (eventToSupply instanceof HeartbeatEvent) {
+        suppliedEvent = supplyHeartbeat(realtimeEvent);
       } else {
         throw new UnsupportedOperationException(
             String.format(
@@ -273,6 +275,28 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     }
     // if the state is USING_TABLET, discard the event and poll the next one.
     return null;
+  }
+
+  private Event supplyHeartbeat(PipeRealtimeEvent event) {
+    if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName())) {
+      return event.getEvent();
+    } else {
+      // if the event's reference count can not be increased, it means the data represented by
+      // this event is not reliable anymore. the data has been lost. we simply discard this event
+      // and report the exception to PipeRuntimeAgent.
+      final String errorMessage =
+          String.format(
+              "Heartbeat Event %s can not be supplied because "
+                  + "the reference count can not be increased, "
+                  + "the data represented by this event is lost",
+              event.getEvent());
+      LOGGER.warn(errorMessage);
+
+      // Do not report exception since the PipeHeartbeatEvent doesn't affect the correction of pipe
+      // transmission.
+
+      return null;
+    }
   }
 
   @Override

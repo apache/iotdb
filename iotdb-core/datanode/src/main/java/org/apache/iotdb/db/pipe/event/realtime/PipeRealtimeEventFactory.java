@@ -49,8 +49,8 @@ public class PipeRealtimeEventFactory {
         resource);
   }
 
-  public static PipeRealtimeEvent createRealtimeEvent() {
-    return new PipeRealtimeEvent(new PipeHeartbeatEvent(), null, null, null);
+  public static PipeRealtimeEvent createRealtimeEvent(String dataRegionId) {
+    return new PipeRealtimeEvent(new PipeHeartbeatEvent(dataRegionId), null, null, null);
   }
 
   private PipeRealtimeEventFactory() {

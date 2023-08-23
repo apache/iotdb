@@ -29,6 +29,7 @@ import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.dml.heartbeat.HeartbeatEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
@@ -114,6 +115,9 @@ public class PipeConnectorSubtask extends PipeSubtask {
         outputPipeConnector.transfer((TabletInsertionEvent) event);
       } else if (event instanceof TsFileInsertionEvent) {
         outputPipeConnector.transfer((TsFileInsertionEvent) event);
+      } else if (event instanceof HeartbeatEvent) {
+        outputPipeConnector.transfer((HeartbeatEvent) event);
+        ((HeartbeatEvent) event).reportTransfer();
       } else {
         outputPipeConnector.transfer(event);
       }

@@ -28,6 +28,7 @@ import org.apache.iotdb.pipe.api.customizer.configuration.PipeProcessorRuntimeCo
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.dml.heartbeat.HeartbeatEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -98,6 +99,12 @@ public class PipeDoNothingProcessor implements PipeProcessor {
     } else {
       eventCollector.collect(tsFileInsertionEvent);
     }
+  }
+
+  @Override
+  public void process(HeartbeatEvent heartbeatEvent, EventCollector eventCollector)
+      throws IOException {
+    eventCollector.collect(heartbeatEvent);
   }
 
   @Override

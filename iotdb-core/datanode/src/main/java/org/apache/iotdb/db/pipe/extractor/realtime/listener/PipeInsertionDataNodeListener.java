@@ -133,12 +133,8 @@ public class PipeInsertionDataNodeListener {
       return;
     }
 
-    dataRegionId2Assigner
-        .values()
-        .forEach(
-            pipeDataRegionAssigner ->
-                pipeDataRegionAssigner.publishToAssign(
-                    PipeRealtimeEventFactory.createRealtimeEvent()));
+    dataRegionId2Assigner.forEach(
+        (key, value) -> value.publishToAssign(PipeRealtimeEventFactory.createRealtimeEvent(key)));
   }
 
   /////////////////////////////// singleton ///////////////////////////////

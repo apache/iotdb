@@ -25,6 +25,7 @@ import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.dml.heartbeat.HeartbeatEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -96,6 +97,9 @@ public class PipeProcessorSubtask extends PipeSubtask {
         pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
       } else if (event instanceof TsFileInsertionEvent) {
         pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
+      } else if (event instanceof HeartbeatEvent) {
+        pipeProcessor.process((HeartbeatEvent) event, outputEventCollector);
+        ((HeartbeatEvent) event).reportProcess();
       } else {
         pipeProcessor.process(event, outputEventCollector);
       }

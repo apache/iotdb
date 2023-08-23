@@ -38,6 +38,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeExcepti
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
+import org.apache.iotdb.pipe.api.event.dml.heartbeat.HeartbeatEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
@@ -240,7 +241,17 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
   }
 
   @Override
-  public void transfer(Event event) {
+  public void transfer(HeartbeatEvent heartbeatEvent) throws TException, IOException {
+    if (!isTabletBatchModeEnabled) {
+      return;
+    }
+    final int clientIndex = nextClientIndex();
+    final IoTDBThriftSyncConnectorClient client = clients.get(clientIndex);
+    doTransfer(client);
+  }
+
+  @Override
+  public void transfer(Event event) throws TException, IOException {
     LOGGER.warn("IoTDBThriftSyncConnector does not support transfer generic event: {}.", event);
   }
 

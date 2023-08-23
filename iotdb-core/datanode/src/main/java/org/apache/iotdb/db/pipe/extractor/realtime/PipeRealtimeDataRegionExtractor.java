@@ -34,6 +34,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
   protected String pattern;
   protected boolean isForwardingPipeRequests;
 
+  protected String pipeName;
   protected String dataRegionId;
   protected PipeTaskMeta pipeTaskMeta;
 
@@ -61,6 +62,7 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     final PipeTaskExtractorRuntimeEnvironment environment =
         (PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment();
     dataRegionId = String.valueOf(environment.getRegionId());
+    pipeName = environment.getPipeName();
     pipeTaskMeta = environment.getPipeTaskMeta();
   }
 
@@ -87,6 +89,10 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
   public final boolean isForwardingPipeRequests() {
     return isForwardingPipeRequests;
+  }
+
+  public final String getPipeName() {
+    return pipeName;
   }
 
   public final PipeTaskMeta getPipeTaskMeta() {
