@@ -701,20 +701,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private String analyzeAlias(
-      String resultColumnAlias, Expression rawExpression, Expression normalizedExpression) {
-    if (resultColumnAlias != null) {
-      // use alias as output symbol
-      return resultColumnAlias;
-    }
-
-    if (!Objects.equals(normalizedExpression, rawExpression)) {
-      return rawExpression.getOutputSymbol();
-    }
-
-    return null;
-  }
-
-  private String analyzeAlias(
       String resultColumnAlias,
       Expression rawExpression,
       Expression normalizedExpression,
@@ -724,12 +710,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return resultColumnAlias;
     }
 
-    if (!Objects.equals(normalizedExpression, rawExpression)) {
-      return rawExpression.getOutputSymbol();
-    }
-
     if (queryStatement.isCountTimeAggregation()) {
       return COUNT_TIME_HEADER;
+    }
+
+    if (!Objects.equals(normalizedExpression, rawExpression)) {
+      return rawExpression.getOutputSymbol();
     }
 
     return null;
@@ -880,7 +866,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                 analyzeAlias(
                     groupByLevelController.getAlias(groupedExpression.getExpressionString()),
                     groupedExpression,
-                    normalizedGroupedExpression)));
+                    normalizedGroupedExpression,
+                    queryStatement)));
         updateGroupByLevelExpressions(
             analysis,
             groupedExpression,
