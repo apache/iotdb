@@ -88,7 +88,8 @@ public class SessionPoolTest {
   @Mock private ISessionPool sessionPool;
 
   @Mock private Session session;
-  @Mock TSExecuteStatementResp execResp;
+  @Mock
+  TSExecuteStatementResp execResp;
   private long queryId;
 
   private long statementId;
