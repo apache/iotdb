@@ -32,7 +32,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-// TODO Use a mature IDL framework such as Protobuf to manage this structure
 public class Peer {
 
   private final Logger logger = LoggerFactory.getLogger(Peer.class);

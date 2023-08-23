@@ -43,6 +43,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.SetTemplateState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIncompatibleException;
 import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -77,6 +78,9 @@ public class SetTemplateProcedure
   private String queryId;
   private String templateName;
   private String templateSetPath;
+
+  private static final String CONSENSUS_WRITE_ERROR =
+      "Failed in the write API executing the consensus layer due to: ";
 
   public SetTemplateProcedure() {
     super();
@@ -148,12 +152,18 @@ public class SetTemplateProcedure
     // check whether the template can be set on given path
     CheckTemplateSettablePlan checkTemplateSettablePlan =
         new CheckTemplateSettablePlan(templateName, templateSetPath);
-    TemplateInfoResp resp =
-        (TemplateInfoResp)
-            env.getConfigManager()
-                .getConsensusManager()
-                .read(checkTemplateSettablePlan)
-                .getDataset();
+    TemplateInfoResp resp;
+    try {
+      resp =
+          (TemplateInfoResp)
+              env.getConfigManager().getConsensusManager().read(checkTemplateSettablePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      resp = new TemplateInfoResp();
+      resp.setStatus(res);
+    }
     if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(SetTemplateState.PRE_SET);
     } else {
@@ -166,8 +176,14 @@ public class SetTemplateProcedure
   private void preSetTemplate(ConfigNodeProcedureEnv env) {
     PreSetSchemaTemplatePlan preSetSchemaTemplatePlan =
         new PreSetSchemaTemplatePlan(templateName, templateSetPath);
-    TSStatus status =
-        env.getConfigManager().getConsensusManager().write(preSetSchemaTemplatePlan).getStatus();
+    TSStatus status;
+    try {
+      status = env.getConfigManager().getConsensusManager().write(preSetSchemaTemplatePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      status.setMessage(e.getMessage());
+    }
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(SetTemplateState.PRE_RELEASE);
     } else {
@@ -214,9 +230,18 @@ public class SetTemplateProcedure
 
   private Template getTemplate(ConfigNodeProcedureEnv env) {
     GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan(templateName);
-    TemplateInfoResp templateResp =
-        (TemplateInfoResp)
-            env.getConfigManager().getConsensusManager().read(getSchemaTemplatePlan).getDataset();
+    TemplateInfoResp templateResp;
+    try {
+      templateResp =
+          (TemplateInfoResp)
+              env.getConfigManager().getConsensusManager().read(getSchemaTemplatePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      templateResp = new TemplateInfoResp();
+      templateResp.setStatus(res);
+    }
     if (templateResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(
           new ProcedureException(
@@ -317,8 +342,14 @@ public class SetTemplateProcedure
   private void commitSetTemplate(ConfigNodeProcedureEnv env) {
     CommitSetSchemaTemplatePlan commitSetSchemaTemplatePlan =
         new CommitSetSchemaTemplatePlan(templateName, templateSetPath);
-    TSStatus status =
-        env.getConfigManager().getConsensusManager().write(commitSetSchemaTemplatePlan).getStatus();
+    TSStatus status = null;
+    try {
+      status = env.getConfigManager().getConsensusManager().write(commitSetSchemaTemplatePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      status.setMessage(e.getMessage());
+    }
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(SetTemplateState.COMMIT_RELEASE);
     } else {
@@ -414,8 +445,14 @@ public class SetTemplateProcedure
   private void rollbackPreSet(ConfigNodeProcedureEnv env) {
     PreSetSchemaTemplatePlan preSetSchemaTemplatePlan =
         new PreSetSchemaTemplatePlan(templateName, templateSetPath, true);
-    TSStatus status =
-        env.getConfigManager().getConsensusManager().write(preSetSchemaTemplatePlan).getStatus();
+    TSStatus status = null;
+    try {
+      status = env.getConfigManager().getConsensusManager().write(preSetSchemaTemplatePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      status.setMessage(e.getMessage());
+    }
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
           "Failed to rollback pre set template {} on path {} due to {}",
@@ -465,8 +502,14 @@ public class SetTemplateProcedure
   private void rollbackCommitSet(ConfigNodeProcedureEnv env) {
     CommitSetSchemaTemplatePlan commitSetSchemaTemplatePlan =
         new CommitSetSchemaTemplatePlan(templateName, templateSetPath, true);
-    TSStatus status =
-        env.getConfigManager().getConsensusManager().write(commitSetSchemaTemplatePlan).getStatus();
+    TSStatus status = null;
+    try {
+      status = env.getConfigManager().getConsensusManager().write(commitSetSchemaTemplatePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      status.setMessage(e.getMessage());
+    }
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
           "Failed to rollback commit set template {} on path {} due to {}",

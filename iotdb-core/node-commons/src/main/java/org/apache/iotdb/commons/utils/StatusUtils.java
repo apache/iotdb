@@ -139,7 +139,7 @@ public class StatusUtils {
         status.setMessage("Meet error in close operation.");
         break;
       case SYSTEM_READ_ONLY:
-        status.setMessage("Database is read-only.");
+        status.setMessage("Fail to do non-query operations because system is read-only.");
         break;
       case DISK_SPACE_INSUFFICIENT:
         status.setMessage("Disk space is insufficient.");
