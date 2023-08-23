@@ -36,7 +36,7 @@ import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowThrottleReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -79,12 +79,12 @@ public class ClusterQuotaManager {
           "The used quota exceeds the preset quota. Please set a larger value.");
     }
     // TODO: Datanode failed to receive rpc
-    ConsensusWriteResponse response =
-        configManager
-            .getConsensusManager()
-            .write(new SetSpaceQuotaPlan(req.getDatabase(), req.getSpaceLimit()));
-    if (response.getStatus() != null) {
-      if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    try {
+      TSStatus response =
+          configManager
+              .getConsensusManager()
+              .write(new SetSpaceQuotaPlan(req.getDatabase(), req.getSpaceLimit()));
+      if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         Map<Integer, TDataNodeLocation> dataNodeLocationMap =
             configManager.getNodeManager().getRegisteredDataNodeLocations();
         AsyncClientHandler<TSetSpaceQuotaReq, TSStatus> clientHandler =
@@ -92,15 +92,16 @@ public class ClusterQuotaManager {
         AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
         return RpcUtils.squashResponseStatusList(clientHandler.getResponseList());
       }
-      return response.getStatus();
-    } else {
+      return response;
+    } catch (ConsensusException e) {
       LOGGER.warn(
-          "Unexpected error happened while setting space quota on {}: ",
-          req.getDatabase().toString(),
-          response.getException());
+          String.format(
+              "Unexpected error happened while setting space quota on database: %s ",
+              req.getDatabase()),
+          e);
       // consensus layer related errors
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      res.setMessage(response.getErrorMessage());
+      res.setMessage(e.getMessage());
       return res;
     }
   }
@@ -183,12 +184,12 @@ public class ClusterQuotaManager {
   }
 
   public TSStatus setThrottleQuota(TSetThrottleQuotaReq req) {
-    ConsensusWriteResponse response =
-        configManager
-            .getConsensusManager()
-            .write(new SetThrottleQuotaPlan(req.getUserName(), req.getThrottleQuota()));
-    if (response.getStatus() != null) {
-      if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    try {
+      TSStatus response =
+          configManager
+              .getConsensusManager()
+              .write(new SetThrottleQuotaPlan(req.getUserName(), req.getThrottleQuota()));
+      if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         Map<Integer, TDataNodeLocation> dataNodeLocationMap =
             configManager.getNodeManager().getRegisteredDataNodeLocations();
         AsyncClientHandler<TSetThrottleQuotaReq, TSStatus> clientHandler =
@@ -197,15 +198,16 @@ public class ClusterQuotaManager {
         AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
         return RpcUtils.squashResponseStatusList(clientHandler.getResponseList());
       }
-      return response.getStatus();
-    } else {
+      return response;
+    } catch (ConsensusException e) {
       LOGGER.warn(
-          "Unexpected error happened while setting throttle quota on user: {}: ",
-          req.getUserName(),
-          response.getException());
+          String.format(
+              "Unexpected error happened while setting throttle quota on user: %s ",
+              req.getUserName()),
+          e);
       // consensus layer related errors
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      res.setMessage(response.getErrorMessage());
+      res.setMessage(e.getMessage());
       return res;
     }
   }

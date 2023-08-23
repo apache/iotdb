@@ -34,9 +34,8 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
@@ -44,6 +43,7 @@ import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
 
 import org.apache.ratis.util.FileUtils;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -53,9 +53,7 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class SimpleConsensusTest {
@@ -166,144 +164,146 @@ public class SimpleConsensusTest {
 
   @Test
   public void addConsensusGroup() {
-    ConsensusGenericResponse response1 =
-        consensusImpl.createPeer(
-            dataRegionId,
-            Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
-    assertTrue(response1.isSuccess());
-    assertNull(response1.getException());
+    try {
+      consensusImpl.createLocalPeer(
+          dataRegionId,
+          Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
+    } catch (ConsensusException e) {
+      Assert.fail();
+    }
 
-    ConsensusGenericResponse response2 =
-        consensusImpl.createPeer(
-            dataRegionId,
-            Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
-    assertFalse(response2.isSuccess());
-    assertTrue(response2.getException() instanceof ConsensusGroupAlreadyExistException);
+    try {
+      consensusImpl.createLocalPeer(
+          dataRegionId,
+          Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
+      Assert.fail();
+    } catch (ConsensusException e) {
+      assertTrue(e instanceof ConsensusGroupAlreadyExistException);
+    }
 
-    ConsensusGenericResponse response3 =
-        consensusImpl.createPeer(
-            dataRegionId,
-            Arrays.asList(
-                new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667)),
-                new Peer(dataRegionId, 1, new TEndPoint("0.0.0.1", 6667))));
-    assertFalse(response3.isSuccess());
-    assertTrue(response3.getException() instanceof IllegalPeerNumException);
+    try {
+      consensusImpl.createLocalPeer(
+          dataRegionId,
+          Arrays.asList(
+              new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667)),
+              new Peer(dataRegionId, 1, new TEndPoint("0.0.0.1", 6667))));
+      Assert.fail();
+    } catch (ConsensusException e) {
+      assertTrue(e instanceof IllegalPeerNumException);
+    }
 
-    ConsensusGenericResponse response4 =
-        consensusImpl.createPeer(
-            dataRegionId,
-            Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.1", 6667))));
-    assertFalse(response4.isSuccess());
-    assertTrue(response4.getException() instanceof IllegalPeerEndpointException);
+    try {
+      consensusImpl.createLocalPeer(
+          dataRegionId,
+          Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.1", 6667))));
+      Assert.fail();
+    } catch (ConsensusException e) {
+      assertTrue(e instanceof IllegalPeerEndpointException);
+    }
 
-    ConsensusGenericResponse response5 =
-        consensusImpl.createPeer(
-            schemaRegionId,
-            Collections.singletonList(new Peer(schemaRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
-    assertTrue(response5.isSuccess());
-    assertNull(response5.getException());
+    try {
+      consensusImpl.createLocalPeer(
+          schemaRegionId,
+          Collections.singletonList(new Peer(schemaRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
+    } catch (ConsensusException e) {
+      Assert.fail();
+    }
   }
 
   @Test
-  public void removeConsensusGroup() {
-    ConsensusGenericResponse response1 = consensusImpl.deletePeer(dataRegionId);
-    assertFalse(response1.isSuccess());
-    assertTrue(response1.getException() instanceof ConsensusGroupNotExistException);
+  public void removeConsensusGroup() throws ConsensusException {
+    try {
+      consensusImpl.deleteLocalPeer(dataRegionId);
+      Assert.fail();
+    } catch (ConsensusException e) {
+      assertTrue(e instanceof ConsensusGroupNotExistException);
+    }
 
-    ConsensusGenericResponse response2 =
-        consensusImpl.createPeer(
-            dataRegionId,
-            Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
-    assertTrue(response2.isSuccess());
-    assertNull(response2.getException());
-
-    ConsensusGenericResponse response3 = consensusImpl.deletePeer(dataRegionId);
-    assertTrue(response3.isSuccess());
-    assertNull(response3.getException());
+    try {
+      consensusImpl.createLocalPeer(
+          dataRegionId,
+          Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
+      consensusImpl.deleteLocalPeer(dataRegionId);
+    } catch (ConsensusException e) {
+      Assert.fail();
+    }
   }
 
   @Test
   public void addPeer() {
-    ConsensusGenericResponse response =
-        consensusImpl.addPeer(
-            dataRegionId, new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667)));
-    assertFalse(response.isSuccess());
+    try {
+      consensusImpl.addRemotePeer(
+          dataRegionId, new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667)));
+      Assert.fail("Can't add peer in SimpleConsensus.");
+    } catch (ConsensusException e) {
+      // not handle
+    }
   }
 
   @Test
   public void removePeer() {
-    ConsensusGenericResponse response =
-        consensusImpl.removePeer(
-            dataRegionId, new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667)));
-    assertFalse(response.isSuccess());
-  }
-
-  @Test
-  public void changePeer() {
-    ConsensusGenericResponse response =
-        consensusImpl.changePeer(
-            dataRegionId,
-            Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
-    assertFalse(response.isSuccess());
+    try {
+      consensusImpl.removeRemotePeer(
+          dataRegionId, new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667)));
+      Assert.fail("Can't remove peer in SimpleConsensus.");
+    } catch (ConsensusException e) {
+      // not handle
+    }
   }
 
   @Test
   public void transferLeader() {
-    ConsensusGenericResponse response =
-        consensusImpl.transferLeader(
-            dataRegionId, new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667)));
-    assertFalse(response.isSuccess());
+    try {
+      consensusImpl.transferLeader(
+          dataRegionId, new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667)));
+      Assert.fail("Can't transfer leader in SimpleConsensus.");
+    } catch (ConsensusException e) {
+      // not handle
+    }
   }
 
   @Test
   public void triggerSnapshot() {
-    ConsensusGenericResponse response = consensusImpl.triggerSnapshot(dataRegionId);
-    assertFalse(response.isSuccess());
+    try {
+      consensusImpl.triggerSnapshot(dataRegionId);
+      Assert.fail("Can't trigger snapshot in SimpleConsensus.");
+    } catch (ConsensusException e) {
+      // not handle
+    }
   }
 
   @Test
-  public void write() {
-    ConsensusGenericResponse response1 =
-        consensusImpl.createPeer(
-            dataRegionId,
-            Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
-    assertTrue(response1.isSuccess());
-    assertNull(response1.getException());
+  public void write() throws ConsensusException {
 
-    ConsensusGenericResponse response2 =
-        consensusImpl.createPeer(
-            schemaRegionId,
-            Collections.singletonList(new Peer(schemaRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
-    assertTrue(response2.isSuccess());
-    assertNull(response2.getException());
+    consensusImpl.createLocalPeer(
+        dataRegionId,
+        Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
 
-    ConsensusGenericResponse response3 =
-        consensusImpl.createPeer(
-            configId,
-            Collections.singletonList(new Peer(configId, 1, new TEndPoint("0.0.0.0", 6667))));
-    assertTrue(response3.isSuccess());
-    assertNull(response3.getException());
+    consensusImpl.createLocalPeer(
+        schemaRegionId,
+        Collections.singletonList(new Peer(schemaRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
 
-    // test new TestStateMachine(true), should return 1;
-    ConsensusWriteResponse response4 = consensusImpl.write(dataRegionId, entry1);
-    assertNull(response4.getException());
-    assertNotNull(response4.getStatus());
-    assertEquals(-1, response4.getStatus().getCode());
+    consensusImpl.createLocalPeer(
+        configId, Collections.singletonList(new Peer(configId, 1, new TEndPoint("0.0.0.0", 6667))));
 
     // test new TestStateMachine(false), should return -1;
-    ConsensusWriteResponse response5 = consensusImpl.write(schemaRegionId, entry1);
-    assertNull(response5.getException());
-    assertNotNull(response5.getStatus());
-    assertEquals(1, response5.getStatus().getCode());
+    TSStatus response4 = consensusImpl.write(dataRegionId, entry1);
+    assertNotNull(response4);
+    assertEquals(-1, response4.getCode());
+
+    // test new TestStateMachine(true), should return 1;
+    TSStatus response5 = consensusImpl.write(schemaRegionId, entry1);
+    assertNotNull(response5);
+    assertEquals(1, response5.getCode());
 
     // test new EmptyStateMachine(), should return 0;
-    ConsensusWriteResponse response6 = consensusImpl.write(configId, entry1);
-    assertNull(response6.getException());
-    assertEquals(0, response6.getStatus().getCode());
+    TSStatus response6 = consensusImpl.write(configId, entry1);
+    assertNotNull(response6);
+    assertEquals(0, response6.getCode());
 
     // test ByteBufferConsensusRequest, should return 0;
-    ConsensusWriteResponse response7 = consensusImpl.write(dataRegionId, entry2);
-    assertNull(response7.getException());
-    assertEquals(0, response7.getStatus().getCode());
+    TSStatus response7 = consensusImpl.write(dataRegionId, entry2);
+    assertNotNull(response7);
+    assertEquals(0, response7.getCode());
   }
 }
