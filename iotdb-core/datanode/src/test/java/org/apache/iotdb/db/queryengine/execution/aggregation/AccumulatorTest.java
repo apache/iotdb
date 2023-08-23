@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.aggregation;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.file.metadata.statistics.TimeStatistics;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -155,6 +156,49 @@ public class AccumulatorTest {
     countAccumulator.addStatistics(statistics);
     finalResult = new LongColumnBuilder(null, 1);
     countAccumulator.outputFinal(finalResult);
+    Assert.assertEquals(1, finalResult.build().getLong(0));
+  }
+
+  @Test
+  public void countTimeAccumulatorTest() {
+    Accumulator countTimeAccumulator =
+        AccumulatorFactory.createAccumulator(
+            TAggregationType.COUNT_TIME,
+            TSDataType.DOUBLE,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            true);
+    Assert.assertEquals(TSDataType.INT64, countTimeAccumulator.getIntermediateType()[0]);
+    Assert.assertEquals(TSDataType.INT64, countTimeAccumulator.getFinalType());
+    // check returning null while no data
+    ColumnBuilder[] intermediateResult = new ColumnBuilder[1];
+    intermediateResult[0] = new LongColumnBuilder(null, 1);
+    countTimeAccumulator.outputIntermediate(intermediateResult);
+    Assert.assertEquals(0, intermediateResult[0].build().getLong(0));
+    ColumnBuilder finalResult = new LongColumnBuilder(null, 1);
+    countTimeAccumulator.outputFinal(finalResult);
+    Assert.assertEquals(0, finalResult.build().getLong(0));
+
+    Column[] timeAndValueColumn = getTimeAndValueColumn(0);
+    timeAndValueColumn[1] = timeAndValueColumn[0];
+    countTimeAccumulator.addInput(timeAndValueColumn, null, rawData.getPositionCount() - 1);
+    Assert.assertFalse(countTimeAccumulator.hasFinalResult());
+    intermediateResult[0] = new LongColumnBuilder(null, 1);
+    countTimeAccumulator.outputIntermediate(intermediateResult);
+    Assert.assertEquals(100, intermediateResult[0].build().getLong(0));
+
+    // add intermediate result as input
+    countTimeAccumulator.addIntermediate(new Column[] {intermediateResult[0].build()});
+    finalResult = new LongColumnBuilder(null, 1);
+    countTimeAccumulator.outputFinal(finalResult);
+    Assert.assertEquals(200, finalResult.build().getLong(0));
+
+    countTimeAccumulator.reset();
+    TimeStatistics timeStatistics = new TimeStatistics();
+    timeStatistics.update(100L);
+    countTimeAccumulator.addStatistics(timeStatistics);
+    finalResult = new LongColumnBuilder(null, 1);
+    countTimeAccumulator.outputFinal(finalResult);
     Assert.assertEquals(1, finalResult.build().getLong(0));
   }
 

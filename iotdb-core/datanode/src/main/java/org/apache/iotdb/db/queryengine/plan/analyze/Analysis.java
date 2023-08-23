@@ -50,6 +50,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -93,7 +94,7 @@ public class Analysis {
   private Set<Expression> sourceExpressions;
 
   // input expressions of aggregations to be calculated
-  private Set<Expression> sourceTransformExpressions;
+  private Set<Expression> sourceTransformExpressions = new HashSet<>();
 
   private Expression whereExpression;
 

@@ -42,7 +42,7 @@ public class Aggregator {
   // In some intermediate result input, inputLocation[] should include two columns
   protected List<InputLocation[]> inputLocationList;
   protected final AggregationStep step;
-  protected final QueryExecutionMetricSet QUERY_EXECUTION_METRICS =
+  protected static final QueryExecutionMetricSet QUERY_EXECUTION_METRICS =
       QueryExecutionMetricSet.getInstance();
 
   // Used for SeriesAggregateScanOperator
@@ -53,7 +53,7 @@ public class Aggregator {
         Collections.singletonList(new InputLocation[] {new InputLocation(0, 0)});
   }
 
-  // Used for aggregateOperator
+  // Used for AggregateOperator, AlignedSeriesAggregateScanOperator
   public Aggregator(
       Accumulator accumulator, AggregationStep step, List<InputLocation[]> inputLocationList) {
     this.accumulator = accumulator;
@@ -74,7 +74,9 @@ public class Aggregator {
             "RawDataAggregateOperator can only process one tsBlock input.");
         Column[] timeAndValueColumn = new Column[2];
         timeAndValueColumn[0] = tsBlock.getTimeColumn();
-        timeAndValueColumn[1] = tsBlock.getColumn(inputLocations[0].getValueColumnIndex());
+        int index = inputLocations[0].getValueColumnIndex();
+        // for count_time, time column is also its value column
+        timeAndValueColumn[1] = index == -1 ? timeAndValueColumn[0] : tsBlock.getColumn(index);
         accumulator.addInput(timeAndValueColumn, bitMap, lastIndex);
       }
     } finally {
@@ -120,12 +122,13 @@ public class Aggregator {
   }
 
   /** Used for SeriesAggregateScanOperator. */
-  public void processStatistics(Statistics[] statistics) {
+  public void processStatistics(Statistics timeStatistics, Statistics[] valueStatistics) {
     long startTime = System.nanoTime();
     try {
       for (InputLocation[] inputLocations : inputLocationList) {
         int valueIndex = inputLocations[0].getValueColumnIndex();
-        accumulator.addStatistics(statistics[valueIndex]);
+        // valueIndex == -1 means it is count_time, we need to use timeStatistics
+        accumulator.addStatistics(valueIndex == -1 ? timeStatistics : valueStatistics[valueIndex]);
       }
     } finally {
       QUERY_EXECUTION_METRICS.recordExecutionCost(

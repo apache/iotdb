@@ -698,6 +698,8 @@ public class ExpressionAnalyzer {
       return true;
     } else if (expression instanceof CaseWhenThenExpression) {
       return true;
+    } else if (expression instanceof TimestampOperand) {
+      return false;
     } else {
       throw new UnknownExpressionTypeException(expression.getExpressionType());
     }
