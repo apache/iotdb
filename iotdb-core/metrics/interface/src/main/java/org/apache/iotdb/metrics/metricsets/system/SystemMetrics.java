@@ -37,20 +37,47 @@ import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class SystemMetrics implements IMetricSet {
   private static final Logger logger = LoggerFactory.getLogger(SystemMetrics.class);
   private static final String SYSTEM = "system";
   private final com.sun.management.OperatingSystemMXBean osMxBean;
   private final Set<FileStore> fileStores = new HashSet<>();
-  private final ArrayList<String> diskDirs;
+  private final AtomicReference<List<String>> diskDirs =
+      new AtomicReference<>(Collections.emptyList());
 
-  public SystemMetrics(ArrayList<String> diskDirs) {
-    this.diskDirs = diskDirs;
+  public SystemMetrics() {
     this.osMxBean = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+  }
+
+  public void setDiskDirs(List<String> diskDirs) {
+    this.diskDirs.set(diskDirs);
+    for (String diskDir : this.diskDirs.get()) {
+      if (!FSUtils.isLocal(diskDir)) {
+        continue;
+      }
+      Path path = Paths.get(diskDir);
+      FileStore fileStore = null;
+      try {
+        fileStore = Files.getFileStore(path);
+      } catch (IOException e) {
+        // check parent if path is not exists
+        path = path.getParent();
+        try {
+          fileStore = Files.getFileStore(path);
+        } catch (IOException innerException) {
+          logger.error("Failed to get storage path of {}, because", diskDir, innerException);
+        }
+      }
+      if (null != fileStore) {
+        fileStores.add(fileStore);
+      }
+    }
   }
 
   @Override
@@ -163,28 +190,6 @@ public class SystemMetrics implements IMetricSet {
   }
 
   private void collectSystemDiskInfo(AbstractMetricService metricService) {
-    for (String diskDir : diskDirs) {
-      if (!FSUtils.isLocal(diskDir)) {
-        continue;
-      }
-      Path path = Paths.get(diskDir);
-      FileStore fileStore = null;
-      try {
-        fileStore = Files.getFileStore(path);
-      } catch (IOException e) {
-        // check parent if path is not exists
-        path = path.getParent();
-        try {
-          fileStore = Files.getFileStore(path);
-        } catch (IOException innerException) {
-          logger.error("Failed to get storage path of {}, because", diskDir, innerException);
-        }
-      }
-      if (null != fileStore) {
-        fileStores.add(fileStore);
-      }
-    }
-
     metricService.createAutoGauge(
         SystemMetric.SYS_DISK_TOTAL_SPACE.toString(),
         MetricLevel.CORE,
@@ -213,7 +218,7 @@ public class SystemMetrics implements IMetricSet {
         SystemTag.NAME.toString(),
         SYSTEM);
 
-    diskDirs.clear();
+    diskDirs.get().clear();
     fileStores.clear();
   }
 
@@ -239,5 +244,15 @@ public class SystemMetrics implements IMetricSet {
       }
     }
     return sysFreeSpace;
+  }
+
+  public static SystemMetrics getInstance() {
+    return SystemMetricsHolder.INSTANCE;
+  }
+
+  private static class SystemMetricsHolder {
+    private static final SystemMetrics INSTANCE = new SystemMetrics();
+
+    private SystemMetricsHolder() {}
   }
 }
