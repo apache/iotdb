@@ -565,12 +565,12 @@ public class PartitionManager {
                 Math.min(
                     unassignedPartitionSlotsCount, minRegionGroupNum - allocatedRegionGroupCount);
         allotmentMap.put(database, delta);
-      }
 
-      // 2. The average number of partitions held by each Region will be greater than the
-      // expected average number after the partition allocation is completed
-      if (allocatedRegionGroupCount < maxRegionGroupNum
+      } else if (allocatedRegionGroupCount < maxRegionGroupNum
           && slotCount / allocatedRegionGroupCount > maxSlotCount / maxRegionGroupNum) {
+        // 2. The average number of partitions held by each Region will be greater than the
+        // expected average number after the partition allocation is completed.
+
         // The delta is equal to the smallest integer solution that satisfies the inequality:
         // slotCount / (allocatedRegionGroupCount + delta) < maxSlotCount / maxRegionGroupNum
         int delta =
@@ -583,13 +583,11 @@ public class PartitionManager {
                             slotCount * maxRegionGroupNum / maxSlotCount
                                 - allocatedRegionGroupCount)));
         allotmentMap.put(database, delta);
-        continue;
-      }
 
-      // 3. All RegionGroups in the specified Database are disabled currently
-      if (allocatedRegionGroupCount
+      } else if (allocatedRegionGroupCount
               == filterRegionGroupThroughStatus(database, RegionGroupStatus.Disabled).size()
           && allocatedRegionGroupCount < maxRegionGroupNum) {
+        // 3. All RegionGroups in the specified Database are disabled currently
         allotmentMap.put(database, 1);
       }
     }
