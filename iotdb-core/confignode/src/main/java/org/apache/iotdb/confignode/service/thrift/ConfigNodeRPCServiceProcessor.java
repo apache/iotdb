@@ -162,7 +162,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelStateReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
-import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -624,9 +624,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     }
 
     ConsensusGroupId groupId = configManager.getConsensusManager().getConsensusGroupId();
-    ConsensusGenericResponse resp =
-        configManager.getConsensusManager().getConsensusImpl().deletePeer(groupId);
-    if (!resp.isSuccess()) {
+    try {
+      configManager.getConsensusManager().getConsensusImpl().deleteLocalPeer(groupId);
+    } catch (ConsensusException e) {
       return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
           .setMessage(
               "remove ConsensusGroup failed because internal failure. See other logs for more details");
