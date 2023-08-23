@@ -124,12 +124,8 @@ public class OrderByComponent extends StatementNode {
     return sortItemList.get(deviceOrderPriority).getOrdering();
   }
 
-  public boolean isDeviceOrderInitialized() {
-    return deviceOrderPriority != -1;
-  }
-
-  public boolean isTimeOrderInitialized() {
-    return timeOrderPriority != -1;
+  public int getTimeOrderPriority() {
+    return timeOrderPriority;
   }
 
   public String toSQLString() {

@@ -225,6 +225,8 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.canPushDownLimitOffsetToGroupByTime;
+import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.pushDownLimitOffsetToTimeParameter;
 import static org.apache.iotdb.db.schemaengine.SchemaConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.CAST_FUNCTION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.CAST_TYPE;
@@ -1360,6 +1362,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       queryStatement.setFillComponent(parseFillClause(ctx.fillClause()));
     }
 
+    // parse ALIGN BY
+    if (ctx.alignByClause() != null) {
+      queryStatement.setResultSetFormat(parseAlignBy(ctx.alignByClause()));
+    }
+
     if (ctx.paginationClause() != null) {
       // parse SLIMIT & SOFFSET
       if (ctx.paginationClause().seriesPaginationClause() != null) {
@@ -1383,12 +1390,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           queryStatement.setRowOffset(
               parseOffsetClause(ctx.paginationClause().rowPaginationClause().offsetClause()));
         }
+        if (canPushDownLimitOffsetToGroupByTime(queryStatement)) {
+          pushDownLimitOffsetToTimeParameter(queryStatement);
+        }
       }
-    }
-
-    // parse ALIGN BY
-    if (ctx.alignByClause() != null) {
-      queryStatement.setResultSetFormat(parseAlignBy(ctx.alignByClause()));
     }
 
     queryStatement.setUseWildcard(useWildcard);
