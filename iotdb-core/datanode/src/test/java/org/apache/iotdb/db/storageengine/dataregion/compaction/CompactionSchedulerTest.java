@@ -101,6 +101,7 @@ public class CompactionSchedulerTest {
         .getConfig()
         .setInnerUnseqCompactionPerformer(InnerUnseqCompactionPerformer.READ_POINT);
     IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
+    IoTDBDescriptor.getInstance().getConfig().setEnableCompactionMemControl(false);
     CompactionTaskManager.getInstance().start();
     while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
       try {

@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
@@ -484,8 +485,8 @@ public class DataNode implements DataNodeMBean {
     logger.info("IoTDB DataNode has started.");
 
     try {
-      SchemaRegionConsensusImpl.setupAndGetInstance().start();
-      DataRegionConsensusImpl.setupAndGetInstance().start();
+      SchemaRegionConsensusImpl.getInstance().start();
+      DataRegionConsensusImpl.getInstance().start();
     } catch (IOException e) {
       throw new StartupException(e);
     }
@@ -872,12 +873,8 @@ public class DataNode implements DataNodeMBean {
 
     try {
       MetricService.getInstance().stop();
-      if (SchemaRegionConsensusImpl.getInstance() != null) {
-        SchemaRegionConsensusImpl.getInstance().stop();
-      }
-      if (DataRegionConsensusImpl.getInstance() != null) {
-        DataRegionConsensusImpl.getInstance().stop();
-      }
+      SchemaRegionConsensusImpl.getInstance().stop();
+      DataRegionConsensusImpl.getInstance().stop();
     } catch (Exception e) {
       logger.error("Stop data node error", e);
     }
@@ -889,6 +886,9 @@ public class DataNode implements DataNodeMBean {
     }
     if (IoTDBRestServiceDescriptor.getInstance().getConfig().isEnableRestService()) {
       registerManager.register(RestService.getInstance());
+    }
+    if (PipeConfig.getInstance().getPipeAirGapReceiverEnabled()) {
+      registerManager.register(PipeAgent.receiver().airGap());
     }
   }
 

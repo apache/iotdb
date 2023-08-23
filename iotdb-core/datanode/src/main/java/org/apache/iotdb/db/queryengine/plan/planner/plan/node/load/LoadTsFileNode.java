@@ -40,10 +40,6 @@ public class LoadTsFileNode extends WritePlanNode {
 
   private final List<TsFileResource> resources;
 
-  public LoadTsFileNode(PlanNodeId id) {
-    this(id, new ArrayList<>());
-  }
-
   public LoadTsFileNode(PlanNodeId id, List<TsFileResource> resources) {
     super(id);
     this.resources = resources;

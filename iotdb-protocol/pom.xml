@@ -31,10 +31,10 @@
     <name>IoTDB: Protocol</name>
     <modules>
         <module>openapi</module>
-        <module>thrift</module>
+        <module>thrift-datanode</module>
         <module>thrift-commons</module>
         <module>thrift-confignode</module>
-        <module>thrift-iot-consensus</module>
+        <module>thrift-consensus</module>
         <module>thrift-mlnode</module>
     </modules>
 </project>

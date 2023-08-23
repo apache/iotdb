@@ -35,6 +35,8 @@ import java.util.List;
 public class Utils {
   private static final Logger logger = LoggerFactory.getLogger(Utils.class);
 
+  private Utils() {}
+
   public static List<Path> listAllRegularFilesRecursively(File rootDir) {
     List<Path> allFiles = new ArrayList<>();
     try {
@@ -42,14 +44,12 @@ public class Utils {
           rootDir.toPath(),
           new FileVisitor<Path>() {
             @Override
-            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
-                throws IOException {
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
               return FileVisitResult.CONTINUE;
             }
 
             @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
-                throws IOException {
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
               if (attrs.isRegularFile()) {
                 allFiles.add(file);
               }
@@ -57,14 +57,13 @@ public class Utils {
             }
 
             @Override
-            public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+            public FileVisitResult visitFileFailed(Path file, IOException exc) {
               logger.info("visit file {} failed due to {}", file.toAbsolutePath(), exc);
               return FileVisitResult.TERMINATE;
             }
 
             @Override
-            public FileVisitResult postVisitDirectory(Path dir, IOException exc)
-                throws IOException {
+            public FileVisitResult postVisitDirectory(Path dir, IOException exc) {
               return FileVisitResult.CONTINUE;
             }
           });

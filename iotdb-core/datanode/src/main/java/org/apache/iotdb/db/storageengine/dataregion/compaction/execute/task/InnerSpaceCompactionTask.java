@@ -20,21 +20,29 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionExceptionHandler;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionFileCountExceededException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionMemoryNotEnoughException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionValidationFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.validator.CompactionValidator;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractInnerSpaceEstimator;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.FastCompactionInnerCompactionEstimator;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.ReadChunkInnerCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceList;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 
@@ -70,6 +78,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
   protected long maxModsFileSize;
 
+  protected AbstractInnerSpaceEstimator innerSpaceEstimator;
+
   public InnerSpaceCompactionTask(
       long timePartition,
       TsFileManager tsFileManager,
@@ -88,6 +98,13 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     this.selectedTsFileResourceList = selectedTsFileResourceList;
     this.sequence = sequence;
     this.performer = performer;
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionMemControl()) {
+      if (this.performer instanceof ReadChunkCompactionPerformer) {
+        innerSpaceEstimator = new ReadChunkInnerCompactionEstimator();
+      } else if (!sequence && this.performer instanceof FastCompactionInnerCompactionEstimator) {
+        innerSpaceEstimator = new FastCompactionInnerCompactionEstimator();
+      }
+    }
     isHoldingReadLock = new boolean[selectedTsFileResourceList.size()];
     isHoldingWriteLock = new boolean[selectedTsFileResourceList.size()];
     for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
@@ -112,6 +129,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     if (!tsFileManager.isAllowCompaction()) {
       return true;
     }
+
     long startTime = System.currentTimeMillis();
     // get resource of target file
     String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
@@ -231,13 +249,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             "{}-{} [Compaction] compaction finish, start to delete old files",
             storageGroupName,
             dataRegionId);
-        // delete the old files
-        long[] sizeList = new long[selectedTsFileResourceList.size()];
-        for (int i = 0, size = selectedTsFileResourceList.size(); i < size; ++i) {
-          sizeList[i] = selectedTsFileResourceList.get(i).getTsFileSize();
-        }
-        CompactionUtils.deleteTsFilesInDisk(
-            selectedTsFileResourceList, storageGroupName + "-" + dataRegionId);
+        CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(selectedTsFileResourceList);
         CompactionUtils.deleteModificationForSourceFile(
             selectedTsFileResourceList, storageGroupName + "-" + dataRegionId);
 
@@ -255,12 +267,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           // target resource is empty after compaction, then delete it
           targetTsFileResource.remove();
         }
-        List<String> fileNames = new ArrayList<>();
-        for (TsFileResource resource : selectedTsFileResourceList) {
-          fileNames.add(resource.getTsFile().getName());
-        }
-        FileMetrics.getInstance().deleteFile(sizeList, sequence, fileNames);
-
         CompactionMetrics.getInstance().recordSummaryInfo(summary);
 
         double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
@@ -320,6 +326,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             isSequence());
       }
     } finally {
+      SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
+      SystemInfo.getInstance().decreaseCompactionFileNumCost(selectedTsFileResourceList.size());
       releaseAllLocksAndResetStatus();
     }
     return isSuccess;
@@ -456,9 +464,31 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           return false;
         }
       }
+      if (innerSpaceEstimator != null) {
+        memoryCost = innerSpaceEstimator.estimateInnerCompactionMemory(selectedTsFileResourceList);
+      }
+      SystemInfo.getInstance().addCompactionMemoryCost(memoryCost, 60);
+      SystemInfo.getInstance().addCompactionFileNum(selectedTsFileResourceList.size(), 60);
     } catch (Exception e) {
+      if (e instanceof InterruptedException) {
+        LOGGER.warn("Interrupted when allocating memory for compaction", e);
+        Thread.currentThread().interrupt();
+      } else if (e instanceof CompactionMemoryNotEnoughException) {
+        LOGGER.warn("No enough memory for current compaction task {}", this, e);
+      } else if (e instanceof CompactionFileCountExceededException) {
+        LOGGER.warn("No enough file num for current compaction task {}", this, e);
+        SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
+      }
       releaseAllLocksAndResetStatus();
-      throw e;
+      return false;
+    } finally {
+      try {
+        if (innerSpaceEstimator != null) {
+          innerSpaceEstimator.close();
+        }
+      } catch (IOException e) {
+        LOGGER.warn("Failed to close InnerSpaceCompactionMemoryEstimator");
+      }
     }
     return true;
   }

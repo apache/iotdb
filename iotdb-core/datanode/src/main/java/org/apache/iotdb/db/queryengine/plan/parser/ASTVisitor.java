@@ -160,6 +160,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModel
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowModelsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowTrailsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StopPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.CreateSchemaTemplateStatement;
@@ -185,11 +190,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetSystemStatusStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.pipe.CreatePipeStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.pipe.DropPipeStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.pipe.ShowPipesStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.pipe.StartPipeStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.pipe.StopPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
@@ -225,7 +225,9 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.ALL_RESULT_NODES;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
+import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.canPushDownLimitOffsetToGroupByTime;
+import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.pushDownLimitOffsetToTimeParameter;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.CAST_FUNCTION;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.CAST_TYPE;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.REPLACE_FROM;
@@ -262,6 +264,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private ZoneId zoneId;
 
   private boolean useWildcard = false;
+
+  private boolean lastLevelUseWildcard = false;
 
   public void setZoneId(ZoneId zoneId) {
     this.zoneId = zoneId;
@@ -1358,6 +1362,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       queryStatement.setFillComponent(parseFillClause(ctx.fillClause()));
     }
 
+    // parse ALIGN BY
+    if (ctx.alignByClause() != null) {
+      queryStatement.setResultSetFormat(parseAlignBy(ctx.alignByClause()));
+    }
+
     if (ctx.paginationClause() != null) {
       // parse SLIMIT & SOFFSET
       if (ctx.paginationClause().seriesPaginationClause() != null) {
@@ -1381,15 +1390,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           queryStatement.setRowOffset(
               parseOffsetClause(ctx.paginationClause().rowPaginationClause().offsetClause()));
         }
+        if (canPushDownLimitOffsetToGroupByTime(queryStatement)) {
+          pushDownLimitOffsetToTimeParameter(queryStatement);
+        }
       }
     }
 
-    // parse ALIGN BY
-    if (ctx.alignByClause() != null) {
-      queryStatement.setResultSetFormat(parseAlignBy(ctx.alignByClause()));
-    }
-
     queryStatement.setUseWildcard(useWildcard);
+    queryStatement.setLastLevelUseWildcard(lastLevelUseWildcard);
     return queryStatement;
   }
 
@@ -1937,6 +1945,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       for (int i = 0; i < nodeNames.size(); i++) {
         path[i] = parseNodeName(nodeNames.get(i));
       }
+    }
+    if (!lastLevelUseWildcard
+        && !nodeNames.isEmpty()
+        && !nodeNames.get(nodeNames.size() - 1).wildcard().isEmpty()) {
+      lastLevelUseWildcard = true;
     }
     return new PartialPath(path);
   }
@@ -2844,6 +2857,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       case SqlConstant.MIN_TIME:
       case SqlConstant.MAX_TIME:
       case SqlConstant.COUNT:
+      case SqlConstant.COUNT_TIME:
       case SqlConstant.MIN_VALUE:
       case SqlConstant.LAST_VALUE:
       case SqlConstant.FIRST_VALUE:

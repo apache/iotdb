@@ -52,8 +52,12 @@ public class PipeRuntimeAgent implements IService {
 
   public synchronized void preparePipeResources(
       ResourcesInformationHolder resourcesInformationHolder) throws StartupException {
-    PipeAgent.receiver().cleanPipeReceiverDir();
+    // clean sender (connector) hardlink file dir
     PipeHardlinkFileDirStartupCleaner.clean();
+
+    // clean receiver file dir
+    PipeAgent.receiver().cleanPipeReceiverDir();
+
     PipeAgentLauncher.launchPipePluginAgent(resourcesInformationHolder);
     simpleConsensusProgressIndexAssigner.start();
   }
@@ -92,8 +96,14 @@ public class PipeRuntimeAgent implements IService {
   }
 
   ////////////////////// Recover ProgressIndex Assigner //////////////////////
-
   public void assignRecoverProgressIndexForTsFileRecovery(TsFileResource tsFileResource) {
+    tsFileResource.recoverProgressIndex(
+        new RecoverProgressIndex(
+            DATA_NODE_ID,
+            simpleConsensusProgressIndexAssigner.getSimpleProgressIndexForTsFileRecovery()));
+  }
+
+  public void assignUpdateProgressIndexForTsFileRecovery(TsFileResource tsFileResource) {
     tsFileResource.updateProgressIndex(
         new RecoverProgressIndex(
             DATA_NODE_ID,

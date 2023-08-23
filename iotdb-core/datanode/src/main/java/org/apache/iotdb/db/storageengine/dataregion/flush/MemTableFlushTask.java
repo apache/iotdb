@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.flush;
 
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -30,6 +31,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -42,6 +44,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -58,6 +61,8 @@ public class MemTableFlushTask {
       FlushSubTaskPoolManager.getInstance();
   private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  /* storage group name -> last time */
+  private static final Map<String, Long> flushPointsCache = new ConcurrentHashMap<>();
   private final Future<?> encodingTaskFuture;
   private final Future<?> ioTaskFuture;
   private RestorableTsFileIOWriter writer;
@@ -278,23 +283,7 @@ public class MemTableFlushTask {
             Thread.currentThread().interrupt();
           }
 
-          if (!storageGroup.startsWith(IoTDBConfig.SYSTEM_DATABASE)) {
-            int lastIndex = storageGroup.lastIndexOf("-");
-            if (lastIndex == -1) {
-              lastIndex = storageGroup.length();
-            }
-            MetricService.getInstance()
-                .gaugeWithInternalReportAsync(
-                    memTable.getTotalPointsNum(),
-                    Metric.POINTS.toString(),
-                    MetricLevel.CORE,
-                    Tag.DATABASE.toString(),
-                    storageGroup.substring(0, lastIndex),
-                    Tag.TYPE.toString(),
-                    "flush",
-                    Tag.REGION.toString(),
-                    dataRegionId);
-          }
+          recordFlushPointsMetric();
 
           LOGGER.info(
               "Database {}, flushing memtable {} into disk: Encoding data cost " + "{} ms.",
@@ -304,6 +293,42 @@ public class MemTableFlushTask {
           WRITING_METRICS.recordFlushCost(WritingMetrics.FLUSH_STAGE_ENCODING, memSerializeTime);
         }
       };
+
+  private void recordFlushPointsMetric() {
+    if (storageGroup.startsWith(SchemaConstant.SYSTEM_DATABASE)) {
+      return;
+    }
+    int lastIndex = storageGroup.lastIndexOf("-");
+    if (lastIndex == -1) {
+      lastIndex = storageGroup.length();
+    }
+    String storageGroupName = storageGroup.substring(0, lastIndex);
+    long currentTime = DateTimeUtils.currentTime();
+    // compute the flush points
+    long writeTime =
+        flushPointsCache.compute(
+            storageGroupName,
+            (storageGroup, lastTime) -> {
+              if (lastTime == null || lastTime != currentTime) {
+                return currentTime;
+              } else {
+                return currentTime + 1;
+              }
+            });
+    // record the flush points
+    MetricService.getInstance()
+        .gaugeWithInternalReportAsync(
+            memTable.getTotalPointsNum(),
+            Metric.POINTS.toString(),
+            MetricLevel.CORE,
+            writeTime,
+            Tag.DATABASE.toString(),
+            storageGroup.substring(0, lastIndex),
+            Tag.TYPE.toString(),
+            "flush",
+            Tag.REGION.toString(),
+            dataRegionId);
+  }
 
   /** io task (third task of pipeline) */
   @SuppressWarnings("squid:S135")

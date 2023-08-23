@@ -50,6 +50,12 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
   private final List<ValuePageReader> valuePageReaderList;
   private final int valueCount;
 
+  // only used for limit and offset push down optimizer, if we select all columns from aligned
+  // device, we
+  // can use statistics to skip.
+  // it's only exact while using limit & offset push down
+  private final boolean queryAllSensors;
+
   private Filter filter;
   private PaginationController paginationController = UNLIMITED_PAGINATION_CONTROLLER;
 
@@ -67,7 +73,8 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
       List<ByteBuffer> valuePageDataList,
       List<TSDataType> valueDataTypeList,
       List<Decoder> valueDecoderList,
-      Filter filter) {
+      Filter filter,
+      boolean queryAllSensors) {
     timePageReader = new TimePageReader(timePageHeader, timePageData, timeDecoder);
     isModified = timePageReader.isModified();
     valuePageReaderList = new ArrayList<>(valuePageHeaderList.size());
@@ -87,6 +94,7 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
     }
     this.filter = filter;
     this.valueCount = valuePageReaderList.size();
+    this.queryAllSensors = queryAllSensors;
   }
 
   @Override
@@ -118,29 +126,38 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
   }
 
   private boolean pageSatisfy() {
-    if (filter != null) {
-      // TODO accept valueStatisticsList to filter
-      return filter.satisfy(getStatistics());
-    } else {
-      // For aligned series, When we only query some measurements under an aligned device, if the
-      // values of these queried measurements at a timestamp are all null, the timestamp will not be
-      // selected.
+    Statistics statistics = getStatistics();
+    if (filter == null || filter.allSatisfy(statistics)) {
+      // For aligned series, When we only query some measurements under an aligned device, if any
+      // values of these queried measurements has the same value count as the time column, the
+      // timestamp will be selected.
       // NOTE: if we change the query semantic in the future for aligned series, we need to remove
       // this check here.
       long rowCount = getTimeStatistics().getCount();
-      for (Statistics statistics : getValueStatisticsList()) {
-        if (statistics == null || statistics.hasNullValue(rowCount)) {
-          return true;
+      boolean canUse = queryAllSensors || getValueStatisticsList().isEmpty();
+      if (!canUse) {
+        for (Statistics vStatistics : getValueStatisticsList()) {
+          if (vStatistics != null && !vStatistics.hasNullValue(rowCount)) {
+            canUse = true;
+            break;
+          }
         }
+      }
+      if (!canUse) {
+        return true;
       }
       // When the number of points in all value pages is the same as that in the time page, it means
       // that there is no null value, and all timestamps will be selected.
       if (paginationController.hasCurOffset(rowCount)) {
         paginationController.consumeOffset(rowCount);
         return false;
+      } else {
+        return true;
       }
+    } else {
+      // TODO accept valueStatisticsList to filter
+      return filter.satisfy(statistics);
     }
-    return true;
   }
 
   @Override
@@ -163,39 +180,42 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
       }
     }
 
-    // using bitMap in valuePageReaders to indicate whether columns of current row are all null.
-    byte[] bitmask = new byte[(timeBatch.length - 1) / 8 + 1];
-    Arrays.fill(bitmask, (byte) 0x00);
-    boolean[][] isDeleted = new boolean[valueCount][timeBatch.length];
-    for (int columnIndex = 0; columnIndex < valueCount; columnIndex++) {
-      ValuePageReader pageReader = valuePageReaderList.get(columnIndex);
-      if (pageReader != null) {
-        byte[] bitmap = pageReader.getBitmap();
-        pageReader.fillIsDeleted(timeBatch, isDeleted[columnIndex]);
+    boolean[][] isDeleted = null;
+    if (valueCount != 0) {
+      // using bitMap in valuePageReaders to indicate whether columns of current row are all null.
+      byte[] bitmask = new byte[(timeBatch.length - 1) / 8 + 1];
+      Arrays.fill(bitmask, (byte) 0x00);
+      isDeleted = new boolean[valueCount][timeBatch.length];
+      for (int columnIndex = 0; columnIndex < valueCount; columnIndex++) {
+        ValuePageReader pageReader = valuePageReaderList.get(columnIndex);
+        if (pageReader != null) {
+          byte[] bitmap = pageReader.getBitmap();
+          pageReader.fillIsDeleted(timeBatch, isDeleted[columnIndex]);
 
-        for (int i = 0, n = isDeleted[columnIndex].length; i < n; i++) {
-          if (isDeleted[columnIndex][i]) {
-            int shift = i % 8;
-            bitmap[i / 8] = (byte) (bitmap[i / 8] & (~(MASK >>> shift)));
+          for (int i = 0, n = isDeleted[columnIndex].length; i < n; i++) {
+            if (isDeleted[columnIndex][i]) {
+              int shift = i % 8;
+              bitmap[i / 8] = (byte) (bitmap[i / 8] & (~(MASK >>> shift)));
+            }
+          }
+          for (int i = 0, n = bitmask.length; i < n; i++) {
+            bitmask[i] = (byte) (bitmap[i] | bitmask[i]);
           }
         }
-        for (int i = 0, n = bitmask.length; i < n; i++) {
-          bitmask[i] = (byte) (bitmap[i] | bitmask[i]);
-        }
       }
-    }
 
-    for (int i = 0, n = bitmask.length; i < n; i++) {
-      if (bitmask[i] == (byte) 0xFF) {
-        // 8 rows are not all null, do nothing
-      } else if (bitmask[i] == (byte) 0x00) {
-        for (int j = 0; j < 8 && (i * 8 + j < keepCurrentRow.length); j++) {
-          keepCurrentRow[i * 8 + j] = false;
-        }
-      } else {
-        for (int j = 0; j < 8 && (i * 8 + j < keepCurrentRow.length); j++) {
-          if (((bitmask[i] & 0xFF) & (MASK >>> j)) == 0) {
+      for (int i = 0, n = bitmask.length; i < n; i++) {
+        if (bitmask[i] == (byte) 0xFF) {
+          // 8 rows are not all null, do nothing
+        } else if (bitmask[i] == (byte) 0x00) {
+          for (int j = 0; j < 8 && (i * 8 + j < keepCurrentRow.length); j++) {
             keepCurrentRow[i * 8 + j] = false;
+          }
+        } else {
+          for (int j = 0; j < 8 && (i * 8 + j < keepCurrentRow.length); j++) {
+            if (((bitmask[i] & 0xFF) & (MASK >>> j)) == 0) {
+              keepCurrentRow[i * 8 + j] = false;
+            }
           }
         }
       }
@@ -204,21 +224,18 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
     // construct time column
     int readEndIndex = timeBatch.length;
     for (int i = 0; i < timeBatch.length; i++) {
-      if (!keepCurrentRow[i]) {
-        continue;
-      }
-      if (paginationController.hasCurOffset()) {
-        paginationController.consumeOffset();
-        keepCurrentRow[i] = false;
-        continue;
-      }
-      if (paginationController.hasCurLimit()) {
-        builder.getTimeColumnBuilder().writeLong(timeBatch[i]);
-        builder.declarePosition();
-        paginationController.consumeLimit();
-      } else {
-        readEndIndex = i;
-        break;
+      if (keepCurrentRow[i]) {
+        if (paginationController.hasCurOffset()) {
+          paginationController.consumeOffset();
+          keepCurrentRow[i] = false;
+        } else if (paginationController.hasCurLimit()) {
+          builder.getTimeColumnBuilder().writeLong(timeBatch[i]);
+          builder.declarePosition();
+          paginationController.consumeLimit();
+        } else {
+          readEndIndex = i;
+          break;
+        }
       }
     }
 

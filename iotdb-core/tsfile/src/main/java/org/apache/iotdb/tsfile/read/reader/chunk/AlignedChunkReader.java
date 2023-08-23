@@ -92,7 +92,8 @@ public class AlignedChunkReader implements IChunkReader {
    *
    * @param filter filter
    */
-  public AlignedChunkReader(Chunk timeChunk, List<Chunk> valueChunkList, Filter filter)
+  public AlignedChunkReader(
+      Chunk timeChunk, List<Chunk> valueChunkList, Filter filter, boolean queryAllSensors)
       throws IOException {
     this.filter = filter;
     this.timeChunkDataBuffer = timeChunk.getData();
@@ -108,7 +109,7 @@ public class AlignedChunkReader implements IChunkReader {
           valueChunkStatisticsList.add(chunk == null ? null : chunk.getChunkStatistic());
           valueDeleteIntervalList.add(chunk == null ? null : chunk.getDeleteIntervalList());
         });
-    initAllPageReaders(timeChunk.getChunkStatistic(), valueChunkStatisticsList);
+    initAllPageReaders(timeChunk.getChunkStatistic(), valueChunkStatisticsList, queryAllSensors);
   }
 
   /**
@@ -132,12 +133,14 @@ public class AlignedChunkReader implements IChunkReader {
           valueChunkStatisticsList.add(chunk == null ? null : chunk.getChunkStatistic());
           valueDeleteIntervalList.add(chunk == null ? null : chunk.getDeleteIntervalList());
         });
-    initAllPageReaders(timeChunk.getChunkStatistic(), valueChunkStatisticsList);
+    initAllPageReaders(timeChunk.getChunkStatistic(), valueChunkStatisticsList, false);
   }
 
   /** construct all the page readers in this chunk */
   private void initAllPageReaders(
-      Statistics timeChunkStatistics, List<Statistics> valueChunkStatisticsList)
+      Statistics timeChunkStatistics,
+      List<Statistics> valueChunkStatisticsList,
+      boolean queryAllSensors)
       throws IOException {
     // construct next satisfied page header
     while (timeChunkDataBuffer.remaining() > 0) {
@@ -145,7 +148,7 @@ public class AlignedChunkReader implements IChunkReader {
       PageHeader timePageHeader;
       List<PageHeader> valuePageHeaderList = new ArrayList<>();
 
-      boolean exits = false;
+      boolean exits = valueChunkDataBufferList.isEmpty();
       // this chunk has only one page
       if ((timeChunkHeader.getChunkType() & 0x3F) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
         timePageHeader = PageHeader.deserializeFrom(timeChunkDataBuffer, timeChunkStatistics);
@@ -176,7 +179,7 @@ public class AlignedChunkReader implements IChunkReader {
       // if the current page satisfies
       if (exits && timePageSatisfied(timePageHeader)) {
         AlignedPageReader alignedPageReader =
-            constructPageReaderForNextPage(timePageHeader, valuePageHeaderList);
+            constructPageReaderForNextPage(timePageHeader, valuePageHeaderList, queryAllSensors);
         if (alignedPageReader != null) {
           pageReaderList.add(alignedPageReader);
         }
@@ -213,7 +216,8 @@ public class AlignedChunkReader implements IChunkReader {
   }
 
   private AlignedPageReader constructPageReaderForNextPage(
-      PageHeader timePageHeader, List<PageHeader> valuePageHeader) throws IOException {
+      PageHeader timePageHeader, List<PageHeader> valuePageHeader, boolean queryAllSensors)
+      throws IOException {
     PageInfo timePageInfo = new PageInfo();
     getPageInfo(timePageHeader, timeChunkDataBuffer, timeChunkHeader, timePageInfo);
     PageInfo valuePageInfo = new PageInfo();
@@ -221,7 +225,7 @@ public class AlignedChunkReader implements IChunkReader {
     List<ByteBuffer> valuePageDataList = new ArrayList<>();
     List<TSDataType> valueDataTypeList = new ArrayList<>();
     List<Decoder> valueDecoderList = new ArrayList<>();
-    boolean exist = false;
+    boolean exist = valuePageHeader.isEmpty();
     for (int i = 0; i < valuePageHeader.size(); i++) {
       if (valuePageHeader.get(i) == null
           || valuePageHeader.get(i).getUncompressedSize() == 0) { // Empty Page
@@ -266,7 +270,8 @@ public class AlignedChunkReader implements IChunkReader {
             valuePageDataList,
             valueDataTypeList,
             valueDecoderList,
-            filter);
+            filter,
+            queryAllSensors);
     alignedPageReader.setDeleteIntervalList(valueDeleteIntervalList);
     return alignedPageReader;
   }
@@ -314,7 +319,8 @@ public class AlignedChunkReader implements IChunkReader {
             uncompressedValuePageDatas,
             valueTypes,
             valueDecoders,
-            null);
+            null,
+            false);
     alignedPageReader.initTsBlockBuilder(valueTypes);
     alignedPageReader.setDeleteIntervalList(valueDeleteIntervalList);
     return alignedPageReader.getAllSatisfiedData();

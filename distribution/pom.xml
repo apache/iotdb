@@ -111,12 +111,6 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-grafana-connector</artifactId>
-            <version>${project.version}</version>
-            <type>war</type>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-grafana-plugin</artifactId>
             <version>${project.version}</version>
             <type>pom</type>
@@ -126,13 +120,6 @@
             <artifactId>iotdb-confignode</artifactId>
             <version>${project.version}</version>
             <type>zip</type>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>client-cpp</artifactId>
-            <version>${project.version}</version>
-            <type>pom</type>
-            <!--            <classifier>${os.classifier}</classifier>-->
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
@@ -156,6 +143,15 @@
     <profiles>
         <profile>
             <id>with-cpp</id>
+            <dependencies>
+                <dependency>
+                    <groupId>org.apache.iotdb</groupId>
+                    <artifactId>client-cpp</artifactId>
+                    <version>${project.version}</version>
+                    <type>pom</type>
+                    <!--            <classifier>${os.classifier}</classifier>-->
+                </dependency>
+            </dependencies>
             <build>
                 <plugins>
                     <plugin>

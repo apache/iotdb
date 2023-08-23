@@ -38,6 +38,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -110,7 +111,7 @@ public class UDFManager {
 
       LOGGER.info("Start to add UDF [{}] in UDF_Table on Config Nodes", udfName);
 
-      return configManager.getConsensusManager().write(createFunctionPlan).getStatus();
+      return configManager.getConsensusManager().write(createFunctionPlan);
     } catch (Exception e) {
       LOGGER.warn(e.getMessage(), e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
@@ -143,10 +144,7 @@ public class UDFManager {
         return result;
       }
 
-      return configManager
-          .getConsensusManager()
-          .write(new DropFunctionPlan(functionName))
-          .getStatus();
+      return configManager.getConsensusManager().write(new DropFunctionPlan(functionName));
     } catch (Exception e) {
       LOGGER.warn(e.getMessage(), e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
@@ -171,9 +169,9 @@ public class UDFManager {
   public TGetUDFTableResp getUDFTable() {
     try {
       return ((FunctionTableResp)
-              configManager.getConsensusManager().read(new GetFunctionTablePlan()).getDataset())
+              configManager.getConsensusManager().read(new GetFunctionTablePlan()))
           .convertToThriftResponse();
-    } catch (IOException e) {
+    } catch (IOException | ConsensusException e) {
       LOGGER.error("Fail to get TriggerTable", e);
       return new TGetUDFTableResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
@@ -183,11 +181,15 @@ public class UDFManager {
   }
 
   public TGetJarInListResp getUDFJar(TGetJarInListReq req) {
-    return ((JarResp)
-            configManager
-                .getConsensusManager()
-                .read(new GetUDFJarPlan(req.getJarNameList()))
-                .getDataset())
-        .convertToThriftResponse();
+    try {
+      return ((JarResp)
+              configManager.getConsensusManager().read(new GetUDFJarPlan(req.getJarNameList())))
+          .convertToThriftResponse();
+    } catch (ConsensusException e) {
+      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return new JarResp(res, Collections.emptyList()).convertToThriftResponse();
+    }
   }
 }
