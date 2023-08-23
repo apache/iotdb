@@ -146,7 +146,7 @@ public class RecoverReadTest {
     // manually set the canServe flag to true to mimic original implementation
     miniCluster.getServer(0).allowStaleRead(gid);
 
-    Assert.assertNotEquals(10, ((TestUtils.TestDataSet)miniCluster.readThrough(0)).getNumber());
+    Assert.assertNotEquals(10, ((TestUtils.TestDataSet) miniCluster.readThrough(0)).getNumber());
   }
 
   @Test
