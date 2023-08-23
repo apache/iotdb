@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.impl.ReadPointCompactionPerformer;
@@ -28,6 +30,7 @@ import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
 import org.apache.iotdb.db.engine.compaction.schedule.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
+import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
@@ -41,7 +44,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -372,6 +377,40 @@ public class CompactionTaskComparatorTest {
     for (int i = 9; i >= 0; i--) {
       Assert.assertEquals(candidateCompactionTaskQueue.take().getTimePartition(), i);
     }
+  }
+
+  @Test
+  public void testCompareByMaxModsFileSize()
+      throws InterruptedException, IllegalPathException, IOException {
+    for (int i = 0; i < 100; ++i) {
+      List<TsFileResource> resources = new ArrayList<>();
+      for (int j = i; j < 100; ++j) {
+        resources.add(
+            new FakedTsFileResource(new File(String.format("%d-%d-0-0.tsfile", i + j, i + j)), j));
+      }
+      FakedInnerSpaceCompactionTask innerTask =
+          new FakedInnerSpaceCompactionTask(
+              "fakeSg", 0, tsFileManager, taskNum, true, resources, 0);
+      compactionTaskQueue.put(innerTask);
+    }
+
+    String targetFileName = "101-101-0-0.tsfile";
+    FakedTsFileResource fakedTsFileResource =
+        new FakedTsFileResource(new File(targetFileName), 100);
+    fakedTsFileResource.getModFile().write(new Deletion(new PartialPath("root.test.d1"), 1, 1));
+    compactionTaskQueue.put(
+        new FakedInnerSpaceCompactionTask(
+            "fakeSg",
+            0,
+            tsFileManager,
+            taskNum,
+            true,
+            Collections.singletonList(fakedTsFileResource),
+            0));
+    FakedInnerSpaceCompactionTask task = (FakedInnerSpaceCompactionTask) compactionTaskQueue.take();
+    Assert.assertEquals(
+        targetFileName, task.getSelectedTsFileResourceList().get(0).getTsFile().getName());
+    fakedTsFileResource.getModFile().remove();
   }
 
   private static class FakedInnerSpaceCompactionTask extends InnerSpaceCompactionTask {
