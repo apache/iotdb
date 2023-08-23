@@ -183,7 +183,7 @@ public class PointPriorityReader {
     }
     PointElement pointElement = new PointElement(pageElement);
     boolean pageIsNotEmpty = pointElement.hasNext();
-    if (!pageIsNotEmpty) {
+    if (pageIsNotEmpty) {
       pointQueue.add(pointElement);
     } else {
       removePage.call(pageElement);
