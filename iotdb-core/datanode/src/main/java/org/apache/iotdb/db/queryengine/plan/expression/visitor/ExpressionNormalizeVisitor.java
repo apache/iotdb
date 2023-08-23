@@ -44,7 +44,8 @@ public class ExpressionNormalizeVisitor extends ReconstructVisitor<Void> {
     return new FunctionExpression(
         functionExpression.getFunctionName().toLowerCase(),
         functionExpression.getFunctionAttributes(),
-        childResult);
+        childResult,
+        functionExpression.getCountTimeExpressions());
   }
 
   @Override
