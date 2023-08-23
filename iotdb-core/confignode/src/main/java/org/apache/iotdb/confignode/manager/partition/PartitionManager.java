@@ -584,6 +584,7 @@ public class PartitionManager {
                 Math.min(
                     unassignedPartitionSlotsCount, minRegionGroupNum - allocatedRegionGroupCount);
         allotmentMap.put(database, delta);
+        continue;
       }
 
       // 2. The average number of partitions held by each Region will be greater than the
