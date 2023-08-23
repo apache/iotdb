@@ -1888,8 +1888,6 @@ public class DataRegion implements IDataRegionForQuery {
     // mod files in mergingModification, sequenceFileList, and unsequenceFileList
     writeLock("delete");
 
-    // record files which are updated so that we can roll back them in case of exception
-    List<ModificationFile> updatedModFiles = new ArrayList<>();
     boolean hasReleasedLock = false;
 
     try {
@@ -1917,21 +1915,13 @@ public class DataRegion implements IDataRegionForQuery {
       List<TsFileResource> unsealedTsFileResource = new ArrayList<>();
       separateTsFile(sealedTsFileResource, unsealedTsFileResource);
 
-      deleteDataInFiles(
-          unsealedTsFileResource, deletion, devicePaths, updatedModFiles, timePartitionFilter);
+      deleteDataInFiles(unsealedTsFileResource, deletion, devicePaths, timePartitionFilter);
       writeUnlock();
       hasReleasedLock = true;
 
-      deleteDataInFiles(
-          sealedTsFileResource, deletion, devicePaths, updatedModFiles, timePartitionFilter);
+      deleteDataInFiles(sealedTsFileResource, deletion, devicePaths, timePartitionFilter);
 
     } catch (Exception e) {
-      // roll back
-      for (ModificationFile modFile : updatedModFiles) {
-        modFile.abort();
-        // remember to close mod file
-        modFile.close();
-      }
       throw new IOException(e);
     } finally {
       if (!hasReleasedLock) {
@@ -2022,11 +2012,12 @@ public class DataRegion implements IDataRegionForQuery {
     return true;
   }
 
+  // suppress warn of Throwable catch
+  @SuppressWarnings("java:S1181")
   private void deleteDataInFiles(
       Collection<TsFileResource> tsFileResourceList,
       Deletion deletion,
       Set<PartialPath> devicePaths,
-      List<ModificationFile> updatedModFiles,
       TimePartitionFilter timePartitionFilter)
       throws IOException {
     for (TsFileResource tsFileResource : tsFileResourceList) {
@@ -2039,39 +2030,50 @@ public class DataRegion implements IDataRegionForQuery {
         continue;
       }
 
+      ModificationFile modFile = tsFileResource.getModFile();
       if (tsFileResource.isClosed()) {
-        // delete data in sealed file
-        if (tsFileResource.isCompacting()) {
-          // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
-          // change after compaction
-          deletion.setFileOffset(Long.MAX_VALUE);
-          // write deletion into compaction modification file
-          tsFileResource.getCompactionModFile().write(deletion);
-          // write deletion into modification file to enable query during compaction
-          tsFileResource.getModFile().write(deletion);
-          // remember to close mod file
-          tsFileResource.getCompactionModFile().close();
-          tsFileResource.getModFile().close();
-        } else {
-          deletion.setFileOffset(tsFileResource.getTsFileSize());
-          // write deletion into modification file
-          boolean modFileExists = tsFileResource.getModFile().exists();
-          long originSize = tsFileResource.getModFile().getSize();
-          tsFileResource.getModFile().write(deletion);
-          // remember to close mod file
-          tsFileResource.getModFile().close();
-          if (!modFileExists) {
-            TsFileMetricManager.getInstance().increaseModFileNum(1);
+        long originSize = -1;
+        synchronized (modFile) {
+          try {
+            originSize = modFile.getSize();
+            // delete data in sealed file
+            if (tsFileResource.isCompacting()) {
+              // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
+              // change after compaction
+              deletion.setFileOffset(Long.MAX_VALUE);
+              // write deletion into compaction modification file
+              tsFileResource.getCompactionModFile().write(deletion);
+              // write deletion into modification file to enable read during compaction
+              modFile.write(deletion);
+              // remember to close mod file
+              tsFileResource.getCompactionModFile().close();
+              modFile.close();
+            } else {
+              deletion.setFileOffset(tsFileResource.getTsFileSize());
+              // write deletion into modification file
+              boolean modFileExists = tsFileResource.getModFile().exists();
+              tsFileResource.getModFile().write(deletion);
+              // remember to close mod file
+              tsFileResource.getModFile().close();
+              if (!modFileExists) {
+                TsFileMetricManager.getInstance().increaseModFileNum(1);
+              }
+              TsFileMetricManager.getInstance()
+                  .increaseModFileSize(tsFileResource.getModFile().getSize() - originSize);
+            }
+          } catch (Throwable t) {
+            if (originSize != -1) {
+              modFile.truncate(originSize);
+            }
+            throw t;
           }
-          TsFileMetricManager.getInstance()
-              .increaseModFileSize(tsFileResource.getModFile().getSize() - originSize);
+          logger.info(
+              "[Deletion] Deletion with path:{}, time:{}-{} written into mods file:{}.",
+              deletion.getPath(),
+              deletion.getStartTime(),
+              deletion.getEndTime(),
+              modFile.getFilePath());
         }
-        logger.info(
-            "[Deletion] Deletion with path:{}, time:{}-{} written into mods file:{}.",
-            deletion.getPath(),
-            deletion.getStartTime(),
-            deletion.getEndTime(),
-            tsFileResource.getModFile().getFilePath());
       } else {
         // delete data in memory of unsealed file
         tsFileResource.getProcessor().deleteDataInMemory(deletion, devicePaths);
@@ -2081,9 +2083,6 @@ public class DataRegion implements IDataRegionForQuery {
           SyncService.getInstance().getOrCreateSyncManager(dataRegionId)) {
         syncManager.syncRealTimeDeletion(deletion);
       }
-
-      // add a record in case of rollback
-      updatedModFiles.add(tsFileResource.getModFile());
     }
   }
 
