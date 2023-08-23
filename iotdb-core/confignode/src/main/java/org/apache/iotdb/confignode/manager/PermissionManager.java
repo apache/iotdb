@@ -30,14 +30,21 @@ import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Collections;
 import java.util.List;
 
 /** Manager permission read and operation. */
 public class PermissionManager {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PermissionManager.class);
 
   private final ConfigManager configManager;
   private final AuthorInfo authorInfo;
@@ -56,16 +63,23 @@ public class PermissionManager {
   public TSStatus operatePermission(AuthorPlan authorPlan) {
     TSStatus tsStatus;
     // If the permissions change, clear the cache content affected by the operation
-    if (authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateUser
-        || authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateRole) {
-      tsStatus = getConsensusManager().write(authorPlan).getStatus();
-    } else {
-      tsStatus = invalidateCache(authorPlan.getUserName(), authorPlan.getRoleName());
-      if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        tsStatus = getConsensusManager().write(authorPlan).getStatus();
+    try {
+      if (authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateUser
+          || authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateRole) {
+        tsStatus = getConsensusManager().write(authorPlan);
+      } else {
+        tsStatus = invalidateCache(authorPlan.getUserName(), authorPlan.getRoleName());
+        if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          tsStatus = getConsensusManager().write(authorPlan);
+        }
       }
+      return tsStatus;
+    } catch (ConsensusException e) {
+      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return res;
     }
-    return tsStatus;
   }
 
   /**
@@ -75,7 +89,14 @@ public class PermissionManager {
    * @return PermissionInfoResp
    */
   public PermissionInfoResp queryPermission(AuthorPlan authorPlan) {
-    return (PermissionInfoResp) getConsensusManager().read(authorPlan).getDataset();
+    try {
+      return (PermissionInfoResp) getConsensusManager().read(authorPlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return new PermissionInfoResp(res, Collections.emptyMap());
+    }
   }
 
   private ConsensusManager getConsensusManager() {

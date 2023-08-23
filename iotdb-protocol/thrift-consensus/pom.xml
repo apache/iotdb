@@ -26,9 +26,9 @@
         <artifactId>iotdb-protocol</artifactId>
         <version>1.3.0-SNAPSHOT</version>
     </parent>
-    <artifactId>thrift-iot-consensus</artifactId>
+    <artifactId>iotdb-thrift-consensus</artifactId>
     <name>IoTDB: Protocol: Thrift Consensus</name>
-    <description>Rpc modules for iot consensus algorithm</description>
+    <description>RPC modules for consensus</description>
     <build>
         <plugins>
             <plugin>

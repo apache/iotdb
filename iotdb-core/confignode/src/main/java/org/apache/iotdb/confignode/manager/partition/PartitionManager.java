@@ -84,9 +84,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetSeriesSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
-import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -97,6 +95,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -130,6 +129,12 @@ public class PartitionManager {
   private final PartitionInfo partitionInfo;
 
   private SeriesPartitionExecutor executor;
+
+  private static final String CONSENSUS_READ_ERROR =
+      "Failed in the read API executing the consensus layer due to: ";
+
+  private static final String CONSENSUS_WRITE_ERROR =
+      "Failed in the write API executing the consensus layer due to: ";
 
   /** Region cleaner. */
   // Monitor for leadership change
@@ -165,8 +170,15 @@ public class PartitionManager {
    * @param req SchemaPartitionPlan with partitionSlotsMap
    * @return SchemaPartitionDataSet that contains only existing SchemaPartition
    */
-  public DataSet getSchemaPartition(GetSchemaPartitionPlan req) {
-    return getConsensusManager().read(req).getDataset();
+  public SchemaPartitionResp getSchemaPartition(GetSchemaPartitionPlan req) {
+    try {
+      return (SchemaPartitionResp) getConsensusManager().read(req);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return new SchemaPartitionResp(res, false, Collections.emptyMap());
+    }
   }
 
   /**
@@ -176,8 +188,15 @@ public class PartitionManager {
    *     TTimeSlotList>>
    * @return DataPartitionDataSet that contains only existing DataPartition
    */
-  public DataSet getDataPartition(GetDataPartitionPlan req) {
-    return getConsensusManager().read(req).getDataset();
+  public DataPartitionResp getDataPartition(GetDataPartitionPlan req) {
+    try {
+      return (DataPartitionResp) getConsensusManager().read(req);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return new DataPartitionResp(res, false, Collections.emptyMap());
+    }
   }
 
   /**
@@ -205,7 +224,7 @@ public class PartitionManager {
 
     // After all the SchemaPartitions are allocated,
     // all the read requests about SchemaPartitionTable are parallel.
-    SchemaPartitionResp resp = (SchemaPartitionResp) getSchemaPartition(req);
+    SchemaPartitionResp resp = getSchemaPartition(req);
     if (resp.isAllPartitionsExist()) {
       return resp;
     }
@@ -218,7 +237,7 @@ public class PartitionManager {
     synchronized (this) {
       // Here we should check again if the SchemaPartition
       // has been created by other threads to improve concurrent performance
-      resp = (SchemaPartitionResp) getSchemaPartition(req);
+      resp = getSchemaPartition(req);
       if (resp.isAllPartitionsExist()) {
         return resp;
       }
@@ -276,7 +295,7 @@ public class PartitionManager {
       }
     }
 
-    resp = (SchemaPartitionResp) getSchemaPartition(req);
+    resp = getSchemaPartition(req);
     if (!resp.isAllPartitionsExist()) {
       // Count the fail rate
       AtomicInteger totalSlotNum = new AtomicInteger();
@@ -328,7 +347,7 @@ public class PartitionManager {
 
     // After all the DataPartitions are allocated,
     // all the read requests about DataPartitionTable are parallel.
-    DataPartitionResp resp = (DataPartitionResp) getDataPartition(req);
+    DataPartitionResp resp = getDataPartition(req);
     if (resp.isAllPartitionsExist()) {
       return resp;
     }
@@ -341,7 +360,7 @@ public class PartitionManager {
     synchronized (this) {
       // Here we should check again if the DataPartition
       // has been created by other threads to improve concurrent performance
-      resp = (DataPartitionResp) getDataPartition(req);
+      resp = getDataPartition(req);
       if (resp.isAllPartitionsExist()) {
         return resp;
       }
@@ -399,7 +418,7 @@ public class PartitionManager {
       }
     }
 
-    resp = (DataPartitionResp) getDataPartition(req);
+    resp = getDataPartition(req);
     if (!resp.isAllPartitionsExist()) {
       // Count the fail rate
       AtomicInteger totalSlotNum = new AtomicInteger();
@@ -438,15 +457,15 @@ public class PartitionManager {
       // since the RegionGroup creating process might take some time
       return status;
     }
-
-    ConsensusWriteResponse writeResp = getConsensusManager().write(plan);
-    if (!writeResp.isSuccessful()) {
+    try {
+      return getConsensusManager().write(plan);
+    } catch (ConsensusException e) {
       // The allocation might fail due to consensus error
-      status = writeResp.getStatus();
-      status.setMessage(writeResp.getErrorMessage());
       LOGGER.error("Write DataPartition allocation result failed because: {}", status);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return res;
     }
-    return status;
   }
 
   // ======================================================
@@ -508,7 +527,7 @@ public class PartitionManager {
       Map<String, Integer> unassignedPartitionSlotsCountMap, TConsensusGroupType consensusGroupType)
       throws DatabaseNotExistsException, NotEnoughDataNodeException {
 
-    // Map<StorageGroup, Region allotment>
+    // Map<Database, Region allotment>
     Map<String, Integer> allotmentMap = new ConcurrentHashMap<>();
 
     for (Map.Entry<String, Integer> entry : unassignedPartitionSlotsCountMap.entrySet()) {
@@ -531,7 +550,7 @@ public class PartitionManager {
       Map<String, Integer> unassignedPartitionSlotsCountMap, TConsensusGroupType consensusGroupType)
       throws NotEnoughDataNodeException, DatabaseNotExistsException {
 
-    // Map<StorageGroup, Region allotment>
+    // Map<Database, Region allotment>
     Map<String, Integer> allotmentMap = new ConcurrentHashMap<>();
 
     for (Map.Entry<String, Integer> entry : unassignedPartitionSlotsCountMap.entrySet()) {
@@ -544,15 +563,20 @@ public class PartitionManager {
       float slotCount =
           (float) partitionInfo.getAssignedSeriesPartitionSlotsCount(database)
               + unassignedPartitionSlotsCount;
-      float maxRegionGroupCount =
+      float maxRegionGroupNum =
           getClusterSchemaManager().getMaxRegionGroupNum(database, consensusGroupType);
       float maxSlotCount = CONF.getSeriesSlotNum();
 
       /* RegionGroup extension is required in the following cases */
-      // 1. The number of current RegionGroup of the StorageGroup is less than the minimum number
+      // 1. The number of current RegionGroup of the Database is less than the minimum number
       int minRegionGroupNum =
           getClusterSchemaManager().getMinRegionGroupNum(database, consensusGroupType);
-      if (allocatedRegionGroupCount < minRegionGroupNum) {
+      if (allocatedRegionGroupCount < minRegionGroupNum
+          // Ensure the number of RegionGroups is enough
+          // for current SeriesPartitionSlots after extension
+          // Otherwise, more RegionGroups should be extended through case 2.
+          && slotCount <= (maxSlotCount / maxRegionGroupNum) * minRegionGroupNum) {
+
         // Let the sum of unassignedPartitionSlotsCount and allocatedRegionGroupCount
         // no less than the minRegionGroupNum
         int delta =
@@ -560,32 +584,31 @@ public class PartitionManager {
                 Math.min(
                     unassignedPartitionSlotsCount, minRegionGroupNum - allocatedRegionGroupCount);
         allotmentMap.put(database, delta);
-        continue;
       }
 
       // 2. The average number of partitions held by each Region will be greater than the
       // expected average number after the partition allocation is completed
-      if (allocatedRegionGroupCount < maxRegionGroupCount
-          && slotCount / allocatedRegionGroupCount > maxSlotCount / maxRegionGroupCount) {
+      if (allocatedRegionGroupCount < maxRegionGroupNum
+          && slotCount / allocatedRegionGroupCount > maxSlotCount / maxRegionGroupNum) {
         // The delta is equal to the smallest integer solution that satisfies the inequality:
-        // slotCount / (allocatedRegionGroupCount + delta) < maxSlotCount / maxRegionGroupCount
+        // slotCount / (allocatedRegionGroupCount + delta) < maxSlotCount / maxRegionGroupNum
         int delta =
             Math.min(
-                (int) (maxRegionGroupCount - allocatedRegionGroupCount),
+                (int) (maxRegionGroupNum - allocatedRegionGroupCount),
                 Math.max(
                     1,
                     (int)
                         Math.ceil(
-                            slotCount * maxRegionGroupCount / maxSlotCount
+                            slotCount * maxRegionGroupNum / maxSlotCount
                                 - allocatedRegionGroupCount)));
         allotmentMap.put(database, delta);
         continue;
       }
 
-      // 3. All RegionGroups in the specified StorageGroup are disabled currently
+      // 3. All RegionGroups in the specified Database are disabled currently
       if (allocatedRegionGroupCount
               == filterRegionGroupThroughStatus(database, RegionGroupStatus.Disabled).size()
-          && allocatedRegionGroupCount < maxRegionGroupCount) {
+          && allocatedRegionGroupCount < maxRegionGroupNum) {
         allotmentMap.put(database, 1);
       }
     }
@@ -886,17 +909,27 @@ public class PartitionManager {
    *     SchemaPartition and matched child paths aboveMTree
    */
   public SchemaNodeManagementResp getNodePathsPartition(GetNodePathsPartitionPlan physicalPlan) {
-    SchemaNodeManagementResp schemaNodeManagementResp;
-    ConsensusReadResponse consensusReadResponse = getConsensusManager().read(physicalPlan);
-    schemaNodeManagementResp = (SchemaNodeManagementResp) consensusReadResponse.getDataset();
-    return schemaNodeManagementResp;
+    try {
+      return (SchemaNodeManagementResp) getConsensusManager().read(physicalPlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      SchemaNodeManagementResp resp = new SchemaNodeManagementResp();
+      resp.setStatus(res);
+      return resp;
+    }
   }
 
   public void preDeleteDatabase(
       String database, PreDeleteDatabasePlan.PreDeleteType preDeleteType) {
     final PreDeleteDatabasePlan preDeleteDatabasePlan =
         new PreDeleteDatabasePlan(database, preDeleteType);
-    getConsensusManager().write(preDeleteDatabasePlan);
+    try {
+      getConsensusManager().write(preDeleteDatabasePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+    }
   }
 
   public boolean isDatabasePreDeleted(String database) {
@@ -914,30 +947,39 @@ public class PartitionManager {
   }
 
   public RegionInfoListResp getRegionInfoList(GetRegionInfoListPlan req) {
-    // Get static result
-    RegionInfoListResp regionInfoListResp =
-        (RegionInfoListResp) getConsensusManager().read(req).getDataset();
+    try {
+      // Get static result
+      RegionInfoListResp regionInfoListResp = (RegionInfoListResp) getConsensusManager().read(req);
+      // Get cached result
+      Map<TConsensusGroupId, Integer> allLeadership = getLoadManager().getRegionLeaderMap();
+      regionInfoListResp
+          .getRegionInfoList()
+          .forEach(
+              regionInfo -> {
+                regionInfo.setStatus(
+                    getLoadManager()
+                        .getRegionStatus(
+                            regionInfo.getConsensusGroupId(), regionInfo.getDataNodeId())
+                        .getStatus());
 
-    // Get cached result
-    Map<TConsensusGroupId, Integer> allLeadership = getLoadManager().getRegionLeaderMap();
-    regionInfoListResp
-        .getRegionInfoList()
-        .forEach(
-            regionInfo -> {
-              regionInfo.setStatus(
-                  getLoadManager()
-                      .getRegionStatus(regionInfo.getConsensusGroupId(), regionInfo.getDataNodeId())
-                      .getStatus());
+                String regionType =
+                    regionInfo.getDataNodeId()
+                            == allLeadership.getOrDefault(regionInfo.getConsensusGroupId(), -1)
+                        ? RegionRoleType.Leader.toString()
+                        : RegionRoleType.Follower.toString();
+                regionInfo.setRoleType(regionType);
+              });
 
-              String regionType =
-                  regionInfo.getDataNodeId()
-                          == allLeadership.getOrDefault(regionInfo.getConsensusGroupId(), -1)
-                      ? RegionRoleType.Leader.toString()
-                      : RegionRoleType.Follower.toString();
-              regionInfo.setRoleType(regionType);
-            });
+      return regionInfoListResp;
 
-    return regionInfoListResp;
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      RegionInfoListResp resp = new RegionInfoListResp();
+      resp.setStatus(res);
+      return resp;
+    }
   }
 
   /**
@@ -956,7 +998,14 @@ public class PartitionManager {
    * @return TSStatus
    */
   public TSStatus updateRegionLocation(UpdateRegionLocationPlan req) {
-    return getConsensusManager().write(req).getStatus();
+    try {
+      return getConsensusManager().write(req);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return res;
+    }
   }
 
   public GetRegionIdResp getRegionId(TGetRegionIdReq req) {
@@ -977,7 +1026,14 @@ public class PartitionManager {
           new TTimePartitionSlot(
               req.getTimeStamp() - req.getTimeStamp() % COMMON_CONFIG.getTimePartitionInterval()));
     }
-    return (GetRegionIdResp) getConsensusManager().read(plan).getDataset();
+    try {
+      return (GetRegionIdResp) getConsensusManager().read(plan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return new GetRegionIdResp(res, Collections.emptyList());
+    }
   }
 
   public GetTimeSlotListResp getTimeSlotList(TGetTimeSlotListReq req) {
@@ -997,7 +1053,14 @@ public class PartitionManager {
       plan.setRegionId(
           new TConsensusGroupId(TConsensusGroupType.DataRegion, (int) req.getRegionId()));
     }
-    return (GetTimeSlotListResp) getConsensusManager().read(plan).getDataset();
+    try {
+      return (GetTimeSlotListResp) getConsensusManager().read(plan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return new GetTimeSlotListResp(res, Collections.emptyList());
+    }
   }
 
   public CountTimeSlotListResp countTimeSlotList(TCountTimeSlotListReq req) {
@@ -1017,12 +1080,26 @@ public class PartitionManager {
       plan.setRegionId(
           new TConsensusGroupId(TConsensusGroupType.DataRegion, (int) req.getRegionId()));
     }
-    return (CountTimeSlotListResp) getConsensusManager().read(plan).getDataset();
+    try {
+      return (CountTimeSlotListResp) getConsensusManager().read(plan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return new CountTimeSlotListResp(res, 0);
+    }
   }
 
   public GetSeriesSlotListResp getSeriesSlotList(TGetSeriesSlotListReq req) {
     GetSeriesSlotListPlan plan = new GetSeriesSlotListPlan(req.getDatabase(), req.getType());
-    return (GetSeriesSlotListResp) getConsensusManager().read(plan).getDataset();
+    try {
+      return (GetSeriesSlotListResp) getConsensusManager().read(plan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_READ_ERROR, e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return new GetSeriesSlotListResp(res, Collections.emptyList());
+    }
   }
 
   /**
@@ -1233,8 +1310,12 @@ public class PartitionManager {
                   }
 
                   // Poll the head entry if success
-                  getConsensusManager()
-                      .write(new PollSpecificRegionMaintainTaskPlan(successfulTask));
+                  try {
+                    getConsensusManager()
+                        .write(new PollSpecificRegionMaintainTaskPlan(successfulTask));
+                  } catch (ConsensusException e) {
+                    LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+                  }
 
                   if (successfulTask.size() < selectedRegionMaintainTask.size()) {
                     // Here we just break and wait until next schedule task

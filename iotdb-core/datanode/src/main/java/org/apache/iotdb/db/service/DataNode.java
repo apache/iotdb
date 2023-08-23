@@ -485,8 +485,8 @@ public class DataNode implements DataNodeMBean {
     logger.info("IoTDB DataNode has started.");
 
     try {
-      SchemaRegionConsensusImpl.setupAndGetInstance().start();
-      DataRegionConsensusImpl.setupAndGetInstance().start();
+      SchemaRegionConsensusImpl.getInstance().start();
+      DataRegionConsensusImpl.getInstance().start();
     } catch (IOException e) {
       throw new StartupException(e);
     }
@@ -873,12 +873,8 @@ public class DataNode implements DataNodeMBean {
 
     try {
       MetricService.getInstance().stop();
-      if (SchemaRegionConsensusImpl.getInstance() != null) {
-        SchemaRegionConsensusImpl.getInstance().stop();
-      }
-      if (DataRegionConsensusImpl.getInstance() != null) {
-        DataRegionConsensusImpl.getInstance().stop();
-      }
+      SchemaRegionConsensusImpl.getInstance().stop();
+      DataRegionConsensusImpl.getInstance().stop();
     } catch (Exception e) {
       logger.error("Stop data node error", e);
     }
