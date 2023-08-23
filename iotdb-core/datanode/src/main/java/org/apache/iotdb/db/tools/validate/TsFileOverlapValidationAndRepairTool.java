@@ -152,7 +152,8 @@ public class TsFileOverlapValidationAndRepairTool {
       if (overlapTsFileNumInCurrentTimePartition == 0) {
         continue;
       }
-      System.out.println("TimePartition " + partitionName + " has overlap file, dir");
+      System.out.println(
+          "TimePartition " + partitionName + " has overlap file, dir is " + partition.getValue());
       partitionDirsWhichHaveOverlapFiles.addAll(partition.getValue());
       overlapTsFileNum += overlapTsFileNumInCurrentTimePartition;
     }
