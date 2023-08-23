@@ -88,9 +88,9 @@ import java.util.UUID;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.ALL_MATCH_PATTERN;
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.ALL_TEMPLATE;
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.SYSTEM_DATABASE_PATTERN;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_TEMPLATE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.SYSTEM_DATABASE_PATTERN;
 
 /**
  * The {@link ClusterSchemaInfo} stores cluster schemaEngine. The cluster schemaEngine including: 1.

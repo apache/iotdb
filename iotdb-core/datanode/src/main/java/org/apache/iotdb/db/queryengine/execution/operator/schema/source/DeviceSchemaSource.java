@@ -34,7 +34,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.util.List;
 
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.ALL_MATCH_PATTERN;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 
 public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
 

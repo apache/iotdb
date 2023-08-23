@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import java.util.List;
 import java.util.Objects;
 
-// TODO Use a mature IDL framework such as Protobuf to manage this structure
 public class ConsensusGroup {
 
   private final ConsensusGroupId groupId;

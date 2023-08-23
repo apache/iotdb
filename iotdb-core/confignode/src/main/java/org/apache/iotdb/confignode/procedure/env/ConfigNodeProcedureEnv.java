@@ -58,6 +58,7 @@ import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipePluginInstanceReq;
@@ -264,14 +265,19 @@ public class ConfigNodeProcedureEnv {
     try {
       // Execute removePeer
       if (getConsensusManager().removeConfigNodePeer(tConfigNodeLocation)) {
-        tsStatus =
-            getConsensusManager().write(new RemoveConfigNodePlan(tConfigNodeLocation)).getStatus();
+        tsStatus = getConsensusManager().write(new RemoveConfigNodePlan(tConfigNodeLocation));
       } else {
         tsStatus =
             new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_ERROR.getStatusCode())
                 .setMessage(
                     "Remove ConfigNode failed because update ConsensusGroup peer information failed.");
       }
+    } catch (ConsensusException e) {
+      LOG.warn("Failed in the write API executing the consensus layer due to: ", e);
+      tsStatus = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      tsStatus.setMessage(e.getMessage());
+    }
+    try {
       if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new ProcedureException(tsStatus.getMessage());
       }
@@ -364,7 +370,7 @@ public class ConfigNodeProcedureEnv {
             new TUpdateConfigNodeGroupReq(registeredConfigNodes),
             registeredDataNodes);
 
-    if (registeredDataNodes.size() > 0) {
+    if (!registeredDataNodes.isEmpty()) {
       LOG.info(
           "Begin to broadcast the latest configNodeGroup to DataNodes, ConfigNodeGroups: {}, DataNodes: {}",
           registeredConfigNodes,
@@ -548,7 +554,11 @@ public class ConfigNodeProcedureEnv {
 
   public void persistRegionGroup(CreateRegionGroupsPlan createRegionGroupsPlan) {
     // Persist the allocation result
-    getConsensusManager().write(createRegionGroupsPlan);
+    try {
+      getConsensusManager().write(createRegionGroupsPlan);
+    } catch (ConsensusException e) {
+      LOG.warn("Failed in the write API executing the consensus layer due to: ", e);
+    }
   }
 
   /**

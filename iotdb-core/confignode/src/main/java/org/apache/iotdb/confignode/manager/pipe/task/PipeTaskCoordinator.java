@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -141,10 +142,14 @@ public class PipeTaskCoordinator {
   public TShowPipeResp showPipes(TShowPipeReq req) {
     lock();
     try {
-      return ((PipeTableResp)
-              configManager.getConsensusManager().read(new ShowPipePlanV2()).getDataset())
+      return ((PipeTableResp) configManager.getConsensusManager().read(new ShowPipePlanV2()))
           .filter(req.whereClause, req.pipeName)
           .convertToTShowPipeResp();
+    } catch (ConsensusException e) {
+      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return new PipeTableResp(res, Collections.emptyList()).convertToTShowPipeResp();
     } finally {
       unlock();
     }
@@ -153,10 +158,9 @@ public class PipeTaskCoordinator {
   public TGetAllPipeInfoResp getAllPipeInfo() {
     lock();
     try {
-      return ((PipeTableResp)
-              configManager.getConsensusManager().read(new ShowPipePlanV2()).getDataset())
+      return ((PipeTableResp) configManager.getConsensusManager().read(new ShowPipePlanV2()))
           .convertToTGetAllPipeInfoResp();
-    } catch (IOException e) {
+    } catch (IOException | ConsensusException e) {
       LOGGER.warn("Failed to get all pipe info.", e);
       return new TGetAllPipeInfoResp(
           new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage()),

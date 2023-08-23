@@ -127,6 +127,9 @@ public class Analysis {
   // Query Analysis (used in ALIGN BY DEVICE)
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
+  // the list of device names
+  private List<PartialPath> deviceList;
+
   // map from output device name to queried devices
   private Map<String, List<String>> outputDeviceToQueriedDevicesMap;
 
@@ -743,5 +746,13 @@ public class Analysis {
 
   public void setLastLevelUseWildcard(boolean lastLevelUseWildcard) {
     this.lastLevelUseWildcard = lastLevelUseWildcard;
+  }
+
+  public void setDeviceList(List<PartialPath> deviceList) {
+    this.deviceList = deviceList;
+  }
+
+  public List<PartialPath> getDeviceList() {
+    return deviceList;
   }
 }

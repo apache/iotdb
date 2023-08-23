@@ -161,14 +161,12 @@ public class IoTDBAutoRegionGroupExtensionIT {
     }
 
     // The number of SchemaRegionGroups should not less than the testMinSchemaRegionGroupNum
-    TShowRegionResp showRegionReq =
+    TShowRegionResp resp =
         client.showRegion(
             new TShowRegionReq().setConsensusGroupType(TConsensusGroupType.SchemaRegion));
-    Assert.assertEquals(
-        TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionReq.getStatus().getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
     Map<String, AtomicInteger> regionCounter = new ConcurrentHashMap<>();
-    showRegionReq
-        .getRegionInfoList()
+    resp.getRegionInfoList()
         .forEach(
             regionInfo ->
                 regionCounter
@@ -179,14 +177,12 @@ public class IoTDBAutoRegionGroupExtensionIT {
         (sg, regionCount) -> Assert.assertTrue(regionCount.get() >= testMinSchemaRegionGroupNum));
 
     // The number of DataRegionGroups should not less than the testMinDataRegionGroupNum
-    showRegionReq =
+    resp =
         client.showRegion(
             new TShowRegionReq().setConsensusGroupType(TConsensusGroupType.DataRegion));
-    Assert.assertEquals(
-        TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionReq.getStatus().getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
     regionCounter.clear();
-    showRegionReq
-        .getRegionInfoList()
+    resp.getRegionInfoList()
         .forEach(
             regionInfo ->
                 regionCounter
