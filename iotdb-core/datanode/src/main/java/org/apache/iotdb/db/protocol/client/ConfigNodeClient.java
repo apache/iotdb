@@ -159,7 +159,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   private static final String MSG_RECONNECTION_DATANODE_FAIL =
       "Failed to connect to ConfigNode %s from DataNode %s when executing %s, Exception:";
-  private static final int RETRY_INTERVAL_MS = 1000;
+  private static final int RETRY_INTERVAL_MS = 2000;
 
   private final ThriftClientProperty property;
 

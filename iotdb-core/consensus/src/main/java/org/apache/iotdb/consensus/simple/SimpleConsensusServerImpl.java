@@ -27,12 +27,12 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
 import java.io.File;
 
-public class SimpleServerImpl implements IStateMachine {
+public class SimpleConsensusServerImpl implements IStateMachine {
 
   private final Peer peer;
   private final IStateMachine stateMachine;
 
-  public SimpleServerImpl(Peer peer, IStateMachine stateMachine) {
+  public SimpleConsensusServerImpl(Peer peer, IStateMachine stateMachine) {
     this.peer = peer;
     this.stateMachine = stateMachine;
   }

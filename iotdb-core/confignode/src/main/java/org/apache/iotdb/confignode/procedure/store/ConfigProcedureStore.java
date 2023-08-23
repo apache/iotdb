@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.Procedure;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,7 +81,11 @@ public class ConfigProcedureStore implements IProcedureStore {
     if (procedureType != null) {
       updateProcedurePlan.setProcedure(procedure);
     }
-    getConsensusManager().write(updateProcedurePlan);
+    try {
+      getConsensusManager().write(updateProcedurePlan);
+    } catch (ConsensusException e) {
+      LOG.warn("Failed in the write API executing the consensus layer due to: ", e);
+    }
   }
 
   @Override
@@ -94,7 +99,11 @@ public class ConfigProcedureStore implements IProcedureStore {
   public void delete(long procId) {
     DeleteProcedurePlan deleteProcedurePlan = new DeleteProcedurePlan();
     deleteProcedurePlan.setProcId(procId);
-    getConsensusManager().write(deleteProcedurePlan);
+    try {
+      getConsensusManager().write(deleteProcedurePlan);
+    } catch (ConsensusException e) {
+      LOG.warn("Failed in the write API executing the consensus layer due to: ", e);
+    }
   }
 
   @Override
