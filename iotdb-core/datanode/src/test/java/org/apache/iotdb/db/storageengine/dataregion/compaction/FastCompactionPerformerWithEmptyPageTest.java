@@ -64,11 +64,18 @@ public class FastCompactionPerformerWithEmptyPageTest extends AbstractCompaction
     TsFileResource seqFile1 = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile1)) {
       writer.startChunkGroup("d1");
-      writer.generateSimpleAlignedSeriesToCurrentDevice(
+      writer.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
           Arrays.asList("s1", "s2", "s3"),
-          new TimeRange[][] {new TimeRange[] {new TimeRange(10, 30), new TimeRange(40, 50)}},
+          new TimeRange[][] {new TimeRange[] {new TimeRange(10, 30)}},
           TSEncoding.RLE,
-          CompressionType.UNCOMPRESSED);
+          CompressionType.UNCOMPRESSED,
+          Arrays.asList(false, true, true));
+      writer.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+          Arrays.asList("s1", "s2", "s3"),
+          new TimeRange[][] {new TimeRange[] {new TimeRange(40, 50)}},
+          TSEncoding.RLE,
+          CompressionType.UNCOMPRESSED,
+          Arrays.asList(false, false, false));
       writer.endChunkGroup();
       writer.endFile();
     }
