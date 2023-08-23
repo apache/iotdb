@@ -176,16 +176,10 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
     // PipeProcessor can change the type of TabletInsertionEvent
 
     if (((EnrichedEvent) tabletInsertionEvent).shouldParsePattern()) {
-      for (final TabletInsertionEvent event :
-          tabletInsertionEvent.processRowByRow(
-              (row, rowCollector) -> {
-                try {
-                  rowCollector.collectRow(row);
-                } catch (IOException e) {
-                  throw new PipeException("Failed to collect row", e);
-                }
-              })) {
-        transfer(event);
+      if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+        transfer(((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).parsePattern());
+      } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
+        transfer(((PipeRawTabletInsertionEvent) tabletInsertionEvent).parsePattern());
       }
       return;
     }
