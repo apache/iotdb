@@ -626,7 +626,7 @@ public class RegerDeltaSegmentPartition {
         int timestamp_delta_max = Integer.MIN_VALUE;
         int value_delta_max = Integer.MIN_VALUE;
         ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
-        int length = 0;
+
         for (int i = 1; i < block_size; i++) {
             int timestamp_delta_i;
             int value_delta_i;
@@ -658,6 +658,7 @@ public class RegerDeltaSegmentPartition {
                 value_delta_min = value_delta_i;
             }
         }
+        int length = 0;
         for (ArrayList<Integer> integers : ts_block_delta) {
             length += (integers.get(0) - timestamp_delta_min);
             length += (integers.get(1) - value_delta_min);
