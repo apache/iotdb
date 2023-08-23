@@ -28,6 +28,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletReq;
 import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnector;
+import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -174,6 +175,21 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
     // PipeProcessor can change the type of TabletInsertionEvent
 
+    if (((EnrichedEvent) tabletInsertionEvent).shouldParsePattern()) {
+      for (final TabletInsertionEvent event :
+          tabletInsertionEvent.processRowByRow(
+              (row, rowCollector) -> {
+                try {
+                  rowCollector.collectRow(row);
+                } catch (IOException e) {
+                  throw new PipeException("Failed to collect row", e);
+                }
+              })) {
+        transfer(event);
+      }
+      return;
+    }
+
     final int socketIndex = nextSocketIndex();
     final Socket socket = sockets.get(socketIndex);
 
@@ -207,6 +223,13 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       LOGGER.warn(
           "IoTDBAirGapConnector only support PipeTsFileInsertionEvent. Ignore {}.",
           tsFileInsertionEvent);
+      return;
+    }
+
+    if (((EnrichedEvent) tsFileInsertionEvent).shouldParsePattern()) {
+      for (final TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
+        transfer(event);
+      }
       return;
     }
 

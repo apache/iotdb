@@ -95,13 +95,18 @@ public class PipeRowCollector implements RowCollector {
   private void collectTabletInsertionEvent() {
     if (tablet != null) {
       tabletInsertionEventList.add(
-          new PipeRawTabletInsertionEvent(tablet, isAligned, pipeTaskMeta, sourceEvent, true));
+          new PipeRawTabletInsertionEvent(tablet, isAligned, pipeTaskMeta, sourceEvent, false));
     }
     this.tablet = null;
   }
 
   public Iterable<TabletInsertionEvent> convertToTabletInsertionEvents() {
     collectTabletInsertionEvent();
+    int eventListSize = tabletInsertionEventList.size();
+    if (eventListSize > 0) { // The last event should report progress
+      ((PipeRawTabletInsertionEvent) tabletInsertionEventList.get(eventListSize - 1))
+          .markAsNeedToReport();
+    }
     return tabletInsertionEventList;
   }
 }

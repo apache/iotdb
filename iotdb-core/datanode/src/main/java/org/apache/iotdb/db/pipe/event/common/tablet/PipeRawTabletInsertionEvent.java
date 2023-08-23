@@ -39,7 +39,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   private final boolean isAligned;
 
   private final EnrichedEvent sourceEvent;
-  private final boolean needToReport;
+  private boolean needToReport;
 
   private TabletInsertionDataContainer dataContainer;
 
@@ -108,6 +108,10 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   @Override
   public boolean isGeneratedByPipe() {
     throw new UnsupportedOperationException("isGeneratedByPipe() is not supported!");
+  }
+
+  public void markAsNeedToReport() {
+    this.needToReport = true;
   }
 
   /////////////////////////// TabletInsertionEvent ///////////////////////////
