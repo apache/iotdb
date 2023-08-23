@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -39,6 +40,7 @@ import java.util.Set;
 public class TsFileOverlapValidationAndRepairTool {
 
   private static final Set<File> toMoveFiles = new HashSet<>();
+  private static final List<File> partitionDirsWhichHaveOverlapFiles = new ArrayList<>();
   private static int overlapTsFileNum = 0;
   private static int totalTsFileNum = 0;
 
@@ -47,16 +49,25 @@ public class TsFileOverlapValidationAndRepairTool {
       System.out.println("Please input sequence data dir path.");
       return;
     }
-    String sequenceDataPath = args[0];
-    File sequenceData = new File(sequenceDataPath);
-    validateSequenceDataDir(sequenceData);
+    List<String> sequenceDataDirs = getDataDirs(args);
+    validateSequenceDataDirs(sequenceDataDirs);
     if (!confirmMoveOverlapFilesToUnsequenceSpace()) {
       return;
     }
     moveOverlapFilesToUnsequenceSpace(toMoveFiles);
   }
 
+  private static List<String> getDataDirs(String[] args) {
+    return Arrays.asList(args);
+  }
+
   private static boolean confirmMoveOverlapFilesToUnsequenceSpace() {
+    System.out.println("TimePartitions which have overlap files:");
+    for (File partitionDirsWhichHaveOverlapFile : partitionDirsWhichHaveOverlapFiles) {
+      System.out.println(partitionDirsWhichHaveOverlapFile.getAbsolutePath());
+    }
+    System.out.println();
+
     System.out.printf(
         "Overlap tsfile num is %d, total tsfile num is %d\n", overlapTsFileNum, totalTsFileNum);
     System.out.println("Corresponding file num is " + toMoveFiles.size());
@@ -99,27 +110,57 @@ public class TsFileOverlapValidationAndRepairTool {
     }
   }
 
-  private static void validateSequenceDataDir(File sequenceDataDir) throws IOException {
-    for (File sg : Objects.requireNonNull(sequenceDataDir.listFiles())) {
-      if (!sg.isDirectory()) {
+  private static void validateSequenceDataDirs(List<String> sequenceDataDirPaths)
+      throws IOException {
+    Map<String, List<File>> partitionMap = new HashMap<>();
+    for (String sequenceDataDirPath : sequenceDataDirPaths) {
+      File sequenceDataDir = new File(sequenceDataDirPath);
+      if (!sequenceDataDir.exists() || sequenceDataDir.isFile()) {
+        System.out.println(sequenceDataDir.getAbsolutePath() + " is not a correct path");
         continue;
       }
-      for (File dataRegionDir : Objects.requireNonNull(sg.listFiles())) {
-        if (!dataRegionDir.isDirectory()) {
+      for (File sg : Objects.requireNonNull(sequenceDataDir.listFiles())) {
+        if (!sg.isDirectory()) {
           continue;
         }
-        for (File timePartitionDir : Objects.requireNonNull(dataRegionDir.listFiles())) {
-          if (!timePartitionDir.isDirectory()) {
+        for (File dataRegionDir : Objects.requireNonNull(sg.listFiles())) {
+          if (!dataRegionDir.isDirectory()) {
             continue;
           }
-          List<TsFileResource> resources = loadSortedTsFileResources(timePartitionDir);
-          if (resources.isEmpty()) {
-            continue;
+          for (File timePartitionDir : Objects.requireNonNull(dataRegionDir.listFiles())) {
+            if (!timePartitionDir.isDirectory()) {
+              continue;
+            }
+            String partitionKey =
+                calculateTimePartitionKey(
+                    sg.getName(), dataRegionDir.getName(), timePartitionDir.getName());
+            List<File> partitionDirs =
+                partitionMap.computeIfAbsent(partitionKey, v -> new ArrayList<>());
+            partitionDirs.add(timePartitionDir);
           }
-          overlapTsFileNum += checkTimePartitionHasOverlap(resources);
         }
       }
     }
+
+    for (Map.Entry<String, List<File>> partition : partitionMap.entrySet()) {
+      String partitionName = partition.getKey();
+      List<TsFileResource> resources = loadSortedTsFileResources(partition.getValue());
+      if (resources.isEmpty()) {
+        continue;
+      }
+      int overlapTsFileNumInCurrentTimePartition = checkTimePartitionHasOverlap(resources);
+      if (overlapTsFileNumInCurrentTimePartition == 0) {
+        continue;
+      }
+      System.out.println("TimePartition " + partitionName + " has overlap file, dir");
+      partitionDirsWhichHaveOverlapFiles.addAll(partition.getValue());
+      overlapTsFileNum += overlapTsFileNumInCurrentTimePartition;
+    }
+  }
+
+  private static String calculateTimePartitionKey(
+      String storageGroup, String dataRegion, String timePartition) {
+    return storageGroup + "-" + dataRegion + "-" + timePartition;
   }
 
   public static int checkTimePartitionHasOverlap(List<TsFileResource> resources) {
@@ -181,37 +222,39 @@ public class TsFileOverlapValidationAndRepairTool {
     }
   }
 
-  private static List<TsFileResource> loadSortedTsFileResources(File timePartitionDir)
+  private static List<TsFileResource> loadSortedTsFileResources(List<File> timePartitionDirs)
       throws IOException {
     List<TsFileResource> resources = new ArrayList<>();
-    for (File tsfile : Objects.requireNonNull(timePartitionDir.listFiles())) {
-      String filePath = tsfile.getAbsolutePath();
-      // has compaction log
-      if (filePath.endsWith(CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX)
-          || filePath.endsWith(CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX)) {
-        System.out.println(
-            "Time partition "
-                + timePartitionDir.getName()
-                + " is skipped because a compaction is not finished");
-        return Collections.emptyList();
-      }
+    for (File timePartitionDir : timePartitionDirs) {
+      for (File tsfile : Objects.requireNonNull(timePartitionDir.listFiles())) {
+        String filePath = tsfile.getAbsolutePath();
+        // has compaction log
+        if (filePath.endsWith(CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX)
+            || filePath.endsWith(CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX)) {
+          System.out.println(
+              "Time partition "
+                  + timePartitionDir.getName()
+                  + " is skipped because a compaction is not finished");
+          return Collections.emptyList();
+        }
 
-      if (!filePath.endsWith(TsFileConstant.TSFILE_SUFFIX) || !tsfile.isFile()) {
-        continue;
-      }
-      String resourcePath = tsfile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX;
+        if (!filePath.endsWith(TsFileConstant.TSFILE_SUFFIX) || !tsfile.isFile()) {
+          continue;
+        }
+        String resourcePath = tsfile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX;
 
-      if (!new File(resourcePath).exists()) {
-        System.out.println(
-            tsfile.getAbsolutePath() + " is skipped because resource file is not exist.");
-        continue;
-      }
+        if (!new File(resourcePath).exists()) {
+          System.out.println(
+              tsfile.getAbsolutePath() + " is skipped because resource file is not exist.");
+          continue;
+        }
 
-      TsFileResource resource = new TsFileResource();
-      resource.setFile(tsfile);
-      resource.deserialize();
-      resource.close();
-      resources.add(resource);
+        TsFileResource resource = new TsFileResource();
+        resource.setFile(tsfile);
+        resource.deserialize();
+        resource.close();
+        resources.add(resource);
+      }
     }
     resources.sort(
         (f1, f2) -> {
