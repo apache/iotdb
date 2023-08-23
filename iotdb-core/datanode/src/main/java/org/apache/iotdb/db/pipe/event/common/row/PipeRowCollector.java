@@ -102,7 +102,8 @@ public class PipeRowCollector implements RowCollector {
 
   public Iterable<TabletInsertionEvent> convertToTabletInsertionEvents() {
     collectTabletInsertionEvent();
-    int eventListSize = tabletInsertionEventList.size();
+
+    final int eventListSize = tabletInsertionEventList.size();
     if (eventListSize > 0) { // The last event should report progress
       ((PipeRawTabletInsertionEvent) tabletInsertionEventList.get(eventListSize - 1))
           .markAsNeedToReport();

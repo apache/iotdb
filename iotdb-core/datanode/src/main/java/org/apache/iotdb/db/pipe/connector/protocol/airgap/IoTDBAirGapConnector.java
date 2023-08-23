@@ -174,12 +174,22 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
     // PipeProcessor can change the type of TabletInsertionEvent
+    if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
+        && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
+      LOGGER.warn(
+          "IoTDBAirGapConnector only support "
+              + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
+              + "Ignore {}.",
+          tabletInsertionEvent);
+      return;
+    }
 
     if (((EnrichedEvent) tabletInsertionEvent).shouldParsePattern()) {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-        transfer(((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).parsePattern());
+        transfer(
+            ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).parseEventWithPattern());
       } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
-        transfer(((PipeRawTabletInsertionEvent) tabletInsertionEvent).parsePattern());
+        transfer(((PipeRawTabletInsertionEvent) tabletInsertionEvent).parseEventWithPattern());
       }
       return;
     }
@@ -190,14 +200,8 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
     try {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         doTransfer(socket, (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
-      } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-        doTransfer(socket, (PipeRawTabletInsertionEvent) tabletInsertionEvent);
       } else {
-        LOGGER.warn(
-            "IoTDBAirGapConnector only support "
-                + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
-                + "Ignore {}.",
-            tabletInsertionEvent);
+        doTransfer(socket, (PipeRawTabletInsertionEvent) tabletInsertionEvent);
       }
     } catch (IOException e) {
       isSocketAlive.set(socketIndex, false);

@@ -185,9 +185,10 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
 
     if (((EnrichedEvent) tabletInsertionEvent).shouldParsePattern()) {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-        transfer(((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).parsePattern());
+        transfer(
+            ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).parseEventWithPattern());
       } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
-        transfer(((PipeRawTabletInsertionEvent) tabletInsertionEvent).parsePattern());
+        transfer(((PipeRawTabletInsertionEvent) tabletInsertionEvent).parseEventWithPattern());
       }
       return;
     }
