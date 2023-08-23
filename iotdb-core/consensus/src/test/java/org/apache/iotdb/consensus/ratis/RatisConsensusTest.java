@@ -19,17 +19,20 @@
 
 package org.apache.iotdb.consensus.ratis;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.ConsensusGroup;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
-import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
-import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.RatisConfig;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
+import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
+import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.ratis.util.TimeDuration;
 import org.junit.After;
@@ -38,7 +41,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -101,9 +103,9 @@ public class RatisConsensusTest {
 
   @Test
   public void basicConsensus3Copy() throws Exception {
-    servers.get(0).createPeer(group.getGroupId(), group.getPeers());
-    servers.get(1).createPeer(group.getGroupId(), group.getPeers());
-    servers.get(2).createPeer(group.getGroupId(), group.getPeers());
+    servers.get(0).createLocalPeer(group.getGroupId(), group.getPeers());
+    servers.get(1).createLocalPeer(group.getGroupId(), group.getPeers());
+    servers.get(2).createLocalPeer(group.getGroupId(), group.getPeers());
 
     doConsensus(servers.get(0), group.getGroupId(), 10, 10);
   }
@@ -112,19 +114,22 @@ public class RatisConsensusTest {
   public void addMemberToGroup() throws Exception {
     List<Peer> original = peers.subList(0, 1);
 
-    servers.get(0).createPeer(group.getGroupId(), original);
+    servers.get(0).createLocalPeer(group.getGroupId(), original);
     doConsensus(servers.get(0), group.getGroupId(), 10, 10);
 
-    ConsensusGenericResponse resp = servers.get(0).createPeer(group.getGroupId(), original);
-    Assert.assertFalse(resp.isSuccess());
-    Assert.assertTrue(resp.getException() instanceof ConsensusGroupAlreadyExistException);
+    try {
+      servers.get(0).createLocalPeer(group.getGroupId(), original);
+      Assert.fail();
+    } catch (ConsensusException e) {
+      Assert.assertTrue(e instanceof ConsensusGroupAlreadyExistException);
+    }
 
     // add 2 members
-    servers.get(1).createPeer(group.getGroupId(), Collections.emptyList());
-    servers.get(0).addPeer(group.getGroupId(), peers.get(1));
+    servers.get(1).createLocalPeer(group.getGroupId(), peers.subList(1, 2));
+    servers.get(0).addRemotePeer(group.getGroupId(), peers.get(1));
 
-    servers.get(2).createPeer(group.getGroupId(), Collections.emptyList());
-    servers.get(0).changePeer(group.getGroupId(), peers);
+    servers.get(2).createLocalPeer(group.getGroupId(), peers.subList(2, 3));
+    servers.get(0).addRemotePeer(group.getGroupId(), peers.get(2));
 
     Assert.assertEquals(
         3, ((TestUtils.IntegerCounter) stateMachines.get(0)).getConfiguration().size());
@@ -133,39 +138,69 @@ public class RatisConsensusTest {
 
   @Test
   public void removeMemberFromGroup() throws Exception {
-    servers.get(0).createPeer(group.getGroupId(), group.getPeers());
-    servers.get(1).createPeer(group.getGroupId(), group.getPeers());
-    servers.get(2).createPeer(group.getGroupId(), group.getPeers());
+    try {
+      servers.get(0).deleteLocalPeer(group.getGroupId());
+      Assert.fail();
+    } catch (ConsensusException e) {
+      Assert.assertTrue(e instanceof ConsensusGroupNotExistException);
+    }
+    servers.get(0).createLocalPeer(group.getGroupId(), group.getPeers());
+    servers.get(1).createLocalPeer(group.getGroupId(), group.getPeers());
+    servers.get(2).createLocalPeer(group.getGroupId(), group.getPeers());
 
     doConsensus(servers.get(0), group.getGroupId(), 10, 10);
 
     servers.get(0).transferLeader(gid, peers.get(0));
-    servers.get(0).removePeer(gid, peers.get(1));
-    servers.get(1).deletePeer(gid);
-    servers.get(0).removePeer(gid, peers.get(2));
-    servers.get(2).deletePeer(gid);
+    servers.get(0).removeRemotePeer(gid, peers.get(1));
+    servers.get(1).deleteLocalPeer(gid);
+    servers.get(0).removeRemotePeer(gid, peers.get(2));
+    servers.get(2).deleteLocalPeer(gid);
 
     doConsensus(servers.get(0), group.getGroupId(), 10, 20);
   }
 
   @Test
   public void oneMemberGroupChange() throws Exception {
-    servers.get(0).createPeer(group.getGroupId(), peers.subList(0, 1));
+    try {
+      servers.get(0).addRemotePeer(group.getGroupId(), peers.get(0));
+      Assert.fail();
+    } catch (ConsensusException e) {
+      Assert.assertTrue(e instanceof ConsensusGroupNotExistException);
+    }
+    servers.get(0).createLocalPeer(group.getGroupId(), peers.subList(0, 1));
     doConsensus(servers.get(0), group.getGroupId(), 10, 10);
 
-    servers.get(1).createPeer(group.getGroupId(), Collections.emptyList());
-    servers.get(0).addPeer(group.getGroupId(), peers.get(1));
-    servers.get(1).transferLeader(group.getGroupId(), peers.get(1));
-    servers.get(0).removePeer(group.getGroupId(), peers.get(0));
+    servers.get(1).createLocalPeer(group.getGroupId(), peers.subList(1, 2));
+    servers.get(0).addRemotePeer(group.getGroupId(), peers.get(1));
+    try {
+      servers.get(0).addRemotePeer(group.getGroupId(), peers.get(1));
+      Assert.fail();
+    } catch (ConsensusException e) {
+      Assert.assertTrue(e instanceof PeerAlreadyInConsensusGroupException);
+    }
+    servers.get(0).transferLeader(group.getGroupId(), peers.get(1));
+    servers.get(1).removeRemotePeer(group.getGroupId(), peers.get(0));
+    try {
+      servers.get(1).removeRemotePeer(group.getGroupId(), peers.get(0));
+      Assert.fail();
+    } catch (ConsensusException e) {
+      Assert.assertTrue(e instanceof PeerNotInConsensusGroupException);
+    }
     Assert.assertEquals(servers.get(1).getLeader(gid).getNodeId(), peers.get(1).getNodeId());
-    servers.get(0).deletePeer(group.getGroupId());
+    servers.get(0).deleteLocalPeer(group.getGroupId());
+    try {
+      servers.get(0).deleteLocalPeer(group.getGroupId());
+      Assert.fail();
+    } catch (ConsensusException e) {
+      Assert.assertTrue(e instanceof ConsensusGroupNotExistException);
+    }
   }
 
   @Test
   public void crashAndStart() throws Exception {
-    servers.get(0).createPeer(group.getGroupId(), group.getPeers());
-    servers.get(1).createPeer(group.getGroupId(), group.getPeers());
-    servers.get(2).createPeer(group.getGroupId(), group.getPeers());
+    servers.get(0).createLocalPeer(group.getGroupId(), group.getPeers());
+    servers.get(1).createLocalPeer(group.getGroupId(), group.getPeers());
+    servers.get(2).createLocalPeer(group.getGroupId(), group.getPeers());
 
     // 200 operation will trigger snapshot & purge
     doConsensus(servers.get(0), group.getGroupId(), 200, 200);
@@ -178,17 +213,15 @@ public class RatisConsensusTest {
 
   // FIXME: Turn on the test when it is stable
   public void transferLeader() throws Exception {
-    servers.get(0).createPeer(group.getGroupId(), group.getPeers());
-    servers.get(1).createPeer(group.getGroupId(), group.getPeers());
-    servers.get(2).createPeer(group.getGroupId(), group.getPeers());
+    servers.get(0).createLocalPeer(group.getGroupId(), group.getPeers());
+    servers.get(1).createLocalPeer(group.getGroupId(), group.getPeers());
+    servers.get(2).createLocalPeer(group.getGroupId(), group.getPeers());
 
     doConsensus(servers.get(0), group.getGroupId(), 10, 10);
 
     int leaderIndex = servers.get(0).getLeader(group.getGroupId()).getNodeId() - 1;
 
-    ConsensusGenericResponse resp =
-        servers.get(0).transferLeader(group.getGroupId(), peers.get((leaderIndex + 1) % 3));
-    Assert.assertTrue(resp.isSuccess());
+    servers.get(0).transferLeader(group.getGroupId(), peers.get((leaderIndex + 1) % 3));
 
     Peer newLeader = servers.get(0).getLeader(group.getGroupId());
     Assert.assertNotNull(newLeader);
@@ -198,13 +231,13 @@ public class RatisConsensusTest {
 
   @Test
   public void transferSnapshot() throws Exception {
-    servers.get(0).createPeer(gid, peers.subList(0, 1));
+    servers.get(0).createLocalPeer(gid, peers.subList(0, 1));
 
     doConsensus(servers.get(0), gid, 10, 10);
-    Assert.assertTrue(servers.get(0).triggerSnapshot(gid).isSuccess());
+    servers.get(0).triggerSnapshot(gid);
 
-    servers.get(1).createPeer(gid, Collections.emptyList());
-    servers.get(0).addPeer(gid, peers.get(1));
+    servers.get(1).createLocalPeer(gid, peers.subList(1, 2));
+    servers.get(0).addRemotePeer(gid, peers.get(1));
 
     doConsensus(servers.get(1), gid, 10, 20);
   }
@@ -220,11 +253,15 @@ public class RatisConsensusTest {
           () -> {
             ByteBufferConsensusRequest incrReq = TestUtils.TestRequest.incrRequest();
 
-            ConsensusWriteResponse response = consensus.write(gid, incrReq);
-            if (response.getException() != null) {
-              response.getException().printStackTrace(System.out);
+            TSStatus response;
+            try {
+              response = consensus.write(gid, incrReq);
+            } catch (ConsensusException e) {
+              response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+              response.setMessage(e.getMessage());
+              e.printStackTrace(System.out);
             }
-            Assert.assertEquals(200, response.getStatus().getCode());
+            Assert.assertEquals(200, response.getCode());
             latch.countDown();
           });
     }
@@ -253,8 +290,7 @@ public class RatisConsensusTest {
     Assert.assertNotNull(leader);
 
     // Check we reached a consensus
-    ConsensusReadResponse response = leader.read(gid, getReq);
-    TestUtils.TestDataSet result = (TestUtils.TestDataSet) response.getDataset();
+    TestUtils.TestDataSet result = (TestUtils.TestDataSet) leader.read(gid, getReq);
     Assert.assertEquals(target, result.getNumber());
   }
 }

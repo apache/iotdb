@@ -20,10 +20,11 @@ package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.config.RatisConfig;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.RatisUnderRecoveryException;
 
 import org.apache.ratis.util.TimeDuration;
@@ -123,7 +124,9 @@ public class RecoverReadTest {
     final ConsensusGroupId gid = miniCluster.getGid();
     final List<Peer> members = miniCluster.getPeers();
 
-    miniCluster.getServers().forEach(s -> s.createPeer(gid, members));
+    for (RatisConsensus s : miniCluster.getServers()) {
+      s.createLocalPeer(gid, members);
+    }
 
     // first write 10 ops
     TestUtils.write(miniCluster.getServer(0), gid, 10);
@@ -150,7 +153,9 @@ public class RecoverReadTest {
     final ConsensusGroupId gid = miniCluster.getGid();
     final List<Peer> members = miniCluster.getPeers();
 
-    miniCluster.getServers().forEach(s -> s.createPeer(gid, members));
+    for (RatisConsensus s : miniCluster.getServers()) {
+      s.createLocalPeer(gid, members);
+    }
 
     // first write 10 ops
     TestUtils.write(miniCluster.getServer(0), gid, 10);
@@ -171,20 +176,20 @@ public class RecoverReadTest {
 
     // try max 3 minutes
     final long startTs = System.currentTimeMillis();
-    ConsensusReadResponse resp = TestUtils.doRead(miniCluster.getServer(0), gid);
-    while (!resp.isSuccess()) {
+    DataSet resp;
+    try {
+      resp = TestUtils.doRead(miniCluster.getServer(0), gid);
+    } catch (ConsensusException e) {
       final long timeElapsed = System.currentTimeMillis() - startTs;
       if (timeElapsed > 1000 * 60 * 3) { // 3 min
-        Assert.fail(
-            "Linearizable read failed after 3 minutes, last exception seen: "
-                + resp.getException());
+        Assert.fail("Linearizable read failed after 3 minutes, last exception seen: " + e);
       }
       Thread.sleep(100);
-      logger.info("linearizable read failed  when restart, retrying: ", resp.getException());
+      logger.info("linearizable read failed  when restart, retrying: ", e);
       resp = TestUtils.doRead(miniCluster.getServer(0), gid);
     }
 
-    Assert.assertEquals(10, ((TestUtils.TestDataSet) resp.getDataset()).getNumber());
+    Assert.assertEquals(10, ((TestUtils.TestDataSet) resp).getNumber());
   }
 
   @Test
@@ -192,7 +197,9 @@ public class RecoverReadTest {
     final ConsensusGroupId gid = miniCluster.getGid();
     final List<Peer> members = miniCluster.getPeers();
 
-    miniCluster.getServers().forEach(s -> s.createPeer(gid, members));
+    for (RatisConsensus s : miniCluster.getServers()) {
+      s.createLocalPeer(gid, members);
+    }
 
     // first write 10 ops
     TestUtils.write(miniCluster.getServer(0), gid, 10);
@@ -209,8 +216,12 @@ public class RecoverReadTest {
     miniCluster.restart();
 
     // query during redo: get exception that ratis is under recovery
-    final ConsensusReadResponse readResponse = TestUtils.doRead(miniCluster.getServer(0), gid);
-    Assert.assertTrue(readResponse.getException() instanceof RatisUnderRecoveryException);
+    try {
+      TestUtils.doRead(miniCluster.getServer(0), gid);
+      Assert.fail();
+    } catch (ConsensusException e) {
+      Assert.assertTrue(e instanceof RatisUnderRecoveryException);
+    }
   }
 
   @Test
@@ -218,7 +229,9 @@ public class RecoverReadTest {
     final ConsensusGroupId gid = miniCluster.getGid();
     final List<Peer> members = miniCluster.getPeers();
 
-    miniCluster.getServers().forEach(s -> s.createPeer(gid, members));
+    for (RatisConsensus s : miniCluster.getServers()) {
+      s.createLocalPeer(gid, members);
+    }
 
     // first write 30 ops
     TestUtils.write(miniCluster.getServer(0), gid, 50);
@@ -238,7 +251,11 @@ public class RecoverReadTest {
     miniCluster.waitUntilActiveLeader();
 
     // query during redo: get exception that ratis is under recovery
-    final ConsensusReadResponse readResponse = TestUtils.doRead(miniCluster.getServer(0), gid);
-    Assert.assertTrue(readResponse.getException() instanceof RatisUnderRecoveryException);
+    try {
+      TestUtils.doRead(miniCluster.getServer(0), gid);
+      Assert.fail();
+    } catch (ConsensusException e) {
+      Assert.assertTrue(e instanceof RatisUnderRecoveryException);
+    }
   }
 }
