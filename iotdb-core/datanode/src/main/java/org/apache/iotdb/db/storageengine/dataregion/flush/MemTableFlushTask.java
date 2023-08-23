@@ -294,7 +294,7 @@ public class MemTableFlushTask {
       };
 
   private void recordFlushPointsMetric() {
-    if (storageGroup.startsWith(SchemaConstant.SYSTEM_DATABASE)) {
+    if (storageGroup.startsWith(IoTDBConfig.SYSTEM_DATABASE)) {
       return;
     }
     int lastIndex = storageGroup.lastIndexOf("-");
