@@ -62,7 +62,7 @@ public class WALEntryPosition {
     if (!canRead()) {
       throw new IOException("This entry isn't ready for read.");
     }
-    return CACHE.get(this);
+    return CACHE.getInsertNode(this);
   }
 
   /**
@@ -74,7 +74,7 @@ public class WALEntryPosition {
     if (!canRead()) {
       throw new IOException("This entry isn't ready for read.");
     }
-    return CACHE.getBuffer(this);
+    return CACHE.getByteBuffer(this);
   }
 
   /**

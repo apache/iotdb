@@ -26,13 +26,13 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.PipeRequestType;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferBatchReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferInsertNodeReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBatchReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -89,20 +89,26 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
         switch (PipeRequestType.valueOf(rawRequestType)) {
           case HANDSHAKE:
             return handleTransferHandshake(PipeTransferHandshakeReq.fromTPipeTransferReq(req));
-          case TRANSFER_INSERT_NODE:
+          case TRANSFER_TABLET_INSERT_NODE:
             return handleTransferInsertNode(
-                PipeTransferInsertNodeReq.fromTPipeTransferReq(req),
+                PipeTransferTabletInsertNodeReq.fromTPipeTransferReq(req),
                 partitionFetcher,
                 schemaFetcher);
-          case TRANSFER_TABLET:
+          case TRANSFER_TABLET_RAW:
             return handleTransferTablet(
-                PipeTransferTabletReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
-          case TRANSFER_BINARY:
+                PipeTransferTabletRawReq.fromTPipeTransferReq(req),
+                partitionFetcher,
+                schemaFetcher);
+          case TRANSFER_TABLET_BINARY:
             return handleTransferBinary(
-                PipeTransferBinaryReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
-          case TRANSFER_BATCH:
+                PipeTransferTabletBinaryReq.fromTPipeTransferReq(req),
+                partitionFetcher,
+                schemaFetcher);
+          case TRANSFER_TABLET_BATCH:
             return handleTransferBatch(
-                PipeTransferBatchReq.fromTPipeTransferReq(req), partitionFetcher, schemaFetcher);
+                PipeTransferTabletBatchReq.fromTPipeTransferReq(req),
+                partitionFetcher,
+                schemaFetcher);
           case TRANSFER_FILE_PIECE:
             return handleTransferFilePiece(
                 PipeTransferFilePieceReq.fromTPipeTransferReq(req),
@@ -192,7 +198,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
   }
 
   private TPipeTransferResp handleTransferInsertNode(
-      PipeTransferInsertNodeReq req,
+      PipeTransferTabletInsertNodeReq req,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
     return new TPipeTransferResp(
@@ -200,13 +206,17 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
   }
 
   private TPipeTransferResp handleTransferBinary(
-      PipeTransferBinaryReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
+      PipeTransferTabletBinaryReq req,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher) {
     return new TPipeTransferResp(
         executeStatement(req.constructStatement(), partitionFetcher, schemaFetcher));
   }
 
   private TPipeTransferResp handleTransferTablet(
-      PipeTransferTabletReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
+      PipeTransferTabletRawReq req,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher) {
     InsertTabletStatement statement = req.constructStatement();
     return new TPipeTransferResp(
         statement.isEmpty()
@@ -215,7 +225,9 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
   }
 
   private TPipeTransferResp handleTransferBatch(
-      PipeTransferBatchReq req, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
+      PipeTransferTabletBatchReq req,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher) {
     final Pair<InsertRowsStatement, InsertMultiTabletsStatement> statementPair =
         req.constructStatements();
     return new TPipeTransferResp(

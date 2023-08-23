@@ -40,7 +40,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -68,23 +67,37 @@ public class WALInsertNodeCache {
             .build(new WALInsertNodeCacheLoader());
   }
 
-  public InsertNode get(WALEntryPosition position) {
-    Pair<ByteBuffer, InsertNode> pair = lruCache.getIfPresent(position);
+  public InsertNode getInsertNode(WALEntryPosition position) {
+    final Pair<ByteBuffer, InsertNode> pair = lruCache.get(position);
+
     if (pair == null) {
-      pair = lruCache.getAll(Collections.singleton(position)).get(position);
+      throw new IllegalStateException();
     }
 
-    InsertNode node = parse(pair.left);
-    lruCache.put(position, new Pair<>(pair.left, node));
-    return node;
+    if (pair.getRight() == null) {
+      pair.setRight(parse(pair.getLeft()));
+    }
+
+    return pair.getRight();
   }
 
-  public ByteBuffer getBuffer(WALEntryPosition position) {
-    Pair<ByteBuffer, InsertNode> pair = lruCache.getIfPresent(position);
-    if (pair == null) {
-      pair = lruCache.getAll(Collections.singleton(position)).get(position);
+  private InsertNode parse(ByteBuffer buffer) {
+    PlanNode node = WALEntry.deserializeForConsensus(buffer);
+    if (node instanceof InsertNode) {
+      return (InsertNode) node;
+    } else {
+      return null;
     }
-    return pair.left;
+  }
+
+  public ByteBuffer getByteBuffer(WALEntryPosition position) {
+    Pair<ByteBuffer, InsertNode> pair = lruCache.get(position);
+
+    if (pair == null) {
+      throw new IllegalStateException();
+    }
+
+    return pair.getLeft();
   }
 
   boolean contains(WALEntryPosition position) {
@@ -104,15 +117,6 @@ public class WALInsertNodeCache {
     memTablesNeedSearch.clear();
   }
 
-  private InsertNode parse(ByteBuffer buffer) {
-    PlanNode node = WALEntry.deserializeForConsensus(buffer);
-    if (node instanceof InsertNode) {
-      return (InsertNode) node;
-    } else {
-      return null;
-    }
-  }
-
   class WALInsertNodeCacheLoader
       implements CacheLoader<WALEntryPosition, Pair<ByteBuffer, InsertNode>> {
 
@@ -127,6 +131,7 @@ public class WALInsertNodeCache {
     public @NonNull Map<@NonNull WALEntryPosition, @NonNull Pair<ByteBuffer, InsertNode>> loadAll(
         @NonNull Iterable<? extends @NonNull WALEntryPosition> keys) {
       Map<WALEntryPosition, Pair<ByteBuffer, InsertNode>> res = new HashMap<>();
+
       for (WALEntryPosition pos : keys) {
         if (res.containsKey(pos) || !pos.canRead()) {
           continue;
@@ -144,6 +149,7 @@ public class WALInsertNodeCache {
           }
           continue;
         }
+
         // batch load when wal file is sealed
         long position = 0;
         try (FileChannel channel = pos.openReadFileChannel();
@@ -170,6 +176,7 @@ public class WALInsertNodeCache {
               e);
         }
       }
+
       return res;
     }
   }

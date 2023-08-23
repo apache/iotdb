@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.builder;
 
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferInsertNodeReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -52,9 +52,9 @@ public class IoTDBThriftAsyncPipeTransferBatchReqBuilder extends PipeTransferBat
       throws IOException, WALPipeException {
     final TPipeTransferReq req =
         event instanceof PipeInsertNodeTabletInsertionEvent
-            ? PipeTransferInsertNodeReq.toTPipeTransferReq(
+            ? PipeTransferTabletInsertNodeReq.toTPipeTransferReq(
                 ((PipeInsertNodeTabletInsertionEvent) event).getInsertNode())
-            : PipeTransferTabletReq.toTPipeTransferReq(
+            : PipeTransferTabletRawReq.toTPipeTransferReq(
                 ((PipeRawTabletInsertionEvent) event).convertToTablet(),
                 ((PipeRawTabletInsertionEvent) event).isAligned());
     if (events.isEmpty() || !events.get(events.size() - 1).equals(event)) {

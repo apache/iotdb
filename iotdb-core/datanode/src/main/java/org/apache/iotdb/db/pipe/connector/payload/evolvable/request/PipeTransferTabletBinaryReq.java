@@ -39,10 +39,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class PipeTransferBinaryReq extends TPipeTransferReq {
+public class PipeTransferTabletBinaryReq extends TPipeTransferReq {
+
   private ByteBuffer byteBuffer;
 
-  private PipeTransferBinaryReq() {
+  private PipeTransferTabletBinaryReq() {
     // Do nothing
   }
 
@@ -52,6 +53,7 @@ public class PipeTransferBinaryReq extends TPipeTransferReq {
 
   public Statement constructStatement() {
     final InsertNode insertNode = parse(byteBuffer);
+
     if (insertNode instanceof InsertRowNode) {
       final InsertRowNode node = (InsertRowNode) insertNode;
 
@@ -90,7 +92,7 @@ public class PipeTransferBinaryReq extends TPipeTransferReq {
   }
 
   private InsertNode parse(ByteBuffer buffer) {
-    PlanNode node = WALEntry.deserializeForConsensus(buffer);
+    final PlanNode node = WALEntry.deserializeForConsensus(buffer);
     if (node instanceof InsertNode) {
       return (InsertNode) node;
     } else {
@@ -100,19 +102,19 @@ public class PipeTransferBinaryReq extends TPipeTransferReq {
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferBinaryReq toTPipeTransferReq(ByteBuffer byteBuffer) {
-    final PipeTransferBinaryReq req = new PipeTransferBinaryReq();
+  public static PipeTransferTabletBinaryReq toTPipeTransferReq(ByteBuffer byteBuffer) {
+    final PipeTransferTabletBinaryReq req = new PipeTransferTabletBinaryReq();
 
     req.byteBuffer = byteBuffer;
     req.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
-    req.type = PipeRequestType.TRANSFER_BINARY.getType();
+    req.type = PipeRequestType.TRANSFER_TABLET_BINARY.getType();
     req.body = byteBuffer;
 
     return req;
   }
 
-  public static PipeTransferBinaryReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
-    final PipeTransferBinaryReq binaryReq = new PipeTransferBinaryReq();
+  public static PipeTransferTabletBinaryReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
+    final PipeTransferTabletBinaryReq binaryReq = new PipeTransferTabletBinaryReq();
     binaryReq.byteBuffer = transferReq.body;
 
     binaryReq.version = transferReq.version;
@@ -123,11 +125,12 @@ public class PipeTransferBinaryReq extends TPipeTransferReq {
   }
 
   /////////////////////////////// Air Gap ///////////////////////////////
+
   public static byte[] toTransferInsertNodeBytes(ByteBuffer byteBuffer) throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
-      ReadWriteIOUtils.write(PipeRequestType.TRANSFER_BINARY.getType(), outputStream);
+      ReadWriteIOUtils.write(PipeRequestType.TRANSFER_TABLET_BINARY.getType(), outputStream);
       return BytesUtils.concatByteArray(byteArrayOutputStream.toByteArray(), byteBuffer.array());
     }
   }
@@ -142,7 +145,7 @@ public class PipeTransferBinaryReq extends TPipeTransferReq {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeTransferBinaryReq that = (PipeTransferBinaryReq) obj;
+    PipeTransferTabletBinaryReq that = (PipeTransferTabletBinaryReq) obj;
     return byteBuffer.equals(that.byteBuffer)
         && version == that.version
         && type == that.type

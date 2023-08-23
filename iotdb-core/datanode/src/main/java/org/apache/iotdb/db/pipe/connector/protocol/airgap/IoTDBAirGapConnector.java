@@ -23,12 +23,12 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapOneByteResponse;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferInsertNodeReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -242,11 +242,11 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
             .equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE)
         && pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCache() == null) {
       bytes =
-          PipeTransferBinaryReq.toTransferInsertNodeBytes(
+          PipeTransferTabletBinaryReq.toTransferInsertNodeBytes(
               pipeInsertNodeTabletInsertionEvent.getByteBuffer());
     } else {
       bytes =
-          PipeTransferInsertNodeReq.toTransferInsertNodeBytes(
+          PipeTransferTabletInsertNodeReq.toTransferInsertNodeBytes(
               pipeInsertNodeTabletInsertionEvent.getInsertNode());
     }
 
@@ -262,7 +262,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       throws PipeException, IOException {
     if (!send(
         socket,
-        PipeTransferTabletReq.toTPipeTransferTabletBytes(
+        PipeTransferTabletRawReq.toTPipeTransferTabletBytes(
             pipeRawTabletInsertionEvent.convertToTablet(),
             pipeRawTabletInsertionEvent.isAligned()))) {
       throw new PipeException(

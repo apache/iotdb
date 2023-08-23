@@ -29,10 +29,10 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftAsyncPipeTransferBatchReqBuilder;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferInsertNodeReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferInsertNodeTabletInsertionEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferRawTabletInsertionEventHandler;
@@ -170,8 +170,8 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
               .getPattern()
               .equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE)
           && pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCache() == null) {
-        final PipeTransferBinaryReq pipeTransferReq =
-            PipeTransferBinaryReq.toTPipeTransferReq(
+        final PipeTransferTabletBinaryReq pipeTransferReq =
+            PipeTransferTabletBinaryReq.toTPipeTransferReq(
                 pipeInsertNodeTabletInsertionEvent.getByteBuffer());
 
         final PipeTransferInsertNodeTabletInsertionEventHandler pipeTransferInsertNodeReqHandler =
@@ -197,27 +197,27 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
             (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
-        final PipeTransferInsertNodeReq pipeTransferInsertNodeReq =
-            PipeTransferInsertNodeReq.toTPipeTransferReq(
+        final PipeTransferTabletInsertNodeReq pipeTransferTabletInsertNodeReq =
+            PipeTransferTabletInsertNodeReq.toTPipeTransferReq(
                 pipeInsertNodeTabletInsertionEvent.getInsertNode());
         final PipeTransferInsertNodeTabletInsertionEventHandler pipeTransferInsertNodeReqHandler =
             new PipeTransferInsertNodeTabletInsertionEventHandler(
                 requestCommitId,
                 pipeInsertNodeTabletInsertionEvent,
-                pipeTransferInsertNodeReq,
+                pipeTransferTabletInsertNodeReq,
                 this);
 
         transfer(requestCommitId, pipeTransferInsertNodeReqHandler);
       } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
         final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
             (PipeRawTabletInsertionEvent) tabletInsertionEvent;
-        final PipeTransferTabletReq pipeTransferTabletReq =
-            PipeTransferTabletReq.toTPipeTransferReq(
+        final PipeTransferTabletRawReq pipeTransferTabletRawReq =
+            PipeTransferTabletRawReq.toTPipeTransferReq(
                 pipeRawTabletInsertionEvent.convertToTablet(),
                 pipeRawTabletInsertionEvent.isAligned());
         final PipeTransferRawTabletInsertionEventHandler pipeTransferTabletReqHandler =
             new PipeTransferRawTabletInsertionEventHandler(
-                requestCommitId, pipeRawTabletInsertionEvent, pipeTransferTabletReq, this);
+                requestCommitId, pipeRawTabletInsertionEvent, pipeTransferTabletRawReq, this);
 
         transfer(requestCommitId, pipeTransferTabletReqHandler);
       }
