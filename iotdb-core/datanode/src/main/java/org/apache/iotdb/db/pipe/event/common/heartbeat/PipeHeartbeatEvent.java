@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.event.common.heartbeat;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.pipe.api.event.dml.heartbeat.HeartbeatEvent;
 
 import org.slf4j.Logger;
@@ -117,18 +118,23 @@ public class PipeHeartbeatEvent extends EnrichedEvent implements HeartbeatEvent 
     String extractToProcessMsg = processTime != 0 ? (processTime - extractTime) + "ms" : errorMsg;
     String processToTransferMsg =
         transferTime != 0 ? (transferTime - processTime) + "ms" : errorMsg;
+    String totalTimeMsg = transferTime != 0 ? (transferTime - disruptTime) + "ms" : errorMsg;
 
     return "PipeHeartbeatEvent{"
         + "pipeName='"
         + pipeName
         + "', dataRegionId="
         + dataRegionId
+        + ", startTime="
+        + DateTimeUtils.convertLongToDate(disruptTime, "ms")
         + ", disruptToExtract="
         + disruptToExtractMsg
         + ", extractToProcess="
         + extractToProcessMsg
         + ", processToTransfer="
         + processToTransferMsg
+        + ", totalTime="
+        + totalTimeMsg
         + "}";
   }
 }
