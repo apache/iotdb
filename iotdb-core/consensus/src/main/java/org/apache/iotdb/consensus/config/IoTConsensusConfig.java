@@ -253,8 +253,6 @@ public class IoTConsensusConfig {
     private final int maxLogEntriesNumPerBatch;
     private final int maxSizePerBatch;
     private final int maxPendingBatchesNum;
-
-    private final int maxQueueLength;
     private final long maxWaitingTimeForWaitBatchInMs;
     private final int maxWaitingTimeForAccumulatingBatchInMs;
     private final long basicRetryWaitTimeMs;
@@ -269,7 +267,6 @@ public class IoTConsensusConfig {
         int maxLogEntriesNumPerBatch,
         int maxSizePerBatch,
         int maxPendingBatchesNum,
-        int maxQueueLength,
         long maxWaitingTimeForWaitBatchInMs,
         int maxWaitingTimeForAccumulatingBatchInMs,
         long basicRetryWaitTimeMs,
@@ -282,7 +279,6 @@ public class IoTConsensusConfig {
       this.maxLogEntriesNumPerBatch = maxLogEntriesNumPerBatch;
       this.maxSizePerBatch = maxSizePerBatch;
       this.maxPendingBatchesNum = maxPendingBatchesNum;
-      this.maxQueueLength = maxQueueLength;
       this.maxWaitingTimeForWaitBatchInMs = maxWaitingTimeForWaitBatchInMs;
       this.maxWaitingTimeForAccumulatingBatchInMs = maxWaitingTimeForAccumulatingBatchInMs;
       this.basicRetryWaitTimeMs = basicRetryWaitTimeMs;
@@ -304,10 +300,6 @@ public class IoTConsensusConfig {
 
     public int getMaxPendingBatchesNum() {
       return maxPendingBatchesNum;
-    }
-
-    public int getMaxQueueLength() {
-      return maxQueueLength;
     }
 
     public long getMaxWaitingTimeForWaitBatchInMs() {
@@ -352,10 +344,9 @@ public class IoTConsensusConfig {
 
     public static class Builder {
 
-      private int maxLogEntriesNumPerBatch = 1024;
+      private int maxLogEntriesNumPerBatch = 1024 * 1024;
       private int maxSizePerBatch = 16 * 1024 * 1024;
       private int maxPendingBatchesNum = 5;
-      private int maxQueueLength = 4096;
       private long maxWaitingTimeForWaitBatchInMs = 10 * 1000L;
 
       private int maxWaitingTimeForAccumulatingBatchInMs = 500;
@@ -379,11 +370,6 @@ public class IoTConsensusConfig {
 
       public Replication.Builder setMaxPendingBatchesNum(int maxPendingBatchesNum) {
         this.maxPendingBatchesNum = maxPendingBatchesNum;
-        return this;
-      }
-
-      public Builder setMaxQueueLength(int maxQueueLength) {
-        this.maxQueueLength = maxQueueLength;
         return this;
       }
 
@@ -439,7 +425,6 @@ public class IoTConsensusConfig {
             maxLogEntriesNumPerBatch,
             maxSizePerBatch,
             maxPendingBatchesNum,
-            maxQueueLength,
             maxWaitingTimeForWaitBatchInMs,
             maxWaitingTimeForAccumulatingBatchInMs,
             basicRetryWaitTimeMs,

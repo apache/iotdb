@@ -44,9 +44,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.OptionalLong;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -212,7 +212,7 @@ public class LogDispatcher {
     public LogDispatcherThread(Peer peer, IoTConsensusConfig config, long initialSyncIndex) {
       this.peer = peer;
       this.config = config;
-      this.pendingEntries = new ArrayBlockingQueue<>(config.getReplication().getMaxQueueLength());
+      this.pendingEntries = new LinkedBlockingDeque<>();
       this.controller =
           new IndexController(
               impl.getStorageDir(),
@@ -251,13 +251,17 @@ public class LogDispatcher {
 
     /** try to offer a request into queue with memory control. */
     public boolean offer(IndexedConsensusRequest indexedConsensusRequest) {
+      if (indexedConsensusRequest.getSearchIndex() - getCurrentSyncIndex()
+          > config.getReplication().getMaxLogEntriesNumPerBatch()) {
+        return false;
+      }
       if (!iotConsensusMemoryManager.reserve(indexedConsensusRequest.getSerializedSize(), true)) {
         return false;
       }
       boolean success;
       try {
         success = pendingEntries.offer(indexedConsensusRequest);
-      } catch (Throwable t) {
+      } catch (Exception t) {
         // If exception occurs during request offer, the reserved memory should be released
         iotConsensusMemoryManager.free(indexedConsensusRequest.getSerializedSize(), true);
         throw t;
