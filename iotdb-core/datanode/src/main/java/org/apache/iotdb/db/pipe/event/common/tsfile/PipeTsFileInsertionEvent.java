@@ -174,7 +174,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     try {
       if (dataContainer == null) {
         waitForTsFileClose();
-        dataContainer = new TsFileInsertionDataContainer(tsFile, getPattern(), startTime, endTime);
+        dataContainer =
+            new TsFileInsertionDataContainer(
+                tsFile, getPattern(), startTime, endTime, pipeTaskMeta, this);
       }
       return dataContainer.toTabletInsertionEvents();
     } catch (InterruptedException e) {
