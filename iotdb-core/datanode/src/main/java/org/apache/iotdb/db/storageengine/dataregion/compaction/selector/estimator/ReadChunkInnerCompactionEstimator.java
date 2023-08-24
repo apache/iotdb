@@ -25,7 +25,7 @@ import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimator {
 
   @Override
-  public long calculatingMetadataMemoryCost(InnerCompactionTaskInfo taskInfo) {
+  public long calculatingMetadataMemoryCost(CompactionTaskInfo taskInfo) {
     long cost = 0;
     // add ChunkMetadata size of MultiTsFileDeviceIterator
     cost +=
@@ -45,14 +45,16 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
   }
 
   @Override
-  public long calculatingDataMemoryCost(InnerCompactionTaskInfo taskInfo) {
-    // add max target chunk size and max source chunk size
-    long cost =
-        2
+  public long calculatingDataMemoryCost(CompactionTaskInfo taskInfo) {
+    long cost = 0;
+    cost +=
+        IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize()
+            * taskInfo.getMaxConcurrentSeriesNum();
+    cost +=
+        taskInfo.getTotalFileSize()
+            * compressionRatio
             * taskInfo.getMaxConcurrentSeriesNum()
-            * IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
-
-    // add modification file size
+            / taskInfo.getTotalChunkNum();
     cost += taskInfo.getModificationFileSize();
     return cost;
   }

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.FastCompactionInnerCompactionEstimator;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.FastCrossSpaceCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.ReadChunkInnerCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -72,12 +73,12 @@ public class CompactionTaskMemCostEstimatorTest extends AbstractCompactionTest {
   @Test
   public void testEstimateFastCompactionInnerSpaceCompactionTaskMemCost()
       throws IOException, MetadataException, WriteProcessException {
-    createFiles(3, 10, 5, 100000, 0, 0, 50, 50, true, true);
-    tsFileManager.addAll(seqResources, true);
-    List<TsFileResource> tsFileList = tsFileManager.getTsFileList(true);
-    System.out.println(tsFileList.get(0).getTsFile().getAbsolutePath());
+    createFiles(5, 10, 5, 10000, 0, 0, 50, 50, true, false);
+    createFiles(10, 4, 5, 10000, 1000, 0, 30, 90, true, false);
+
+    tsFileManager.addAll(unseqResources, false);
     long cost =
-        new FastCompactionInnerCompactionEstimator().estimateInnerCompactionMemory(tsFileList);
+        new FastCompactionInnerCompactionEstimator().estimateInnerCompactionMemory(unseqResources);
     Assert.assertTrue(cost > 0);
   }
 
@@ -89,6 +90,16 @@ public class CompactionTaskMemCostEstimatorTest extends AbstractCompactionTest {
     List<TsFileResource> tsFileList = tsFileManager.getTsFileList(true);
     long cost =
         new FastCompactionInnerCompactionEstimator().estimateInnerCompactionMemory(tsFileList);
+    Assert.assertTrue(cost > 0);
+  }
+
+  @Test
+  public void testEstimateFastCompactionCrossSpaceCompactionTaskMemCost1()
+      throws IOException, MetadataException, WriteProcessException {
+    createFiles(3, 10, 5, 100, 0, 0, 50, 50, false, true);
+    createFiles(4, 10, 5, 400, 0, 0, 30, 50, false, false);
+    long cost =
+        new FastCrossSpaceCompactionEstimator().estimateCrossCompactionMemory(seqResources, unseqResources);
     Assert.assertTrue(cost > 0);
   }
 }
