@@ -1292,9 +1292,9 @@
                                 <configuration>
                                     <artifactItems>
                                         <artifactItem>
-                                            <groupId>org.apache.iotdb</groupId>
+                                            <groupId>org.apache.iotdb.tools</groupId>
                                             <artifactId>iotdb-tools-thrift</artifactId>
-                                            <version>${project.version}</version>
+                                            <version>${iotdb-tools-thrift.version}</version>
                                             <classifier>${os.classifier}</classifier>
                                             <type>zip</type>
                                             <overWrite>true</overWrite>
@@ -1355,11 +1355,10 @@
             <dependencies>
                 <!-- This ensures the iotdb-tools-thift module is build first -->
                 <dependency>
-                    <groupId>org.apache.iotdb</groupId>
+                    <groupId>org.apache.iotdb.tools</groupId>
                     <artifactId>iotdb-tools-thrift</artifactId>
-                    <version>1.3.0-SNAPSHOT</version>
+                    <version>${iotdb-tools-thrift.version}</version>
                     <type>pom</type>
-                    <scope>provided</scope>
                 </dependency>
             </dependencies>
         </profile>
