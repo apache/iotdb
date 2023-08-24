@@ -36,17 +36,25 @@ public class RoleTest {
     Role role = new Role("role");
     PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.ln"));
     role.setPrivilegeList(Collections.singletonList(pathPrivilege));
-    role.setPathPrivileges(new PartialPath("root.ln"), Collections.singleton(1));
+    role.addPathPrivilege(new PartialPath("root.ln"), 1, false);
+    role.addPathPrivilege(new PartialPath("root.ln"), 2, true);
     Assert.assertEquals(
-        "Role{name='role', pathPrivilegeList=[root.ln : WRITE_DATA], systemPrivilegeSet=[]}",
+        "Role{name='role', pathPrivilegeList=[root.ln : WRITE_DATA,"
+            + " READ_SCHEMA with grant option,], systemPrivilegeSet=[]}",
         role.toString());
     Role role1 = new Role("role1");
     role1.deserialize(role.serialize());
     Assert.assertEquals(
-        "Role{name='role', pathPrivilegeList=[root.ln : WRITE_DATA], systemPrivilegeSet=[]}",
+        "Role{name='role', pathPrivilegeList=[root.ln : "
+            + "WRITE_DATA, READ_SCHEMA with grant option,], systemPrivilegeSet=[]}",
         role1.toString());
   }
 
   @Test
-  public void TestRole_GrantAndRevoke() throws IllegalPrivilegeException, IllegalPathException {}
+  public void TestRole_GrantAndRevoke() throws IllegalPrivilegeException, IllegalPathException {
+    Role role = new Role("role");
+    PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.ln"));
+    role.setPrivilegeList(Collections.singletonList(pathPrivilege));
+    //    role.
+  }
 }

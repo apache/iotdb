@@ -71,7 +71,6 @@ public class AuthorPlan extends ConfigPhysicalPlan {
   public AuthorPlan(
       ConfigPhysicalPlanType authorType,
       String userName,
-      String currentUsername,
       String roleName,
       String password,
       String newPassword,
@@ -81,7 +80,6 @@ public class AuthorPlan extends ConfigPhysicalPlan {
     this(authorType);
     this.authorType = authorType;
     this.userName = userName;
-    this.currentUsername = this.roleName = roleName;
     this.password = password;
     this.newPassword = newPassword;
     this.permissions = permissions;

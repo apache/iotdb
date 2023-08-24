@@ -178,14 +178,16 @@ public class AuthorInfo implements SnapshotProcessor {
         case GrantRole:
           for (int i : permissions) {
             for (PartialPath path : nodeNameList) {
-              authorizer.grantPrivilegeToRole(roleName, path, i);
+              // LSL  need to check if its grant opt.
+              authorizer.grantPrivilegeToRole(null, roleName, path, i, false);
             }
           }
           break;
         case GrantUser:
           for (int i : permissions) {
             for (PartialPath path : nodeNameList) {
-              authorizer.grantPrivilegeToUser(userName, path, i);
+              // need to check if its grant opt.
+              authorizer.grantPrivilegeToUser(null, userName, path, i, false);
             }
           }
           break;
@@ -419,6 +421,7 @@ public class AuthorInfo implements SnapshotProcessor {
       tUserResp.setPassword(user.getPassword());
       tUserResp.setPrivilegeList(userPrivilegeList);
       tUserResp.setRoleList(user.getRoleList());
+      tUserResp.setSysPriList(user.getSysPrivilege());
     }
 
     // Permission information for roles owned by users
@@ -431,7 +434,8 @@ public class AuthorInfo implements SnapshotProcessor {
           String privilegeIdList = pathPrivilege.getPrivileges().toString();
           rolePrivilegeList.add(privilegeIdList.substring(1, privilegeIdList.length() - 1));
         }
-        tRoleRespMap.put(roleName, new TRoleResp(roleName, rolePrivilegeList));
+        tRoleRespMap.put(
+            roleName, new TRoleResp(roleName, rolePrivilegeList, role.getSysPrivilege()));
       }
     }
     result.setUserInfo(tUserResp);

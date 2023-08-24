@@ -70,7 +70,8 @@ public interface IAuthorizer extends SnapshotProcessor {
    * @throws AuthException If the user does not exist or the privilege or the seriesPath is illegal
    *     or the permission already exists.
    */
-  void grantPrivilegeToUser(String username, PartialPath path, int privilegeId)
+  void grantPrivilegeToUser(
+      String currnetUser, String username, PartialPath path, int privilegeId, boolean grantOpt)
       throws AuthException;
 
   /**
@@ -112,7 +113,8 @@ public interface IAuthorizer extends SnapshotProcessor {
    * @throws AuthException If the role does not exist or the privilege or the seriesPath is illegal
    *     or the privilege already exists.
    */
-  void grantPrivilegeToRole(String roleName, PartialPath path, int privilegeId)
+  void grantPrivilegeToRole(
+      String currentUser, String roleName, PartialPath path, int privilegeId, boolean grantOpt)
       throws AuthException;
 
   /**

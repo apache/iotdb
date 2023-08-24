@@ -138,7 +138,8 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
-  public void grantPrivilegeToUser(String username, PartialPath path, int privilegeId)
+  public void grantPrivilegeToUser(
+      String currentName, String username, PartialPath path, int privilegeId, boolean grantOpt)
       throws AuthException {
     PartialPath newPath = path;
     if (isAdmin(username)) {
@@ -146,17 +147,17 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
           TSStatusCode.NO_PERMISSION,
           "Invalid operation, administrator already has all privileges");
     }
-    if (!PrivilegeType.isPathRelevant(privilegeId)) {
-      newPath = AuthUtils.ROOT_PATH_PRIVILEGE_PATH;
+    // currentName equals null mean apply author plan.
+    if (currentName == null
+        || (isAdmin(currentName) || checkUserPrivilegeGrantOpt(currentName, path, privilegeId))) {
+      if (!userManager.grantPrivilegeToUser(username, path, privilegeId, grantOpt)) {
+        throw new AuthException(
+            TSStatusCode.ALREADY_HAS_PRIVILEGE,
+            String.format(
+                "User %s already has %s on %s",
+                username, PrivilegeType.values()[privilegeId], path));
+      }
     }
-    // LSL
-    //    if (!userManager.grantPrivilegeToUser(username, newPath, privilegeId)) {
-    //      throw new AuthException(
-    //          TSStatusCode.ALREADY_HAS_PRIVILEGE,
-    //          String.format(
-    //              "User %s already has %s on %s", username, PrivilegeType.values()[privilegeId],
-    // path));
-    //    }
   }
 
   @Override
@@ -211,21 +212,24 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     }
   }
 
+  // When role/user A grant privilege to B,
+  // we have to make sure that A have the privilege and grant option.
   @Override
-  public void grantPrivilegeToRole(String roleName, PartialPath path, int privilegeId)
+  public void grantPrivilegeToRole(
+      String currentName, String roleName, PartialPath path, int privilegeId, boolean grantOpt)
       throws AuthException {
-    PartialPath newPath = path;
-    if (!PrivilegeType.isPathRelevant(privilegeId)) {
-      newPath = AuthUtils.ROOT_PATH_PRIVILEGE_PATH;
+
+    if (currentName == null
+        || isAdmin(currentName)
+        || checkUserPrivilegeGrantOpt(currentName, path, privilegeId)) {
+      if (!roleManager.grantPrivilegeToRole(roleName, path, privilegeId, grantOpt)) {
+        throw new AuthException(
+            TSStatusCode.ALREADY_HAS_PRIVILEGE,
+            String.format(
+                "Role %s already has %s on %s",
+                roleName, PrivilegeType.values()[privilegeId], path));
+      }
     }
-    // LSL
-    //    if (!roleManager.grantPrivilegeToRole(roleName, newPath, privilegeId)) {
-    //      throw new AuthException(
-    //          TSStatusCode.ALREADY_HAS_PRIVILEGE,
-    //          String.format(
-    //              "Role %s already has %s on %s", roleName, PrivilegeType.values()[privilegeId],
-    // path));
-    //    }
   }
 
   @Override
@@ -334,6 +338,82 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     }
     return false;
   }
+
+  public boolean checkUserPrivilegeGrantOpt(String username, PartialPath path, int privilegeId)
+      throws AuthException {
+    User user = userManager.getUser(username);
+    if (user == null) {
+      throw new AuthException(
+          TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_EXCEPTION, username));
+    }
+    if (path == null) {
+      if (user.checkSysPrivilege(privilegeId)) {
+        if (user.getSysPriGrantOpt().contains(privilegeId)) {
+          return true;
+        }
+      }
+      if (user.getRoleList().isEmpty()) {
+        throw new AuthException(
+            TSStatusCode.NOT_HAS_PRIVILEGE,
+            String.format(
+                "Dont have privilege: %s to grant",
+                PrivilegeType.values()[privilegeId].toString()));
+      }
+      for (String roleName : user.getRoleList()) {
+        Role role = roleManager.getRole(roleName);
+        if (role.checkSysPrivilege(privilegeId) && role.getSysPriGrantOpt().contains(privilegeId)) {
+          return true;
+        }
+      }
+      throw new AuthException(
+          TSStatusCode.NOT_HAS_PRIVILEGE,
+          String.format(
+              "Dont have privilege: %s to grant", PrivilegeType.values()[privilegeId].toString()));
+
+    } else {
+      if (user.checkPathPrivilegeGrantOpt(path, privilegeId)) {
+        return true;
+      }
+      if (user.getRoleList().isEmpty()) {
+        throw new AuthException(
+            TSStatusCode.NOT_HAS_PRIVILEGE,
+            String.format(
+                "Dont have privilege: %s on path %s to grant",
+                PrivilegeType.values()[privilegeId].toString(), path.toString()));
+      }
+      for (String roleName : user.getRoleList()) {
+        Role role = roleManager.getRole(roleName);
+        if (role.checkPathPrivilegeGrantOpt(path, privilegeId)) {
+          return true;
+        }
+      }
+      throw new AuthException(
+          TSStatusCode.NOT_HAS_PRIVILEGE,
+          String.format(
+              "Dont have privilege: %s on path %s to grant",
+              PrivilegeType.values()[privilegeId].toString(), path.toString()));
+    }
+  }
+
+  //  public boolean checkRolePrivilegeGrantOpt(String roleName, PartialPath path, int privilegeId)
+  //      throws AuthException {
+  //    Role role = roleManager.getRole(roleName);
+  //    if (role == null) {
+  //      throw new AuthException(
+  //          TSStatusCode.ROLE_NOT_EXIST, String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
+  //    }
+  //    if (path != null) {
+  //      if (role.checkPathPrivilegeGrantOpt(path, privilegeId)) {
+  //        return true;
+  //      }
+  //    } else {
+  //      if (role.checkSysPrivilege(privilegeId) && role.getSysPriGrantOpt().contains(privilegeId))
+  // {
+  //        return true;
+  //      }
+  //    }
+  //    return false;
+  //  }
 
   @Override
   public Map<String, Boolean> getAllUserWaterMarkStatus() {

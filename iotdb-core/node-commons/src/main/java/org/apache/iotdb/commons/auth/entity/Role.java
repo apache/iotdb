@@ -214,6 +214,10 @@ public class Role {
     return AuthUtils.checkPathPrivilege(path, privilegeId, pathPrivilegeList);
   }
 
+  public boolean checkPathPrivilegeGrantOpt(PartialPath path, int privilegeId) {
+    return AuthUtils.checkPathPrivilegeGrantOpt(path, privilegeId, pathPrivilegeList);
+  }
+
   public boolean checkSysPrivilege(int privilegeId) {
     return sysPrivilegeSet.contains(PrivilegeType.values()[privilegeId]);
   }

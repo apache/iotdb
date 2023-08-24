@@ -228,6 +228,21 @@ public class AuthUtils {
     return false;
   }
 
+  public static boolean checkPathPrivilegeGrantOpt(
+      PartialPath path, int privilegeId, List<PathPrivilege> privilegeList) {
+    if (privilegeList == null) {
+      return false;
+    }
+    for (PathPrivilege pathPrivilege : privilegeList) {
+      if (pathPrivilege.getPath().matchFullPath(path)
+          && pathPrivilege.getPrivileges().contains(privilegeId)
+          && pathPrivilege.getGrantOpt().contains(privilegeId)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /**
    * Get privileges
    *
@@ -325,9 +340,9 @@ public class AuthUtils {
   public static TPermissionInfoResp generateEmptyPermissionInfoResp() {
     TPermissionInfoResp permissionInfoResp = new TPermissionInfoResp();
     permissionInfoResp.setUserInfo(
-        new TUserResp("", "", new ArrayList<>(), new ArrayList<>(), false));
+        new TUserResp("", "", new ArrayList<>(), new HashSet<>(), new ArrayList<>(), false));
     Map<String, TRoleResp> roleInfo = new HashMap<>();
-    roleInfo.put("", new TRoleResp("", new ArrayList<>()));
+    roleInfo.put("", new TRoleResp("", new ArrayList<>(), new HashSet<>()));
     permissionInfoResp.setRoleInfo(roleInfo);
     return permissionInfoResp;
   }

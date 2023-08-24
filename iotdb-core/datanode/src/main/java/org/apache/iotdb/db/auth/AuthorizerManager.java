@@ -109,11 +109,13 @@ public class AuthorizerManager implements IAuthorizer {
   }
 
   @Override
-  public void grantPrivilegeToUser(String username, PartialPath path, int privilegeId)
+  public void grantPrivilegeToUser(
+      String currentUser, String username, PartialPath path, int privilegeId, boolean grantOpt)
       throws AuthException {
     authReadWriteLock.writeLock().lock();
     try {
-      authorizer.grantPrivilegeToUser(username, path, privilegeId);
+      // LSL
+      authorizer.grantPrivilegeToUser(currentUser, username, path, privilegeId, grantOpt);
     } finally {
       authReadWriteLock.writeLock().unlock();
     }
@@ -151,11 +153,12 @@ public class AuthorizerManager implements IAuthorizer {
   }
 
   @Override
-  public void grantPrivilegeToRole(String roleName, PartialPath path, int privilegeId)
+  public void grantPrivilegeToRole(
+      String currentUser, String roleName, PartialPath path, int privilegeId, boolean grantOpt)
       throws AuthException {
     authReadWriteLock.writeLock().lock();
     try {
-      authorizer.grantPrivilegeToRole(roleName, path, privilegeId);
+      authorizer.grantPrivilegeToRole(currentUser, roleName, path, privilegeId, grantOpt);
     } finally {
       authReadWriteLock.writeLock().unlock();
     }
