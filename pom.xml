@@ -51,13 +51,6 @@
             <url>scm:git:https://gitbox.apache.org/repos/asf/iotdb-website.git</url>
         </site>
     </distributionManagement>
-    <!-- TODO: Remove this after releasing the artifacts -->
-    <repositories>
-        <repository>
-            <id>iotdb-tools-thrift-staging-repo</id>
-            <url>https://repository.apache.org/content/repositories/orgapacheiotdb-1129/</url>
-        </repository>
-    </repositories>
     <issueManagement>
         <system>Jira</system>
         <url>https://issues.apache.org/jira/browse/iotdb</url>
