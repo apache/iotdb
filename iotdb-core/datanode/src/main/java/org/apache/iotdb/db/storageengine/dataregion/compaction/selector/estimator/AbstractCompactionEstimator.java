@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 
 import java.io.Closeable;
@@ -85,7 +86,9 @@ public abstract class AbstractCompactionEstimator implements Closeable {
       throws IOException {
     Set<String> devices = new HashSet<>();
     for (TsFileResource resource : resources) {
-      resource.deserialize();
+      if (resource.getTimeIndexType() != DeviceTimeIndex.DEVICE_TIME_INDEX_TYPE) {
+        resource.deserialize();
+      }
       devices.addAll(resource.getDevices());
     }
     int maxOverlapFileNumInSubCompactionTask = 1;
