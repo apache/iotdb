@@ -210,7 +210,7 @@ public class StatementConstructionHandler {
           InsertRowDataUtils.reGenValues(
               dataTypesList.get(i), insertRecordsRequest.getValuesList().get(i));
       statement.setValues(values.toArray());
-      statement.setAligned(true);
+      statement.setAligned(insertRecordsRequest.getIsAligned());
       // skip empty statement
       if (statement.isEmpty()) {
         continue;
