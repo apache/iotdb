@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
@@ -192,7 +193,7 @@ public class ConfigMTree {
     List<PartialPath> result = new LinkedList<>();
     try (DatabaseCollector<?, ?> collector =
         new DatabaseCollector<List<PartialPath>, IConfigMNode>(
-            root, pathPattern, store, isPrefixMatch) {
+            root, pathPattern, store, isPrefixMatch, SchemaConstant.ALL_MATCH_SCOPE) {
 
           @Override
           protected void collectDatabase(IDatabaseMNode<IConfigMNode> node) {
@@ -235,7 +236,8 @@ public class ConfigMTree {
   public int getDatabaseNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     try (DatabaseCounter<IConfigMNode> counter =
-        new DatabaseCounter<>(root, pathPattern, store, isPrefixMatch)) {
+        new DatabaseCounter<>(
+            root, pathPattern, store, isPrefixMatch, SchemaConstant.ALL_MATCH_SCOPE)) {
       return (int) counter.count();
     }
   }
@@ -486,7 +488,7 @@ public class ConfigMTree {
     List<String> resSet = new ArrayList<>();
     try (MNodeCollector<Void, IConfigMNode> collector =
         new MNodeCollector<Void, IConfigMNode>(
-            root, new PartialPath(ALL_RESULT_NODES), store, false) {
+            root, new PartialPath(ALL_RESULT_NODES), store, false, SchemaConstant.ALL_MATCH_SCOPE) {
           @Override
           protected boolean acceptFullMatchedNode(IConfigMNode node) {
             if (super.acceptFullMatchedNode(node)) {
@@ -533,7 +535,8 @@ public class ConfigMTree {
       throws MetadataException {
     Map<Integer, Set<PartialPath>> result = new HashMap<>();
     try (MNodeCollector<Void, IConfigMNode> collector =
-        new MNodeCollector<Void, IConfigMNode>(root, pathPattern, store, false) {
+        new MNodeCollector<Void, IConfigMNode>(
+            root, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
           @Override
           protected boolean acceptFullMatchedNode(IConfigMNode node) {
             return (node.getSchemaTemplateId() != NON_TEMPLATE)

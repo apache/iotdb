@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.schema;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -90,7 +91,7 @@ public class SchemaQueryScanOperatorTest {
       operatorContext.setDriverContext(
           new SchemaDriverContext(fragmentInstanceContext, schemaRegion, 0));
       ISchemaSource<IDeviceSchemaInfo> deviceSchemaSource =
-          SchemaSourceFactory.getDeviceSchemaSource(partialPath, false, 10, 0, true, null);
+          SchemaSourceFactory.getDeviceSchemaSource(partialPath, false, 10, 0, true, null, SchemaConstant.ALL_MATCH_SCOPE);
       SchemaOperatorTestUtil.mockGetSchemaReader(
           deviceSchemaSource,
           Collections.singletonList(deviceSchemaInfo).iterator(),
@@ -196,7 +197,7 @@ public class SchemaQueryScanOperatorTest {
           new SchemaDriverContext(fragmentInstanceContext, schemaRegion, 0));
       ISchemaSource<ITimeSeriesSchemaInfo> timeSeriesSchemaSource =
           SchemaSourceFactory.getTimeSeriesSchemaScanSource(
-              partialPath, false, 10, 0, null, Collections.emptyMap());
+              partialPath, false, 10, 0, null, Collections.emptyMap(), SchemaConstant.ALL_MATCH_SCOPE);
       SchemaOperatorTestUtil.mockGetSchemaReader(
           timeSeriesSchemaSource, showTimeSeriesResults.iterator(), schemaRegion, true);
 

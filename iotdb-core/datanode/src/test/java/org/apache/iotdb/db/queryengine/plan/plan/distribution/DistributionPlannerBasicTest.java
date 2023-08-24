@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
@@ -119,7 +120,7 @@ public class DistributionPlannerBasicTest {
             0,
             false,
             false,
-            Collections.emptyMap()));
+            Collections.emptyMap(), SchemaConstant.ALL_MATCH_SCOPE));
     metaMergeNode.addChild(
         new TimeSeriesSchemaScanNode(
             queryId.genPlanNodeId(),
@@ -129,7 +130,7 @@ public class DistributionPlannerBasicTest {
             0,
             false,
             false,
-            Collections.emptyMap()));
+            Collections.emptyMap(),SchemaConstant.ALL_MATCH_SCOPE));
     metaMergeNode.addChild(
         new TimeSeriesSchemaScanNode(
             queryId.genPlanNodeId(),
@@ -139,7 +140,7 @@ public class DistributionPlannerBasicTest {
             0,
             false,
             false,
-            Collections.emptyMap()));
+            Collections.emptyMap(),SchemaConstant.ALL_MATCH_SCOPE));
     LimitNode root2 = new LimitNode(queryId.genPlanNodeId(), metaMergeNode, 10);
     Analysis analysis = Util.constructAnalysis();
     DistributionPlanner planner2 =

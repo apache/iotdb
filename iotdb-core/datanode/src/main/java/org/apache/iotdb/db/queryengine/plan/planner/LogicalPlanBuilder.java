@@ -1056,7 +1056,8 @@ public class LogicalPlanBuilder {
       long offset,
       boolean orderByHeat,
       boolean prefixPath,
-      Map<Integer, Template> templateMap) {
+      Map<Integer, Template> templateMap,
+      PathPatternTree scope) {
     this.root =
         new TimeSeriesSchemaScanNode(
             context.getQueryId().genPlanNodeId(),
@@ -1066,7 +1067,8 @@ public class LogicalPlanBuilder {
             offset,
             orderByHeat,
             prefixPath,
-            templateMap);
+            templateMap,
+                scope);
     return this;
   }
 
@@ -1160,14 +1162,14 @@ public class LogicalPlanBuilder {
       PartialPath partialPath,
       boolean prefixPath,
       SchemaFilter schemaFilter,
-      Map<Integer, Template> templateMap) {
+      Map<Integer, Template> templateMap, PathPatternTree scope) {
     this.root =
         new TimeSeriesCountNode(
             context.getQueryId().genPlanNodeId(),
             partialPath,
             prefixPath,
             schemaFilter,
-            templateMap);
+            templateMap, scope);
     return this;
   }
 
@@ -1176,7 +1178,7 @@ public class LogicalPlanBuilder {
       boolean prefixPath,
       int level,
       SchemaFilter schemaFilter,
-      Map<Integer, Template> templateMap) {
+      Map<Integer, Template> templateMap,PathPatternTree scope) {
     this.root =
         new LevelTimeSeriesCountNode(
             context.getQueryId().genPlanNodeId(),
@@ -1184,7 +1186,7 @@ public class LogicalPlanBuilder {
             prefixPath,
             level,
             schemaFilter,
-            templateMap);
+            templateMap, scope);
     return this;
   }
 

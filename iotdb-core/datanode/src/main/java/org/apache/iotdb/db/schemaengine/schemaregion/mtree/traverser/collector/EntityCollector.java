@@ -20,6 +20,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
@@ -30,9 +31,13 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.basic.Entit
 public abstract class EntityCollector<R, N extends IMNode<N>> extends EntityTraverser<R, N> {
 
   protected EntityCollector(
-      N startNode, PartialPath path, IMTreeStore<N> store, boolean isPrefixMatch)
+      N startNode,
+      PartialPath path,
+      IMTreeStore<N> store,
+      boolean isPrefixMatch,
+      PathPatternTree scope)
       throws MetadataException {
-    super(startNode, path, store, isPrefixMatch);
+    super(startNode, path, store, isPrefixMatch, scope);
   }
 
   @Override

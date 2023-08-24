@@ -21,9 +21,10 @@ package org.apache.iotdb.db.metadata.schemaRegion;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
-import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowDevicesPlan;
-import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.INodeSchemaInfo;
@@ -38,6 +39,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -162,7 +164,14 @@ public class SchemaRegionTestUtil {
     try (ISchemaReader<ITimeSeriesSchemaInfo> timeSeriesReader =
         schemaRegion.getTimeSeriesReader(
             SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-                pathPattern, templateMap, 0, 0, isPrefixMatch, null, false))) {
+                pathPattern,
+                templateMap,
+                0,
+                0,
+                isPrefixMatch,
+                null,
+                false,
+                SchemaConstant.ALL_MATCH_SCOPE))) {
       long count = 0;
       while (timeSeriesReader.hasNext()) {
         timeSeriesReader.next();
@@ -178,7 +187,8 @@ public class SchemaRegionTestUtil {
       ISchemaRegion schemaRegion, PartialPath pathPattern, boolean isPrefixMatch) {
     try (ISchemaReader<IDeviceSchemaInfo> deviceReader =
         schemaRegion.getDeviceReader(
-            SchemaRegionReadPlanFactory.getShowDevicesPlan(pathPattern, isPrefixMatch))) {
+            SchemaRegionReadPlanFactory.getShowDevicesPlan(
+                pathPattern, 0, 0, isPrefixMatch, null, SchemaConstant.ALL_MATCH_SCOPE))) {
       long count = 0;
       while (deviceReader.hasNext()) {
         deviceReader.next();
@@ -195,7 +205,14 @@ public class SchemaRegionTestUtil {
     try (ISchemaReader<ITimeSeriesSchemaInfo> timeSeriesReader =
         schemaRegion.getTimeSeriesReader(
             SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-                pathPattern, null, 0, 0, isPrefixMatch, null, false))) {
+                pathPattern,
+                null,
+                0,
+                0,
+                isPrefixMatch,
+                null,
+                false,
+                SchemaConstant.ALL_MATCH_SCOPE))) {
       Map<PartialPath, Long> countMap = new HashMap<>();
       while (timeSeriesReader.hasNext()) {
         ITimeSeriesSchemaInfo timeSeriesSchemaInfo = timeSeriesReader.next();
@@ -224,7 +241,7 @@ public class SchemaRegionTestUtil {
     try (ISchemaReader<IDeviceSchemaInfo> deviceReader =
         schemaRegion.getDeviceReader(
             SchemaRegionReadPlanFactory.getShowDevicesPlan(
-                pathPattern, 0, 0, false, templateId)); ) {
+                pathPattern, 0, 0, false, templateId, SchemaConstant.ALL_MATCH_SCOPE))) {
       while (deviceReader.hasNext()) {
         result.add(deviceReader.next().getFullPath());
       }
@@ -239,7 +256,8 @@ public class SchemaRegionTestUtil {
     List<PartialPath> result = new ArrayList<>();
     try (ISchemaReader<INodeSchemaInfo> nodeReader =
         schemaRegion.getNodeReader(
-            SchemaRegionReadPlanFactory.getShowNodesPlan(pathPattern, nodeLevel, isPrefixMatch))) {
+            SchemaRegionReadPlanFactory.getShowNodesPlan(
+                pathPattern, nodeLevel, isPrefixMatch, SchemaConstant.ALL_MATCH_SCOPE))) {
       while (nodeReader.hasNext()) {
         result.add(nodeReader.next().getPartialPath());
       }
@@ -255,7 +273,7 @@ public class SchemaRegionTestUtil {
     try (ISchemaReader<INodeSchemaInfo> nodeReader =
         schemaRegion.getNodeReader(
             SchemaRegionReadPlanFactory.getShowNodesPlan(
-                pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD)))) {
+                pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), SchemaConstant.ALL_MATCH_SCOPE))) {
       while (nodeReader.hasNext()) {
         result.add(nodeReader.next());
       }
@@ -266,10 +284,54 @@ public class SchemaRegionTestUtil {
   }
 
   public static List<ITimeSeriesSchemaInfo> showTimeseries(
-      ISchemaRegion schemaRegion, IShowTimeSeriesPlan plan) {
+      ISchemaRegion schemaRegion, PartialPath path) {
+    return showTimeseries(schemaRegion, path, Collections.emptyMap(), 0, 0, false, null, false);
+  }
+
+  public static List<ITimeSeriesSchemaInfo> showTimeseries(
+      ISchemaRegion schemaRegion, PartialPath path, Map<Integer, Template> relatedTemplate) {
+    return showTimeseries(schemaRegion, path, relatedTemplate, 0, 0, false, null, false);
+  }
+
+  public static List<ITimeSeriesSchemaInfo> showTimeseries(
+      ISchemaRegion schemaRegion,
+      PartialPath path,
+      boolean isContains,
+      String tagKey,
+      String tagValue) {
+    return showTimeseries(
+        schemaRegion,
+        path,
+        Collections.emptyMap(),
+        0,
+        0,
+        false,
+        SchemaFilterFactory.createTagFilter(tagKey, tagValue, isContains),
+        false);
+  }
+
+  public static List<ITimeSeriesSchemaInfo> showTimeseries(
+      ISchemaRegion schemaRegion,
+      PartialPath path,
+      Map<Integer, Template> relatedTemplate,
+      long limit,
+      long offset,
+      boolean isPrefixMatch,
+      SchemaFilter schemaFilter,
+      boolean needViewDetail) {
     List<ITimeSeriesSchemaInfo> result = new ArrayList<>();
     ITimeSeriesSchemaInfo timeSeriesSchemaInfo;
-    try (ISchemaReader<ITimeSeriesSchemaInfo> reader = schemaRegion.getTimeSeriesReader(plan)) {
+    try (ISchemaReader<ITimeSeriesSchemaInfo> reader =
+        schemaRegion.getTimeSeriesReader(
+            SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                path,
+                relatedTemplate,
+                limit,
+                offset,
+                isPrefixMatch,
+                schemaFilter,
+                needViewDetail,
+                SchemaConstant.ALL_MATCH_SCOPE))) {
       while (reader.hasNext()) {
         timeSeriesSchemaInfo = reader.next();
         result.add(
@@ -288,9 +350,27 @@ public class SchemaRegionTestUtil {
   }
 
   public static List<IDeviceSchemaInfo> getMatchedDevices(
-      ISchemaRegion schemaRegion, IShowDevicesPlan plan) {
+      ISchemaRegion schemaRegion, PartialPath path) {
+    return getMatchedDevices(schemaRegion, path, 0, 0, false);
+  }
+
+  public static List<IDeviceSchemaInfo> getMatchedDevices(
+      ISchemaRegion schemaRegion, PartialPath path, int limit, int offset, boolean isPrefixMatch) {
+    return getMatchedDevices(schemaRegion, path, limit, offset, isPrefixMatch, null);
+  }
+
+  public static List<IDeviceSchemaInfo> getMatchedDevices(
+      ISchemaRegion schemaRegion,
+      PartialPath path,
+      int limit,
+      int offset,
+      boolean isPrefixMatch,
+      SchemaFilter filter) {
     List<IDeviceSchemaInfo> result = new ArrayList<>();
-    try (ISchemaReader<IDeviceSchemaInfo> reader = schemaRegion.getDeviceReader(plan)) {
+    try (ISchemaReader<IDeviceSchemaInfo> reader =
+        schemaRegion.getDeviceReader(
+            SchemaRegionReadPlanFactory.getShowDevicesPlan(
+                path, limit, offset, isPrefixMatch, filter, SchemaConstant.ALL_MATCH_SCOPE))) {
       while (reader.hasNext()) {
         result.add(reader.next());
       }
