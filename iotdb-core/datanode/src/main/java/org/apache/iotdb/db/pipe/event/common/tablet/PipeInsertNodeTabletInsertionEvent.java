@@ -81,7 +81,10 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     return walEntryHandler.getBuffer();
   }
 
-  // This method is a pre-determination of whether to use binary transfers
+  // This method is a pre-determination of whether to use binary transfers.
+  // If the insert node is null in cache, it means that we need to read the bytebuffer from the wal,
+  // and when the pattern is default, we can transfer the bytebuffer directly without serializing or
+  // deserializing
   public InsertNode getInsertNodeViaCache() throws WALPipeException {
     return walEntryHandler.getWALEntryValue();
   }
