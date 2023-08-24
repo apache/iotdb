@@ -68,12 +68,8 @@ public class TsFileWriteAlignedWithTSRecord {
       // register timeseries
       tsFileWriter.registerAlignedTimeseries(new Path(DEVICE_1), measurementSchemas);
 
-      List<IMeasurementSchema> writeMeasurementScheams = new ArrayList<>();
       // example1
-      writeMeasurementScheams.add(measurementSchemas.get(0));
-      writeMeasurementScheams.add(measurementSchemas.get(1));
-      writeMeasurementScheams.add(measurementSchemas.get(2));
-      writeAligned(tsFileWriter, DEVICE_1, writeMeasurementScheams, 1000000, 0, 0);
+      writeAligned(tsFileWriter, DEVICE_1, measurementSchemas, 1000000, 0, 0);
     } catch (WriteProcessException e) {
       logger.error("write TSRecord failed", e);
     }
@@ -82,7 +78,7 @@ public class TsFileWriteAlignedWithTSRecord {
   private static void writeAligned(
       TsFileWriter tsFileWriter,
       String deviceId,
-      List<IMeasurementSchema> schemas,
+      List<MeasurementSchema> schemas,
       long rowSize,
       long startTime,
       long startValue)
