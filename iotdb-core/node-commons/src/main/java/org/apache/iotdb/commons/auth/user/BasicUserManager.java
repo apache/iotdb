@@ -155,6 +155,7 @@ public abstract class BasicUserManager implements IUserManager {
     }
   }
 
+  @Override
   public boolean grantPrivilegeToUser(
       String username, PartialPath path, int privilegeId, boolean grantOpt) throws AuthException {
     AuthUtils.validatePrivilegeOnPath(path, privilegeId);
@@ -168,14 +169,7 @@ public abstract class BasicUserManager implements IUserManager {
       if (user.hasPrivilege(path, privilegeId)) {
         return false;
       }
-      Set<Integer> privilegesCopy = new HashSet<>(user.getPathPrivileges(path));
       user.addPathPrivilege(path, privilegeId, grantOpt);
-      try {
-        accessor.saveUser(user);
-      } catch (IOException e) {
-        user.setPathPrivileges(path, privilegesCopy);
-        throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
-      }
       return true;
     } finally {
       lock.writeUnlock(username);
@@ -197,13 +191,6 @@ public abstract class BasicUserManager implements IUserManager {
         return false;
       }
       user.removePathPrivilege(path, privilegeId);
-      // LSL. 这里不再需要保存文件了
-      //      try {
-      //        accessor.saveUser(user);
-      //      } catch (IOException e) {
-      //        user.addPathPrivilege(path, privilegeId);
-      //        throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
-      //      }
       return true;
     } finally {
       lock.writeUnlock(username);

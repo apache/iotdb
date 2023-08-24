@@ -106,6 +106,7 @@ public abstract class BasicRoleManager implements IRoleManager {
     }
   }
 
+  @Override
   public boolean grantPrivilegeToRole(
       String rolename, PartialPath path, int privilegeId, boolean grantOpt) throws AuthException {
     AuthUtils.validatePrivilegeOnPath(path, privilegeId);
@@ -127,13 +128,6 @@ public abstract class BasicRoleManager implements IRoleManager {
         if (grantOpt) {
           role.getSysPriGrantOpt().add(privilegeId);
         }
-      }
-      try {
-        accessor.saveRole(role);
-      } catch (IOException e) {
-        // no need to save every time. LSL. add raft log apply.
-        //        role.setPathPrivileges(path, privilegesCopy);
-        throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
       }
       return true;
     } finally {
@@ -161,14 +155,6 @@ public abstract class BasicRoleManager implements IRoleManager {
         role.getSysPrivilege().remove(privilegeId);
         role.getSysPriGrantOpt().remove(privilegeId);
       }
-
-      // LSL. 我们不再需要保存文件了
-      //      try {
-      //        accessor.saveRole(role);
-      //      } catch (IOException e) {
-      //        role.addPathPrivilege(path, privilegeId);
-      //        throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
-      //      }
       return true;
     } finally {
       lock.writeUnlock(rolename);
@@ -183,6 +169,8 @@ public abstract class BasicRoleManager implements IRoleManager {
 
   @Override
   public List<String> listAllRoles() {
+    // When we create role, we will create a real file.
+    // So when we list roles, just get them form files.
     List<String> rtlist = accessor.listAllRoles();
     rtlist.sort(null);
     return rtlist;

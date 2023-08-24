@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.commons.auth.role;
 
+import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.thrift.TException;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Map;
 
 public class LocalFileRoleManager extends BasicRoleManager {
 
@@ -32,6 +34,9 @@ public class LocalFileRoleManager extends BasicRoleManager {
 
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
+    for (Map.Entry<String, Role> entry : roleMap.entrySet()) {
+      accessor.saveRole(entry.getValue());
+    }
     return accessor.processTakeSnapshot(snapshotDir);
   }
 
