@@ -69,7 +69,7 @@ public class CrossCompactionTaskResource {
       TsFileResource unseqFile, List<TsFileResource> seqFiles, long memoryCost) {
     addUnseqFile(unseqFile);
     addTargetSeqFiles(seqFiles);
-    increaseMemoryCost(memoryCost);
+    updateMemoryCost(memoryCost);
   }
 
   private void addUnseqFile(TsFileResource file) {
@@ -88,8 +88,8 @@ public class CrossCompactionTaskResource {
     countStatistic(file);
   }
 
-  private void increaseMemoryCost(long newMemoryCost) {
-    this.totalMemoryCost += newMemoryCost;
+  private void updateMemoryCost(long newMemoryCost) {
+    this.totalMemoryCost = Math.max(totalMemoryCost, newMemoryCost);;
   }
 
   private void countStatistic(TsFileResource file) {
