@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.event.common.heartbeat;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.utils.DateTimeUtils;
@@ -68,7 +69,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
 
   @Override
   public ProgressIndex getProgressIndex() {
-    return null;
+    return new MinimumProgressIndex();
   }
 
   @Override
@@ -106,16 +107,16 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
 
   @Override
   public String toString() {
-    String errorMsg = "error";
+    final String errorMessage = "error";
 
-    String disruptToExtractMsg =
-        timeAssigned != 0 ? (timeAssigned - timePublished) + "ms" : errorMsg;
-    String extractToProcessMsg =
-        timeProcessed != 0 ? (timeProcessed - timeAssigned) + "ms" : errorMsg;
-    String processToTransferMsg =
-        timeTransferred != 0 ? (timeTransferred - timeProcessed) + "ms" : errorMsg;
-    String totalTimeMsg =
-        timeTransferred != 0 ? (timeTransferred - timePublished) + "ms" : errorMsg;
+    final String publishedToAssignedMessage =
+        timeAssigned != 0 ? (timeAssigned - timePublished) + "ms" : errorMessage;
+    final String assignedToProcessedMessage =
+        timeProcessed != 0 ? (timeProcessed - timeAssigned) + "ms" : errorMessage;
+    final String processedToTransferredMessage =
+        timeTransferred != 0 ? (timeTransferred - timeProcessed) + "ms" : errorMessage;
+    final String totalTimeMessage =
+        timeTransferred != 0 ? (timeTransferred - timePublished) + "ms" : errorMessage;
 
     return "PipeHeartbeatEvent{"
         + "pipeName='"
@@ -124,14 +125,14 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
         + dataRegionId
         + ", startTime="
         + DateTimeUtils.convertLongToDate(timePublished, "ms")
-        + ", disruptToExtract="
-        + disruptToExtractMsg
-        + ", extractToProcess="
-        + extractToProcessMsg
-        + ", processToTransfer="
-        + processToTransferMsg
-        + ", totalTime="
-        + totalTimeMsg
+        + ", publishedToAssigned="
+        + publishedToAssignedMessage
+        + ", assignedToProcessed="
+        + assignedToProcessedMessage
+        + ", processedToTransferred="
+        + processedToTransferredMessage
+        + ", totalTimeCost="
+        + totalTimeMessage
         + "}";
   }
 }
