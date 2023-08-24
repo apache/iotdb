@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.auth.role;
 
 import org.apache.iotdb.commons.auth.entity.Role;
+
 import org.apache.thrift.TException;
 
 import java.io.File;

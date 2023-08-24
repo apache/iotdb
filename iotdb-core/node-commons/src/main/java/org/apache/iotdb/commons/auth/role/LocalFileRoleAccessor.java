@@ -65,13 +65,10 @@ import java.util.UUID;
  * <p>Role files is appendable.
  */
 
-
 /**
- * All user/role file store in config node's user/role folder.
- * when we need someone's privilege info, we load it form folder.
- * If we did some alter query, we just store raft log.
+ * All user/role file store in config node's user/role folder. when we need someone's privilege
+ * info, we load it form folder. If we did some alter query, we just store raft log.
  */
-
 public class LocalFileRoleAccessor implements IRoleAccessor {
   private static final Logger logger = LoggerFactory.getLogger(LocalFileRoleAccessor.class);
   private static final String TEMP_SUFFIX = ".temp";

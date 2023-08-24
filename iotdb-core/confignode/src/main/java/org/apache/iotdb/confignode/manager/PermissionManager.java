@@ -38,6 +38,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -114,25 +115,32 @@ public class PermissionManager {
 
   /**
    * When the permission information of a user or role is changed will clear all datanode
-   * permissions related to the user or role.
+   * permissions related to the user or role. We can use direct rpc and procedure to invalid cache:
+   * direct rpc is faster than procedure and procedure can make sure all datanode will be invalided.
    */
   public TSStatus invalidateCache(String username, String roleName) {
     List<TDataNodeConfiguration> allDataNodes =
         configManager.getNodeManager().getRegisteredDataNodes();
     TInvalidatePermissionCacheReq req = new TInvalidatePermissionCacheReq();
-    TSStatus status;
-    req.setUsername(username);
-    req.setRoleName(roleName);
-    for (TDataNodeConfiguration dataNodeInfo : allDataNodes) {
-      status =
-          SyncDataNodeClientPool.getInstance()
-              .sendSyncRequestToDataNodeWithRetry(
-                  dataNodeInfo.getLocation().getInternalEndPoint(),
-                  req,
-                  DataNodeRequestType.INVALIDATE_PERMISSION_CACHE);
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return status;
-      }
+//    TSStatus status;
+//    req.setUsername(username);
+//    req.setRoleName(roleName);
+//    List<TDataNodeConfiguration> dnsToInvalid = new ArrayList<>();
+//    for (TDataNodeConfiguration dataNodeInfo : allDataNodes) {
+//      status =
+//          SyncDataNodeClientPool.getInstance()
+//              .sendSyncRequestToDataNodeWithRetry(
+//                  dataNodeInfo.getLocation().getInternalEndPoint(),
+//                  req,
+//                  DataNodeRequestType.INVALIDATE_PERMISSION_CACHE);
+//      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+//        dnsToInvalid.add(dataNodeInfo);
+//      }
+//    }
+
+    // invalid procedure should run immediately.
+    if (!allDataNodes.isEmpty()) {
+      configManager.getProcedureManager().invalidAuthCache(username, roleName, allDataNodes);
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }

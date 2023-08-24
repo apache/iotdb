@@ -19,9 +19,8 @@
 package org.apache.iotdb.commons.auth.user;
 
 import org.apache.iotdb.commons.auth.AuthException;
-
-import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
+
 import org.apache.thrift.TException;
 
 import java.io.File;
