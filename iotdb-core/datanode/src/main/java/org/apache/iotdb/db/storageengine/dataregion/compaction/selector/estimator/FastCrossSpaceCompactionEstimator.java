@@ -21,7 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimat
 
 import java.io.IOException;
 
-public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEstimator {
+public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimator {
 
   /**
    * The metadata algorithm is: maxChunkMetaDataSize * maxChunkNumber * fileSize * maxSeriesNumber
@@ -29,26 +29,19 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
    * @return estimate metadata memory cost
    */
   @Override
-  public long calculatingMetadataMemoryCost(CompactionTaskInfo taskInfo) {
+  protected long calculatingMetadataMemoryCost(CompactionTaskInfo taskInfo) {
     return taskInfo.getFileInfoList().size()
         * taskInfo.getMaxChunkMetadataNumInDevice()
         * taskInfo.getMaxChunkMetadataSize()
         * Math.max(config.getSubCompactionTaskNum(), taskInfo.getMaxConcurrentSeriesNum());
   }
 
-  /**
-   * The data algorithm is: (targetChunkSize * maxConcurrentSeriesNumber) + modsFileSize +
-   * (totalFileSize * compressionRatio / totalChunkNum) * maxConcurrentSeriesNum *
-   * maxConcurrentFileNum
-   *
-   * @return estimate data memory cost
-   */
   @Override
-  public long calculatingDataMemoryCost(CompactionTaskInfo taskInfo) throws IOException {
+  protected long calculatingDataMemoryCost(CompactionTaskInfo taskInfo) throws IOException {
     long cost = 0;
     long maxConcurrentSeriesNum =
         Math.max(config.getSubCompactionTaskNum(), taskInfo.getMaxConcurrentSeriesNum());
-    cost += config.getTargetChunkSize() * maxConcurrentSeriesNum;
+    cost += config.getTargetChunkSize() * maxConcurrentSeriesNum * seqResources.size();
     cost += taskInfo.getModificationFileSize();
     cost +=
         taskInfo.getTotalFileSize()
