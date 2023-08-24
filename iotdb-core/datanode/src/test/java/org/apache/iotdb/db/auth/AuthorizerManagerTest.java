@@ -94,6 +94,7 @@ public class AuthorizerManagerTest {
     tUserResp.setUsername(user.getName());
     tUserResp.setPassword(user.getPassword());
     tUserResp.setPrivilegeList(userPrivilegeList);
+    tUserResp.setSysPriSet(user.getSysPrivilege());
 
     tUserResp.setRoleList(new ArrayList<>());
     result.setUserInfo(tUserResp);

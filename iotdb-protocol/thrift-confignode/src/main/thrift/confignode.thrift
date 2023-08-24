@@ -313,7 +313,7 @@ struct TUserResp {
   1: required string username
   2: required string password
   3: required list<string> privilegeList
-  4: required set<i32> sysPriList
+  4: required set<i32> sysPriSet
   5: required list<string> roleList
   6: required bool isOpenIdUser
 }
@@ -321,7 +321,7 @@ struct TUserResp {
 struct TRoleResp {
   1: required string roleName
   2: required list<string> privilegeList
-  3: required set<i32> sysPriList
+  3: required set<i32> sysPriSet
 }
 
 struct TPermissionInfoResp {

@@ -61,7 +61,14 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.task.CreatePipeProcedureV
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.DropPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.StartPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.StopPipeProcedureV2;
-import org.apache.iotdb.confignode.procedure.impl.schema.*;
+import org.apache.iotdb.confignode.procedure.impl.schema.AlterLogicalViewProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteLogicalViewProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.InvalidAuthCacheProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.CreateTriggerProcedure;

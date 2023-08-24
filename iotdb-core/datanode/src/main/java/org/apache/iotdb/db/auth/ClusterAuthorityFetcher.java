@@ -112,6 +112,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     }
   }
 
+  @Override
   public TSStatus checkUserSysPrivileges(String username, int permission) {
     User user = iAuthorCache.getUserCache(username);
     if (user != null) {
@@ -300,6 +301,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     user.setOpenIdUser(tPermissionInfoResp.getUserInfo().isIsOpenIdUser());
     user.setPrivilegeList(pathPrivilegeList);
     user.setRoleList(tPermissionInfoResp.getUserInfo().getRoleList());
+    user.setSysPrivilegeSet(tPermissionInfoResp.getUserInfo().getSysPriSet());
     for (String roleName : tPermissionInfoResp.getRoleInfo().keySet()) {
       iAuthorCache.putRoleCache(roleName, cacheRole(roleName, tPermissionInfoResp));
     }
