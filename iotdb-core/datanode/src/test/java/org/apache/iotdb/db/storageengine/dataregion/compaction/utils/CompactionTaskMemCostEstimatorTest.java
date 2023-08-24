@@ -99,7 +99,8 @@ public class CompactionTaskMemCostEstimatorTest extends AbstractCompactionTest {
     createFiles(3, 10, 5, 100, 0, 0, 50, 50, false, true);
     createFiles(4, 10, 5, 400, 0, 0, 30, 50, false, false);
     long cost =
-        new FastCrossSpaceCompactionEstimator().estimateCrossCompactionMemory(seqResources, unseqResources);
+        new FastCrossSpaceCompactionEstimator()
+            .estimateCrossCompactionMemory(seqResources, unseqResources);
     Assert.assertTrue(cost > 0);
   }
 }

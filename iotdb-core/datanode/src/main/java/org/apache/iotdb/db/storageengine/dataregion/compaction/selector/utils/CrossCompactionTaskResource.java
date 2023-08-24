@@ -89,7 +89,7 @@ public class CrossCompactionTaskResource {
   }
 
   private void updateMemoryCost(long newMemoryCost) {
-    this.totalMemoryCost = Math.max(totalMemoryCost, newMemoryCost);;
+    this.totalMemoryCost = Math.max(totalMemoryCost, newMemoryCost);
   }
 
   private void countStatistic(TsFileResource file) {
