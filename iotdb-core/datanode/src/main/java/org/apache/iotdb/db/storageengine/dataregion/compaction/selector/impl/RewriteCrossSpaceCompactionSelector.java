@@ -263,7 +263,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
 
     return taskResource.getTotalFileNums() + 1 + seqFiles.size() <= maxCrossCompactionFileNum
         && taskResource.getTotalFileSize() + totalFileSize <= maxCrossCompactionFileSize
-        && taskResource.getTotalMemoryCost() + memoryCost < memoryBudget;
+        && memoryCost < memoryBudget;
   }
 
   private boolean canSubmitCrossTask(
