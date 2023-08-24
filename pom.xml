@@ -1370,13 +1370,6 @@
                 <module>integration-test</module>
             </modules>
         </profile>
-        <!-- Enable the building of the tools (Currently this only adds building of the Thrift module) -->
-        <profile>
-            <id>with-tools</id>
-            <modules>
-                <module>tools</module>
-            </modules>
-        </profile>
         <!-- Make sure the source assembly has the right name -->
         <profile>
             <id>apache-release</id>
