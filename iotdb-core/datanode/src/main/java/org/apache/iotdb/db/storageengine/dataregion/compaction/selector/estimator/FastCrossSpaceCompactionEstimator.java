@@ -41,7 +41,12 @@ public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimat
     long cost = 0;
     long maxConcurrentSeriesNum =
         Math.max(config.getSubCompactionTaskNum(), taskInfo.getMaxConcurrentSeriesNum());
-    cost += config.getTargetChunkSize() * maxConcurrentSeriesNum * seqResources.size();
+
+    long uncompressedTotalChunkSize = taskInfo.getTotalFileSize() * compressionRatio;
+    long targetChunkWriterSize =
+        config.getTargetChunkSize() * maxConcurrentSeriesNum * seqResources.size();
+    cost += Math.min(uncompressedTotalChunkSize, targetChunkWriterSize);
+
     cost += taskInfo.getModificationFileSize();
     cost +=
         taskInfo.getTotalFileSize()
