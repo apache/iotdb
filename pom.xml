@@ -114,6 +114,7 @@
         <thrift.version>0.14.1</thrift.version>
         <!-- This is the version of the thrift binary -->
         <iotdb-tools-thrift.version>0.14.1.0</iotdb-tools-thrift.version>
+        <airline.version>0.8</airline.version>
         <jackson.version>2.13.5</jackson.version>
         <disrupter.version>3.4.2</disrupter.version>
         <jackson.databind.version>2.13.4.2</jackson.databind.version>
@@ -167,6 +168,7 @@
         <javax.annotation-api.version>1.3.2</javax.annotation-api.version>
         <log4j.version>1.2.24</log4j.version>
         <lz4-java.version>1.8.0</lz4-java.version>
+        <jaxb-runtime.version>3.0.2</jaxb-runtime.version>
         <mockito-core.version>2.23.4</mockito-core.version>
         <objenesis.version>3.2</objenesis.version>
         <powermock-core.version>2.0.9</powermock-core.version>
@@ -398,6 +400,22 @@
                 <version>${jackson-core-asl.version}</version>
             </dependency>
             <dependency>
+                <groupId>org.glassfish.jaxb</groupId>
+                <artifactId>jaxb-runtime</artifactId>
+                <version>${jaxb-runtime.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>jakarta.activation</groupId>
+                        <artifactId>jakarta.activation-api</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <!--            <dependency>
+                <groupId>org.javassist</groupId>
+                <artifactId>javassist</artifactId>
+                <version>3.24.1-GA</version>
+            </dependency>-->
+            <dependency>
                 <groupId>org.mockito</groupId>
                 <artifactId>mockito-core</artifactId>
                 <version>${mockito-core.version}</version>
@@ -487,6 +505,11 @@
                 <groupId>io.airlift</groupId>
                 <artifactId>units</artifactId>
                 <version>${io.airlift.units.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.airlift</groupId>
+                <artifactId>airline</artifactId>
+                <version>${airline.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.airlift</groupId>
@@ -793,7 +816,7 @@
                         <sourceDirectory>iotdb-protocol/thrift-datanode/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/thrift-commons/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/thrift-confignode/target/generated-sources/thrift</sourceDirectory>
-                        <sourceDirectory>iotdb-protocol/thrift-iot-consensus/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>iotdb-protocol/thrift-consensus/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/openapi/target/generated-sources/java/src/gen/java</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/openapi/target/generated-sources/java/src/main/java</sourceDirectory>
                         <sourceDirectory>iotdb-core/datanode/target/generated-sources/freemarker/</sourceDirectory>
@@ -1205,6 +1228,10 @@
                     <groupId>javax.xml.bind</groupId>
                     <artifactId>jaxb-api</artifactId>
                 </dependency>
+                <dependency>
+                    <groupId>org.glassfish.jaxb</groupId>
+                    <artifactId>jaxb-runtime</artifactId>
+                </dependency>
             </dependencies>
         </profile>
         <!-- Add argLine for Java 16 and above, due to [JEP 396: Strongly Encapsulate JDK Internals by Default]
@@ -1265,9 +1292,9 @@
                                 <configuration>
                                     <artifactItems>
                                         <artifactItem>
-                                            <groupId>org.apache.iotdb.tools</groupId>
+                                            <groupId>org.apache.iotdb</groupId>
                                             <artifactId>iotdb-tools-thrift</artifactId>
-                                            <version>${iotdb-tools-thrift.version}</version>
+                                            <version>${project.version}</version>
                                             <classifier>${os.classifier}</classifier>
                                             <type>zip</type>
                                             <overWrite>true</overWrite>
@@ -1301,6 +1328,7 @@
                                 </goals>
                                 <configuration>
                                     <generator>py</generator>
+                                    <includes>**/common.thrift,**/client.thrift,**/datanode.thrift,**/confignode.thrift,**/mlnode.thrift</includes>
                                     <outputDirectory>${project.build.directory}/generated-sources-python/</outputDirectory>
                                 </configuration>
                             </execution>
@@ -1312,6 +1340,7 @@
                                 </goals>
                                 <configuration>
                                     <generator>go</generator>
+                                    <includes>**/common.thrift,**/client.thrift</includes>
                                     <outputDirectory>${project.build.directory}/generated-sources-go</outputDirectory>
                                 </configuration>
                             </execution>
@@ -1323,12 +1352,29 @@
                     </plugin>
                 </plugins>
             </build>
+            <dependencies>
+                <!-- This ensures the iotdb-tools-thift module is build first -->
+                <dependency>
+                    <groupId>org.apache.iotdb</groupId>
+                    <artifactId>iotdb-tools-thrift</artifactId>
+                    <version>1.3.0-SNAPSHOT</version>
+                    <type>pom</type>
+                    <scope>provided</scope>
+                </dependency>
+            </dependencies>
         </profile>
         <!-- Enable integration-testsuite on demand, as this takes quite a long time to run -->
         <profile>
             <id>with-integration-tests</id>
             <modules>
                 <module>integration-test</module>
+            </modules>
+        </profile>
+        <!-- Enable the building of the tools (Currently this only adds building of the Thrift module) -->
+        <profile>
+            <id>with-tools</id>
+            <modules>
+                <module>tools</module>
             </modules>
         </profile>
         <!-- Make sure the source assembly has the right name -->

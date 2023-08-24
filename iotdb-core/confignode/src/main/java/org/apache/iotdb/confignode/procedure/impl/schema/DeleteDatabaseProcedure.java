@@ -42,6 +42,7 @@ import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProce
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteStorageGroupState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -215,7 +216,7 @@ public class DeleteDatabaseProcedure
                 new ProcedureException("[DeleteDatabaseProcedure] Delete DatabaseSchema failed"));
           }
       }
-    } catch (TException | IOException e) {
+    } catch (ConsensusException | TException | IOException e) {
       if (isRollbackSupported(state)) {
         setFailure(
             new ProcedureException("[DeleteDatabaseProcedure] Delete Database failed " + state));

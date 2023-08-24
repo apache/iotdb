@@ -21,13 +21,15 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.runtime;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleLeaderChangePlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -91,11 +93,16 @@ public class PipeHandleLeaderChangeProcedure extends AbstractOperatePipeProcedur
 
     final PipeHandleLeaderChangePlan pipeHandleLeaderChangePlan =
         new PipeHandleLeaderChangePlan(newDataRegionGroupIdToLeaderDataRegionIdMap);
-
-    final ConsensusWriteResponse response =
-        env.getConfigManager().getConsensusManager().write(pipeHandleLeaderChangePlan);
-    if (!response.isSuccessful()) {
-      throw new PipeException(response.getErrorMessage());
+    TSStatus response;
+    try {
+      response = env.getConfigManager().getConsensusManager().write(pipeHandleLeaderChangePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      response.setMessage(e.getMessage());
+    }
+    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(response.getMessage());
     }
   }
 

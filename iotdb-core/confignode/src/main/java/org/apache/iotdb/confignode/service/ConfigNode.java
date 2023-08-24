@@ -274,7 +274,8 @@ public class ConfigNode implements ConfigNodeMBean {
     ArrayList<String> diskDirs = new ArrayList<>();
     diskDirs.add(CONF.getSystemDir());
     diskDirs.add(CONF.getConsensusDir());
-    MetricService.getInstance().addMetricSet(new SystemMetrics(diskDirs));
+    SystemMetrics.getInstance().setDiskDirs(diskDirs);
+    MetricService.getInstance().addMetricSet(SystemMetrics.getInstance());
   }
 
   private void initCpuMetrics() {

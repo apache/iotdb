@@ -66,8 +66,6 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
 
   protected List<InsertTabletStatementGenerator> insertTabletStatementGenerators;
 
-  protected final Map<String, InputLocation> sourceColumnToInputLocationMap;
-
   private DataNodeInternalClient client;
 
   private final ExecutorService writeOperationExecutor;
@@ -85,7 +83,6 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
       OperatorContext operatorContext,
       Operator child,
       List<TSDataType> inputColumnTypes,
-      Map<String, InputLocation> sourceColumnToInputLocationMap,
       ExecutorService intoOperationExecutor,
       long statementSizePerLine) {
     this.operatorContext = operatorContext;
@@ -93,7 +90,6 @@ public abstract class AbstractIntoOperator implements ProcessOperator {
     this.typeConvertors =
         inputColumnTypes.stream().map(TypeFactory::getType).collect(Collectors.toList());
 
-    this.sourceColumnToInputLocationMap = sourceColumnToInputLocationMap;
     this.writeOperationExecutor = intoOperationExecutor;
     initMemoryEstimates(statementSizePerLine);
   }

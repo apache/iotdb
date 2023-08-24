@@ -21,10 +21,8 @@ package org.apache.iotdb.consensus.exception;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 
-import org.apache.ratis.protocol.RaftPeer;
-
 public class PeerNotInConsensusGroupException extends ConsensusException {
-  public PeerNotInConsensusGroupException(ConsensusGroupId groupId, RaftPeer peer) {
-    super(String.format("Peer %s is not in group %d", peer.getAddress(), groupId.getId()));
+  public PeerNotInConsensusGroupException(ConsensusGroupId groupId, String peer) {
+    super(String.format("Peer %s is not in group %d", peer, groupId.getId()));
   }
 }
