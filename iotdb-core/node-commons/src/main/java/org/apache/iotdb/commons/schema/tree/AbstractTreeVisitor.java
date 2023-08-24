@@ -382,6 +382,10 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
   // Get an iterator of all children.
   protected abstract Iterator<N> getChildrenIterator(N parent) throws Exception;
 
+  // Get an iterator of specific children.
+  protected abstract Iterator<N> getChildrenIterator(N parent, Iterator<String> childrenName)
+      throws Exception;
+
   // Release a child node.
   protected void releaseNode(N node) {}
 
@@ -446,8 +450,14 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
 
   // implement common iterating logic of different children iterator
   private abstract class AbstractChildrenIterator implements Iterator<N> {
-
+    protected final N parent;
+    protected final IFAState currentScopeState;
     private N nextMatchedChild;
+
+    protected AbstractChildrenIterator(N parent, IFAState currentScopeState) {
+      this.parent = parent;
+      this.currentScopeState = currentScopeState;
+    }
 
     @Override
     public boolean hasNext() {
@@ -455,6 +465,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
         try {
           getNext();
         } catch (Throwable e) {
+          logger.warn(e.getMessage(), e);
           throw new RuntimeException(e.getMessage(), e);
         }
       }
@@ -486,6 +497,15 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
 
     protected abstract void getNext() throws Exception;
 
+    protected final Iterator<N> initChildrenIterator() throws Exception {
+      if (scopeDFA.getFuzzyMatchTransitionSize(currentScopeState) == 0) {
+        return getChildrenIterator(
+            parent, scopeDFA.getPreciseMatchTransition(currentScopeState).keySet().iterator());
+      } else {
+        return getChildrenIterator(parent);
+      }
+    }
+
     protected void close() {
       if (nextMatchedChild != null) {
         releaseNode(nextMatchedChild);
@@ -495,15 +515,12 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
 
   // the child can be got directly with the precise value of transition, there's no traceback
   private class PreciseMatchChildrenIterator extends AbstractChildrenIterator {
-    private final N parent;
     private final IFAState sourceState;
-    private final IFAState currentScopeState;
     private final Iterator<IFATransition> transitionIterator;
 
     private PreciseMatchChildrenIterator(N parent, IStateMatchInfo stateMatchInfo) {
-      this.parent = parent;
+      super(parent, stateMatchInfo.getScopeMatchedState());
       this.sourceState = stateMatchInfo.getOneMatchedState();
-      this.currentScopeState = stateMatchInfo.getScopeMatchedState();
       transitionIterator = patternFA.getPreciseMatchTransitionIterator(sourceState);
     }
 
@@ -537,21 +554,18 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
 
     private final IFAState sourceState;
     private final IFATransition transition;
-    private final N parent;
-    private final IFAState currentScopeState;
     private Iterator<N> childrenIterator;
 
     private SingleFuzzyMatchChildrenIterator(N parent, IStateMatchInfo stateMatchInfo) {
+      super(parent, stateMatchInfo.getScopeMatchedState());
       this.sourceState = stateMatchInfo.getOneMatchedState();
-      this.currentScopeState = stateMatchInfo.getScopeMatchedState();
       this.transition = patternFA.getFuzzyMatchTransitionIterator(sourceState).next();
-      this.parent = parent;
     }
 
     @Override
     protected void getNext() throws Exception {
       if (childrenIterator == null) {
-        this.childrenIterator = getChildrenIterator(parent);
+        this.childrenIterator = initChildrenIterator();
       }
       N child;
       while (childrenIterator.hasNext()) {
@@ -561,10 +575,6 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
           continue;
         }
         IFAState nextScopeState = getNextMatchedScopeState(currentScopeState, child);
-        if (nextScopeState == null) {
-          releaseNode(child);
-          continue;
-        }
         saveResult(
             child,
             new StateSingleMatchInfo(
@@ -590,21 +600,18 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
 
     private final IFAState sourceState;
     private final Map<String, IFATransition> preciseMatchTransitionMap;
-    private final N parent;
-    private final IFAState currentScopeState;
     private Iterator<N> iterator;
 
     private MultiMatchTransitionChildrenIterator(N parent, IStateMatchInfo stateMatchInfo) {
+      super(parent, stateMatchInfo.getScopeMatchedState());
       this.sourceState = stateMatchInfo.getOneMatchedState();
-      this.currentScopeState = stateMatchInfo.getScopeMatchedState();
       this.preciseMatchTransitionMap = patternFA.getPreciseMatchTransition(sourceState);
-      this.parent = parent;
     }
 
     @Override
     protected void getNext() throws Exception {
       if (iterator == null) {
-        this.iterator = getChildrenIterator(parent);
+        this.iterator = initChildrenIterator();
       }
       N child;
 
@@ -614,10 +621,6 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
       while (iterator.hasNext()) {
         child = iterator.next();
         IFAState nextScopeState = getNextMatchedScopeState(currentScopeState, child);
-        if (nextScopeState == null) {
-          releaseNode(child);
-          continue;
-        }
         // find first matched state
         if (!preciseMatchTransitionMap.isEmpty()) {
           matchedState = tryGetNextState(child, sourceState, preciseMatchTransitionMap);
@@ -688,21 +691,18 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
   // the iterating process will try to get the first matched state of a child.
   private class TraceBackChildrenIterator extends AbstractChildrenIterator {
 
-    private final N parent;
     private final IStateMatchInfo sourceStateMatchInfo;
-    private final IFAState currentScopeState;
     private Iterator<N> iterator;
 
     TraceBackChildrenIterator(N parent, IStateMatchInfo stateMatchInfo) {
+      super(parent, stateMatchInfo.getScopeMatchedState());
       this.sourceStateMatchInfo = stateMatchInfo;
-      this.currentScopeState = stateMatchInfo.getScopeMatchedState();
-      this.parent = parent;
     }
 
     @Override
     protected void getNext() throws Exception {
       if (iterator == null) {
-        iterator = getChildrenIterator(parent);
+        this.iterator = initChildrenIterator();
       }
       N child;
 
@@ -715,10 +715,6 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
 
         child = iterator.next();
         IFAState nextScopeState = getNextMatchedScopeState(currentScopeState, child);
-        if (nextScopeState == null) {
-          releaseNode(child);
-          continue;
-        }
 
         stateMatchInfo = new StateMultiMatchInfo(patternFA, nextScopeState);
         if (mayTargetNodeType(child)) {
