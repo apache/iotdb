@@ -47,6 +47,7 @@ public class RequestValidationHandler {
 
   public static void validateInsertRecordsRequest(InsertRecordsRequest insertRecordsRequest) {
     Objects.requireNonNull(insertRecordsRequest.getTimestamps(), "timestamps should not be null");
+    Objects.requireNonNull(insertRecordsRequest.getIsAligned(), "is_aligned should not be null");
     Objects.requireNonNull(insertRecordsRequest.getDevices(), "devices should not be null");
     Objects.requireNonNull(
         insertRecordsRequest.getDataTypesList(), "data_types_list should not be null");
