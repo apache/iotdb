@@ -27,10 +27,10 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.thrift.TException;
 
-public class PipeTransferInsertNodeTabletInsertionEventHandler
+public class PipeTransferTabletInsertNodeTabletInsertionEventHandler
     extends PipeTransferTabletInsertionEventHandler<TPipeTransferResp> {
 
-  public PipeTransferInsertNodeTabletInsertionEventHandler(
+  public PipeTransferTabletInsertNodeTabletInsertionEventHandler(
       long requestCommitId,
       PipeInsertNodeTabletInsertionEvent event,
       TPipeTransferReq req,

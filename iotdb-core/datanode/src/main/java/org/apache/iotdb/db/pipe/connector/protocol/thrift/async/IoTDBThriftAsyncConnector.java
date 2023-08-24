@@ -34,9 +34,9 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnector;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferInsertNodeTabletInsertionEventHandler;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferRawTabletInsertionEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletBatchInsertionEventHandler;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletInsertNodeTabletInsertionEventHandler;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletRawInsertionEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTsFileInsertionEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
@@ -199,9 +199,10 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
               PipeTransferTabletInsertNodeReq.toTPipeTransferReq(
                   pipeInsertNodeTabletInsertionEvent.getInsertNode());
         }
-        final PipeTransferInsertNodeTabletInsertionEventHandler pipeTransferInsertNodeReqHandler =
-            new PipeTransferInsertNodeTabletInsertionEventHandler(
-                requestCommitId, pipeInsertNodeTabletInsertionEvent, pipeTransferReq, this);
+        final PipeTransferTabletInsertNodeTabletInsertionEventHandler
+            pipeTransferInsertNodeReqHandler =
+                new PipeTransferTabletInsertNodeTabletInsertionEventHandler(
+                    requestCommitId, pipeInsertNodeTabletInsertionEvent, pipeTransferReq, this);
         transfer(requestCommitId, pipeTransferInsertNodeReqHandler);
 
       } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
@@ -211,8 +212,8 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
             PipeTransferTabletRawReq.toTPipeTransferReq(
                 pipeRawTabletInsertionEvent.convertToTablet(),
                 pipeRawTabletInsertionEvent.isAligned());
-        final PipeTransferRawTabletInsertionEventHandler pipeTransferTabletReqHandler =
-            new PipeTransferRawTabletInsertionEventHandler(
+        final PipeTransferTabletRawInsertionEventHandler pipeTransferTabletReqHandler =
+            new PipeTransferTabletRawInsertionEventHandler(
                 requestCommitId, pipeRawTabletInsertionEvent, pipeTransferTabletRawReq, this);
 
         transfer(requestCommitId, pipeTransferTabletReqHandler);
@@ -248,7 +249,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
   private void transfer(
       long requestCommitId,
-      PipeTransferInsertNodeTabletInsertionEventHandler pipeTransferInsertNodeReqHandler) {
+      PipeTransferTabletInsertNodeTabletInsertionEventHandler pipeTransferInsertNodeReqHandler) {
     final TEndPoint targetNodeUrl = nodeUrls.get((int) (requestCommitId % nodeUrls.size()));
 
     try {
@@ -274,7 +275,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
   private void transfer(
       long requestCommitId,
-      PipeTransferRawTabletInsertionEventHandler pipeTransferTabletReqHandler) {
+      PipeTransferTabletRawInsertionEventHandler pipeTransferTabletReqHandler) {
     final TEndPoint targetNodeUrl = nodeUrls.get((int) (requestCommitId % nodeUrls.size()));
 
     try {
