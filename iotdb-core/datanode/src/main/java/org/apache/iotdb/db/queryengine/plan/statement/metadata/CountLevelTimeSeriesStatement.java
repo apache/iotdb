@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 
@@ -27,9 +29,19 @@ public class CountLevelTimeSeriesStatement extends CountStatement {
   private int level;
   private SchemaFilter schemaFilter;
 
+  private PathPatternTree authorityScope = SchemaConstant.ALL_MATCH_SCOPE;
+
   public CountLevelTimeSeriesStatement(PartialPath partialPath, int level) {
     super(partialPath);
     this.level = level;
+  }
+
+  public PathPatternTree getAuthorityScope() {
+    return authorityScope;
+  }
+
+  public void setAuthorityScope(PathPatternTree authorityScope) {
+    this.authorityScope = authorityScope;
   }
 
   public int getLevel() {

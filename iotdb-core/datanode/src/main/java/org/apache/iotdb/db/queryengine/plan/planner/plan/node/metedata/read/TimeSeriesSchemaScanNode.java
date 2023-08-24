@@ -51,15 +51,15 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
   private final Map<Integer, Template> templateMap;
 
   public TimeSeriesSchemaScanNode(
-          PlanNodeId id,
-          PartialPath partialPath,
-          SchemaFilter schemaFilter,
-          long limit,
-          long offset,
-          boolean orderByHeat,
-          boolean isPrefixPath,
-          @NotNull Map<Integer, Template> templateMap,
-          @NotNull PathPatternTree scope) {
+      PlanNodeId id,
+      PartialPath partialPath,
+      SchemaFilter schemaFilter,
+      long limit,
+      long offset,
+      boolean orderByHeat,
+      boolean isPrefixPath,
+      @NotNull Map<Integer, Template> templateMap,
+      @NotNull PathPatternTree scope) {
     super(id, partialPath, limit, offset, isPrefixPath, scope);
     this.schemaFilter = schemaFilter;
     this.orderByHeat = orderByHeat;
@@ -131,7 +131,15 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
 
     return new TimeSeriesSchemaScanNode(
-        planNodeId, path, schemaFilter, limit, offset, oderByHeat, isPrefixPath, templateMap, scope);
+        planNodeId,
+        path,
+        schemaFilter,
+        limit,
+        offset,
+        oderByHeat,
+        isPrefixPath,
+        templateMap,
+        scope);
   }
 
   public boolean isOrderByHeat() {
@@ -145,7 +153,15 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
   @Override
   public PlanNode clone() {
     return new TimeSeriesSchemaScanNode(
-        getPlanNodeId(), path, schemaFilter, limit, offset, orderByHeat, isPrefixPath, templateMap, scope);
+        getPlanNodeId(),
+        path,
+        schemaFilter,
+        limit,
+        offset,
+        orderByHeat,
+        isPrefixPath,
+        templateMap,
+        scope);
   }
 
   @Override

@@ -53,7 +53,11 @@ public class LogicalViewSchemaSource implements ISchemaSource<ITimeSeriesSchemaI
   private final SchemaFilter schemaFilter;
 
   LogicalViewSchemaSource(
-      PartialPath pathPattern, long limit, long offset, SchemaFilter schemaFilter, PathPatternTree scope) {
+      PartialPath pathPattern,
+      long limit,
+      long offset,
+      SchemaFilter schemaFilter,
+      PathPatternTree scope) {
     this.pathPattern = pathPattern;
     this.scope = scope;
 

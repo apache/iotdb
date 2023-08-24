@@ -761,11 +761,12 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSchemaNodeManagementResp getNodePathsPartition(PartialPath partialPath, Integer level) {
+  public TSchemaNodeManagementResp getNodePathsPartition(PartialPath partialPath, PathPatternTree scope, Integer level) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       GetNodePathsPartitionPlan getNodePathsPartitionPlan = new GetNodePathsPartitionPlan();
       getNodePathsPartitionPlan.setPartialPath(partialPath);
+      getNodePathsPartitionPlan.setScope(scope);
       if (null != level) {
         getNodePathsPartitionPlan.setLevel(level);
       }

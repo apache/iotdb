@@ -20,6 +20,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
 
@@ -31,9 +32,9 @@ public abstract class MNodeAboveDBCollector<T, N extends IMNode<N>> extends MNod
   protected Set<PartialPath> involvedDatabaseMNodes = new HashSet<>();
 
   protected MNodeAboveDBCollector(
-      N startNode, PartialPath path, IMTreeStore<N> store, boolean isPrefixMatch)
+          N startNode, PartialPath path, IMTreeStore<N> store, boolean isPrefixMatch, PathPatternTree scope)
       throws MetadataException {
-    super(startNode, path, store, isPrefixMatch);
+    super(startNode, path, store, isPrefixMatch, scope);
   }
 
   @Override

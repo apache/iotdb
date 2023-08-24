@@ -48,14 +48,14 @@ public class LevelTimeSeriesCountNode extends SchemaQueryScanNode {
   private final Map<Integer, Template> templateMap;
 
   public LevelTimeSeriesCountNode(
-          PlanNodeId id,
-          PartialPath partialPath,
-          boolean isPrefixPath,
-          int level,
-          SchemaFilter schemaFilter,
-          @NotNull Map<Integer, Template> templateMap,
-          @NotNull PathPatternTree scope) {
-    super(id, partialPath, isPrefixPath,scope);
+      PlanNodeId id,
+      PartialPath partialPath,
+      boolean isPrefixPath,
+      int level,
+      SchemaFilter schemaFilter,
+      @NotNull Map<Integer, Template> templateMap,
+      @NotNull PathPatternTree scope) {
+    super(id, partialPath, isPrefixPath, scope);
     this.level = level;
     this.schemaFilter = schemaFilter;
     this.templateMap = templateMap;

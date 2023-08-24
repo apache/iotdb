@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
@@ -380,7 +381,7 @@ public class ConfigMTree {
       PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
     List<PartialPath> result = new LinkedList<>();
     try (MNodeAboveDBCollector<Void, IConfigMNode> collector =
-        new MNodeAboveDBCollector<Void, IConfigMNode>(root, pathPattern, store, isPrefixMatch) {
+        new MNodeAboveDBCollector<Void, IConfigMNode>(root, pathPattern, store, isPrefixMatch, SchemaConstant.ALL_MATCH_SCOPE) {
           @Override
           protected Void collectMNode(IConfigMNode node) {
             result.add(getPartialPathFromRootToNode(node));
@@ -405,14 +406,15 @@ public class ConfigMTree {
    * return [root.a, root.b]
    *
    * @param pathPattern The given path
+   * @param scope traversing scope
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
   public Pair<Set<TSchemaNode>, Set<PartialPath>> getChildNodePathInNextLevel(
-      PartialPath pathPattern) throws MetadataException {
+          PartialPath pathPattern, PathPatternTree scope) throws MetadataException {
     Set<TSchemaNode> result = new TreeSet<>();
     try (MNodeAboveDBCollector<Void, IConfigMNode> collector =
         new MNodeAboveDBCollector<Void, IConfigMNode>(
-            root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store, false) {
+            root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store, false, scope) {
           @Override
           protected Void collectMNode(IConfigMNode node) {
             result.add(

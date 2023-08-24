@@ -212,6 +212,7 @@ struct TSchemaPartitionTableResp {
 struct TSchemaNodeManagementReq {
   1: required binary pathPatternTree
   2: optional i32 level
+  3: optional binary scopePatternTree
 }
 
 struct TSchemaNodeManagementResp {
@@ -614,6 +615,7 @@ struct TSetSchemaTemplateReq {
 struct TGetPathsSetTemplatesResp {
   1: required common.TSStatus status
   2: optional list<string> pathList
+  3: optional binary scopePatternTree
 }
 
 // Pipe

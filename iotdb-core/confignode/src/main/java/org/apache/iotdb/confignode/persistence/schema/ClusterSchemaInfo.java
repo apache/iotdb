@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -668,12 +669,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   public Pair<Set<TSchemaNode>, Set<PartialPath>> getChildNodePathInNextLevel(
-      PartialPath partialPath) {
+          PartialPath partialPath, PathPatternTree scope) {
     Pair<Set<TSchemaNode>, Set<PartialPath>> matchedPathsInNextLevel =
         new Pair<>(new HashSet<>(), new HashSet<>());
     databaseReadWriteLock.readLock().lock();
     try {
-      matchedPathsInNextLevel = mTree.getChildNodePathInNextLevel(partialPath);
+      matchedPathsInNextLevel = mTree.getChildNodePathInNextLevel(partialPath,scope);
     } catch (MetadataException e) {
       LOGGER.error("Error get matched paths in next level.", e);
     } finally {

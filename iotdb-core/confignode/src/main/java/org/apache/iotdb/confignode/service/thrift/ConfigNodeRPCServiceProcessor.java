@@ -483,8 +483,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   public TSchemaNodeManagementResp getSchemaNodeManagementPartition(TSchemaNodeManagementReq req) {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
+    PathPatternTree scope = req.getScopePatternTree() == null ? SchemaConstant.ALL_MATCH_SCOPE : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
     PartialPath partialPath = patternTree.getAllPathPatterns().get(0);
-    return configManager.getNodePathsPartition(partialPath, req.getLevel());
+    return configManager.getNodePathsPartition(partialPath, scope, req.getLevel());
   }
 
   @Override

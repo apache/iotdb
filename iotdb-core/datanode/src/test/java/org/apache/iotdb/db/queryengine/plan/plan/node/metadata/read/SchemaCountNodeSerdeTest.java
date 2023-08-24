@@ -48,7 +48,10 @@ public class SchemaCountNodeSerdeTest {
     ExchangeNode exchangeNode = new ExchangeNode(new PlanNodeId("exchange"));
     DevicesCountNode devicesCountNode =
         new DevicesCountNode(
-            new PlanNodeId("devicesCount"), new PartialPath("root.sg.device0"), true);
+            new PlanNodeId("devicesCount"),
+            new PartialPath("root.sg.device0"),
+            true,
+            SchemaConstant.ALL_MATCH_SCOPE);
     IdentitySinkNode sinkNode =
         new IdentitySinkNode(
             new PlanNodeId("sink"),
@@ -83,7 +86,8 @@ public class SchemaCountNodeSerdeTest {
             true,
             10,
             null,
-            Collections.emptyMap(), SchemaConstant.ALL_MATCH_SCOPE);
+            Collections.emptyMap(),
+            SchemaConstant.ALL_MATCH_SCOPE);
     IdentitySinkNode sinkNode =
         new IdentitySinkNode(
             new PlanNodeId("sink"),
@@ -117,7 +121,8 @@ public class SchemaCountNodeSerdeTest {
             new PartialPath("root.sg.device0"),
             true,
             null,
-            Collections.emptyMap(), SchemaConstant.ALL_MATCH_SCOPE);
+            Collections.emptyMap(),
+            SchemaConstant.ALL_MATCH_SCOPE);
     IdentitySinkNode sinkNode =
         new IdentitySinkNode(
             new PlanNodeId("sink"),

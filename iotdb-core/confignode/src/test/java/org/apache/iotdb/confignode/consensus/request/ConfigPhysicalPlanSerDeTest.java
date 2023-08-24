@@ -46,6 +46,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.sync.PipeInfo;
 import org.apache.iotdb.commons.sync.PipeMessage;
 import org.apache.iotdb.commons.sync.PipeStatus;
@@ -923,6 +924,7 @@ public class ConfigPhysicalPlanSerDeTest {
   public void GetNodePathsPartitionPlanTest() throws IOException, IllegalPathException {
     GetNodePathsPartitionPlan getNodePathsPartitionPlan0 = new GetNodePathsPartitionPlan();
     getNodePathsPartitionPlan0.setPartialPath(new PartialPath("root.sg1.**"));
+    getNodePathsPartitionPlan0.setScope(SchemaConstant.ALL_MATCH_SCOPE);
     GetNodePathsPartitionPlan getNodePathsPartitionPlan1 =
         (GetNodePathsPartitionPlan)
             ConfigPhysicalPlan.Factory.create(getNodePathsPartitionPlan0.serializeToByteBuffer());

@@ -48,7 +48,12 @@ public abstract class SchemaQueryScanNode extends SourceNode {
   }
 
   protected SchemaQueryScanNode(
-      PlanNodeId id, PartialPath partialPath, long limit, long offset, boolean isPrefixPath, PathPatternTree scope) {
+      PlanNodeId id,
+      PartialPath partialPath,
+      long limit,
+      long offset,
+      boolean isPrefixPath,
+      PathPatternTree scope) {
     super(id);
     this.path = partialPath;
     this.scope = scope;
@@ -57,7 +62,8 @@ public abstract class SchemaQueryScanNode extends SourceNode {
     this.isPrefixPath = isPrefixPath;
   }
 
-  protected SchemaQueryScanNode(PlanNodeId id, PartialPath partialPath, boolean isPrefixPath, PathPatternTree scope) {
+  protected SchemaQueryScanNode(
+      PlanNodeId id, PartialPath partialPath, boolean isPrefixPath, PathPatternTree scope) {
     this(id, partialPath, 0, 0, isPrefixPath, scope);
   }
 
@@ -161,14 +167,17 @@ public abstract class SchemaQueryScanNode extends SourceNode {
     return visitor.visitSchemaQueryScan(this, context);
   }
 
-
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     if (!super.equals(o)) return false;
     SchemaQueryScanNode that = (SchemaQueryScanNode) o;
-    return limit == that.limit && offset == that.offset && isPrefixPath == that.isPrefixPath && Objects.equals(path, that.path) && Objects.equals(scope, that.scope);
+    return limit == that.limit
+        && offset == that.offset
+        && isPrefixPath == that.isPrefixPath
+        && Objects.equals(path, that.path)
+        && Objects.equals(scope, that.scope);
   }
 
   @Override

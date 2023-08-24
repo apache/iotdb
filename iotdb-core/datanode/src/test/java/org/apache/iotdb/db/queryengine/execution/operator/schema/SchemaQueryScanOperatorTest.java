@@ -91,7 +91,8 @@ public class SchemaQueryScanOperatorTest {
       operatorContext.setDriverContext(
           new SchemaDriverContext(fragmentInstanceContext, schemaRegion, 0));
       ISchemaSource<IDeviceSchemaInfo> deviceSchemaSource =
-          SchemaSourceFactory.getDeviceSchemaSource(partialPath, false, 10, 0, true, null, SchemaConstant.ALL_MATCH_SCOPE);
+          SchemaSourceFactory.getDeviceSchemaSource(
+              partialPath, false, 10, 0, true, null, SchemaConstant.ALL_MATCH_SCOPE);
       SchemaOperatorTestUtil.mockGetSchemaReader(
           deviceSchemaSource,
           Collections.singletonList(deviceSchemaInfo).iterator(),
@@ -197,7 +198,13 @@ public class SchemaQueryScanOperatorTest {
           new SchemaDriverContext(fragmentInstanceContext, schemaRegion, 0));
       ISchemaSource<ITimeSeriesSchemaInfo> timeSeriesSchemaSource =
           SchemaSourceFactory.getTimeSeriesSchemaScanSource(
-              partialPath, false, 10, 0, null, Collections.emptyMap(), SchemaConstant.ALL_MATCH_SCOPE);
+              partialPath,
+              false,
+              10,
+              0,
+              null,
+              Collections.emptyMap(),
+              SchemaConstant.ALL_MATCH_SCOPE);
       SchemaOperatorTestUtil.mockGetSchemaReader(
           timeSeriesSchemaSource, showTimeSeriesResults.iterator(), schemaRegion, true);
 

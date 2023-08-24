@@ -343,7 +343,7 @@ public interface IManager {
    *
    * @return TSchemaNodeManagementResp
    */
-  TSchemaNodeManagementResp getNodePathsPartition(PartialPath partialPath, Integer level);
+  TSchemaNodeManagementResp getNodePathsPartition(PartialPath partialPath, PathPatternTree scope, Integer level);
 
   /**
    * Get DataPartition.

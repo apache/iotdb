@@ -116,7 +116,7 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
 
   @Override
   public SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
-      PathPatternTree patternTree, Integer level) {
+      PathPatternTree patternTree, PathPatternTree scope, Integer level) {
     return null;
   }
 

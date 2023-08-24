@@ -41,8 +41,8 @@ public class SchemaSourceFactory {
       PartialPath pathPattern,
       boolean isPrefixMatch,
       SchemaFilter schemaFilter,
-      Map<Integer, Template> templateMap, PathPatternTree scope
-  ) {
+      Map<Integer, Template> templateMap,
+      PathPatternTree scope) {
     return new TimeSeriesSchemaSource(
         pathPattern, isPrefixMatch, 0, 0, schemaFilter, templateMap, false, scope);
   }
@@ -54,7 +54,8 @@ public class SchemaSourceFactory {
       long limit,
       long offset,
       SchemaFilter schemaFilter,
-      Map<Integer, Template> templateMap, PathPatternTree scope) {
+      Map<Integer, Template> templateMap,
+      PathPatternTree scope) {
     return new TimeSeriesSchemaSource(
         pathPattern, isPrefixMatch, limit, offset, schemaFilter, templateMap, true, scope);
   }
@@ -72,8 +73,10 @@ public class SchemaSourceFactory {
       long limit,
       long offset,
       boolean hasSgCol,
-      SchemaFilter schemaFilter, PathPatternTree scope) {
-    return new DeviceSchemaSource(pathPattern, isPrefixPath, limit, offset, hasSgCol, schemaFilter, scope);
+      SchemaFilter schemaFilter,
+      PathPatternTree scope) {
+    return new DeviceSchemaSource(
+        pathPattern, isPrefixPath, limit, offset, hasSgCol, schemaFilter, scope);
   }
 
   // show nodes
@@ -88,7 +91,11 @@ public class SchemaSourceFactory {
   }
 
   public static ISchemaSource<ITimeSeriesSchemaInfo> getLogicalViewSchemaSource(
-      PartialPath pathPattern, long limit, long offset, SchemaFilter schemaFilter, PathPatternTree scope) {
+      PartialPath pathPattern,
+      long limit,
+      long offset,
+      SchemaFilter schemaFilter,
+      PathPatternTree scope) {
     return new LogicalViewSchemaSource(pathPattern, limit, offset, schemaFilter, scope);
   }
 }

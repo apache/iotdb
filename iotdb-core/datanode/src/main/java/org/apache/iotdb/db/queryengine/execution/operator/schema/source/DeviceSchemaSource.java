@@ -56,7 +56,8 @@ public class DeviceSchemaSource implements ISchemaSource<IDeviceSchemaInfo> {
       long limit,
       long offset,
       boolean hasSgCol,
-      SchemaFilter schemaFilter, PathPatternTree scope) {
+      SchemaFilter schemaFilter,
+      PathPatternTree scope) {
     this.pathPattern = pathPattern;
     this.isPrefixMatch = isPrefixPath;
 

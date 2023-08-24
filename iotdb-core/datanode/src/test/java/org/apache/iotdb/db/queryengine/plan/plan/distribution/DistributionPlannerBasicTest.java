@@ -120,7 +120,8 @@ public class DistributionPlannerBasicTest {
             0,
             false,
             false,
-            Collections.emptyMap(), SchemaConstant.ALL_MATCH_SCOPE));
+            Collections.emptyMap(),
+            SchemaConstant.ALL_MATCH_SCOPE));
     metaMergeNode.addChild(
         new TimeSeriesSchemaScanNode(
             queryId.genPlanNodeId(),
@@ -130,7 +131,8 @@ public class DistributionPlannerBasicTest {
             0,
             false,
             false,
-            Collections.emptyMap(),SchemaConstant.ALL_MATCH_SCOPE));
+            Collections.emptyMap(),
+            SchemaConstant.ALL_MATCH_SCOPE));
     metaMergeNode.addChild(
         new TimeSeriesSchemaScanNode(
             queryId.genPlanNodeId(),
@@ -140,7 +142,8 @@ public class DistributionPlannerBasicTest {
             0,
             false,
             false,
-            Collections.emptyMap(),SchemaConstant.ALL_MATCH_SCOPE));
+            Collections.emptyMap(),
+            SchemaConstant.ALL_MATCH_SCOPE));
     LimitNode root2 = new LimitNode(queryId.genPlanNodeId(), metaMergeNode, 10);
     Analysis analysis = Util.constructAnalysis();
     DistributionPlanner planner2 =

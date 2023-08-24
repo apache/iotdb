@@ -49,12 +49,12 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
   private final Map<Integer, Template> templateMap;
 
   public TimeSeriesCountNode(
-          PlanNodeId id,
-          PartialPath partialPath,
-          boolean isPrefixPath,
-          SchemaFilter schemaFilter,
-          @NotNull Map<Integer, Template> templateMap,
-          @NotNull PathPatternTree scope) {
+      PlanNodeId id,
+      PartialPath partialPath,
+      boolean isPrefixPath,
+      SchemaFilter schemaFilter,
+      @NotNull Map<Integer, Template> templateMap,
+      @NotNull PathPatternTree scope) {
     super(id, partialPath, isPrefixPath, scope);
     this.schemaFilter = schemaFilter;
     this.templateMap = templateMap;
@@ -70,7 +70,8 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
 
   @Override
   public PlanNode clone() {
-    return new TimeSeriesCountNode(getPlanNodeId(), path, isPrefixPath, schemaFilter, templateMap, scope);
+    return new TimeSeriesCountNode(
+        getPlanNodeId(), path, isPrefixPath, schemaFilter, templateMap, scope);
   }
 
   @Override
@@ -128,7 +129,8 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
     }
 
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new TimeSeriesCountNode(planNodeId, path, isPrefixPath, schemaFilter, templateMap, scope);
+    return new TimeSeriesCountNode(
+        planNodeId, path, isPrefixPath, schemaFilter, templateMap, scope);
   }
 
   @Override

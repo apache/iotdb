@@ -159,13 +159,13 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   @Override
   public SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
-      PathPatternTree patternTree, Integer level) {
+      PathPatternTree patternTree, PathPatternTree scope, Integer level) {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       patternTree.constructTree();
       TSchemaNodeManagementResp schemaNodeManagementResp =
           client.getSchemaNodeManagementPartition(
-              constructSchemaNodeManagementPartitionReq(patternTree, level));
+              constructSchemaNodeManagementPartitionReq(patternTree, scope, level));
 
       return parseSchemaNodeManagementPartitionResp(schemaNodeManagementResp);
     } catch (ClientManagerException | TException e) {
@@ -327,7 +327,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   private TSchemaNodeManagementReq constructSchemaNodeManagementPartitionReq(
-      PathPatternTree patternTree, Integer level) {
+      PathPatternTree patternTree,PathPatternTree scope, Integer level) {
     PublicBAOS baos = new PublicBAOS();
     try {
       patternTree.serialize(baos);
@@ -336,6 +336,12 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       serializedPatternTree.flip();
       TSchemaNodeManagementReq schemaNodeManagementReq =
           new TSchemaNodeManagementReq(serializedPatternTree);
+      baos = new PublicBAOS();
+      scope.serialize(baos);
+      ByteBuffer serializedScopeTree = ByteBuffer.allocate(baos.size());
+      serializedScopeTree.put(baos.getBuf(), 0, baos.size());
+      serializedScopeTree.flip();
+      schemaNodeManagementReq.setScopePatternTree(serializedScopeTree);
       if (null == level) {
         schemaNodeManagementReq.setLevel(-1);
       } else {

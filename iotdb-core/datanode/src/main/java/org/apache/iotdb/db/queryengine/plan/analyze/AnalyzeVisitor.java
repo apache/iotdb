@@ -2711,7 +2711,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     patternTree.appendPathPattern(countStatement.getPathPattern());
     SchemaNodeManagementPartition schemaNodeManagementPartition =
         partitionFetcher.getSchemaNodeManagementPartitionWithLevel(
-            patternTree, countStatement.getLevel());
+            patternTree, countStatement.getAuthorityScope(), countStatement.getLevel());
 
     if (schemaNodeManagementPartition == null) {
       return analysis;
@@ -2732,6 +2732,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return visitSchemaNodeManagementPartition(
         showChildPathsStatement,
         showChildPathsStatement.getPartialPath(),
+        showChildPathsStatement.getAuthorityScope(),
         DatasetHeaderFactory.getShowChildPathsHeader());
   }
 
@@ -2741,6 +2742,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return visitSchemaNodeManagementPartition(
         showChildNodesStatement,
         showChildNodesStatement.getPartialPath(),
+        showChildNodesStatement.getAuthorityScope(),
         DatasetHeaderFactory.getShowChildNodesHeader());
   }
 
@@ -2755,14 +2757,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private Analysis visitSchemaNodeManagementPartition(
-      Statement statement, PartialPath path, DatasetHeader header) {
+      Statement statement, PartialPath path, PathPatternTree scope, DatasetHeader header) {
     Analysis analysis = new Analysis();
     analysis.setStatement(statement);
 
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(path);
     SchemaNodeManagementPartition schemaNodeManagementPartition =
-        partitionFetcher.getSchemaNodeManagementPartition(patternTree);
+        partitionFetcher.getSchemaNodeManagementPartition(patternTree, scope);
 
     if (schemaNodeManagementPartition == null) {
       return analysis;

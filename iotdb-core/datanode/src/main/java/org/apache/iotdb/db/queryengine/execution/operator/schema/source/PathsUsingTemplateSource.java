@@ -44,7 +44,8 @@ public class PathsUsingTemplateSource implements ISchemaSource<IDeviceSchemaInfo
 
   private final int templateId;
 
-  PathsUsingTemplateSource(List<PartialPath> pathPatternList, int templateId, PathPatternTree scope) {
+  PathsUsingTemplateSource(
+      List<PartialPath> pathPatternList, int templateId, PathPatternTree scope) {
     this.pathPatternList = pathPatternList;
     this.templateId = templateId;
     this.scope = scope;
