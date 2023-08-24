@@ -36,8 +36,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowTrailReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTrailResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelStateReq;
-import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -79,52 +79,45 @@ public class ModelManager {
   }
 
   public TSStatus updateModelInfo(TUpdateModelInfoReq req) {
-    ConsensusWriteResponse response =
-        configManager.getConsensusManager().write(new UpdateModelInfoPlan(req));
-    if (response.getStatus() != null) {
-      return response.getStatus();
-    } else {
+    try {
+      return configManager.getConsensusManager().write(new UpdateModelInfoPlan(req));
+    } catch (ConsensusException e) {
       LOGGER.warn(
-          "Unexpected error happened while updating model {}: ",
-          req.getModelId(),
-          response.getException());
+          String.format("Unexpected error happened while updating model %s: ", req.getModelId()),
+          e);
       // consensus layer related errors
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      res.setMessage(response.getErrorMessage());
+      res.setMessage(e.getMessage());
       return res;
     }
   }
 
   public TSStatus updateModelState(TUpdateModelStateReq req) {
-    ConsensusWriteResponse response =
-        configManager.getConsensusManager().write(new UpdateModelStatePlan(req));
-    if (response.getStatus() != null) {
-      return response.getStatus();
-    } else {
+    try {
+      return configManager.getConsensusManager().write(new UpdateModelStatePlan(req));
+    } catch (ConsensusException e) {
       LOGGER.warn(
-          "Unexpected error happened while updating state of model {}: ",
-          req.getModelId(),
-          response.getException());
+          String.format(
+              "Unexpected error happened while updating state of model %s: ", req.getModelId()),
+          e);
       // consensus layer related errors
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      res.setMessage(response.getErrorMessage());
+      res.setMessage(e.getMessage());
       return res;
     }
   }
 
   public TShowModelResp showModel(TShowModelReq req) {
     try {
-      ConsensusReadResponse response =
-          configManager.getConsensusManager().read(new ShowModelPlan(req));
-      if (response.getDataset() != null) {
-        return ((ModelTableResp) response.getDataset()).convertToThriftResponse();
-      } else {
-        LOGGER.warn("Unexpected error happened while showing model: ", response.getException());
-        // consensus layer related errors
-        TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-        res.setMessage(response.getException().toString());
-        return new TShowModelResp(res, Collections.emptyList());
-      }
+      DataSet response = configManager.getConsensusManager().read(new ShowModelPlan(req));
+      return ((ModelTableResp) response).convertToThriftResponse();
+    } catch (ConsensusException e) {
+      LOGGER.warn(
+          String.format("Unexpected error happened while showing model %s: ", req.getModelId()), e);
+      // consensus layer related errors
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return new TShowModelResp(res, Collections.emptyList());
     } catch (IOException e) {
       LOGGER.error("Fail to get ModelTable", e);
       return new TShowModelResp(
@@ -136,17 +129,15 @@ public class ModelManager {
 
   public TShowTrailResp showTrail(TShowTrailReq req) {
     try {
-      ConsensusReadResponse response =
-          configManager.getConsensusManager().read(new ShowTrailPlan(req));
-      if (response.getDataset() != null) {
-        return ((TrailTableResp) response.getDataset()).convertToThriftResponse();
-      } else {
-        LOGGER.warn("Unexpected error happened while showing trail: ", response.getException());
-        // consensus layer related errors
-        TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-        res.setMessage(response.getException().toString());
-        return new TShowTrailResp(res, Collections.emptyList());
-      }
+      DataSet response = configManager.getConsensusManager().read(new ShowTrailPlan(req));
+      return ((TrailTableResp) response).convertToThriftResponse();
+    } catch (ConsensusException e) {
+      LOGGER.warn(
+          String.format("Unexpected error happened while showing trail %s: ", req.getModelId()), e);
+      // consensus layer related errors
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return new TShowTrailResp(res, Collections.emptyList());
     } catch (IOException e) {
       LOGGER.error("Fail to get TrailTable", e);
       return new TShowTrailResp(

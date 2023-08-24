@@ -33,6 +33,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnector;
+import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -184,6 +185,16 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       return;
     }
 
+    if (((EnrichedEvent) tabletInsertionEvent).shouldParsePattern()) {
+      if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+        transfer(
+            ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).parseEventWithPattern());
+      } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
+        transfer(((PipeRawTabletInsertionEvent) tabletInsertionEvent).parseEventWithPattern());
+      }
+      return;
+    }
+
     final int clientIndex = nextClientIndex();
     final IoTDBThriftSyncConnectorClient client = clients.get(clientIndex);
 
@@ -217,6 +228,13 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       LOGGER.warn(
           "IoTDBThriftSyncConnector only support PipeTsFileInsertionEvent. Ignore {}.",
           tsFileInsertionEvent);
+      return;
+    }
+
+    if (((EnrichedEvent) tsFileInsertionEvent).shouldParsePattern()) {
+      for (final TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
+        transfer(event);
+      }
       return;
     }
 

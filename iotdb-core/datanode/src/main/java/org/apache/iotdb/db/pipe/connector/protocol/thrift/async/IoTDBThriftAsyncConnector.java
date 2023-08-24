@@ -159,6 +159,16 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       return;
     }
 
+    if (((EnrichedEvent) tabletInsertionEvent).shouldParsePattern()) {
+      if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+        transfer(
+            ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).parseEventWithPattern());
+      } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
+        transfer(((PipeRawTabletInsertionEvent) tabletInsertionEvent).parseEventWithPattern());
+      }
+      return;
+    }
+
     final long requestCommitId = commitIdGenerator.incrementAndGet();
 
     // first, if its WALEntryValue is not in cache, then transfer it via binary
@@ -311,6 +321,13 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       LOGGER.warn(
           "IoTDBThriftAsyncConnector only support PipeTsFileInsertionEvent. Current event: {}.",
           tsFileInsertionEvent);
+      return;
+    }
+
+    if (((EnrichedEvent) tsFileInsertionEvent).shouldParsePattern()) {
+      for (final TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
+        transfer(event);
+      }
       return;
     }
 

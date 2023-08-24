@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -81,9 +82,9 @@ public class PipePluginCoordinator {
   public TGetPipePluginTableResp getPipePluginTable() {
     try {
       return ((PipePluginTableResp)
-              configManager.getConsensusManager().read(new GetPipePluginTablePlan()).getDataset())
+              configManager.getConsensusManager().read(new GetPipePluginTablePlan()))
           .convertToThriftResponse();
-    } catch (IOException e) {
+    } catch (IOException | ConsensusException e) {
       LOGGER.error("Fail to get PipePluginTable", e);
       return new TGetPipePluginTableResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
@@ -93,11 +94,17 @@ public class PipePluginCoordinator {
   }
 
   public TGetJarInListResp getPipePluginJar(TGetJarInListReq req) {
-    return ((JarResp)
-            configManager
-                .getConsensusManager()
-                .read(new GetPipePluginJarPlan(req.getJarNameList()))
-                .getDataset())
-        .convertToThriftResponse();
+    try {
+      return ((JarResp)
+              configManager
+                  .getConsensusManager()
+                  .read(new GetPipePluginJarPlan(req.getJarNameList())))
+          .convertToThriftResponse();
+    } catch (ConsensusException e) {
+      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return new JarResp(res, Collections.emptyList()).convertToThriftResponse();
+    }
   }
 }
