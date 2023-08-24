@@ -260,12 +260,11 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
 
   @Override
   public void transfer(Event event) throws TException, IOException {
-    if (!isTabletBatchModeEnabled) {
-      return;
+    // in order to commit in order
+    if (isTabletBatchModeEnabled && !tabletBatchBuilder.isEmpty()) {
+      doTransfer(clients.get(nextClientIndex()));
     }
-    final int clientIndex = nextClientIndex();
-    final IoTDBThriftSyncConnectorClient client = clients.get(clientIndex);
-    doTransfer(client);
+
     if (!(event instanceof PipeHeartbeatEvent)) {
       LOGGER.warn("IoTDBThriftSyncConnector does not support transfer generic event: {}.", event);
     }

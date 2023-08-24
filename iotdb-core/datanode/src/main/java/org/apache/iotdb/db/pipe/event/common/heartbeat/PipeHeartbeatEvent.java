@@ -34,10 +34,10 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   private final String dataRegionId;
   private String pipeName;
 
-  private long disruptTime;
-  private long extractTime;
-  private long processTime;
-  private long transferTime;
+  private long timePublished;
+  private long timeAssigned;
+  private long timeProcessed;
+  private long timeTransferred;
 
   public PipeHeartbeatEvent(String dataRegionId) {
     super(null, null);
@@ -45,10 +45,10 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   }
 
   // The disruptTime has been recorded in the previous event
-  public PipeHeartbeatEvent(String dataRegionId, long disruptTime) {
+  public PipeHeartbeatEvent(String dataRegionId, long timePublished) {
     super(null, null);
     this.dataRegionId = dataRegionId;
-    this.disruptTime = disruptTime;
+    this.timePublished = timePublished;
   }
 
   @Override
@@ -74,7 +74,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       PipeTaskMeta pipeTaskMeta, String pattern) {
-    return new PipeHeartbeatEvent(dataRegionId, disruptTime);
+    return new PipeHeartbeatEvent(dataRegionId, timePublished);
   }
 
   @Override
@@ -82,42 +82,40 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     return false;
   }
 
-  /////////////////////////////// Report ///////////////////////////////
+  /////////////////////////////// Delay Reporting ///////////////////////////////
 
-  /** Report the time when the heartBeatEvent put in disruptor queue. */
-  public void reportDisrupt() {
-    disruptTime = System.currentTimeMillis();
-  }
-
-  /** Report the time when the heartBeatEvent put in extractor output pending queue. */
-  public void reportExtract() {
-    extractTime = System.currentTimeMillis();
-  }
-
-  /** Report when the heartBeatEvent put in processor output pending queue. */
-  public void reportProcess() {
-    processTime = System.currentTimeMillis();
-  }
-
-  /** Report when the heartBeatEvent polled from connector input pending queue. */
-  public void reportTransfer() {
-    transferTime = System.currentTimeMillis();
-  }
-
-  /** Bind pipeName for this event for better reporting. */
   public void bindPipeName(String pipeName) {
     this.pipeName = pipeName;
+  }
+
+  public void onPublished() {
+    timePublished = System.currentTimeMillis();
+  }
+
+  public void onAssigned() {
+    timeAssigned = System.currentTimeMillis();
+  }
+
+  public void onProcessed() {
+    timeProcessed = System.currentTimeMillis();
+  }
+
+  public void onTransferred() {
+    timeTransferred = System.currentTimeMillis();
   }
 
   @Override
   public String toString() {
     String errorMsg = "error";
 
-    String disruptToExtractMsg = extractTime != 0 ? (extractTime - disruptTime) + "ms" : errorMsg;
-    String extractToProcessMsg = processTime != 0 ? (processTime - extractTime) + "ms" : errorMsg;
+    String disruptToExtractMsg =
+        timeAssigned != 0 ? (timeAssigned - timePublished) + "ms" : errorMsg;
+    String extractToProcessMsg =
+        timeProcessed != 0 ? (timeProcessed - timeAssigned) + "ms" : errorMsg;
     String processToTransferMsg =
-        transferTime != 0 ? (transferTime - processTime) + "ms" : errorMsg;
-    String totalTimeMsg = transferTime != 0 ? (transferTime - disruptTime) + "ms" : errorMsg;
+        timeTransferred != 0 ? (timeTransferred - timeProcessed) + "ms" : errorMsg;
+    String totalTimeMsg =
+        timeTransferred != 0 ? (timeTransferred - timePublished) + "ms" : errorMsg;
 
     return "PipeHeartbeatEvent{"
         + "pipeName='"
@@ -125,7 +123,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
         + "', dataRegionId="
         + dataRegionId
         + ", startTime="
-        + DateTimeUtils.convertLongToDate(disruptTime, "ms")
+        + DateTimeUtils.convertLongToDate(timePublished, "ms")
         + ", disruptToExtract="
         + disruptToExtractMsg
         + ", extractToProcess="

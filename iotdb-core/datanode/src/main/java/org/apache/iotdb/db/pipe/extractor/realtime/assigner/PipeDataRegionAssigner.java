@@ -41,10 +41,12 @@ public class PipeDataRegionAssigner {
 
   public void publishToAssign(PipeRealtimeEvent event) {
     event.increaseReferenceCount(PipeDataRegionAssigner.class.getName());
-    if (event.getEvent() instanceof PipeHeartbeatEvent) {
-      ((PipeHeartbeatEvent) event.getEvent()).reportDisrupt();
-    }
+
     disruptor.publish(event);
+
+    if (event.getEvent() instanceof PipeHeartbeatEvent) {
+      ((PipeHeartbeatEvent) event.getEvent()).onPublished();
+    }
   }
 
   public void assignToExtractor(PipeRealtimeEvent event, long sequence, boolean endOfBatch) {
@@ -60,14 +62,13 @@ public class PipeDataRegionAssigner {
                   event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
                       extractor.getPipeTaskMeta(), extractor.getPattern());
 
-              EnrichedEvent enrichedEvent = copiedEvent.getEvent();
-              if (enrichedEvent instanceof PipeHeartbeatEvent) {
-                ((PipeHeartbeatEvent) enrichedEvent).bindPipeName(extractor.getPipeName());
-              }
               copiedEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName());
               extractor.extract(copiedEvent);
-              if (enrichedEvent instanceof PipeHeartbeatEvent) {
-                ((PipeHeartbeatEvent) enrichedEvent).reportExtract();
+
+              final EnrichedEvent innerEvent = copiedEvent.getEvent();
+              if (innerEvent instanceof PipeHeartbeatEvent) {
+                ((PipeHeartbeatEvent) innerEvent).bindPipeName(extractor.getPipeName());
+                ((PipeHeartbeatEvent) innerEvent).onAssigned();
               }
             });
     event.gcSchemaInfo();

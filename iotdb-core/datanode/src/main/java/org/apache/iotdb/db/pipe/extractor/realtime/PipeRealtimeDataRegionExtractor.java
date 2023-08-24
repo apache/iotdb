@@ -61,8 +61,8 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
 
     final PipeTaskExtractorRuntimeEnvironment environment =
         (PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment();
-    dataRegionId = String.valueOf(environment.getRegionId());
     pipeName = environment.getPipeName();
+    dataRegionId = String.valueOf(environment.getRegionId());
     pipeTaskMeta = environment.getPipeTaskMeta();
   }
 

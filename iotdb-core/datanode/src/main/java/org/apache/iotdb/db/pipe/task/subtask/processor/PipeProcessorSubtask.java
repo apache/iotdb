@@ -99,7 +99,7 @@ public class PipeProcessorSubtask extends PipeSubtask {
         pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
       } else if (event instanceof PipeHeartbeatEvent) {
         pipeProcessor.process(event, outputEventCollector);
-        ((PipeHeartbeatEvent) event).reportProcess();
+        ((PipeHeartbeatEvent) event).onProcessed();
       } else {
         pipeProcessor.process(event, outputEventCollector);
       }
