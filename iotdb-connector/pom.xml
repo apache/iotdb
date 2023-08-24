@@ -31,6 +31,7 @@
     <name>IoTDB: Connector</name>
     <modules>
         <module>flink-iotdb-connector</module>
+        <module>flink-sql-iotdb-connector</module>
         <module>flink-tsfile-connector</module>
         <module>grafana-connector</module>
         <module>grafana-plugin</module>
