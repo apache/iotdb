@@ -22,11 +22,11 @@ package org.apache.iotdb.db.pipe.extractor.realtime;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.dml.heartbeat.HeartbeatEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import org.slf4j.Logger;
@@ -65,7 +65,7 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
         // Ignore the event.
         event.decreaseReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName());
       }
-    } else if (enrichedEvent instanceof HeartbeatEvent) {
+    } else if (enrichedEvent instanceof PipeHeartbeatEvent) {
       if (!pendingQueue.waitedOffer(event)) {
         // This would not happen, but just in case.
         // Pending is unbounded, so it should never reach capacity.

@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.pipe.task.subtask.processor;
 
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.db.pipe.task.connection.EventSupplier;
 import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.dml.heartbeat.HeartbeatEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -86,7 +86,7 @@ public class PipeProcessorSubtask extends PipeSubtask {
   @Override
   protected synchronized boolean executeOnce() throws Exception {
     final Event event = lastEvent != null ? lastEvent : inputEventSupplier.supply();
-    // record the last event for retry when exception occurs
+    // Record the last event for retry when exception occurs
     lastEvent = event;
     if (event == null) {
       return false;
@@ -97,9 +97,9 @@ public class PipeProcessorSubtask extends PipeSubtask {
         pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
       } else if (event instanceof TsFileInsertionEvent) {
         pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
-      } else if (event instanceof HeartbeatEvent) {
-        pipeProcessor.process((HeartbeatEvent) event, outputEventCollector);
-        ((HeartbeatEvent) event).reportProcess();
+      } else if (event instanceof PipeHeartbeatEvent) {
+        pipeProcessor.process(event, outputEventCollector);
+        ((PipeHeartbeatEvent) event).reportProcess();
       } else {
         pipeProcessor.process(event, outputEventCollector);
       }

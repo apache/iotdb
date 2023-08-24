@@ -22,11 +22,11 @@ package org.apache.iotdb.db.pipe.extractor.realtime;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.dml.heartbeat.HeartbeatEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
@@ -54,7 +54,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       extractTabletInsertion(event);
     } else if (eventToExtract instanceof TsFileInsertionEvent) {
       extractTsFileInsertion(event);
-    } else if (eventToExtract instanceof HeartbeatEvent) {
+    } else if (eventToExtract instanceof PipeHeartbeatEvent) {
       extractHeartbeatInsertion(event);
     } else {
       throw new UnsupportedOperationException(
@@ -191,7 +191,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         suppliedEvent = supplyTabletInsertion(realtimeEvent);
       } else if (eventToSupply instanceof TsFileInsertionEvent) {
         suppliedEvent = supplyTsFileInsertion(realtimeEvent);
-      } else if (eventToSupply instanceof HeartbeatEvent) {
+      } else if (eventToSupply instanceof PipeHeartbeatEvent) {
         suppliedEvent = supplyHeartbeat(realtimeEvent);
       } else {
         throw new UnsupportedOperationException(

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.task.subtask.connector;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.subtask.DecoratingLock;
@@ -29,7 +30,6 @@ import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.dml.heartbeat.HeartbeatEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
@@ -115,9 +115,9 @@ public class PipeConnectorSubtask extends PipeSubtask {
         outputPipeConnector.transfer((TabletInsertionEvent) event);
       } else if (event instanceof TsFileInsertionEvent) {
         outputPipeConnector.transfer((TsFileInsertionEvent) event);
-      } else if (event instanceof HeartbeatEvent) {
-        outputPipeConnector.transfer((HeartbeatEvent) event);
-        ((HeartbeatEvent) event).reportTransfer();
+      } else if (event instanceof PipeHeartbeatEvent) {
+        outputPipeConnector.transfer(event);
+        ((PipeHeartbeatEvent) event).reportTransfer();
       } else {
         outputPipeConnector.transfer(event);
       }

@@ -32,6 +32,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletReq;
 import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -39,7 +40,6 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeExcepti
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.dml.heartbeat.HeartbeatEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
@@ -259,18 +259,16 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
   }
 
   @Override
-  public void transfer(HeartbeatEvent heartbeatEvent) throws TException, IOException {
+  public void transfer(Event event) throws TException, IOException {
     if (!isTabletBatchModeEnabled) {
       return;
     }
     final int clientIndex = nextClientIndex();
     final IoTDBThriftSyncConnectorClient client = clients.get(clientIndex);
     doTransfer(client);
-  }
-
-  @Override
-  public void transfer(Event event) throws TException, IOException {
-    LOGGER.warn("IoTDBThriftSyncConnector does not support transfer generic event: {}.", event);
+    if (!(event instanceof PipeHeartbeatEvent)) {
+      LOGGER.warn("IoTDBThriftSyncConnector does not support transfer generic event: {}.", event);
+    }
   }
 
   private void doTransfer(IoTDBThriftSyncConnectorClient client) throws IOException, TException {

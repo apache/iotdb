@@ -35,6 +35,7 @@ import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTran
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTsFileInsertionEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -43,7 +44,6 @@ import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeCo
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.dml.heartbeat.HeartbeatEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
@@ -337,17 +337,13 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   }
 
   @Override
-  public void transfer(HeartbeatEvent heartbeatEvent) throws Exception {
-    transferQueuedEventsIfNecessary();
-    transferBatchedEventsIfNecessary();
-  }
-
-  @Override
   public void transfer(Event event) throws Exception {
     transferQueuedEventsIfNecessary();
     transferBatchedEventsIfNecessary();
 
-    LOGGER.warn("IoTDBThriftAsyncConnector does not support transfer generic event: {}.", event);
+    if (!(event instanceof PipeHeartbeatEvent)) {
+      LOGGER.warn("IoTDBThriftAsyncConnector does not support transfer generic event: {}.", event);
+    }
   }
 
   private AsyncPipeDataTransferServiceClient borrowClient(TEndPoint targetNodeUrl)

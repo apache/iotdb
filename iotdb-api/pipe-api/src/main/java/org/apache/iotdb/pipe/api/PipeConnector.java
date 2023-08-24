@@ -23,7 +23,6 @@ import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeCo
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.event.dml.heartbeat.HeartbeatEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
@@ -136,17 +135,7 @@ public interface PipeConnector extends PipePlugin {
   }
 
   /**
-   * This method is called to transfer the PipeHeartbeatEvent.
-   *
-   * @param heartbeatEvent HeartbeatEvent to be transferred
-   * @throws Exception the user can throw errors if necessary
-   */
-  default void transfer(HeartbeatEvent heartbeatEvent) throws Exception {
-    // Do nothing by default
-  }
-
-  /**
-   * This method is used to transfer the Event.
+   * This method is used to transfer the generic events, including HeartbeatEvent.
    *
    * @param event Event to be transferred
    * @throws PipeConnectionException if the connection is broken

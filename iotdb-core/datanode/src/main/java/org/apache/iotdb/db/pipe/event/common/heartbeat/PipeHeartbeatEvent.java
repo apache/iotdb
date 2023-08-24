@@ -23,12 +23,11 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.utils.DateTimeUtils;
-import org.apache.iotdb.pipe.api.event.dml.heartbeat.HeartbeatEvent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class PipeHeartbeatEvent extends EnrichedEvent implements HeartbeatEvent {
+public class PipeHeartbeatEvent extends EnrichedEvent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeHeartbeatEvent.class);
 
@@ -85,27 +84,27 @@ public class PipeHeartbeatEvent extends EnrichedEvent implements HeartbeatEvent 
 
   /////////////////////////////// Report ///////////////////////////////
 
-  @Override
+  /** Report the time when the heartBeatEvent put in disruptor queue. */
   public void reportDisrupt() {
     disruptTime = System.currentTimeMillis();
   }
 
-  @Override
+  /** Report the time when the heartBeatEvent put in extractor output pending queue. */
   public void reportExtract() {
     extractTime = System.currentTimeMillis();
   }
 
-  @Override
+  /** Report when the heartBeatEvent put in processor output pending queue. */
   public void reportProcess() {
     processTime = System.currentTimeMillis();
   }
 
-  @Override
+  /** Report when the heartBeatEvent polled from connector input pending queue. */
   public void reportTransfer() {
     transferTime = System.currentTimeMillis();
   }
 
-  @Override
+  /** Bind pipeName for this event for better reporting. */
   public void bindPipeName(String pipeName) {
     this.pipeName = pipeName;
   }
