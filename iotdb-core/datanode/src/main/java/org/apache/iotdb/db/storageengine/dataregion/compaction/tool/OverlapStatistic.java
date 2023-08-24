@@ -19,30 +19,48 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
+import java.util.HashSet;
+
 public class OverlapStatistic {
   long totalSequenceFile;
+  long totalSequenceFileSize;
   long totalChunkGroupsInSequenceFile;
   long totalChunksInSequenceFile;
+
+  HashSet<String> sequenceNumber = new HashSet<>();
+  long sequenceMinStartTime = Long.MAX_VALUE;
+  long sequenceMaxEndTime = Long.MIN_VALUE;
+
+  long totalUnsequenceFile;
+  long totalUnsequenceFileSize;
+  long totalChunkGroupsInUnSequenceFile;
+  long totalChunksInUnSequenceFile;
+  long unSequenceMinStartTime = Long.MAX_VALUE;
+  long unSequenceMaxEndTime = Long.MIN_VALUE;
 
   long overlappedSequenceFiles;
   long overlappedChunkGroupsInSequenceFile;
   long overlappedChunksInSequenceFile;
 
-  long totalUnsequenceFile;
-  long totalSequenceFileSize;
-  long totalUnsequenceFileSize;
-
   public void merge(OverlapStatistic other) {
     this.totalSequenceFile += other.totalSequenceFile;
+    this.totalSequenceFileSize += other.totalSequenceFileSize;
     this.totalChunkGroupsInSequenceFile += other.totalChunkGroupsInSequenceFile;
     this.totalChunksInSequenceFile += other.totalChunksInSequenceFile;
+    this.sequenceMinStartTime = Math.min(this.sequenceMinStartTime, other.sequenceMinStartTime);
+    this.sequenceMaxEndTime = Math.max(this.sequenceMaxEndTime, other.sequenceMaxEndTime);
+
+    this.totalUnsequenceFile += other.totalUnsequenceFile;
+    this.totalUnsequenceFileSize += other.totalUnsequenceFileSize;
+    this.totalChunkGroupsInUnSequenceFile += other.totalChunkGroupsInUnSequenceFile;
+    this.totalChunksInUnSequenceFile += other.totalChunksInUnSequenceFile;
+    this.unSequenceMinStartTime =
+        Math.min(this.unSequenceMinStartTime, other.unSequenceMinStartTime);
+    this.unSequenceMaxEndTime = Math.max(this.unSequenceMaxEndTime, other.unSequenceMaxEndTime);
+
     this.overlappedSequenceFiles += other.overlappedSequenceFiles;
     this.overlappedChunkGroupsInSequenceFile += other.overlappedChunkGroupsInSequenceFile;
     this.overlappedChunksInSequenceFile += other.overlappedChunksInSequenceFile;
-
-    this.totalUnsequenceFile += other.totalUnsequenceFile;
-    this.totalSequenceFileSize += other.totalSequenceFileSize;
-    this.totalUnsequenceFileSize += other.totalUnsequenceFileSize;
   }
 
   public void mergeSingleSequenceFileTaskResult(SequenceFileTaskSummary summary) {
@@ -58,10 +76,16 @@ public class OverlapStatistic {
     this.totalChunksInSequenceFile += summary.totalChunks;
     this.totalSequenceFile += 1;
     this.totalSequenceFileSize += summary.fileSize;
+    this.sequenceMinStartTime = Math.min(this.sequenceMinStartTime, summary.minStartTime);
+    this.sequenceMaxEndTime = Math.max(this.sequenceMaxEndTime, summary.maxEndTime);
   }
 
   public void mergeUnSeqSpaceStatistics(UnseqSpaceStatistics statistics) {
     this.totalUnsequenceFile += statistics.unsequenceFileNum;
     this.totalUnsequenceFileSize += statistics.unsequenceFileSize;
+    this.totalChunksInUnSequenceFile += statistics.unsequenceChunkNum;
+    this.totalChunkGroupsInUnSequenceFile += statistics.unsequenceChunkGroupNum;
+    this.unSequenceMinStartTime = Math.min(this.unSequenceMinStartTime, statistics.minStartTime);
+    this.unSequenceMaxEndTime = Math.max(this.unSequenceMaxEndTime, statistics.maxEndTime);
   }
 }

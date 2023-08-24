@@ -26,6 +26,13 @@ public class UnseqSpaceStatistics {
   // 设备 -> 序列 -> 时间范围
   public long unsequenceFileNum = 0;
   public long unsequenceFileSize = 0;
+
+  public long unsequenceChunkNum = 0;
+  public long unsequenceChunkGroupNum = 0;
+
+  public long minStartTime = Long.MAX_VALUE;
+
+  public long maxEndTime = Long.MIN_VALUE;
   private Map<String, Map<String, ITimeRange>> chunkStatisticMap = new HashMap<>();
 
   private Map<String, ITimeRange> chunkGroupStatisticMap = new HashMap<>();
@@ -67,5 +74,13 @@ public class UnseqSpaceStatistics {
 
   public Map<String, ITimeRange> getChunkGroupStatisticMap() {
     return chunkGroupStatisticMap;
+  }
+
+  public void setMaxEndTime(long maxEndTime) {
+    this.maxEndTime = Math.max(this.maxEndTime, maxEndTime);
+  }
+
+  public void setMinStartTime(long minStartTime) {
+    this.minStartTime = Math.min(this.minStartTime, minStartTime);
   }
 }

@@ -61,15 +61,11 @@ public class OverlapStatisticTool {
       new HashMap<>();
 
   public static void main(String[] args) throws InterruptedException {
-    if (args.length == 0) {
-      System.out.println("Please input data dir paths.");
-      return;
-    }
-    OverlapStatisticTool tool = new OverlapStatisticTool();
-    long startTime = System.currentTimeMillis();
     // 1. 处理参数，从输入中获取数据目录的路径
     parseArgs(args);
 
+    OverlapStatisticTool tool = new OverlapStatisticTool();
+    long startTime = System.currentTimeMillis();
     // 2. 进行计算
     tool.process(dataDirs);
     System.out.printf(
@@ -92,7 +88,13 @@ public class OverlapStatisticTool {
         Integer.parseInt(
             getArgOrDefault(
                 commandLine, SUB_TASK_NUM_ARG, String.valueOf(DEFAULT_WORKER_SUB_TASK_NUM)));
-    dataDirs = Arrays.asList(commandLine.getOptionValues(DATA_DIRS_ARG));
+    String[] dataDirsParam = commandLine.getOptionValues(DATA_DIRS_ARG);
+
+    if (dataDirsParam == null || dataDirsParam.length == 0) {
+      System.out.println(".");
+      throw new RuntimeException("data_dirs must not be empty");
+    }
+    dataDirs = Arrays.asList(dataDirsParam);
   }
 
   private static Options createOptions() {

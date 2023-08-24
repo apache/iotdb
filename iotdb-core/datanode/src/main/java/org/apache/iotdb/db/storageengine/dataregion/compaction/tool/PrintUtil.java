@@ -20,7 +20,10 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.tool;
 
 class PrintUtil {
-  static String[] header = {"", "Total", "Overlap", "Overlap/Total"};
+  static String[] header_1 = {"", "Total", "Overlap", "Overlap/Total"};
+  static String[] header_2 = {"", "Total", "Sequence", "UnSequence", "UnSequence/Total"};
+
+  static long MSize = 1024 * 1024;
 
   public static void printOneStatistics(OverlapStatistic overlapStatistic, String label) {
     System.out.println();
@@ -29,6 +32,80 @@ class PrintUtil {
   }
 
   private static void printProgressLog(String label, OverlapStatistic statistic) {
+
+    //    System.out.printf(
+    //        "Sequence file num: %d, Sequence file size: %.2fM\n",
+    //        statistic.totalSequenceFile, ((double) statistic.totalSequenceFileSize / 1024 /
+    // 1024));
+    //    System.out.printf(
+    //        "Unsequence file num: %d, Unsequence file size: %.2fM\n",
+    //        statistic.totalUnsequenceFile, (double) statistic.totalUnsequenceFileSize / 1024 /
+    // 1024);
+
+    String[][] log = {
+      {
+        "File Number",
+        statistic.totalSequenceFile + statistic.totalUnsequenceFile + "",
+        statistic.totalSequenceFile + "",
+        statistic.totalUnsequenceFile + "",
+        String.format(
+            "%.2f",
+            statistic.totalUnsequenceFile
+                * 1d
+                / (statistic.totalSequenceFile + statistic.totalUnsequenceFile))
+      },
+      {
+        "File Size(MB)",
+        (statistic.totalSequenceFileSize + statistic.totalUnsequenceFileSize) / MSize + "",
+        statistic.totalSequenceFileSize / MSize + "",
+        statistic.totalUnsequenceFileSize / MSize + "",
+        String.format(
+            "%.2f",
+            statistic.totalUnsequenceFileSize
+                * 1d
+                / (statistic.totalSequenceFileSize + statistic.totalUnsequenceFileSize))
+      },
+      {
+        "Device Number",
+        statistic.totalChunkGroupsInSequenceFile + statistic.totalChunkGroupsInUnSequenceFile + "",
+        statistic.totalChunkGroupsInSequenceFile + "",
+        statistic.totalChunkGroupsInUnSequenceFile + "",
+        String.format(
+            "%.2f",
+            statistic.totalChunkGroupsInUnSequenceFile
+                * 1d
+                / (statistic.totalChunkGroupsInSequenceFile
+                    + statistic.totalChunkGroupsInUnSequenceFile))
+      },
+      {
+        "Sensor Number",
+        statistic.totalChunksInSequenceFile + statistic.totalChunksInUnSequenceFile + "",
+        statistic.totalChunksInSequenceFile + "",
+        statistic.totalChunksInUnSequenceFile + "",
+        String.format(
+            "%.2f",
+            statistic.totalChunksInUnSequenceFile
+                * 1d
+                / (statistic.totalChunksInSequenceFile + statistic.totalChunksInUnSequenceFile))
+      },
+      {
+        "Duration",
+        Math.max(statistic.sequenceMaxEndTime, statistic.unSequenceMaxEndTime)
+            - Math.min(statistic.sequenceMinStartTime, statistic.unSequenceMinStartTime)
+            + "",
+        statistic.sequenceMaxEndTime - statistic.sequenceMinStartTime + "",
+        statistic.unSequenceMaxEndTime - statistic.unSequenceMinStartTime + "",
+        String.format(
+            "%.2f",
+            (statistic.unSequenceMaxEndTime - statistic.unSequenceMinStartTime)
+                * 1d
+                / (Math.max(statistic.sequenceMaxEndTime, statistic.unSequenceMaxEndTime)
+                    - Math.min(statistic.sequenceMinStartTime, statistic.unSequenceMinStartTime)))
+      }
+    };
+    System.out.println(System.getProperty("line.separator") + "Data Table:");
+    printStaticsTable(log);
+
     System.out.printf(
         "Progress: %s\n" + "Sequence File progress: %d/%d\n" + "Partition progress: %d/%d %s",
         label,
@@ -37,12 +114,6 @@ class PrintUtil {
         OverlapStatisticTool.processedTimePartitionCount,
         OverlapStatisticTool.timePartitionFileMap.size(),
         System.getProperty("line.separator"));
-    System.out.printf(
-        "Sequence file num: %d, Sequence file size: %.2fM\n",
-        statistic.totalSequenceFile, ((double) statistic.totalSequenceFileSize / 1024 / 1024));
-    System.out.printf(
-        "Unsequence file num: %d, Unsequence file size: %.2fM\n",
-        statistic.totalUnsequenceFile, (double) statistic.totalUnsequenceFileSize / 1024 / 1024);
   }
 
   private static void printTableLog(OverlapStatistic overlapStatistic) {
@@ -77,20 +148,35 @@ class PrintUtil {
         String.format("%.2f%%", overlappedChunkPercentage)
       }
     };
-    printTable(log);
+    System.out.println("Overlap Table:");
+    printOverlapTable(log);
   }
 
   private static double calculatePercentage(long numerator, long denominator) {
     return denominator != 0 ? (double) numerator / denominator * 100 : 0;
   }
 
-  public static void printTable(String[][] data) {
+  public static void printOverlapTable(String[][] data) {
     int numRows = data.length;
-    int numCols = data[0].length;
-    int[] maxCellWidths = calculateMaxCellWidths(header, data);
+    int[] maxCellWidths = calculateMaxCellWidths(header_1, data);
 
     printTopBorder(maxCellWidths);
-    printRow(header, maxCellWidths);
+    printRow(header_1, maxCellWidths);
+
+    for (int row = 0; row < numRows; row++) {
+      printSeparator(maxCellWidths);
+      printRow(data[row], maxCellWidths);
+    }
+
+    printBottomBorder(maxCellWidths);
+  }
+
+  public static void printStaticsTable(String[][] data) {
+    int numRows = data.length;
+    int[] maxCellWidths = calculateMaxCellWidths(header_2, data);
+
+    printTopBorder(maxCellWidths);
+    printRow(header_2, maxCellWidths);
 
     for (int row = 0; row < numRows; row++) {
       printSeparator(maxCellWidths);

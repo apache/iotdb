@@ -44,6 +44,7 @@ public class TimePartitionProcessTask {
   public OverlapStatistic processTimePartition(SequenceFileSubTaskThreadExecutor fileTaskExecutor) {
     long startTime = System.currentTimeMillis();
     UnseqSpaceStatistics unseqSpaceStatistics = buildUnseqSpaceStatistics(timePartitionFiles.right);
+
     OverlapStatistic partialRet =
         processSequenceSpaceAsync(fileTaskExecutor, unseqSpaceStatistics, timePartitionFiles.left);
     // 更新并打印进度
@@ -60,6 +61,7 @@ public class TimePartitionProcessTask {
         ((double) unsequenceSpaceCost / 1000));
 
     OverlapStatisticTool.outputInfolock.unlock();
+
     return partialRet;
   }
 
@@ -76,12 +78,19 @@ public class TimePartitionProcessTask {
       try (TsFileStatisticReader reader = new TsFileStatisticReader(unseqFile)) {
         List<TsFileStatisticReader.ChunkGroupStatistics> chunkGroupStatisticsList =
             reader.getChunkGroupStatisticsList();
+        unseqSpaceStatistics.unsequenceChunkGroupNum += chunkGroupStatisticsList.size();
 
         for (TsFileStatisticReader.ChunkGroupStatistics statistics : chunkGroupStatisticsList) {
           long deviceStartTime = Long.MAX_VALUE, deviceEndTime = Long.MIN_VALUE;
+
           for (ChunkMetadata chunkMetadata : statistics.getChunkMetadataList()) {
+            unseqSpaceStatistics.unsequenceChunkNum += chunkMetadata.getNumOfPoints();
             deviceStartTime = Math.min(deviceStartTime, chunkMetadata.getStartTime());
             deviceEndTime = Math.max(deviceEndTime, chunkMetadata.getEndTime());
+
+            unseqSpaceStatistics.setMinStartTime(deviceStartTime);
+            unseqSpaceStatistics.setMaxEndTime(deviceEndTime);
+
             if (chunkMetadata.getStartTime() > chunkMetadata.getEndTime()) {
               continue;
             }

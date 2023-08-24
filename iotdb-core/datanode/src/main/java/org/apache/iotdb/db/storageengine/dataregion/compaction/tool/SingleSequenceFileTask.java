@@ -68,6 +68,10 @@ public class SingleSequenceFileTask implements Callable<SequenceFileTaskSummary>
           // update device start time and end time
           deviceStartTime = Math.min(deviceStartTime, chunkMetadata.getStartTime());
           deviceEndTime = Math.max(deviceEndTime, chunkMetadata.getEndTime());
+
+          summary.setMinStartTime(deviceStartTime);
+          summary.setMaxEndTime(deviceEndTime);
+
           // check chunk overlap
           Interval interval =
               new Interval(chunkMetadata.getStartTime(), chunkMetadata.getEndTime());

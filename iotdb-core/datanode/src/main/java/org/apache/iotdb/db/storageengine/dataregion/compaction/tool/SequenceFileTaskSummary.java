@@ -28,6 +28,9 @@ public class SequenceFileTaskSummary {
   public long totalChunkGroups = 0;
   public long fileSize = 0;
 
+  public long minStartTime = Long.MAX_VALUE;
+  public long maxEndTime = Long.MIN_VALUE;
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
@@ -38,6 +41,14 @@ public class SequenceFileTaskSummary {
         && totalChunks == that.totalChunks
         && totalChunkGroups == that.totalChunkGroups
         && fileSize == that.fileSize;
+  }
+
+  public void setMaxEndTime(long maxEndTime) {
+    this.maxEndTime = Math.max(this.maxEndTime, maxEndTime);
+  }
+
+  public void setMinStartTime(long minStartTime) {
+    this.minStartTime = Math.min(this.minStartTime, minStartTime);
   }
 
   @Override
