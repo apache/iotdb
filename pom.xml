@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache</groupId>
         <artifactId>apache</artifactId>
-        <version>23</version>
+        <version>30</version>
     </parent>
     <groupId>org.apache.iotdb</groupId>
     <artifactId>iotdb-parent</artifactId>
@@ -112,6 +112,8 @@
             we'll stay at 0.14.1.
         -->
         <thrift.version>0.14.1</thrift.version>
+        <!-- This is the version of the thrift binary -->
+        <iotdb-tools-thrift.version>0.14.1.0</iotdb-tools-thrift.version>
         <airline.version>0.8</airline.version>
         <jackson.version>2.13.5</jackson.version>
         <disrupter.version>3.4.2</disrupter.version>
@@ -1366,13 +1368,6 @@
             <id>with-integration-tests</id>
             <modules>
                 <module>integration-test</module>
-            </modules>
-        </profile>
-        <!-- Enable the building of the tools (Currently this only adds building of the Thrift module) -->
-        <profile>
-            <id>with-tools</id>
-            <modules>
-                <module>tools</module>
             </modules>
         </profile>
         <!-- Make sure the source assembly has the right name -->
