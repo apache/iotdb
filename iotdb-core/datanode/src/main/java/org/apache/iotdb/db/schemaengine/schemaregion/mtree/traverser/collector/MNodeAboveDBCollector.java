@@ -32,7 +32,11 @@ public abstract class MNodeAboveDBCollector<T, N extends IMNode<N>> extends MNod
   protected Set<PartialPath> involvedDatabaseMNodes = new HashSet<>();
 
   protected MNodeAboveDBCollector(
-          N startNode, PartialPath path, IMTreeStore<N> store, boolean isPrefixMatch, PathPatternTree scope)
+      N startNode,
+      PartialPath path,
+      IMTreeStore<N> store,
+      boolean isPrefixMatch,
+      PathPatternTree scope)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch, scope);
   }

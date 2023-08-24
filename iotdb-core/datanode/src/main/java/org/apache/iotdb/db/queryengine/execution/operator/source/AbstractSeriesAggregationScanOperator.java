@@ -203,12 +203,12 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
     return calcResult.getLeft();
   }
 
-  protected void calcFromStatistics(Statistics[] statistics) {
+  protected void calcFromStatistics(Statistics timeStatistics, Statistics[] valueStatistics) {
     for (Aggregator aggregator : aggregators) {
       if (aggregator.hasFinalResult()) {
         continue;
       }
-      aggregator.processStatistics(statistics);
+      aggregator.processStatistics(timeStatistics, valueStatistics);
     }
   }
 
@@ -232,7 +232,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
           for (int i = 0; i < subSensorSize; i++) {
             statisticsList[i] = seriesScanUtil.currentFileStatistics(i);
           }
-          calcFromStatistics(statisticsList);
+          calcFromStatistics(fileTimeStatistics, statisticsList);
           seriesScanUtil.skipCurrentFile();
           if (isAllAggregatorsHasFinalResult(aggregators) && !isGroupByQuery) {
             return true;
@@ -272,7 +272,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
           for (int i = 0; i < subSensorSize; i++) {
             statisticsList[i] = seriesScanUtil.currentChunkStatistics(i);
           }
-          calcFromStatistics(statisticsList);
+          calcFromStatistics(chunkTimeStatistics, statisticsList);
           seriesScanUtil.skipCurrentChunk();
           if (isAllAggregatorsHasFinalResult(aggregators) && !isGroupByQuery) {
             return true;
@@ -311,7 +311,7 @@ public abstract class AbstractSeriesAggregationScanOperator extends AbstractData
           for (int i = 0; i < subSensorSize; i++) {
             statisticsList[i] = seriesScanUtil.currentPageStatistics(i);
           }
-          calcFromStatistics(statisticsList);
+          calcFromStatistics(pageTimeStatistics, statisticsList);
           seriesScanUtil.skipCurrentPage();
           if (isAllAggregatorsHasFinalResult(aggregators) && !isGroupByQuery) {
             return true;

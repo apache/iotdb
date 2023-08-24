@@ -57,10 +57,9 @@ public class SchemaConstant {
   public static final String[] ALL_RESULT_NODES = new String[] {"root", "**"};
   public static final PartialPath ALL_MATCH_PATTERN = new PartialPath(ALL_RESULT_NODES);
   public static final PatternDFA ALL_MATCH_DFA = new PatternDFA(ALL_MATCH_PATTERN, false);
-  public static final PathPatternTree ALL_MATCH_SCOPE;
+  public static final PathPatternTree ALL_MATCH_SCOPE = new PathPatternTree();
 
   static {
-    ALL_MATCH_SCOPE = new PathPatternTree();
     ALL_MATCH_SCOPE.appendPathPattern(ALL_MATCH_PATTERN);
     ALL_MATCH_SCOPE.constructTree();
   }

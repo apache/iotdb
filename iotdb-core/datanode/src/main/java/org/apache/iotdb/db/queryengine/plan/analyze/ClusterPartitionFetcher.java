@@ -327,7 +327,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   private TSchemaNodeManagementReq constructSchemaNodeManagementPartitionReq(
-      PathPatternTree patternTree,PathPatternTree scope, Integer level) {
+      PathPatternTree patternTree, PathPatternTree scope, Integer level) {
     PublicBAOS baos = new PublicBAOS();
     try {
       patternTree.serialize(baos);

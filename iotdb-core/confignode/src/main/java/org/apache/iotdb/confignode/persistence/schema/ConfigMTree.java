@@ -381,7 +381,8 @@ public class ConfigMTree {
       PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch) throws MetadataException {
     List<PartialPath> result = new LinkedList<>();
     try (MNodeAboveDBCollector<Void, IConfigMNode> collector =
-        new MNodeAboveDBCollector<Void, IConfigMNode>(root, pathPattern, store, isPrefixMatch, SchemaConstant.ALL_MATCH_SCOPE) {
+        new MNodeAboveDBCollector<Void, IConfigMNode>(
+            root, pathPattern, store, isPrefixMatch, SchemaConstant.ALL_MATCH_SCOPE) {
           @Override
           protected Void collectMNode(IConfigMNode node) {
             result.add(getPartialPathFromRootToNode(node));
@@ -410,7 +411,7 @@ public class ConfigMTree {
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
   public Pair<Set<TSchemaNode>, Set<PartialPath>> getChildNodePathInNextLevel(
-          PartialPath pathPattern, PathPatternTree scope) throws MetadataException {
+      PartialPath pathPattern, PathPatternTree scope) throws MetadataException {
     Set<TSchemaNode> result = new TreeSet<>();
     try (MNodeAboveDBCollector<Void, IConfigMNode> collector =
         new MNodeAboveDBCollector<Void, IConfigMNode>(

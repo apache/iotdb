@@ -123,13 +123,6 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>client-cpp</artifactId>
-            <version>${project.version}</version>
-            <type>pom</type>
-            <!--            <classifier>${os.classifier}</classifier>-->
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
             <artifactId>library-udf</artifactId>
             <version>${project.version}</version>
             <type>jar</type>
@@ -150,6 +143,15 @@
     <profiles>
         <profile>
             <id>with-cpp</id>
+            <dependencies>
+                <dependency>
+                    <groupId>org.apache.iotdb</groupId>
+                    <artifactId>client-cpp</artifactId>
+                    <version>${project.version}</version>
+                    <type>pom</type>
+                    <!--            <classifier>${os.classifier}</classifier>-->
+                </dependency>
+            </dependencies>
             <build>
                 <plugins>
                     <plugin>

@@ -394,7 +394,7 @@ public class ClusterTemplateManager implements ITemplateManager {
   // This is used for template info sync when activating DataNode and registering into cluster. All
   // set and pre-set info will be updated.
   public void updateTemplateSetInfo(byte[] templateSetInfo) {
-    if (templateSetInfo == null) {
+    if (templateSetInfo == null || templateSetInfo.length == 0) {
       return;
     }
     readWriteLock.writeLock().lock();
@@ -405,6 +405,7 @@ public class ClusterTemplateManager implements ITemplateManager {
           TemplateInternalRPCUtil.parseAddAllTemplateSetInfoBytes(buffer);
       for (Map.Entry<Template, List<Pair<String, Boolean>>> entry :
           parsedTemplateSetInfo.entrySet()) {
+
         Template template = entry.getKey();
         templateIdMap.put(template.getId(), template);
         templateNameMap.put(template.getName(), template.getId());

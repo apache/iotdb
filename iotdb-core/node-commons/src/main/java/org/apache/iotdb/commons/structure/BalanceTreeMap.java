@@ -77,6 +77,10 @@ public class BalanceTreeMap<K, V extends Comparable<V>> {
     return keyValueMap.getOrDefault(key, null);
   }
 
+  public Set<K> keySet() {
+    return keyValueMap.keySet();
+  }
+
   public boolean containsKey(K key) {
     return keyValueMap.containsKey(key);
   }

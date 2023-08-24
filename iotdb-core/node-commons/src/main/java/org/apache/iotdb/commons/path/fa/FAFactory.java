@@ -20,6 +20,7 @@ package org.apache.iotdb.commons.path.fa;
 
 import org.apache.iotdb.commons.path.fa.dfa.PatternDFA;
 import org.apache.iotdb.commons.path.fa.nfa.SimpleNFA;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
@@ -42,10 +43,17 @@ public class FAFactory {
         Caffeine.newBuilder()
             .maximumSize(DFA_CACHE_SIZE)
             .build(
-                builder ->
-                    builder.getPathPattern() == null
-                        ? new PatternDFA(builder.getPatternTree())
-                        : new PatternDFA(builder.getPathPattern(), builder.isPrefixMatch()));
+                builder -> {
+                  if (builder.getPatternTree() != null) {
+                    if (builder.getPatternTree().equals(SchemaConstant.ALL_MATCH_SCOPE)) {
+                      // always return the same instance for root.**
+                      return SchemaConstant.ALL_MATCH_DFA;
+                    }
+                    return new PatternDFA(builder.getPatternTree());
+                  } else {
+                    return new PatternDFA(builder.getPathPattern(), builder.isPrefixMatch());
+                  }
+                });
   }
 
   public static FAFactory getInstance() {

@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Iterator;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
@@ -158,6 +159,47 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
   }
 
   @Override
+  protected Iterator<N> getChildrenIterator(N parent, Iterator<String> childrenName)
+      throws Exception {
+    return new IMNodeIterator<N>() {
+      private N next = null;
+
+      @Override
+      public boolean hasNext() {
+        if (next == null) {
+          while (next == null && childrenName.hasNext()) {
+            try {
+              next = getChild(parent, childrenName.next());
+            } catch (Throwable e) {
+              logger.warn(e.getMessage(), e);
+              throw new RuntimeException(e);
+            }
+          }
+        }
+        return next != null;
+      }
+
+      @Override
+      public N next() {
+        if (!hasNext()) {
+          throw new NoSuchElementException();
+        }
+        N result = next;
+        next = null;
+        return result;
+      }
+
+      @Override
+      public void close() {
+        if (next != null) {
+          releaseNode(next);
+          next = null;
+        }
+      }
+    };
+  }
+
+  @Override
   protected Iterator<N> getChildrenIterator(N parent) throws MetadataException {
     if (parent.isAboveDatabase()) {
       return new MNodeIterator<>(parent.getChildren().values().iterator());
@@ -168,7 +210,9 @@ public abstract class Traverser<R, N extends IMNode<N>> extends AbstractTreeVisi
 
   @Override
   protected void releaseNodeIterator(Iterator<N> nodeIterator) {
-    ((IMNodeIterator<N>) nodeIterator).close();
+    if (nodeIterator instanceof IMNodeIterator) {
+      ((IMNodeIterator<N>) nodeIterator).close();
+    }
   }
 
   @Override

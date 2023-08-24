@@ -38,11 +38,11 @@ import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
+import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.RatisConfig;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.ratis.util.SizeInBytes;
@@ -213,18 +213,26 @@ public class ConsensusManager {
           createPeerForConsensusGroup(SystemPropertiesUtils.loadConfigNodeList());
         } catch (BadNodeUrlException e) {
           throw new IOException(e);
+        } catch (ConsensusException e) {
+          LOGGER.error(
+              "Something wrong happened while calling consensus layer's createLocalPeer API.", e);
         }
       }
       LOGGER.info("Init ConsensusManager successfully when restarted");
     } else if (ConfigNodeDescriptor.getInstance().isSeedConfigNode()) {
       // Create ConsensusGroup that contains only itself
       // if the current ConfigNode is Seed-ConfigNode
-      createPeerForConsensusGroup(
-          Collections.singletonList(
-              new TConfigNodeLocation(
-                  SEED_CONFIG_NODE_ID,
-                  new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
-                  new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))));
+      try {
+        createPeerForConsensusGroup(
+            Collections.singletonList(
+                new TConfigNodeLocation(
+                    SEED_CONFIG_NODE_ID,
+                    new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
+                    new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()))));
+      } catch (ConsensusException e) {
+        LOGGER.error(
+            "Something wrong happened while calling consensus layer's createLocalPeer API.", e);
+      }
     }
   }
 
@@ -249,8 +257,10 @@ public class ConsensusManager {
    * Create peer in new node to build consensus group.
    *
    * @param configNodeLocations All registered ConfigNodes
+   * @throws ConsensusException When addPeer doesn't success
    */
-  public void createPeerForConsensusGroup(List<TConfigNodeLocation> configNodeLocations) {
+  public void createPeerForConsensusGroup(List<TConfigNodeLocation> configNodeLocations)
+      throws ConsensusException {
     LOGGER.info("createPeerForConsensusGroup {}...", configNodeLocations);
 
     List<Peer> peerList = new ArrayList<>();
@@ -261,7 +271,7 @@ public class ConsensusManager {
               configNodeLocation.getConfigNodeId(),
               configNodeLocation.getConsensusEndPoint()));
     }
-    consensusImpl.createPeer(DEFAULT_CONSENSUS_GROUP_ID, peerList);
+    consensusImpl.createLocalPeer(DEFAULT_CONSENSUS_GROUP_ID, peerList);
   }
 
   /**
@@ -271,17 +281,14 @@ public class ConsensusManager {
    * @throws AddPeerException When addPeer doesn't success
    */
   public void addConfigNodePeer(TConfigNodeLocation configNodeLocation) throws AddPeerException {
-    boolean result =
-        consensusImpl
-            .addPeer(
-                DEFAULT_CONSENSUS_GROUP_ID,
-                new Peer(
-                    DEFAULT_CONSENSUS_GROUP_ID,
-                    configNodeLocation.getConfigNodeId(),
-                    configNodeLocation.getConsensusEndPoint()))
-            .isSuccess();
-
-    if (!result) {
+    try {
+      consensusImpl.addRemotePeer(
+          DEFAULT_CONSENSUS_GROUP_ID,
+          new Peer(
+              DEFAULT_CONSENSUS_GROUP_ID,
+              configNodeLocation.getConfigNodeId(),
+              configNodeLocation.getConsensusEndPoint()));
+    } catch (ConsensusException e) {
       throw new AddPeerException(configNodeLocation);
     }
   }
@@ -294,23 +301,34 @@ public class ConsensusManager {
    *     ConfigRegion
    */
   public boolean removeConfigNodePeer(TConfigNodeLocation configNodeLocation) {
-    return consensusImpl
-        .removePeer(
-            DEFAULT_CONSENSUS_GROUP_ID,
-            new Peer(
-                DEFAULT_CONSENSUS_GROUP_ID,
-                configNodeLocation.getConfigNodeId(),
-                configNodeLocation.getConsensusEndPoint()))
-        .isSuccess();
+    try {
+      consensusImpl.removeRemotePeer(
+          DEFAULT_CONSENSUS_GROUP_ID,
+          new Peer(
+              DEFAULT_CONSENSUS_GROUP_ID,
+              configNodeLocation.getConfigNodeId(),
+              configNodeLocation.getConsensusEndPoint()));
+      return true;
+    } catch (ConsensusException e) {
+      return false;
+    }
   }
 
-  /** Transmit PhysicalPlan to confignode.consensus.statemachine */
-  public ConsensusWriteResponse write(ConfigPhysicalPlan plan) {
+  /**
+   * Transmit PhysicalPlan to confignode.consensus.statemachine
+   *
+   * @throws ConsensusException When write doesn't success
+   */
+  public TSStatus write(ConfigPhysicalPlan plan) throws ConsensusException {
     return consensusImpl.write(DEFAULT_CONSENSUS_GROUP_ID, plan);
   }
 
-  /** Transmit PhysicalPlan to confignode.consensus.statemachine */
-  public ConsensusReadResponse read(ConfigPhysicalPlan plan) {
+  /**
+   * Transmit PhysicalPlan to confignode.consensus.statemachine
+   *
+   * @throws ConsensusException When read doesn't success
+   */
+  public DataSet read(ConfigPhysicalPlan plan) throws ConsensusException {
     return consensusImpl.read(DEFAULT_CONSENSUS_GROUP_ID, plan);
   }
 

@@ -669,12 +669,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   public Pair<Set<TSchemaNode>, Set<PartialPath>> getChildNodePathInNextLevel(
-          PartialPath partialPath, PathPatternTree scope) {
+      PartialPath partialPath, PathPatternTree scope) {
     Pair<Set<TSchemaNode>, Set<PartialPath>> matchedPathsInNextLevel =
         new Pair<>(new HashSet<>(), new HashSet<>());
     databaseReadWriteLock.readLock().lock();
     try {
-      matchedPathsInNextLevel = mTree.getChildNodePathInNextLevel(partialPath,scope);
+      matchedPathsInNextLevel = mTree.getChildNodePathInNextLevel(partialPath, scope);
     } catch (MetadataException e) {
       LOGGER.error("Error get matched paths in next level.", e);
     } finally {

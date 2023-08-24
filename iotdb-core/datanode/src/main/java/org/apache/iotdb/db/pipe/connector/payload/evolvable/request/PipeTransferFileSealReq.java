@@ -32,8 +32,8 @@ import java.util.Objects;
 
 public class PipeTransferFileSealReq extends TPipeTransferReq {
 
-  private String fileName;
-  private long fileLength;
+  private transient String fileName;
+  private transient long fileLength;
 
   private PipeTransferFileSealReq() {
     // Empty constructor

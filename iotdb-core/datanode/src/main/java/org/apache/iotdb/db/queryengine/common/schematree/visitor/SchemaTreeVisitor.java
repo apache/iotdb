@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 public abstract class SchemaTreeVisitor<R> extends AbstractTreeVisitor<SchemaNode, R> {
 
@@ -64,6 +65,34 @@ public abstract class SchemaTreeVisitor<R> extends AbstractTreeVisitor<SchemaNod
   @Override
   protected SchemaNode getChild(SchemaNode parent, String childName) {
     return parent.getChild(childName);
+  }
+
+  @Override
+  protected Iterator<SchemaNode> getChildrenIterator(
+      SchemaNode parent, Iterator<String> childrenName) throws Exception {
+    return new Iterator<SchemaNode>() {
+      private SchemaNode next = null;
+
+      @Override
+      public boolean hasNext() {
+        if (next == null) {
+          while (next == null && childrenName.hasNext()) {
+            next = getChild(parent, childrenName.next());
+          }
+        }
+        return next != null;
+      }
+
+      @Override
+      public SchemaNode next() {
+        if (!hasNext()) {
+          throw new NoSuchElementException();
+        }
+        SchemaNode result = next;
+        next = null;
+        return result;
+      }
+    };
   }
 
   @Override

@@ -66,10 +66,10 @@ jobs:
         # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
         # Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
         # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
-        run: ./mvnw clean install -P with-tools,with-cpp -pl distribution -am -DskipTests
+        run: ./mvnw clean install -P with-cpp -pl distribution -am -DskipTests
       - name: Test with Maven
         # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
-        run: ./mvnw clean verify -P with-tools,with-cpp -pl iotdb-client/client-cpp -am
+        run: ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp -am
       - name: Show test result
         if: failure()
         run: cat iotdb-client/client-cpp/target/build/test/Testing/Temporary/LastTest_*.log
@@ -96,11 +96,11 @@ jobs:
         # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
         # Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
         # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
-        run: ./mvnw clean install -P with-tools,with-cpp -pl distribution -am -DskipTests
+        run: ./mvnw clean install -P with-cpp -pl distribution -am -DskipTests
       - name: Test with Maven
         shell: bash
         # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
-        run: ./mvnw clean verify -P with-tools,with-cpp -pl iotdb-client/client-cpp -am
+        run: ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp -am
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v3
