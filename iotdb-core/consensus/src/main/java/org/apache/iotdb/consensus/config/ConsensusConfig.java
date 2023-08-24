@@ -31,7 +31,7 @@ public class ConsensusConfig {
   private final String storageDir;
   private final TConsensusGroupType consensusGroupType;
   private final RatisConfig ratisConfig;
-  private final IoTConsensusConfig ioTConsensusConfig;
+  private final IoTConsensusConfig iotConsensusConfig;
 
   private ConsensusConfig(
       TEndPoint thisNode,
@@ -39,13 +39,13 @@ public class ConsensusConfig {
       String storageDir,
       TConsensusGroupType consensusGroupType,
       RatisConfig ratisConfig,
-      IoTConsensusConfig ioTConsensusConfig) {
+      IoTConsensusConfig iotConsensusConfig) {
     this.thisNodeEndPoint = thisNode;
     this.thisNodeId = thisNodeId;
     this.storageDir = storageDir;
     this.consensusGroupType = consensusGroupType;
     this.ratisConfig = ratisConfig;
-    this.ioTConsensusConfig = ioTConsensusConfig;
+    this.iotConsensusConfig = iotConsensusConfig;
   }
 
   public TEndPoint getThisNodeEndPoint() {
@@ -68,8 +68,8 @@ public class ConsensusConfig {
     return ratisConfig;
   }
 
-  public IoTConsensusConfig getIoTConsensusConfig() {
-    return ioTConsensusConfig;
+  public IoTConsensusConfig getIotConsensusConfig() {
+    return iotConsensusConfig;
   }
 
   public static ConsensusConfig.Builder newBuilder() {
@@ -83,7 +83,7 @@ public class ConsensusConfig {
     private String storageDir;
     private TConsensusGroupType consensusGroupType;
     private RatisConfig ratisConfig;
-    private IoTConsensusConfig ioTConsensusConfig;
+    private IoTConsensusConfig iotConsensusConfig;
 
     public ConsensusConfig build() {
       return new ConsensusConfig(
@@ -92,7 +92,7 @@ public class ConsensusConfig {
           storageDir,
           consensusGroupType,
           Optional.ofNullable(ratisConfig).orElseGet(() -> RatisConfig.newBuilder().build()),
-          Optional.ofNullable(ioTConsensusConfig)
+          Optional.ofNullable(iotConsensusConfig)
               .orElseGet(() -> IoTConsensusConfig.newBuilder().build()));
     }
 
@@ -121,8 +121,8 @@ public class ConsensusConfig {
       return this;
     }
 
-    public Builder setIoTConsensusConfig(IoTConsensusConfig ioTConsensusConfig) {
-      this.ioTConsensusConfig = ioTConsensusConfig;
+    public Builder setIoTConsensusConfig(IoTConsensusConfig iotConsensusConfig) {
+      this.iotConsensusConfig = iotConsensusConfig;
       return this;
     }
   }

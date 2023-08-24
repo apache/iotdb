@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache</groupId>
         <artifactId>apache</artifactId>
-        <version>23</version>
+        <version>30</version>
     </parent>
     <groupId>org.apache.iotdb</groupId>
     <artifactId>iotdb-parent</artifactId>
@@ -112,6 +112,9 @@
             we'll stay at 0.14.1.
         -->
         <thrift.version>0.14.1</thrift.version>
+        <!-- This is the version of the thrift binary -->
+        <iotdb-tools-thrift.version>0.14.1.0</iotdb-tools-thrift.version>
+        <airline.version>0.8</airline.version>
         <jackson.version>2.13.5</jackson.version>
         <disrupter.version>3.4.2</disrupter.version>
         <jackson.databind.version>2.13.4.2</jackson.databind.version>
@@ -165,6 +168,7 @@
         <javax.annotation-api.version>1.3.2</javax.annotation-api.version>
         <log4j.version>1.2.24</log4j.version>
         <lz4-java.version>1.8.0</lz4-java.version>
+        <jaxb-runtime.version>3.0.2</jaxb-runtime.version>
         <mockito-core.version>2.23.4</mockito-core.version>
         <objenesis.version>3.2</objenesis.version>
         <powermock-core.version>2.0.9</powermock-core.version>
@@ -396,6 +400,22 @@
                 <version>${jackson-core-asl.version}</version>
             </dependency>
             <dependency>
+                <groupId>org.glassfish.jaxb</groupId>
+                <artifactId>jaxb-runtime</artifactId>
+                <version>${jaxb-runtime.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>jakarta.activation</groupId>
+                        <artifactId>jakarta.activation-api</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <!--            <dependency>
+                <groupId>org.javassist</groupId>
+                <artifactId>javassist</artifactId>
+                <version>3.24.1-GA</version>
+            </dependency>-->
+            <dependency>
                 <groupId>org.mockito</groupId>
                 <artifactId>mockito-core</artifactId>
                 <version>${mockito-core.version}</version>
@@ -485,6 +505,11 @@
                 <groupId>io.airlift</groupId>
                 <artifactId>units</artifactId>
                 <version>${io.airlift.units.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.airlift</groupId>
+                <artifactId>airline</artifactId>
+                <version>${airline.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.airlift</groupId>
@@ -791,7 +816,7 @@
                         <sourceDirectory>iotdb-protocol/thrift-datanode/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/thrift-commons/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/thrift-confignode/target/generated-sources/thrift</sourceDirectory>
-                        <sourceDirectory>iotdb-protocol/thrift-iot-consensus/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>iotdb-protocol/thrift-consensus/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/openapi/target/generated-sources/java/src/gen/java</sourceDirectory>
                         <sourceDirectory>iotdb-protocol/openapi/target/generated-sources/java/src/main/java</sourceDirectory>
                         <sourceDirectory>iotdb-core/datanode/target/generated-sources/freemarker/</sourceDirectory>
@@ -1203,6 +1228,10 @@
                     <groupId>javax.xml.bind</groupId>
                     <artifactId>jaxb-api</artifactId>
                 </dependency>
+                <dependency>
+                    <groupId>org.glassfish.jaxb</groupId>
+                    <artifactId>jaxb-runtime</artifactId>
+                </dependency>
             </dependencies>
         </profile>
         <!-- Add argLine for Java 16 and above, due to [JEP 396: Strongly Encapsulate JDK Internals by Default]
@@ -1339,13 +1368,6 @@
             <id>with-integration-tests</id>
             <modules>
                 <module>integration-test</module>
-            </modules>
-        </profile>
-        <!-- Enable the building of the tools (Currently this only adds building of the Thrift module) -->
-        <profile>
-            <id>with-tools</id>
-            <modules>
-                <module>tools</module>
             </modules>
         </profile>
         <!-- Make sure the source assembly has the right name -->

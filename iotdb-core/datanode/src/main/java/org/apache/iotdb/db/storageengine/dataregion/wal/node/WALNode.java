@@ -309,10 +309,12 @@ public class WALNode implements IWALNode {
 
     private void summarizeExecuteResult() {
       if (filesShouldDelete.length == 0) {
-        logger.info(
-            "wal node-{}:no wal file was found that should be deleted,current first valid version id is {}",
-            identifier,
-            firstValidVersionId);
+        if (logger.isDebugEnabled()) {
+          logger.debug(
+              "wal node-{}:no wal file was found that should be deleted, current first valid version id is {}",
+              identifier,
+              firstValidVersionId);
+        }
         return;
       }
 
@@ -322,7 +324,7 @@ public class WALNode implements IWALNode {
           StringBuilder summary =
               new StringBuilder(
                   String.format(
-                      "wal node-%s delete outdated files summary:the range that should be removed is: [%d,%d],delete successful is [%s],end file index is: [%s].The following reasons influenced the result: %s",
+                      "wal node-%s delete outdated files summary:the range that should be removed is: [%d,%d], delete successful is [%s], end file index is: [%s].The following reasons influenced the result: %s",
                       identifier,
                       WALFileUtils.parseVersionId(filesShouldDelete[0].getName()),
                       WALFileUtils.parseVersionId(
@@ -333,7 +335,7 @@ public class WALNode implements IWALNode {
 
           if (!pinnedMemTableIds.isEmpty()) {
             summary
-                .append("- MemTable has been flushed but pinned by PIPE,the MemTableId list is : ")
+                .append("- MemTable has been flushed but pinned by PIPE, the MemTableId list is : ")
                 .append(StringUtils.join(pinnedMemTableIds, ","))
                 .append(".")
                 .append(System.getProperty("line.separator"));
@@ -341,7 +343,7 @@ public class WALNode implements IWALNode {
           if (fileIndexAfterFilterSafelyDeleteIndex < filesShouldDelete.length) {
             summary.append(
                 String.format(
-                    "- The data in the wal file was not consumed by the consensus group,current search index is %d,safely delete index is %d",
+                    "- The data in the wal file was not consumed by the consensus group,current search index is %d, safely delete index is %d",
                     getCurrentSearchIndex(), safelyDeletedSearchIndex));
           }
           String summaryLog = summary.toString();

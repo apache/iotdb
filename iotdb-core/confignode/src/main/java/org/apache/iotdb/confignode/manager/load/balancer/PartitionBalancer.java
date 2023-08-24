@@ -205,10 +205,19 @@ public class PartitionBalancer {
    */
   public void reBalanceDataPartitionPolicy(String database) {
     try {
-      dataPartitionPolicyTableMap
-          .computeIfAbsent(database, empty -> new DataPartitionPolicyTable())
-          .reBalanceDataPartitionPolicy(
-              getPartitionManager().getAllRegionGroupIds(database, TConsensusGroupType.DataRegion));
+      DataPartitionPolicyTable dataPartitionPolicyTable =
+          dataPartitionPolicyTableMap.computeIfAbsent(
+              database, empty -> new DataPartitionPolicyTable());
+
+      try {
+        dataPartitionPolicyTable.acquireLock();
+        dataPartitionPolicyTable.reBalanceDataPartitionPolicy(
+            getPartitionManager().getAllRegionGroupIds(database, TConsensusGroupType.DataRegion));
+        dataPartitionPolicyTable.logDataAllotTable(database);
+      } finally {
+        dataPartitionPolicyTable.releaseLock();
+      }
+
     } catch (DatabaseNotExistsException e) {
       LOGGER.error("Database {} not exists when updateDataAllotTable", database);
     }
@@ -224,6 +233,8 @@ public class PartitionBalancer {
               DataPartitionPolicyTable dataPartitionPolicyTable = new DataPartitionPolicyTable();
               dataPartitionPolicyTableMap.put(database, dataPartitionPolicyTable);
               try {
+                dataPartitionPolicyTable.acquireLock();
+
                 // Put all DataRegionGroups into the DataPartitionPolicyTable
                 dataPartitionPolicyTable.reBalanceDataPartitionPolicy(
                     getPartitionManager()
@@ -233,6 +244,8 @@ public class PartitionBalancer {
                     getPartitionManager().getLastDataAllotTable(database));
               } catch (DatabaseNotExistsException e) {
                 LOGGER.error("Database {} not exists when setupPartitionBalancer", database);
+              } finally {
+                dataPartitionPolicyTable.releaseLock();
               }
             });
   }

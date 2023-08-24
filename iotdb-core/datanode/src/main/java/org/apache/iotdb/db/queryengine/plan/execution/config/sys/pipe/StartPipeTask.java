@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.pipe.StartPipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
 

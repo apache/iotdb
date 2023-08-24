@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.consensus.IConsensus;
-import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -46,7 +45,7 @@ import static org.junit.Assert.assertTrue;
 public class RegionReadExecutorTest {
 
   @Test
-  public void testSuccessfulExecute() {
+  public void testSuccessfulExecute() throws ConsensusException {
 
     // data query
     ConsensusGroupId dataRegionGroupId = new DataRegionId(1);
@@ -62,15 +61,12 @@ public class RegionReadExecutorTest {
     RegionReadExecutor executor =
         new RegionReadExecutor(dataRegionConsensus, schemaRegionConsensus, fragmentInstanceManager);
 
-    ConsensusReadResponse readResponse = Mockito.mock(ConsensusReadResponse.class);
-    Mockito.when(readResponse.isSuccess()).thenReturn(true);
     FragmentInstanceInfo fragmentInstanceInfo = Mockito.mock(FragmentInstanceInfo.class);
-    Mockito.when(readResponse.getDataset()).thenReturn(fragmentInstanceInfo);
     Mockito.when(fragmentInstanceInfo.getState()).thenReturn(RUNNING);
     Mockito.when(fragmentInstanceInfo.getMessage()).thenReturn("data-success");
 
     Mockito.when(dataRegionConsensus.read(dataRegionGroupId, fragmentInstance))
-        .thenReturn(readResponse);
+        .thenReturn(fragmentInstanceInfo);
 
     RegionExecutionResult res = executor.execute(dataRegionGroupId, fragmentInstance);
 
@@ -80,13 +76,11 @@ public class RegionReadExecutorTest {
     // schema query
     ConsensusGroupId schemaRegionGroupId = new SchemaRegionId(1);
 
-    Mockito.when(readResponse.isSuccess()).thenReturn(true);
-    Mockito.when(readResponse.getDataset()).thenReturn(fragmentInstanceInfo);
     Mockito.when(fragmentInstanceInfo.getState()).thenReturn(RUNNING);
     Mockito.when(fragmentInstanceInfo.getMessage()).thenReturn("schema-success");
 
     Mockito.when(schemaRegionConsensus.read(schemaRegionGroupId, fragmentInstance))
-        .thenReturn(readResponse);
+        .thenReturn(fragmentInstanceInfo);
 
     res = executor.execute(schemaRegionGroupId, fragmentInstance);
 
@@ -95,7 +89,7 @@ public class RegionReadExecutorTest {
   }
 
   @Test
-  public void testResponseNullExecute() {
+  public void testResponseNullExecute() throws ConsensusException {
 
     // data query
     ConsensusGroupId dataRegionGroupId = new DataRegionId(1);
@@ -131,7 +125,7 @@ public class RegionReadExecutorTest {
   }
 
   @Test
-  public void testFailedExecute() {
+  public void testFailedExecute() throws ConsensusException {
 
     // data query
     ConsensusGroupId dataRegionGroupId = new DataRegionId(1);
@@ -147,12 +141,8 @@ public class RegionReadExecutorTest {
     RegionReadExecutor executor =
         new RegionReadExecutor(dataRegionConsensus, schemaRegionConsensus, fragmentInstanceManager);
 
-    ConsensusReadResponse readResponse = Mockito.mock(ConsensusReadResponse.class);
-    Mockito.when(readResponse.isSuccess()).thenReturn(false);
-    Mockito.when(readResponse.getException()).thenReturn(new ConsensusException("data-exception"));
-
     Mockito.when(dataRegionConsensus.read(dataRegionGroupId, fragmentInstance))
-        .thenReturn(readResponse);
+        .thenThrow(new ConsensusException("data-exception"));
 
     RegionExecutionResult res = executor.execute(dataRegionGroupId, fragmentInstance);
 
@@ -162,20 +152,17 @@ public class RegionReadExecutorTest {
     // schema query
     ConsensusGroupId schemaRegionGroupId = new SchemaRegionId(1);
 
-    Mockito.when(readResponse.isSuccess()).thenReturn(false);
-    Mockito.when(readResponse.getException()).thenReturn(null);
-
     Mockito.when(schemaRegionConsensus.read(schemaRegionGroupId, fragmentInstance))
-        .thenReturn(readResponse);
+        .thenThrow(new ConsensusException("schema-exception"));
 
     res = executor.execute(schemaRegionGroupId, fragmentInstance);
 
     assertFalse(res.isAccepted());
-    assertEquals(String.format(ERROR_MSG_FORMAT, ""), res.getMessage());
+    assertEquals(String.format(ERROR_MSG_FORMAT, "schema-exception"), res.getMessage());
   }
 
   @Test
-  public void testExceptionHappened() {
+  public void testExceptionHappened() throws ConsensusException {
 
     ConsensusGroupId dataRegionGroupId = new DataRegionId(1);
     FragmentInstanceId fragmentInstanceId =
