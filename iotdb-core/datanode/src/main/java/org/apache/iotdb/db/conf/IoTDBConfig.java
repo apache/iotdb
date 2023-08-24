@@ -800,9 +800,6 @@ public class IoTDBConfig {
 
   private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
 
-  /** time interval in minute for calculating query frequency. Unit: minute */
-  private int frequencyIntervalInMinute = 1;
-
   /** time cost(ms) threshold for slow query. Unit: millisecond */
   private long slowQueryThreshold = 30000;
 
@@ -2523,14 +2520,6 @@ public class IoTDBConfig {
 
   public void setMaxWaitingTimeWhenInsertBlocked(int maxWaitingTimeWhenInsertBlocked) {
     this.maxWaitingTimeWhenInsertBlockedInMs = maxWaitingTimeWhenInsertBlocked;
-  }
-
-  public int getFrequencyIntervalInMinute() {
-    return frequencyIntervalInMinute;
-  }
-
-  public void setFrequencyIntervalInMinute(int frequencyIntervalInMinute) {
-    this.frequencyIntervalInMinute = frequencyIntervalInMinute;
   }
 
   public long getSlowQueryThreshold() {
