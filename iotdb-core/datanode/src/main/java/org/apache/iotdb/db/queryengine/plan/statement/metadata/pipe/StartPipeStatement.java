@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -58,8 +59,10 @@ public class StartPipeStatement extends Statement implements IConfigStatement {
   }
 
   @Override
-  public boolean checkPermissionBeforeProcess(String userName) {
-    return AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_PIPE.ordinal());
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_PIPE.ordinal()),
+        new PrivilegeType[] {PrivilegeType.USE_PIPE});
   }
 
   @Override

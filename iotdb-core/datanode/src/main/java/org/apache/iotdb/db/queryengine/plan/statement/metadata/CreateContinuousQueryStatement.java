@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -170,8 +171,10 @@ public class CreateContinuousQueryStatement extends Statement implements IConfig
   }
 
   @Override
-  public boolean checkPermissionBeforeProcess(String userName) {
-    return AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_CQ.ordinal());
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_CQ.ordinal()),
+        new PrivilegeType[] {PrivilegeType.USE_CQ});
   }
 
   @Override

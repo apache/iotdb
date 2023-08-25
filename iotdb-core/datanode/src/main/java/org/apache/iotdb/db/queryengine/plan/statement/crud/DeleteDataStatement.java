@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -46,9 +47,11 @@ public class DeleteDataStatement extends Statement {
   }
 
   @Override
-  public boolean checkPermissionBeforeProcess(String userName) {
-    return AuthorityChecker.checkPatternPermission(
-        userName, getPaths(), PrivilegeType.WRITE_DATA.ordinal());
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkPatternPermission(
+            userName, getPaths(), PrivilegeType.WRITE_DATA.ordinal()),
+        new PrivilegeType[] {PrivilegeType.WRITE_DATA});
   }
 
   public List<PartialPath> getPathList() {

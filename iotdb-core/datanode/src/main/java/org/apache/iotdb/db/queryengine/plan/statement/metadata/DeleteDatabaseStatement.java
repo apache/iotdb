@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -60,9 +61,10 @@ public class DeleteDatabaseStatement extends Statement implements IConfigStateme
   }
 
   @Override
-  public boolean checkPermissionBeforeProcess(String userName) {
-    return AuthorityChecker.checkSystemPermission(
-        userName, PrivilegeType.MANAGE_DATABASE.ordinal());
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_DATABASE.ordinal()),
+        new PrivilegeType[] {PrivilegeType.MANAGE_DATABASE});
   }
 
   public List<String> getPrefixPath() {

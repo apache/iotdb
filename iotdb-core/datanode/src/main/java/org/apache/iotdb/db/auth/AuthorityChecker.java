@@ -28,11 +28,9 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.protocol.session.IClientSession;
-import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
-import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -40,8 +38,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
 public class AuthorityChecker {
 
@@ -118,25 +114,29 @@ public class AuthorityChecker {
   public static TSStatus checkAuthority(Statement statement, IClientSession session) {
     long startTime = System.nanoTime();
     try {
-      if (!statement.checkPermissionBeforeProcess(session.getUsername())) {
-        StringBuilder prompt =
-            new StringBuilder("No permissions for this operation, please add privilege ");
-        int[] permissions = translateToPermissionId(statement.getType());
-        for (int i = 0; i < permissions.length; i++) {
-          if (i != 0) {
-            prompt.append(" or ");
-          }
-          prompt.append(PrivilegeType.values()[permissions[i]]);
-        }
-        return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION, prompt.toString());
-      }
-    } catch (Exception e) {
-      return onQueryException(
-          e, OperationType.CHECK_AUTHORITY.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
+      return statement.checkPermissionBeforeProcess(session.getUsername());
     } finally {
       PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
     }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public static TSStatus getTSStatus(boolean hasPermission, String errMsg) {
+    return hasPermission
+        ? new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode()).setMessage(errMsg);
+  }
+
+  public static TSStatus getTSStatus(boolean hasPermission, PrivilegeType[] neededPrivileges) {
+    StringBuilder prompt =
+        new StringBuilder("No permissions for this operation, please add privilege ");
+    prompt.append(neededPrivileges[0]);
+    for (int i = 1; i < neededPrivileges.length; i++) {
+      prompt.append(" and ");
+      prompt.append(neededPrivileges[i]);
+    }
+    return hasPermission
+        ? new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode()).setMessage(prompt.toString());
   }
 
   /**

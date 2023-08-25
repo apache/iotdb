@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.internal;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -86,6 +89,14 @@ public class InternalCreateTimeSeriesStatement extends Statement {
   @Override
   public List<PartialPath> getPaths() {
     return measurements.stream().map(devicePath::concatNode).collect(Collectors.toList());
+  }
+
+  @Override
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkFullPathListPermission(
+            userName, getPaths(), PrivilegeType.WRITE_SCHEMA.ordinal()),
+        new PrivilegeType[] {PrivilegeType.WRITE_SCHEMA});
   }
 
   @Override

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
@@ -134,9 +135,11 @@ public abstract class InsertBaseStatement extends Statement {
   }
 
   @Override
-  public boolean checkPermissionBeforeProcess(String userName) {
-    return AuthorityChecker.checkFullPathListPermission(
-        userName, getPaths(), PrivilegeType.WRITE_DATA.ordinal());
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkFullPathListPermission(
+            userName, getPaths(), PrivilegeType.WRITE_DATA.ordinal()),
+        new PrivilegeType[] {PrivilegeType.WRITE_DATA});
   }
 
   public abstract ISchemaValidation getSchemaValidation();

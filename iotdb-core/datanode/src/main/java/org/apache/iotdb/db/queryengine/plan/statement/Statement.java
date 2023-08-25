@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 
 import java.util.List;
@@ -60,7 +62,8 @@ public abstract class Statement extends StatementNode {
 
   public abstract List<PartialPath> getPaths();
 
-  public boolean checkPermissionBeforeProcess(String userName) {
-    return "root".equals(userName);
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    return AuthorityChecker.getTSStatus(
+        "root".equals(userName), "Only the root user can perform this operation");
   }
 }

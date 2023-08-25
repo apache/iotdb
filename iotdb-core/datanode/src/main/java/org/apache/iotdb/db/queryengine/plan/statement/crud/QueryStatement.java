@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -46,6 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.ResultSetFormat;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SelectComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableList;
 
@@ -144,11 +146,11 @@ public class QueryStatement extends AuthorityInformationStatement {
   }
 
   @Override
-  public boolean checkPermissionBeforeProcess(String userName) {
+  public TSStatus checkPermissionBeforeProcess(String userName) {
     this.authorityTreeList =
         ImmutableList.of(
             AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_DATA.ordinal()));
-    return true;
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   public SelectComponent getSelectComponent() {

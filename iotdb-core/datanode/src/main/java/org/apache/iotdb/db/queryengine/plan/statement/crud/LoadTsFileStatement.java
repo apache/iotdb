@@ -19,17 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.queryengine.plan.statement.AuthorityInformationStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-
-import com.google.common.collect.ImmutableList;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -38,7 +36,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class LoadTsFileStatement extends AuthorityInformationStatement {
+public class LoadTsFileStatement extends Statement {
 
   private final File file;
   private int databaseLevel;
@@ -161,12 +159,8 @@ public class LoadTsFileStatement extends AuthorityInformationStatement {
   }
 
   @Override
-  public boolean checkPermissionBeforeProcess(String userName) {
-    this.authorityTreeList =
-        ImmutableList.of(
-            AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.WRITE_DATA.ordinal()),
-            AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.WRITE_SCHEMA.ordinal()));
-    return true;
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
