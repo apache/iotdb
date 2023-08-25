@@ -36,13 +36,13 @@ public class AuthUtilsTest {
     Assert.assertThrows(AuthException.class, () -> AuthUtils.validatePath(path1));
     Assert.assertThrows(AuthException.class, () -> AuthUtils.validatePrivilege(-1));
     // give a wrong path
-    Assert.assertThrows(AuthException.class, () -> AuthUtils.validatePrivilegeOnPath(path1, -1));
+    Assert.assertThrows(AuthException.class, () -> AuthUtils.validatePrivilege(path1, -1));
     // give a path but a wrong privilege id
-    Assert.assertThrows(AuthException.class, () -> AuthUtils.validatePrivilegeOnPath(path2, 5));
+    Assert.assertThrows(AuthException.class, () -> AuthUtils.validatePrivilege(path2, 5));
 
-    Assert.assertThrows(AuthException.class, () -> AuthUtils.validatePrivilegeOnPath(null, 3));
-    AuthUtils.validatePrivilegeOnPath(path2, PrivilegeType.WRITE_SCHEMA.ordinal());
-    AuthUtils.validatePrivilegeOnPath(null, PrivilegeType.MANAGE_ROLE.ordinal());
+    Assert.assertThrows(AuthException.class, () -> AuthUtils.validatePrivilege(null, 3));
+    AuthUtils.validatePrivilege(path2, PrivilegeType.WRITE_SCHEMA.ordinal());
+    AuthUtils.validatePrivilege(null, PrivilegeType.MANAGE_ROLE.ordinal());
   }
 
   @Test

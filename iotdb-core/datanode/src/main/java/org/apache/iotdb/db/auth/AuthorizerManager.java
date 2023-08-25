@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
@@ -381,6 +382,15 @@ public class AuthorizerManager implements IAuthorizer {
     }
   }
 
+  public PathPatternTree getAuthizedPattern(String username, int permission) {
+    authReadWriteLock.readLock().lock();
+    try {
+      return authorityFetcher.getAuthizedPatternTree(username, permission);
+    } finally {
+      authReadWriteLock.readLock().unlock();
+    }
+  }
+
   public boolean invalidateCache(String username, String roleName) {
     return authorityFetcher.getAuthorCache().invalidateCache(username, roleName);
   }
@@ -401,6 +411,37 @@ public class AuthorizerManager implements IAuthorizer {
     } finally {
       authReadWriteLock.writeLock().unlock();
     }
+  }
+
+  public TSStatus checkFullPathPrivilege(String username, PartialPath fullPath, int permission) {
+    authReadWriteLock.writeLock().lock();
+    try {
+      List<PartialPath> paths = new ArrayList<>();
+      paths.add(fullPath);
+      return authorityFetcher.checkUserPathPrivileges(username, paths, permission);
+    } finally {
+      authReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  public TSStatus checkFullPathPrivilegeList(
+      String username, List<PartialPath> paths, int permission) {
+    authReadWriteLock.readLock().lock();
+    try {
+      return authorityFetcher.checkUserPathPrivileges(username, paths, permission);
+    } finally {
+      authReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  public TSStatus checkUserSysPrivilege(String username, int permission) {
+    authReadWriteLock.readLock().lock();
+    try {
+      return authorityFetcher.checkUserSysPrivileges(username, permission);
+    } finally {
+      authReadWriteLock.readLock().unlock();
+    }
+
   }
 
   /** build TSBlock. */

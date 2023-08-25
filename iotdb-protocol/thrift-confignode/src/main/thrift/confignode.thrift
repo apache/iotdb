@@ -1009,6 +1009,9 @@ service IConfigNodeRPCService {
    */
   TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req)
 
+  TPermissionInfoResp fetchAuthizedPatternTree(TCheckUserPrivilegesReq req)
+
+
   // ======================================================
   // ConfigNode
   // ======================================================

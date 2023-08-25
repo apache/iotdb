@@ -22,8 +22,6 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
@@ -38,7 +36,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -122,21 +119,21 @@ public class PermissionManager {
     List<TDataNodeConfiguration> allDataNodes =
         configManager.getNodeManager().getRegisteredDataNodes();
     TInvalidatePermissionCacheReq req = new TInvalidatePermissionCacheReq();
-//    TSStatus status;
-//    req.setUsername(username);
-//    req.setRoleName(roleName);
-//    List<TDataNodeConfiguration> dnsToInvalid = new ArrayList<>();
-//    for (TDataNodeConfiguration dataNodeInfo : allDataNodes) {
-//      status =
-//          SyncDataNodeClientPool.getInstance()
-//              .sendSyncRequestToDataNodeWithRetry(
-//                  dataNodeInfo.getLocation().getInternalEndPoint(),
-//                  req,
-//                  DataNodeRequestType.INVALIDATE_PERMISSION_CACHE);
-//      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-//        dnsToInvalid.add(dataNodeInfo);
-//      }
-//    }
+    //    TSStatus status;
+    //    req.setUsername(username);
+    //    req.setRoleName(roleName);
+    //    List<TDataNodeConfiguration> dnsToInvalid = new ArrayList<>();
+    //    for (TDataNodeConfiguration dataNodeInfo : allDataNodes) {
+    //      status =
+    //          SyncDataNodeClientPool.getInstance()
+    //              .sendSyncRequestToDataNodeWithRetry(
+    //                  dataNodeInfo.getLocation().getInternalEndPoint(),
+    //                  req,
+    //                  DataNodeRequestType.INVALIDATE_PERMISSION_CACHE);
+    //      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    //        dnsToInvalid.add(dataNodeInfo);
+    //      }
+    //    }
 
     // invalid procedure should run immediately.
     if (!allDataNodes.isEmpty()) {

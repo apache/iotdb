@@ -172,8 +172,8 @@ public interface IAuthorizer extends SnapshotProcessor {
    * Check if the user have the privilege on the seriesPath.
    *
    * @param username The name of the user whose privileges are checked.
-   * @param path The seriesPath on which the privilege takes effect. If the privilege is a
-   *     seriesPath-free privilege, this should be "root".
+   * @param path The seriesPath on which the privilege takes effect. If the privilege is system
+   *     privilege, path should be null.
    * @param privilegeId An integer that represents a privilege.
    * @return True if the user has such privilege, false if the user does not have such privilege.
    * @throws AuthException If the seriesPath or the privilege is illegal.

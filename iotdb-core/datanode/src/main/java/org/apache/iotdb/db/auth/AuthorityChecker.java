@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.protocol.session.IClientSession;
@@ -37,7 +38,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
@@ -62,52 +62,62 @@ public class AuthorityChecker {
    *
    * @param username username
    * @param paths paths in List structure
-   * @param type Statement Type
-   * @param targetUser target user
    * @return if permission-check is passed
    */
-  public static boolean checkPermission(
-      String username, List<? extends PartialPath> paths, StatementType type, String targetUser) {
+  public static boolean checkFullPathListPermission(
+      String username, List<PartialPath> paths, int permission) throws AuthException {
+    // this function will throw auth_exception for illegal permission;
+    AuthUtils.validatePrivilege(paths.get(0), permission);
+
     if (SUPER_USER.equals(username)) {
       return true;
     }
 
-    int[] permissions = translateToPermissionId(type);
-    for (int permission : permissions) {
-      if (permission == -1) {
-        continue;
-      }
-
-      List<PartialPath> allPath = new ArrayList<>();
-      if (paths != null && !paths.isEmpty()) {
-        for (PartialPath path : paths) {
-          allPath.add(path == null ? AuthUtils.ROOT_PATH_PRIVILEGE_PATH : path);
-        }
-      } else {
-        allPath.add(AuthUtils.ROOT_PATH_PRIVILEGE_PATH);
-      }
-
-      TSStatus status = authorizerManager.checkPath(username, allPath, permission);
-      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return true;
-      }
+    TSStatus status = authorizerManager.checkFullPathPrivilegeList(username, paths, permission);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return true;
     }
+
     return false;
   }
 
-  private static boolean checkOnePath(String username, PartialPath path, int permission)
-      throws AuthException {
+  private static boolean checkFullPathPermission(
+      String username, PartialPath fullPath, int permission) throws AuthException {
     try {
-      PartialPath newPath = path == null ? AuthUtils.ROOT_PATH_PRIVILEGE_PATH : path;
-      if (authorizerManager.checkUserPrivileges(username, newPath, permission)) {
+      AuthUtils.validatePrivilege(fullPath, permission);
+      if (SUPER_USER.equals(username)) {
+        return true;
+      }
+      TSStatus status = authorizerManager.checkFullPathPrivilege(username, fullPath, permission);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return true;
       }
     } catch (AuthException e) {
-      logger.error("Error occurs when checking the seriesPath {} for user {}", path, username, e);
+      logger.error(
+          "Error occurs when checking the seriesPath {} for user {}", fullPath, username, e);
       throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, e);
     }
     return false;
   }
+
+  public static PathPatternTree getAuthorizedPathTree(String username, int permission)
+      throws AuthException {
+    AuthUtils.validatePrivilege(permission);
+    PathPatternTree pathTree = authorizerManager.getAuthizedPattern(username, permission);
+    return pathTree;
+  }
+
+  public static boolean  boolean checkSystemPermission(String username, int permission) throws AuthException {
+    try {
+      AuthUtils.validatePrivilege(null, permission);
+      if (SUPER_USER.equals(username)) {
+        return true;
+      }
+      TSStatus status = authorizerManager.checkUserPrivileges()
+    }
+  }
+
+
 
   /** Check whether specific Session has the authorization to given plan. */
   public static TSStatus checkAuthority(Statement statement, IClientSession session) {

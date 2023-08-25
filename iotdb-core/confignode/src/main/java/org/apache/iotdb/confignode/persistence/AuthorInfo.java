@@ -61,6 +61,7 @@ import java.util.Set;
 
 public class AuthorInfo implements SnapshotProcessor {
 
+  // Works at config node.
   private static final Logger logger = LoggerFactory.getLogger(AuthorInfo.class);
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
@@ -113,6 +114,10 @@ public class AuthorInfo implements SnapshotProcessor {
     boolean status = true;
     TPermissionInfoResp result = new TPermissionInfoResp();
     try {
+      if (paths.isEmpty()) {
+        if (authorizer.checkUserPrivileges(username, null, permission));
+        status = true;
+      }
       for (PartialPath path : paths) {
         if (!checkOnePath(username, path, permission)) {
           status = false;
@@ -150,6 +155,7 @@ public class AuthorInfo implements SnapshotProcessor {
     return false;
   }
 
+  // LSL
   public TSStatus authorNonQuery(AuthorPlan authorPlan) {
     ConfigPhysicalPlanType authorType = authorPlan.getAuthorType();
     String userName = authorPlan.getUserName();
@@ -222,6 +228,7 @@ public class AuthorInfo implements SnapshotProcessor {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
+  // LSL
   public PermissionInfoResp executeListUsers(AuthorPlan plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
     Map<String, List<String>> permissionInfo = new HashMap<>();
@@ -250,6 +257,7 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
+  // LSL
   public PermissionInfoResp executeListRoles(AuthorPlan plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
     Map<String, List<String>> permissionInfo = new HashMap<>();
@@ -274,6 +282,7 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
+  // LSL
   public PermissionInfoResp executeListRolePrivileges(AuthorPlan plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
     Map<String, List<String>> permissionInfo = new HashMap<>();
@@ -303,6 +312,7 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
+  // LSL
   public PermissionInfoResp executeListUserPrivileges(AuthorPlan plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
     Map<String, List<String>> permissionInfo = new HashMap<>();
@@ -421,7 +431,7 @@ public class AuthorInfo implements SnapshotProcessor {
       tUserResp.setPassword(user.getPassword());
       tUserResp.setPrivilegeList(userPrivilegeList);
       tUserResp.setRoleList(user.getRoleList());
-      tUserResp.setSysPriList(user.getSysPrivilege());
+      tUserResp.setSysPriSet(user.getSysPrivilege());
     }
 
     // Permission information for roles owned by users

@@ -155,8 +155,7 @@ public class AuthUtils {
    * @param privilegeId privilege Id
    * @throws AuthException contains message why path is invalid
    */
-  public static void validatePrivilegeOnPath(PartialPath path, int privilegeId)
-      throws AuthException {
+  public static void validatePrivilege(PartialPath path, int privilegeId) throws AuthException {
     validatePrivilege(privilegeId);
     PrivilegeType type = PrivilegeType.values()[privilegeId];
     if (path != null) {
@@ -170,7 +169,7 @@ public class AuthUtils {
         default:
           throw new AuthException(
               TSStatusCode.UNKNOWN_AUTH_PRIVILEGE,
-              String.format("Illegal privilege %s on seriesPath %s", type, path));
+              String.format("Illegal privilege %s on seriesPath", type));
       }
     } else {
       switch (type) {

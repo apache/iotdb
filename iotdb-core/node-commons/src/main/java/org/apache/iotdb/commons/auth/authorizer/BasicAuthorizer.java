@@ -141,13 +141,12 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   public void grantPrivilegeToUser(
       String currentName, String username, PartialPath path, int privilegeId, boolean grantOpt)
       throws AuthException {
-    PartialPath newPath = path;
     if (isAdmin(username)) {
       throw new AuthException(
           TSStatusCode.NO_PERMISSION,
           "Invalid operation, administrator already has all privileges");
     }
-    // currentName equals null mean apply author plan.
+    // currentName equals null mean followers apply author plan.
     if (currentName == null
         || (isAdmin(currentName) || checkUserPrivilegeGrantOpt(currentName, path, privilegeId))) {
       if (!userManager.grantPrivilegeToUser(username, path, privilegeId, grantOpt)) {
@@ -325,17 +324,30 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       throw new AuthException(
           TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_EXCEPTION, username));
     }
-    // get privileges of the user
-    if (user.checkPathPrivilege(path, privilegeId)) {
-      return true;
-    }
-    // merge the privileges of the roles of the user
-    for (String roleName : user.getRoleList()) {
-      Role role = roleManager.getRole(roleName);
-      if (role.checkPathPrivilege(path, privilegeId)) {
+    if (path != null) {
+      // get privileges of the user
+      if (user.checkPathPrivilege(path, privilegeId)) {
         return true;
       }
+      // merge the privileges of the roles of the user
+      for (String roleName : user.getRoleList()) {
+        Role role = roleManager.getRole(roleName);
+        if (role.checkPathPrivilege(path, privilegeId)) {
+          return true;
+        }
+      }
+    } else {
+      if (user.checkSysPrivilege(privilegeId)) {
+        return true;
+      }
+      for (String roleName : user.getRoleList()) {
+        Role role = roleManager.getRole(roleName);
+        if (role.checkSysPrivilege(privilegeId)) {
+          return true;
+        }
+      }
     }
+
     return false;
   }
 

@@ -27,11 +27,9 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 
 /**
  * This class reads roles from local files through LocalFileRoleAccessor and manages them in a hash
@@ -109,7 +107,7 @@ public abstract class BasicRoleManager implements IRoleManager {
   @Override
   public boolean grantPrivilegeToRole(
       String rolename, PartialPath path, int privilegeId, boolean grantOpt) throws AuthException {
-    AuthUtils.validatePrivilegeOnPath(path, privilegeId);
+    AuthUtils.validatePrivilege(path, privilegeId);
     lock.writeLock(rolename);
     try {
       Role role = getRole(rolename);
@@ -121,7 +119,6 @@ public abstract class BasicRoleManager implements IRoleManager {
         return false;
       }
       if (path != null) {
-        Set<Integer> privilegesCopy = new HashSet<>(role.getPathPrivileges(path));
         role.addPathPrivilege(path, privilegeId, grantOpt);
       } else {
         role.getSysPrivilege().add(privilegeId);
@@ -138,7 +135,7 @@ public abstract class BasicRoleManager implements IRoleManager {
   @Override
   public boolean revokePrivilegeFromRole(String rolename, PartialPath path, int privilegeId)
       throws AuthException {
-    AuthUtils.validatePrivilegeOnPath(path, privilegeId);
+    AuthUtils.validatePrivilege(path, privilegeId);
     lock.writeLock(rolename);
     try {
       Role role = getRole(rolename);

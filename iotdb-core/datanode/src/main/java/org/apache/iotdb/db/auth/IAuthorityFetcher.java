@@ -21,6 +21,7 @@ package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 
@@ -35,6 +36,8 @@ public interface IAuthorityFetcher {
   TSStatus checkUserPathPrivileges(String username, List<PartialPath> allPath, int permission);
 
   TSStatus checkUserSysPrivileges(String username, int permisssion);
+
+  PathPatternTree getAuthizedPatternTree(String username, int permission);
 
   SettableFuture<ConfigTaskResult> operatePermission(AuthorStatement authorStatement);
 

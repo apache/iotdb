@@ -156,7 +156,7 @@ public abstract class BasicUserManager implements IUserManager {
   @Override
   public boolean grantPrivilegeToUser(
       String username, PartialPath path, int privilegeId, boolean grantOpt) throws AuthException {
-    AuthUtils.validatePrivilegeOnPath(path, privilegeId);
+    AuthUtils.validatePrivilege(path, privilegeId);
     lock.writeLock(username);
     try {
       User user = getUser(username);
@@ -177,7 +177,7 @@ public abstract class BasicUserManager implements IUserManager {
   @Override
   public boolean revokePrivilegeFromUser(String username, PartialPath path, int privilegeId)
       throws AuthException {
-    AuthUtils.validatePrivilegeOnPath(path, privilegeId);
+    AuthUtils.validatePrivilege(path, privilegeId);
     lock.writeLock(username);
     try {
       User user = getUser(username);
