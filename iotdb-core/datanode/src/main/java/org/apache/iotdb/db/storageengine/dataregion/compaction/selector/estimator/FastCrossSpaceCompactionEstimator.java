@@ -39,9 +39,8 @@ public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimat
         Math.min(
             taskInfo.getTotalChunkMetadataSize(),
             taskInfo.getFileInfoList().size()
-                * taskInfo.getMaxChunkMetadataNumInSeries()
-                * taskInfo.getMaxChunkMetadataSize()
-                * Math.max(config.getSubCompactionTaskNum(), taskInfo.getMaxConcurrentSeriesNum()));
+                * taskInfo.getMaxChunkMetadataNumInDevice()
+                * taskInfo.getMaxChunkMetadataSize());
 
     // add ChunkMetadata size of targetFileWriter
     long sizeForFileWriter =
@@ -58,19 +57,25 @@ public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimat
   protected long calculatingDataMemoryCost(CompactionTaskInfo taskInfo) throws IOException {
     long cost = 0;
     cost += taskInfo.getModificationFileSize();
-    if (taskInfo.getTotalChunkNum() == 0) {
-      return cost;
-    }
 
     long maxConcurrentSeriesNum =
         Math.max(config.getSubCompactionTaskNum(), taskInfo.getMaxConcurrentSeriesNum());
-    long uncompressedTotalChunkSize = taskInfo.getTotalFileSize() * compressionRatio;
-    long targetChunkWriterSize =
-        config.getTargetChunkSize() * maxConcurrentSeriesNum * seqResources.size();
-    cost += Math.min(uncompressedTotalChunkSize, targetChunkWriterSize);
+    long uncompressedTotalFileSize = taskInfo.getTotalFileSize() * compressionRatio;
+    if (taskInfo.getTotalChunkNum() == 0) {
+      return cost;
+    }
+    long uncompressedChunkSize = uncompressedTotalFileSize / taskInfo.getTotalChunkNum();
+
+    long maxSeriesSizeOfTotalFiles =
+        uncompressedChunkSize
+            * taskInfo.getFileInfoList().size()
+            * taskInfo.getMaxConcurrentSeriesNum()
+            * taskInfo.getMaxChunkMetadataNumInSeries();
+    long targetChunkWriterSize = config.getTargetChunkSize() * maxConcurrentSeriesNum;
+    cost += Math.min(maxSeriesSizeOfTotalFiles, targetChunkWriterSize);
 
     cost +=
-        uncompressedTotalChunkSize
+        uncompressedTotalFileSize
             * maxConcurrentSeriesNum
             * calculatingMaxOverlapFileNumInSubCompactionTask(taskInfo.getResources())
             / taskInfo.getTotalChunkNum();

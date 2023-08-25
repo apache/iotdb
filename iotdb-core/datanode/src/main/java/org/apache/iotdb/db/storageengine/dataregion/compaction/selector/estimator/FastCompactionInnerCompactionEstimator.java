@@ -39,9 +39,8 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
         Math.min(
             taskInfo.getTotalChunkMetadataSize(),
             taskInfo.getFileInfoList().size()
-                * taskInfo.getMaxChunkMetadataNumInSeries()
-                * taskInfo.getMaxChunkMetadataSize()
-                * Math.max(config.getSubCompactionTaskNum(), taskInfo.getMaxConcurrentSeriesNum()));
+                * taskInfo.getMaxChunkMetadataNumInDevice()
+                * taskInfo.getMaxChunkMetadataSize());
 
     // add ChunkMetadata size of targetFileWriter
     long sizeForFileWriter =
@@ -66,15 +65,21 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
     long cost = 0;
     cost += taskInfo.getModificationFileSize();
 
+    long maxConcurrentSeriesNum =
+        Math.max(config.getSubCompactionTaskNum(), taskInfo.getMaxConcurrentSeriesNum());
     long uncompressedTotalFileSize = taskInfo.getTotalFileSize() * compressionRatio;
     if (taskInfo.getTotalChunkNum() == 0) {
       return cost;
     }
+    long uncompressedChunkSize = uncompressedTotalFileSize / taskInfo.getTotalChunkNum();
 
-    long maxConcurrentSeriesNum =
-        Math.max(config.getSubCompactionTaskNum(), taskInfo.getMaxConcurrentSeriesNum());
+    long maxSeriesSizeOfTotalFiles =
+        uncompressedChunkSize
+            * taskInfo.getFileInfoList().size()
+            * taskInfo.getMaxConcurrentSeriesNum()
+            * taskInfo.getMaxChunkMetadataNumInSeries();
     long targetChunkWriterSize = config.getTargetChunkSize() * maxConcurrentSeriesNum;
-    cost += Math.min(uncompressedTotalFileSize, targetChunkWriterSize);
+    cost += Math.min(maxSeriesSizeOfTotalFiles, targetChunkWriterSize);
 
     cost +=
         uncompressedTotalFileSize
