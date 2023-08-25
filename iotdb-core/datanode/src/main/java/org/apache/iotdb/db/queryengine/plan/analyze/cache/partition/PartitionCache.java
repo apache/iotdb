@@ -233,6 +233,8 @@ public class PartitionCache {
         // try to create databases one by one until done or one database fail
         Set<String> successFullyCreatedStorageGroup = new HashSet<>();
         for (String storageGroupName : storageGroupNamesNeedCreated) {
+          // TODO Need to check MANAGE_DATABASE permission, but there are too many functions needed
+          // to change for transmit of userName.
           TDatabaseSchema storageGroupSchema = new TDatabaseSchema();
           storageGroupSchema.setName(storageGroupName);
           TSStatus tsStatus = client.setDatabase(storageGroupSchema);
@@ -488,7 +490,6 @@ public class PartitionCache {
       }
       Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =
           new HashMap<>();
-
       // check cache for each database
       for (Map.Entry<String, List<String>> entry : storageGroupToDeviceMap.entrySet()) {
         String storageGroupName = entry.getKey();
