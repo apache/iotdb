@@ -45,7 +45,6 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     this.dataRegionId = dataRegionId;
   }
 
-  // The disruptTime has been recorded in the previous event
   public PipeHeartbeatEvent(String dataRegionId, long timePublished) {
     super(null, null);
     this.dataRegionId = dataRegionId;
