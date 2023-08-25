@@ -175,15 +175,15 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         }
       }
 
-      List<TsFileResource> seqResources = new ArrayList<>();
-      seqResources.addAll(taskResource.getSeqFiles());
-      seqResources.addAll(targetSeqFiles);
-      List<TsFileResource> unseqResources = new ArrayList<>();
-      unseqResources.addAll(taskResource.getUnseqFiles());
-      unseqResources.add(unseqFile);
+      List<TsFileResource> newSelectedSeqResources = new ArrayList<>(taskResource.getSeqFiles());
+      newSelectedSeqResources.addAll(targetSeqFiles);
+      List<TsFileResource> newSelectedUnseqResources =
+          new ArrayList<>(taskResource.getUnseqFiles());
+      newSelectedUnseqResources.add(unseqFile);
 
       long memoryCost =
-          compactionEstimator.estimateCrossCompactionMemory(seqResources, unseqResources);
+          compactionEstimator.estimateCrossCompactionMemory(
+              newSelectedSeqResources, newSelectedUnseqResources);
       if (!canAddToTaskResource(taskResource, unseqFile, targetSeqFiles, memoryCost)) {
         break;
       }
