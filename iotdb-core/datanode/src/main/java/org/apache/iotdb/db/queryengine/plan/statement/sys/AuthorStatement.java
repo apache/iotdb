@@ -99,6 +99,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
         this.setType(StatementType.LIST_ROLE);
         break;
       default:
+        throw new IllegalArgumentException("Unknown authorType: " + authorType);
     }
   }
 
@@ -194,7 +195,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
         queryType = QueryType.READ;
         break;
       default:
-        throw new IllegalArgumentException("Unknown operator: " + authorType);
+        throw new IllegalArgumentException("Unknown authorType: " + authorType);
     }
     return queryType;
   }
@@ -256,7 +257,8 @@ public class AuthorStatement extends Statement implements IConfigStatement {
               new PrivilegeType[] {PrivilegeType.MANAGE_ROLE});
         }
         return status1;
+      default:
+        throw new IllegalArgumentException("Unknown authorType: " + authorType);
     }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 }

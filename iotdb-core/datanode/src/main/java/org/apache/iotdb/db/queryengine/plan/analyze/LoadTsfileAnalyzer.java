@@ -262,6 +262,23 @@ public class LoadTsfileAnalyzer {
         final String device = pair.left;
         final TimeseriesMetadata timeseriesMetadata = pair.right;
 
+        // check WRITE_DATA permission of timeseries
+        TSStatus status;
+        try {
+          status =
+              AuthorityChecker.getTSStatus(
+                  AuthorityChecker.checkFullPathPermission(
+                      context.getSession().getUserName(),
+                      new PartialPath(device, timeseriesMetadata.getMeasurementId()),
+                      PrivilegeType.WRITE_DATA.ordinal()),
+                  new PrivilegeType[] {PrivilegeType.WRITE_DATA});
+        } catch (IllegalPathException e) {
+          throw new RuntimeException(e);
+        }
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+        }
+
         final TSDataType dataType = timeseriesMetadata.getTsDataType();
         if (dataType.equals(TSDataType.VECTOR)) {
           tsfileDevice2IsAligned.put(device, true);
