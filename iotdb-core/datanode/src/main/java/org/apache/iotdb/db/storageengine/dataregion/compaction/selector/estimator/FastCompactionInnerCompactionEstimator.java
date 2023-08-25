@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+
 import java.io.IOException;
 
 public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEstimator {
@@ -30,10 +33,25 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
    */
   @Override
   public long calculatingMetadataMemoryCost(CompactionTaskInfo taskInfo) {
-    return taskInfo.getFileInfoList().size()
-        * taskInfo.getMaxChunkMetadataNumInDevice()
-        * taskInfo.getMaxChunkMetadataSize()
-        * Math.max(config.getSubCompactionTaskNum(), taskInfo.getMaxConcurrentSeriesNum());
+    long cost = 0;
+    // add ChunkMetadata size of MultiTsFileDeviceIterator
+    cost +=
+        Math.min(
+            taskInfo.getTotalChunkMetadataSize(),
+            taskInfo.getFileInfoList().size()
+                * taskInfo.getMaxChunkMetadataNumInSeries()
+                * taskInfo.getMaxChunkMetadataSize()
+                * Math.max(config.getSubCompactionTaskNum(), taskInfo.getMaxConcurrentSeriesNum()));
+
+    // add ChunkMetadata size of targetFileWriter
+    long sizeForFileWriter =
+        (long)
+            ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
+                / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
+                * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
+    cost += sizeForFileWriter;
+
+    return cost;
   }
 
   /**
@@ -46,13 +64,20 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
   @Override
   public long calculatingDataMemoryCost(CompactionTaskInfo taskInfo) throws IOException {
     long cost = 0;
+    cost += taskInfo.getModificationFileSize();
+
+    long uncompressedTotalFileSize = taskInfo.getTotalFileSize() * compressionRatio;
+    if (taskInfo.getTotalChunkNum() == 0) {
+      return cost;
+    }
+
     long maxConcurrentSeriesNum =
         Math.max(config.getSubCompactionTaskNum(), taskInfo.getMaxConcurrentSeriesNum());
-    cost += config.getTargetChunkSize() * maxConcurrentSeriesNum;
-    cost += taskInfo.getModificationFileSize();
+    long targetChunkWriterSize = config.getTargetChunkSize() * maxConcurrentSeriesNum;
+    cost += Math.min(uncompressedTotalFileSize, targetChunkWriterSize);
+
     cost +=
-        taskInfo.getTotalFileSize()
-            * compressionRatio
+        uncompressedTotalFileSize
             * maxConcurrentSeriesNum
             * calculatingMaxOverlapFileNumInSubCompactionTask(taskInfo.getResources())
             / taskInfo.getTotalChunkNum();

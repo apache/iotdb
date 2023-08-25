@@ -74,9 +74,6 @@ public abstract class AbstractCompactionEstimator implements Closeable {
       throws IOException {
     List<FileInfo> fileInfoList = new ArrayList<>();
     for (TsFileResource resource : resources) {
-      if (resource.getTimeIndexType() != DeviceTimeIndex.DEVICE_TIME_INDEX_TYPE) {
-        resource.deserialize();
-      }
       TsFileSequenceReader reader = getFileReader(resource);
       FileInfo fileInfo = CompactionEstimateUtils.getSeriesAndDeviceChunkNum(reader);
       fileInfoList.add(fileInfo);

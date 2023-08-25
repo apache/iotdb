@@ -30,7 +30,7 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
     // add ChunkMetadata size of MultiTsFileDeviceIterator
     cost +=
         taskInfo.getFileInfoList().size()
-            * taskInfo.getMaxChunkMetadataNumInDevice()
+            * taskInfo.getMaxChunkMetadataNumInSeries()
             * taskInfo.getMaxChunkMetadataSize();
 
     // add ChunkMetadata size of targetFileWriter
@@ -47,15 +47,19 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
   @Override
   public long calculatingDataMemoryCost(CompactionTaskInfo taskInfo) {
     long cost = 0;
+    cost += taskInfo.getModificationFileSize();
+
+    if (taskInfo.getTotalChunkNum() == 0) {
+      return cost;
+    }
+
+    long uncompressedTotalFileSize = taskInfo.getTotalFileSize() * compressionRatio;
+    long targetChunkWriterSize = config.getTargetChunkSize() * taskInfo.getMaxConcurrentSeriesNum();
+    cost += Math.min(targetChunkWriterSize, uncompressedTotalFileSize);
     cost +=
-        IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize()
-            * taskInfo.getMaxConcurrentSeriesNum();
-    cost +=
-        taskInfo.getTotalFileSize()
-            * compressionRatio
+        uncompressedTotalFileSize
             * taskInfo.getMaxConcurrentSeriesNum()
             / taskInfo.getTotalChunkNum();
-    cost += taskInfo.getModificationFileSize();
     return cost;
   }
 }
