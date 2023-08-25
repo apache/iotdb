@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -40,6 +41,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -52,6 +54,7 @@ public class WALInsertNodeCache {
 
   // LRU cache, find Pair<ByteBuffer, InsertNode> by WALEntryPosition
   private final LoadingCache<WALEntryPosition, Pair<ByteBuffer, InsertNode>> lruCache;
+  private final boolean isBatchLoadEnabled;
 
   // ids of all pinned memTables
   private final Set<Long> memTablesNeedSearch = ConcurrentHashMap.newKeySet();
@@ -65,10 +68,20 @@ public class WALInsertNodeCache {
                 (Weigher<WALEntryPosition, Pair<ByteBuffer, InsertNode>>)
                     (position, pair) -> position.getSize())
             .build(new WALInsertNodeCacheLoader());
+    isBatchLoadEnabled =
+        config.getAllocateMemoryForWALPipeCache() >= 3 * config.getWalFileSizeThresholdInByte();
+  }
+
+  @TestOnly
+  public boolean isBatchLoadEnabled() {
+    return isBatchLoadEnabled;
   }
 
   public InsertNode getInsertNode(WALEntryPosition position) {
-    final Pair<ByteBuffer, InsertNode> pair = lruCache.get(position);
+    final Pair<ByteBuffer, InsertNode> pair =
+        isBatchLoadEnabled
+            ? lruCache.getAll(Collections.singleton(position)).get(position)
+            : lruCache.get(position);
 
     if (pair == null) {
       throw new IllegalStateException();
@@ -91,7 +104,10 @@ public class WALInsertNodeCache {
   }
 
   public ByteBuffer getByteBuffer(WALEntryPosition position) {
-    Pair<ByteBuffer, InsertNode> pair = lruCache.get(position);
+    final Pair<ByteBuffer, InsertNode> pair =
+        isBatchLoadEnabled
+            ? lruCache.getAll(Collections.singleton(position)).get(position)
+            : lruCache.get(position);
 
     if (pair == null) {
       throw new IllegalStateException();
