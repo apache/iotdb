@@ -59,7 +59,6 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -186,15 +185,14 @@ public class PartitionCache {
    */
   private void fetchStorageGroupAndUpdateCache(
       StorageGroupCacheResult<?> result, List<String> devicePaths)
-      throws ClientManagerException, TException, IOException {
+      throws ClientManagerException, TException {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       storageGroupCacheLock.writeLock().lock();
       result.reset();
       getStorageGroupMap(result, devicePaths, true);
       if (!result.isSuccess()) {
-        TGetDatabaseReq req =
-            new TGetDatabaseReq(ROOT_PATH, SchemaConstant.ALL_MATCH_SCOPE.serialize());
+        TGetDatabaseReq req = new TGetDatabaseReq(ROOT_PATH, SchemaConstant.ALL_MATCH_SCOPE_BINARY);
         TDatabaseSchemaResp storageGroupSchemaResp = client.getMatchedDatabaseSchemas(req);
         if (storageGroupSchemaResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -342,7 +340,7 @@ public class PartitionCache {
             throw new StatementAnalyzeException("Failed to get database Map in three attempts.");
           }
         }
-      } catch (IOException | TException | MetadataException | ClientManagerException e) {
+      } catch (TException | MetadataException | ClientManagerException e) {
         throw new StatementAnalyzeException(
             "An error occurred when executing getDeviceToStorageGroup():" + e.getMessage());
       }

@@ -79,6 +79,7 @@
         </mailingList>
     </mailingLists>
     <modules>
+        <module>integration-test</module>
         <module>iotdb-api</module>
         <module>iotdb-client</module>
         <module>iotdb-connector</module>

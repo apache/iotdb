@@ -57,7 +57,6 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -91,7 +90,7 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
       TGetDatabaseReq req =
           new TGetDatabaseReq(
               Arrays.asList(SchemaConstant.SYSTEM_DATABASE.split("\\.")),
-              SchemaConstant.ALL_MATCH_SCOPE.serialize());
+              SchemaConstant.ALL_MATCH_SCOPE_BINARY);
       TShowDatabaseResp showDatabaseResp = client.showDatabase(req);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == showDatabaseResp.getStatus().getCode()
           && showDatabaseResp.getDatabaseInfoMapSize() == 0) {
@@ -107,7 +106,7 @@ public class IoTDBInternalLocalReporter extends IoTDBInternalReporter {
           LOGGER.error("IoTDBSessionReporter checkOrCreateDatabase failed.");
         }
       }
-    } catch (IOException | ClientManagerException | TException e) {
+    } catch (ClientManagerException | TException e) {
       // do nothing
       LOGGER.warn("IoTDBSessionReporter checkOrCreateDatabase failed because ", e);
     }
