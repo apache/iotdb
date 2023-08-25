@@ -24,6 +24,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 
 import java.io.Closeable;
@@ -43,7 +45,8 @@ import java.util.stream.Collectors;
  */
 public abstract class AbstractCompactionEstimator implements Closeable {
 
-  protected Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
+  protected Map<TsFileResource, FileInfo> fileInfoCache = new HashMap<>();
+  protected Map<TsFileResource, DeviceTimeIndex> deviceTimeIndexCache = new HashMap<>();
 
   protected IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -56,50 +59,47 @@ public abstract class AbstractCompactionEstimator implements Closeable {
 
   protected abstract long calculatingDataMemoryCost(CompactionTaskInfo taskInfo) throws IOException;
 
-  /**
-   * Construct a new or get an existing TsFileSequenceReader of a TsFile.
-   *
-   * @throws IOException if io errors occurred
-   */
-  protected TsFileSequenceReader getFileReader(TsFileResource tsFileResource) throws IOException {
-    TsFileSequenceReader reader = fileReaderCache.get(tsFileResource);
-    if (reader == null) {
-      reader = new TsFileSequenceReader(tsFileResource.getTsFilePath(), true, false);
-      fileReaderCache.put(tsFileResource, reader);
-    }
-    return reader;
-  }
-
   protected CompactionTaskInfo calculatingCompactionTaskInfo(List<TsFileResource> resources)
       throws IOException {
     List<FileInfo> fileInfoList = new ArrayList<>();
     for (TsFileResource resource : resources) {
-      TsFileSequenceReader reader = getFileReader(resource);
-      FileInfo fileInfo = CompactionEstimateUtils.getSeriesAndDeviceChunkNum(reader);
+      FileInfo fileInfo = getFileInfoFromCache(resource);
       fileInfoList.add(fileInfo);
     }
     return new CompactionTaskInfo(resources, fileInfoList);
   }
 
+  private FileInfo getFileInfoFromCache(TsFileResource resource) throws IOException {
+    if (fileInfoCache.containsKey(resource)) {
+      return fileInfoCache.get(resource);
+    }
+    try (TsFileSequenceReader reader =
+        new TsFileSequenceReader(resource.getTsFilePath(), true, false)) {
+      FileInfo fileInfo = CompactionEstimateUtils.calculateFileInfo(reader);
+      fileInfoCache.put(resource, fileInfo);
+      return fileInfo;
+    }
+  }
+
   protected int calculatingMaxOverlapFileNumInSubCompactionTask(List<TsFileResource> resources)
       throws IOException {
     Set<String> devices = new HashSet<>();
+    List<DeviceTimeIndex> resourceDevices = new ArrayList<>(resources.size());
     for (TsFileResource resource : resources) {
-      if (resource.getTimeIndexType() != DeviceTimeIndex.DEVICE_TIME_INDEX_TYPE) {
-        resource.deserialize();
-      }
-      devices.addAll(resource.getDevices());
+      DeviceTimeIndex deviceTimeIndex = getDeviceTimeIndexFromCache(resource);
+      devices.addAll(deviceTimeIndex.getDevices());
+      resourceDevices.add(deviceTimeIndex);
     }
     int maxOverlapFileNumInSubCompactionTask = 1;
     for (String device : devices) {
-      List<TsFileResource> resourcesContainsCurrentDevice =
-          resources.stream()
+      List<DeviceTimeIndex> resourcesContainsCurrentDevice =
+          resourceDevices.stream()
               .filter(resource -> !resource.definitelyNotContains(device))
               .sorted(Comparator.comparingLong(resource -> resource.getStartTime(device)))
               .collect(Collectors.toList());
       long maxEndTimeOfCurrentDevice = Long.MIN_VALUE;
       int overlapFileNumOfCurrentDevice = 0;
-      for (TsFileResource resource : resourcesContainsCurrentDevice) {
+      for (DeviceTimeIndex resource : resourcesContainsCurrentDevice) {
         long deviceStartTimeInCurrentFile = resource.getStartTime(device);
         long deviceEndTimeInCurrentFile = resource.getEndTime(device);
         if (deviceStartTimeInCurrentFile <= maxEndTimeOfCurrentDevice) {
@@ -123,10 +123,20 @@ public abstract class AbstractCompactionEstimator implements Closeable {
     return maxOverlapFileNumInSubCompactionTask;
   }
 
-  public void close() throws IOException {
-    for (TsFileSequenceReader reader : fileReaderCache.values()) {
-      reader.close();
+  private DeviceTimeIndex getDeviceTimeIndexFromCache(TsFileResource resource) throws IOException {
+    if (deviceTimeIndexCache.containsKey(resource)) {
+      return deviceTimeIndexCache.get(resource);
     }
-    fileReaderCache.clear();
+    ITimeIndex timeIndex = resource.getTimeIndex();
+    if (timeIndex instanceof FileTimeIndex) {
+      timeIndex = resource.buildDeviceTimeIndex();
+    }
+    deviceTimeIndexCache.put(resource, (DeviceTimeIndex) timeIndex);
+    return (DeviceTimeIndex) timeIndex;
+  }
+
+  public void close() throws IOException {
+    deviceTimeIndexCache.clear();
+    fileInfoCache.clear();
   }
 }
