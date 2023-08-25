@@ -209,6 +209,7 @@
         <thrift.exec.absolute.path/>
         <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
         <boost.include.dir/>
+        <websocket.version>1.5.3</websocket.version>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
