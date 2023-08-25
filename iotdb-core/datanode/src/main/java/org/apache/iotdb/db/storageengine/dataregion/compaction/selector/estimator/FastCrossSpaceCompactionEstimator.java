@@ -70,7 +70,8 @@ public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimat
             * taskInfo.getFileInfoList().size()
             * maxConcurrentSeriesNum
             * taskInfo.getMaxChunkMetadataNumInSeries();
-    long maxTargetChunkWriterSize = config.getTargetChunkSize() * maxConcurrentSeriesNum * targetFileNum;
+    long maxTargetChunkWriterSize =
+        config.getTargetChunkSize() * maxConcurrentSeriesNum * targetFileNum;
     long targetChunkWriterSize =
         Math.min(maxConcurrentSeriesSizeOfTotalFiles, maxTargetChunkWriterSize);
 
