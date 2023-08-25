@@ -85,9 +85,9 @@ public class IoTDBCDCSourceFunction<RowData> extends RichSourceFunction<RowData>
     Session session =
         new Session.Builder().username(user).password(password).nodeUrls(nodeUrls).build();
     session.open(false);
-    if (!session
-        .executeQueryStatement(String.format("show pipe flink_cdc_%s", taskName))
-        .hasNext()) {
+    boolean hasCreatedPipeTask =
+        session.executeQueryStatement(String.format("show pipe flink_cdc_%s", taskName)).hasNext();
+    if (!hasCreatedPipeTask) {
       for (String nodeUrl : nodeUrls) {
         URI uri = new URI(String.format("ws://%s:%d", nodeUrl.split(":")[0], cdcPort));
         if (Utils.isURIAvailable(uri)) {
