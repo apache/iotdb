@@ -22,7 +22,13 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimat
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimator {
+
+  private static final Logger logger =
+      LoggerFactory.getLogger(ReadChunkInnerCompactionEstimator.class);
 
   @Override
   public long calculatingMetadataMemoryCost(CompactionTaskInfo taskInfo) {
@@ -30,15 +36,17 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
     // add ChunkMetadata size of MultiTsFileDeviceIterator
     cost +=
         taskInfo.getFileInfoList().size()
-            * taskInfo.getMaxChunkMetadataNumInSeries()
+            * taskInfo.getMaxChunkMetadataNumInDevice()
             * taskInfo.getMaxChunkMetadataSize();
 
+    logger.info("chunk metadata size {}", cost);
     // add ChunkMetadata size of targetFileWriter
     long sizeForFileWriter =
         (long)
             ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
                 / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
                 * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
+    logger.info("size for file writer: {}", sizeForFileWriter);
     cost += sizeForFileWriter;
 
     return cost;
@@ -53,13 +61,18 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
       return cost;
     }
 
-    long uncompressedTotalFileSize = taskInfo.getTotalFileSize() * compressionRatio;
+    long uncompressedChunkSize =
+        taskInfo.getTotalFileSize() * compressionRatio / taskInfo.getTotalChunkNum();
+    cost += uncompressedChunkSize * taskInfo.getMaxConcurrentSeriesNum();
+
     long targetChunkWriterSize = config.getTargetChunkSize() * taskInfo.getMaxConcurrentSeriesNum();
-    cost += Math.min(targetChunkWriterSize, uncompressedTotalFileSize);
-    cost +=
-        uncompressedTotalFileSize
+    long maxSeriesSizeOfTotalFiles =
+        uncompressedChunkSize
+            * taskInfo.getFileInfoList().size()
             * taskInfo.getMaxConcurrentSeriesNum()
-            / taskInfo.getTotalChunkNum();
+            * taskInfo.getMaxChunkMetadataNumInSeries();
+    cost += Math.min(targetChunkWriterSize, maxSeriesSizeOfTotalFiles);
+
     return cost;
   }
 }

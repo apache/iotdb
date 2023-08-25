@@ -466,6 +466,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       }
       if (innerSpaceEstimator != null) {
         memoryCost = innerSpaceEstimator.estimateInnerCompactionMemory(selectedTsFileResourceList);
+        System.out.println(memoryCost);
       }
       SystemInfo.getInstance().addCompactionMemoryCost(memoryCost, 60);
       SystemInfo.getInstance().addCompactionFileNum(selectedTsFileResourceList.size(), 60);
