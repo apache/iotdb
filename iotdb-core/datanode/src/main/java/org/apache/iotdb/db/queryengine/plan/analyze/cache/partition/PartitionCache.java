@@ -37,9 +37,11 @@ import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchemaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -57,6 +59,7 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -183,14 +186,16 @@ public class PartitionCache {
    */
   private void fetchStorageGroupAndUpdateCache(
       StorageGroupCacheResult<?> result, List<String> devicePaths)
-      throws ClientManagerException, TException {
+      throws ClientManagerException, TException, IOException {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       storageGroupCacheLock.writeLock().lock();
       result.reset();
       getStorageGroupMap(result, devicePaths, true);
       if (!result.isSuccess()) {
-        TDatabaseSchemaResp storageGroupSchemaResp = client.getMatchedDatabaseSchemas(ROOT_PATH);
+        TGetDatabaseReq req =
+            new TGetDatabaseReq(ROOT_PATH, SchemaConstant.ALL_MATCH_SCOPE.serialize());
+        TDatabaseSchemaResp storageGroupSchemaResp = client.getMatchedDatabaseSchemas(req);
         if (storageGroupSchemaResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           Set<String> storageGroupNames = storageGroupSchemaResp.getDatabaseSchemaMap().keySet();
@@ -337,7 +342,7 @@ public class PartitionCache {
             throw new StatementAnalyzeException("Failed to get database Map in three attempts.");
           }
         }
-      } catch (TException | MetadataException | ClientManagerException e) {
+      } catch (IOException | TException | MetadataException | ClientManagerException e) {
         throw new StatementAnalyzeException(
             "An error occurred when executing getDeviceToStorageGroup():" + e.getMessage());
       }
