@@ -47,10 +47,6 @@ public class PipeTransferTabletBinaryReq extends TPipeTransferReq {
     // Do nothing
   }
 
-  public ByteBuffer getByteBuffer() {
-    return byteBuffer;
-  }
-
   public Statement constructStatement() {
     final InsertNode insertNode = parse(byteBuffer);
 
@@ -104,8 +100,8 @@ public class PipeTransferTabletBinaryReq extends TPipeTransferReq {
 
   public static PipeTransferTabletBinaryReq toTPipeTransferReq(ByteBuffer byteBuffer) {
     final PipeTransferTabletBinaryReq req = new PipeTransferTabletBinaryReq();
-
     req.byteBuffer = byteBuffer;
+
     req.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
     req.type = PipeRequestType.TRANSFER_TABLET_BINARY.getType();
     req.body = byteBuffer;

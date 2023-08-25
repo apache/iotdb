@@ -68,7 +68,7 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
       } else {
         throw new UnsupportedOperationException(
             String.format(
-                "unknown InsertBaseStatement %s constructed from the insert node request.",
+                "unknown InsertBaseStatement %s constructed from PipeTransferTabletBinaryReq.",
                 binaryReq));
       }
     }
@@ -82,7 +82,7 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
       } else {
         throw new UnsupportedOperationException(
             String.format(
-                "unknown InsertBaseStatement %s constructed from the insert node request.",
+                "unknown InsertBaseStatement %s constructed from PipeTransferTabletInsertNodeReq.",
                 insertNodeReq));
       }
     }
