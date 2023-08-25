@@ -93,6 +93,8 @@ public class IoTDBDynamicTableFactory
     optionalOptions.add(Options.LOOKUP_CACHE_TTL_SEC);
     optionalOptions.add(Options.ALIGNED);
     optionalOptions.add(Options.MODE);
+    optionalOptions.add(Options.CDC_TASK_NAME);
+    optionalOptions.add(Options.CDC_PORT);
 
     return optionalOptions;
   }
@@ -171,6 +173,12 @@ public class IoTDBDynamicTableFactory
     if (lowerBound > 0L && upperBound > 0L && upperBound < lowerBound) {
       throw new IllegalOptionException(
           "The value of option `scan.bounded.lower-bound` could not be greater than the value of option `scan.bounded.upper-bound`.");
+    }
+
+    if (options.get(Options.MODE) == Options.Mode.CDC
+        && options.get(Options.CDC_TASK_NAME) == null) {
+      throw new IllegalOptionException(
+          "The option `cdc.task.name` is required when option `mode` equals `CDC`");
     }
   }
 }

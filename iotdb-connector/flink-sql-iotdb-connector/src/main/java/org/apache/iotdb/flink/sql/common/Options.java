@@ -34,6 +34,11 @@ public class Options {
       ConfigOptions.key("aligned").booleanType().defaultValue(false);
   public static final ConfigOption<Mode> MODE =
       ConfigOptions.key("mode").enumType(Mode.class).defaultValue(Mode.BOUNDED);
+  public static final ConfigOption<Integer> CDC_PORT =
+      ConfigOptions.key("cdc.port").intType().defaultValue(8080);
+
+  public static final ConfigOption<String> CDC_TASK_NAME =
+      ConfigOptions.key("cdc.task.name").stringType().noDefaultValue();
   public static final ConfigOption<Integer> LOOKUP_CACHE_MAX_ROWS =
       ConfigOptions.key("lookup.cache.max-rows").intType().defaultValue(-1);
   public static final ConfigOption<Integer> LOOKUP_CACHE_TTL_SEC =

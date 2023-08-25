@@ -21,8 +21,10 @@ package org.apache.iotdb.flink.sql.function;
 import org.apache.iotdb.flink.sql.client.IoTDBWebsocketClient;
 import org.apache.iotdb.flink.sql.common.Options;
 import org.apache.iotdb.flink.sql.common.Utils;
+import org.apache.iotdb.flink.sql.exception.IllegalOptionException;
 import org.apache.iotdb.flink.sql.wrapper.SchemaWrapper;
 import org.apache.iotdb.flink.sql.wrapper.TabletWrapper;
+import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.Tablet;
@@ -53,16 +55,24 @@ import java.util.stream.Collectors;
 public class IoTDBCDCSourceFunction<RowData> extends RichSourceFunction<RowData> {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBCDCSourceFunction.class);
   private final List<IoTDBWebsocketClient> socketClients = new ArrayList<>();
+  private final int cdcPort;
   private final List<String> nodeUrls;
+  private final String taskName;
   private final String device;
+  private final String user;
+  private final String password;
   private final List<String> measurements;
   private final BlockingQueue<TabletWrapper> tabletWrappers;
   private transient ExecutorService consumeExecutor;
 
   public IoTDBCDCSourceFunction(ReadableConfig options, SchemaWrapper schemaWrapper) {
     List<Tuple2<String, DataType>> tableSchema = schemaWrapper.getSchema();
+    cdcPort = options.get(Options.CDC_PORT);
     nodeUrls = Arrays.asList(options.get(Options.NODE_URLS).split(","));
+    taskName = options.get(Options.CDC_TASK_NAME);
     device = options.get(Options.DEVICE);
+    user = options.get(Options.USER);
+    password = options.get(Options.PASSWORD);
     measurements =
         tableSchema.stream().map(field -> String.valueOf(field.f0)).collect(Collectors.toList());
 
@@ -72,9 +82,53 @@ public class IoTDBCDCSourceFunction<RowData> extends RichSourceFunction<RowData>
   @Override
   public void open(Configuration parameters) throws Exception {
     super.open(parameters);
+    Session session =
+        new Session.Builder().username(user).password(password).nodeUrls(nodeUrls).build();
+    session.open(false);
+    if (!session
+        .executeQueryStatement(String.format("show pipe flink_cdc_%s", taskName))
+        .hasNext()) {
+      for (String nodeUrl : nodeUrls) {
+        URI uri = new URI(String.format("ws://%s:%d", nodeUrl.split(":")[0], cdcPort));
+        if (Utils.isURIAvailable(uri)) {
+          throw new IllegalOptionException(
+              String.format(
+                  "The port `%d` has been bound. Please use another one by option `cdc.port`.",
+                  cdcPort));
+        }
+      }
+      String createPipeCommand =
+          String.format(
+              "CREATE PIPE flink_cdc_%s\n"
+                  + "WITH EXTRACTOR (\n"
+                  + "'extractor' = 'iotdb-extractor',\n"
+                  + "'extractor.pattern' = '%s',\n"
+                  + "'extractor.history.enable' = 'true',\n"
+                  + "'extractor.realtime.enable' = 'true',\n"
+                  + "'extractor.realtime.mode' = 'hybrid',\n"
+                  + ") WITH CONNECTOR (\n"
+                  + "'connector' = 'websocket-connector',\n"
+                  + ")",
+              taskName, device);
+      session.executeNonQueryStatement(createPipeCommand);
+    }
+
+    String status =
+        session
+            .executeQueryStatement(String.format("show pipe flink_cdc_%s", taskName))
+            .next()
+            .getFields()
+            .get(2)
+            .getStringValue();
+    if ("STOPPED".equals(status)) {
+      session.executeNonQueryStatement(String.format("start pipe flink_cdc_%s", taskName));
+    }
+
+    session.close();
+
     consumeExecutor = Executors.newFixedThreadPool(1);
     for (String nodeUrl : nodeUrls) {
-      URI uri = new URI(String.format("ws://%s", nodeUrl));
+      URI uri = new URI(String.format("ws://%s:%s", nodeUrl.split(":")[0], cdcPort));
       socketClients.add(initAndGet(uri));
     }
   }
@@ -99,6 +153,8 @@ public class IoTDBCDCSourceFunction<RowData> extends RichSourceFunction<RowData>
             Thread.sleep(1000);
           }
           socketClient.send("START");
+        } else {
+          Thread.sleep(1000);
         }
       }
     }
