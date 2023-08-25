@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftAsyncPipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
@@ -178,9 +177,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
         final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
             (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
         final TPipeTransferReq pipeTransferReq;
-        if (pipeInsertNodeTabletInsertionEvent
-                .getPattern()
-                .equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE)
+        if (!pipeInsertNodeTabletInsertionEvent.shouldParsePattern()
             && pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCache() == null) {
           pipeTransferReq =
               PipeTransferTabletBinaryReq.toTPipeTransferReq(

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.connector.protocol.airgap;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapOneByteResponse;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
@@ -261,9 +260,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       Socket socket, PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, WALPipeException, IOException {
     byte[] bytes;
-    if (pipeInsertNodeTabletInsertionEvent
-            .getPattern()
-            .equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE)
+    if (!pipeInsertNodeTabletInsertionEvent.shouldParsePattern()
         && pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCache() == null) {
       bytes =
           PipeTransferTabletBinaryReq.toTransferInsertNodeBytes(

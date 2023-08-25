@@ -22,7 +22,6 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.sync;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftSyncPipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
@@ -293,9 +292,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       throws PipeException, TException, WALPipeException {
     final TPipeTransferResp resp;
 
-    if (pipeInsertNodeTabletInsertionEvent
-            .getPattern()
-            .equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE)
+    if (!pipeInsertNodeTabletInsertionEvent.shouldParsePattern()
         && pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCache() == null) {
       resp =
           client.pipeTransfer(
