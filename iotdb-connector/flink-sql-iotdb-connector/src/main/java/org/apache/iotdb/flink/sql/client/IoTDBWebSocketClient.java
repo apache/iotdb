@@ -55,7 +55,7 @@ public class IoTDBWebSocketClient extends WebSocketClient {
   @Override
   public void onMessage(ByteBuffer bytes) {
     super.onMessage(bytes);
-    // Do not log this to reduce the total log amount
+    // Do not log this to avoid log amount becoming to large
     long commitId = bytes.getLong();
     Tablet tablet = Tablet.deserialize(bytes);
     function.addTabletWrapper(new TabletWrapper(commitId, this, tablet));

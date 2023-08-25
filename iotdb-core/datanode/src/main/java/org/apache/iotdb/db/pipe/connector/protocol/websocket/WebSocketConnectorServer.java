@@ -79,13 +79,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
 
   @Override
   public void onMessage(WebSocket webSocket, String s) {
-    String log =
-        String.format(
-            "Received a message `%s` from %s:%d",
-            s,
-            webSocket.getRemoteSocketAddress().getHostName(),
-            webSocket.getRemoteSocketAddress().getPort());
-    LOGGER.info(log);
+    // Do not log this to avoid log amount becoming to large
     if (s.startsWith("START")) {
       handleStart(webSocket);
     } else if (s.startsWith("ACK")) {
