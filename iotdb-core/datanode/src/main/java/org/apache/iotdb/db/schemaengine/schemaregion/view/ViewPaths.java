@@ -109,7 +109,7 @@ public class ViewPaths {
 
     for (Expression expression : expressionsList) {
       List<Expression> aggList = collectAggExpVisitor.process(expression, null);
-      if (aggList.size() > 0) {
+      if (!aggList.isEmpty()) {
         return new Pair<>(false, new ViewContainsAggregationException(aggList.get(0).toString()));
       }
     }

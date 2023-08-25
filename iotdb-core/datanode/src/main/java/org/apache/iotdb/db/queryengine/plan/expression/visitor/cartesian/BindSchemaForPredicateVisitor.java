@@ -34,7 +34,9 @@ import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.cartesianProduct;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructBinaryExpressions;
@@ -42,6 +44,7 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.recon
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperands;
 import static org.apache.iotdb.db.queryengine.plan.expression.visitor.cartesian.BindSchemaForExpressionVisitor.transformViewPath;
 import static org.apache.iotdb.db.utils.TypeInferenceUtils.bindTypeForAggregationNonSeriesInputExpressions;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 
 public class BindSchemaForPredicateVisitor
     extends CartesianProductVisitor<BindSchemaForPredicateVisitor.Context> {
@@ -63,6 +66,21 @@ public class BindSchemaForPredicateVisitor
 
   @Override
   public List<Expression> visitFunctionExpression(FunctionExpression predicate, Context context) {
+    if (COUNT_TIME.equalsIgnoreCase(predicate.getFunctionName())) {
+      List<Expression> usedExpressions =
+          predicate.getExpressions().stream()
+              .flatMap(e -> process(e, context).stream())
+              .collect(Collectors.toList());
+
+      Expression countTimeExpression =
+          new FunctionExpression(
+              COUNT_TIME,
+              new LinkedHashMap<>(),
+              Collections.singletonList(new TimestampOperand()),
+              usedExpressions);
+      return Collections.singletonList(countTimeExpression);
+    }
+
     List<List<Expression>> extendedExpressions = new ArrayList<>();
     for (Expression suffixExpression : predicate.getExpressions()) {
       extendedExpressions.add(

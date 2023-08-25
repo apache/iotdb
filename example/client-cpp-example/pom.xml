@@ -97,9 +97,9 @@
                         <configuration>
                             <artifactItems>
                                 <artifactItem>
-                                    <groupId>org.apache.iotdb</groupId>
+                                    <groupId>org.apache.iotdb.tools</groupId>
                                     <artifactId>iotdb-tools-thrift</artifactId>
-                                    <version>${project.version}</version>
+                                    <version>${iotdb-tools-thrift.version}</version>
                                     <classifier>${os.classifier}</classifier>
                                     <type>zip</type>
                                     <overWrite>true</overWrite>
