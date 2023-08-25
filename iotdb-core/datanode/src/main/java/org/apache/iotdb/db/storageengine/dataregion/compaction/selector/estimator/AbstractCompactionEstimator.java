@@ -50,9 +50,6 @@ public abstract class AbstractCompactionEstimator implements Closeable {
 
   protected IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  protected List<TsFileResource> seqResources;
-  protected List<TsFileResource> unseqResources;
-
   protected long compressionRatio = (long) CompressionRatio.getInstance().getRatio() + 1;
 
   protected abstract long calculatingMetadataMemoryCost(CompactionTaskInfo taskInfo);
