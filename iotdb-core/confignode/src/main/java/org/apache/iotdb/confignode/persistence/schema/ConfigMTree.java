@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
@@ -63,6 +62,7 @@ import java.util.TreeSet;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_TEMPLATE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE;
@@ -171,7 +171,7 @@ public class ConfigMTree {
    * @return a list contains all databases related to given path
    */
   public List<PartialPath> getBelongedDatabases(PartialPath pathPattern) throws MetadataException {
-    return collectDatabases(pathPattern, false, true);
+    return collectDatabases(pathPattern, ALL_MATCH_SCOPE, false, true);
   }
 
   /**
@@ -180,21 +180,26 @@ public class ConfigMTree {
    * collected.
    *
    * @param pathPattern a path pattern or a full path
+   * @param scope traversing scope
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @return a list contains all database names under given path pattern
    */
-  public List<PartialPath> getMatchedDatabases(PartialPath pathPattern, boolean isPrefixMatch)
+  public List<PartialPath> getMatchedDatabases(
+      PartialPath pathPattern, PathPatternTree scope, boolean isPrefixMatch)
       throws MetadataException {
-    return collectDatabases(pathPattern, isPrefixMatch, false);
+    return collectDatabases(pathPattern, scope, isPrefixMatch, false);
   }
 
   private List<PartialPath> collectDatabases(
-      PartialPath pathPattern, boolean isPrefixMatch, boolean collectInternal)
+      PartialPath pathPattern,
+      PathPatternTree scope,
+      boolean isPrefixMatch,
+      boolean collectInternal)
       throws MetadataException {
     List<PartialPath> result = new LinkedList<>();
     try (DatabaseCollector<?, ?> collector =
         new DatabaseCollector<List<PartialPath>, IConfigMNode>(
-            root, pathPattern, store, isPrefixMatch, SchemaConstant.ALL_MATCH_SCOPE) {
+            root, pathPattern, store, isPrefixMatch, scope) {
 
           @Override
           protected void collectDatabase(IDatabaseMNode<IConfigMNode> node) {
@@ -232,13 +237,13 @@ public class ConfigMTree {
    * used to match prefix path. All timeseries start with the matched prefix path will be counted.
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard.
+   * @param scope traversing scope
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
-  public int getDatabaseNum(PartialPath pathPattern, boolean isPrefixMatch)
+  public int getDatabaseNum(PartialPath pathPattern, PathPatternTree scope, boolean isPrefixMatch)
       throws MetadataException {
     try (DatabaseCounter<IConfigMNode> counter =
-        new DatabaseCounter<>(
-            root, pathPattern, store, isPrefixMatch, SchemaConstant.ALL_MATCH_SCOPE)) {
+        new DatabaseCounter<>(root, pathPattern, store, isPrefixMatch, scope)) {
       return (int) counter.count();
     }
   }
@@ -382,7 +387,7 @@ public class ConfigMTree {
     List<PartialPath> result = new LinkedList<>();
     try (MNodeAboveDBCollector<Void, IConfigMNode> collector =
         new MNodeAboveDBCollector<Void, IConfigMNode>(
-            root, pathPattern, store, isPrefixMatch, SchemaConstant.ALL_MATCH_SCOPE) {
+            root, pathPattern, store, isPrefixMatch, ALL_MATCH_SCOPE) {
           @Override
           protected Void collectMNode(IConfigMNode node) {
             result.add(getPartialPathFromRootToNode(node));
@@ -486,12 +491,12 @@ public class ConfigMTree {
     }
   }
 
-  public List<String> getPathsSetOnTemplate(int templateId, boolean filterPreUnset)
-      throws MetadataException {
+  public List<String> getPathsSetOnTemplate(
+      int templateId, PathPatternTree scope, boolean filterPreUnset) throws MetadataException {
     List<String> resSet = new ArrayList<>();
     try (MNodeCollector<Void, IConfigMNode> collector =
         new MNodeCollector<Void, IConfigMNode>(
-            root, new PartialPath(ALL_RESULT_NODES), store, false, SchemaConstant.ALL_MATCH_SCOPE) {
+            root, new PartialPath(ALL_RESULT_NODES), store, false, scope) {
           @Override
           protected boolean acceptFullMatchedNode(IConfigMNode node) {
             if (super.acceptFullMatchedNode(node)) {
@@ -538,8 +543,7 @@ public class ConfigMTree {
       throws MetadataException {
     Map<Integer, Set<PartialPath>> result = new HashMap<>();
     try (MNodeCollector<Void, IConfigMNode> collector =
-        new MNodeCollector<Void, IConfigMNode>(
-            root, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
+        new MNodeCollector<Void, IConfigMNode>(root, pathPattern, store, false, ALL_MATCH_SCOPE) {
           @Override
           protected boolean acceptFullMatchedNode(IConfigMNode node) {
             return (node.getSchemaTemplateId() != NON_TEMPLATE)

@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -29,10 +31,19 @@ import java.util.List;
 
 public class ShowTTLStatement extends ShowStatement implements IConfigStatement {
   private List<PartialPath> pathPatterns = new ArrayList<>();
+  private PathPatternTree authorityScope = SchemaConstant.ALL_MATCH_SCOPE;
   private boolean isAll = false;
 
   public boolean isAll() {
     return isAll;
+  }
+
+  public PathPatternTree getAuthorityScope() {
+    return authorityScope;
+  }
+
+  public void setAuthorityScope(PathPatternTree authorityScope) {
+    this.authorityScope = authorityScope;
   }
 
   @Override

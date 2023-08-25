@@ -29,7 +29,6 @@ import java.util.List;
 
 public class ShowChildNodesStatement extends ShowStatement {
   private final PartialPath partialPath;
-
   private PathPatternTree authorityScope = SchemaConstant.ALL_MATCH_SCOPE;
 
   public ShowChildNodesStatement(PartialPath partialPath) {

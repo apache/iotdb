@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
@@ -51,12 +53,22 @@ import java.util.stream.Collectors;
 public class ShowDatabaseStatement extends ShowStatement implements IConfigStatement {
 
   private final PartialPath pathPattern;
+  private PathPatternTree authorityScope = SchemaConstant.ALL_MATCH_SCOPE;
+
   private boolean isDetailed;
 
   public ShowDatabaseStatement(PartialPath pathPattern) {
     super();
     this.pathPattern = pathPattern;
     this.isDetailed = false;
+  }
+
+  public PathPatternTree getAuthorityScope() {
+    return authorityScope;
+  }
+
+  public void setAuthorityScope(PathPatternTree authorityScope) {
+    this.authorityScope = authorityScope;
   }
 
   public PartialPath getPathPattern() {

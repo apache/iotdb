@@ -90,6 +90,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_TEMPLATE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.SYSTEM_DATABASE_PATTERN;
 
@@ -262,8 +263,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       databaseReadWriteLock.readLock().lock();
       try {
         int count =
-            mTree.getDatabaseNum(ALL_MATCH_PATTERN, false)
-                - mTree.getDatabaseNum(SYSTEM_DATABASE_PATTERN, false);
+            mTree.getDatabaseNum(ALL_MATCH_PATTERN, ALL_MATCH_SCOPE, false)
+                - mTree.getDatabaseNum(SYSTEM_DATABASE_PATTERN, ALL_MATCH_SCOPE, false);
         if (count >= limit) {
           throw new SchemaQuotaExceededException(limit);
         }
@@ -279,7 +280,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock.readLock().lock();
     try {
       PartialPath patternPath = new PartialPath(plan.getDatabasePattern());
-      result.setCount(mTree.getDatabaseNum(patternPath, false));
+      result.setCount(mTree.getDatabaseNum(patternPath, plan.getScope(), false));
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     } catch (MetadataException e) {
       LOGGER.error(ERROR_NAME, e);
@@ -299,7 +300,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try {
       Map<String, TDatabaseSchema> schemaMap = new HashMap<>();
       PartialPath patternPath = new PartialPath(plan.getDatabasePattern());
-      List<PartialPath> matchedPaths = mTree.getMatchedDatabases(patternPath, false);
+      List<PartialPath> matchedPaths =
+          mTree.getMatchedDatabases(patternPath, plan.getScope(), false);
       for (PartialPath path : matchedPaths) {
         schemaMap.put(
             path.getFullPath(),
@@ -515,7 +517,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try {
       for (String rawPath : rawPathList) {
         PartialPath patternPath = new PartialPath(rawPath);
-        List<PartialPath> matchedPaths = mTree.getMatchedDatabases(patternPath, false);
+        List<PartialPath> matchedPaths =
+            mTree.getMatchedDatabases(patternPath, ALL_MATCH_SCOPE, false);
         for (PartialPath path : matchedPaths) {
           schemaMap.put(
               path.getFullPath(),
@@ -842,13 +845,14 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     TSStatus status;
     try {
       String templateName = getPathsSetTemplatePlan.getName();
+      PathPatternTree scope = getPathsSetTemplatePlan.getScope();
       int templateId;
       if (templateName.equals(ONE_LEVEL_PATH_WILDCARD)) {
         templateId = ALL_TEMPLATE;
       } else {
         templateId = templateTable.getTemplate(templateName).getId();
       }
-      pathInfoResp.setPathList(mTree.getPathsSetOnTemplate(templateId, false));
+      pathInfoResp.setPathList(mTree.getPathsSetOnTemplate(templateId, scope, false));
       status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
       status = RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
@@ -864,7 +868,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     for (Template template : templateList) {
       id = template.getId();
       try {
-        List<String> pathList = mTree.getPathsSetOnTemplate(id, true);
+        List<String> pathList = mTree.getPathsSetOnTemplate(id, ALL_MATCH_SCOPE, true);
         if (!pathList.isEmpty()) {
           List<Pair<String, Boolean>> pathSetInfoList = new ArrayList<>();
           for (String path : pathList) {

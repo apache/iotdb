@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata.template;
 
+import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -28,11 +30,20 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowStatement;
 public class ShowPathSetTemplateStatement extends ShowStatement implements IConfigStatement {
 
   private String templateName;
+  private PathPatternTree authorityScope = SchemaConstant.ALL_MATCH_SCOPE;
 
   public ShowPathSetTemplateStatement(String templateName) {
     super();
     statementType = StatementType.SHOW_PATH_SET_SCHEMA_TEMPLATE;
     this.templateName = templateName;
+  }
+
+  public PathPatternTree getAuthorityScope() {
+    return authorityScope;
+  }
+
+  public void setAuthorityScope(PathPatternTree authorityScope) {
+    this.authorityScope = authorityScope;
   }
 
   public String getTemplateName() {

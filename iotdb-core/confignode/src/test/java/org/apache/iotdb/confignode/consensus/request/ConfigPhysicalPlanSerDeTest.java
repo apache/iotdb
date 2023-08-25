@@ -321,7 +321,8 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void CountStorageGroupPlanTest() throws IOException {
-    CountDatabasePlan req0 = new CountDatabasePlan(Arrays.asList("root", "sg"));
+    CountDatabasePlan req0 =
+        new CountDatabasePlan(Arrays.asList("root", "sg"), SchemaConstant.ALL_MATCH_SCOPE);
     CountDatabasePlan req1 =
         (CountDatabasePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -329,7 +330,8 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void GetStorageGroupPlanTest() throws IOException {
-    GetDatabasePlan req0 = new GetDatabasePlan(Arrays.asList("root", "sg"));
+    GetDatabasePlan req0 =
+        new GetDatabasePlan(Arrays.asList("root", "sg"), SchemaConstant.ALL_MATCH_SCOPE);
     CountDatabasePlan req1 =
         (CountDatabasePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -954,7 +956,7 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void ShowPathSetTemplatePlanTest() throws IOException {
     GetPathsSetTemplatePlan getPathsSetTemplatePlan0 =
-        new GetPathsSetTemplatePlan("template_name_test");
+        new GetPathsSetTemplatePlan("template_name_test", SchemaConstant.ALL_MATCH_SCOPE);
     GetPathsSetTemplatePlan getPathsSetTemplatePlan1 =
         (GetPathsSetTemplatePlan)
             ConfigPhysicalPlan.Factory.create(getPathsSetTemplatePlan0.serializeToByteBuffer());

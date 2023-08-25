@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.persistence.schema;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
@@ -110,7 +111,9 @@ public class ClusterSchemaInfoTest {
     Assert.assertEquals(storageGroupPathList.size(), clusterSchemaInfo.getDatabaseNames().size());
 
     GetDatabasePlan getStorageGroupReq =
-        new GetDatabasePlan(Arrays.asList(PathUtils.splitPathToDetachedNodes("root.**")));
+        new GetDatabasePlan(
+            Arrays.asList(PathUtils.splitPathToDetachedNodes("root.**")),
+            SchemaConstant.ALL_MATCH_SCOPE);
     Map<String, TDatabaseSchema> reloadResult =
         clusterSchemaInfo.getMatchedDatabaseSchemas(getStorageGroupReq).getSchemaMap();
     Assert.assertEquals(testMap, reloadResult);
@@ -143,7 +146,8 @@ public class ClusterSchemaInfoTest {
 
     List<String> pathList =
         clusterSchemaInfo
-            .getPathsSetTemplate(new GetPathsSetTemplatePlan(templateName))
+            .getPathsSetTemplate(
+                new GetPathsSetTemplatePlan(templateName, SchemaConstant.ALL_MATCH_SCOPE))
             .getPathList();
     Assert.assertEquals(3, pathList.size());
     Assert.assertTrue(pathList.contains("root.test1.template"));

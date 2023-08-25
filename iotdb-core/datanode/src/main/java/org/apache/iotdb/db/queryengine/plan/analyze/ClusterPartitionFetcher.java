@@ -49,14 +49,12 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.partition.PartitionCache;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -314,13 +312,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   private TSchemaPartitionReq constructSchemaPartitionReq(PathPatternTree patternTree) {
-    PublicBAOS baos = new PublicBAOS();
     try {
-      patternTree.serialize(baos);
-      ByteBuffer serializedPatternTree = ByteBuffer.allocate(baos.size());
-      serializedPatternTree.put(baos.getBuf(), 0, baos.size());
-      serializedPatternTree.flip();
-      return new TSchemaPartitionReq(serializedPatternTree);
+      return new TSchemaPartitionReq(patternTree.serialize());
     } catch (IOException e) {
       throw new StatementAnalyzeException("An error occurred when serializing pattern tree");
     }
@@ -328,20 +321,10 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   private TSchemaNodeManagementReq constructSchemaNodeManagementPartitionReq(
       PathPatternTree patternTree, PathPatternTree scope, Integer level) {
-    PublicBAOS baos = new PublicBAOS();
     try {
-      patternTree.serialize(baos);
-      ByteBuffer serializedPatternTree = ByteBuffer.allocate(baos.size());
-      serializedPatternTree.put(baos.getBuf(), 0, baos.size());
-      serializedPatternTree.flip();
       TSchemaNodeManagementReq schemaNodeManagementReq =
-          new TSchemaNodeManagementReq(serializedPatternTree);
-      baos = new PublicBAOS();
-      scope.serialize(baos);
-      ByteBuffer serializedScopeTree = ByteBuffer.allocate(baos.size());
-      serializedScopeTree.put(baos.getBuf(), 0, baos.size());
-      serializedScopeTree.flip();
-      schemaNodeManagementReq.setScopePatternTree(serializedScopeTree);
+          new TSchemaNodeManagementReq(patternTree.serialize());
+      schemaNodeManagementReq.setScopePatternTree(scope.serialize());
       if (null == level) {
         schemaNodeManagementReq.setLevel(-1);
       } else {
