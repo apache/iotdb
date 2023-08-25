@@ -885,11 +885,19 @@ public class ProcedureManager {
     }
   }
 
-  public void invalidAuthCache(String user, String role, List<TDataNodeConfiguration> dns) {
+  public TSStatus invalidAuthCache(String user, String role, List<TDataNodeConfiguration> dns) {
     try {
       final long procedureId =
           executor.submitProcedure(new InvalidAuthCacheProcedure(user, role, dns));
-      LOGGER.info("InvalidAuthCacheProcedure was submitted, procedureId: {}.", procedureId);
+      List<TSStatus> statusList = new ArrayList<>();
+      boolean isSucceed =
+              waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
+      if (isSucceed) {
+        return RpcUtils.SUCCESS_STATUS;
+      } else {
+        return new TSStatus(TSStatusCode.AUTH_INVALID_CACHE_EXCEPTION.getStatusCode())
+                .setMessage(statusList.get(0).getMessage());
+      }
     } catch (Exception e) {
       LOGGER.warn("InvalidAuthCacheProcedure was failed to submit.", e);
     }
