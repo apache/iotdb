@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.extractor.realtime;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
@@ -47,43 +46,48 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
 
   @Override
   public void extract(PipeRealtimeEvent event) {
-    EnrichedEvent enrichedEvent = event.getEvent();
+    if (event.getEvent() instanceof PipeHeartbeatEvent) {
+      extractHeartbeat(event);
+      return;
+    }
 
-    if (enrichedEvent instanceof TabletInsertionEvent) {
-      event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TABLET);
-      if (!pendingQueue.waitedOffer(event)) {
-        // this would not happen, but just in case.
-        // pendingQueue is unbounded, so it should never reach capacity.
-        final String errorMessage =
-            String.format(
-                "extract: pending queue of PipeRealtimeDataRegionLogExtractor %s "
-                    + "has reached capacity, discard tablet event %s, current state %s",
-                this, event, event.getTsFileEpoch().getState(this));
-        LOGGER.error(errorMessage);
-        PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+    event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TABLET);
 
-        // ignore this event.
-        event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
-      }
-    } else if (enrichedEvent instanceof PipeHeartbeatEvent) {
-      if (!pendingQueue.waitedOffer(event)) {
-        // this would not happen, but just in case.
-        // pendingQueue is unbounded, so it should never reach capacity.
-        final String errorMessage =
-            String.format(
-                "extract: pending queue of PipeRealtimeDataRegionLogExtractor %s "
-                    + "has reached capacity, discard heartbeat event %s, current state %s",
-                this, event, event.getTsFileEpoch().getState(this));
-        LOGGER.warn(errorMessage);
+    if (!(event.getEvent() instanceof TabletInsertionEvent)) {
+      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
+      return;
+    }
 
-        // Do not report exception since the PipeHeartbeatEvent doesn't affect the correction of
-        // pipe transmission.
+    if (!pendingQueue.waitedOffer(event)) {
+      // this would not happen, but just in case.
+      // pendingQueue is unbounded, so it should never reach capacity.
+      final String errorMessage =
+          String.format(
+              "extract: pending queue of PipeRealtimeDataRegionLogExtractor %s "
+                  + "has reached capacity, discard tablet event %s, current state %s",
+              this, event, event.getTsFileEpoch().getState(this));
+      LOGGER.error(errorMessage);
+      PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
 
-        // ignore this event.
-        event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
-      }
-    } else {
-      event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TABLET);
+      // ignore this event.
+      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
+    }
+  }
+
+  private void extractHeartbeat(PipeRealtimeEvent event) {
+    if (!pendingQueue.waitedOffer(event)) {
+      // this would not happen, but just in case.
+      // pendingQueue is unbounded, so it should never reach capacity.
+      LOGGER.error(
+          "extract: pending queue of PipeRealtimeDataRegionTsFileExtractor {} "
+              + "has reached capacity, discard heartbeat event {}",
+          this,
+          event);
+
+      // Do not report exception since the PipeHeartbeatEvent doesn't affect the correction of
+      // pipe progress.
+
+      // ignore this event.
       event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
     }
   }

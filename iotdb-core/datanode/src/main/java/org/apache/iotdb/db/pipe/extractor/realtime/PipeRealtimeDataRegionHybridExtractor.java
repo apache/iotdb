@@ -55,7 +55,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     } else if (eventToExtract instanceof TsFileInsertionEvent) {
       extractTsFileInsertion(event);
     } else if (eventToExtract instanceof PipeHeartbeatEvent) {
-      extractHeartbeatInsertion(event);
+      extractHeartbeat(event);
     } else {
       throw new UnsupportedOperationException(
           String.format(
@@ -154,22 +154,21 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     }
   }
 
-  private void extractHeartbeatInsertion(PipeRealtimeEvent event) {
+  private void extractHeartbeat(PipeRealtimeEvent event) {
     if (!pendingQueue.waitedOffer(event)) {
       // this would not happen, but just in case.
       // pendingQueue is unbounded, so it should never reach capacity.
-      final String errorMessage =
-          String.format(
-              "extractHeartbeatInsertion: pending queue of PipeRealtimeDataRegionHybridExtractor %s "
-                  + "has reached capacity, discard Heartbeat event %s, current state %s",
-              this, event, event.getTsFileEpoch().getState(this));
-      LOGGER.warn(errorMessage);
+      LOGGER.error(
+          "extract: pending queue of PipeRealtimeDataRegionTsFileExtractor {} "
+              + "has reached capacity, discard heartbeat event {}",
+          this,
+          event);
 
-      // Do not report exception since the PipeHeartbeatEvent doesn't affect the correction of pipe
-      // transmission.
+      // Do not report exception since the PipeHeartbeatEvent doesn't affect the correction of
+      // pipe progress.
 
-      // Ignore the heartbeat event.
-      event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
+      // ignore this event.
+      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
     }
   }
 
@@ -281,19 +280,14 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName())) {
       return event.getEvent();
     } else {
-      // if the event's reference count can not be increased, it means the data represented by
-      // this event is not reliable anymore. the data has been lost. we simply discard this event
-      // and report the exception to PipeRuntimeAgent.
-      final String errorMessage =
-          String.format(
-              "Heartbeat Event %s can not be supplied because "
-                  + "the reference count can not be increased, "
-                  + "the data represented by this event is lost",
-              event.getEvent());
-      LOGGER.warn(errorMessage);
+      // this would not happen, but just in case.
+      LOGGER.error(
+          "Heartbeat Event {} can not be supplied because "
+              + "the reference count can not be increased",
+          event.getEvent());
 
       // Do not report exception since the PipeHeartbeatEvent doesn't affect the correction of pipe
-      // transmission.
+      // progress.
 
       return null;
     }
