@@ -26,13 +26,14 @@ import java.util.Map;
 public enum PipeRequestType {
   HANDSHAKE((short) 1),
 
-  TRANSFER_INSERT_NODE((short) 2),
-  TRANSFER_TABLET((short) 3),
+  TRANSFER_TABLET_INSERT_NODE((short) 2),
+  TRANSFER_TABLET_RAW((short) 3),
 
   TRANSFER_FILE_PIECE((short) 4),
   TRANSFER_FILE_SEAL((short) 5),
 
-  TRANSFER_BATCH((short) 6),
+  TRANSFER_TABLET_BATCH((short) 6),
+  TRANSFER_TABLET_BINARY((short) 7),
   ;
 
   private final short type;
