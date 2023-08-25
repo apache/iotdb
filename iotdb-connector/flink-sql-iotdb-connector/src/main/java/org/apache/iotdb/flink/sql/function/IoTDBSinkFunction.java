@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.flink.sql.function;
 
 import org.apache.iotdb.flink.sql.common.Options;
@@ -62,15 +63,15 @@ public class IoTDBSinkFunction implements SinkFunction<RowData> {
   }
 
   public IoTDBSinkFunction(ReadableConfig options, SchemaWrapper schemaWrapper) {
-    // get schema
+    // Get schema
     this.schema = schemaWrapper.getSchema();
-    // get options
+    // Get options
     nodeUrls = Arrays.asList(options.get(Options.NODE_URLS).split(","));
     user = options.get(Options.USER);
     password = options.get(Options.PASSWORD);
     device = options.get(Options.DEVICE);
     aligned = options.get(Options.ALIGNED);
-    // get measurements and data types from schema
+    // Get measurements and data types from schema
     measurements =
         schema.stream().map(field -> String.valueOf(field.f0)).collect(Collectors.toList());
     dataTypes = schema.stream().map(field -> TYPE_MAP.get(field.f1)).collect(Collectors.toList());
@@ -78,7 +79,7 @@ public class IoTDBSinkFunction implements SinkFunction<RowData> {
 
   @Override
   public void invoke(RowData rowData, Context context) throws Exception {
-    // open the session if the session has not been opened
+    // Open the session if the session has not been opened
     if (session == null) {
       session = new Session.Builder().nodeUrls(nodeUrls).username(user).password(password).build();
       session.open(false);

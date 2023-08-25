@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.flink.sql.common;
 
 import org.apache.iotdb.flink.sql.exception.UnsupportedDataTypeException;
@@ -57,7 +58,7 @@ public class Utils {
       } else if ("TEXT".equals(dataType)) {
         return StringData.fromString(value.getStringValue());
       } else {
-        String exception = String.format("IoTDB don't support the data type: %s", dataType);
+        String exception = String.format("IoTDB doesn't support the data type: %s", dataType);
         throw new UnsupportedDataTypeException(exception);
       }
     } catch (NullFieldException e) {
@@ -98,7 +99,7 @@ public class Utils {
       } else if (dataType.equals(DataTypes.STRING())) {
         return value.getString(index).toString();
       } else {
-        throw new UnsupportedDataTypeException("IoTDB don't support the data type: " + dataType);
+        throw new UnsupportedDataTypeException("IoTDB doesn't support the data type: " + dataType);
       }
     } catch (NullPointerException e) {
       return null;
@@ -117,8 +118,7 @@ public class Utils {
     for (int i = 0; i < fields.size(); i++) {
       values.add(getValue(fields.get(i), columnTypes.get(i + 1)));
     }
-    GenericRowData rowData = GenericRowData.of(values.toArray());
-    return rowData;
+    return GenericRowData.of(values.toArray());
   }
 
   public static List<Object> object2List(Object obj, TSDataType dataType) {

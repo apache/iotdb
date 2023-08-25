@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.flink.sql.client;
 
 import org.apache.iotdb.flink.sql.function.IoTDBCDCSourceFunction;
@@ -30,11 +31,11 @@ import org.slf4j.LoggerFactory;
 import java.net.URI;
 import java.nio.ByteBuffer;
 
-public class IoTDBWebsocketClient extends WebSocketClient {
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBWebsocketClient.class);
+public class IoTDBWebSocketClient extends WebSocketClient {
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBWebSocketClient.class);
   private final IoTDBCDCSourceFunction function;
 
-  public IoTDBWebsocketClient(URI uri, IoTDBCDCSourceFunction function) {
+  public IoTDBWebSocketClient(URI uri, IoTDBCDCSourceFunction function) {
     super(uri);
     this.function = function;
   }
@@ -42,18 +43,19 @@ public class IoTDBWebsocketClient extends WebSocketClient {
   @Override
   public void onOpen(ServerHandshake serverHandshake) {
     String log =
-        String.format("The connection with %s:%d has been created!", uri.getHost(), uri.getPort());
+        String.format("The connection with %s:%d has been created.", uri.getHost(), uri.getPort());
     LOGGER.info(log);
   }
 
   @Override
-  public void onMessage(String s) {}
+  public void onMessage(String s) {
+    // Do nothing
+  }
 
   @Override
   public void onMessage(ByteBuffer bytes) {
     super.onMessage(bytes);
-    String log = String.format("Received a message from %s:%d", uri.getHost(), uri.getPort());
-    LOGGER.info(log);
+    // Do not log this to reduce the total log amount
     long commitId = bytes.getLong();
     Tablet tablet = Tablet.deserialize(bytes);
     function.addTabletWrapper(new TabletWrapper(commitId, this, tablet));
@@ -61,12 +63,15 @@ public class IoTDBWebsocketClient extends WebSocketClient {
 
   @Override
   public void onClose(int i, String s, boolean b) {
-    LOGGER.info("The connection has been closed!");
+    LOGGER.info("The connection to {}:{} has been closed.", uri.getHost(), uri.getPort());
   }
 
   @Override
   public void onError(Exception e) {
-    String log = String.format("Got an error: %s", e.getMessage());
+    String log =
+        String.format(
+            "An error occurred when connecting to %s:%s: %s.",
+            uri.getHost(), uri.getPort(), e.getMessage());
     LOGGER.error(log);
   }
 }

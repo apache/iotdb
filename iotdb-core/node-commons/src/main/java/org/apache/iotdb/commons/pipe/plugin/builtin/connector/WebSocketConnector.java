@@ -20,9 +20,9 @@
 package org.apache.iotdb.commons.pipe.plugin.builtin.connector;
 
 /**
- * This class is a placeholder and should not be initialized. It represents the IoTDB Thrift
+ * This class is a placeholder and should not be initialized. It represents the IoTDB WebSocket
  * connector. There is a real implementation in the server module but cannot be imported here. The
  * pipe agent in the server module will replace this class with the real implementation when
  * initializing the IoTDB Thrift connector.
  */
-public class WebsocketConnector extends PlaceholderConnector {}
+public class WebSocketConnector extends PlaceholderConnector {}

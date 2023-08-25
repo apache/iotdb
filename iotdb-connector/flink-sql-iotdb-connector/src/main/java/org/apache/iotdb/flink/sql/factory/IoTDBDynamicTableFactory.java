@@ -39,9 +39,7 @@ import org.apache.flink.table.factories.DynamicTableSourceFactory;
 import org.apache.flink.table.factories.FactoryUtil;
 import org.apache.flink.table.types.DataType;
 
-import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 public class IoTDBDynamicTableFactory
@@ -128,14 +126,14 @@ public class IoTDBDynamicTableFactory
       if (Utils.isNumeric(fieldName)) {
         throw new IllegalIoTDBPathException(
             String.format(
-                "The field name `%s` is a purely number, it's not allowed in IoTDB.", fieldName));
+                "The field name `%s` is a pure number, which is not allowed in IoTDB.", fieldName));
       }
     }
 
     for (DataType fieldDataType : fieldDataTypes) {
       if (!supportedDataTypes.contains(fieldDataType)) {
         throw new UnsupportedDataTypeException(
-            "IoTDB don't support the data type: " + fieldDataType);
+            "IoTDB doesn't support the data type: " + fieldDataType);
       }
     }
 
@@ -152,17 +150,24 @@ public class IoTDBDynamicTableFactory
       }
     }
 
-    List<String> nodeUrls = Arrays.asList(options.get(Options.NODE_URLS).split(","));
+    String[] nodeUrls = options.get(Options.NODE_URLS).split(",");
     for (String nodeUrl : nodeUrls) {
       String[] split = nodeUrl.split(":");
       if (split.length != 2) {
         throw new IllegalUrlPathException("Every node's URL must be in the format of `host:port`.");
       }
-      if (!Utils.isNumeric(split[1])
-          && Integer.valueOf(split[1]) > 65535
-          && Integer.valueOf(split[1]) < 1) {
+      if (!Utils.isNumeric(split[1])) {
         throw new IllegalUrlPathException(
-            "The port must be a number, and it could not be greater than 65535 or less than 1.");
+            String.format("The port in url %s must be a number.", nodeUrl));
+      } else {
+        int port = Integer.parseInt(split[1]);
+        if (port > 65535) {
+          throw new IllegalUrlPathException(
+              String.format("The port in url %s must be smaller than 65536", nodeUrl));
+        } else if (port < 1) {
+          throw new IllegalUrlPathException(
+              String.format("The port in url %s must be greater than 0.", nodeUrl));
+        }
       }
     }
 

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.pipe.connector.protocol.websocket;
 
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
@@ -36,9 +37,8 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.PriorityBlockingQueue;
@@ -47,9 +47,9 @@ public class WebSocketConnectorServer extends WebSocketServer {
   private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketConnectorServer.class);
   private final PriorityBlockingQueue<Pair<Long, Event>> events =
       new PriorityBlockingQueue<>(11, Comparator.comparing(o -> o.left));
-  private WebsocketConnector websocketConnector;
+  private final WebsocketConnector websocketConnector;
 
-  private ConcurrentMap<Long, Event> eventMap = new ConcurrentHashMap<>();
+  private final ConcurrentMap<Long, Event> eventMap = new ConcurrentHashMap<>();
 
   public WebSocketConnectorServer(
       InetSocketAddress address, WebsocketConnector websocketConnector) {
@@ -97,7 +97,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
 
   @Override
   public void onError(WebSocket webSocket, Exception e) {
-    String log = null;
+    String log;
     if (webSocket.getRemoteSocketAddress() != null) {
       log =
           String.format(
@@ -115,7 +115,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
   public void onStart() {
     String log =
         String.format(
-            "The websocket server %s:%d has been started!",
+            "The webSocket server %s:%d has been started!",
             this.getAddress().getHostName(), this.getPort());
     LOGGER.error(log);
   }
@@ -137,12 +137,10 @@ public class WebSocketConnectorServer extends WebSocketServer {
 
   private void handleStart(WebSocket webSocket) {
     try {
-      ArrayList<WebSocket> webSockets = new ArrayList<>();
-      webSockets.add(webSocket);
       Pair<Long, Event> eventPair = events.take();
       synchronized (events) {
         events.notifyAll();
-        transfer(eventPair, webSockets);
+        transfer(eventPair, webSocket);
       }
     } catch (InterruptedException e) {
       String log = String.format("The event can't be taken, because: %s", e.getMessage());
@@ -170,7 +168,7 @@ public class WebSocketConnectorServer extends WebSocketServer {
     handleStart(webSocket);
   }
 
-  private void transfer(Pair<Long, Event> eventPair, List<WebSocket> webSockets) {
+  private void transfer(Pair<Long, Event> eventPair, WebSocket webSocket) {
     Long commitId = eventPair.getLeft();
     Event event = eventPair.getRight();
     try {
@@ -198,13 +196,13 @@ public class WebSocketConnectorServer extends WebSocketServer {
       payload.putLong(commitId);
       payload.put(tabletBuffer);
       payload.flip();
-      this.broadcast(payload, webSockets);
+      this.broadcast(payload, Collections.singletonList(webSocket));
       eventMap.put(eventPair.getLeft(), eventPair.getRight());
       String log =
           String.format(
               "Transferred a message to client %s:%d",
-              webSockets.get(0).getRemoteSocketAddress().getAddress().getHostName(),
-              webSockets.get(0).getRemoteSocketAddress().getPort());
+              webSocket.getRemoteSocketAddress().getAddress().getHostName(),
+              webSocket.getRemoteSocketAddress().getPort());
       LOGGER.info(log);
     } catch (InterruptedException e) {
       events.put(eventPair);

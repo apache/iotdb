@@ -18,17 +18,17 @@
  */
 package org.apache.iotdb.flink.sql.wrapper;
 
-import org.apache.iotdb.flink.sql.client.IoTDBWebsocketClient;
+import org.apache.iotdb.flink.sql.client.IoTDBWebSocketClient;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 
 public class TabletWrapper {
-  private long commitId;
-  private IoTDBWebsocketClient websocketClient;
-  private Tablet tablet;
+  private final long commitId;
+  private final IoTDBWebSocketClient webSocketClient;
+  private final Tablet tablet;
 
-  public TabletWrapper(long commitId, IoTDBWebsocketClient websocketClient, Tablet tablet) {
+  public TabletWrapper(long commitId, IoTDBWebSocketClient webSocketClient, Tablet tablet) {
     this.commitId = commitId;
-    this.websocketClient = websocketClient;
+    this.webSocketClient = webSocketClient;
     this.tablet = tablet;
   }
 
@@ -36,8 +36,8 @@ public class TabletWrapper {
     return commitId;
   }
 
-  public IoTDBWebsocketClient getWebsocketClient() {
-    return websocketClient;
+  public IoTDBWebSocketClient getWebSocketClient() {
+    return webSocketClient;
   }
 
   public Tablet getTablet() {

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.flink.sql.common;
 
 import org.apache.flink.configuration.ConfigOption;
