@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.task.connection;
 
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -56,37 +55,13 @@ public class PipeEventCollector implements EventCollector {
       if (pendingQueue.waitedOffer(bufferedEvent)) {
         bufferQueue.poll();
       } else {
-        // If timeout, we judge whether the new event is a PipeRawTabletInsertionEvent. If it is,
-        // we wait for pending queue to be available without timeout until the pending queue is
-        // available. We don't put PipeRawTabletInsertionEvent into buffer queue, because it is
-        // memory consuming, holding too many PipeRawTabletInsertionEvent in buffer queue may cause
-        // OOM.
-        if (event instanceof PipeRawTabletInsertionEvent) {
-          if (pendingQueue.put(bufferedEvent)) {
-            bufferQueue.poll();
-          } else {
-            LOGGER.warn("interrupted when putting event into pending queue, event: {}", event);
-            bufferQueue.offer(event);
-            return;
-          }
-        } else {
-          bufferQueue.offer(event);
-          return;
-        }
+        bufferQueue.offer(event);
+        return;
       }
     }
 
     if (!pendingQueue.waitedOffer(event)) {
-      // PipeRawTabletInsertionEvent is memory consuming, so we should not put it into buffer queue
-      // when pending queue is full. Otherwise, it may cause OOM.
-      if (event instanceof PipeRawTabletInsertionEvent) {
-        if (!pendingQueue.put(event)) {
-          LOGGER.warn("interrupted when putting event into pending queue, event: {}", event);
-          bufferQueue.offer(event);
-        }
-      } else {
-        bufferQueue.offer(event);
-      }
+      bufferQueue.offer(event);
     }
   }
 }

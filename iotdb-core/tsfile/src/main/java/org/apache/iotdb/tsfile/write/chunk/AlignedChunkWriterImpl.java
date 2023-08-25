@@ -49,7 +49,7 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
   // Used for batch writing
   private long remainingPointsNumber;
 
-  /** @param schema schema of this measurement */
+  // TestOnly
   public AlignedChunkWriterImpl(VectorMeasurementSchema schema) {
     timeChunkWriter =
         new TimeChunkWriter(

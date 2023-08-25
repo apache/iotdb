@@ -136,6 +136,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ColumnTransformerVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -243,6 +244,7 @@ import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNod
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.calculateMaxAggregationResultSize;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.calculateMaxAggregationResultSizeForLastQuery;
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.initTimeRangeIterator;
+import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
 
 /** This Visitor is responsible for transferring PlanNode Tree to Operator Tree. */
@@ -430,26 +432,42 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       checkArgument(
           descriptor.getInputExpressions().size() == 1,
           "descriptor's input expression size is not 1");
-      checkArgument(
-          descriptor.getInputExpressions().get(0) instanceof TimeSeriesOperand,
-          "descriptor's input expression is not TimeSeriesOperand");
-      String inputSeries =
-          ((TimeSeriesOperand) (descriptor.getInputExpressions().get(0)))
-              .getPath()
-              .getMeasurement();
-      int seriesIndex = seriesPath.getMeasurementList().indexOf(inputSeries);
-      TSDataType seriesDataType =
-          seriesPath.getMeasurementSchema().getSubMeasurementsTSDataTypeList().get(seriesIndex);
-      aggregators.add(
-          new Aggregator(
-              AccumulatorFactory.createAccumulator(
-                  descriptor.getAggregationType(),
-                  seriesDataType,
-                  descriptor.getInputExpressions(),
-                  descriptor.getInputAttributes(),
-                  ascending),
-              descriptor.getStep(),
-              Collections.singletonList(new InputLocation[] {new InputLocation(0, seriesIndex)})));
+      Expression expression = descriptor.getInputExpressions().get(0);
+      if (expression instanceof TimeSeriesOperand) {
+        String inputSeries =
+            ((TimeSeriesOperand) (descriptor.getInputExpressions().get(0)))
+                .getPath()
+                .getMeasurement();
+        int seriesIndex = seriesPath.getMeasurementList().indexOf(inputSeries);
+        TSDataType seriesDataType =
+            seriesPath.getMeasurementSchema().getSubMeasurementsTSDataTypeList().get(seriesIndex);
+        aggregators.add(
+            new Aggregator(
+                AccumulatorFactory.createAccumulator(
+                    descriptor.getAggregationType(),
+                    seriesDataType,
+                    descriptor.getInputExpressions(),
+                    descriptor.getInputAttributes(),
+                    ascending),
+                descriptor.getStep(),
+                Collections.singletonList(
+                    new InputLocation[] {new InputLocation(0, seriesIndex)})));
+      } else if (expression instanceof TimestampOperand) {
+        aggregators.add(
+            new Aggregator(
+                AccumulatorFactory.createAccumulator(
+                    descriptor.getAggregationType(),
+                    TSDataType.INT64,
+                    descriptor.getInputExpressions(),
+                    descriptor.getInputAttributes(),
+                    ascending),
+                descriptor.getStep(),
+                Collections.singletonList(new InputLocation[] {new InputLocation(0, -1)})));
+      } else {
+        throw new IllegalArgumentException(
+            "descriptor's input expression must be TimeSeriesOperand/TimestampOperand, current is "
+                + expression);
+      }
     }
 
     GroupByTimeParameter groupByTimeParameter = node.getGroupByTimeParameter();
@@ -1015,7 +1033,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               ImmutableMap.of(),
               ImmutableList.of(),
               inputDataTypes,
-              inputLocations.size());
+              inputLocations.size() - 1);
 
       for (Expression expression : projectExpressions) {
         projectOutputTransformerList.add(
@@ -1141,7 +1159,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               filterExpressionColumnTransformerMap,
               commonTransformerList,
               filterOutputDataTypes,
-              inputLocations.size());
+              inputLocations.size() - 1);
 
       for (Expression expression : projectExpressions) {
         projectOutputTransformerList.add(
@@ -1653,7 +1671,6 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         targetPathToDataTypeMap,
         intoPathDescriptor.getTargetDeviceToAlignedMap(),
         sourceTargetPathPairWithViewList,
-        sourceColumnToInputLocationMap,
         FragmentInstanceManager.getInstance().getIntoOperationExecutor(),
         statementSizePerLine);
   }
@@ -1830,8 +1847,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
 
   private List<OutputColumn> generateOutputColumnsFromChildren(MultiChildProcessNode node) {
     // TODO we should also sort the InputLocation for each column if they are not overlapped
-    return makeLayout(node).values().stream()
-        .map(inputLocations -> new OutputColumn(inputLocations, inputLocations.size() > 1))
+    return makeLayout(node).entrySet().stream()
+        .filter(entry -> !TIMESTAMP_EXPRESSION_STRING.equals(entry.getKey()))
+        .map(entry -> new OutputColumn(entry.getValue(), entry.getValue().size() > 1))
         .collect(Collectors.toList());
   }
 
@@ -2376,6 +2394,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     Map<String, List<InputLocation>> outputMappings = new LinkedHashMap<>();
     int tsBlockIndex = 0;
     for (PlanNode childNode : node.getChildren()) {
+      outputMappings
+          .computeIfAbsent(TIMESTAMP_EXPRESSION_STRING, key -> new ArrayList<>())
+          .add(new InputLocation(tsBlockIndex, -1));
       int valueColumnIndex = 0;
       for (String columnName : childNode.getOutputColumnNames()) {
         outputMappings
