@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
@@ -53,9 +55,13 @@ public class AuthorizerManager implements IAuthorizer {
 
   private static final Logger logger = LoggerFactory.getLogger(AuthorizerManager.class);
 
+  private static final CommonConfig config = CommonDescriptor.getInstance().getConfig();
+
   private final ReentrantReadWriteLock authReadWriteLock = new ReentrantReadWriteLock();
   private IAuthorizer authorizer;
   private IAuthorityFetcher authorityFetcher;
+
+  private long heartBeatTimeStamp = 0;
 
   public AuthorizerManager() {
     try {
@@ -440,6 +446,17 @@ public class AuthorizerManager implements IAuthorizer {
       return authorityFetcher.checkUserSysPrivileges(username, permission);
     } finally {
       authReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public void refreshToken() {
+    long currnetTime = System.currentTimeMillis();
+    if (heartBeatTimeStamp == 0) {
+      heartBeatTimeStamp = currnetTime;
+      return;
+    }
+    if (currnetTime - heartBeatTimeStamp > config.getDatanodeTokenTimeoutMS()) {
+      authorityFetcher.setCacheOutDate();
     }
   }
 

@@ -119,8 +119,8 @@ public class PermissionManager {
 
   /**
    * When the permission information of a user or role is changed will clear all datanode
-   * permissions related to the user or role. We use procedure to invalid cache:
-   * procedure can make sure all datanode will be invalided.
+   * permissions related to the user or role. We use procedure to invalid cache: procedure can make
+   * sure all datanode will be invalided.
    */
   public TSStatus invalidateCache(String username, String roleName) {
     List<TDataNodeConfiguration> allDataNodes =

@@ -891,15 +891,16 @@ public class ProcedureManager {
           executor.submitProcedure(new InvalidAuthCacheProcedure(user, role, dns));
       List<TSStatus> statusList = new ArrayList<>();
       boolean isSucceed =
-              waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
+          waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
       if (isSucceed) {
         return RpcUtils.SUCCESS_STATUS;
       } else {
         return new TSStatus(TSStatusCode.AUTH_INVALID_CACHE_EXCEPTION.getStatusCode())
-                .setMessage(statusList.get(0).getMessage());
+            .setMessage(statusList.get(0).getMessage());
       }
     } catch (Exception e) {
-      LOGGER.warn("InvalidAuthCacheProcedure was failed to submit.", e);
+      return new TSStatus(TSStatusCode.AUTH_INVALID_CACHE_EXCEPTION.getStatusCode())
+          .setMessage(e.getMessage());
     }
   }
 

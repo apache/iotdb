@@ -49,8 +49,6 @@ public class AuthorPlan extends ConfigPhysicalPlan {
   private List<PartialPath> nodeNameList;
   private String userName;
 
-  private String currentUsername;
-
   public AuthorPlan(ConfigPhysicalPlanType type) {
     super(type);
     authorType = type;
@@ -80,6 +78,7 @@ public class AuthorPlan extends ConfigPhysicalPlan {
     this(authorType);
     this.authorType = authorType;
     this.userName = userName;
+    this.roleName = roleName;
     this.password = password;
     this.newPassword = newPassword;
     this.permissions = permissions;

@@ -1185,7 +1185,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
       resp.setLoadSample(loadSample);
     }
-
+    AuthorizerManager.getInstance().refreshToken();
     resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
     resp.setStatus(CommonDescriptor.getInstance().getConfig().getNodeStatus().getStatus());
     if (CommonDescriptor.getInstance().getConfig().getStatusReason() != null) {

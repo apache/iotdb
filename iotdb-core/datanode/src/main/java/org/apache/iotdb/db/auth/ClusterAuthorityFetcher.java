@@ -67,6 +67,8 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   private final IAuthorCache iAuthorCache;
   private IAuthorizer authorizer;
 
+  private boolean cacheOutDate = false;
+
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
 
@@ -82,6 +84,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   @Override
   public TSStatus checkUserPathPrivileges(
       String username, List<PartialPath> allPath, int permission) {
+    checkCacheAvailable();
     User user = iAuthorCache.getUserCache(username);
     if (user != null) {
       if (!user.isOpenIdUser()) {
@@ -176,6 +179,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
 
   @Override
   public TSStatus checkUserSysPrivileges(String username, int permission) {
+    checkCacheAvailable();
     User user = iAuthorCache.getUserCache(username);
     if (user != null) {
       if (!user.isOpenIdUser()) {
@@ -278,7 +282,20 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   }
 
   @Override
+  public void setCacheOutDate() {
+    cacheOutDate = true;
+  }
+
+  private void checkCacheAvailable() {
+    if (cacheOutDate) {
+      iAuthorCache.invalidAllCache();
+    }
+    cacheOutDate = false;
+  }
+
+  @Override
   public TSStatus checkUser(String username, String password) {
+    checkCacheAvailable();
     User user = iAuthorCache.getUserCache(username);
     if (user != null) {
       if (user.isOpenIdUser()) {
