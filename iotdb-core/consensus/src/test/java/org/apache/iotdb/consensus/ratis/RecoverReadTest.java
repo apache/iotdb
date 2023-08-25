@@ -173,10 +173,6 @@ public class RecoverReadTest {
     // wait an active leader to serve linearizable read requests
     miniCluster.waitUntilActiveLeader();
 
-    // try max 3 minutes
-    final Timestamp startTs = Timestamp.currentTime();
-    final TimeDuration maxWait = TimeDuration.valueOf(3, TimeUnit.MINUTES);
-
     Assert.assertEquals(10, miniCluster.mustRead(0));
   }
 
