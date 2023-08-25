@@ -38,11 +38,10 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.List;
 
-public class PipeTransferTabletBatchInsertionEventHandler
-    implements AsyncMethodCallback<TPipeTransferResp> {
+public class PipeTransferTabletBatchEventHandler implements AsyncMethodCallback<TPipeTransferResp> {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(PipeTransferTabletBatchInsertionEventHandler.class);
+      LoggerFactory.getLogger(PipeTransferTabletBatchEventHandler.class);
 
   private final List<Long> requestCommitIds;
   private final List<Event> events;
@@ -50,7 +49,7 @@ public class PipeTransferTabletBatchInsertionEventHandler
 
   private final IoTDBThriftAsyncConnector connector;
 
-  public PipeTransferTabletBatchInsertionEventHandler(
+  public PipeTransferTabletBatchEventHandler(
       IoTDBThriftAsyncPipeTransferBatchReqBuilder batchBuilder, IoTDBThriftAsyncConnector connector)
       throws IOException {
     // Deep copy to keep Ids' and events' reference

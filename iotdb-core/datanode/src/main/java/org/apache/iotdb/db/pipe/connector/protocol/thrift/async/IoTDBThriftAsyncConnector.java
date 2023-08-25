@@ -31,9 +31,9 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnector;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletBatchInsertionEventHandler;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletInsertNodeTabletInsertionEventHandler;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletRawInsertionEventHandler;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletBatchEventHandler;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletInsertNodeEventHandler;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTabletRawEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTsFileInsertionEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
@@ -165,11 +165,10 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
     if (isTabletBatchModeEnabled) {
       if (tabletBatchBuilder.onEvent(tabletInsertionEvent, requestCommitId)) {
-        final PipeTransferTabletBatchInsertionEventHandler
-            pipeTransferTabletBatchInsertionEventHandler =
-                new PipeTransferTabletBatchInsertionEventHandler(tabletBatchBuilder, this);
+        final PipeTransferTabletBatchEventHandler pipeTransferTabletBatchEventHandler =
+            new PipeTransferTabletBatchEventHandler(tabletBatchBuilder, this);
 
-        transfer(requestCommitId, pipeTransferTabletBatchInsertionEventHandler);
+        transfer(requestCommitId, pipeTransferTabletBatchEventHandler);
 
         tabletBatchBuilder.onSuccess();
       }
@@ -190,10 +189,9 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
               PipeTransferTabletInsertNodeReq.toTPipeTransferReq(
                   pipeInsertNodeTabletInsertionEvent.getInsertNode());
         }
-        final PipeTransferTabletInsertNodeTabletInsertionEventHandler
-            pipeTransferInsertNodeReqHandler =
-                new PipeTransferTabletInsertNodeTabletInsertionEventHandler(
-                    requestCommitId, pipeInsertNodeTabletInsertionEvent, pipeTransferReq, this);
+        final PipeTransferTabletInsertNodeEventHandler pipeTransferInsertNodeReqHandler =
+            new PipeTransferTabletInsertNodeEventHandler(
+                requestCommitId, pipeInsertNodeTabletInsertionEvent, pipeTransferReq, this);
         transfer(requestCommitId, pipeTransferInsertNodeReqHandler);
 
       } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
@@ -203,8 +201,8 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
             PipeTransferTabletRawReq.toTPipeTransferReq(
                 pipeRawTabletInsertionEvent.convertToTablet(),
                 pipeRawTabletInsertionEvent.isAligned());
-        final PipeTransferTabletRawInsertionEventHandler pipeTransferTabletReqHandler =
-            new PipeTransferTabletRawInsertionEventHandler(
+        final PipeTransferTabletRawEventHandler pipeTransferTabletReqHandler =
+            new PipeTransferTabletRawEventHandler(
                 requestCommitId, pipeRawTabletInsertionEvent, pipeTransferTabletRawReq, this);
 
         transfer(requestCommitId, pipeTransferTabletReqHandler);
@@ -214,14 +212,14 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
   private void transfer(
       long requestCommitId,
-      PipeTransferTabletBatchInsertionEventHandler pipeTransferTabletBatchInsertionEventHandler) {
+      PipeTransferTabletBatchEventHandler pipeTransferTabletBatchEventHandler) {
     final TEndPoint targetNodeUrl = nodeUrls.get((int) (requestCommitId % nodeUrls.size()));
 
     try {
       final AsyncPipeDataTransferServiceClient client = borrowClient(targetNodeUrl);
 
       try {
-        pipeTransferTabletBatchInsertionEventHandler.transfer(client);
+        pipeTransferTabletBatchEventHandler.transfer(client);
       } catch (TException e) {
         LOGGER.warn(
             String.format(
@@ -230,7 +228,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
             e);
       }
     } catch (Exception ex) {
-      pipeTransferTabletBatchInsertionEventHandler.onError(ex);
+      pipeTransferTabletBatchEventHandler.onError(ex);
       LOGGER.warn(
           String.format(
               FAILED_TO_BORROW_CLIENT_FORMATTER, targetNodeUrl.getIp(), targetNodeUrl.getPort()),
@@ -240,7 +238,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
 
   private void transfer(
       long requestCommitId,
-      PipeTransferTabletInsertNodeTabletInsertionEventHandler pipeTransferInsertNodeReqHandler) {
+      PipeTransferTabletInsertNodeEventHandler pipeTransferInsertNodeReqHandler) {
     final TEndPoint targetNodeUrl = nodeUrls.get((int) (requestCommitId % nodeUrls.size()));
 
     try {
@@ -265,8 +263,7 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   }
 
   private void transfer(
-      long requestCommitId,
-      PipeTransferTabletRawInsertionEventHandler pipeTransferTabletReqHandler) {
+      long requestCommitId, PipeTransferTabletRawEventHandler pipeTransferTabletReqHandler) {
     final TEndPoint targetNodeUrl = nodeUrls.get((int) (requestCommitId % nodeUrls.size()));
 
     try {
@@ -495,11 +492,10 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
     }
 
     final long requestCommitId = commitIdGenerator.incrementAndGet();
-    final PipeTransferTabletBatchInsertionEventHandler
-        pipeTransferTabletBatchInsertionEventHandler =
-            new PipeTransferTabletBatchInsertionEventHandler(tabletBatchBuilder, this);
+    final PipeTransferTabletBatchEventHandler pipeTransferTabletBatchEventHandler =
+        new PipeTransferTabletBatchEventHandler(tabletBatchBuilder, this);
 
-    transfer(requestCommitId, pipeTransferTabletBatchInsertionEventHandler);
+    transfer(requestCommitId, pipeTransferTabletBatchEventHandler);
 
     tabletBatchBuilder.onSuccess();
   }
