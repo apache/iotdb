@@ -23,9 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.builder.IoTDBThriftAsyncPipeTransferBatchReqBuilder;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
@@ -38,6 +35,7 @@ import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTran
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.handler.PipeTransferTsFileInsertionEventHandler;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncConnector;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -65,10 +63,7 @@ import java.io.IOException;
 import java.util.Comparator;
 import java.util.Optional;
 import java.util.PriorityQueue;
-import java.util.concurrent.Future;
 import java.util.concurrent.PriorityBlockingQueue;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -86,10 +81,6 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
   private final IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>
       asyncPipeDataTransferClientManager;
 
-  private static final AtomicReference<ScheduledExecutorService> RETRY_TRIGGER =
-      new AtomicReference<>();
-  private static final int RETRY_TRIGGER_INTERVAL_MINUTES = 1;
-  private final AtomicReference<Future<?>> retryTriggerFuture = new AtomicReference<>();
   private final IoTDBThriftSyncConnector retryConnector = new IoTDBThriftSyncConnector();
   private final PriorityBlockingQueue<Pair<Long, Event>> retryEventQueue =
       new PriorityBlockingQueue<>(11, Comparator.comparing(o -> o.left));
@@ -350,7 +341,9 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
     transferQueuedEventsIfNecessary();
     transferBatchedEventsIfNecessary();
 
-    LOGGER.warn("IoTDBThriftAsyncConnector does not support transfer generic event: {}.", event);
+    if (!(event instanceof PipeHeartbeatEvent)) {
+      LOGGER.warn("IoTDBThriftAsyncConnector does not support transfer generic event: {}.", event);
+    }
   }
 
   private AsyncPipeDataTransferServiceClient borrowClient(TEndPoint targetNodeUrl)
@@ -543,46 +536,12 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
    * @param event event to retry
    */
   public void addFailureEventToRetryQueue(long requestCommitId, Event event) {
-    if (RETRY_TRIGGER.get() == null) {
-      synchronized (IoTDBThriftAsyncConnector.class) {
-        if (RETRY_TRIGGER.get() == null) {
-          RETRY_TRIGGER.set(
-              IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-                  ThreadName.PIPE_ASYNC_CONNECTOR_RETRY_TRIGGER.getName()));
-        }
-      }
-    }
-
-    if (retryTriggerFuture.get() == null) {
-      synchronized (IoTDBThriftAsyncConnector.class) {
-        if (retryTriggerFuture.get() == null) {
-          retryTriggerFuture.set(
-              ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-                  RETRY_TRIGGER.get(),
-                  () -> {
-                    try {
-                      transferQueuedEventsIfNecessary();
-                    } catch (Exception e) {
-                      LOGGER.warn("Failed to trigger retry.", e);
-                    }
-                  },
-                  RETRY_TRIGGER_INTERVAL_MINUTES,
-                  RETRY_TRIGGER_INTERVAL_MINUTES,
-                  TimeUnit.MINUTES));
-        }
-      }
-    }
-
     retryEventQueue.offer(new Pair<>(requestCommitId, event));
   }
 
   @Override
   // synchronized to avoid close connector when transfer event
   public synchronized void close() throws Exception {
-    if (retryTriggerFuture.get() != null) {
-      retryTriggerFuture.get().cancel(false);
-    }
-
     retryConnector.close();
   }
 }
