@@ -90,22 +90,22 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
           case HANDSHAKE:
             return handleTransferHandshake(PipeTransferHandshakeReq.fromTPipeTransferReq(req));
           case TRANSFER_TABLET_INSERT_NODE:
-            return handleTransferInsertNode(
+            return handleTransferTabletInsertNode(
                 PipeTransferTabletInsertNodeReq.fromTPipeTransferReq(req),
                 partitionFetcher,
                 schemaFetcher);
           case TRANSFER_TABLET_RAW:
-            return handleTransferTablet(
+            return handleTransferTabletRaw(
                 PipeTransferTabletRawReq.fromTPipeTransferReq(req),
                 partitionFetcher,
                 schemaFetcher);
           case TRANSFER_TABLET_BINARY:
-            return handleTransferBinary(
+            return handleTransferTabletBinary(
                 PipeTransferTabletBinaryReq.fromTPipeTransferReq(req),
                 partitionFetcher,
                 schemaFetcher);
           case TRANSFER_TABLET_BATCH:
-            return handleTransferBatch(
+            return handleTransferTabletBatch(
                 PipeTransferTabletBatchReq.fromTPipeTransferReq(req),
                 partitionFetcher,
                 schemaFetcher);
@@ -197,7 +197,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
     return new TPipeTransferResp(RpcUtils.SUCCESS_STATUS);
   }
 
-  private TPipeTransferResp handleTransferInsertNode(
+  private TPipeTransferResp handleTransferTabletInsertNode(
       PipeTransferTabletInsertNodeReq req,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
@@ -205,7 +205,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
         executeStatement(req.constructStatement(), partitionFetcher, schemaFetcher));
   }
 
-  private TPipeTransferResp handleTransferBinary(
+  private TPipeTransferResp handleTransferTabletBinary(
       PipeTransferTabletBinaryReq req,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
@@ -213,7 +213,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
         executeStatement(req.constructStatement(), partitionFetcher, schemaFetcher));
   }
 
-  private TPipeTransferResp handleTransferTablet(
+  private TPipeTransferResp handleTransferTabletRaw(
       PipeTransferTabletRawReq req,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
@@ -224,7 +224,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
             : executeStatement(statement, partitionFetcher, schemaFetcher));
   }
 
-  private TPipeTransferResp handleTransferBatch(
+  private TPipeTransferResp handleTransferTabletBatch(
       PipeTransferTabletBatchReq req,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {

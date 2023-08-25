@@ -296,7 +296,7 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
     if (pipeInsertNodeTabletInsertionEvent
             .getPattern()
             .equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE)
-        && pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCache() == null) {
+        && pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible() == null) {
       resp =
           client.pipeTransfer(
               PipeTransferTabletBinaryReq.toTPipeTransferReq(

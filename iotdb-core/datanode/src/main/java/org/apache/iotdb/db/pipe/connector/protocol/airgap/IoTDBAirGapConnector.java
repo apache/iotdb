@@ -264,7 +264,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
     if (pipeInsertNodeTabletInsertionEvent
             .getPattern()
             .equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE)
-        && pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCache() == null) {
+        && pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible() == null) {
       bytes =
           PipeTransferTabletBinaryReq.toTransferInsertNodeBytes(
               pipeInsertNodeTabletInsertionEvent.getByteBuffer());

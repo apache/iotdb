@@ -88,7 +88,7 @@ public class WALEntryHandler {
    *
    * @throws WALPipeException when failing to get the value.
    */
-  public InsertNode getValue() throws WALPipeException {
+  public InsertNode getInsertNode() throws WALPipeException {
     // return local cache
     WALEntryValue res = value;
     if (res != null) {
@@ -119,11 +119,11 @@ public class WALEntryHandler {
     return node;
   }
 
-  public InsertNode getWALEntryValue() {
+  public InsertNode getInsertNodeViaCacheIfPossible() {
     return value instanceof InsertNode ? (InsertNode) value : null;
   }
 
-  public ByteBuffer getBuffer() throws WALPipeException {
+  public ByteBuffer getByteBuffer() throws WALPipeException {
     // wait until the position is ready
     while (!walEntryPosition.canRead()) {
       try {

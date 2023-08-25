@@ -216,7 +216,7 @@ public class WALEntryHandlerTest {
     WALEntryHandler handler = flushListener.getWalEntryHandler();
     handler.pinMemTable();
     walNode1.onMemTableFlushed(memTable);
-    assertEquals(node1, handler.getValue());
+    assertEquals(node1, handler.getInsertNode());
   }
 
   @Test
@@ -234,7 +234,7 @@ public class WALEntryHandlerTest {
     while (!walNode1.isAllWALEntriesConsumed()) {
       Thread.sleep(50);
     }
-    assertEquals(node1, handler.getValue());
+    assertEquals(node1, handler.getInsertNode());
   }
 
   @Test
@@ -276,7 +276,7 @@ public class WALEntryHandlerTest {
             for (int j = 0; j < expectedInsertRowNodes.size(); ++j) {
               InsertRowNode expect = expectedInsertRowNodes.get(j);
               InsertRowNode actual =
-                  (InsertRowNode) walFlushListeners.get(j).getWalEntryHandler().getValue();
+                  (InsertRowNode) walFlushListeners.get(j).getWalEntryHandler().getInsertNode();
               assertEquals(expect, actual);
             }
 
