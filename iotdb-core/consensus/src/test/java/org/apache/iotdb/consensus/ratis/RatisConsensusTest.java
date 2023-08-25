@@ -24,7 +24,6 @@ import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.ConsensusGroup;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.RatisConfig;
-import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
@@ -117,12 +116,9 @@ public class RatisConsensusTest {
     servers.get(0).createLocalPeer(group.getGroupId(), original);
     doConsensus(0, 10, 10);
 
-    try {
-      servers.get(0).createLocalPeer(group.getGroupId(), original);
-      Assert.fail();
-    } catch (ConsensusException e) {
-      Assert.assertTrue(e instanceof ConsensusGroupAlreadyExistException);
-    }
+    Assert.assertThrows(
+        ConsensusGroupAlreadyExistException.class,
+        () -> servers.get(0).createLocalPeer(group.getGroupId(), original));
 
     // add 2 members
     servers.get(1).createLocalPeer(group.getGroupId(), peers.subList(1, 2));
@@ -131,6 +127,8 @@ public class RatisConsensusTest {
     servers.get(2).createLocalPeer(group.getGroupId(), peers.subList(2, 3));
     servers.get(0).addRemotePeer(group.getGroupId(), peers.get(2));
 
+    miniCluster.waitUntilActiveLeader();
+
     Assert.assertEquals(
         3, ((TestUtils.IntegerCounter) stateMachines.get(0)).getConfiguration().size());
     doConsensus(0, 10, 20);
@@ -138,16 +136,15 @@ public class RatisConsensusTest {
 
   @Test
   public void removeMemberFromGroup() throws Exception {
-    try {
-      servers.get(0).deleteLocalPeer(group.getGroupId());
-      Assert.fail();
-    } catch (ConsensusException e) {
-      Assert.assertTrue(e instanceof ConsensusGroupNotExistException);
-    }
+    Assert.assertThrows(
+        ConsensusGroupNotExistException.class,
+        () -> servers.get(0).deleteLocalPeer(group.getGroupId()));
+
     servers.get(0).createLocalPeer(group.getGroupId(), group.getPeers());
     servers.get(1).createLocalPeer(group.getGroupId(), group.getPeers());
     servers.get(2).createLocalPeer(group.getGroupId(), group.getPeers());
 
+    miniCluster.waitUntilActiveLeader();
     doConsensus(0, 10, 10);
 
     servers.get(0).transferLeader(gid, peers.get(0));
@@ -156,17 +153,16 @@ public class RatisConsensusTest {
     servers.get(0).removeRemotePeer(gid, peers.get(2));
     servers.get(2).deleteLocalPeer(gid);
 
+    miniCluster.waitUntilActiveLeader();
     doConsensus(0, 10, 20);
   }
 
   @Test
   public void oneMemberGroupChange() throws Exception {
-    try {
-      servers.get(0).addRemotePeer(group.getGroupId(), peers.get(0));
-      Assert.fail();
-    } catch (ConsensusException e) {
-      Assert.assertTrue(e instanceof ConsensusGroupNotExistException);
-    }
+    Assert.assertThrows(
+        ConsensusGroupNotExistException.class,
+        () -> servers.get(0).addRemotePeer(group.getGroupId(), peers.get(0)));
+
     servers.get(0).createLocalPeer(group.getGroupId(), peers.subList(0, 1));
     doConsensus(0, 10, 10);
 
@@ -197,12 +193,14 @@ public class RatisConsensusTest {
     servers.get(1).createLocalPeer(group.getGroupId(), group.getPeers());
     servers.get(2).createLocalPeer(group.getGroupId(), group.getPeers());
 
+    miniCluster.waitUntilActiveLeader();
     // 200 operation will trigger snapshot & purge
     doConsensus(0, 200, 200);
 
     miniCluster.stop();
     miniCluster.restart();
 
+    miniCluster.waitUntilActiveLeader();
     doConsensus(0, 10, 210);
   }
 
@@ -234,6 +232,7 @@ public class RatisConsensusTest {
     servers.get(1).createLocalPeer(gid, peers.subList(1, 2));
     servers.get(0).addRemotePeer(gid, peers.get(1));
 
+    miniCluster.waitUntilActiveLeader();
     doConsensus(1, 10, 20);
   }
 

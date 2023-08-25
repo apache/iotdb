@@ -20,11 +20,9 @@ package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.config.RatisConfig;
-import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.consensus.exception.RatisUnderRecoveryException;
 
 import org.apache.ratis.util.TimeDuration;
@@ -179,19 +177,7 @@ public class RecoverReadTest {
     final Timestamp startTs = Timestamp.currentTime();
     final TimeDuration maxWait = TimeDuration.valueOf(3, TimeUnit.MINUTES);
 
-    DataSet resp;
-    try {
-      resp = miniCluster.readThrough(0);
-    } catch (ConsensusException e) {
-      if (startTs.elapsedTime().compareTo(maxWait) > 0) { // 3 min
-        Assert.fail("Linearizable read failed after 3 minutes, last exception seen: " + e);
-      }
-      Thread.sleep(100);
-      logger.info("linearizable read failed  when restart, retrying: ", e);
-      resp = miniCluster.readThrough(0);
-    }
-
-    Assert.assertEquals(10, ((TestUtils.TestDataSet) resp).getNumber());
+    Assert.assertEquals(10, miniCluster.mustRead(0));
   }
 
   @Test

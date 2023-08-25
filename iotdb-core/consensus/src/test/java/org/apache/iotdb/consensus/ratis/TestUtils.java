@@ -397,7 +397,7 @@ public class TestUtils {
 
       waitUntilActiveLeader();
 
-      final TimeDuration maxTryDuration = TimeDuration.valueOf(2, TimeUnit.MINUTES);
+      final TimeDuration maxTryDuration = TimeDuration.valueOf(3, TimeUnit.MINUTES);
       final TimeDuration waitDuration = TimeDuration.valueOf(1000, TimeUnit.MILLISECONDS);
       final Timestamp start = Timestamp.currentTime();
 
