@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
@@ -53,6 +54,7 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -151,41 +153,26 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
 
   public PathPatternTree fetchAuthizedPatternTree(String username, int permission) {
     TCheckUserPrivilegesReq req = new TCheckUserPrivilegesReq(username, null, permission);
-    TPermissionInfoResp permissionInfoResp;
+    TAuthizedPatternTreeResp authizedPatternTree = new TAuthizedPatternTreeResp();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      permissionInfoResp = configNodeClient.fetchAuthizedPatternTree(req);
+      authizedPatternTree = configNodeClient.fetchAuthizedPatternTree(req);
     } catch (ClientManagerException | TException e) {
       logger.error("Failed to connect to config node.");
-      permissionInfoResp = new TPermissionInfoResp();
-      permissionInfoResp.setStatus(
+      authizedPatternTree = new TAuthizedPatternTreeResp();
+      authizedPatternTree.setStatus(
           RpcUtils.getStatus(
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "Failed to connect to config node."));
     }
-    if (permissionInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      iAuthorCache.putUserCache(username, cacheUser(permissionInfoResp));
-      User user = iAuthorCache.getUserCache(username);
-      PathPatternTree patternTree = new PathPatternTree();
-      for (PathPrivilege path : user.getPathPrivilegeList()) {
-        if (path.getPrivileges().contains(permission)) {
-          patternTree.appendPathPattern(path.getPath());
-        }
-      }
-      for (String role : user.getRoleList()) {
-        Role cachedRole = iAuthorCache.getRoleCache(role);
-        for (PathPrivilege path : cachedRole.getPathPrivilegeList()) {
-          if (path.getPrivileges().contains(permission)) {
-            patternTree.appendPathPattern(path.getPath());
-          }
-        }
-      }
+    if (authizedPatternTree.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      iAuthorCache.putUserCache(username, cacheUser(authizedPatternTree.getPermissionInfo()));
+      PathPatternTree patternTree =
+          PathPatternTree.deserialize(ByteBuffer.wrap(authizedPatternTree.getPathPatternTree()));
       patternTree.constructTree();
       return patternTree;
     }
     return null;
   }
-
-  private PathPatternTree fetchAuthizedPatternTreeFromResp(TPermissionInfoResp resp) {}
 
   @Override
   public TSStatus checkUserSysPrivileges(String username, int permission) {

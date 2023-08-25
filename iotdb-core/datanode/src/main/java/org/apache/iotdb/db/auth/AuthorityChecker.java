@@ -107,17 +107,24 @@ public class AuthorityChecker {
     return pathTree;
   }
 
-  public static boolean  boolean checkSystemPermission(String username, int permission) throws AuthException {
+  public static boolean checkSystemPermission(String username, int permission)
+      throws AuthException {
     try {
       AuthUtils.validatePrivilege(null, permission);
       if (SUPER_USER.equals(username)) {
         return true;
       }
-      TSStatus status = authorizerManager.checkUserPrivileges()
+      TSStatus status = authorizerManager.checkUserSysPrivilege(username, permission);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return true;
+      }
+    } catch (AuthException e) {
+      logger.error(
+          "Error occurs when checking the systemPri {} for user {}", permission, username, e);
+      throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, e);
     }
+    return false;
   }
-
-
 
   /** Check whether specific Session has the authorization to given plan. */
   public static TSStatus checkAuthority(Statement statement, IClientSession session) {
@@ -162,8 +169,9 @@ public class AuthorityChecker {
     if (statement instanceof AuthorStatement) {
       targetUser = ((AuthorStatement) statement).getUserName();
     }
-    return AuthorityChecker.checkPermission(
-        username, statement.getPaths(), statement.getType(), targetUser);
+    return false;
+    //    return AuthorityChecker.checkPermission(
+    //        username, statement.getPaths(), statement.getType(), targetUser);
   }
 
   // here for grant option and alter password opeartion

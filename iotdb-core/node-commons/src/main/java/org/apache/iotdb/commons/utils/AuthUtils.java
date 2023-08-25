@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.security.encrypt.AsymmetricEncryptFactory;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
@@ -344,6 +345,15 @@ public class AuthUtils {
     roleInfo.put("", new TRoleResp("", new ArrayList<>(), new HashSet<>()));
     permissionInfoResp.setRoleInfo(roleInfo);
     return permissionInfoResp;
+  }
+
+  public static TAuthizedPatternTreeResp generateEmptyAuthizedPTree(
+      String username, int privilegeId) {
+    TAuthizedPatternTreeResp resp = new TAuthizedPatternTreeResp();
+    resp.setUsername(username);
+    resp.setPrivilegeId(privilegeId);
+    resp.setPermissionInfo(generateEmptyPermissionInfoResp());
+    return resp;
   }
 
   /**

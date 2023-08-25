@@ -30,6 +30,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TSetSpaceQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -171,6 +172,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelStateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -982,6 +984,25 @@ public class ConfigManager implements IManager {
       return permissionManager.checkUserPrivileges(username, paths, permission);
     } else {
       TPermissionInfoResp resp = AuthUtils.generateEmptyPermissionInfoResp();
+      resp.setStatus(status);
+      return resp;
+    }
+  }
+
+  public TAuthizedPatternTreeResp fetchAuthizedPatternTree(String username, int permission) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      try {
+        return permissionManager.fetchAuthizedPTree(username, permission);
+      } catch (AuthException e) {
+        TAuthizedPatternTreeResp resp = AuthUtils.generateEmptyAuthizedPTree(username, permission);
+        status
+            .setCode(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+            .setMessage(e.getMessage());
+        return resp;
+      }
+    } else {
+      TAuthizedPatternTreeResp resp = AuthUtils.generateEmptyAuthizedPTree(username, permission);
       resp.setStatus(status);
       return resp;
     }

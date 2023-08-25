@@ -330,6 +330,14 @@ struct TPermissionInfoResp {
   3: optional map<string, TRoleResp> roleInfo
 }
 
+struct TAuthizedPatternTreeResp {
+  1: required common.TSStatus status
+  2: required string username
+  3: required i32 privilegeId
+  4: required binary pathPatternTree
+  5: required TPermissionInfoResp permissionInfo
+}
+
 struct TLoginReq {
   1: required string userrname
   2: required string password
@@ -1009,7 +1017,7 @@ service IConfigNodeRPCService {
    */
   TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req)
 
-  TPermissionInfoResp fetchAuthizedPatternTree(TCheckUserPrivilegesReq req)
+  TAuthizedPatternTreeResp fetchAuthizedPatternTree(TCheckUserPrivilegesReq req)
 
 
   // ======================================================

@@ -441,7 +441,6 @@ public class AuthorizerManager implements IAuthorizer {
     } finally {
       authReadWriteLock.readLock().unlock();
     }
-
   }
 
   /** build TSBlock. */

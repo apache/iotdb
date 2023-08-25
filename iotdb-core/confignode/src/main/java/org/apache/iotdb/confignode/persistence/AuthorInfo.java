@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -39,6 +40,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
@@ -49,8 +51,11 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -115,7 +120,7 @@ public class AuthorInfo implements SnapshotProcessor {
     TPermissionInfoResp result = new TPermissionInfoResp();
     try {
       if (paths.isEmpty()) {
-        if (authorizer.checkUserPrivileges(username, null, permission));
+        if (authorizer.checkUserPrivileges(username, null, permission)) ;
         status = true;
       }
       for (PartialPath path : paths) {
@@ -382,6 +387,47 @@ public class AuthorInfo implements SnapshotProcessor {
     result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     result.setPermissionInfo(permissionInfo);
     return result;
+  }
+
+  public TAuthizedPatternTreeResp generateAuthizedPTree(String username, int permission)
+      throws AuthException {
+    TAuthizedPatternTreeResp resp = new TAuthizedPatternTreeResp();
+    User user = authorizer.getUser(username);
+    PathPatternTree pPtree = new PathPatternTree();
+    if (user == null) {
+      resp.setStatus(RpcUtils.getStatus(TSStatusCode.USER_NOT_EXIST, "No such user : " + username));
+      resp.setUsername(username);
+      resp.setPrivilegeId(permission);
+      return resp;
+    }
+    for (PathPrivilege path : user.getPathPrivilegeList()) {
+      if (path.getPrivileges().contains(permission)) {
+        pPtree.appendPathPattern(path.getPath());
+      }
+    }
+    for (String rolename : user.getRoleList()) {
+      Role role = authorizer.getRole(rolename);
+      if (role != null) {
+        for (PathPrivilege path : role.getPathPrivilegeList()) {
+          if (path.getPrivileges().contains(permission)) {
+            pPtree.appendPathPattern(path.getPath());
+          }
+        }
+      }
+    }
+    pPtree.constructTree();
+    resp.setUsername(username);
+    resp.setPrivilegeId(permission);
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    try {
+      pPtree.serialize(dataOutputStream);
+    } catch (Exception ignore) {
+
+    }
+    resp.setPathPatternTree(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+    resp.setPermissionInfo(getUserPermissionInfo(username));
+    return resp;
   }
 
   @Override
