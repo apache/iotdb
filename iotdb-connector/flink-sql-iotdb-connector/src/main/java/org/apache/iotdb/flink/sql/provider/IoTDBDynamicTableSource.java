@@ -67,7 +67,7 @@ public class IoTDBDynamicTableSource implements LookupTableSource, ScanTableSour
   public ScanRuntimeProvider getScanRuntimeProvider(ScanContext scanContext) {
     if (options.get(Options.MODE) == Options.Mode.CDC) {
       return SourceFunctionProvider.of(
-          new IoTDBCDCSourceFunction<>(options, new SchemaWrapper(schema)), false);
+          new IoTDBCDCSourceFunction(options, new SchemaWrapper(schema)), false);
     } else {
       return InputFormatProvider.of(
           new IoTDBBoundedScanFunction(options, new SchemaWrapper(schema)));
