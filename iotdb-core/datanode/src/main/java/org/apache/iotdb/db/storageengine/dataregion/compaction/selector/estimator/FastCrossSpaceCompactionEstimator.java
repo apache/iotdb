@@ -59,7 +59,6 @@ public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimat
       return taskInfo.getModificationFileSize();
     }
 
-    long targetFileNum = seqResources.size();
     long maxConcurrentSeriesNum =
         Math.max(config.getSubCompactionTaskNum(), taskInfo.getMaxConcurrentSeriesNum());
     long averageUncompressedChunkSize =
@@ -70,8 +69,7 @@ public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimat
             * taskInfo.getFileInfoList().size()
             * maxConcurrentSeriesNum
             * taskInfo.getMaxChunkMetadataNumInSeries();
-    long maxTargetChunkWriterSize =
-        config.getTargetChunkSize() * maxConcurrentSeriesNum * targetFileNum;
+    long maxTargetChunkWriterSize = config.getTargetChunkSize() * maxConcurrentSeriesNum;
     long targetChunkWriterSize =
         Math.min(maxConcurrentSeriesSizeOfTotalFiles, maxTargetChunkWriterSize);
 
