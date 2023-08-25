@@ -62,8 +62,8 @@ public class ShowQueriesStatement extends ShowStatement {
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
     return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_CQ.ordinal()),
-        new PrivilegeType[] {PrivilegeType.USE_CQ});
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MAINTAIN.ordinal()),
+        new PrivilegeType[] {PrivilegeType.MAINTAIN});
   }
 
   public void setWhereCondition(WhereCondition whereCondition) {

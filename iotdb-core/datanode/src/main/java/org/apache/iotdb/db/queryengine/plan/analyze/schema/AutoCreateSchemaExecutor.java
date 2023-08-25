@@ -20,10 +20,12 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -193,12 +195,28 @@ class AutoCreateSchemaExecutor {
       List<String> measurementList,
       List<TSDataType> dataTypeList,
       MPPQueryContext context) {
+    TSStatus status =
+        AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkSystemPermission(
+                context.getSession().getUserName(), PrivilegeType.EXTEND_TEMPLATE.ordinal()),
+            new PrivilegeType[] {PrivilegeType.EXTEND_TEMPLATE});
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+    }
     internalExtendTemplate(templateName, measurementList, dataTypeList, null, null, context);
   }
 
   // Used for insert records or tablets
   void autoExtendTemplate(
       Map<String, TemplateExtendInfo> templateExtendInfoMap, MPPQueryContext context) {
+    TSStatus status =
+        AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkSystemPermission(
+                context.getSession().getUserName(), PrivilegeType.EXTEND_TEMPLATE.ordinal()),
+            new PrivilegeType[] {PrivilegeType.EXTEND_TEMPLATE});
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+    }
     TemplateExtendInfo templateExtendInfo;
     for (Map.Entry<String, TemplateExtendInfo> entry : templateExtendInfoMap.entrySet()) {
       templateExtendInfo = entry.getValue().deduplicate();

@@ -54,9 +54,11 @@ public enum PrivilegeType {
       MANAGE_ROLE,
       GRANT_PRIVILEGE,
       ALTER_PASSWORD,
+      USE_UDF,
       USE_TRIGGER,
       USE_CQ,
       USE_PIPE,
+      EXTEND_TEMPLATE,
       MANAGE_DATABASE,
       MAINTAIN);
 

@@ -33,7 +33,6 @@ import java.util.List;
  * AST via {@link ASTVisitor}.
  */
 public abstract class Statement extends StatementNode {
-
   protected StatementType statementType = StatementType.NULL;
 
   protected boolean isDebug;
@@ -64,6 +63,7 @@ public abstract class Statement extends StatementNode {
 
   public TSStatus checkPermissionBeforeProcess(String userName) {
     return AuthorityChecker.getTSStatus(
-        "root".equals(userName), "Only the root user can perform this operation");
+        AuthorityChecker.SUPER_USER.equals(userName),
+        "Only the admin user can perform this operation");
   }
 }

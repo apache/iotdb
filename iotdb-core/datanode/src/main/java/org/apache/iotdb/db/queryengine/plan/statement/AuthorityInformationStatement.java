@@ -18,7 +18,13 @@
  */
 package org.apache.iotdb.db.queryengine.plan.statement;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.rpc.TSStatusCode;
+
+import com.google.common.collect.ImmutableList;
 
 import java.util.List;
 
@@ -28,5 +34,13 @@ public abstract class AuthorityInformationStatement extends Statement {
   public PathPatternTree getAuthorityTree(int index) {
     assert authorityTreeList != null;
     return authorityTreeList.get(index);
+  }
+
+  @Override
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    this.authorityTreeList =
+        ImmutableList.of(
+            AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_SCHEMA.ordinal()));
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 }

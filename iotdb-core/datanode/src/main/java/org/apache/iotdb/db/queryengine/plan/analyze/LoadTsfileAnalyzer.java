@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.LoadFileException;
@@ -374,6 +378,17 @@ public class LoadTsfileAnalyzer {
         databaseSet.add(new PartialPath(databasePrefixNodes));
       }
 
+      TSStatus status =
+          AuthorityChecker.getTSStatus(
+              AuthorityChecker.checkPatternPermission(
+                  context.getSession().getUserName(),
+                  new ArrayList<>(databaseSet),
+                  PrivilegeType.WRITE_DATA.ordinal()),
+              new PrivilegeType[] {PrivilegeType.WRITE_DATA});
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+      }
+
       databaseSet.removeAll(alreadySetDatabases);
       for (final PartialPath databasePath : databaseSet) {
         final DatabaseSchemaStatement statement =
@@ -388,6 +403,10 @@ public class LoadTsfileAnalyzer {
 
     private void executeSetDatabaseStatement(Statement statement) throws LoadFileException {
       final long queryId = SessionManager.getInstance().requestQueryId();
+      TSStatus status = statement.checkPermissionBeforeProcess(context.getSession().getUserName());
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+      }
       final ExecutionResult result =
           Coordinator.getInstance()
               .execute(

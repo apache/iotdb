@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -135,6 +138,13 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
   @Override
   public List<PartialPath> getPaths() {
     return databasePath != null ? Collections.singletonList(databasePath) : Collections.emptyList();
+  }
+
+  @Override
+  public TSStatus checkPermissionBeforeProcess(String userName) {
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_DATABASE.ordinal()),
+        new PrivilegeType[] {PrivilegeType.MANAGE_DATABASE});
   }
 
   @Override

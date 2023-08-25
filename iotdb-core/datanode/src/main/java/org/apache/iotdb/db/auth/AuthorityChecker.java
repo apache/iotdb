@@ -41,8 +41,7 @@ import java.util.List;
 
 public class AuthorityChecker {
 
-  private static final String SUPER_USER =
-      CommonDescriptor.getInstance().getConfig().getAdminName();
+  public static final String SUPER_USER = CommonDescriptor.getInstance().getConfig().getAdminName();
   private static final Logger logger = LoggerFactory.getLogger(AuthorityChecker.class);
 
   private static final AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
