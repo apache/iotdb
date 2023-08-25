@@ -97,6 +97,10 @@ public abstract class AbstractCompactionEstimator implements Closeable {
               .filter(resource -> !resource.definitelyNotContains(device))
               .sorted(Comparator.comparingLong(resource -> resource.getStartTime(device)))
               .collect(Collectors.toList());
+      if (resourcesContainsCurrentDevice.size() < maxOverlapFileNumInSubCompactionTask) {
+        continue;
+      }
+
       long maxEndTimeOfCurrentDevice = Long.MIN_VALUE;
       int overlapFileNumOfCurrentDevice = 0;
       for (DeviceTimeIndex resource : resourcesContainsCurrentDevice) {
