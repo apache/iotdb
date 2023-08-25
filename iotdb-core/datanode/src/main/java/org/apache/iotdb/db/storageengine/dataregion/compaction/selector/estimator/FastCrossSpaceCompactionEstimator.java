@@ -55,30 +55,32 @@ public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimat
 
   @Override
   protected long calculatingDataMemoryCost(CompactionTaskInfo taskInfo) throws IOException {
-    long cost = 0;
-    cost += taskInfo.getModificationFileSize();
+    if (taskInfo.getTotalChunkNum() == 0) {
+      return taskInfo.getModificationFileSize();
+    }
 
+    long targetFileNum = seqResources.size();
     long maxConcurrentSeriesNum =
         Math.max(config.getSubCompactionTaskNum(), taskInfo.getMaxConcurrentSeriesNum());
-    long uncompressedTotalFileSize = taskInfo.getTotalFileSize() * compressionRatio;
-    if (taskInfo.getTotalChunkNum() == 0) {
-      return cost;
-    }
-    long uncompressedChunkSize = uncompressedTotalFileSize / taskInfo.getTotalChunkNum();
+    long averageUncompressedChunkSize =
+        taskInfo.getTotalFileSize() * compressionRatio / taskInfo.getTotalChunkNum();
 
-    long maxSeriesSizeOfTotalFiles =
-        uncompressedChunkSize
+    long maxConcurrentSeriesSizeOfTotalFiles =
+        averageUncompressedChunkSize
             * taskInfo.getFileInfoList().size()
-            * taskInfo.getMaxConcurrentSeriesNum()
-            * taskInfo.getMaxChunkMetadataNumInSeries();
-    long targetChunkWriterSize = config.getTargetChunkSize() * maxConcurrentSeriesNum;
-    cost += Math.min(maxSeriesSizeOfTotalFiles, targetChunkWriterSize);
-
-    cost +=
-        uncompressedTotalFileSize
             * maxConcurrentSeriesNum
-            * calculatingMaxOverlapFileNumInSubCompactionTask(taskInfo.getResources())
-            / taskInfo.getTotalChunkNum();
-    return cost;
+            * taskInfo.getMaxChunkMetadataNumInSeries();
+    long maxTargetChunkWriterSize = config.getTargetChunkSize() * maxConcurrentSeriesNum * targetFileNum;
+    long targetChunkWriterSize =
+        Math.min(maxConcurrentSeriesSizeOfTotalFiles, maxTargetChunkWriterSize);
+
+    long maxConcurrentChunkSizeFromSourceFile =
+        averageUncompressedChunkSize
+            * maxConcurrentSeriesNum
+            * calculatingMaxOverlapFileNumInSubCompactionTask(taskInfo.getResources());
+
+    return targetChunkWriterSize
+        + maxConcurrentChunkSizeFromSourceFile
+        + taskInfo.getModificationFileSize();
   }
 }
