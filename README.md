@@ -127,16 +127,10 @@ Make sure `Java` is installed, if it's missing, simply install it via:
 
 #### OpenSSL header files
 
-    sudo apt -y install libssl-dev
-
-#### OpenSSL
-
 Usually OpenSSL is already installed, however it's missing the header files we need to compile.
 So ensure these are installed:
 
     sudo apt install libssl-dev
-
-When enabling the `compile-cpp`:
 
 ### Mac OS
 
@@ -156,7 +150,7 @@ Then install `Homebrew` - If this hasn't been installed yet, as we are going to 
 
 #### Java
 
-As soon as that's done install `Java` or newer - If this hasn't been installed yet:
+As soon as that's done install `Java`, if this hasn't been installed yet:
 
     brew install java
 
