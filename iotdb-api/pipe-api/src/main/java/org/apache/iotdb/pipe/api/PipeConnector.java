@@ -135,7 +135,7 @@ public interface PipeConnector extends PipePlugin {
   }
 
   /**
-   * This method is used to transfer the Event.
+   * This method is used to transfer the generic events, including HeartbeatEvent.
    *
    * @param event Event to be transferred
    * @throws PipeConnectionException if the connection is broken
