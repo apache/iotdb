@@ -41,12 +41,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class PipeTransferBatchReq extends TPipeTransferReq {
+public class PipeTransferTabletBatchReq extends TPipeTransferReq {
 
-  private final transient List<PipeTransferInsertNodeReq> insertNodeReqs = new ArrayList<>();
-  private final transient List<PipeTransferTabletReq> tabletReqs = new ArrayList<>();
+  private final transient List<PipeTransferTabletBinaryReq> binaryReqs = new ArrayList<>();
+  private final transient List<PipeTransferTabletInsertNodeReq> insertNodeReqs = new ArrayList<>();
+  private final transient List<PipeTransferTabletRawReq> tabletReqs = new ArrayList<>();
 
-  private PipeTransferBatchReq() {
+  private PipeTransferTabletBatchReq() {
     // Empty constructor
   }
 
@@ -58,7 +59,21 @@ public class PipeTransferBatchReq extends TPipeTransferReq {
     final List<InsertRowStatement> insertRowStatementList = new ArrayList<>();
     final List<InsertTabletStatement> insertTabletStatementList = new ArrayList<>();
 
-    for (final PipeTransferInsertNodeReq insertNodeReq : insertNodeReqs) {
+    for (final PipeTransferTabletBinaryReq binaryReq : binaryReqs) {
+      final Statement statement = binaryReq.constructStatement();
+      if (statement instanceof InsertRowStatement) {
+        insertRowStatementList.add((InsertRowStatement) statement);
+      } else if (statement instanceof InsertTabletStatement) {
+        insertTabletStatementList.add((InsertTabletStatement) statement);
+      } else {
+        throw new UnsupportedOperationException(
+            String.format(
+                "unknown InsertBaseStatement %s constructed from PipeTransferTabletBinaryReq.",
+                binaryReq));
+      }
+    }
+
+    for (final PipeTransferTabletInsertNodeReq insertNodeReq : insertNodeReqs) {
       final Statement insertStatement = insertNodeReq.constructStatement();
       if (insertStatement instanceof InsertRowStatement) {
         insertRowStatementList.add((InsertRowStatement) insertStatement);
@@ -67,12 +82,12 @@ public class PipeTransferBatchReq extends TPipeTransferReq {
       } else {
         throw new UnsupportedOperationException(
             String.format(
-                "unknown InsertBaseStatement %s constructed from the insert node request.",
+                "unknown InsertBaseStatement %s constructed from PipeTransferTabletInsertNodeReq.",
                 insertNodeReq));
       }
     }
 
-    for (final PipeTransferTabletReq tabletReq : tabletReqs) {
+    for (final PipeTransferTabletRawReq tabletReq : tabletReqs) {
       insertTabletStatementList.add(tabletReq.constructStatement());
     }
 
@@ -83,34 +98,42 @@ public class PipeTransferBatchReq extends TPipeTransferReq {
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferBatchReq toTPipeTransferReq(List<TPipeTransferReq> reqs)
+  public static PipeTransferTabletBatchReq toTPipeTransferReq(List<TPipeTransferReq> reqs)
       throws IOException {
-    final PipeTransferBatchReq batchReq = new PipeTransferBatchReq();
+    final PipeTransferTabletBatchReq batchReq = new PipeTransferTabletBatchReq();
 
     for (final TPipeTransferReq req : reqs) {
-      if (req instanceof PipeTransferInsertNodeReq) {
-        batchReq.insertNodeReqs.add((PipeTransferInsertNodeReq) req);
-      } else if (req instanceof PipeTransferTabletReq) {
-        batchReq.tabletReqs.add((PipeTransferTabletReq) req);
+      if (req instanceof PipeTransferTabletBinaryReq) {
+        batchReq.binaryReqs.add((PipeTransferTabletBinaryReq) req);
+      } else if (req instanceof PipeTransferTabletInsertNodeReq) {
+        batchReq.insertNodeReqs.add((PipeTransferTabletInsertNodeReq) req);
+      } else if (req instanceof PipeTransferTabletRawReq) {
+        batchReq.tabletReqs.add((PipeTransferTabletRawReq) req);
       } else {
         throw new UnsupportedOperationException(
             String.format(
-                "unknown TPipeTransferReq type %s when constructing PipeTransferBatchReq",
+                "unknown TPipeTransferReq type %s when constructing PipeTransferTabletBatchReq",
                 req.getType()));
       }
     }
 
     batchReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
-    batchReq.type = PipeRequestType.TRANSFER_BATCH.getType();
+    batchReq.type = PipeRequestType.TRANSFER_TABLET_BATCH.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(batchReq.binaryReqs.size(), outputStream);
+      for (final PipeTransferTabletBinaryReq binaryReq : batchReq.binaryReqs) {
+        ReadWriteIOUtils.write(binaryReq.getBody().length, outputStream);
+        outputStream.write(binaryReq.getBody());
+      }
+
       ReadWriteIOUtils.write(batchReq.insertNodeReqs.size(), outputStream);
-      for (final PipeTransferInsertNodeReq insertNodeReq : batchReq.insertNodeReqs) {
+      for (final PipeTransferTabletInsertNodeReq insertNodeReq : batchReq.insertNodeReqs) {
         insertNodeReq.getInsertNode().serialize(outputStream);
       }
 
       ReadWriteIOUtils.write(batchReq.tabletReqs.size(), outputStream);
-      for (final PipeTransferTabletReq tabletReq : batchReq.tabletReqs) {
+      for (final PipeTransferTabletRawReq tabletReq : batchReq.tabletReqs) {
         tabletReq.getTablet().serialize(outputStream);
         ReadWriteIOUtils.write(tabletReq.getIsAligned(), outputStream);
       }
@@ -122,21 +145,30 @@ public class PipeTransferBatchReq extends TPipeTransferReq {
     return batchReq;
   }
 
-  public static PipeTransferBatchReq fromTPipeTransferReq(TPipeTransferReq transferReq)
+  public static PipeTransferTabletBatchReq fromTPipeTransferReq(TPipeTransferReq transferReq)
       throws IOException {
-    final PipeTransferBatchReq batchReq = new PipeTransferBatchReq();
+    final PipeTransferTabletBatchReq batchReq = new PipeTransferTabletBatchReq();
 
     int size = ReadWriteIOUtils.readInt(transferReq.body);
     for (int i = 0; i < size; ++i) {
+      final int length = ReadWriteIOUtils.readInt(transferReq.body);
+      final byte[] body = new byte[length];
+      transferReq.body.get(body);
+      batchReq.binaryReqs.add(
+          PipeTransferTabletBinaryReq.toTPipeTransferReq(ByteBuffer.wrap(body)));
+    }
+
+    size = ReadWriteIOUtils.readInt(transferReq.body);
+    for (int i = 0; i < size; ++i) {
       batchReq.insertNodeReqs.add(
-          PipeTransferInsertNodeReq.toTPipeTransferReq(
+          PipeTransferTabletInsertNodeReq.toTPipeTransferReq(
               (InsertNode) PlanFragment.deserializeHelper(transferReq.body)));
     }
 
     size = ReadWriteIOUtils.readInt(transferReq.body);
     for (int i = 0; i < size; ++i) {
       batchReq.tabletReqs.add(
-          PipeTransferTabletReq.toTPipeTransferReq(
+          PipeTransferTabletRawReq.toTPipeTransferReq(
               Tablet.deserialize(transferReq.body), ReadWriteIOUtils.readBool(transferReq.body)));
     }
 
@@ -157,8 +189,9 @@ public class PipeTransferBatchReq extends TPipeTransferReq {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeTransferBatchReq that = (PipeTransferBatchReq) obj;
-    return insertNodeReqs.equals(that.insertNodeReqs)
+    PipeTransferTabletBatchReq that = (PipeTransferTabletBatchReq) obj;
+    return binaryReqs.equals(that.binaryReqs)
+        && insertNodeReqs.equals(that.insertNodeReqs)
         && tabletReqs.equals(that.tabletReqs)
         && version == that.version
         && type == that.type
@@ -167,6 +200,6 @@ public class PipeTransferBatchReq extends TPipeTransferReq {
 
   @Override
   public int hashCode() {
-    return Objects.hash(insertNodeReqs, tabletReqs, version, type, body);
+    return Objects.hash(binaryReqs, insertNodeReqs, tabletReqs, version, type, body);
   }
 }
