@@ -26,7 +26,7 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 
 import java.util.function.BiConsumer;
 
-/** TabletInsertionEvent is used to define the event of data insertion. */
+/** {@link TabletInsertionEvent} is used to define the event of data insertion. */
 public interface TabletInsertionEvent extends Event {
 
   /**
