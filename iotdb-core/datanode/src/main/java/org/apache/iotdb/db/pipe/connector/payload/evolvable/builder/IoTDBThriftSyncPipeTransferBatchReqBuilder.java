@@ -65,7 +65,7 @@ public class IoTDBThriftSyncPipeTransferBatchReqBuilder extends PipeTransferBatc
       } else {
         req =
             PipeTransferTabletInsertNodeReq.toTPipeTransferReq(
-                pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCache());
+                pipeInsertNodeTabletInsertionEvent.getInsertNode());
       }
     } else {
       req =
