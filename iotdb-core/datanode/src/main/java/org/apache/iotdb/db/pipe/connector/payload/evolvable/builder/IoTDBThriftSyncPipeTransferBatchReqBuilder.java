@@ -53,9 +53,8 @@ public class IoTDBThriftSyncPipeTransferBatchReqBuilder extends PipeTransferBatc
     if (event instanceof PipeInsertNodeTabletInsertionEvent) {
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
           (PipeInsertNodeTabletInsertionEvent) event;
-      if (pipeInsertNodeTabletInsertionEvent
-              .getPattern()
-              .equals(PipeExtractorConstant.EXTRACTOR_PATTERN_DEFAULT_VALUE)
+      if (!pipeInsertNodeTabletInsertionEvent
+              .shouldParsePattern()
           && pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible() == null) {
         // we just need to read the bytebuffer from the wal file and transfer it directly without
         // serializing or deserializing
@@ -65,7 +64,7 @@ public class IoTDBThriftSyncPipeTransferBatchReqBuilder extends PipeTransferBatc
       } else {
         req =
             PipeTransferTabletInsertNodeReq.toTPipeTransferReq(
-                pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible());
+                pipeInsertNodeTabletInsertionEvent.getInsertNode());
       }
     } else {
       req =
