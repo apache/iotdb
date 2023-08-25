@@ -175,22 +175,17 @@ public class IoTDBThriftAsyncConnector extends IoTDBConnector {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent =
             (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent;
-        final TPipeTransferReq pipeTransferReq;
-        if (!pipeInsertNodeTabletInsertionEvent.shouldParsePattern()
-            && pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible() == null) {
-          pipeTransferReq =
-              PipeTransferTabletBinaryReq.toTPipeTransferReq(
-                  pipeInsertNodeTabletInsertionEvent.getByteBuffer());
-        } else {
-          pipeTransferReq =
-              PipeTransferTabletInsertNodeReq.toTPipeTransferReq(
-                  pipeInsertNodeTabletInsertionEvent.getInsertNode());
-        }
+        final TPipeTransferReq pipeTransferReq =
+            pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible() == null
+                ? PipeTransferTabletBinaryReq.toTPipeTransferReq(
+                    pipeInsertNodeTabletInsertionEvent.getByteBuffer())
+                : PipeTransferTabletInsertNodeReq.toTPipeTransferReq(
+                    pipeInsertNodeTabletInsertionEvent.getInsertNode());
         final PipeTransferTabletInsertNodeEventHandler pipeTransferInsertNodeReqHandler =
             new PipeTransferTabletInsertNodeEventHandler(
                 requestCommitId, pipeInsertNodeTabletInsertionEvent, pipeTransferReq, this);
-        transfer(requestCommitId, pipeTransferInsertNodeReqHandler);
 
+        transfer(requestCommitId, pipeTransferInsertNodeReqHandler);
       } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
         final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
             (PipeRawTabletInsertionEvent) tabletInsertionEvent;

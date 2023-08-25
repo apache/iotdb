@@ -259,18 +259,12 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
   private void doTransfer(
       Socket socket, PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, WALPipeException, IOException {
-    byte[] bytes;
-
-    if (!pipeInsertNodeTabletInsertionEvent.shouldParsePattern()
-        && pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible() == null) {
-      bytes =
-          PipeTransferTabletBinaryReq.toTransferInsertNodeBytes(
-              pipeInsertNodeTabletInsertionEvent.getByteBuffer());
-    } else {
-      bytes =
-          PipeTransferTabletInsertNodeReq.toTransferInsertNodeBytes(
-              pipeInsertNodeTabletInsertionEvent.getInsertNode());
-    }
+    final byte[] bytes =
+        pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible() == null
+            ? PipeTransferTabletBinaryReq.toTransferInsertNodeBytes(
+                pipeInsertNodeTabletInsertionEvent.getByteBuffer())
+            : PipeTransferTabletInsertNodeReq.toTransferInsertNodeBytes(
+                pipeInsertNodeTabletInsertionEvent.getInsertNode());
 
     if (!send(socket, bytes)) {
       throw new PipeException(

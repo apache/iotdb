@@ -290,20 +290,14 @@ public class IoTDBThriftSyncConnector extends IoTDBConnector {
       IoTDBThriftSyncConnectorClient client,
       PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, TException, WALPipeException {
-    final TPipeTransferResp resp;
-
-    if (!pipeInsertNodeTabletInsertionEvent.shouldParsePattern()
-        && pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible() == null) {
-      resp =
-          client.pipeTransfer(
-              PipeTransferTabletBinaryReq.toTPipeTransferReq(
-                  pipeInsertNodeTabletInsertionEvent.getByteBuffer()));
-    } else {
-      resp =
-          client.pipeTransfer(
-              PipeTransferTabletInsertNodeReq.toTPipeTransferReq(
-                  pipeInsertNodeTabletInsertionEvent.getInsertNode()));
-    }
+    final TPipeTransferResp resp =
+        pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible() == null
+            ? client.pipeTransfer(
+                PipeTransferTabletBinaryReq.toTPipeTransferReq(
+                    pipeInsertNodeTabletInsertionEvent.getByteBuffer()))
+            : client.pipeTransfer(
+                PipeTransferTabletInsertNodeReq.toTPipeTransferReq(
+                    pipeInsertNodeTabletInsertionEvent.getInsertNode()));
 
     if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(
