@@ -40,13 +40,15 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
             * taskInfo.getMaxChunkMetadataSize();
 
     logger.info("chunk metadata size {}", cost);
+    System.out.println(cost);
     // add ChunkMetadata size of targetFileWriter
     long sizeForFileWriter =
         (long)
             ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
                 / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
                 * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
-    logger.info("size for file writer: {}", sizeForFileWriter);
+    System.out.println(sizeForFileWriter);
+    logger.warn("size for file writer: {}", sizeForFileWriter);
     cost += sizeForFileWriter;
 
     return cost;
@@ -64,6 +66,7 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
     long uncompressedChunkSize =
         taskInfo.getTotalFileSize() * compressionRatio / taskInfo.getTotalChunkNum();
     cost += uncompressedChunkSize * taskInfo.getMaxConcurrentSeriesNum();
+    System.out.println(cost);
 
     long targetChunkWriterSize = config.getTargetChunkSize() * taskInfo.getMaxConcurrentSeriesNum();
     long maxSeriesSizeOfTotalFiles =
@@ -71,6 +74,8 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
             * taskInfo.getFileInfoList().size()
             * taskInfo.getMaxConcurrentSeriesNum()
             * taskInfo.getMaxChunkMetadataNumInSeries();
+    System.out.println(targetChunkWriterSize);
+    System.out.println(maxSeriesSizeOfTotalFiles);
     cost += Math.min(targetChunkWriterSize, maxSeriesSizeOfTotalFiles);
 
     return cost;
