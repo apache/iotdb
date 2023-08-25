@@ -26,7 +26,6 @@ import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.exception.RatisUnderRecoveryException;
 
 import org.apache.ratis.util.TimeDuration;
-import org.apache.ratis.util.Timestamp;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
