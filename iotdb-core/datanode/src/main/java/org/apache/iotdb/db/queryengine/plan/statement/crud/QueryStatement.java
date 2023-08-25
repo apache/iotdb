@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.queryengine.plan.expression.visitor.CountTimeAggregationAmountVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorityInformationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -49,13 +50,13 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.collect.ImmutableList;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 
 /**
  * Base class of SELECT statement.
@@ -120,9 +121,16 @@ public class QueryStatement extends AuthorityInformationStatement {
 
   private boolean useWildcard = true;
 
+  private boolean isCountTimeAggregation = false;
+
   // used for limit and offset push down optimizer, if we select all columns from aligned device, we
   // can use statistics to skip
   private boolean lastLevelUseWildcard = false;
+
+  // used in limit/offset push down optimizer, if the result set is empty after pushing down in
+  // ASTVisitor,
+  // we can skip the query
+  private boolean isResultSetEmpty = false;
 
   public QueryStatement() {
     this.statementType = StatementType.QUERY;
@@ -147,9 +155,8 @@ public class QueryStatement extends AuthorityInformationStatement {
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    this.authorityTreeList =
-        ImmutableList.of(
-            AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_DATA.ordinal()));
+    this.authorityScope =
+        AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_DATA.ordinal());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
@@ -207,6 +214,14 @@ public class QueryStatement extends AuthorityInformationStatement {
 
   public void setRowOffset(long rowOffset) {
     this.rowOffset = rowOffset;
+  }
+
+  public boolean isResultSetEmpty() {
+    return isResultSetEmpty;
+  }
+
+  public void setResultSetEmpty(boolean resultSetEmpty) {
+    isResultSetEmpty = resultSetEmpty;
   }
 
   public long getSeriesLimit() {
@@ -355,6 +370,13 @@ public class QueryStatement extends AuthorityInformationStatement {
     return orderByComponent != null && orderByComponent.isOrderByTime();
   }
 
+  public boolean isOrderByTimeInDevices() {
+    return orderByComponent == null
+        || (orderByComponent.isBasedOnDevice()
+            && (orderByComponent.getSortItemList().size() == 1
+                || orderByComponent.getTimeOrderPriority() == 1));
+  }
+
   public boolean isOrderByTimeseries() {
     return orderByComponent != null && orderByComponent.isOrderByTimeseries();
   }
@@ -483,6 +505,14 @@ public class QueryStatement extends AuthorityInformationStatement {
     return useWildcard;
   }
 
+  public void setCountTimeAggregation(boolean countTimeAggregation) {
+    this.isCountTimeAggregation = countTimeAggregation;
+  }
+
+  public boolean isCountTimeAggregation() {
+    return this.isCountTimeAggregation;
+  }
+
   public boolean isLastLevelUseWildcard() {
     return lastLevelUseWildcard;
   }
@@ -493,6 +523,22 @@ public class QueryStatement extends AuthorityInformationStatement {
 
   public static final String RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG =
       "Raw data and aggregation hybrid query is not supported.";
+
+  public static final String COUNT_TIME_NOT_SUPPORT_GROUP_BY_LEVEL =
+      "Count_time aggregation function using with group by level is not supported.";
+
+  public static final String COUNT_TIME_NOT_SUPPORT_GROUP_BY_TAG =
+      "Count_time aggregation function using with group by tag is not supported.";
+
+  public static final String COUNT_TIME_NOT_SUPPORT_USED_WITH_OTHER_OPERATION =
+      "Count_time aggregation function used with arithmetic operation "
+          + "or other aggregation is not supported.";
+
+  public static final String COUNT_TIME_CAN_ONLY_EXIST_ONE_IN_SELECT =
+      "Count_time aggregation function can only exist one in select clause.";
+
+  public static final String COUNT_TIME_NOT_SUPPORT_USE_WITH_HAVING =
+      "Count_time aggregation function can not be used with having clause.";
 
   @SuppressWarnings({"squid:S3776", "squid:S6541"}) // Suppress high Cognitive Complexity warning
   public void semanticCheck() {
@@ -511,16 +557,21 @@ public class QueryStatement extends AuthorityInformationStatement {
         if (resultColumn.getColumnType() != ResultColumn.ColumnType.AGGREGATION) {
           throw new SemanticException(RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG);
         }
+
+        String expressionString = resultColumn.getExpression().getExpressionString();
+        if (expressionString.toLowerCase().contains(COUNT_TIME)) {
+          checkCountTimeValidationInSelect(resultColumn.getExpression(), outputColumn);
+        }
         outputColumn.add(
-            resultColumn.getAlias() != null
-                ? resultColumn.getAlias()
-                : resultColumn.getExpression().getExpressionString());
+            resultColumn.getAlias() != null ? resultColumn.getAlias() : expressionString);
       }
+
       for (Expression expression : getExpressionSortItemList()) {
         if (!hasAggregationFunction(expression)) {
           throw new SemanticException(RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG);
         }
       }
+
       if (isGroupByTag()) {
         if (hasHaving()) {
           throw new SemanticException("Having clause is not supported yet in GROUP BY TAGS query");
@@ -581,6 +632,10 @@ public class QueryStatement extends AuthorityInformationStatement {
       if (!isAggregationQuery()) {
         throw new SemanticException(
             "Expression of HAVING clause can not be used in NonAggregationQuery");
+      }
+      if (havingExpression.toString().toLowerCase().contains(COUNT_TIME)
+          && (!new CountTimeAggregationAmountVisitor().process(havingExpression, null).isEmpty())) {
+        throw new SemanticException(COUNT_TIME_NOT_SUPPORT_USE_WITH_HAVING);
       }
       try {
         if (isGroupByLevel()) {
@@ -720,5 +775,38 @@ public class QueryStatement extends AuthorityInformationStatement {
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitQuery(this, context);
+  }
+
+  private void checkCountTimeValidationInSelect(Expression expression, Set<String> outputColumn) {
+    int countTimeAggSize = new CountTimeAggregationAmountVisitor().process(expression, null).size();
+
+    if (countTimeAggSize > 1) {
+      // e.g. select count_time(*) + count_time(*) from root.**
+      throw new SemanticException(COUNT_TIME_CAN_ONLY_EXIST_ONE_IN_SELECT);
+    } else if (countTimeAggSize == 1) {
+      // e.g. select count_time(*) / 2; select sum(*) / count_time(*)
+      if (!(expression instanceof FunctionExpression)) {
+        throw new SemanticException(COUNT_TIME_NOT_SUPPORT_USED_WITH_OTHER_OPERATION);
+      }
+
+      // e.g. select count(*), count(*) from root.db.**
+      if (!outputColumn.isEmpty()) {
+        throw new SemanticException(COUNT_TIME_CAN_ONLY_EXIST_ONE_IN_SELECT);
+      }
+
+      if (isGroupByTag()) {
+        throw new SemanticException(COUNT_TIME_NOT_SUPPORT_GROUP_BY_TAG);
+      }
+
+      if (isGroupByLevel()) {
+        throw new SemanticException(COUNT_TIME_NOT_SUPPORT_GROUP_BY_LEVEL);
+      }
+
+      setCountTimeAggregation(true);
+
+      if (hasHaving()) {
+        throw new SemanticException(COUNT_TIME_NOT_SUPPORT_USE_WITH_HAVING);
+      }
+    }
   }
 }

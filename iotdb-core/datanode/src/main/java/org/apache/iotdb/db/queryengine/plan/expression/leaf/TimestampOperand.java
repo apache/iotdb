@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.leaf;
 
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
@@ -33,7 +32,7 @@ import java.util.Map;
 
 public class TimestampOperand extends LeafOperand {
 
-  public static final PartialPath TIMESTAMP_PARTIAL_PATH = new PartialPath("Time", false);
+  public static final String TIMESTAMP_EXPRESSION_STRING = "Time";
 
   public TimestampOperand() {
     // do nothing
@@ -66,7 +65,7 @@ public class TimestampOperand extends LeafOperand {
 
   @Override
   protected String getExpressionStringInternal() {
-    return "Time";
+    return TIMESTAMP_EXPRESSION_STRING;
   }
 
   @Override

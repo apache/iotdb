@@ -212,6 +212,7 @@ struct TSchemaPartitionTableResp {
 struct TSchemaNodeManagementReq {
   1: required binary pathPatternTree
   2: optional i32 level
+  3: optional binary scopePatternTree
 }
 
 struct TSchemaNodeManagementResp {
@@ -544,6 +545,11 @@ struct TDatabaseInfo {
   11: required i32 maxDataRegionNum
 }
 
+struct TGetDatabaseReq{
+  1: required list<string> databasePathPattern
+  2: required binary scopePatternTree
+}
+
 struct TShowDatabaseResp {
   1: required common.TSStatus status
   // map<DatabaseName, TDatabaseInfo>
@@ -609,6 +615,11 @@ struct TSetSchemaTemplateReq {
   1: required string queryId
   2: required string name
   3: required string path
+}
+
+struct TGetPathsSetTemplatesReq {
+  1: required string templateName
+  2: required binary scopePatternTree
 }
 
 struct TGetPathsSetTemplatesResp {
@@ -908,10 +919,10 @@ service IConfigNodeRPCService {
   common.TSStatus setTimePartitionInterval(TSetTimePartitionIntervalReq req)
 
   /** Count the matched Databases */
-  TCountDatabaseResp countMatchedDatabases(list<string> DatabasePathPattern)
+  TCountDatabaseResp countMatchedDatabases(TGetDatabaseReq req)
 
   /** Get the matched Databases' TDatabaseSchema */
-  TDatabaseSchemaResp getMatchedDatabaseSchemas(list<string> DatabasePathPattern)
+  TDatabaseSchemaResp getMatchedDatabaseSchemas(TGetDatabaseReq req)
 
   // ======================================================
   // SchemaPartition
@@ -1215,7 +1226,7 @@ service IConfigNodeRPCService {
   TShowConfigNodesResp showConfigNodes()
 
   /** Show cluster Databases' information */
-  TShowDatabaseResp showDatabase(list<string> databasePathPattern)
+  TShowDatabaseResp showDatabase(TGetDatabaseReq req)
 
   /**
    * Show the matched cluster Regions' information
@@ -1257,7 +1268,7 @@ service IConfigNodeRPCService {
   /**
    * Get paths setting given schema template
    */
-  TGetPathsSetTemplatesResp getPathsSetTemplate(string req)
+  TGetPathsSetTemplatesResp getPathsSetTemplate(TGetPathsSetTemplatesReq req)
 
   /**
    * Deactivate schema template from paths matched by given pattern tree in cluster

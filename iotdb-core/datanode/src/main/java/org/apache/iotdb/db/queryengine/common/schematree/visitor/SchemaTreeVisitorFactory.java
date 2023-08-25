@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.common.schematree.visitor;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode;
 
 public class SchemaTreeVisitorFactory {
@@ -48,5 +49,27 @@ public class SchemaTreeVisitorFactory {
           int soffset) {
     return new SchemaTreeVisitorWithLimitOffsetWrapper<>(
         new SchemaTreeMeasurementVisitor(root, pathPattern, isPrefixMatch), slimit, soffset);
+  }
+
+  public static SchemaTreeDeviceVisitor createSchemaTreeDeviceVisitor(
+      SchemaNode root, PartialPath pathPattern, boolean isPrefixMatch, PathPatternTree scope) {
+    return new SchemaTreeDeviceVisitor(root, pathPattern, isPrefixMatch, scope);
+  }
+
+  public static SchemaTreeMeasurementVisitor createSchemaTreeMeasurementVisitor(
+      SchemaNode root, PartialPath pathPattern, boolean isPrefixMatch, PathPatternTree scope) {
+    return new SchemaTreeMeasurementVisitor(root, pathPattern, isPrefixMatch, scope);
+  }
+
+  public static SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath>
+      createSchemaTreeMeasurementVisitor(
+          SchemaNode root,
+          PartialPath pathPattern,
+          boolean isPrefixMatch,
+          int slimit,
+          int soffset,
+          PathPatternTree scope) {
+    return new SchemaTreeVisitorWithLimitOffsetWrapper<>(
+        new SchemaTreeMeasurementVisitor(root, pathPattern, isPrefixMatch, scope), slimit, soffset);
   }
 }

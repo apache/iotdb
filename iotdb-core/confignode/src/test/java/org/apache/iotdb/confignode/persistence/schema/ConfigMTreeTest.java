@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -192,14 +193,14 @@ public class ConfigMTreeTest {
     root.setStorageGroup(new PartialPath("root.sg3"));
     root.setStorageGroup(new PartialPath("root.a.b.sg3"));
 
-    assertEquals(7, root.getDatabaseNum(new PartialPath("root.**"), false));
-    assertEquals(3, root.getDatabaseNum(new PartialPath("root.*"), false));
-    assertEquals(2, root.getDatabaseNum(new PartialPath("root.*.*"), false));
-    assertEquals(2, root.getDatabaseNum(new PartialPath("root.*.*.*"), false));
-    assertEquals(1, root.getDatabaseNum(new PartialPath("root.*.sg1"), false));
-    assertEquals(2, root.getDatabaseNum(new PartialPath("root.**.sg1"), false));
-    assertEquals(1, root.getDatabaseNum(new PartialPath("root.sg3"), false));
-    assertEquals(2, root.getDatabaseNum(new PartialPath("root.*.b.*"), false));
+    assertEquals(7, root.getDatabaseNum(new PartialPath("root.**"), ALL_MATCH_SCOPE, false));
+    assertEquals(3, root.getDatabaseNum(new PartialPath("root.*"), ALL_MATCH_SCOPE, false));
+    assertEquals(2, root.getDatabaseNum(new PartialPath("root.*.*"), ALL_MATCH_SCOPE, false));
+    assertEquals(2, root.getDatabaseNum(new PartialPath("root.*.*.*"), ALL_MATCH_SCOPE, false));
+    assertEquals(1, root.getDatabaseNum(new PartialPath("root.*.sg1"), ALL_MATCH_SCOPE, false));
+    assertEquals(2, root.getDatabaseNum(new PartialPath("root.**.sg1"), ALL_MATCH_SCOPE, false));
+    assertEquals(1, root.getDatabaseNum(new PartialPath("root.sg3"), ALL_MATCH_SCOPE, false));
+    assertEquals(2, root.getDatabaseNum(new PartialPath("root.*.b.*"), ALL_MATCH_SCOPE, false));
   }
 
   @Test
@@ -278,9 +279,17 @@ public class ConfigMTreeTest {
           i, newTree.getNodeWithAutoCreate(pathList[i].concatNode("a")).getSchemaTemplateId());
     }
 
-    assertEquals(3, newTree.getMatchedDatabases(new PartialPath("root.**.sg"), false).size());
-    assertEquals(2, newTree.getMatchedDatabases(new PartialPath("root.**.b.sg"), false).size());
-    assertEquals(1, newTree.getMatchedDatabases(new PartialPath("root.*.*.sg"), false).size());
+    assertEquals(
+        3,
+        newTree.getMatchedDatabases(new PartialPath("root.**.sg"), ALL_MATCH_SCOPE, false).size());
+    assertEquals(
+        2,
+        newTree
+            .getMatchedDatabases(new PartialPath("root.**.b.sg"), ALL_MATCH_SCOPE, false)
+            .size());
+    assertEquals(
+        1,
+        newTree.getMatchedDatabases(new PartialPath("root.*.*.sg"), ALL_MATCH_SCOPE, false).size());
   }
 
   @Test
@@ -313,7 +322,7 @@ public class ConfigMTreeTest {
     }
 
     try {
-      List<String> pathList = root.getPathsSetOnTemplate(0, false);
+      List<String> pathList = root.getPathsSetOnTemplate(0, ALL_MATCH_SCOPE, false);
       Assert.assertTrue(pathList.contains("root.a.template0"));
       Assert.assertTrue(pathList.contains("root.a.b.template0"));
     } catch (MetadataException e) {

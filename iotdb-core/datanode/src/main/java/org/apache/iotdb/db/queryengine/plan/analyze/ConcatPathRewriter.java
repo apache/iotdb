@@ -109,7 +109,7 @@ public class ConcatPathRewriter {
     // only authorized paths are visible for user
     this.patternTree =
         PathPatternTreeUtils.intersectWithFullPathPrefixTree(
-            patternTree, queryStatement.getAuthorityTree(0));
+            patternTree, queryStatement.getAuthorityScope());
     return queryStatement;
   }
 

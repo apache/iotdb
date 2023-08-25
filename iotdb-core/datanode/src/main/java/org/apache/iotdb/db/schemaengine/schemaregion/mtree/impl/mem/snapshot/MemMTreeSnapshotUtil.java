@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.snapshot;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.commons.schema.node.common.AbstractDatabaseDeviceMNode;
 import org.apache.iotdb.commons.schema.node.common.AbstractDatabaseMNode;
@@ -32,7 +33,6 @@ import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.commons.schema.node.visitor.MNodeVisitor;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.db.schemaengine.SchemaConstant;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.MemMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
@@ -56,13 +56,13 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.function.Consumer;
 
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.ENTITY_MNODE_TYPE;
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.INTERNAL_MNODE_TYPE;
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.LOGICAL_VIEW_MNODE_TYPE;
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.MEASUREMENT_MNODE_TYPE;
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.STORAGE_GROUP_ENTITY_MNODE_TYPE;
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.isStorageGroupType;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ENTITY_MNODE_TYPE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.LOGICAL_VIEW_MNODE_TYPE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.MEASUREMENT_MNODE_TYPE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_ENTITY_MNODE_TYPE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.isStorageGroupType;
 
 public class MemMTreeSnapshotUtil {
 

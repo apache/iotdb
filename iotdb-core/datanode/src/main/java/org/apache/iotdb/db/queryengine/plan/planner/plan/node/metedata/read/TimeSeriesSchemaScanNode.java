@@ -20,6 +20,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
@@ -57,8 +58,9 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
       long offset,
       boolean orderByHeat,
       boolean isPrefixPath,
-      @NotNull Map<Integer, Template> templateMap) {
-    super(id, partialPath, limit, offset, isPrefixPath);
+      @NotNull Map<Integer, Template> templateMap,
+      @NotNull PathPatternTree scope) {
+    super(id, partialPath, limit, offset, isPrefixPath, scope);
     this.schemaFilter = schemaFilter;
     this.orderByHeat = orderByHeat;
     this.templateMap = templateMap;
@@ -72,6 +74,7 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.TIME_SERIES_SCHEMA_SCAN.serialize(byteBuffer);
     ReadWriteIOUtils.write(path.getFullPath(), byteBuffer);
+    scope.serialize(byteBuffer);
     SchemaFilter.serialize(schemaFilter, byteBuffer);
     ReadWriteIOUtils.write(limit, byteBuffer);
     ReadWriteIOUtils.write(offset, byteBuffer);
@@ -88,6 +91,7 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.TIME_SERIES_SCHEMA_SCAN.serialize(stream);
     ReadWriteIOUtils.write(path.getFullPath(), stream);
+    scope.serialize(stream);
     SchemaFilter.serialize(schemaFilter, stream);
     ReadWriteIOUtils.write(limit, stream);
     ReadWriteIOUtils.write(offset, stream);
@@ -108,6 +112,7 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Cannot deserialize TimeSeriesSchemaScanNode", e);
     }
+    PathPatternTree scope = PathPatternTree.deserialize(byteBuffer);
     SchemaFilter schemaFilter = SchemaFilter.deserialize(byteBuffer);
     long limit = ReadWriteIOUtils.readLong(byteBuffer);
     long offset = ReadWriteIOUtils.readLong(byteBuffer);
@@ -126,7 +131,15 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
 
     return new TimeSeriesSchemaScanNode(
-        planNodeId, path, schemaFilter, limit, offset, oderByHeat, isPrefixPath, templateMap);
+        planNodeId,
+        path,
+        schemaFilter,
+        limit,
+        offset,
+        oderByHeat,
+        isPrefixPath,
+        templateMap,
+        scope);
   }
 
   public boolean isOrderByHeat() {
@@ -140,7 +153,15 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
   @Override
   public PlanNode clone() {
     return new TimeSeriesSchemaScanNode(
-        getPlanNodeId(), path, schemaFilter, limit, offset, orderByHeat, isPrefixPath, templateMap);
+        getPlanNodeId(),
+        path,
+        schemaFilter,
+        limit,
+        offset,
+        orderByHeat,
+        isPrefixPath,
+        templateMap,
+        scope);
   }
 
   @Override

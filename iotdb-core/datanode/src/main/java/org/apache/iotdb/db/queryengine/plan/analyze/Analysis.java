@@ -50,6 +50,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -93,7 +94,7 @@ public class Analysis {
   private Set<Expression> sourceExpressions;
 
   // input expressions of aggregations to be calculated
-  private Set<Expression> sourceTransformExpressions;
+  private Set<Expression> sourceTransformExpressions = new HashSet<>();
 
   private Expression whereExpression;
 
@@ -126,6 +127,9 @@ public class Analysis {
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Query Analysis (used in ALIGN BY DEVICE)
   /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // the list of device names
+  private List<PartialPath> deviceList;
 
   // map from output device name to queried devices
   private Map<String, List<String>> outputDeviceToQueriedDevicesMap;
@@ -743,5 +747,13 @@ public class Analysis {
 
   public void setLastLevelUseWildcard(boolean lastLevelUseWildcard) {
     this.lastLevelUseWildcard = lastLevelUseWildcard;
+  }
+
+  public void setDeviceList(List<PartialPath> deviceList) {
+    this.deviceList = deviceList;
+  }
+
+  public List<PartialPath> getDeviceList() {
+    return deviceList;
   }
 }

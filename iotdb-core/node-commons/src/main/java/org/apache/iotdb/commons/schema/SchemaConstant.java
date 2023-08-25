@@ -16,11 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.schemaengine;
+package org.apache.iotdb.commons.schema;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.path.fa.dfa.PatternDFA;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
 public class SchemaConstant {
 
@@ -52,11 +56,25 @@ public class SchemaConstant {
   public static final String TAG_LOG_SNAPSHOT_TMP = "tlog.txt.snapshot.tmp";
   public static final String MTREE_SNAPSHOT = "mtree.snapshot";
   public static final String MTREE_SNAPSHOT_TMP = "mtree.snapshot.tmp";
-
+  public static final String SYSTEM_DATABASE = "root.__system";
   public static final String[] ALL_RESULT_NODES = new String[] {"root", "**"};
-  public static final PartialPath ALL_MATCH_PATTERN = new PartialPath(new String[] {"root", "**"});
+  public static final PartialPath ALL_MATCH_PATTERN = new PartialPath(ALL_RESULT_NODES);
+  public static final PatternDFA ALL_MATCH_DFA = new PatternDFA(ALL_MATCH_PATTERN, false);
+  public static final PathPatternTree ALL_MATCH_SCOPE = new PathPatternTree();
+  public static final ByteBuffer ALL_MATCH_SCOPE_BINARY;
+
+  static {
+    ALL_MATCH_SCOPE.appendPathPattern(ALL_MATCH_PATTERN);
+    ALL_MATCH_SCOPE.constructTree();
+    try {
+      ALL_MATCH_SCOPE_BINARY = ALL_MATCH_SCOPE.serialize();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   public static final PartialPath SYSTEM_DATABASE_PATTERN =
-      new PartialPath(IoTDBConfig.SYSTEM_DATABASE.split("\\."));
+      new PartialPath(SYSTEM_DATABASE.split("\\."));
 
   public static final int NON_TEMPLATE = -1;
   public static final int ALL_TEMPLATE = -2;

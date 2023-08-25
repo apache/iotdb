@@ -78,9 +78,11 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
@@ -159,7 +161,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   private static final String MSG_RECONNECTION_DATANODE_FAIL =
       "Failed to connect to ConfigNode %s from DataNode %s when executing %s, Exception:";
-  private static final int RETRY_INTERVAL_MS = 1000;
+  private static final int RETRY_INTERVAL_MS = 2000;
 
   private final ThriftClientProperty property;
 
@@ -458,19 +460,15 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TCountDatabaseResp countMatchedDatabases(List<String> storageGroupPathPattern)
-      throws TException {
+  public TCountDatabaseResp countMatchedDatabases(TGetDatabaseReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.countMatchedDatabases(storageGroupPathPattern),
-        resp -> !updateConfigNodeLeader(resp.status));
+        () -> client.countMatchedDatabases(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
-  public TDatabaseSchemaResp getMatchedDatabaseSchemas(List<String> storageGroupPathPattern)
-      throws TException {
+  public TDatabaseSchemaResp getMatchedDatabaseSchemas(TGetDatabaseReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.getMatchedDatabaseSchemas(storageGroupPathPattern),
-        resp -> !updateConfigNodeLeader(resp.status));
+        () -> client.getMatchedDatabaseSchemas(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
@@ -665,10 +663,9 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TShowDatabaseResp showDatabase(List<String> storageGroupPathPattern) throws TException {
+  public TShowDatabaseResp showDatabase(TGetDatabaseReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.showDatabase(storageGroupPathPattern),
-        resp -> !updateConfigNodeLeader(resp.status));
+        () -> client.showDatabase(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override
@@ -792,7 +789,8 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TGetPathsSetTemplatesResp getPathsSetTemplate(String req) throws TException {
+  public TGetPathsSetTemplatesResp getPathsSetTemplate(TGetPathsSetTemplatesReq req)
+      throws TException {
     return executeRemoteCallWithRetry(
         () -> client.getPathsSetTemplate(req), resp -> !updateConfigNodeLeader(resp.status));
   }
