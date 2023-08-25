@@ -36,17 +36,36 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.cartesianProduct;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils.reconstructFunctionExpressions;
 import static org.apache.iotdb.db.utils.TypeInferenceUtils.bindTypeForAggregationNonSeriesInputExpressions;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 
 public class BindSchemaForExpressionVisitor extends CartesianProductVisitor<ISchemaTree> {
 
   @Override
   public List<Expression> visitFunctionExpression(
       FunctionExpression functionExpression, ISchemaTree schemaTree) {
+
+    if (COUNT_TIME.equalsIgnoreCase(functionExpression.getFunctionName())) {
+      List<Expression> usedExpressions =
+          functionExpression.getExpressions().stream()
+              .flatMap(e -> process(e, schemaTree).stream())
+              .collect(Collectors.toList());
+
+      Expression countTimeExpression =
+          new FunctionExpression(
+              COUNT_TIME,
+              new LinkedHashMap<>(),
+              Collections.singletonList(new TimestampOperand()),
+              usedExpressions);
+      return Collections.singletonList(countTimeExpression);
+    }
+
     // One by one, remove the wildcards from the input expressions. In most cases, an expression
     // will produce multiple expressions after removing the wildcards. We use extendedExpressions
     // to collect the produced expressions.

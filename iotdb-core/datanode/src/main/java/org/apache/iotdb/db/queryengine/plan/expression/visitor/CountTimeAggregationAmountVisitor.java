@@ -19,22 +19,36 @@
 
 package org.apache.iotdb.db.queryengine.plan.expression.visitor;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.LeafOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-public class LowercaseNormalizeVisitor extends ReconstructVisitor<Void> {
+import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
+
+public class CountTimeAggregationAmountVisitor extends CollectVisitor {
+
+  public static final String COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD =
+      "The parameter of count_time aggregation can only be '*'.";
 
   @Override
-  public Expression visitFunctionExpression(FunctionExpression functionExpression, Void context) {
-    List<Expression> childResult = new ArrayList<>();
-    functionExpression.getExpressions().forEach(child -> childResult.add(process(child, null)));
-    return new FunctionExpression(
-        functionExpression.getFunctionName().toLowerCase(),
-        functionExpression.getFunctionAttributes(),
-        childResult,
-        functionExpression.getCountTimeExpressions());
+  public List<Expression> visitFunctionExpression(
+      FunctionExpression functionExpression, Void context) {
+    if (COUNT_TIME.equalsIgnoreCase(functionExpression.getFunctionName())) {
+      if (!"*".equals(functionExpression.getExpressions().get(0).toString())) {
+        throw new SemanticException(COUNT_TIME_ONLY_SUPPORT_ONE_WILDCARD);
+      }
+      return Collections.singletonList(functionExpression);
+    }
+
+    return Collections.emptyList();
+  }
+
+  @Override
+  public List<Expression> visitLeafOperand(LeafOperand leafOperand, Void context) {
+    return Collections.emptyList();
   }
 }

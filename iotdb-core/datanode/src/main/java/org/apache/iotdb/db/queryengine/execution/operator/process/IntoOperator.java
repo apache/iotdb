@@ -51,16 +51,9 @@ public class IntoOperator extends AbstractIntoOperator {
       Map<PartialPath, Map<String, TSDataType>> targetPathToDataTypeMap,
       Map<String, Boolean> targetDeviceToAlignedMap,
       List<Pair<String, PartialPath>> sourceTargetPathPairList,
-      Map<String, InputLocation> sourceColumnToInputLocationMap,
       ExecutorService intoOperationExecutor,
       long statementSizePerLine) {
-    super(
-        operatorContext,
-        child,
-        inputColumnTypes,
-        sourceColumnToInputLocationMap,
-        intoOperationExecutor,
-        statementSizePerLine);
+    super(operatorContext, child, inputColumnTypes, intoOperationExecutor, statementSizePerLine);
     this.sourceTargetPathPairList = sourceTargetPathPairList;
     insertTabletStatementGenerators =
         constructInsertTabletStatementGenerators(

@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.path.fa;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 
 import java.util.Iterator;
 import java.util.Map;
@@ -86,12 +87,19 @@ public interface IPatternFA {
 
   final class Builder {
     private PartialPath pathPattern;
+    private PathPatternTree patternTree;
     private boolean isPrefixMatch = false;
 
     public Builder() {}
 
     public Builder pattern(PartialPath pattern) {
       this.pathPattern = pattern;
+      return this;
+    }
+
+    /** @param patternTree the included PartialPath must be a prefix or a fullPath */
+    public Builder patternTree(PathPatternTree patternTree) {
+      this.patternTree = patternTree;
       return this;
     }
 
@@ -102,6 +110,10 @@ public interface IPatternFA {
 
     public PartialPath getPathPattern() {
       return pathPattern;
+    }
+
+    public PathPatternTree getPatternTree() {
+      return patternTree;
     }
 
     public boolean isPrefixMatch() {
@@ -122,12 +134,13 @@ public interface IPatternFA {
       if (o == null || getClass() != o.getClass()) return false;
       Builder builder = (Builder) o;
       return isPrefixMatch == builder.isPrefixMatch
-          && Objects.equals(pathPattern, builder.pathPattern);
+          && Objects.equals(pathPattern, builder.pathPattern)
+          && Objects.equals(patternTree, builder.patternTree);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(pathPattern, isPrefixMatch);
+      return Objects.hash(pathPattern, patternTree, isPrefixMatch);
     }
   }
 }

@@ -152,6 +152,10 @@ public abstract class BinaryExpression extends Expression {
     String left = this.getLeftExpression().getOutputSymbol();
     String right = this.getRightExpression().getOutputSymbol();
 
+    return buildExpression(left, right);
+  }
+
+  private String buildExpression(String left, String right) {
     StringBuilder builder = new StringBuilder();
     if (leftExpression.getExpressionType().getPriority() < this.getExpressionType().getPriority()) {
       builder.append("(").append(left).append(")");
