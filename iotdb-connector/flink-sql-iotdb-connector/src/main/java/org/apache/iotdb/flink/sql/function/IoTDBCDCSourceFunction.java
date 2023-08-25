@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.flink.sql.function;
 
-import org.apache.iotdb.flink.sql.client.IoTDBWebsocketClient;
+import org.apache.iotdb.flink.sql.client.IoTDBWebSocketClient;
 import org.apache.iotdb.flink.sql.common.Options;
 import org.apache.iotdb.flink.sql.common.Utils;
 import org.apache.iotdb.flink.sql.exception.IllegalOptionException;
@@ -35,6 +35,7 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.streaming.api.functions.source.RichSourceFunction;
 import org.apache.flink.table.data.GenericRowData;
+import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.types.DataType;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.enums.ReadyState;
@@ -52,9 +53,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
-public class IoTDBCDCSourceFunction<RowData> extends RichSourceFunction<RowData> {
+public class IoTDBCDCSourceFunction extends RichSourceFunction<RowData> {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBCDCSourceFunction.class);
-  private final List<IoTDBWebsocketClient> socketClients = new ArrayList<>();
+  private final List<IoTDBWebSocketClient> socketClients = new ArrayList<>();
   private final int cdcPort;
   private final List<String> nodeUrls;
   private final String taskName;
@@ -139,7 +140,7 @@ public class IoTDBCDCSourceFunction<RowData> extends RichSourceFunction<RowData>
     consumeExecutor.submit(new ConsumeRunnable(ctx));
     consumeExecutor.shutdown();
     while (true) {
-      for (IoTDBWebsocketClient socketClient : socketClients) {
+      for (IoTDBWebSocketClient socketClient : socketClients) {
         if (socketClient.getReadyState().equals(ReadyState.CLOSED)) {
           while (!Utils.isURIAvailable(socketClient.getURI())) {
             String log =
@@ -170,8 +171,8 @@ public class IoTDBCDCSourceFunction<RowData> extends RichSourceFunction<RowData>
     try {
       this.tabletWrappers.put(tabletWrapper);
     } catch (InterruptedException e) {
-      String host = tabletWrapper.getWebsocketClient().getRemoteSocketAddress().getHostName();
-      int port = tabletWrapper.getWebsocketClient().getRemoteSocketAddress().getPort();
+      String host = tabletWrapper.getWebSocketClient().getRemoteSocketAddress().getHostName();
+      int port = tabletWrapper.getWebSocketClient().getRemoteSocketAddress().getPort();
       String log =
           String.format(
               "The tablet from %s:%d can't be put into queue, because: %s",
@@ -181,7 +182,7 @@ public class IoTDBCDCSourceFunction<RowData> extends RichSourceFunction<RowData>
     }
   }
 
-  private IoTDBWebsocketClient initAndGet(URI uri) throws InterruptedException {
+  private IoTDBWebSocketClient initAndGet(URI uri) throws InterruptedException {
     while (!Utils.isURIAvailable(uri)) {
       String log =
           String.format(
@@ -189,7 +190,7 @@ public class IoTDBCDCSourceFunction<RowData> extends RichSourceFunction<RowData>
       LOGGER.warn(log);
       Thread.sleep(5000);
     }
-    IoTDBWebsocketClient client = new IoTDBWebsocketClient(uri, this);
+    IoTDBWebSocketClient client = new IoTDBWebSocketClient(uri, this);
     client.connect();
     while (!client.getReadyState().equals(ReadyState.OPEN)) {
       Thread.sleep(1000);
@@ -224,7 +225,7 @@ public class IoTDBCDCSourceFunction<RowData> extends RichSourceFunction<RowData>
           row.add(null);
         }
       }
-      RowData rowData = (RowData) GenericRowData.of(row.toArray());
+      RowData rowData = GenericRowData.of(row.toArray());
       ctx.collect(rowData);
     }
   }
@@ -243,7 +244,7 @@ public class IoTDBCDCSourceFunction<RowData> extends RichSourceFunction<RowData>
           TabletWrapper tabletWrapper = tabletWrappers.take();
           collectTablet(tabletWrapper.getTablet(), context);
           tabletWrapper
-              .getWebsocketClient()
+              .getWebSocketClient()
               .send(String.format("ACK:%d", tabletWrapper.getCommitId()));
         } catch (InterruptedException e) {
           LOGGER.warn("The tablet can't be taken from queue!");

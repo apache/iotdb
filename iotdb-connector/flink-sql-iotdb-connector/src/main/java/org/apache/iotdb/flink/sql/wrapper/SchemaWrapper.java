@@ -27,13 +27,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SchemaWrapper implements Serializable {
-  private List<Tuple2<String, DataType>> schema;
+  private final List<Tuple2<String, DataType>> schema;
 
   public SchemaWrapper(TableSchema schema) {
     this.schema = new ArrayList<>();
 
     for (String fieldName : schema.getFieldNames()) {
-      if (fieldName == "Time_") {
+      if ("Time_".equals(fieldName)) {
         continue;
       }
       this.schema.add(new Tuple2<>(fieldName, schema.getFieldDataType(fieldName).get()));

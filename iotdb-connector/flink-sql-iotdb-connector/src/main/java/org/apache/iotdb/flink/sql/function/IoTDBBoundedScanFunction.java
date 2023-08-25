@@ -39,14 +39,12 @@ import org.apache.flink.core.io.InputSplitAssigner;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.types.DataType;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class IoTDBBoundedScanFunction extends RichInputFormat<RowData, InputSplit> {
   private final ReadableConfig options;
-  private final List<Tuple2<String, DataType>> tableSchema;
   private final String device;
   private final long lowerBound;
   private final long upperBound;
@@ -57,7 +55,7 @@ public class IoTDBBoundedScanFunction extends RichInputFormat<RowData, InputSpli
 
   public IoTDBBoundedScanFunction(ReadableConfig options, SchemaWrapper schemaWrapper) {
     this.options = options;
-    tableSchema = schemaWrapper.getSchema();
+    List<Tuple2<String, DataType>> tableSchema = schemaWrapper.getSchema();
     device = options.get(Options.DEVICE);
     lowerBound = options.get(Options.SCAN_BOUNDED_LOWER_BOUND);
     upperBound = options.get(Options.SCAN_BOUNDED_UPPER_BOUND);
@@ -71,12 +69,12 @@ public class IoTDBBoundedScanFunction extends RichInputFormat<RowData, InputSpli
   }
 
   @Override
-  public BaseStatistics getStatistics(BaseStatistics baseStatistics) throws IOException {
+  public BaseStatistics getStatistics(BaseStatistics baseStatistics) {
     return baseStatistics;
   }
 
   @Override
-  public InputSplit[] createInputSplits(int i) throws IOException {
+  public InputSplit[] createInputSplits(int i) {
     return new GenericInputSplit[] {new GenericInputSplit(1, 1)};
   }
 
@@ -86,7 +84,7 @@ public class IoTDBBoundedScanFunction extends RichInputFormat<RowData, InputSpli
   }
 
   @Override
-  public void openInputFormat() throws IOException {
+  public void openInputFormat() {
     session =
         new Session.Builder()
             .nodeUrls(Arrays.asList(options.get(Options.NODE_URLS).split(",")))
@@ -102,7 +100,7 @@ public class IoTDBBoundedScanFunction extends RichInputFormat<RowData, InputSpli
   }
 
   @Override
-  public void open(InputSplit inputSplit) throws IOException {
+  public void open(InputSplit inputSplit) {
     String sql;
     if (lowerBound < 0L && upperBound < 0L) {
       sql = String.format("SELECT %s FROM %s", String.join(",", measurements), device);
@@ -131,7 +129,7 @@ public class IoTDBBoundedScanFunction extends RichInputFormat<RowData, InputSpli
   }
 
   @Override
-  public boolean reachedEnd() throws IOException {
+  public boolean reachedEnd() {
     try {
       return !dataSet.hasNext();
     } catch (StatementExecutionException | IoTDBConnectionException e) {
@@ -140,7 +138,7 @@ public class IoTDBBoundedScanFunction extends RichInputFormat<RowData, InputSpli
   }
 
   @Override
-  public RowData nextRecord(RowData rowData) throws IOException {
+  public RowData nextRecord(RowData rowData) {
     try {
       RowRecord rowRecord = dataSet.next();
       return Utils.convert(rowRecord, columnTypes);
@@ -150,7 +148,7 @@ public class IoTDBBoundedScanFunction extends RichInputFormat<RowData, InputSpli
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     try {
       if (dataSet != null) {
         dataSet.close();
