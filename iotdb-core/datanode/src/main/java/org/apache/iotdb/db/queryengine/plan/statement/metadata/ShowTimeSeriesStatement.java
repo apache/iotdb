@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 
@@ -43,6 +45,8 @@ public class ShowTimeSeriesStatement extends ShowStatement {
   // if is true, the result will be sorted according to the inserting frequency of the time series
   private final boolean orderByHeat;
 
+  private PathPatternTree authorityScope = SchemaConstant.ALL_MATCH_SCOPE;
+
   public ShowTimeSeriesStatement(PartialPath pathPattern, boolean orderByHeat) {
     super();
     this.pathPattern = pathPattern;
@@ -55,6 +59,14 @@ public class ShowTimeSeriesStatement extends ShowStatement {
 
   public SchemaFilter getSchemaFilter() {
     return schemaFilter;
+  }
+
+  public PathPatternTree getAuthorityScope() {
+    return authorityScope;
+  }
+
+  public void setAuthorityScope(PathPatternTree authorityScope) {
+    this.authorityScope = authorityScope;
   }
 
   public void setSchemaFilter(SchemaFilter schemaFilter) {

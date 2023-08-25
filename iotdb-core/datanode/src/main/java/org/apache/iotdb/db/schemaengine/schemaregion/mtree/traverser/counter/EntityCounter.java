@@ -20,6 +20,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.counter;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.basic.EntityTraverser;
@@ -29,9 +30,14 @@ public class EntityCounter<N extends IMNode<N>> extends EntityTraverser<Void, N>
     implements Counter {
   private int count;
 
-  public EntityCounter(N startNode, PartialPath path, IMTreeStore<N> store, boolean isPrefixMatch)
+  public EntityCounter(
+      N startNode,
+      PartialPath path,
+      IMTreeStore<N> store,
+      boolean isPrefixMatch,
+      PathPatternTree scope)
       throws MetadataException {
-    super(startNode, path, store, isPrefixMatch);
+    super(startNode, path, store, isPrefixMatch, scope);
   }
 
   @Override

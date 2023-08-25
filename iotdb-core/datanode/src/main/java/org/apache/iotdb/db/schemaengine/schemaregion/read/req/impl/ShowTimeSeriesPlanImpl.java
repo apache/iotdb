@@ -21,6 +21,7 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.read.req.impl;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowTimeSeriesPlan;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -43,8 +44,9 @@ public class ShowTimeSeriesPlanImpl extends AbstractShowSchemaPlanImpl
       long offset,
       boolean isPrefixMatch,
       SchemaFilter schemaFilter,
-      boolean needViewDetail) {
-    super(path, limit, offset, isPrefixMatch);
+      boolean needViewDetail,
+      PathPatternTree scope) {
+    super(path, limit, offset, isPrefixMatch, scope);
     this.relatedTemplate = relatedTemplate;
     this.schemaFilter = schemaFilter;
     this.needViewDetail = needViewDetail;

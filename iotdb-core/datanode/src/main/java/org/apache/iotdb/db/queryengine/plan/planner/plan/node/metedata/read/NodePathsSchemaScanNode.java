@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -39,8 +40,10 @@ public class NodePathsSchemaScanNode extends SchemaQueryScanNode {
   private PartialPath prefixPath;
   private int level = -1;
 
-  public NodePathsSchemaScanNode(PlanNodeId id, PartialPath prefixPath, int level) {
+  public NodePathsSchemaScanNode(
+      PlanNodeId id, PartialPath prefixPath, int level, PathPatternTree scope) {
     super(id);
+    setScope(scope);
     this.prefixPath = prefixPath;
     this.level = level;
   }
@@ -55,7 +58,7 @@ public class NodePathsSchemaScanNode extends SchemaQueryScanNode {
 
   @Override
   public PlanNode clone() {
-    return new NodePathsSchemaScanNode(getPlanNodeId(), prefixPath, level);
+    return new NodePathsSchemaScanNode(getPlanNodeId(), prefixPath, level, scope);
   }
 
   @Override
@@ -69,6 +72,7 @@ public class NodePathsSchemaScanNode extends SchemaQueryScanNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.NODE_PATHS_SCAN.serialize(byteBuffer);
     prefixPath.serialize(byteBuffer);
+    scope.serialize(byteBuffer);
     byteBuffer.putInt(level);
   }
 
@@ -76,14 +80,16 @@ public class NodePathsSchemaScanNode extends SchemaQueryScanNode {
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.NODE_PATHS_SCAN.serialize(stream);
     prefixPath.serialize(stream);
+    scope.serialize(stream);
     stream.writeInt(level);
   }
 
   public static PlanNode deserialize(ByteBuffer buffer) {
     PartialPath path = (PartialPath) PathDeserializeUtil.deserialize(buffer);
+    PathPatternTree scope = PathPatternTree.deserialize(buffer);
     int level = buffer.getInt();
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new NodePathsSchemaScanNode(planNodeId, path, level);
+    return new NodePathsSchemaScanNode(planNodeId, path, level, scope);
   }
 
   @Override

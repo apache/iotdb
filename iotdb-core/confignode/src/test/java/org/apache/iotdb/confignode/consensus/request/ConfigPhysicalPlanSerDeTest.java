@@ -169,6 +169,7 @@ import java.util.Set;
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.ConfigRegion;
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.DataRegion;
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.SchemaRegion;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.junit.Assert.assertEquals;
 
 public class ConfigPhysicalPlanSerDeTest {
@@ -320,7 +321,7 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void CountStorageGroupPlanTest() throws IOException {
-    CountDatabasePlan req0 = new CountDatabasePlan(Arrays.asList("root", "sg"));
+    CountDatabasePlan req0 = new CountDatabasePlan(Arrays.asList("root", "sg"), ALL_MATCH_SCOPE);
     CountDatabasePlan req1 =
         (CountDatabasePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -328,7 +329,7 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void GetStorageGroupPlanTest() throws IOException {
-    GetDatabasePlan req0 = new GetDatabasePlan(Arrays.asList("root", "sg"));
+    GetDatabasePlan req0 = new GetDatabasePlan(Arrays.asList("root", "sg"), ALL_MATCH_SCOPE);
     CountDatabasePlan req1 =
         (CountDatabasePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -923,6 +924,7 @@ public class ConfigPhysicalPlanSerDeTest {
   public void GetNodePathsPartitionPlanTest() throws IOException, IllegalPathException {
     GetNodePathsPartitionPlan getNodePathsPartitionPlan0 = new GetNodePathsPartitionPlan();
     getNodePathsPartitionPlan0.setPartialPath(new PartialPath("root.sg1.**"));
+    getNodePathsPartitionPlan0.setScope(ALL_MATCH_SCOPE);
     GetNodePathsPartitionPlan getNodePathsPartitionPlan1 =
         (GetNodePathsPartitionPlan)
             ConfigPhysicalPlan.Factory.create(getNodePathsPartitionPlan0.serializeToByteBuffer());
@@ -952,7 +954,7 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void ShowPathSetTemplatePlanTest() throws IOException {
     GetPathsSetTemplatePlan getPathsSetTemplatePlan0 =
-        new GetPathsSetTemplatePlan("template_name_test");
+        new GetPathsSetTemplatePlan("template_name_test", ALL_MATCH_SCOPE);
     GetPathsSetTemplatePlan getPathsSetTemplatePlan1 =
         (GetPathsSetTemplatePlan)
             ConfigPhysicalPlan.Factory.create(getPathsSetTemplatePlan0.serializeToByteBuffer());

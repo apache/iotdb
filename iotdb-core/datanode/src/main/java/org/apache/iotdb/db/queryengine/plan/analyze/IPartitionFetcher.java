@@ -75,13 +75,13 @@ public interface IPartitionFetcher {
 
   /** Get schema partition and matched nodes according to path pattern tree. */
   default SchemaNodeManagementPartition getSchemaNodeManagementPartition(
-      PathPatternTree patternTree) {
-    return getSchemaNodeManagementPartitionWithLevel(patternTree, null);
+      PathPatternTree patternTree, PathPatternTree scope) {
+    return getSchemaNodeManagementPartitionWithLevel(patternTree, scope, null);
   }
 
   /** Get schema partition and matched nodes according to path pattern tree and node level. */
   SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
-      PathPatternTree patternTree, Integer level);
+      PathPatternTree patternTree, PathPatternTree scope, Integer level);
 
   /** Update region cache in partition cache when receive request from config node */
   boolean updateRegionCache(TRegionRouteReq req);
