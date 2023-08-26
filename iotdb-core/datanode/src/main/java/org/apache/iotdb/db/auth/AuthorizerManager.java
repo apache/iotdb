@@ -121,7 +121,6 @@ public class AuthorizerManager implements IAuthorizer {
       throws AuthException {
     authReadWriteLock.writeLock().lock();
     try {
-      // LSL
       authorizer.grantPrivilegeToUser(currentUser, username, path, privilegeId, grantOpt);
     } finally {
       authReadWriteLock.writeLock().unlock();

@@ -117,6 +117,10 @@ public class Role {
     this.sysPrivilegeSet = privilegeSet;
   }
 
+  public void setSysPriGrantOpt(Set<Integer> grantOpt) {
+    this.sysPriGrantOpt = grantOpt;
+  }
+
   private int posToSysPri(int pos) {
     switch (pos) {
       case 0:
@@ -177,7 +181,7 @@ public class Role {
       sysPrivilegeSet = new HashSet<>();
     }
     if (sysPriGrantOpt == null) {
-      sysPrivilegeSet = new HashSet<>();
+      sysPriGrantOpt = new HashSet<>();
     }
     for (int i = 0; i < sysPriSize; i++) {
       if ((privilegeMask & (0b1 << i)) != 0) {
@@ -252,6 +256,10 @@ public class Role {
       for (Integer item : sysPrivilegeSet) {
         dataOutputStream.writeInt(item);
       }
+      dataOutputStream.writeInt(sysPriGrantOpt.size());
+      for (Integer item : sysPriGrantOpt) {
+        dataOutputStream.writeInt(item);
+      }
       dataOutputStream.writeInt(pathPrivilegeList.size());
       for (PathPrivilege pathPrivilege : pathPrivilegeList) {
         dataOutputStream.write(pathPrivilege.serialize().array());
@@ -269,6 +277,11 @@ public class Role {
     sysPrivilegeSet = new HashSet<>();
     for (int i = 0; i < sysPrivilegeSize; i++) {
       sysPrivilegeSet.add(buffer.getInt());
+    }
+    int sysPriGrantOptSize = buffer.getInt();
+    sysPriGrantOpt = new HashSet<>();
+    for (int i = 0; i < sysPriGrantOptSize; i++) {
+      sysPriGrantOpt.add(buffer.getInt());
     }
     int privilegeListSize = buffer.getInt();
     pathPrivilegeList = new ArrayList<>(privilegeListSize);

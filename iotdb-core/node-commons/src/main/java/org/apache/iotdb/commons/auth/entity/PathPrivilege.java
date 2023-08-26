@@ -216,9 +216,8 @@ public class PathPrivilege {
     for (Integer privilegeId : privileges) {
       builder.append(" ").append(PrivilegeType.values()[privilegeId]);
       if (grantOpts.contains(privilegeId)) {
-        builder.append(" ").append("with grant option");
+        builder.append("-").append("with grant option");
       }
-      builder.append(",");
     }
     return builder.toString();
   }

@@ -141,6 +141,10 @@ public class User extends Role {
       for (Integer item : super.getSysPrivilege()) {
         dataOutputStream.writeInt(item);
       }
+      dataOutputStream.writeInt(super.getSysPriGrantOpt().size());
+      for (Integer item : super.getSysPriGrantOpt()) {
+        dataOutputStream.writeInt(item);
+      }
       dataOutputStream.writeInt(super.getPathPrivilegeList().size());
       for (PathPrivilege pathPrivilege : super.getPathPrivilegeList()) {
         dataOutputStream.write(pathPrivilege.serialize().array());
@@ -163,6 +167,12 @@ public class User extends Role {
       sysPri.add(buffer.getInt());
     }
     super.setSysPrivilegeSet(sysPri);
+    int sysPriGrantOptSize = buffer.getInt();
+    Set<Integer> grantOpt = new HashSet<>();
+    for (int i = 0; i < sysPriGrantOptSize; i++) {
+      grantOpt.add(buffer.getInt());
+    }
+    super.setSysPriGrantOpt(grantOpt);
 
     int privilegeListSize = buffer.getInt();
     List<PathPrivilege> privilegeList = new ArrayList<>(privilegeListSize);

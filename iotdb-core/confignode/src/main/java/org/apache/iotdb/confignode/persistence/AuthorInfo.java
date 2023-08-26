@@ -160,7 +160,6 @@ public class AuthorInfo implements SnapshotProcessor {
     return false;
   }
 
-  // LSL
   public TSStatus authorNonQuery(AuthorPlan authorPlan) {
     ConfigPhysicalPlanType authorType = authorPlan.getAuthorType();
     String userName = authorPlan.getUserName();
@@ -208,7 +207,7 @@ public class AuthorInfo implements SnapshotProcessor {
           }
           break;
         case GrantRoleToUser:
-          // need to check if current user has this role;
+          // LSL need to check if current user has this role;
           authorizer.grantRoleToUser(roleName, userName);
           break;
         case RevokeUser:
