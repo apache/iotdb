@@ -1527,66 +1527,66 @@ public class RegerSegmentPartitionSegmentSize {
     byte[] block_size_byte = int2Bytes(block_size);
     for (byte b : block_size_byte) encoded_result.add(b);
 
-//    // ----------------------- compare data order by time, value and partition ---------------------------
-//    int length_time = 0;
-//    int length_value = 0;
-//    int length_partition = 0;
-//    ArrayList<ArrayList<Integer>> data_value = (ArrayList<ArrayList<Integer>>) data.clone();
-//    quickSort(data_value, 1, 0, length_all - 1);
-//
-//    ArrayList<ArrayList<Integer>> data_partition = new ArrayList<>();
-//
-//    for (ArrayList<Integer> datum : data) {
-//      if (datum.get(1) > third_value[third_value.length - 1]) {
-//        data_partition.add(datum);
-//      }
-//    }
-//    for(int third_i = third_value.length - 1;third_i>0;third_i--){
-//      for (ArrayList<Integer> datum : data) {
-//        if (datum.get(1) <= third_value[third_i] && datum.get(1)>third_value[third_i-1]) {
-//          data_partition.add(datum);
-//        }
-//      }
-//    }
-//    for (ArrayList<Integer> datum : data) {
-//      if (datum.get(1) <= third_value[0]) {
-//        data_partition.add(datum);
-//      }
-//    }
-//    for (int i = 0; i < block_num; i++) {
-//      ArrayList<ArrayList<Integer>> ts_block_time = new ArrayList<>();
-//      ArrayList<ArrayList<Integer>> ts_block_value = new ArrayList<>();
-//      ArrayList<ArrayList<Integer>> ts_block_partition = new ArrayList<>();
-//
-//      for (int j = 0; j < block_size; j++) {
-//        ts_block_time.add(data.get(j + i * block_size));
-//        ts_block_value.add(data_value.get(j + i * block_size));
-//        ts_block_partition.add(data_partition.get(j + i * block_size));
-//      }
-//      ArrayList<Integer> result1 = new ArrayList<>();
-//      splitTimeStamp3(ts_block_time, result1);
-//      ArrayList<Integer> raw_length = new ArrayList<>();
-//      ArrayList<Float> theta = new ArrayList<>();
-//      ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression(ts_block_time, block_size, raw_length,theta);
-//      length_time += encode2Bytes(ts_block_delta, raw_length,theta, result1).size();
-//
-//      ArrayList<Integer> result2 = new ArrayList<>();
-//      splitTimeStamp3(ts_block_value, result2);
-//      ArrayList<Integer> raw_length_value = new ArrayList<>();
-//      ArrayList<Float> theta_value = new ArrayList<>();
-//      ArrayList<ArrayList<Integer>> ts_block_delta_value = getEncodeBitsRegression(ts_block_value, block_size, raw_length_value,theta_value);
-//      length_value += encode2Bytes(ts_block_delta_value, raw_length_value,theta_value, result2).size();
-//
-//      ArrayList<Integer> result3 = new ArrayList<>();
-//      splitTimeStamp3(ts_block_partition, result3);
-//      ArrayList<Integer> raw_length_partition = new ArrayList<>();
-//      ArrayList<Float> theta_partition = new ArrayList<>();
-//      ArrayList<ArrayList<Integer>> ts_block_delta_partition = getEncodeBitsRegression(ts_block_partition, block_size, raw_length_partition,theta_partition);
-//      length_partition += encode2Bytes(ts_block_delta_partition, raw_length_partition,theta_partition, result3).size();
-//    }
-//    if (length_partition < length_time && length_partition < length_value) { // partition performs better
-//      data = data_partition;
-//      System.out.println("type3");
+    // ----------------------- compare data order by time, value and partition ---------------------------
+    int length_time = 0;
+    int length_value = 0;
+    int length_partition = 0;
+    ArrayList<ArrayList<Integer>> data_value = (ArrayList<ArrayList<Integer>>) data.clone();
+    quickSort(data_value, 1, 0, length_all - 1);
+
+    ArrayList<ArrayList<Integer>> data_partition = new ArrayList<>();
+
+    for (ArrayList<Integer> datum : data) {
+      if (datum.get(1) > third_value[third_value.length - 1]) {
+        data_partition.add(datum);
+      }
+    }
+    for(int third_i = third_value.length - 1;third_i>0;third_i--){
+      for (ArrayList<Integer> datum : data) {
+        if (datum.get(1) <= third_value[third_i] && datum.get(1)>third_value[third_i-1]) {
+          data_partition.add(datum);
+        }
+      }
+    }
+    for (ArrayList<Integer> datum : data) {
+      if (datum.get(1) <= third_value[0]) {
+        data_partition.add(datum);
+      }
+    }
+    for (int i = 0; i < block_num; i++) {
+      ArrayList<ArrayList<Integer>> ts_block_time = new ArrayList<>();
+      ArrayList<ArrayList<Integer>> ts_block_value = new ArrayList<>();
+      ArrayList<ArrayList<Integer>> ts_block_partition = new ArrayList<>();
+
+      for (int j = 0; j < block_size; j++) {
+        ts_block_time.add(data.get(j + i * block_size));
+        ts_block_value.add(data_value.get(j + i * block_size));
+        ts_block_partition.add(data_partition.get(j + i * block_size));
+      }
+      ArrayList<Integer> result1 = new ArrayList<>();
+      splitTimeStamp3(ts_block_time, result1);
+      ArrayList<Integer> raw_length = new ArrayList<>();
+      ArrayList<Float> theta = new ArrayList<>();
+      ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegression(ts_block_time, block_size, raw_length,theta);
+      length_time += encode2Bytes(ts_block_delta, raw_length,theta, result1).size();
+
+      ArrayList<Integer> result2 = new ArrayList<>();
+      splitTimeStamp3(ts_block_value, result2);
+      ArrayList<Integer> raw_length_value = new ArrayList<>();
+      ArrayList<Float> theta_value = new ArrayList<>();
+      ArrayList<ArrayList<Integer>> ts_block_delta_value = getEncodeBitsRegression(ts_block_value, block_size, raw_length_value,theta_value);
+      length_value += encode2Bytes(ts_block_delta_value, raw_length_value,theta_value, result2).size();
+
+      ArrayList<Integer> result3 = new ArrayList<>();
+      splitTimeStamp3(ts_block_partition, result3);
+      ArrayList<Integer> raw_length_partition = new ArrayList<>();
+      ArrayList<Float> theta_partition = new ArrayList<>();
+      ArrayList<ArrayList<Integer>> ts_block_delta_partition = getEncodeBitsRegression(ts_block_partition, block_size, raw_length_partition,theta_partition);
+      length_partition += encode2Bytes(ts_block_delta_partition, raw_length_partition,theta_partition, result3).size();
+    }
+    if (length_partition < length_time && length_partition < length_value) { // partition performs better
+      data = data_partition;
+      System.out.println("type3");
 //        for(int i=0;i<1;i++){
       for (int i = 0; i < block_num; i++) {
         ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
@@ -1722,94 +1722,94 @@ public class RegerSegmentPartitionSegmentSize {
 //        encoded_result.addAll(cur_encoded_result);
 
       }
-//    }
-//    else {
-//      if (length_value < length_time) { // order by value performs better
-//        System.out.println("type2");
-//        data = data_value;
-//      } else {
-//        System.out.println("type1");
-//      }
-//      for (int i = 0; i < block_num; i++) {
-//        ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
-////        ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
-//        ArrayList<ArrayList<Integer>> ts_block_partition = new ArrayList<>();
-//        for (int j = 0; j < block_size; j++) {
-//          ts_block.add(data.get(j + i * block_size));
-////          ts_block_reorder.add(data.get(j + i * block_size));
-//        }
-//
-//        ArrayList<Integer> result2 = new ArrayList<>();
-//        //      result2.add(1);
-//        splitTimeStamp3(ts_block, result2);
-//        ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
-//        ArrayList<Float> theta = new ArrayList<>();
-//        ArrayList<ArrayList<Integer>> ts_block_delta =   getEncodeBitsRegression(ts_block, block_size, raw_length, theta);
-//
-//        // value-order
-//        quickSort(ts_block, 1, 0, block_size - 1);
-//
-//        ArrayList<Integer> reorder_length = new ArrayList<>();
-//        ArrayList<Float> theta_reorder = new ArrayList<>();
-//        ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegression( ts_block, block_size, reorder_length, theta_reorder);
-//
-//        for (ArrayList<Integer> datum : ts_block) {
-//          if (datum.get(1) > third_value[third_value.length - 1]) {
-//            ts_block_partition.add(datum);
-//          }
-//        }
-//        for(int third_i = third_value.length - 1;third_i>0;third_i--){
-//          for (ArrayList<Integer> datum : ts_block) {
-//            if (datum.get(1) <= third_value[third_i] && datum.get(1)>third_value[third_i-1]) {
-//              ts_block_partition.add(datum);
-//            }
-//          }
-//        }
-//        for (ArrayList<Integer> datum : ts_block) {
-//          if (datum.get(1) <= third_value[0]) {
-//            ts_block_partition.add(datum);
-//          }
-//        }
-//        ArrayList<Integer> partition_length = new ArrayList<>();
-//        ArrayList<Float> theta_partition = new ArrayList<>();
-//        ArrayList<ArrayList<Integer>> ts_block_delta_partition = getEncodeBitsRegression( ts_block_partition, block_size, partition_length, theta_partition);
-//        int choose = min3(partition_length.get(0),reorder_length.get(0),raw_length.get(0));
-//        if(choose == 0){
-//          raw_length = partition_length;
-//          ts_block_delta = ts_block_partition;
-//        } else if (choose == 1) {
-//          raw_length = reorder_length;
-//          ts_block_delta = ts_block_delta_reorder;
-//        }
-//
-//        ArrayList<ArrayList<Integer>> bit_width_segments = new ArrayList<>();
-//        int segment_n = (block_size - 1) / segment_size;
-//        for (int segment_i = 0; segment_i < segment_n; segment_i++) {
-//          int bit_width_time = Integer.MIN_VALUE;
-//          int bit_width_value = Integer.MIN_VALUE;
-//
-//          for (int data_i = segment_i * segment_size + 1; data_i < (segment_i + 1) * segment_size + 1; data_i++) {
-//            int cur_bit_width_time = getBitWith(ts_block_delta.get(data_i).get(0));
-//            int cur_bit_width_value = getBitWith(ts_block_delta.get(data_i).get(1));
-//            if (cur_bit_width_time > bit_width_time) {
-//              bit_width_time = cur_bit_width_time;
-//            }
-//            if (cur_bit_width_value > bit_width_value) {
-//              bit_width_value = cur_bit_width_value;
-//            }
-//          }
-//          ArrayList<Integer> bit_width = new ArrayList<>();
-//          bit_width.add(bit_width_time);
-//          bit_width.add(bit_width_value);
-//          bit_width_segments.add(bit_width);
-//        }
-//
-//
-//        ArrayList<Byte> cur_encoded_result = encodeSegment2Bytes(ts_block_delta, bit_width_segments, raw_length, segment_size,theta,result2);
-//        encoded_result.addAll(cur_encoded_result);
-//
-//      }
-//    }
+    }
+    else {
+      if (length_value < length_time) { // order by value performs better
+        System.out.println("type2");
+        data = data_value;
+      } else {
+        System.out.println("type1");
+      }
+      for (int i = 0; i < block_num; i++) {
+        ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
+//        ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
+        ArrayList<ArrayList<Integer>> ts_block_partition = new ArrayList<>();
+        for (int j = 0; j < block_size; j++) {
+          ts_block.add(data.get(j + i * block_size));
+//          ts_block_reorder.add(data.get(j + i * block_size));
+        }
+
+        ArrayList<Integer> result2 = new ArrayList<>();
+        //      result2.add(1);
+        splitTimeStamp3(ts_block, result2);
+        ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
+        ArrayList<Float> theta = new ArrayList<>();
+        ArrayList<ArrayList<Integer>> ts_block_delta =   getEncodeBitsRegression(ts_block, block_size, raw_length, theta);
+
+        // value-order
+        quickSort(ts_block, 1, 0, block_size - 1);
+
+        ArrayList<Integer> reorder_length = new ArrayList<>();
+        ArrayList<Float> theta_reorder = new ArrayList<>();
+        ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegression( ts_block, block_size, reorder_length, theta_reorder);
+
+        for (ArrayList<Integer> datum : ts_block) {
+          if (datum.get(1) > third_value[third_value.length - 1]) {
+            ts_block_partition.add(datum);
+          }
+        }
+        for(int third_i = third_value.length - 1;third_i>0;third_i--){
+          for (ArrayList<Integer> datum : ts_block) {
+            if (datum.get(1) <= third_value[third_i] && datum.get(1)>third_value[third_i-1]) {
+              ts_block_partition.add(datum);
+            }
+          }
+        }
+        for (ArrayList<Integer> datum : ts_block) {
+          if (datum.get(1) <= third_value[0]) {
+            ts_block_partition.add(datum);
+          }
+        }
+        ArrayList<Integer> partition_length = new ArrayList<>();
+        ArrayList<Float> theta_partition = new ArrayList<>();
+        ArrayList<ArrayList<Integer>> ts_block_delta_partition = getEncodeBitsRegression( ts_block_partition, block_size, partition_length, theta_partition);
+        int choose = min3(partition_length.get(0),reorder_length.get(0),raw_length.get(0));
+        if(choose == 0){
+          raw_length = partition_length;
+          ts_block_delta = ts_block_partition;
+        } else if (choose == 1) {
+          raw_length = reorder_length;
+          ts_block_delta = ts_block_delta_reorder;
+        }
+
+        ArrayList<ArrayList<Integer>> bit_width_segments = new ArrayList<>();
+        int segment_n = (block_size - 1) / segment_size;
+        for (int segment_i = 0; segment_i < segment_n; segment_i++) {
+          int bit_width_time = Integer.MIN_VALUE;
+          int bit_width_value = Integer.MIN_VALUE;
+
+          for (int data_i = segment_i * segment_size + 1; data_i < (segment_i + 1) * segment_size + 1; data_i++) {
+            int cur_bit_width_time = getBitWith(ts_block_delta.get(data_i).get(0));
+            int cur_bit_width_value = getBitWith(ts_block_delta.get(data_i).get(1));
+            if (cur_bit_width_time > bit_width_time) {
+              bit_width_time = cur_bit_width_time;
+            }
+            if (cur_bit_width_value > bit_width_value) {
+              bit_width_value = cur_bit_width_value;
+            }
+          }
+          ArrayList<Integer> bit_width = new ArrayList<>();
+          bit_width.add(bit_width_time);
+          bit_width.add(bit_width_value);
+          bit_width_segments.add(bit_width);
+        }
+
+
+        ArrayList<Byte> cur_encoded_result = encodeSegment2Bytes(ts_block_delta, bit_width_segments, raw_length, segment_size,theta,result2);
+        encoded_result.addAll(cur_encoded_result);
+
+      }
+    }
 //
 
 //    System.out.println("cur_bits:"+(encoded_result.size()*8L));
