@@ -75,7 +75,7 @@ public interface IRoleManager extends SnapshotProcessor {
    *
    * @param rolename The rolename of the role from which the privilege should be removed.
    * @param path The seriesPath on which the privilege takes effect. If the privilege is a
-   *     seriesPath-free privilege like 'CREATE_USER', this should be "root".
+   *     seriesPath-free privilege like 'CREATE_USER', this should be "null".
    * @param privilegeId An integer that represents a privilege.
    * @return True if the permission is successfully revoked, false if the permission does not
    *     exists.

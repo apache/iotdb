@@ -167,7 +167,11 @@ public abstract class BasicUserManager implements IUserManager {
       if (user.hasPrivilege(path, privilegeId)) {
         return false;
       }
-      user.addPathPrivilege(path, privilegeId, grantOpt);
+      if (path != null) {
+        user.addPathPrivilege(path, privilegeId, grantOpt);
+      } else {
+        user.addSysPrivilege(privilegeId);
+      }
       return true;
     } finally {
       lock.writeUnlock(username);
@@ -188,7 +192,11 @@ public abstract class BasicUserManager implements IUserManager {
       if (!user.hasPrivilege(path, privilegeId)) {
         return false;
       }
-      user.removePathPrivilege(path, privilegeId);
+      if (path != null) {
+        user.removePathPrivilege(path, privilegeId);
+      } else {
+        user.removeSysPrivilege(privilegeId);
+      }
       return true;
     } finally {
       lock.writeUnlock(username);

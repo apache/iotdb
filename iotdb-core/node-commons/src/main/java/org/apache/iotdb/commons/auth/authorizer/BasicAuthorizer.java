@@ -154,7 +154,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
             TSStatusCode.ALREADY_HAS_PRIVILEGE,
             String.format(
                 "User %s already has %s on %s",
-                username, PrivilegeType.values()[privilegeId], path));
+                username, PrivilegeType.values()[privilegeId], path == null ? path : "system"));
       }
     }
   }
@@ -166,16 +166,12 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       throw new AuthException(
           TSStatusCode.NO_PERMISSION, "Invalid operation, administrator must have all privileges");
     }
-    PartialPath newPath = path;
-    if (!PrivilegeType.isPathRelevant(privilegeId)) {
-      newPath = AuthUtils.ROOT_PATH_PRIVILEGE_PATH;
-    }
-    if (!userManager.revokePrivilegeFromUser(username, newPath, privilegeId)) {
+    if (!userManager.revokePrivilegeFromUser(username, path, privilegeId)) {
       throw new AuthException(
           TSStatusCode.NOT_HAS_PRIVILEGE,
           String.format(
               "User %s does not have %s on %s",
-              username, PrivilegeType.values()[privilegeId], path));
+              username, PrivilegeType.values()[privilegeId], path == null ? path : "system"));
     }
   }
 
@@ -234,11 +230,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public void revokePrivilegeFromRole(String roleName, PartialPath path, int privilegeId)
       throws AuthException {
-    PartialPath newPath = path;
-    if (!PrivilegeType.isPathRelevant(privilegeId)) {
-      newPath = AuthUtils.ROOT_PATH_PRIVILEGE_PATH;
-    }
-    if (!roleManager.revokePrivilegeFromRole(roleName, newPath, privilegeId)) {
+    if (!roleManager.revokePrivilegeFromRole(roleName, path, privilegeId)) {
       throw new AuthException(
           TSStatusCode.NOT_HAS_PRIVILEGE,
           String.format(

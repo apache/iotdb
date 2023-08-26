@@ -190,12 +190,17 @@ public class AuthorInfo implements SnapshotProcessor {
           for (int i : permissions) {
             for (PartialPath path : nodeNameList) {
               // LSL  need to check if its grant opt.
-              authorizer.grantPrivilegeToRole(null, roleName, path, i, false);
+              authorizer.grantPrivilegeToRole(
+                  authorPlan.getCurrentUser(), roleName, path, i, false);
             }
           }
           break;
         case GrantUser:
           for (int i : permissions) {
+            if (nodeNameList == null) {
+              authorizer.grantPrivilegeToUser(null, userName, null, i, false);
+              continue;
+            }
             for (PartialPath path : nodeNameList) {
               // need to check if its grant opt.
               authorizer.grantPrivilegeToUser(null, userName, path, i, false);
@@ -203,10 +208,15 @@ public class AuthorInfo implements SnapshotProcessor {
           }
           break;
         case GrantRoleToUser:
+          // need to check if current user has this role;
           authorizer.grantRoleToUser(roleName, userName);
           break;
         case RevokeUser:
           for (int i : permissions) {
+            if (nodeNameList == null) {
+              authorizer.revokePrivilegeFromUser(userName, null, i);
+              continue;
+            }
             for (PartialPath path : nodeNameList) {
               authorizer.revokePrivilegeFromUser(userName, path, i);
             }
@@ -214,6 +224,10 @@ public class AuthorInfo implements SnapshotProcessor {
           break;
         case RevokeRole:
           for (int i : permissions) {
+            if (nodeNameList == null) {
+              authorizer.revokePrivilegeFromRole(roleName, null, i);
+              continue;
+            }
             for (PartialPath path : nodeNameList) {
               authorizer.revokePrivilegeFromRole(roleName, path, i);
             }
@@ -233,7 +247,6 @@ public class AuthorInfo implements SnapshotProcessor {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
-  // LSL
   public PermissionInfoResp executeListUsers(AuthorPlan plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
     Map<String, List<String>> permissionInfo = new HashMap<>();
@@ -262,7 +275,6 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
-  // LSL
   public PermissionInfoResp executeListRoles(AuthorPlan plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
     Map<String, List<String>> permissionInfo = new HashMap<>();

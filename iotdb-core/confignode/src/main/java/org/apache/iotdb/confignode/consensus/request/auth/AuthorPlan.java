@@ -48,6 +48,7 @@ public class AuthorPlan extends ConfigPhysicalPlan {
   private Set<Integer> permissions;
   private List<PartialPath> nodeNameList;
   private String userName;
+  private String currentUser;
 
   public AuthorPlan(ConfigPhysicalPlanType type) {
     super(type);
@@ -141,9 +142,18 @@ public class AuthorPlan extends ConfigPhysicalPlan {
     this.userName = userName;
   }
 
+  public void setCurrentUser(String userName) {
+    this.currentUser = userName;
+  }
+
+  public String getCurrentUser() {
+    return currentUser;
+  }
+
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(getPlanType(authorType), stream);
+    BasicStructureSerDeUtil.write(currentUser, stream);
     BasicStructureSerDeUtil.write(userName, stream);
     BasicStructureSerDeUtil.write(roleName, stream);
     BasicStructureSerDeUtil.write(password, stream);
@@ -165,6 +175,7 @@ public class AuthorPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
+    currentUser = BasicStructureSerDeUtil.readString(buffer);
     userName = BasicStructureSerDeUtil.readString(buffer);
     roleName = BasicStructureSerDeUtil.readString(buffer);
     password = BasicStructureSerDeUtil.readString(buffer);
