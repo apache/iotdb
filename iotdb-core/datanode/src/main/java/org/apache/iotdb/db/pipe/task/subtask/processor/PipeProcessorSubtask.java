@@ -22,9 +22,9 @@ package org.apache.iotdb.db.pipe.task.subtask.processor;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.db.pipe.task.connection.EventSupplier;
+import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.pipe.api.PipeProcessor;
-import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -47,7 +47,7 @@ public class PipeProcessorSubtask extends PipeSubtask {
 
   private final EventSupplier inputEventSupplier;
   private final PipeProcessor pipeProcessor;
-  private final EventCollector outputEventCollector;
+  private final PipeEventCollector outputEventCollector;
 
   private final AtomicBoolean isClosed;
 
@@ -55,7 +55,7 @@ public class PipeProcessorSubtask extends PipeSubtask {
       String taskID,
       EventSupplier inputEventSupplier,
       PipeProcessor pipeProcessor,
-      EventCollector outputEventCollector) {
+      PipeEventCollector outputEventCollector) {
     super(taskID);
     this.inputEventSupplier = inputEventSupplier;
     this.pipeProcessor = pipeProcessor;
@@ -89,7 +89,10 @@ public class PipeProcessorSubtask extends PipeSubtask {
     // Record the last event for retry when exception occurs
     lastEvent = event;
     if (event == null) {
-      return false;
+      // Though there is no event to process, there may still be some buffered events
+      // in the outputEventCollector. Return true if there are still buffered events,
+      // false otherwise.
+      return outputEventCollector.tryCollectBufferedEvents();
     }
 
     try {
