@@ -25,13 +25,13 @@ public class RgerPInt{
     }
   }
 
-  public static int max3(int a, int b, int c) {
-    if (a >= b && a >= c) {
-      return a;
-    } else if (b >= a && b >= c) {
-      return b;
+  public static int min3(int a, int b, int c) {
+    if (a < b && a < c) {
+      return 0;
+    } else if (b < c ) {
+      return 1;
     } else {
-      return c;
+      return 2;
     }
   }
 
@@ -1430,8 +1430,8 @@ public class RgerPInt{
   }
 
   public static ArrayList<Byte> ReorderingRegressionEncoder(
-          ArrayList<ArrayList<Integer>> data, int block_size, int[] third_value,int p) {
-    for(int i=0;i<p;i++)
+          ArrayList<ArrayList<Integer>> data, int block_size, int[] third_value,int segment_size ,int p) {
+    for (int i = 0; i < p; i++)
       block_size++;
     ArrayList<Byte> encoded_result = new ArrayList<Byte>();
     int length_all = data.size();
@@ -1460,9 +1460,9 @@ public class RgerPInt{
         data_partition.add(datum);
       }
     }
-    for(int third_i = third_value.length - 1;third_i>0;third_i--){
+    for (int third_i = third_value.length - 1; third_i > 0; third_i--) {
       for (ArrayList<Integer> datum : data) {
-        if (datum.get(1) <= third_value[third_i] && datum.get(1)>third_value[third_i-1]) {
+        if (datum.get(1) <= third_value[third_i] && datum.get(1) > third_value[third_i - 1]) {
           data_partition.add(datum);
         }
       }
@@ -1486,22 +1486,22 @@ public class RgerPInt{
       splitTimeStamp3(ts_block_time, result1);
       ArrayList<Integer> raw_length = new ArrayList<>();
       ArrayList<Integer> coefficient = new ArrayList<>();
-      ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegressionP(ts_block_time, block_size, raw_length,coefficient,p);
-      length_time += encode2Bytes(ts_block_delta, raw_length,coefficient, result1,p).size();
+      ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegressionP(ts_block_time, block_size, raw_length, coefficient, p);
+      length_time += encode2Bytes(ts_block_delta, raw_length, coefficient, result1, p).size();
 
       ArrayList<Integer> result2 = new ArrayList<>();
       splitTimeStamp3(ts_block_value, result2);
       ArrayList<Integer> raw_length_value = new ArrayList<>();
       ArrayList<Integer> coefficient_value = new ArrayList<>();
-      ArrayList<ArrayList<Integer>> ts_block_delta_value = getEncodeBitsRegressionP(ts_block_value, block_size, raw_length_value,coefficient_value,p);
-      length_value += encode2Bytes(ts_block_delta_value, raw_length_value,coefficient_value, result2,p).size();
+      ArrayList<ArrayList<Integer>> ts_block_delta_value = getEncodeBitsRegressionP(ts_block_value, block_size, raw_length_value, coefficient_value, p);
+      length_value += encode2Bytes(ts_block_delta_value, raw_length_value, coefficient_value, result2, p).size();
 
       ArrayList<Integer> result3 = new ArrayList<>();
       splitTimeStamp3(ts_block_partition, result3);
       ArrayList<Integer> raw_length_partition = new ArrayList<>();
       ArrayList<Integer> coefficient_partition = new ArrayList<>();
-      ArrayList<ArrayList<Integer>> ts_block_delta_partition = getEncodeBitsRegressionP(ts_block_partition, block_size, raw_length_partition,coefficient_partition,p);
-      length_partition += encode2Bytes(ts_block_delta_partition, raw_length_partition,coefficient_partition, result3,p).size();
+      ArrayList<ArrayList<Integer>> ts_block_delta_partition = getEncodeBitsRegressionP(ts_block_partition, block_size, raw_length_partition, coefficient_partition, p);
+      length_partition += encode2Bytes(ts_block_delta_partition, raw_length_partition, coefficient_partition, result3, p).size();
     }
     if (length_partition < length_time && length_partition < length_value) { // partition performs better
       data = data_partition;
@@ -1519,13 +1519,18 @@ public class RgerPInt{
         //      result2.add(1);
         splitTimeStamp3(ts_block, result2);
 
-        quickSort(ts_block, 0, 0, block_size - 1);
-
-        // time-order
         ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
         ArrayList<Integer> coefficient = new ArrayList<>();
         ArrayList<ArrayList<Integer>> ts_block_delta =
-                getEncodeBitsRegressionP(ts_block, block_size, raw_length, coefficient,p);
+                getEncodeBitsRegressionP(ts_block, block_size, raw_length, coefficient ,p);
+
+
+        // time-order
+        quickSort(ts_block, 0, 0, block_size - 1);
+        ArrayList<Integer> time_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
+        ArrayList<Integer> coefficient_time = new ArrayList<>();
+        ArrayList<ArrayList<Integer>> ts_block_delta_time =
+                getEncodeBitsRegressionP(ts_block, block_size, time_length, coefficient_time, p);
 
         // value-order
         quickSort(ts_block, 1, 0, block_size - 1);
@@ -1534,20 +1539,27 @@ public class RgerPInt{
         ArrayList<Integer> reorder_length = new ArrayList<>();
         ArrayList<Integer> coefficient_reorder = new ArrayList<>();
         ArrayList<ArrayList<Integer>> ts_block_delta_reorder =
-                getEncodeBitsRegressionP( ts_block, block_size, reorder_length, coefficient_reorder,p);
+                getEncodeBitsRegressionP(ts_block, block_size, reorder_length, coefficient_reorder, p);
 
         int i_star;
         int j_star;
-        if (raw_length.get(0) <= reorder_length.get(0)) {
+        int choose = min3(time_length.get(0),raw_length.get(0),reorder_length.get(0));
+        if(choose == 0){
+          raw_length = time_length;
           quickSort(ts_block, 0, 0, block_size - 1);
+          coefficient = coefficient_time;
+          ts_block_delta = ts_block_delta_time;
           i_star = getIStarP(ts_block, block_size, 0, coefficient,p);
-        } else {
+        } else if (choose == 1) {
+          ts_block = ts_block_reorder;
+          i_star = getIStarP(ts_block, block_size, 0, coefficient,p);
+        }else {
           raw_length = reorder_length;
           coefficient = coefficient_reorder;
-          quickSort(ts_block, 1, 0, block_size - 1);
+          ts_block_delta = ts_block_delta_reorder;
           i_star = getIStarP(ts_block, block_size, 1, coefficient,p);
         }
-        j_star = getBetaP(ts_block, i_star, block_size, coefficient,p);
+        j_star = getBetaP(ts_block, i_star, block_size, coefficient, p);
 
         int adjust_count = 0;
         while (j_star != -1 && i_star != -1) {
@@ -1579,7 +1591,7 @@ public class RgerPInt{
           }
           ts_block.set(j_star, tmp_tv);
 
-          getEncodeBitsRegressionP(ts_block, block_size, raw_length, coefficient,p);
+          getEncodeBitsRegressionP(ts_block, block_size, raw_length, coefficient, p);
 //        System.out.println("old_length"+old_length);
 //        System.out.println("raw_length"+raw_length);
           if (old_length.get(0) < raw_length.get(0)) {
@@ -1588,20 +1600,20 @@ public class RgerPInt{
           }
           //        System.out.println("adjust_count" + adjust_count);
 //        System.out.println("i_star"+i_star);
-          i_star = getIStarP(ts_block, block_size, raw_length, coefficient,p);
+          i_star = getIStarP(ts_block, block_size, raw_length, coefficient, p);
           if (i_star == j_star) break;
-          j_star = getBetaP(ts_block, i_star, block_size,  coefficient,p);
+          j_star = getBetaP(ts_block, i_star, block_size, coefficient, p);
 
         }
 
-        ts_block_delta =   getEncodeBitsRegressionP(ts_block, block_size, raw_length, coefficient,p);
+        ts_block_delta = getEncodeBitsRegressionP(ts_block, block_size, raw_length, coefficient, p);
         ArrayList<ArrayList<Integer>> bit_width_segments = new ArrayList<>();
-        int segment_n = (block_size - p) / 8;
+        int segment_n = (block_size - p) / segment_size;
         for (int segment_i = 0; segment_i < segment_n; segment_i++) {
           int bit_width_time = Integer.MIN_VALUE;
           int bit_width_value = Integer.MIN_VALUE;
 
-          for (int data_i = segment_i * 8 + p; data_i < (segment_i + 1) * 8 + p; data_i++) {
+          for (int data_i = segment_i * segment_size + p; data_i < (segment_i + 1) * segment_size + p; data_i++) {
             int cur_bit_width_time = getBitWith(ts_block_delta.get(data_i).get(0));
             int cur_bit_width_value = getBitWith(ts_block_delta.get(data_i).get(1));
             if (cur_bit_width_time > bit_width_time) {
@@ -1618,15 +1630,14 @@ public class RgerPInt{
         }
 
 
-        ArrayList<Byte> cur_encoded_result = encodeSegment2Bytes(ts_block_delta, bit_width_segments, raw_length, 8,coefficient,result2,p);
+        ArrayList<Byte> cur_encoded_result = encodeSegment2Bytes(ts_block_delta, bit_width_segments, raw_length, segment_size, coefficient, result2, p);
         encoded_result.addAll(cur_encoded_result);
 
 //        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta, raw_length, theta, result2);
 //        encoded_result.addAll(cur_encoded_result);
 
       }
-    }
-    else {
+    } else {
       if (length_value < length_time) { // order by value performs better
         System.out.println("type2");
         data = data_value;
@@ -1636,6 +1647,7 @@ public class RgerPInt{
       for (int i = 0; i < block_num; i++) {
         ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
         ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
+        ArrayList<ArrayList<Integer>> ts_block_partition = new ArrayList<>();
         for (int j = 0; j < block_size; j++) {
           ts_block.add(data.get(j + i * block_size));
           ts_block_reorder.add(data.get(j + i * block_size));
@@ -1644,16 +1656,57 @@ public class RgerPInt{
         ArrayList<Integer> result2 = new ArrayList<>();
         //      result2.add(1);
         splitTimeStamp3(ts_block, result2);
+
+        quickSort(ts_block, 0, 0, block_size - 1);
         ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
         ArrayList<Integer> coefficient = new ArrayList<>();
-        ArrayList<ArrayList<Integer>> ts_block_delta =   getEncodeBitsRegressionP(ts_block, block_size, raw_length, coefficient,p);
+        ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegressionP(ts_block, block_size, raw_length, coefficient, p);
+        // value-order
+        quickSort(ts_block, 1, 0, block_size - 1);
+
+        ArrayList<Integer> reorder_length = new ArrayList<>();
+        ArrayList<Integer> coefficient_reorder = new ArrayList<>();
+        ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegressionP( ts_block, block_size, reorder_length, coefficient_reorder, p);
+
+        for (ArrayList<Integer> datum : ts_block) {
+          if (datum.get(1) > third_value[third_value.length - 1]) {
+            ts_block_partition.add(datum);
+          }
+        }
+        for(int third_i = third_value.length - 1;third_i>0;third_i--){
+          for (ArrayList<Integer> datum : ts_block) {
+            if (datum.get(1) <= third_value[third_i] && datum.get(1)>third_value[third_i-1]) {
+              ts_block_partition.add(datum);
+            }
+          }
+        }
+        for (ArrayList<Integer> datum : ts_block) {
+          if (datum.get(1) <= third_value[0]) {
+            ts_block_partition.add(datum);
+          }
+        }
+        ArrayList<Integer> partition_length = new ArrayList<>();
+        ArrayList<Integer> coefficient_partition = new ArrayList<>();
+        ArrayList<ArrayList<Integer>> ts_block_delta_partition = getEncodeBitsRegressionP( ts_block_partition, block_size, partition_length, coefficient_partition, p);
+        int choose = min3(partition_length.get(0),reorder_length.get(0),raw_length.get(0));
+        if(choose == 0){
+          raw_length = partition_length;
+          ts_block_delta = ts_block_delta_partition;
+          coefficient =  coefficient_partition;
+        } else if (choose == 1) {
+          raw_length = reorder_length;
+          ts_block_delta = ts_block_delta_reorder;
+          coefficient =  coefficient_reorder;
+        }
+
+
         ArrayList<ArrayList<Integer>> bit_width_segments = new ArrayList<>();
-        int segment_n = (block_size - p) / 8;
+        int segment_n = (block_size - p) / segment_size;
         for (int segment_i = 0; segment_i < segment_n; segment_i++) {
           int bit_width_time = Integer.MIN_VALUE;
           int bit_width_value = Integer.MIN_VALUE;
 
-          for (int data_i = segment_i * 8 + p; data_i < (segment_i + 1) * 8 + p; data_i++) {
+          for (int data_i = segment_i * segment_size + p; data_i < (segment_i + 1) * segment_size + p; data_i++) {
             int cur_bit_width_time = getBitWith(ts_block_delta.get(data_i).get(0));
             int cur_bit_width_value = getBitWith(ts_block_delta.get(data_i).get(1));
             if (cur_bit_width_time > bit_width_time) {
@@ -1670,7 +1723,7 @@ public class RgerPInt{
         }
 
 
-        ArrayList<Byte> cur_encoded_result = encodeSegment2Bytes(ts_block_delta, bit_width_segments, raw_length, 8,coefficient,result2,p);
+        ArrayList<Byte> cur_encoded_result = encodeSegment2Bytes(ts_block_delta, bit_width_segments, raw_length, segment_size, coefficient, result2, p);
         encoded_result.addAll(cur_encoded_result);
 
       }
@@ -1704,7 +1757,7 @@ public class RgerPInt{
       ArrayList<Integer> i_star_ready = new ArrayList<>();
       ArrayList<Integer> coefficient = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta =
-              getEncodeBitsRegressionP(ts_block, remaining_length, raw_length, coefficient,p);
+              getEncodeBitsRegressionP(ts_block, remaining_length, raw_length, coefficient, p);
 
       // value-order
       quickSort(ts_block, 1, 0, remaining_length - 1);
@@ -1713,7 +1766,7 @@ public class RgerPInt{
       ArrayList<Integer> coefficient_reorder = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta_reorder =
               getEncodeBitsRegressionP(
-                      ts_block, remaining_length, reorder_length, coefficient_reorder,p);
+                      ts_block, remaining_length, reorder_length, coefficient_reorder, p);
 
       if (raw_length.get(0) <= reorder_length.get(0)) {
         quickSort(ts_block, 0, 0, remaining_length - 1);
@@ -1723,7 +1776,7 @@ public class RgerPInt{
         quickSort(ts_block, 1, 0, remaining_length - 1);
       }
       ts_block_delta =
-              getEncodeBitsRegressionP( ts_block, remaining_length, raw_length, coefficient,p);
+              getEncodeBitsRegressionP(ts_block, remaining_length, raw_length, coefficient, p);
       int supple_length;
       if (remaining_length % 8 == 0) {
         supple_length = 1;
@@ -1738,7 +1791,7 @@ public class RgerPInt{
         tmp.add(0);
         ts_block_delta.add(tmp);
       }
-      ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta, raw_length, coefficient, result2,p);
+      ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta, raw_length, coefficient, result2, p);
 
       encoded_result.addAll(cur_encoded_result);
     }
@@ -2206,7 +2259,7 @@ public class RgerPInt{
             ArrayList<Byte> buffer = new ArrayList<>();
             for (int repeat_i = 0; repeat_i < 10; repeat_i++)
               buffer =
-                  ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_third.get(file_i), p);
+                  ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_third.get(file_i),8 ,p);
 
             long e = System.nanoTime();
             encodeTime += ((e - s) / 10);

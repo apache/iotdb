@@ -14,7 +14,7 @@ import java.util.Stack;
 
 import static java.lang.Math.abs;
 
-public class RgerPFloat {
+public class RgerPFloatTest {
 
     public static int zigzag(int num) {
         if (num < 0) {
