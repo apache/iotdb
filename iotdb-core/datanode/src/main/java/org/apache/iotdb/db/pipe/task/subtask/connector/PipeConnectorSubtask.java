@@ -97,6 +97,8 @@ public class PipeConnectorSubtask extends PipeSubtask {
     }
 
     try {
+      outputPipeConnector.heartbeat();
+
       if (event instanceof TabletInsertionEvent) {
         outputPipeConnector.transfer((TabletInsertionEvent) event);
       } else if (event instanceof TsFileInsertionEvent) {
