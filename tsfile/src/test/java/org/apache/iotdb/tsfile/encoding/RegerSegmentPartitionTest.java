@@ -292,6 +292,8 @@ public class RegerSegmentPartitionTest {
     result.add(td_common);
   }
 
+
+  // ------------------------------------basic function -----------------------------------------
   public static ArrayList<ArrayList<Integer>> getEncodeBitsRegression(
       ArrayList<ArrayList<Integer>> ts_block,
       int block_size,
@@ -1620,7 +1622,7 @@ public class RegerSegmentPartitionTest {
       length_partition += encodeSegment2Bytes(ts_block_delta_partition,bit_width_segments_partition, raw_length_partition,segment_size,theta_partition, result3).size();
 
     }
-    // ----------------------------remaining data ------------
+    // ----------------------------remaining data in compare ------------
     int remaining_length = length_all - block_num * block_size;
     if (remaining_length != 0 && remaining_length != 1) {
       ArrayList<ArrayList<Integer>> ts_block_time = new ArrayList<>();

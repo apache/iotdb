@@ -1170,10 +1170,17 @@ public class RgerPFloatTest {
             int p) {
         int timestamp_delta_max = Integer.MIN_VALUE;
         int value_delta_max = Integer.MIN_VALUE;
+        int timestamp_delta_max_2 = Integer.MIN_VALUE; // 2nd_largest
+        int value_delta_max_2 = Integer.MIN_VALUE;// 2nd_largest
+        int timestamp_delta_min = Integer.MAX_VALUE;
+        int value_delta_min = Integer.MAX_VALUE;
+        int timestamp_delta_min_2 = Integer.MAX_VALUE; // 2nd_smallest
+        int value_delta_min_2 = Integer.MAX_VALUE; // 2nd_smallest
         int timestamp_delta_max_index = -1;
         int value_delta_max_index = -1;
-
-        int i_star = 0;
+        int timestamp_delta_min_index = -1;
+        int value_delta_min_index = -1;
+        int alpha = 0;
 
         if (index == 0) {
             for (int j = 1; j < p; j++) {
@@ -1182,8 +1189,18 @@ public class RgerPFloatTest {
                     epsilon_v_j -= coefficient.get(2 * pi + 1) * (float) ts_block.get(j - pi).get(1);
                 }
                 if (epsilon_v_j > value_delta_max) {
+                    value_delta_max_2 =  value_delta_max;
                     value_delta_max = (int) epsilon_v_j;
                     value_delta_max_index = j;
+                }else if (epsilon_v_j > value_delta_max_2 && epsilon_v_j != value_delta_max) {
+                    value_delta_max_2 = (int) epsilon_v_j;
+                }
+                if(epsilon_v_j < value_delta_min){
+                    value_delta_min_2 =  value_delta_min;
+                    value_delta_min = (int) epsilon_v_j;
+                    value_delta_min_index = j;
+                }else if (epsilon_v_j < value_delta_min_2 && epsilon_v_j != value_delta_min) {
+                    value_delta_min_2 = (int) epsilon_v_j;
                 }
             }
             for (int j = p; j < block_size; j++) {
@@ -1192,12 +1209,29 @@ public class RgerPFloatTest {
                     epsilon_v_j -= coefficient.get(2 * pi + 1) * (float) ts_block.get(j - pi).get(1);
                 }
                 if (epsilon_v_j > value_delta_max) {
+                    value_delta_max_2 =  value_delta_max;
                     value_delta_max = (int) epsilon_v_j;
                     value_delta_max_index = j;
+                }else if (epsilon_v_j > value_delta_max_2 && epsilon_v_j != value_delta_max) {
+                    value_delta_max_2 = (int) epsilon_v_j;
+                }
+                if(epsilon_v_j < value_delta_min){
+                    value_delta_min_2 =  value_delta_min;
+                    value_delta_min = (int) epsilon_v_j;
+                    value_delta_min_index = j;
+                }else if (epsilon_v_j < value_delta_min_2 && epsilon_v_j != value_delta_min) {
+                    value_delta_min_2 = (int) epsilon_v_j;
                 }
             }
+            if((value_delta_max - value_delta_max_2) > block_size * (value_delta_min_2 - value_delta_min)){
+                alpha = value_delta_max_index;
+            }else {
+                alpha = value_delta_min_index;
+            }
+
             //      System.out.println(value_delta_max_index);
-            i_star = value_delta_max_index;
+
+
         } else if (index == 1) {
             for (int j = 1; j < p; j++) {
                 float epsilon_r_j = (int) ts_block.get(j).get(0) - coefficient.get(0);
@@ -1206,8 +1240,18 @@ public class RgerPFloatTest {
 
                 }
                 if (epsilon_r_j > timestamp_delta_max) {
+                    timestamp_delta_max_2 =  timestamp_delta_max;
                     timestamp_delta_max = (int) epsilon_r_j;
                     timestamp_delta_max_index = j;
+                }else if (epsilon_r_j > timestamp_delta_max_2 && epsilon_r_j != timestamp_delta_max) {
+                    timestamp_delta_max_2 = (int) epsilon_r_j;
+                }
+                if(epsilon_r_j < timestamp_delta_min){
+                    timestamp_delta_min_2 =  timestamp_delta_min;
+                    timestamp_delta_min = (int) epsilon_r_j;
+                    timestamp_delta_min_index = j;
+                }else if (epsilon_r_j < timestamp_delta_min_2 && epsilon_r_j != timestamp_delta_min) {
+                    timestamp_delta_min_2 = (int) epsilon_r_j;
                 }
             }
 
@@ -1217,14 +1261,29 @@ public class RgerPFloatTest {
                     epsilon_r_j -= coefficient.get(2 * pi) * (float) ts_block.get(j - pi).get(0);
                 }
                 if (epsilon_r_j > timestamp_delta_max) {
+                    timestamp_delta_max_2 =  timestamp_delta_max;
                     timestamp_delta_max = (int) epsilon_r_j;
                     timestamp_delta_max_index = j;
+                }else if (epsilon_r_j > timestamp_delta_max_2 && epsilon_r_j != timestamp_delta_max) {
+                    timestamp_delta_max_2 = (int) epsilon_r_j;
                 }
+                if(epsilon_r_j < timestamp_delta_min){
+                    timestamp_delta_min_2 =  timestamp_delta_min;
+                    timestamp_delta_min = (int) epsilon_r_j;
+                    timestamp_delta_min_index = j;
+                }else if (epsilon_r_j < timestamp_delta_min_2 && epsilon_r_j != timestamp_delta_min) {
+                    timestamp_delta_min_2 = (int) epsilon_r_j;
+                }
+
             }
-            i_star = timestamp_delta_max_index;
+            if((timestamp_delta_max - timestamp_delta_max_2) > block_size * (timestamp_delta_min_2 - timestamp_delta_min)){
+                alpha = timestamp_delta_max_index;
+            }else {
+                alpha = timestamp_delta_min_index;
+            }
         }
 
-        return i_star;
+        return alpha;
     }
 
     public static int getIStarP(
@@ -2167,10 +2226,11 @@ public class RgerPFloatTest {
             writer.writeRecord(head); // write header to output file
 
             assert tempList != null;
+
+                for (File f : tempList) {
                     for(int p=1;p<2;p++) {
 //            for (int p = 1; p < 10; p++) {
-                System.out.println("p=" + p);
-                for (File f : tempList) {
+                        System.out.println("p=" + p);
                     //        ArrayList<Integer> flag = new ArrayList<>();
                     //        flag.add(0);
                     //        flag.add(0);
@@ -2199,9 +2259,8 @@ public class RgerPFloatTest {
                     for (int i = 0; i < repeatTime; i++) {
                         long s = System.nanoTime();
                         ArrayList<Byte> buffer = new ArrayList<>();
-                        for (int repeat_i = 0; repeat_i < 10; repeat_i++)
-                            buffer =
-                                    ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_third.get(file_i), 8, p);
+                        for (int repeat_i = 0; repeat_i < 1; repeat_i++)
+                            buffer =  ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_third.get(file_i), 8, p);
 
                         long e = System.nanoTime();
                         encodeTime += ((e - s) / 10);
