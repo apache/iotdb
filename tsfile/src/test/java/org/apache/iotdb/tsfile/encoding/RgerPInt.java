@@ -2066,8 +2066,8 @@ public class RgerPInt{
 
 
   public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
-    String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\p_int";
-    String input_parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\";
+    String parent_dir = "E:\\encoding-reorder-xjzgithub\\vldb\\compression_ratio\\p_int";
+    String input_parent_dir = "E:\\encoding-reorder-xjzgithub\\reorder\\iotdb_test_small\\";
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<String> dataset_name = new ArrayList<>();
@@ -2265,7 +2265,7 @@ public class RgerPInt{
                   ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_third.get(file_i),8 ,p);
 
             long e = System.nanoTime();
-            encodeTime += ((e - s) / 10);
+            encodeTime += ((e - s) / 1);
             compressed_size += buffer.size();
             double ratioTmp = (double) buffer.size() / (double) (data.size() * Integer.BYTES * 2);
             ratio += ratioTmp;
@@ -2273,7 +2273,7 @@ public class RgerPInt{
             //          data_decoded =
             // ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));
             e = System.nanoTime();
-            decodeTime += ((e - s) / 10);
+            decodeTime += ((e - s) / 1);
 
             //          for(int j=0;j<256;j++){
             //            if(!data.get(j).get(0).equals(data_decoded.get(j).get(0))){

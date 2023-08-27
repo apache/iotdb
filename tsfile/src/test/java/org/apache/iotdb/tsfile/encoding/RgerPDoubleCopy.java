@@ -14,7 +14,7 @@ import java.util.Stack;
 
 import static java.lang.Math.abs;
 
-public class RgerPDouble{
+public class RgerPDoubleCopy{
   public static int zigzag(int num) {
     if (num < 0) {
       return 2 * (-num) - 1;
@@ -2184,8 +2184,8 @@ public class RgerPDouble{
     //            "\\p\\rr_int\\GW-Magnetic_ratio.csv");
     //    dataset_map_td.add(100);
 
-    //      for(int file_i=3;file_i<4;file_i++){
-    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+    for(int file_i=11;file_i<12;file_i++){
+    //for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
       String inputPath = input_path_list.get(file_i);
       String Output = output_path_list.get(file_i);
@@ -2216,11 +2216,10 @@ public class RgerPDouble{
       writer.writeRecord(head); // write header to output file
 
       assert tempList != null;
-      //        for(int p=2;p<3;p++) {
-
+      for(int p=1;p<2;p++) {
+      //for (int p = 1; p < 10; p++) {
+        System.out.println("p=" + p);
         for (File f : tempList) {
-          for (int p = 1; p < 10; p++) {
-            System.out.println("p=" + p);
           //        ArrayList<Integer> flag = new ArrayList<>();
           //        flag.add(0);
           //        flag.add(0);
