@@ -2248,12 +2248,12 @@ public class RgerPDouble{
           for (int i = 0; i < repeatTime; i++) {
             long s = System.nanoTime();
             ArrayList<Byte> buffer = new ArrayList<>();
-            for (int repeat_i = 0; repeat_i < 10; repeat_i++)
+            for (int repeat_i = 0; repeat_i < 1; repeat_i++)
               buffer =
                       ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_third.get(file_i), 8,p);
 
             long e = System.nanoTime();
-            encodeTime += ((e - s) / 10);
+            encodeTime += ((e - s) / 1);
             compressed_size += buffer.size();
             double ratioTmp = (double) buffer.size() / (double) (data.size() * Integer.BYTES * 2);
             ratio += ratioTmp;
@@ -2261,7 +2261,7 @@ public class RgerPDouble{
             //          data_decoded =
             // ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));
             e = System.nanoTime();
-            decodeTime += ((e - s) / 10);
+            decodeTime += ((e - s) / 1);
 
             //          for(int j=0;j<256;j++){
             //            if(!data.get(j).get(0).equals(data_decoded.get(j).get(0))){
