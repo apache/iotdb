@@ -1417,7 +1417,7 @@ public class RgerPFloat {
     }
 
     public static ArrayList<Byte> ReorderingRegressionEncoder(
-            ArrayList<ArrayList<Integer>> data, int block_size, int[] third_value, int p) {
+            ArrayList<ArrayList<Integer>> data, int block_size, int[] third_value,int segment_size ,int p) {
         for (int i = 0; i < p; i++)
             block_size++;
         ArrayList<Byte> encoded_result = new ArrayList<Byte>();
@@ -1595,12 +1595,12 @@ public class RgerPFloat {
 
                 ts_block_delta = getEncodeBitsRegressionP(ts_block, block_size, raw_length, coefficient, p);
                 ArrayList<ArrayList<Integer>> bit_width_segments = new ArrayList<>();
-                int segment_n = (block_size - p) / 8;
+                int segment_n = (block_size - p) / segment_size;
                 for (int segment_i = 0; segment_i < segment_n; segment_i++) {
                     int bit_width_time = Integer.MIN_VALUE;
                     int bit_width_value = Integer.MIN_VALUE;
 
-                    for (int data_i = segment_i * 8 + p; data_i < (segment_i + 1) * 8 + p; data_i++) {
+                    for (int data_i = segment_i * segment_size + p; data_i < (segment_i + 1) * segment_size + p; data_i++) {
                         int cur_bit_width_time = getBitWith(ts_block_delta.get(data_i).get(0));
                         int cur_bit_width_value = getBitWith(ts_block_delta.get(data_i).get(1));
                         if (cur_bit_width_time > bit_width_time) {
@@ -1617,7 +1617,7 @@ public class RgerPFloat {
                 }
 
 
-                ArrayList<Byte> cur_encoded_result = encodeSegment2Bytes(ts_block_delta, bit_width_segments, raw_length, 8, coefficient, result2, p);
+                ArrayList<Byte> cur_encoded_result = encodeSegment2Bytes(ts_block_delta, bit_width_segments, raw_length, segment_size, coefficient, result2, p);
                 encoded_result.addAll(cur_encoded_result);
 
 //        ArrayList<Byte> cur_encoded_result = encode2Bytes(ts_block_delta, raw_length, theta, result2);
@@ -1688,12 +1688,12 @@ public class RgerPFloat {
 
 
                 ArrayList<ArrayList<Integer>> bit_width_segments = new ArrayList<>();
-                int segment_n = (block_size - p) / 8;
+                int segment_n = (block_size - p) / segment_size;
                 for (int segment_i = 0; segment_i < segment_n; segment_i++) {
                     int bit_width_time = Integer.MIN_VALUE;
                     int bit_width_value = Integer.MIN_VALUE;
 
-                    for (int data_i = segment_i * 8 + p; data_i < (segment_i + 1) * 8 + p; data_i++) {
+                    for (int data_i = segment_i * segment_size + p; data_i < (segment_i + 1) * segment_size + p; data_i++) {
                         int cur_bit_width_time = getBitWith(ts_block_delta.get(data_i).get(0));
                         int cur_bit_width_value = getBitWith(ts_block_delta.get(data_i).get(1));
                         if (cur_bit_width_time > bit_width_time) {
@@ -1710,7 +1710,7 @@ public class RgerPFloat {
                 }
 
 
-                ArrayList<Byte> cur_encoded_result = encodeSegment2Bytes(ts_block_delta, bit_width_segments, raw_length, 8, coefficient, result2, p);
+                ArrayList<Byte> cur_encoded_result = encodeSegment2Bytes(ts_block_delta, bit_width_segments, raw_length, segment_size, coefficient, result2, p);
                 encoded_result.addAll(cur_encoded_result);
 
             }
@@ -2248,7 +2248,7 @@ public class RgerPFloat {
                         ArrayList<Byte> buffer = new ArrayList<>();
                         for (int repeat_i = 0; repeat_i < 10; repeat_i++)
                             buffer =
-                                    ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_third.get(file_i), p);
+                                    ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_third.get(file_i), 8, p);
 
                         long e = System.nanoTime();
                         encodeTime += ((e - s) / 10);
@@ -2312,7 +2312,7 @@ public class RgerPFloat {
                             String.valueOf(compressed_size),
                             String.valueOf(ratio)
                     };
-                    //          System.out.println(ratio);
+                              System.out.println(ratio);
                     writer.writeRecord(record);
                     //          break;
                 }
