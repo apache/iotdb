@@ -2055,8 +2055,8 @@ public class RgerPDouble{
 
 
   public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
-    String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\p_double";
-    String input_parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\";
+    String parent_dir = "E:\\encoding-reorder-xjzgithub\\vldb\\compression_ratio\\p_double";
+    String input_parent_dir = "E:\\encoding-reorder-xjzgithub\\reorder\\iotdb_test_small\\";
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
     ArrayList<String> dataset_name = new ArrayList<>();

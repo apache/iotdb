@@ -14,7 +14,7 @@ import java.util.Stack;
 
 import static java.lang.Math.abs;
 
-public class RgerPFloat {
+public class RgerPFloatCopy {
 
     public static int zigzag(int num) {
         if (num < 0) {
@@ -1315,10 +1315,24 @@ public class RgerPFloat {
         byte[] theta0_v_byte = float2bytes(coefficient.get(1) + (float) raw_length.get(4));
         for (byte b : theta0_v_byte) encoded_result.add(b);
 
+        System.out.print("time parameter 0 : ");
+        System.out.println(coefficient.get(0) + (float) raw_length.get(3));
+        System.out.print("value parameter 0 : ");
+        System.out.println(coefficient.get(1) + (float) raw_length.get(4));
 
         for (int i = 2; i < coefficient.size(); i++) {
             byte[] theta_byte = float2bytes(coefficient.get(i));
             for (byte b : theta_byte) encoded_result.add(b);
+            if(i%2==0){
+                System.out.print("time parameter ");
+                System.out.print((int) i/2);
+                System.out.print(" : ");
+            }else{
+                System.out.print("value parameter ");
+                System.out.print((int) (i-1)/2);
+                System.out.print(" : ");
+            }
+            System.out.println(coefficient.get(i));
         }
 
         byte[] max_bit_width_interval_byte = bitWidth2Bytes(raw_length.get(1));
@@ -2135,8 +2149,8 @@ public class RgerPFloat {
         output_path_list.add(parent_dir + "\\EPM-Education_ratio.csv");//11
         dataset_block_size.add(512);
 
-
-        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+        for (int file_i = 11; file_i < 12; file_i++) {
+        //for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
@@ -2167,8 +2181,8 @@ public class RgerPFloat {
             writer.writeRecord(head); // write header to output file
 
             assert tempList != null;
-            //        for(int p=2;p<3;p++) {
-            for (int p = 1; p < 10; p++) {
+            for(int p=1;p<2;p++) {
+            //for (int p = 1; p < 10; p++) {
                 System.out.println("p=" + p);
                 for (File f : tempList) {
                     //        ArrayList<Integer> flag = new ArrayList<>();
