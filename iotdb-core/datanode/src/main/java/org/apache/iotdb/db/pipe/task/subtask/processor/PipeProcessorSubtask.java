@@ -92,7 +92,7 @@ public class PipeProcessorSubtask extends PipeSubtask {
       // Though there is no event to process, there may still be some buffered events
       // in the outputEventCollector. Return true if there are still buffered events,
       // false otherwise.
-      return outputEventCollector.tryCollectBufferedEvents();
+      return false;
     }
 
     try {
