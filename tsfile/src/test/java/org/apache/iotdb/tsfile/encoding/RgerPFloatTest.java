@@ -366,6 +366,8 @@ public class RgerPFloatTest {
         }
     }
 
+    // --------------------------------------  base function -----------------------------------------------------
+
     private static ArrayList<ArrayList<Integer>> getEncodeBitsRegressionP(
             ArrayList<ArrayList<Integer>> ts_block,
             int block_size,
@@ -1178,16 +1180,16 @@ public class RgerPFloatTest {
                 float epsilon_v_j = (float) ts_block.get(j).get(1) - coefficient.get(1);
                 for (int pi = 1; pi <= j; pi++) {
                     epsilon_v_j -= coefficient.get(2 * pi + 1) * (float) ts_block.get(j - pi).get(1);
-                    if (epsilon_v_j > value_delta_max) {
-                        value_delta_max = (int) epsilon_v_j;
-                        value_delta_max_index = j;
-                    }
+                }
+                if (epsilon_v_j > value_delta_max) {
+                    value_delta_max = (int) epsilon_v_j;
+                    value_delta_max_index = j;
                 }
             }
             for (int j = p; j < block_size; j++) {
                 float epsilon_v_j = (float) ((float) ts_block.get(j).get(1) - coefficient.get(1));
                 for (int pi = 1; pi <= p; pi++) {
-                    epsilon_v_j -= (float) (coefficient.get(2 * pi + 1) * (float) ts_block.get(j - pi).get(1));
+                    epsilon_v_j -= coefficient.get(2 * pi + 1) * (float) ts_block.get(j - pi).get(1);
                 }
                 if (epsilon_v_j > value_delta_max) {
                     value_delta_max = (int) epsilon_v_j;
@@ -1198,20 +1200,21 @@ public class RgerPFloatTest {
             i_star = value_delta_max_index;
         } else if (index == 1) {
             for (int j = 1; j < p; j++) {
-                float epsilon_r_j = (float) ((int) ts_block.get(j).get(0) - coefficient.get(0));
+                float epsilon_r_j = (int) ts_block.get(j).get(0) - coefficient.get(0);
                 for (int pi = 1; pi <= j; pi++) {
-                    epsilon_r_j -= (float) (coefficient.get(2 * pi) * (float) ts_block.get(j - pi).get(0));
-                    if (epsilon_r_j > timestamp_delta_max) {
-                        timestamp_delta_max = (int) epsilon_r_j;
-                        timestamp_delta_max_index = j;
-                    }
+                    epsilon_r_j -= coefficient.get(2 * pi) * (float) ts_block.get(j - pi).get(0);
+
+                }
+                if (epsilon_r_j > timestamp_delta_max) {
+                    timestamp_delta_max = (int) epsilon_r_j;
+                    timestamp_delta_max_index = j;
                 }
             }
 
             for (int j = p; j < block_size; j++) {
                 float epsilon_r_j = (float) ((int) ts_block.get(j).get(0) - coefficient.get(0));
                 for (int pi = 1; pi <= p; pi++) {
-                    epsilon_r_j -= (float) (coefficient.get(2 * pi) * (float) ts_block.get(j - pi).get(0));
+                    epsilon_r_j -= coefficient.get(2 * pi) * (float) ts_block.get(j - pi).get(0);
                 }
                 if (epsilon_r_j > timestamp_delta_max) {
                     timestamp_delta_max = (int) epsilon_r_j;
@@ -2053,7 +2056,7 @@ public class RgerPFloatTest {
 
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
-        String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\p_float";
+        String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\p_float_test";
         String input_parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -2157,15 +2160,15 @@ public class RgerPFloatTest {
                     //      "Compress Time",
                     //      "Uncompress Time",
                     "Points",
-                    "p",
+//                    "p",
                     "Compressed Size",
                     "Compression Ratio"
             };
             writer.writeRecord(head); // write header to output file
 
             assert tempList != null;
-            //        for(int p=2;p<3;p++) {
-            for (int p = 1; p < 10; p++) {
+                    for(int p=1;p<2;p++) {
+//            for (int p = 1; p < 10; p++) {
                 System.out.println("p=" + p);
                 for (File f : tempList) {
                     //        ArrayList<Integer> flag = new ArrayList<>();
@@ -2258,11 +2261,11 @@ public class RgerPFloatTest {
                             String.valueOf(encodeTime),
                             String.valueOf(decodeTime),
                             String.valueOf(data.size()),
-                            String.valueOf(p),
+//                            String.valueOf(p),
                             String.valueOf(compressed_size),
                             String.valueOf(ratio)
                     };
-                              System.out.println(ratio);
+                    System.out.println(ratio);
                     writer.writeRecord(record);
                     //          break;
                 }

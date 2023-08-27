@@ -364,6 +364,7 @@ public class RgerPDouble{
       //      System.out.println(alphas_value[i][3]);
     }
   }
+  // --------------------------------------  base function -----------------------------------------------------
 
   private static ArrayList<ArrayList<Integer>> getEncodeBitsRegressionP(
           ArrayList<ArrayList<Integer>> ts_block,
@@ -1177,10 +1178,11 @@ public class RgerPDouble{
         double epsilon_v_j = (double) ts_block.get(j).get(1) - coefficient.get(1);
         for (int pi = 1; pi <= j; pi++) {
           epsilon_v_j -= coefficient.get(2 * pi + 1) * (double) ts_block.get(j - pi).get(1);
-          if (epsilon_v_j > value_delta_max) {
-            value_delta_max = (int) epsilon_v_j;
-            value_delta_max_index = j;
-          }
+
+        }
+        if (epsilon_v_j > value_delta_max) {
+          value_delta_max = (int) epsilon_v_j;
+          value_delta_max_index = j;
         }
       }
       for (int j = p; j < block_size; j++) {
@@ -1200,10 +1202,11 @@ public class RgerPDouble{
         double epsilon_r_j = (double) ((int) ts_block.get(j).get(0) - coefficient.get(0));
         for (int pi = 1; pi <= j; pi++) {
           epsilon_r_j -= (double) (coefficient.get(2 * pi) * (double) ts_block.get(j - pi).get(0));
-          if (epsilon_r_j > timestamp_delta_max) {
-            timestamp_delta_max = (int) epsilon_r_j;
-            timestamp_delta_max_index = j;
-          }
+
+        }
+        if (epsilon_r_j > timestamp_delta_max) {
+          timestamp_delta_max = (int) epsilon_r_j;
+          timestamp_delta_max_index = j;
         }
       }
 
