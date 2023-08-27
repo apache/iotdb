@@ -1792,7 +1792,7 @@ public class RegerSegmentPartitionTest {
           getEncodeBitsRegression(ts_block, block_size, raw_length, theta);
 //        System.out.println("old_length"+old_length);
 //        System.out.println("raw_length"+raw_length);
-          if (old_length.get(1) + old_length.get(2) < raw_length.get(1) + raw_length.get(2)) {
+          if (old_length.get(0) < raw_length.get(0)) {
             ts_block = old_ts_block;
             break;
           }
@@ -1868,7 +1868,7 @@ public class RegerSegmentPartitionTest {
         int choose = min3(partition_length.get(0),reorder_length.get(0),raw_length.get(0));
         if(choose == 0){
           raw_length = partition_length;
-          ts_block_delta = ts_block_partition;
+          ts_block_delta = ts_block_delta_partition;
         } else if (choose == 1) {
           raw_length = reorder_length;
           ts_block_delta = ts_block_delta_reorder;

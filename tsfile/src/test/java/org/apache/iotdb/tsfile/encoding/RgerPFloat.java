@@ -24,13 +24,13 @@ public class RgerPFloat {
         }
     }
 
-    public static int max3(int a, int b, int c) {
-        if (a >= b && a >= c) {
-            return a;
-        } else if (b >= a && b >= c) {
-            return b;
+    public static int min3(int a, int b, int c) {
+        if (a < b && a < c) {
+            return 0;
+        } else if (b < c ) {
+            return 1;
         } else {
-            return c;
+            return 2;
         }
     }
 
@@ -1506,13 +1506,18 @@ public class RgerPFloat {
                 //      result2.add(1);
                 splitTimeStamp3(ts_block, result2);
 
-                quickSort(ts_block, 0, 0, block_size - 1);
-
-                // time-order
                 ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
                 ArrayList<Float> coefficient = new ArrayList<>();
                 ArrayList<ArrayList<Integer>> ts_block_delta =
-                        getEncodeBitsRegressionP(ts_block, block_size, raw_length, coefficient, p);
+                        getEncodeBitsRegressionP(ts_block, block_size, raw_length, coefficient ,p);
+
+
+                // time-order
+                quickSort(ts_block, 0, 0, block_size - 1);
+                ArrayList<Integer> time_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
+                ArrayList<Float> coefficient_time = new ArrayList<>();
+                ArrayList<ArrayList<Integer>> ts_block_delta_time =
+                        getEncodeBitsRegressionP(ts_block, block_size, time_length, coefficient_time, p);
 
                 // value-order
                 quickSort(ts_block, 1, 0, block_size - 1);
@@ -1525,14 +1530,21 @@ public class RgerPFloat {
 
                 int i_star;
                 int j_star;
-                if (raw_length.get(0) <= reorder_length.get(0)) {
+                int choose = min3(time_length.get(0),raw_length.get(0),reorder_length.get(0));
+                if(choose == 0){
+                    raw_length = time_length;
                     quickSort(ts_block, 0, 0, block_size - 1);
-                    i_star = getIStarP(ts_block, block_size, 0, coefficient, p);
-                } else {
+                    coefficient = coefficient_time;
+                    ts_block_delta = ts_block_delta_time;
+                    i_star = getIStarP(ts_block, block_size, 0, coefficient,p);
+                } else if (choose == 1) {
+                    ts_block = ts_block_reorder;
+                    i_star = getIStarP(ts_block, block_size, 0, coefficient,p);
+                }else {
                     raw_length = reorder_length;
                     coefficient = coefficient_reorder;
-                    quickSort(ts_block, 1, 0, block_size - 1);
-                    i_star = getIStarP(ts_block, block_size, 1, coefficient, p);
+                    ts_block_delta = ts_block_delta_reorder;
+                    i_star = getIStarP(ts_block, block_size, 1, coefficient,p);
                 }
                 j_star = getBetaP(ts_block, i_star, block_size, coefficient, p);
 
@@ -1622,6 +1634,7 @@ public class RgerPFloat {
             for (int i = 0; i < block_num; i++) {
                 ArrayList<ArrayList<Integer>> ts_block = new ArrayList<>();
                 ArrayList<ArrayList<Integer>> ts_block_reorder = new ArrayList<>();
+                ArrayList<ArrayList<Integer>> ts_block_partition = new ArrayList<>();
                 for (int j = 0; j < block_size; j++) {
                     ts_block.add(data.get(j + i * block_size));
                     ts_block_reorder.add(data.get(j + i * block_size));
@@ -1630,9 +1643,50 @@ public class RgerPFloat {
                 ArrayList<Integer> result2 = new ArrayList<>();
                 //      result2.add(1);
                 splitTimeStamp3(ts_block, result2);
+
+                quickSort(ts_block, 0, 0, block_size - 1);
                 ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
                 ArrayList<Float> coefficient = new ArrayList<>();
                 ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegressionP(ts_block, block_size, raw_length, coefficient, p);
+                // value-order
+                quickSort(ts_block, 1, 0, block_size - 1);
+
+                ArrayList<Integer> reorder_length = new ArrayList<>();
+                ArrayList<Float> coefficient_reorder = new ArrayList<>();
+                ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegressionP( ts_block, block_size, reorder_length, coefficient_reorder, p);
+
+                for (ArrayList<Integer> datum : ts_block) {
+                    if (datum.get(1) > third_value[third_value.length - 1]) {
+                        ts_block_partition.add(datum);
+                    }
+                }
+                for(int third_i = third_value.length - 1;third_i>0;third_i--){
+                    for (ArrayList<Integer> datum : ts_block) {
+                        if (datum.get(1) <= third_value[third_i] && datum.get(1)>third_value[third_i-1]) {
+                            ts_block_partition.add(datum);
+                        }
+                    }
+                }
+                for (ArrayList<Integer> datum : ts_block) {
+                    if (datum.get(1) <= third_value[0]) {
+                        ts_block_partition.add(datum);
+                    }
+                }
+                ArrayList<Integer> partition_length = new ArrayList<>();
+                ArrayList<Float> coefficient_partition = new ArrayList<>();
+                ArrayList<ArrayList<Integer>> ts_block_delta_partition = getEncodeBitsRegressionP( ts_block_partition, block_size, partition_length, coefficient_partition, p);
+                int choose = min3(partition_length.get(0),reorder_length.get(0),raw_length.get(0));
+                if(choose == 0){
+                    raw_length = partition_length;
+                    ts_block_delta = ts_block_delta_partition;
+                    coefficient =  coefficient_partition;
+                } else if (choose == 1) {
+                    raw_length = reorder_length;
+                    ts_block_delta = ts_block_delta_reorder;
+                    coefficient =  coefficient_reorder;
+                }
+
+
                 ArrayList<ArrayList<Integer>> bit_width_segments = new ArrayList<>();
                 int segment_n = (block_size - p) / 8;
                 for (int segment_i = 0; segment_i < segment_n; segment_i++) {
