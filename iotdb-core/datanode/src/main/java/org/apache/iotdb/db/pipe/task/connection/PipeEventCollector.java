@@ -23,15 +23,10 @@ import org.apache.iotdb.db.pipe.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.LinkedList;
 import java.util.Queue;
 
 public class PipeEventCollector implements EventCollector {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeEventCollector.class);
 
   private final BoundedBlockingPendingQueue<Event> pendingQueue;
 
@@ -63,5 +58,22 @@ public class PipeEventCollector implements EventCollector {
     if (!pendingQueue.waitedOffer(event)) {
       bufferQueue.offer(event);
     }
+  }
+
+  /**
+   * Try to collect buffered events into pending queue.
+   *
+   * @return true if there are still buffered events after this operation, false otherwise.
+   */
+  public synchronized boolean tryCollectBufferedEvents() {
+    while (!bufferQueue.isEmpty()) {
+      final Event bufferedEvent = bufferQueue.peek();
+      if (pendingQueue.waitedOffer(bufferedEvent)) {
+        bufferQueue.poll();
+      } else {
+        return true;
+      }
+    }
+    return false;
   }
 }
