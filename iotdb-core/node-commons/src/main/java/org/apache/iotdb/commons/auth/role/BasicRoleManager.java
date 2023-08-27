@@ -119,6 +119,7 @@ public abstract class BasicRoleManager implements IRoleManager {
         return false;
       }
       if (path != null) {
+        AuthUtils.validatePatternPath(path);
         role.addPathPrivilege(path, privilegeId, grantOpt);
       } else {
         role.getSysPrivilege().add(privilegeId);
@@ -147,6 +148,7 @@ public abstract class BasicRoleManager implements IRoleManager {
         return false;
       }
       if (path != null) {
+        AuthUtils.validatePatternPath(path);
         role.removePathPrivilege(path, privilegeId);
       } else {
         role.getSysPrivilege().remove(privilegeId);

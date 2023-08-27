@@ -154,7 +154,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
             TSStatusCode.ALREADY_HAS_PRIVILEGE,
             String.format(
                 "User %s already has %s on %s",
-                username, PrivilegeType.values()[privilegeId], path == null ? path : "system"));
+                username, PrivilegeType.values()[privilegeId], (path != null ? path : "system")));
       }
     }
   }
@@ -171,7 +171,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
           TSStatusCode.NOT_HAS_PRIVILEGE,
           String.format(
               "User %s does not have %s on %s",
-              username, PrivilegeType.values()[privilegeId], path == null ? path : "system"));
+              username, PrivilegeType.values()[privilegeId], path != null ? path : "system"));
     }
   }
 

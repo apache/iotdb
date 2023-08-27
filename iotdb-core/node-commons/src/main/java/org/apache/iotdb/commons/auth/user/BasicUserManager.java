@@ -168,6 +168,7 @@ public abstract class BasicUserManager implements IUserManager {
         return false;
       }
       if (path != null) {
+        AuthUtils.validatePatternPath(path);
         user.addPathPrivilege(path, privilegeId, grantOpt);
       } else {
         user.addSysPrivilege(privilegeId);
@@ -193,6 +194,7 @@ public abstract class BasicUserManager implements IUserManager {
         return false;
       }
       if (path != null) {
+        AuthUtils.validatePatternPath(path);
         user.removePathPrivilege(path, privilegeId);
       } else {
         user.removeSysPrivilege(privilegeId);

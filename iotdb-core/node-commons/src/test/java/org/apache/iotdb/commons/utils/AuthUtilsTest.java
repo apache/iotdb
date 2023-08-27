@@ -119,4 +119,48 @@ public class AuthUtilsTest {
     Assert.assertEquals(privs.get(0).getPrivileges().size(), 2);
     Assert.assertFalse(privs.get(0).getPrivileges().contains(PrivilegeType.READ_DATA.ordinal()));
   }
+
+  @Test
+  public void authUtilsTest_PatternPathCheck() throws AuthException, IllegalPathException {
+    AuthUtils.validatePatternPath(new PartialPath(new String("root.data.t1")));
+    AuthUtils.validatePatternPath(new PartialPath(new String("root.data.**")));
+    AuthUtils.validatePatternPath(new PartialPath(new String("root.data.*a")));
+    AuthUtils.validatePatternPath(new PartialPath(new String("root.data.*")));
+    Assert.assertThrows(
+        AuthException.class,
+        () -> AuthUtils.validatePatternPath(new PartialPath(new String("root.data.t1.a*.a"))));
+    Assert.assertThrows(
+        AuthException.class,
+        () -> AuthUtils.validatePatternPath(new PartialPath(new String("root.data.t1.*.a"))));
+    Assert.assertThrows(
+        AuthException.class,
+        () -> AuthUtils.validatePatternPath(new PartialPath(new String("root.data.t1.**.a"))));
+    Assert.assertThrows(
+        AuthException.class,
+        () -> AuthUtils.validatePatternPath(new PartialPath(new String("root.data.t1.a*.*"))));
+    Assert.assertThrows(
+        AuthException.class,
+        () -> AuthUtils.validatePatternPath(new PartialPath(new String("root.data.t1.*.*"))));
+    Assert.assertThrows(
+        AuthException.class,
+        () -> AuthUtils.validatePatternPath(new PartialPath(new String("root.data.t1.**.*"))));
+    Assert.assertThrows(
+        AuthException.class,
+        () -> AuthUtils.validatePatternPath(new PartialPath(new String("root.data.t1.a*.**"))));
+    Assert.assertThrows(
+        AuthException.class,
+        () -> AuthUtils.validatePatternPath(new PartialPath(new String("root.data.t1.*.**"))));
+    Assert.assertThrows(
+        AuthException.class,
+        () -> AuthUtils.validatePatternPath(new PartialPath(new String("root.data.t1.**.**"))));
+    Assert.assertThrows(
+        AuthException.class,
+        () -> AuthUtils.validatePatternPath(new PartialPath(new String("*.data.t1.**.**"))));
+    Assert.assertThrows(
+        AuthException.class,
+        () -> AuthUtils.validatePatternPath(new PartialPath(new String("**.data.t1.**.**"))));
+    Assert.assertThrows(
+        AuthException.class,
+        () -> AuthUtils.validatePatternPath(new PartialPath(new String("*a.data.t1.**.**"))));
+  }
 }

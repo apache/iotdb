@@ -333,7 +333,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   }
 
   public TSStatus checkSysPriFromConfigNode(String username, int permission) {
-    return checkPathFromConfigNode(username, null, permission);
+    return checkPathFromConfigNode(username, new ArrayList<>(), permission);
   }
 
   public TSStatus checkPathFromConfigNode(

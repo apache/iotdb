@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
+import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.security.encrypt.AsymmetricEncryptFactory;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -146,6 +147,28 @@ public class AuthUtils {
           TSStatusCode.ILLEGAL_PARAMETER,
           String.format(
               "Illegal seriesPath %s, seriesPath should start with \"%s\"", path, ROOT_PREFIX));
+    }
+  }
+
+  public static void validatePatternPath(PartialPath path) throws AuthException {
+    if (!path.hasWildcard()) {
+      return;
+    } else if (!PathPatternUtil.hasWildcard(path.getTailNode())) {
+      // check a.b.*.c/a.b.**.c/a.b*.c
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PARAMETER,
+          String.format(
+              "Illegal pattern path: %s, only pattern path that end with wildcards are supported.",
+              path));
+    }
+    for (int i = 0; i < path.getNodeLength() - 1; i++) {
+      if (PathPatternUtil.hasWildcard(path.getNodes()[i])) {
+        throw new AuthException(
+            TSStatusCode.ILLEGAL_PARAMETER,
+            String.format(
+                "Illegal pattern path: %s, only pattern path that end with wildcards are supported.",
+                path));
+      }
     }
   }
 
@@ -293,8 +316,6 @@ public class AuthUtils {
    */
   public static void addPrivilege(
       PartialPath path, int privilegeId, List<PathPrivilege> privilegeList, boolean grantOption) {
-    // need to handle some exception. LSL
-    //    validatePrivilegeOnPath(path,privilegeId);
     PathPrivilege targetPathPrivilege = null;
     // check PathPrivilege of target path is already existed
     for (PathPrivilege pathPrivilege : privilegeList) {

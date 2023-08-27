@@ -38,14 +38,14 @@ public class PathPrivilegeTest {
     pathPrivilege.setPath(new PartialPath("root.ln"));
     pathPrivilege.setPrivileges(Collections.singleton(1));
     pathPrivilege.setGrantOpt(new HashSet<>());
-    Assert.assertEquals("root.ln : WRITE_DATA,", pathPrivilege.toString());
+    Assert.assertEquals("root.ln : WRITE_DATA", pathPrivilege.toString());
     PathPrivilege pathPrivilege1 = new PathPrivilege();
     pathPrivilege1.setPath(new PartialPath("root.sg"));
     pathPrivilege1.setPrivileges(Collections.singleton(1));
     pathPrivilege1.setGrantOpt(new HashSet<>());
     Assert.assertNotEquals(pathPrivilege, pathPrivilege1);
     pathPrivilege.deserialize(pathPrivilege1.serialize());
-    Assert.assertEquals("root.sg : WRITE_DATA,", pathPrivilege.toString());
+    Assert.assertEquals("root.sg : WRITE_DATA", pathPrivilege.toString());
   }
 
   @Test

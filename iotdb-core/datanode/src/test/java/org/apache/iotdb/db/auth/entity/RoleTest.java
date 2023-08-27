@@ -39,14 +39,14 @@ public class RoleTest {
     role.addPathPrivilege(new PartialPath("root.ln"), 1, false);
     role.addPathPrivilege(new PartialPath("root.ln"), 2, true);
     Assert.assertEquals(
-        "Role{name='role', pathPrivilegeList=[root.ln : WRITE_DATA,"
-            + " READ_SCHEMA with grant option,], systemPrivilegeSet=[]}",
+        "Role{name='role', pathPrivilegeList=[root.ln : WRITE_DATA"
+            + " READ_SCHEMA_with_grant_option], systemPrivilegeSet=[]}",
         role.toString());
     Role role1 = new Role("role1");
     role1.deserialize(role.serialize());
     Assert.assertEquals(
         "Role{name='role', pathPrivilegeList=[root.ln : "
-            + "WRITE_DATA, READ_SCHEMA with grant option,], systemPrivilegeSet=[]}",
+            + "WRITE_DATA READ_SCHEMA_with_grant_option], systemPrivilegeSet=[]}",
         role1.toString());
   }
 
