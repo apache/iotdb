@@ -1,9 +1,11 @@
-package org.apache.iotdb.confignode.procedure.impl.schema;
+package org.apache.iotdb.confignode.procedure.impl.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.manager.PermissionManager;
@@ -11,17 +13,19 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.InvalidAuthCacheState;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.*;
 
 public class InvalidAuthCacheProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, InvalidAuthCacheState> {
@@ -81,21 +85,22 @@ public class InvalidAuthCacheProcedure
           TSStatus status;
           req.setUsername(user);
           req.setRoleName(role);
-          for (Pair<TDataNodeConfiguration, Long> dataNodeInfo : dataNodesToInvalid) {
-            if (dataNodeInfo.getRight() + this.timeoutMS < System.currentTimeMillis()) {
-              invalidedDNs.add(dataNodeInfo.getLeft());
-              dataNodesToInvalid.remove(dataNodeInfo);
+          Iterator<Pair<TDataNodeConfiguration, Long>> it = dataNodesToInvalid.iterator();
+          while (it.hasNext()) {
+            if (it.next().getRight() + this.timeoutMS < System.currentTimeMillis()) {
+              invalidedDNs.add(it.next().getLeft());
+              it.remove();
               continue;
             }
             status =
                 SyncDataNodeClientPool.getInstance()
                     .sendSyncRequestToDataNodeWithRetry(
-                        dataNodeInfo.getLeft().getLocation().getInternalEndPoint(),
+                        it.next().getLeft().getLocation().getInternalEndPoint(),
                         req,
                         DataNodeRequestType.INVALIDATE_PERMISSION_CACHE);
             if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              invalidedDNs.add(dataNodeInfo.left);
-              dataNodesToInvalid.remove(dataNodeInfo);
+              invalidedDNs.add(it.next().getLeft());
+              it.remove();
             }
           }
           if (dataNodesToInvalid.isEmpty()) {
@@ -151,5 +156,67 @@ public class InvalidAuthCacheProcedure
   @Override
   protected InvalidAuthCacheState getInitialState() {
     return InvalidAuthCacheState.INIT;
+  }
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    stream.writeShort(ProcedureType.INVALID_DATANODE_AUTH_CACHE.getTypeCode());
+    super.serialize(stream);
+    ReadWriteIOUtils.write(user, stream);
+    ReadWriteIOUtils.write(role, stream);
+    ReadWriteIOUtils.write(dataNodesToInvalid.size(), stream);
+    for (Pair<TDataNodeConfiguration,Long> item : dataNodesToInvalid) {
+      ThriftCommonsSerDeUtils.serializeTDataNodeConfiguration(item.getLeft(),stream);
+      ReadWriteIOUtils.write(item.getRight(), stream);
+    }
+    ReadWriteIOUtils.write(invalidedDNs.size(), stream);
+    for (TDataNodeConfiguration item : invalidedDNs) {
+      ThriftCommonsSerDeUtils.serializeTDataNodeConfiguration(item,stream);
+    }
+    ReadWriteIOUtils.write(timeoutMS, stream);
+  }
+  @Override
+  public void deserialize(ByteBuffer byteBuffer) {
+    super.deserialize(byteBuffer);
+    this.user = ReadWriteIOUtils.readString(byteBuffer);
+    this.role = ReadWriteIOUtils.readString(byteBuffer);
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    this.dataNodesToInvalid = new ArrayList<>();
+    for (int i = 0; i < size; i++) {
+      TDataNodeConfiguration datanode = ThriftCommonsSerDeUtils.deserializeTDataNodeConfiguration(
+              byteBuffer
+      );
+      Long timestamp = ReadWriteIOUtils.readLong(byteBuffer);
+      this.dataNodesToInvalid.add(new Pair<TDataNodeConfiguration, Long>(datanode, timestamp));
+    }
+    this.invalidedDNs = new HashSet<>();
+    size = ReadWriteIOUtils.readInt(byteBuffer);
+    for (int i = 0; i < size; i++) {
+      this.invalidedDNs.add(ThriftCommonsSerDeUtils.deserializeTDataNodeConfiguration(byteBuffer));
+    }
+    this.timeoutMS = ReadWriteIOUtils.readInt(byteBuffer);
+  }
+
+  @TestOnly
+  public void removeAllDNS() {
+    Iterator<Pair<TDataNodeConfiguration,Long>> it = dataNodesToInvalid.iterator();
+    while (it.hasNext()) {
+      invalidedDNs.add(it.next().getLeft());
+      it.remove();
+    }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if(this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    InvalidAuthCacheProcedure that = (InvalidAuthCacheProcedure) o;
+    return user.equals(that.user) &&
+            role.equals(that.role) &&
+            Objects.equals(dataNodesToInvalid,((InvalidAuthCacheProcedure) o).dataNodesToInvalid)
+            && Objects.equals(invalidedDNs, that.invalidedDNs);
   }
 }
