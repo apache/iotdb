@@ -60,7 +60,10 @@ public class LazyLoadAlignedPagePointReader implements IPointReader {
       boolean someValueNotNull = false;
       TsPrimitiveType[] valuesInThisRow = new TsPrimitiveType[valueReaders.size()];
       for (int i = 0; i < valueReaders.size(); i++) {
-        TsPrimitiveType value = valueReaders.get(i).nextValue(currentTime, timeIndex);
+        TsPrimitiveType value =
+            valueReaders.get(i) == null
+                ? null
+                : valueReaders.get(i).nextValue(currentTime, timeIndex);
         someValueNotNull = someValueNotNull || (value != null);
         valuesInThisRow[i] = value;
       }
