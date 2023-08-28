@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.receiver.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
@@ -34,6 +35,7 @@ import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransfer
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletReq;
 import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
@@ -59,6 +61,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.file.Files;
+import java.time.ZoneId;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -473,7 +476,7 @@ public class IoTDBThriftReceiverV1 implements IoTDBThriftReceiver {
             .execute(
                 statement,
                 SessionManager.getInstance().requestQueryId(),
-                null,
+                new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault().getId()),
                 "",
                 partitionFetcher,
                 schemaFetcher,
