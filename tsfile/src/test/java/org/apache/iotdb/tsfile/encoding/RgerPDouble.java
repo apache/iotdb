@@ -2227,9 +2227,10 @@ public class RgerPDouble{
 
       assert tempList != null;
       //        for(int p=2;p<3;p++) {
-      for (int p = 1; p < 10; p++) {
-        System.out.println("p=" + p);
+
         for (File f : tempList) {
+          for (int p = 1; p < 10; p++) {
+            System.out.println("p=" + p);
           //        ArrayList<Integer> flag = new ArrayList<>();
           //        flag.add(0);
           //        flag.add(0);
