@@ -74,7 +74,8 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
         averageUncompressedChunkSize
             * taskInfo.getFileInfoList().size()
             * maxConcurrentSeriesNum
-            * taskInfo.getMaxChunkMetadataNumInSeries();
+            * taskInfo.getMaxChunkMetadataNumInSeries()
+            / compressionRatio;
     long maxTargetChunkWriterSize = config.getTargetChunkSize() * maxConcurrentSeriesNum;
     long targetChunkWriterSize =
         Math.min(maxConcurrentSeriesSizeOfTotalFiles, maxTargetChunkWriterSize);
