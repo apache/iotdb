@@ -270,7 +270,14 @@ public class DeleteDataNode extends WritePlanNode implements WALEntryValue {
         .map(
             o ->
                 new DeleteDataNode(
-                    getPlanNodeId(), regionToPatternMap.get(o), deleteStartTime, deleteEndTime, o))
+                    getPlanNodeId(),
+                    // pick the smaller path list to execute the deletion
+                    this.pathList.size() < regionToPatternMap.get(o).size()
+                        ? this.pathList
+                        : regionToPatternMap.get(o),
+                    deleteStartTime,
+                    deleteEndTime,
+                    o))
         .collect(Collectors.toList());
   }
 
