@@ -1061,6 +1061,7 @@ public class IoTDBDescriptor {
             "datanode_schema_cache_eviction_policy", conf.getDataNodeSchemaCacheEvictionPolicy()));
 
     loadIoTConsensusProps(properties);
+    conf.setCustomizedProperties(properties);
   }
 
   private void loadIoTConsensusProps(Properties properties) {

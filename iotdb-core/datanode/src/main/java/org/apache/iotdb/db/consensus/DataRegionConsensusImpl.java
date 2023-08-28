@@ -183,6 +183,7 @@ public class DataRegionConsensusImpl {
                                             CONF.getConnectionTimeoutInMS(), TimeUnit.MILLISECONDS))
                                     .build())
                             .build())
+                    .setProperties(CONF.getCustomizedProperties())
                     .build(),
                 DataRegionConsensusImplHolder::createDataRegionStateMachine)
             .orElseThrow(
