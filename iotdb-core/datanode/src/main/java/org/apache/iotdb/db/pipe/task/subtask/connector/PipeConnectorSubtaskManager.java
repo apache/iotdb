@@ -29,6 +29,7 @@ import org.apache.iotdb.db.pipe.connector.protocol.legacy.IoTDBLegacyPipeConnect
 import org.apache.iotdb.db.pipe.connector.protocol.opcua.IoTDBOpcUaConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBThriftAsyncConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBThriftSyncConnector;
+import org.apache.iotdb.db.pipe.connector.protocol.websocket.WebsocketConnector;
 import org.apache.iotdb.db.pipe.execution.executor.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -82,6 +83,8 @@ public class PipeConnectorSubtaskManager {
       } else if (connectorKey.equals(
           BuiltinPipePlugin.IOTDB_OPC_UA_CONNECTOR.getPipePluginName())) {
         pipeConnector = new IoTDBOpcUaConnector();
+      } else if (connectorKey.equals(BuiltinPipePlugin.WEBSOCKET_CONNECTOR.getPipePluginName())) {
+        pipeConnector = new WebsocketConnector();
       } else {
         pipeConnector = PipeAgent.plugin().reflectConnector(pipeConnectorParameters);
       }
