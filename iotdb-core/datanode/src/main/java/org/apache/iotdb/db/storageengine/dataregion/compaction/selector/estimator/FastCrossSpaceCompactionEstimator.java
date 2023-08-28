@@ -26,11 +26,6 @@ import java.io.IOException;
 
 public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimator {
 
-  /**
-   * The metadata algorithm is: maxChunkMetaDataSize * maxChunkNumber * fileSize * maxSeriesNumber
-   *
-   * @return estimate metadata memory cost
-   */
   @Override
   protected long calculatingMetadataMemoryCost(CompactionTaskInfo taskInfo) {
     long cost = 0;
@@ -68,7 +63,8 @@ public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimat
         averageUncompressedChunkSize
             * taskInfo.getFileInfoList().size()
             * maxConcurrentSeriesNum
-            * taskInfo.getMaxChunkMetadataNumInSeries();
+            * taskInfo.getMaxChunkMetadataNumInSeries()
+            / compressionRatio;
     long maxTargetChunkWriterSize = config.getTargetChunkSize() * maxConcurrentSeriesNum;
     long targetChunkWriterSize =
         Math.min(maxConcurrentSeriesSizeOfTotalFiles, maxTargetChunkWriterSize);
