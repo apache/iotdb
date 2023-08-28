@@ -2214,8 +2214,8 @@ public class RgerPFloatPara {
 //        double[] param = ols.estimateRegressionParameters(); //结果的第1项是常数项， 之后依次序为各个特征的系数
 //        System.out.println(Arrays.toString(param));
 
-        String parent_dir = "E:\\encoding-reorder-xjzgithub\\vldb\\compression_ratio\\p_float";
-        String input_parent_dir = "E:\\encoding-reorder-xjzgithub\\reorder\\iotdb_test_small\\";
+        String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\p_float";
+        String input_parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
         ArrayList<String> dataset_name = new ArrayList<>();

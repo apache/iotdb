@@ -1961,11 +1961,12 @@ public class RegerSegmentBlockSize {
 
             assert tempList != null;
 //System.out.println(inputPath);
-            for (int block_size_exp = 13; block_size_exp >= 4; block_size_exp--) {
+            for (File f : tempList) {
+                System.out.println(f);
+                for (int block_size_exp = 10; block_size_exp >= 4; block_size_exp--) {
                 int block_size = (int) Math.pow(2, block_size_exp);
                 System.out.println(block_size);
-                for (File f : tempList) {
-                    System.out.println(f);
+
                     InputStream inputStream = Files.newInputStream(f.toPath());
                     CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
                     ArrayList<ArrayList<Integer>> data = new ArrayList<>();
@@ -2029,8 +2030,9 @@ public class RegerSegmentBlockSize {
                     };
                     System.out.println(ratio);
                     writer.writeRecord(record);
-//        break;
+
                 }
+//        break;
             }
             writer.close();
         }
