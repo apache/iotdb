@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction.execute.utils.executor.fast.elemen
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
@@ -35,6 +36,10 @@ public class PageElement {
   public List<PageHeader> valuePageHeaders;
 
   public TsBlock batchData;
+
+  // pointReader is used to replace batchData to get rid of huge memory cost by loading data point
+  // in a lazy way
+  public IPointReader pointReader;
 
   // compressed page data
   public ByteBuffer pageData;
@@ -95,9 +100,9 @@ public class PageElement {
 
   public void deserializePage() throws IOException {
     if (iChunkReader instanceof AlignedChunkReader) {
-      this.batchData =
+      this.pointReader =
           ((AlignedChunkReader) iChunkReader)
-              .readPageData(pageHeader, valuePageHeaders, pageData, valuePageDatas);
+              .getPagePointReader(pageHeader, valuePageHeaders, pageData, valuePageDatas);
     } else {
       this.batchData = ((ChunkReader) iChunkReader).readPageData(pageHeader, pageData);
     }

@@ -37,7 +37,9 @@ public class PointElement {
     if (pageElement.iChunkReader instanceof ChunkReader) {
       this.pointReader = pageElement.batchData.getTsBlockSingleColumnIterator();
     } else {
-      this.pointReader = pageElement.batchData.getTsBlockAlignedRowIterator();
+      // For aligned page, we use pointReader rather than deserialize all data point to get rid of
+      // huge memory cost
+      this.pointReader = pageElement.pointReader;
     }
     this.timeValuePair = pointReader.nextTimeValuePair();
     this.timestamp = timeValuePair.getTimestamp();
