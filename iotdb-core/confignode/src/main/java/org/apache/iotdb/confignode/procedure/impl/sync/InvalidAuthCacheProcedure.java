@@ -98,6 +98,7 @@ public class InvalidAuthCacheProcedure
           // shall we need to check if the user/role has been deleted?
           if (dataNodesToInvalid.isEmpty()) {
             setNextState(InvalidAuthCacheState.DATANODE_AUTHCACHE_INVALID_DONE);
+            break;
           }
           setNextState(InvalidAuthCacheState.DATANODE_AUTHCACHE_INVALIDING);
           break;
@@ -135,7 +136,7 @@ public class InvalidAuthCacheProcedure
           break;
         case DATANODE_AUTHCACHE_INVALID_DONE:
           LOGGER.info("finish invalid auth cache for user:%s, role %s", user, role);
-          break;
+          return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
