@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb;
 
 import org.apache.iotdb.isession.SessionDataSet;
@@ -28,6 +29,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,6 +41,9 @@ import java.util.List;
  * is an example to help you understand better.
  */
 public class SyntaxConventionRelatedExample {
+
+  private static Logger logger = LoggerFactory.getLogger(SyntaxConventionRelatedExample.class);
+
   private static Session session;
   private static final String LOCAL_HOST = "127.0.0.1";
   /**
@@ -114,10 +121,10 @@ public class SyntaxConventionRelatedExample {
     try (SessionDataSet dataSet1 =
         session.executeRawDataQuery(paths, startTime, endTime, timeOut)) {
 
-      System.out.println(dataSet1.getColumnNames());
+      logger.info("columnNames = {}", dataSet1.getColumnNames());
       dataSet1.setFetchSize(1024);
       while (dataSet1.hasNext()) {
-        System.out.println(dataSet1.next());
+        logger.info("data = {}", dataSet1.next());
       }
     }
   }

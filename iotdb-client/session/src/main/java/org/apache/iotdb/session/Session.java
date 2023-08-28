@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.session;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
@@ -64,6 +65,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -115,7 +117,6 @@ public class Session implements ISession {
   protected String username;
   protected String password;
   protected int fetchSize;
-  private static final byte TYPE_NULL = -2;
   /**
    * Timeout of query can be set by users. A negative number means using the default configuration
    * of server. And value 0 will disable the function of query timeout.
@@ -135,7 +136,11 @@ public class Session implements ISession {
 
   // Cluster version cache
   protected boolean enableRedirection;
+
+  @SuppressWarnings("squid:S3077") // Non-primitive fields should not be "volatile"
   protected volatile Map<String, TEndPoint> deviceIdToEndpoint;
+
+  @SuppressWarnings("squid:S3077") // Non-primitive fields should not be "volatile"
   protected volatile Map<TEndPoint, SessionConnection> endPointToSessionConnection;
 
   protected boolean enableQueryRedirection = false;
@@ -143,6 +148,24 @@ public class Session implements ISession {
   // The version number of the client which used for compatibility in the server
   protected Version version;
   protected CompressionType compressionType = CompressionType.SNAPPY;
+
+  private static final String REDIRECT_TWICE = "redirect twice";
+
+  private static final String REDIRECT_TWICE_RETRY = "redirect twice, please try again.";
+
+  private static final String VALUES_SIZE_SHOULD_BE_EQUAL =
+      "times, measurementsList and valuesList's size should be equal";
+
+  private static final String SESSION_CANNOT_CONNECT = "Session can not connect to {}";
+
+  private static final String ALL_VALUES_ARE_NULL =
+      "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements is [{}]";
+
+  private static final String ALL_VALUES_ARE_NULL_WITH_TIME =
+      "All values are null and this submission is ignored,deviceId is [{}],times are [{}],measurements are [{}]";
+  private static final String ALL_VALUES_ARE_NULL_MULTI_DEVICES =
+      "All values are null and this submission is ignored,deviceIds are [{}],times are [{}],measurements are [{}]";
+  private static final String ALL_INSERT_DATA_IS_NULL = "All inserted data is null.";
 
   public Session(String host, int rpcPort) {
     this(
@@ -794,8 +817,8 @@ public class Session implements ISession {
         try {
           return defaultSessionConnection.executeRawDataQuery(paths, startTime, endTime, timeOut);
         } catch (RedirectException redirectException) {
-          logger.error("Redirect twice", redirectException);
-          throw new StatementExecutionException("Redirect twice, please try again.");
+          logger.error(REDIRECT_TWICE, redirectException);
+          throw new StatementExecutionException(REDIRECT_TWICE_RETRY);
         }
       } else {
         throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
@@ -834,8 +857,8 @@ public class Session implements ISession {
         try {
           return defaultSessionConnection.executeLastDataQuery(paths, lastTime, timeOut);
         } catch (RedirectException redirectException) {
-          logger.error("redirect twice", redirectException);
-          throw new StatementExecutionException("redirect twice, please try again.");
+          logger.error(REDIRECT_TWICE, redirectException);
+          throw new StatementExecutionException(REDIRECT_TWICE_RETRY);
         }
       } else {
         throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
@@ -856,6 +879,37 @@ public class Session implements ISession {
   }
 
   @Override
+  public SessionDataSet executeLastDataQueryForOneDevice(
+      String db, String device, List<String> sensors, boolean isLegalPathNodes)
+      throws StatementExecutionException, IoTDBConnectionException {
+    Pair<SessionDataSet, TEndPoint> pair;
+    try {
+      pair =
+          getSessionConnection(device)
+              .executeLastDataQueryForOneDevice(
+                  db, device, sensors, isLegalPathNodes, queryTimeoutInMs);
+      if (pair.right != null) {
+        handleRedirection(device, pair.right);
+      }
+      return pair.left;
+    } catch (IoTDBConnectionException e) {
+      if (enableRedirection
+          && !deviceIdToEndpoint.isEmpty()
+          && deviceIdToEndpoint.get(device) != null) {
+        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(device));
+        deviceIdToEndpoint.remove(device);
+
+        // reconnect with default connection
+        return defaultSessionConnection.executeLastDataQueryForOneDevice(
+                db, device, sensors, isLegalPathNodes, queryTimeoutInMs)
+            .left;
+      } else {
+        throw e;
+      }
+    }
+  }
+
+  @Override
   public SessionDataSet executeAggregationQuery(
       List<String> paths, List<TAggregationType> aggregations)
       throws StatementExecutionException, IoTDBConnectionException {
@@ -868,8 +922,8 @@ public class Session implements ISession {
         try {
           return defaultSessionConnection.executeAggregationQuery(paths, aggregations);
         } catch (RedirectException redirectException) {
-          logger.error("redirect twice", redirectException);
-          throw new StatementExecutionException("redirect twice, please try again.");
+          logger.error(REDIRECT_TWICE, redirectException);
+          throw new StatementExecutionException(REDIRECT_TWICE_RETRY);
         }
       } else {
         throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
@@ -892,8 +946,8 @@ public class Session implements ISession {
           return defaultSessionConnection.executeAggregationQuery(
               paths, aggregations, startTime, endTime);
         } catch (RedirectException redirectException) {
-          logger.error("redirect twice", redirectException);
-          throw new StatementExecutionException("redirect twice, please try again.");
+          logger.error(REDIRECT_TWICE, redirectException);
+          throw new StatementExecutionException(REDIRECT_TWICE_RETRY);
         }
       } else {
         throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
@@ -920,8 +974,8 @@ public class Session implements ISession {
           return defaultSessionConnection.executeAggregationQuery(
               paths, aggregations, startTime, endTime, interval);
         } catch (RedirectException redirectException) {
-          logger.error("redirect twice", redirectException);
-          throw new StatementExecutionException("redirect twice, please try again.");
+          logger.error(REDIRECT_TWICE, redirectException);
+          throw new StatementExecutionException(REDIRECT_TWICE_RETRY);
         }
       } else {
         throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
@@ -949,8 +1003,8 @@ public class Session implements ISession {
           return defaultSessionConnection.executeAggregationQuery(
               paths, aggregations, startTime, endTime, interval, slidingStep);
         } catch (RedirectException redirectException) {
-          logger.error("redirect twice", redirectException);
-          throw new StatementExecutionException("redirect twice, please try again.");
+          logger.error(REDIRECT_TWICE, redirectException);
+          throw new StatementExecutionException(REDIRECT_TWICE_RETRY);
         }
       } else {
         throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
@@ -979,11 +1033,7 @@ public class Session implements ISession {
           filterAndGenTSInsertRecordReq(
               deviceId, time, measurements, types, Arrays.asList(values), false);
     } catch (NoValidValueException e) {
-      logger.warn(
-          "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements is [{}]",
-          deviceId,
-          time,
-          measurements.toString());
+      logger.warn(ALL_VALUES_ARE_NULL, deviceId, time, measurements);
       return;
     }
 
@@ -1000,13 +1050,14 @@ public class Session implements ISession {
       if (enableRedirection
           && !deviceIdToEndpoint.isEmpty()
           && deviceIdToEndpoint.get(prefixPath) != null) {
-        logger.warn("Session can not connect to {}", deviceIdToEndpoint.get(prefixPath));
+        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(prefixPath));
         deviceIdToEndpoint.remove(prefixPath);
 
         // reconnect with default connection
         try {
           defaultSessionConnection.insertRecord(request);
         } catch (RedirectException ignored) {
+          logger.warn("session insertRecord fail:{}", ignored.getMessage());
         }
       } else {
         throw e;
@@ -1024,13 +1075,14 @@ public class Session implements ISession {
       if (enableRedirection
           && !deviceIdToEndpoint.isEmpty()
           && deviceIdToEndpoint.get(deviceId) != null) {
-        logger.warn("Session can not connect to {}", deviceIdToEndpoint.get(deviceId));
+        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(deviceId));
         deviceIdToEndpoint.remove(deviceId);
 
         // reconnect with default connection
         try {
           defaultSessionConnection.insertRecord(request);
         } catch (RedirectException ignored) {
+          logger.warn("session insertRecord fail:{}", ignored.getMessage());
         }
       } else {
         throw e;
@@ -1063,7 +1115,7 @@ public class Session implements ISession {
       for (Iterator<Entry<TEndPoint, SessionConnection>> it =
               endPointToSessionConnection.entrySet().iterator();
           it.hasNext(); ) {
-        Map.Entry<TEndPoint, SessionConnection> entry = it.next();
+        Entry<TEndPoint, SessionConnection> entry = it.next();
         if (entry.getValue().equals(sessionConnection)) {
           endPoint = entry.getKey();
           it.remove();
@@ -1073,7 +1125,7 @@ public class Session implements ISession {
 
       for (Iterator<Entry<String, TEndPoint>> it = deviceIdToEndpoint.entrySet().iterator();
           it.hasNext(); ) {
-        Map.Entry<String, TEndPoint> entry = it.next();
+        Entry<String, TEndPoint> entry = it.next();
         if (entry.getValue().equals(endPoint)) {
           it.remove();
         }
@@ -1155,11 +1207,7 @@ public class Session implements ISession {
     try {
       request = filterAndGenTSInsertRecordReq(deviceId, time, measurements, types, values, false);
     } catch (NoValidValueException e) {
-      logger.warn(
-          "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements is [{}]",
-          deviceId,
-          time,
-          measurements.toString());
+      logger.warn(ALL_VALUES_ARE_NULL, deviceId, time, measurements);
       return;
     }
 
@@ -1185,11 +1233,7 @@ public class Session implements ISession {
     try {
       request = filterAndGenTSInsertRecordReq(deviceId, time, measurements, types, values, true);
     } catch (NoValidValueException e) {
-      logger.warn(
-          "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements is [{}]",
-          deviceId,
-          time,
-          measurements.toString());
+      logger.warn(ALL_VALUES_ARE_NULL, deviceId, time, measurements);
       return;
     }
     insertRecord(deviceId, request);
@@ -1210,7 +1254,7 @@ public class Session implements ISession {
       boolean isAllValuesNull =
           filterNullValueAndMeasurement(prefixPath, measurements, types, values);
       if (isAllValuesNull) {
-        throw new NoValidValueException("All inserted data is null.");
+        throw new NoValidValueException(ALL_INSERT_DATA_IS_NULL);
       }
     }
     return genTSInsertRecordReq(prefixPath, time, measurements, types, values, isAligned);
@@ -1249,11 +1293,7 @@ public class Session implements ISession {
     try {
       request = filterAndGenTSInsertStringRecordReq(deviceId, time, measurements, values, false);
     } catch (NoValidValueException e) {
-      logger.warn(
-          "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements is [{}]",
-          deviceId,
-          time,
-          measurements.toString());
+      logger.warn(ALL_VALUES_ARE_NULL, deviceId, time, measurements);
       return;
     }
     insertRecord(deviceId, request);
@@ -1274,11 +1314,7 @@ public class Session implements ISession {
     try {
       request = filterAndGenTSInsertStringRecordReq(deviceId, time, measurements, values, true);
     } catch (NoValidValueException e) {
-      logger.warn(
-          "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements is [{}]",
-          deviceId,
-          time,
-          measurements.toString());
+      logger.warn(ALL_VALUES_ARE_NULL, deviceId, time, measurements);
       return;
     }
     insertRecord(deviceId, request);
@@ -1296,7 +1332,7 @@ public class Session implements ISession {
       boolean isAllValueNull =
           filterNullValueAndMeasurementWithStringType(values, prefixPath, measurements);
       if (isAllValueNull) {
-        throw new NoValidValueException("All inserted data is null.");
+        throw new NoValidValueException(ALL_INSERT_DATA_IS_NULL);
       }
     }
     return genTSInsertStringRecordReq(prefixPath, time, measurements, values, isAligned);
@@ -1347,16 +1383,13 @@ public class Session implements ISession {
             filterAndGenTSInsertStringRecordsReq(
                 deviceIds, times, measurementsList, valuesList, false);
       } catch (NoValidValueException e) {
-        logger.warn(
-            "All values are null and this submission is ignored,deviceIds are [{}],times are [{}],measurements are [{}]",
-            deviceIds.toString(),
-            times.toString(),
-            measurementsList.toString());
+        logger.warn(ALL_VALUES_ARE_NULL_MULTI_DEVICES, deviceIds, times, measurementsList);
         return;
       }
       try {
         defaultSessionConnection.insertRecords(request);
       } catch (RedirectException ignored) {
+        logger.warn("session insertRecords fail:{}", ignored.getMessage());
       }
     }
   }
@@ -1389,8 +1422,8 @@ public class Session implements ISession {
         typesList.remove(i);
       }
     }
-    if (valuesList.size() == 0) {
-      throw new NoValidValueException("All inserted data is null.");
+    if (valuesList.isEmpty()) {
+      throw new NoValidValueException(ALL_INSERT_DATA_IS_NULL);
     }
   }
 
@@ -1422,8 +1455,8 @@ public class Session implements ISession {
         times.remove(i);
       }
     }
-    if (valuesList.size() == 0) {
-      throw new NoValidValueException("All inserted data is null.");
+    if (valuesList.isEmpty()) {
+      throw new NoValidValueException(ALL_INSERT_DATA_IS_NULL);
     }
   }
 
@@ -1451,8 +1484,8 @@ public class Session implements ISession {
         times.remove(i);
       }
     }
-    if (valuesList.size() == 0) {
-      throw new NoValidValueException("All inserted data is null.");
+    if (valuesList.isEmpty()) {
+      throw new NoValidValueException(ALL_INSERT_DATA_IS_NULL);
     }
   }
 
@@ -1479,11 +1512,11 @@ public class Session implements ISession {
         types.remove(i);
       }
     }
-    if (valuesList.size() == 0) {
-      logger.info("All values of the {} are null,null values are {}", deviceId, nullMap.toString());
+    if (valuesList.isEmpty()) {
+      logger.info("All values of the {} are null,null values are {}", deviceId, nullMap);
       return true;
     } else {
-      logger.info("Some values of {} are null,null values are {}", deviceId, nullMap.toString());
+      logger.info("Some values of {} are null,null values are {}", deviceId, nullMap);
     }
     return false;
   }
@@ -1514,8 +1547,8 @@ public class Session implements ISession {
         prefixPaths.remove(i);
       }
     }
-    if (valuesList.size() == 0) {
-      throw new NoValidValueException("All inserted data is null.");
+    if (valuesList.isEmpty()) {
+      throw new NoValidValueException(ALL_INSERT_DATA_IS_NULL);
     }
   }
 
@@ -1536,11 +1569,11 @@ public class Session implements ISession {
         measurementsList.remove(i);
       }
     }
-    if (valuesList.size() == 0) {
-      logger.info("All values of the {} are null,null values are {}", deviceId, nullMap.toString());
+    if (valuesList.isEmpty()) {
+      logger.info("All values of the {} are null,null values are {}", deviceId, nullMap);
       return true;
     } else {
-      logger.info("Some values of {} are null,null values are {}", deviceId, nullMap.toString());
+      logger.info("Some values of {} are null,null values are {}", deviceId, nullMap);
     }
     return false;
   }
@@ -1596,17 +1629,14 @@ public class Session implements ISession {
             filterAndGenTSInsertStringRecordsReq(
                 deviceIds, times, measurementsList, valuesList, true);
       } catch (NoValidValueException e) {
-        logger.warn(
-            "All values are null and this submission is ignored,deviceIds are [{}],times are [{}],measurements are [{}]",
-            deviceIds.toString(),
-            times.toString(),
-            measurementsList.toString());
+        logger.warn(ALL_VALUES_ARE_NULL_MULTI_DEVICES, deviceIds, times, measurementsList);
         return;
       }
 
       try {
         defaultSessionConnection.insertRecords(request);
       } catch (RedirectException ignored) {
+        logger.warn("session insertRecords fail:{}", ignored.getMessage());
       }
     }
   }
@@ -1630,7 +1660,7 @@ public class Session implements ISession {
         recordsGroup.putIfAbsent(connection, request);
       } catch (NoValidValueException e) {
         logger.warn(
-            "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements is [{}]",
+            ALL_VALUES_ARE_NULL,
             deviceIds.get(i),
             times.get(i),
             measurementsList.get(i).toString());
@@ -1723,7 +1753,7 @@ public class Session implements ISession {
       boolean isAllValueNull =
           filterNullValueAndMeasurementWithStringType(values, deviceId, measurements);
       if (isAllValueNull) {
-        throw new NoValidValueException("All inserted data is null.");
+        throw new NoValidValueException(ALL_INSERT_DATA_IS_NULL);
       }
     }
     updateTSInsertStringRecordsReq(request, deviceId, time, measurements, values);
@@ -1773,16 +1803,13 @@ public class Session implements ISession {
             filterAndGenTSInsertRecordsReq(
                 deviceIds, times, measurementsList, typesList, valuesList, false);
       } catch (NoValidValueException e) {
-        logger.warn(
-            "All values are null and this submission is ignored,deviceIds are [{}],times are [{}],measurements are [{}]",
-            deviceIds.toString(),
-            times.toString(),
-            measurementsList.toString());
+        logger.warn(ALL_VALUES_ARE_NULL_MULTI_DEVICES, deviceIds, times, measurementsList);
         return;
       }
       try {
         defaultSessionConnection.insertRecords(request);
       } catch (RedirectException ignored) {
+        logger.warn("session insertRecords fail:{}", ignored.getMessage());
       }
     }
   }
@@ -1819,16 +1846,13 @@ public class Session implements ISession {
             filterAndGenTSInsertRecordsReq(
                 deviceIds, times, measurementsList, typesList, valuesList, true);
       } catch (NoValidValueException e) {
-        logger.warn(
-            "All values are null and this submission is ignored,deviceIds are [{}],times are [{}],measurements are [{}]",
-            deviceIds.toString(),
-            times.toString(),
-            measurementsList.toString());
+        logger.warn(ALL_VALUES_ARE_NULL_MULTI_DEVICES, deviceIds, times, measurementsList);
         return;
       }
       try {
         defaultSessionConnection.insertRecords(request);
       } catch (RedirectException ignored) {
+        logger.warn("session insertRecords fail:{}", ignored.getMessage());
       }
     }
   }
@@ -1874,8 +1898,7 @@ public class Session implements ISession {
       throws IoTDBConnectionException, StatementExecutionException {
     int len = times.size();
     if (len != measurementsList.size() || len != valuesList.size()) {
-      throw new IllegalArgumentException(
-          "times, measurementsList and valuesList's size should be equal");
+      throw new IllegalArgumentException(VALUES_SIZE_SHOULD_BE_EQUAL);
     }
     TSInsertRecordsOfOneDeviceReq request;
     try {
@@ -1883,11 +1906,7 @@ public class Session implements ISession {
           filterAndGenTSInsertRecordsOfOneDeviceReq(
               deviceId, times, measurementsList, typesList, valuesList, haveSorted, false);
     } catch (NoValidValueException e) {
-      logger.warn(
-          "All values are null and this submission is ignored,deviceId is [{}],times are [{}],measurements are [{}]",
-          deviceId,
-          times.toString(),
-          measurementsList.toString());
+      logger.warn(ALL_VALUES_ARE_NULL_WITH_TIME, deviceId, times, measurementsList);
       return;
     }
     try {
@@ -1898,13 +1917,14 @@ public class Session implements ISession {
       if (enableRedirection
           && !deviceIdToEndpoint.isEmpty()
           && deviceIdToEndpoint.get(deviceId) != null) {
-        logger.warn("Session can not connect to {}", deviceIdToEndpoint.get(deviceId));
+        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(deviceId));
         deviceIdToEndpoint.remove(deviceId);
 
         // reconnect with default connection
         try {
           defaultSessionConnection.insertRecordsOfOneDevice(request);
         } catch (RedirectException ignored) {
+          logger.warn("session insertRecordsOfOneDevice fail:{}", ignored.getMessage());
         }
       } else {
         throw e;
@@ -1932,8 +1952,7 @@ public class Session implements ISession {
       throws IoTDBConnectionException, StatementExecutionException {
     int len = times.size();
     if (len != measurementsList.size() || len != valuesList.size()) {
-      throw new IllegalArgumentException(
-          "times, measurementsList and valuesList's size should be equal");
+      throw new IllegalArgumentException(VALUES_SIZE_SHOULD_BE_EQUAL);
     }
     TSInsertStringRecordsOfOneDeviceReq req;
     try {
@@ -1941,11 +1960,7 @@ public class Session implements ISession {
           filterAndGenTSInsertStringRecordsOfOneDeviceReq(
               deviceId, times, measurementsList, valuesList, haveSorted, false);
     } catch (NoValidValueException e) {
-      logger.warn(
-          "All values are null and this submission is ignored,deviceId is [{}],times are [{}],measurements are [{}]",
-          deviceId,
-          times.toString(),
-          measurementsList.toString());
+      logger.warn(ALL_VALUES_ARE_NULL_WITH_TIME, deviceId, times, measurementsList);
       return;
     }
     try {
@@ -1956,13 +1971,14 @@ public class Session implements ISession {
       if (enableRedirection
           && !deviceIdToEndpoint.isEmpty()
           && deviceIdToEndpoint.get(deviceId) != null) {
-        logger.warn("Session can not connect to {}", deviceIdToEndpoint.get(deviceId));
+        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(deviceId));
         deviceIdToEndpoint.remove(deviceId);
 
         // reconnect with default connection
         try {
           defaultSessionConnection.insertStringRecordsOfOneDevice(req);
         } catch (RedirectException ignored) {
+          logger.warn("session insertStringRecordsOfOneDevice fail:{}", ignored.getMessage());
         }
       } else {
         throw e;
@@ -2039,11 +2055,7 @@ public class Session implements ISession {
           filterAndGenTSInsertRecordsOfOneDeviceReq(
               deviceId, times, measurementsList, typesList, valuesList, haveSorted, true);
     } catch (NoValidValueException e) {
-      logger.warn(
-          "All values are null and this submission is ignored,deviceId is [{}],times are [{}],measurements are [{}]",
-          deviceId,
-          times.toString(),
-          measurementsList.toString());
+      logger.warn(ALL_VALUES_ARE_NULL_WITH_TIME, deviceId, times, measurementsList);
       return;
     }
     try {
@@ -2054,13 +2066,14 @@ public class Session implements ISession {
       if (enableRedirection
           && !deviceIdToEndpoint.isEmpty()
           && deviceIdToEndpoint.get(deviceId) != null) {
-        logger.warn("Session can not connect to {}", deviceIdToEndpoint.get(deviceId));
+        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(deviceId));
         deviceIdToEndpoint.remove(deviceId);
 
         // reconnect with default connection
         try {
           defaultSessionConnection.insertRecordsOfOneDevice(request);
         } catch (RedirectException ignored) {
+          logger.warn("session insertRecordsOfOneDevice fail:{}", ignored.getMessage());
         }
       } else {
         throw e;
@@ -2088,8 +2101,7 @@ public class Session implements ISession {
       throws IoTDBConnectionException, StatementExecutionException {
     int len = times.size();
     if (len != measurementsList.size() || len != valuesList.size()) {
-      throw new IllegalArgumentException(
-          "times, measurementsList and valuesList's size should be equal");
+      throw new IllegalArgumentException(VALUES_SIZE_SHOULD_BE_EQUAL);
     }
     TSInsertStringRecordsOfOneDeviceReq req;
     try {
@@ -2097,11 +2109,7 @@ public class Session implements ISession {
           filterAndGenTSInsertStringRecordsOfOneDeviceReq(
               deviceId, times, measurementsList, valuesList, haveSorted, true);
     } catch (NoValidValueException e) {
-      logger.warn(
-          "All values are null and this submission is ignored,deviceId is [{}],times are [{}],measurements are [{}]",
-          deviceId,
-          times.toString(),
-          measurementsList.toString());
+      logger.warn(ALL_VALUES_ARE_NULL_WITH_TIME, deviceId, times, measurementsList);
       return;
     }
     try {
@@ -2112,13 +2120,14 @@ public class Session implements ISession {
       if (enableRedirection
           && !deviceIdToEndpoint.isEmpty()
           && deviceIdToEndpoint.get(deviceId) != null) {
-        logger.warn("Session can not connect to {}", deviceIdToEndpoint.get(deviceId));
+        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(deviceId));
         deviceIdToEndpoint.remove(deviceId);
 
         // reconnect with default connection
         try {
           defaultSessionConnection.insertStringRecordsOfOneDevice(req);
         } catch (RedirectException ignored) {
+          logger.warn("session insertStringRecordsOfOneDevice fail:{}", ignored.getMessage());
         }
       } else {
         throw e;
@@ -2154,7 +2163,7 @@ public class Session implements ISession {
       List<List<Object>> valuesList,
       boolean haveSorted,
       boolean isAligned)
-      throws IoTDBConnectionException, BatchExecutionException {
+      throws IoTDBConnectionException {
     if (hasNull(valuesList)) {
       measurementsList = changeToArrayListWithStringType(measurementsList);
       valuesList = changeToArrayList(valuesList);
@@ -2175,12 +2184,11 @@ public class Session implements ISession {
       List<List<Object>> valuesList,
       boolean haveSorted,
       boolean isAligned)
-      throws IoTDBConnectionException, BatchExecutionException {
+      throws IoTDBConnectionException {
     // check params size
     int len = times.size();
     if (len != measurementsList.size() || len != valuesList.size()) {
-      throw new IllegalArgumentException(
-          "times, measurementsList and valuesList's size should be equal");
+      throw new IllegalArgumentException(VALUES_SIZE_SHOULD_BE_EQUAL);
     }
 
     if (!checkSorted(times)) {
@@ -2237,8 +2245,7 @@ public class Session implements ISession {
     // check params size
     int len = times.size();
     if (len != measurementsList.size() || len != valuesList.size()) {
-      throw new IllegalArgumentException(
-          "times, measurementsList and valuesList's size should be equal");
+      throw new IllegalArgumentException(VALUES_SIZE_SHOULD_BE_EQUAL);
     }
 
     if (!checkSorted(times)) {
@@ -2315,7 +2322,7 @@ public class Session implements ISession {
             "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements are [{}]",
             deviceIds.get(i),
             times.get(i),
-            measurementsList.get(i).toString());
+            measurementsList.get(i));
       }
     }
     insertByGroup(recordsGroup, SessionConnection::insertRecords);
@@ -2374,7 +2381,7 @@ public class Session implements ISession {
       boolean isAllValuesNull =
           filterNullValueAndMeasurement(deviceId, measurements, types, values);
       if (isAllValuesNull) {
-        throw new NoValidValueException("All inserted data is null.");
+        throw new NoValidValueException(ALL_INSERT_DATA_IS_NULL);
       }
     }
     updateTSInsertRecordsReq(request, deviceId, time, measurements, types, values);
@@ -2428,13 +2435,14 @@ public class Session implements ISession {
       if (enableRedirection
           && !deviceIdToEndpoint.isEmpty()
           && deviceIdToEndpoint.get(tablet.deviceId) != null) {
-        logger.warn("Session can not connect to {}", deviceIdToEndpoint.get(tablet.deviceId));
+        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(tablet.deviceId));
         deviceIdToEndpoint.remove(tablet.deviceId);
 
         // reconnect with default connection
         try {
           defaultSessionConnection.insertTablet(request);
         } catch (RedirectException ignored) {
+          logger.warn("session insertTablet fail:{}", ignored.getMessage());
         }
       } else {
         throw e;
@@ -2476,13 +2484,14 @@ public class Session implements ISession {
       if (enableRedirection
           && !deviceIdToEndpoint.isEmpty()
           && deviceIdToEndpoint.get(tablet.deviceId) != null) {
-        logger.warn("Session can not connect to {}", deviceIdToEndpoint.get(tablet.deviceId));
+        logger.warn(SESSION_CANNOT_CONNECT, deviceIdToEndpoint.get(tablet.deviceId));
         deviceIdToEndpoint.remove(tablet.deviceId);
 
         // reconnect with default connection
         try {
           defaultSessionConnection.insertTablet(request);
         } catch (RedirectException ignored) {
+          logger.warn("session insertTablet fail:{}", ignored.getMessage());
         }
       } else {
         throw e;
@@ -2490,8 +2499,7 @@ public class Session implements ISession {
     }
   }
 
-  private TSInsertTabletReq genTSInsertTabletReq(Tablet tablet, boolean sorted, boolean isAligned)
-      throws BatchExecutionException {
+  private TSInsertTabletReq genTSInsertTabletReq(Tablet tablet, boolean sorted, boolean isAligned) {
     if (!checkSorted(tablet)) {
       sortTablet(tablet);
     }
@@ -2553,6 +2561,7 @@ public class Session implements ISession {
       try {
         defaultSessionConnection.insertTablets(request);
       } catch (RedirectException ignored) {
+        logger.warn("session insertTablets fail:{}", ignored.getMessage());
       }
     }
   }
@@ -2589,6 +2598,7 @@ public class Session implements ISession {
       try {
         defaultSessionConnection.insertTablets(request);
       } catch (RedirectException ignored) {
+        logger.warn("session insertTablets fail:{}", ignored.getMessage());
       }
     }
   }
@@ -2620,8 +2630,7 @@ public class Session implements ISession {
   }
 
   private void updateTSInsertTabletsReq(
-      TSInsertTabletsReq request, Tablet tablet, boolean sorted, boolean isAligned)
-      throws BatchExecutionException {
+      TSInsertTabletsReq request, Tablet tablet, boolean sorted, boolean isAligned) {
     if (!checkSorted(tablet)) {
       sortTablet(tablet);
     }
@@ -2700,11 +2709,7 @@ public class Session implements ISession {
           filterAndGenTSInsertStringRecordsReq(
               deviceIds, times, measurementsList, valuesList, false);
     } catch (NoValidValueException e) {
-      logger.warn(
-          "All values are null and this submission is ignored,deviceIds are [{}],times are [{}],measurements are [{}]",
-          deviceIds.toString(),
-          times.toString(),
-          measurementsList.toString());
+      logger.warn(ALL_VALUES_ARE_NULL_MULTI_DEVICES, deviceIds, times, measurementsList);
       return;
     }
 
@@ -2729,11 +2734,7 @@ public class Session implements ISession {
           filterAndGenTSInsertRecordsReq(
               deviceIds, times, measurementsList, typesList, valuesList, false);
     } catch (NoValidValueException e) {
-      logger.warn(
-          "All values are null and this submission is ignored,deviceIds are [{}],times are [{}],measurements are [{}]",
-          deviceIds.toString(),
-          times.toString(),
-          measurementsList.toString());
+      logger.warn(ALL_VALUES_ARE_NULL_MULTI_DEVICES, deviceIds, times, measurementsList);
       return;
     }
 
@@ -2752,11 +2753,7 @@ public class Session implements ISession {
     try {
       request = filterAndGenTSInsertStringRecordReq(deviceId, time, measurements, values, false);
     } catch (NoValidValueException e) {
-      logger.warn(
-          "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements is [{}]",
-          deviceId,
-          time,
-          measurements.toString());
+      logger.warn(ALL_VALUES_ARE_NULL, deviceId, time, measurements);
       return;
     }
     defaultSessionConnection.testInsertRecord(request);
@@ -2778,11 +2775,7 @@ public class Session implements ISession {
     try {
       request = filterAndGenTSInsertRecordReq(deviceId, time, measurements, types, values, false);
     } catch (NoValidValueException e) {
-      logger.warn(
-          "All values are null and this submission is ignored,deviceId is [{}],time is [{}],measurements is [{}]",
-          deviceId,
-          time,
-          measurements.toString());
+      logger.warn(ALL_VALUES_ARE_NULL, deviceId, time, measurements);
       return;
     }
     defaultSessionConnection.testInsertRecord(request);
@@ -2879,12 +2872,9 @@ public class Session implements ISession {
     return true;
   }
 
-  private void checkSortedThrowable(Tablet tablet) throws BatchExecutionException {
-    if (!checkSorted(tablet)) {
-      throw new BatchExecutionException("Times in Tablet are not in ascending order");
-    }
-  }
-
+  @SuppressWarnings({
+    "squid:S3776"
+  }) // ignore Cognitive Complexity of methods should not be too high
   public void sortTablet(Tablet tablet) {
     /*
      * following part of code sort the batch data by time,
@@ -3083,6 +3073,7 @@ public class Session implements ISession {
    * @param compressors the compressor of each measurement
    * @throws IoTDBConnectionException
    * @throws StatementExecutionException
+   * @deprecated
    */
   @Override
   @Deprecated
@@ -3375,6 +3366,9 @@ public class Session implements ISession {
    * @throws IoTDBConnectionException
    * @throws StatementExecutionException
    */
+  @SuppressWarnings({
+    "squid:S3776"
+  }) // ignore Cognitive Complexity of methods should not be too high
   private <T> void insertByGroup(
       Map<SessionConnection, T> recordsGroup, InsertConsumer<T> insertConsumer)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -3400,6 +3394,7 @@ public class Session implements ISession {
                           } catch (IoTDBConnectionException | StatementExecutionException ex) {
                             throw new CompletionException(ex);
                           } catch (RedirectException ignored) {
+                            logger.info("insert by group has been redirect");
                           }
                         }
                       },
@@ -3461,7 +3456,7 @@ public class Session implements ISession {
     private String host = SessionConfig.DEFAULT_HOST;
     private int rpcPort = SessionConfig.DEFAULT_PORT;
     private String username = SessionConfig.DEFAULT_USER;
-    private String password = SessionConfig.DEFAULT_PASSWORD;
+    private String pw = SessionConfig.DEFAULT_PASSWORD;
     private int fetchSize = SessionConfig.DEFAULT_FETCH_SIZE;
     private ZoneId zoneId = null;
     private int thriftDefaultBufferSize = SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY;
@@ -3488,7 +3483,7 @@ public class Session implements ISession {
     }
 
     public Builder password(String password) {
-      this.password = password;
+      this.pw = password;
       return this;
     }
 
@@ -3544,7 +3539,7 @@ public class Session implements ISession {
             new Session(
                 nodeUrls,
                 username,
-                password,
+                pw,
                 fetchSize,
                 zoneId,
                 thriftDefaultBufferSize,
@@ -3559,7 +3554,7 @@ public class Session implements ISession {
           host,
           rpcPort,
           username,
-          password,
+          pw,
           fetchSize,
           zoneId,
           thriftDefaultBufferSize,

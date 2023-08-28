@@ -27,21 +27,23 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 
 /**
  * Used in {@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}.
- * <p>
- * When the access strategy of a UDTF is set to an instance of this class, the method {@link
+ *
+ * <p>When the access strategy of a UDTF is set to an instance of this class, the method {@link
  * UDTF#transform(Row, PointCollector)} of the UDTF will be called to transform the original data.
  * You need to override the method in your own UDTF class.
- * <p>
- * Each call of the method {@link UDTF#transform(Row, PointCollector)} processes only one row
+ *
+ * <p>Each call of the method {@link UDTF#transform(Row, PointCollector)} processes only one row
  * (aligned by time) of the original data and can generate any number of data points.
- * <p>
- * Sample code:
+ *
+ * <p>Sample code:
+ *
  * <pre>{@code
  * @Override
  * public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
  *   configurations
  *       .setOutputDataType(TSDataType.INT64)
  *       .setAccessStrategy(new RowByRowAccessStrategy());
+ * }
  * }</pre>
  *
  * @see UDTF

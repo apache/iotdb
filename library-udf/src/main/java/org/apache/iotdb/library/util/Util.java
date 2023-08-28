@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.library.util;
 
 import org.apache.iotdb.udf.api.access.Row;
@@ -27,10 +28,13 @@ import org.eclipse.collections.api.tuple.primitive.LongIntPair;
 import org.eclipse.collections.impl.map.mutable.primitive.LongIntHashMap;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.List;
 
 /** This class offers functions of getting and putting values from iotdb interface. */
 public class Util {
+  private Util() {
+    throw new IllegalStateException("Utility class");
+  }
 
   /**
    * Get value from specific column from Row, and cast to double. Make sure never get null from Row.
@@ -40,7 +44,7 @@ public class Util {
    * @return value of specific column from Row
    * @throws NoNumberException when getting a no number datatype
    */
-  public static double getValueAsDouble(Row row, int index) throws Exception {
+  public static double getValueAsDouble(Row row, int index) throws IOException, NoNumberException {
     double ans = 0;
     try {
       switch (row.getDataType(index)) {
@@ -60,7 +64,7 @@ public class Util {
           throw new NoNumberException();
       }
     } catch (IOException e) {
-      throw new Exception("Fail to get data type in row " + row.getTime(), e);
+      throw new IOException("Fail to get data type in row " + row.getTime(), e);
     }
     return ans;
   }
@@ -72,7 +76,7 @@ public class Util {
    * @return value from 0th column from Row
    * @throws NoNumberException when getting a no number datatype
    */
-  public static double getValueAsDouble(Row row) throws Exception {
+  public static double getValueAsDouble(Row row) throws IOException, NoNumberException {
     return getValueAsDouble(row, 0);
   }
 
@@ -103,19 +107,21 @@ public class Util {
       case TEXT:
         ans = row.getString(0);
         break;
+      default:
+        break;
     }
     return ans;
   }
 
   /**
-   * Add new data point to PointCollector
+   * Add new data point to PointCollector.
    *
    * @param pc PointCollector
    * @param type datatype
    * @param t timestamp
    * @param o value in Object type
    */
-  public static void putValue(PointCollector pc, Type type, long t, Object o) throws Exception {
+  public static void putValue(PointCollector pc, Type type, long t, Object o) throws IOException {
     switch (type) {
       case INT32:
         pc.putInt(t, (Integer) o);
@@ -131,26 +137,29 @@ public class Util {
         break;
       case BOOLEAN:
         pc.putBoolean(t, (Boolean) o);
+        break;
+      default:
+        break;
     }
   }
 
   /**
-   * cast {@code ArrayList<Double>} to {@code double[]}
+   * cast {@code ArrayList<Double>} to {@code double[]}.
    *
    * @param list ArrayList to cast
    * @return cast result
    */
-  public static double[] toDoubleArray(ArrayList<Double> list) {
+  public static double[] toDoubleArray(List<Double> list) {
     return list.stream().mapToDouble(Double::valueOf).toArray();
   }
 
   /**
-   * cast {@code ArrayList<Long>} to {@code long[]}
+   * cast {@code ArrayList<Long>} to {@code long[]}.
    *
    * @param list ArrayList to cast
    * @return cast result
    */
-  public static long[] toLongArray(ArrayList<Long> list) {
+  public static long[] toLongArray(List<Long> list) {
     return list.stream().mapToLong(Long::valueOf).toArray();
   }
 
@@ -172,52 +181,52 @@ public class Util {
   }
 
   /**
-   * calculate 1-order difference of input series
+   * calculate 1-order difference of input series.
    *
    * @param origin original series
    * @return 1-order difference
    */
   public static double[] variation(double[] origin) {
     int n = origin.length;
-    double[] var = new double[n - 1];
+    double[] variance = new double[n - 1];
     for (int i = 0; i < n - 1; i++) {
-      var[i] = origin[i + 1] - origin[i];
+      variance[i] = origin[i + 1] - origin[i];
     }
-    return var;
+    return variance;
   }
 
   /**
-   * calculate 1-order difference of input series
+   * calculate 1-order difference of input series.
    *
    * @param origin original series
    * @return 1-order difference
    */
   public static double[] variation(long[] origin) {
     int n = origin.length;
-    double[] var = new double[n - 1];
+    double[] variance = new double[n - 1];
     for (int i = 0; i < n - 1; i++) {
-      var[i] = (double) (origin[i + 1] - origin[i]);
+      variance[i] = (origin[i + 1] - origin[i]);
     }
-    return var;
+    return variance;
   }
 
   /**
-   * calculate 1-order difference of input series
+   * calculate 1-order difference of input series.
    *
    * @param origin original series
    * @return 1-order difference
    */
   public static int[] variation(int[] origin) {
     int n = origin.length;
-    int[] var = new int[n - 1];
+    int[] variance = new int[n - 1];
     for (int i = 0; i < n - 1; i++) {
-      var[i] = origin[i + 1] - origin[i];
+      variance[i] = origin[i + 1] - origin[i];
     }
-    return var;
+    return variance;
   }
 
   /**
-   * calculate speed (1-order derivative with backward difference)
+   * calculate speed (1-order derivative with backward difference).
    *
    * @param origin value series
    * @param time timestamp series
@@ -233,7 +242,7 @@ public class Util {
   }
 
   /**
-   * calculate speed (1-order derivative with backward difference)
+   * calculate speed (1-order derivative with backward difference).
    *
    * @param origin value series
    * @param time timestamp series
@@ -249,7 +258,7 @@ public class Util {
   }
 
   /**
-   * computes mode
+   * computes mode.
    *
    * @param values input series
    * @return mode
@@ -271,7 +280,7 @@ public class Util {
   }
 
   /**
-   * cast String to timestamp
+   * cast String to timestamp.
    *
    * @param s input string
    * @return timestamp
@@ -279,7 +288,7 @@ public class Util {
   public static long parseTime(String s) {
     long unit = 0;
     s = s.toLowerCase();
-    s = s.replaceAll(" ", "");
+    s = s.replace(" ", "");
     if (s.endsWith("ms")) {
       unit = 1;
       s = s.substring(0, s.length() - 2);

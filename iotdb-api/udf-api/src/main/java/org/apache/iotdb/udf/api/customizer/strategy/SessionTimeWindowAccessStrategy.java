@@ -30,6 +30,8 @@ public class SessionTimeWindowAccessStrategy implements AccessStrategy {
   private ZoneId zoneId;
 
   /**
+   * Display window begin, display window end and sessionTimeGap will be set by the parameters.
+   *
    * @param displayWindowBegin displayWindowBegin < displayWindowEnd
    * @param displayWindowEnd displayWindowBegin < displayWindowEnd
    * @param sessionTimeGap 0 <= sessionTimeGap

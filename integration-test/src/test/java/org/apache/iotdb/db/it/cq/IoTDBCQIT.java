@@ -310,7 +310,7 @@ public class IoTDBCQIT {
         fail();
       } catch (Exception e) {
         assertEquals(
-            TSStatusCode.CQ_AlREADY_EXIST.getStatusCode()
+            TSStatusCode.CQ_ALREADY_EXIST.getStatusCode()
                 + ": CQ s1_count_cq has already been created.",
             e.getMessage());
       } finally {
@@ -541,11 +541,11 @@ public class IoTDBCQIT {
         } catch (Exception e) {
           assertEquals(
               TSStatusCode.NO_PERMISSION.getStatusCode()
-                  + ": No permissions for this operation, please add privilege SHOW_CONTINUOUS_QUERIES",
+                  + ": No permissions for this operation, please add privilege USE_CQ",
               e.getMessage());
         }
 
-        statement.execute("GRANT USER `zmty` PRIVILEGES SHOW_CONTINUOUS_QUERIES");
+        statement.execute("GRANT USER `zmty` PRIVILEGES USE_CQ");
 
         try (ResultSet resultSet = statement2.executeQuery("show CQS")) {
 

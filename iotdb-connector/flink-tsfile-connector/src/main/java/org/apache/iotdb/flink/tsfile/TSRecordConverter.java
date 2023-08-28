@@ -24,7 +24,6 @@ import org.apache.iotdb.tsfile.write.schema.Schema;
 
 import org.apache.flink.util.Collector;
 
-import java.io.IOException;
 import java.io.Serializable;
 
 /**
@@ -40,7 +39,7 @@ public interface TSRecordConverter<T> extends Serializable {
    *
    * @param schema The schema of the TSRecord.
    */
-  void open(Schema schema) throws IOException;
+  void open(Schema schema);
 
   /**
    * Converts the input data into one or multiple TSRecords. The collector in param list is used to
@@ -51,12 +50,12 @@ public interface TSRecordConverter<T> extends Serializable {
    * @param input The input data.
    * @param collector The collector used to collect the output.
    */
-  void convert(T input, Collector<TSRecord> collector) throws IOException;
+  void convert(T input, Collector<TSRecord> collector);
 
   /**
    * Method that marks the end of the life-cycle of this converter.
    *
    * <p>When this method is called, the converter is guaranteed to be opened.
    */
-  void close() throws IOException;
+  void close();
 }

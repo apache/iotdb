@@ -23,9 +23,11 @@ import org.apache.thrift.TConfiguration;
 
 public class TConfigurationConst {
   // https://github.com/apache/thrift/blob/master/doc/specs/thrift-tconfiguration.md
-  public static TConfiguration defaultTConfiguration =
+  public static final TConfiguration defaultTConfiguration =
       new TConfiguration(
           RpcUtils.THRIFT_FRAME_MAX_SIZE + 4,
           RpcUtils.THRIFT_FRAME_MAX_SIZE,
           TConfiguration.DEFAULT_RECURSION_DEPTH);
+
+  private TConfigurationConst() {}
 }

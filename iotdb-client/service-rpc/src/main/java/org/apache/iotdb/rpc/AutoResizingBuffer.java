@@ -16,10 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.rpc;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+package org.apache.iotdb.rpc;
 
 import java.util.Arrays;
 
@@ -39,8 +37,6 @@ class AutoResizingBuffer {
   private int bufTooLargeCounter = RpcUtils.MAX_BUFFER_OVERSIZE_TIME;
   private final int initialCapacity;
   private long lastShrinkTime;
-
-  private static final Logger logger = LoggerFactory.getLogger(AutoResizingBuffer.class);
 
   public AutoResizingBuffer(int initialCapacity) {
     this.array = new byte[initialCapacity];

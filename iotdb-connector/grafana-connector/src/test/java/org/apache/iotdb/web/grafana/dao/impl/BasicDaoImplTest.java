@@ -19,6 +19,7 @@
 package org.apache.iotdb.web.grafana.dao.impl;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -38,15 +39,15 @@ public class BasicDaoImplTest {
     ReflectionTestUtils.setField(impl, "interval", "1m");
 
     String interval1 = impl.getInterval(0);
-    assert interval1.equals("");
+    Assert.assertEquals("", interval1);
 
     String interval2 = impl.getInterval(3);
-    assert interval2.equals("1m");
+    Assert.assertEquals("1m", interval2);
 
     String interval3 = impl.getInterval(25);
-    assert interval3.equals("1h");
+    Assert.assertEquals("1h", interval3);
 
     String interval4 = impl.getInterval(24 * 30 + 1);
-    assert interval4.equals("1d");
+    Assert.assertEquals("1d", interval4);
   }
 }

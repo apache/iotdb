@@ -46,8 +46,6 @@ public class RabbitMQConsumer {
 
   private static final Logger logger = LoggerFactory.getLogger(RabbitMQConsumer.class);
 
-  public RabbitMQConsumer() {}
-
   public static void main(String[] args) throws Exception {
     try (Session session =
         new Session(
@@ -75,7 +73,9 @@ public class RabbitMQConsumer {
                 Envelope envelope,
                 AMQP.BasicProperties properties,
                 byte[] body) {
-              logger.info(consumerTag + ", " + envelope.toString() + ", " + properties.toString());
+              String param =
+                  consumerTag + ", " + envelope.toString() + ", " + properties.toString();
+              logger.info(param);
               try {
                 consumer.insert(session, new String(body));
               } catch (Exception e) {

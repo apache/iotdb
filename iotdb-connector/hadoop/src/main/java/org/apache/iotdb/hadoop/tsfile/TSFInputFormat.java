@@ -260,17 +260,18 @@ public class TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
       if (length > 0) {
         FileSystem fileSystem = path.getFileSystem(configuration);
         logger.info("The file status is {}", fileStatus.getClass().getName());
-        logger.info("The file system is " + fileSystem.getClass());
+        logger.info("The file system is {}", fileSystem.getClass());
         blockLocations = fileSystem.getFileBlockLocations(fileStatus, 0, length);
 
-        logger.info("The block location information is {}", Arrays.toString(blockLocations));
+        String locationInfo = Arrays.toString(blockLocations);
+        logger.info("The block location information is {}", locationInfo);
         splits.addAll(generateSplits(path, blockLocations));
       } else {
-        logger.warn("The file length is " + length);
+        logger.warn("The file length is {}", length);
       }
     }
     configuration.setLong(NUM_INPUT_FILES, listFileStatus.size());
-    logger.info("The number of splits is " + splits.size());
+    logger.info("The number of splits is {}", splits.size());
 
     return splits;
   }

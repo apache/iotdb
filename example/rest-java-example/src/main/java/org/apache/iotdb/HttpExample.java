@@ -20,7 +20,6 @@
 package org.apache.iotdb;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -29,6 +28,8 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.util.EntityUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -37,6 +38,11 @@ import java.util.Base64;
 import java.util.Map;
 
 public class HttpExample {
+
+  private static Logger logger = LoggerFactory.getLogger(HttpExample.class);
+
+  private static final String UTF8 = "utf-8";
+
   private String getAuthorization(String username, String password) {
     return Base64.getEncoder()
         .encodeToString((username + ":" + password).getBytes(StandardCharsets.UTF_8));
@@ -56,22 +62,19 @@ public class HttpExample {
     try {
       response = httpClient.execute(httpGet);
       HttpEntity responseEntity = response.getEntity();
-      String message = EntityUtils.toString(responseEntity, "utf-8");
-      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
-      System.out.println(result);
+      String message = EntityUtils.toString(responseEntity, UTF8);
+      String result = JsonParser.parseString(message).getAsJsonObject().toString();
+      logger.info(result);
     } catch (IOException e) {
-      e.printStackTrace();
-
+      logger.error("The ping rest api failed", e);
     } finally {
       try {
-        if (httpClient != null) {
-          httpClient.close();
-        }
+        httpClient.close();
         if (response != null) {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
+        logger.error("Http Client close error", e);
       }
     }
   }
@@ -95,19 +98,18 @@ public class HttpExample {
       httpPost.setEntity(new StringEntity(json, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
-      String message = EntityUtils.toString(responseEntity, "utf-8");
-      JsonObject result = JsonParser.parseString(message).getAsJsonObject();
-      System.out.println(result);
+      String message = EntityUtils.toString(responseEntity, UTF8);
+      String result = JsonParser.parseString(message).getAsJsonObject().toString();
+      logger.info(result);
     } catch (IOException e) {
-      e.printStackTrace();
-
+      logger.error("The insertTablet rest api failed", e);
     } finally {
       try {
         if (response != null) {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
+        logger.error("Response close error", e);
       }
     }
   }
@@ -121,19 +123,18 @@ public class HttpExample {
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
-      String message = EntityUtils.toString(responseEntity, "utf-8");
+      String message = EntityUtils.toString(responseEntity, UTF8);
       ObjectMapper mapper = new ObjectMapper();
-      Map map = mapper.readValue(message, Map.class);
-      System.out.println(map);
+      logger.info("message  = {}", mapper.readValue(message, Map.class));
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.error("The query rest api failed", e);
     } finally {
       try {
         if (response != null) {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
+        logger.error("Response close error", e);
       }
     }
   }

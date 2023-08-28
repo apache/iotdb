@@ -19,6 +19,6 @@
 
 -->
 
-This module is just for generating correct code-coverage repoort.
+This module is just for generating correct code-coverage report.
 
 It can only be run on Unix.

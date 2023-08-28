@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.jdbc;
 
 import org.apache.thrift.transport.TTransportException;
@@ -46,7 +47,7 @@ public class IoTDBDriver implements Driver {
     }
   }
 
-  private final String TSFILE_URL_PREFIX = Config.IOTDB_URL_PREFIX + ".*";
+  private static final String TSFILE_URL_PREFIX = Config.IOTDB_URL_PREFIX + ".*";
 
   public IoTDBDriver() {
     // This is a constructor.

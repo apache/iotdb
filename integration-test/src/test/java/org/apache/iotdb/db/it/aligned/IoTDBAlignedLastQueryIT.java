@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.it.aligned;
 
 import org.apache.iotdb.db.it.utils.AlignedWriteUtil;
-import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -328,5 +328,16 @@ public class IoTDBAlignedLastQueryIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void cacheHitTest() {
+    selectAllAlignedLastTest();
+    selectAllAlignedAndNonAlignedLastTest();
+    selectSomeAlignedAndNonAlignedLastWithTimeFilterTest();
+    selectSomeAlignedLastTest1();
+    selectSomeAlignedLastTest2();
+    selectSomeAlignedLastWithTimeFilterTest();
+    selectSomeAlignedAndNonAlignedLastWithTimeFilterTest();
   }
 }

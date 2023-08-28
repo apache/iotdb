@@ -16,11 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.it.env;
 
-import org.apache.iotdb.it.env.cluster.Cluster1Env;
-import org.apache.iotdb.it.env.cluster.SimpleEnv;
-import org.apache.iotdb.it.env.remote.RemoteServerEnv;
+import org.apache.iotdb.it.env.cluster.env.Cluster1Env;
+import org.apache.iotdb.it.env.cluster.env.SimpleEnv;
+import org.apache.iotdb.it.env.remote.env.RemoteServerEnv;
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.Config;
@@ -31,11 +32,15 @@ public class EnvFactory {
   private static BaseEnv env;
   private static final Logger logger = IoTDBTestLogger.logger;
 
+  private EnvFactory() {
+    // Empty constructor
+  }
+
   public static BaseEnv getEnv() {
     if (env == null) {
       try {
         Class.forName(Config.JDBC_DRIVER_NAME);
-        logger.debug(">>>>>>>" + System.getProperty("TestEnv"));
+        logger.debug(">>>>>>>{}", System.getProperty("TestEnv"));
         EnvType envType = EnvType.getSystemEnvType();
         switch (envType) {
           case Simple:
@@ -47,13 +52,18 @@ public class EnvFactory {
           case Remote:
             env = new RemoteServerEnv();
             break;
+          case MultiCluster:
+            logger.warn(
+                "EnvFactory only supports EnvType Simple, Cluster1 and Remote, please use MultiEnvFactory instead.");
+            System.exit(-1);
+            break;
           default:
-            System.out.println("Unknown env type: " + envType);
+            logger.warn("Unknown env type: {}", envType);
             System.exit(-1);
             break;
         }
       } catch (ClassNotFoundException e) {
-        e.printStackTrace();
+        logger.error("Get env error", e);
         System.exit(-1);
       }
     }

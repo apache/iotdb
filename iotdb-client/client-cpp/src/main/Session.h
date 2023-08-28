@@ -180,7 +180,6 @@ namespace TSEncoding {
         REGULAR = (char) 7,
         GORILLA = (char) 8,
         ZIGZAG = (char) 9,
-        FREQ = (char) 10,
 	    CHIMP = (char) 11,
 	    SPRINTZ = (char) 12,
 	    RLBE = (char) 13
@@ -230,9 +229,9 @@ namespace TSStatusCode {
         PAGE_OUT_OF_SPACE = 518,
         RECORD_DUPLICATED=519,
         SEGMENT_OUT_OF_SPACE = 520,
-        SCHEMA_FILE_NOT_EXISTS = 521,
+        PBTREE_FILE_NOT_EXISTS = 521,
         OVERSIZE_RECORD = 522,
-        SCHEMA_FILE_REDO_LOG_BROKEN = 523,
+        PBTREE_FILE_REDO_LOG_BROKEN = 523,
         TEMPLATE_NOT_ACTIVATED = 524,
 
         // Storage Engine
@@ -578,9 +577,8 @@ public:
     * @param timeseries the list of measurement schemas for creating the tablet
     */
     Tablet(const std::string &deviceId,
-           const std::vector<std::pair<std::string, TSDataType::TSDataType>> &timeseries) {
-        Tablet(deviceId, timeseries, DEFAULT_ROW_SIZE);
-    }
+           const std::vector<std::pair<std::string, TSDataType::TSDataType>> &timeseries)
+           : Tablet(deviceId, timeseries, DEFAULT_ROW_SIZE) {}
 
     /**
      * Return a tablet with the specified number of rows (maxBatchSize). Only

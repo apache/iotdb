@@ -46,7 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-@SuppressWarnings("squid:S106")
+@SuppressWarnings({"squid:S106", "squid:S1144", "squid:S125"})
 public class SessionExample {
 
   private static Session session;
@@ -57,7 +57,11 @@ public class SessionExample {
   private static final String ROOT_SG1_D1_S4 = "root.sg1.d1.s4";
   private static final String ROOT_SG1_D1_S5 = "root.sg1.d1.s5";
   private static final String ROOT_SG1_D1 = "root.sg1.d1";
+  private static final String ROOT_SG1 = "root.sg1";
   private static final String LOCAL_HOST = "127.0.0.1";
+  public static final String SELECT_D1 = "select * from root.sg1.d1";
+
+  private static Random random = new Random();
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -112,6 +116,7 @@ public class SessionExample {
     // set session fetchSize
     sessionEnableRedirect.setFetchSize(10000);
 
+    fastLastDataQueryForOneDevice();
     insertRecord4Redirect();
     query4Redirect();
     sessionEnableRedirect.close();
@@ -400,7 +405,7 @@ public class SessionExample {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
       for (int s = 0; s < 3; s++) {
-        long value = new Random().nextLong();
+        long value = random.nextLong();
         tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
       }
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
@@ -458,6 +463,14 @@ public class SessionExample {
     Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList, 100);
 
     // Method 1 to add tablet data
+    insertTablet1(schemaList, tablet);
+
+    // Method 2 to add tablet data
+    insertTablet2(schemaList, tablet);
+  }
+
+  private static void insertTablet1(List<MeasurementSchema> schemaList, Tablet tablet)
+      throws IoTDBConnectionException, StatementExecutionException {
     tablet.initBitMaps();
 
     long timestamp = System.currentTimeMillis();
@@ -465,7 +478,7 @@ public class SessionExample {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
       for (int s = 0; s < 3; s++) {
-        long value = new Random().nextLong();
+        long value = random.nextLong();
         // mark null value
         if (row % 3 == s) {
           tablet.bitMaps[s].mark((int) row);
@@ -483,8 +496,10 @@ public class SessionExample {
       session.insertTablet(tablet);
       tablet.reset();
     }
+  }
 
-    // Method 2 to add tablet data
+  private static void insertTablet2(List<MeasurementSchema> schemaList, Tablet tablet)
+      throws IoTDBConnectionException, StatementExecutionException {
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
     BitMap[] bitMaps = new BitMap[schemaList.size()];
@@ -543,7 +558,7 @@ public class SessionExample {
       tablet2.addTimestamp(row2, timestamp);
       tablet3.addTimestamp(row3, timestamp);
       for (int i = 0; i < 3; i++) {
-        long value = new Random().nextLong();
+        long value = random.nextLong();
         tablet1.addValue(schemaList.get(i).getMeasurementId(), row1, value);
         tablet2.addValue(schemaList.get(i).getMeasurementId(), row2, value);
         tablet3.addValue(schemaList.get(i).getMeasurementId(), row3, value);
@@ -671,7 +686,7 @@ public class SessionExample {
   }
 
   private static void query() throws IoTDBConnectionException, StatementExecutionException {
-    try (SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1")) {
+    try (SessionDataSet dataSet = session.executeQueryStatement(SELECT_D1)) {
       System.out.println(dataSet.getColumnNames());
       dataSet.setFetchSize(1024); // default is 10000
       while (dataSet.hasNext()) {
@@ -740,8 +755,7 @@ public class SessionExample {
 
   private static void queryWithTimeout()
       throws IoTDBConnectionException, StatementExecutionException {
-    try (SessionDataSet dataSet =
-        session.executeQueryStatement("select * from root.sg1.d1", 2000)) {
+    try (SessionDataSet dataSet = session.executeQueryStatement(SELECT_D1, 2000)) {
       System.out.println(dataSet.getColumnNames());
       dataSet.setFetchSize(1024); // default is 10000
       while (dataSet.hasNext()) {
@@ -775,6 +789,24 @@ public class SessionExample {
     paths.add(ROOT_SG1_D1_S2);
     paths.add(ROOT_SG1_D1_S3);
     try (SessionDataSet sessionDataSet = session.executeLastDataQuery(paths, 3, 60000)) {
+      System.out.println(sessionDataSet.getColumnNames());
+      sessionDataSet.setFetchSize(1024);
+      while (sessionDataSet.hasNext()) {
+        System.out.println(sessionDataSet.next());
+      }
+    }
+  }
+
+  private static void fastLastDataQueryForOneDevice()
+      throws IoTDBConnectionException, StatementExecutionException {
+    System.out.println("-------fastLastQuery------");
+    List<String> paths = new ArrayList<>();
+    paths.add("s1");
+    paths.add("s2");
+    paths.add("s3");
+    try (SessionDataSet sessionDataSet =
+        sessionEnableRedirect.executeLastDataQueryForOneDevice(
+            ROOT_SG1, ROOT_SG1_D1, paths, true)) {
       System.out.println(sessionDataSet.getColumnNames());
       sessionDataSet.setFetchSize(1024);
       while (sessionDataSet.hasNext()) {
@@ -825,7 +857,7 @@ public class SessionExample {
 
   private static void queryByIterator()
       throws IoTDBConnectionException, StatementExecutionException {
-    try (SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1")) {
+    try (SessionDataSet dataSet = session.executeQueryStatement(SELECT_D1)) {
 
       DataIterator iterator = dataSet.iterator();
       System.out.println(dataSet.getColumnNames());
@@ -871,7 +903,7 @@ public class SessionExample {
     session.executeNonQueryStatement("insert into root.sg1.d1(timestamp,s1) values(200, 1)");
   }
 
-  private static void setTimeout() throws StatementExecutionException, IoTDBConnectionException {
+  private static void setTimeout() throws IoTDBConnectionException {
     try (Session tempSession = new Session(LOCAL_HOST, 6667, "root", "root", 10000, 20000)) {
       tempSession.setQueryTimeout(60000);
     }

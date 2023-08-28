@@ -31,7 +31,7 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
-/** calculate the exact or approximate median */
+/** calculate the exact or approximate median. */
 public class UDAFMedian implements UDTF {
 
   private ExactOrderStatistics statistics;

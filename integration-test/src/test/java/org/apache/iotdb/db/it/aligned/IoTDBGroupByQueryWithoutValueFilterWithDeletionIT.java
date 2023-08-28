@@ -36,13 +36,13 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-import static org.apache.iotdb.db.constant.TestConstant.avg;
-import static org.apache.iotdb.db.constant.TestConstant.count;
-import static org.apache.iotdb.db.constant.TestConstant.firstValue;
-import static org.apache.iotdb.db.constant.TestConstant.lastValue;
-import static org.apache.iotdb.db.constant.TestConstant.maxValue;
-import static org.apache.iotdb.db.constant.TestConstant.minTime;
-import static org.apache.iotdb.db.constant.TestConstant.minValue;
+import static org.apache.iotdb.db.utils.constant.TestConstant.avg;
+import static org.apache.iotdb.db.utils.constant.TestConstant.count;
+import static org.apache.iotdb.db.utils.constant.TestConstant.firstValue;
+import static org.apache.iotdb.db.utils.constant.TestConstant.lastValue;
+import static org.apache.iotdb.db.utils.constant.TestConstant.maxValue;
+import static org.apache.iotdb.db.utils.constant.TestConstant.minTime;
+import static org.apache.iotdb.db.utils.constant.TestConstant.minValue;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})

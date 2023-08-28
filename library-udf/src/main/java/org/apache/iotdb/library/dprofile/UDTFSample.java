@@ -54,6 +54,7 @@ public class UDTFSample implements UDTF {
 
   private int k; // sample numbers
   private Method method;
+  private static final String METHOD_RESERVOIR = "reservoir";
   // These variables occurs in pool sampling
   private Pair<Long, Object>[] samples; // sampled data
   private int num = 0; // number of points already sampled
@@ -71,10 +72,10 @@ public class UDTFSample implements UDTF {
         .validate(
             method ->
                 "isometric".equalsIgnoreCase((String) method)
-                    || "reservoir".equalsIgnoreCase((String) method)
+                    || METHOD_RESERVOIR.equalsIgnoreCase((String) method)
                     || "triangle".equalsIgnoreCase((String) method),
             "Illegal sampling method.",
-            validator.getParameters().getStringOrDefault("method", "reservoir"));
+            validator.getParameters().getStringOrDefault("method", METHOD_RESERVOIR));
   }
 
   @Override
@@ -82,10 +83,14 @@ public class UDTFSample implements UDTF {
       throws Exception {
     this.k = parameters.getIntOrDefault("k", 1);
     this.dataType = parameters.getDataType(0);
-    String method = parameters.getStringOrDefault("method", "reservoir");
-    if ("triangle".equalsIgnoreCase(method)) this.method = Method.TRIANGLE;
-    else if ("isometric".equalsIgnoreCase(method)) this.method = Method.ISOMETRIC;
-    else this.method = Method.RESERVOIR;
+    String methodIn = parameters.getStringOrDefault("method", METHOD_RESERVOIR);
+    if ("triangle".equalsIgnoreCase(methodIn)) {
+      this.method = Method.TRIANGLE;
+    } else if ("isometric".equalsIgnoreCase(methodIn)) {
+      this.method = Method.ISOMETRIC;
+    } else {
+      this.method = Method.RESERVOIR;
+    }
     if (this.method == Method.ISOMETRIC || this.method == Method.TRIANGLE) {
       configurations
           .setAccessStrategy(new SlidingSizeWindowAccessStrategy(Integer.MAX_VALUE))
@@ -161,7 +166,7 @@ public class UDTFSample implements UDTF {
         }
       } else { // Method.ISOMETRIC
         for (long i = 0; i < this.k; i++) {
-          long j = Math.floorDiv(i * (long) n, (long) k); // avoid intermediate result overflows
+          long j = Math.floorDiv(i * n, k); // avoid intermediate result overflows
           Row row = rowWindow.getRow((int) j);
           Util.putValue(collector, dataType, row.getTime(), Util.getValueAsObject(row));
         }

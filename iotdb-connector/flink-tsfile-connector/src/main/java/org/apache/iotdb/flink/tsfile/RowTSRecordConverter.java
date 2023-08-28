@@ -150,7 +150,7 @@ public class RowTSRecordConverter implements TSRecordConverter<Row> {
       }
     }
     for (TSRecord tsRecord : reuse) {
-      if (tsRecord.dataPointList.size() > 0) {
+      if (!tsRecord.dataPointList.isEmpty()) {
         tsRecord.setTime(timestamp);
         collector.collect(tsRecord);
       }

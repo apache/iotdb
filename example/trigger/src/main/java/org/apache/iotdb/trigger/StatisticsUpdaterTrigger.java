@@ -62,19 +62,19 @@ public class StatisticsUpdaterTrigger implements Trigger {
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
           "Stateful-Trigger-Statistics-Updater");
 
-  private static final long UPDATE_INTERVAL = 1000 * 20;
+  private static final long UPDATE_INTERVAL = 1000 * 20L;
 
   @Override
   public void onCreate(TriggerAttributes attributes) throws Exception {
     if (attributes.hasAttribute("ip")) {
       ip = attributes.getString("ip");
     } else {
-      throw new RuntimeException("ip is required");
+      throw new IllegalArgumentException("ip is required");
     }
     if (attributes.hasAttribute("port")) {
       port = Integer.parseInt(attributes.getString("port"));
     } else {
-      throw new RuntimeException("port is required");
+      throw new IllegalArgumentException("port is required");
     }
   }
 

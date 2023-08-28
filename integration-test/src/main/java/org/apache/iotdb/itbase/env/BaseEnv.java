@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.itbase.env;
 
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
@@ -23,8 +24,8 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.pool.ISessionPool;
-import org.apache.iotdb.it.env.cluster.ConfigNodeWrapper;
-import org.apache.iotdb.it.env.cluster.DataNodeWrapper;
+import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 
@@ -56,14 +57,22 @@ public interface BaseEnv {
     return getConnection("root", "root");
   }
 
-  Connection getConnection(String username, String password) throws SQLException;
-
   default Connection getConnection(Constant.Version version) throws SQLException {
     return getConnection(version, "root", "root");
   }
 
   Connection getConnection(Constant.Version version, String username, String password)
       throws SQLException;
+
+  Connection getConnection(String username, String password) throws SQLException;
+
+  default Connection getConnectionWithSpecifiedDataNode(DataNodeWrapper dataNode)
+      throws SQLException {
+    return getConnectionWithSpecifiedDataNode(dataNode, "root", "root");
+  }
+
+  Connection getConnectionWithSpecifiedDataNode(
+      DataNodeWrapper dataNode, String username, String password) throws SQLException;
 
   void setTestMethodName(String testCaseName);
 
@@ -89,10 +98,10 @@ public interface BaseEnv {
    */
   int getLeaderConfigNodeIndex() throws IOException, InterruptedException;
 
-  /** Start an existed ConfigNode */
+  /** Start an existed ConfigNode. */
   void startConfigNode(int index);
 
-  /** Shutdown an existed ConfigNode */
+  /** Shutdown an existed ConfigNode. */
   void shutdownConfigNode(int index);
 
   /**
@@ -117,7 +126,7 @@ public interface BaseEnv {
   /**
    * Get the {@link DataNodeWrapper} of the specified index.
    *
-   * @return The DataNodeWrapper of the specified indexx
+   * @return The DataNodeWrapper of the specified index
    */
   DataNodeWrapper getDataNodeWrapper(int index);
 
@@ -135,22 +144,22 @@ public interface BaseEnv {
    */
   DataNodeWrapper generateRandomDataNodeWrapper();
 
-  /** Register a new DataNode with random ports */
+  /** Register a new DataNode with random ports. */
   void registerNewDataNode(boolean isNeedVerify);
 
-  /** Register a new ConfigNode with random ports */
-  void registerNewConfigNode(boolean isNeedVerify);
-
-  /** Register a new DataNode with specified DataNodeWrapper */
+  /** Register a new DataNode with specified DataNodeWrapper. */
   void registerNewDataNode(DataNodeWrapper newDataNodeWrapper, boolean isNeedVerify);
 
-  /** Register a new DataNode with specified ConfigNodeWrapper */
+  /** Register a new ConfigNode with random ports. */
+  void registerNewConfigNode(boolean isNeedVerify);
+
+  /** Register a new DataNode with specified ConfigNodeWrapper. */
   void registerNewConfigNode(ConfigNodeWrapper newConfigNodeWrapper, boolean isNeedVerify);
 
-  /** Start an existed DataNode */
+  /** Start an existed DataNode. */
   void startDataNode(int index);
 
-  /** Shutdown an existed DataNode */
+  /** Shutdown an existed DataNode. */
   void shutdownDataNode(int index);
 
   int getMqttPort();

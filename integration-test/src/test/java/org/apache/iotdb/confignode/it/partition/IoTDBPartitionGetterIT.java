@@ -487,7 +487,7 @@ public class IoTDBPartitionGetterIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), nodeManagementResp.getStatus().getCode());
       Assert.assertEquals(storageGroupNum, nodeManagementResp.getMatchedNodeSize());
       Assert.assertNotNull(nodeManagementResp.getSchemaRegionMap());
-      Assert.assertEquals(2, nodeManagementResp.getSchemaRegionMapSize());
+      Assert.assertEquals(0, nodeManagementResp.getSchemaRegionMapSize());
     }
   }
 }

@@ -213,23 +213,23 @@ mvnw files from https://github.com/apache/maven-wrapper Apache 2.0
 
 The following class is modified from Apache commons-collections
 
-./tsfile/src/main/java/org/apache/iotdb/tsfile/utils/Murmur128Hash.java
+./iotdb-core/tsfile/src/main/java/org/apache/iotdb/tsfile/utils/Murmur128Hash.java
 Relevant pr is: https://github.com/apache/commons-collections/pull/83/
 
 --------------------------------------------------------------------------------
 
 The following files include code modified from Michael Burman's gorilla-tsc project.
 
-./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/encoder/GorillaEncoderV2.java
-./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/encoder/IntGorillaEncoder.java
-./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/encoder/LongGorillaEncoder.java
-./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/encoder/SinglePrecisionEncoderV2.java
-./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/encoder/DoublePrecisionEncoderV2.java
-./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/decoder/GorillaDecoderV2.java
-./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/decoder/IntGorillaDecoder.java
-./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/decoder/LongGorillaDecoder.java
-./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/decoder/SinglePrecisionDecoderV2.java
-./tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/decoder/DoublePrecisionDecoderV2.java
+./iotdb-core/tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/encoder/GorillaEncoderV2.java
+./iotdb-core/tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/encoder/IntGorillaEncoder.java
+./iotdb-core/tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/encoder/LongGorillaEncoder.java
+./iotdb-core/tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/encoder/SinglePrecisionEncoderV2.java
+./iotdb-core/tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/encoder/DoublePrecisionEncoderV2.java
+./iotdb-core/tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/decoder/GorillaDecoderV2.java
+./iotdb-core/tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/decoder/IntGorillaDecoder.java
+./iotdb-core/tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/decoder/LongGorillaDecoder.java
+./iotdb-core/tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/decoder/SinglePrecisionDecoderV2.java
+./iotdb-core/tsfile/src/main/java/org/apache/iotdb/tsfile/encoding/decoder/DoublePrecisionDecoderV2.java
 
 Copyright: 2016-2018 Michael Burman and/or other contributors
 Project page: https://github.com/burmanm/gorilla-tsc
@@ -239,11 +239,11 @@ License: http://www.apache.org/licenses/LICENSE-2.0
 
 The following files include code modified from Apache HBase project.
 
-./confignode/src/main/java/org/apache/iotdb/procedure/Procedure.java
-./confignode/src/main/java/org/apache/iotdb/procedure/ProcedureExecutor.java
-./confignode/src/main/java/org/apache/iotdb/procedure/StateMachineProcedure.java
-./confignode/src/main/java/org/apache/iotdb/procedure/TimeoutExecutorThread.java
-./confignode/src/main/java/org/apache/iotdb/procedure/StoppableThread.java
+./iotdb-core/confignode/src/main/java/org/apache/iotdb/procedure/Procedure.java
+./iotdb-core/confignode/src/main/java/org/apache/iotdb/procedure/ProcedureExecutor.java
+./iotdb-core/confignode/src/main/java/org/apache/iotdb/procedure/StateMachineProcedure.java
+./iotdb-core/confignode/src/main/java/org/apache/iotdb/procedure/TimeoutExecutorThread.java
+./iotdb-core/confignode/src/main/java/org/apache/iotdb/procedure/StoppableThread.java
 
 Copyright: 2016-2018 Michael Burman and/or other contributors
 Project page: https://github.com/burmanm/gorilla-tsc
@@ -263,13 +263,13 @@ License: https://github.com/eclipse/eclipse-collections/blob/master/LICENSE-EDL-
 
 The following files include code modified from Micrometer project.
 
-./metrics/interface/src/main/java/org/apache/iotdb/metrics/predefined/jvm/JvmClassLoaderMetrics
-./metrics/interface/src/main/java/org/apache/iotdb/metrics/predefined/jvm/JvmCompileMetrics
-./metrics/interface/src/main/java/org/apache/iotdb/metrics/predefined/jvm/JvmGcMetrics
-./metrics/interface/src/main/java/org/apache/iotdb/metrics/predefined/jvm/JvmMemoryMetrics
-./metrics/interface/src/main/java/org/apache/iotdb/metrics/predefined/jvm/JvmThreadMetrics
-./metrics/interface/src/main/java/org/apache/iotdb/metrics/predefined/logback/LogbackMetrics
-./metrics/interface/src/main/java/org/apache/iotdb/metrics/utils/JvmUtils
+./iotdb-core/metrics/interface/src/main/java/org/apache/iotdb/metrics/predefined/jvm/JvmClassLoaderMetrics
+./iotdb-core/metrics/interface/src/main/java/org/apache/iotdb/metrics/predefined/jvm/JvmCompileMetrics
+./iotdb-core/metrics/interface/src/main/java/org/apache/iotdb/metrics/predefined/jvm/JvmGcMetrics
+./iotdb-core/metrics/interface/src/main/java/org/apache/iotdb/metrics/predefined/jvm/JvmMemoryMetrics
+./iotdb-core/metrics/interface/src/main/java/org/apache/iotdb/metrics/predefined/jvm/JvmThreadMetrics
+./iotdb-core/metrics/interface/src/main/java/org/apache/iotdb/metrics/predefined/logback/LogbackMetrics
+./iotdb-core/metrics/interface/src/main/java/org/apache/iotdb/metrics/utils/JvmUtils
 
 Copyright: 2017 VMware
 Project page: https://github.com/micrometer-metrics/micrometer
@@ -280,10 +280,10 @@ License: https://github.com/micrometer-metrics/micrometer/blob/main/LICENSE
 The following files include code modified from Trino project(https://github.com/trinodb/trino),
 which is under Apache License 2.0:
 
-./server/src/main/java/org/apache/iotdb/db/mpp/execution/QueryState.java
-./server/src/main/java/org/apache/iotdb/db/mpp/execution/StateMachine.java
-./server/src/main/java/org/apache/iotdb/db/mpp/execution/driver/Driver.java
-./server/src/main/java/org/apache/iotdb/db/mpp/execution/fragment/FragmentInstanceState.java
-./server/src/main/java/org/apache/iotdb/db/mpp/execution/fragment/FragmentInstanceStateMachine.java
-./server/src/main/java/org/apache/iotdb/db/mpp/plan/planner/LocalExecutionPlanner.java
-./tsfile/src/main/java/org/apache/iotdb/tsfile/read/common/block/*
+./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/QueryState.java
+./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/StateMachine.java
+./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/driver/Driver.java
+./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceState.java
+./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceStateMachine.java
+./iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/LocalExecutionPlanner.java
+./iotdb-core/tsfile/src/main/java/org/apache/iotdb/tsfile/read/common/block/*

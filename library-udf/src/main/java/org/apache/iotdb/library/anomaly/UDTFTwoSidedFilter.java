@@ -27,6 +27,7 @@ import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
+import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.type.Type;
 
 /**
@@ -81,10 +82,12 @@ public class UDTFTwoSidedFilter implements UDTF {
         }
         break;
       default:
-        throw new Exception("No such kind of data type.");
+        throw new UDFException("No such kind of data type.");
     }
   }
 
   @Override
-  public void terminate(PointCollector collector) throws Exception {}
+  public void terminate(PointCollector collector)
+      throws Exception { // default implementation ignored
+  }
 }

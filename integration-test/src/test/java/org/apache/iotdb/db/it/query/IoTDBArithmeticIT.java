@@ -223,4 +223,22 @@ public class IoTDBArithmeticIT {
       assertTrue(throwable.getMessage().contains("Invalid input expression data type."));
     }
   }
+
+  @Test
+  public void testNot() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery("select not(s5), !s5 from root.sg.d1"); ) {
+      String[] retArray = new String[] {"true", "true", "false", "false", "false"};
+      int cnt = 0;
+      while (resultSet.next()) {
+        assertEquals(retArray[cnt], resultSet.getString(2));
+        assertEquals(retArray[cnt], resultSet.getString(3));
+        cnt++;
+      }
+      assertEquals(retArray.length, cnt);
+    } catch (SQLException throwable) {
+      fail();
+    }
+  }
 }

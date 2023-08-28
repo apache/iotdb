@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.external.api.thrift;
 
 import org.apache.thrift.protocol.TProtocol;

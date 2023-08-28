@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.it.framework;
 
 import java.io.File;
@@ -68,6 +69,6 @@ public class IoTDBTestReporter {
     for (int i = 0; i < Math.min(30, stats.size()); i++) {
       sb.append(stats.get(i)).append("\n");
     }
-    IoTDBTestLogger.logger.info(sb.toString());
+    IoTDBTestLogger.logger.info("{}", sb);
   }
 }

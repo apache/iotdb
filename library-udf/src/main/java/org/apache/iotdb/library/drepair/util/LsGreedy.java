@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.library.drepair.util;
 
 import org.apache.iotdb.library.util.Util;
@@ -25,8 +26,9 @@ import java.util.PriorityQueue;
 
 public class LsGreedy extends ValueRepair {
 
-  private double center = 0, sigma;
-  private final double eps = 1e-12;
+  private double center = 0;
+  private double sigma;
+  private static final double EPSILON = 1e-12;
 
   public LsGreedy(RowIterator dataIterator) throws Exception {
     super(dataIterator);
@@ -53,7 +55,7 @@ public class LsGreedy extends ValueRepair {
     }
     while (true) {
       RepairNode top = heap.peek();
-      if (top == null || Math.abs(top.getU() - center) < Math.max(eps, 3 * sigma)) {
+      if (top == null || Math.abs(top.getU() - center) < Math.max(EPSILON, 3 * sigma)) {
         break;
       } // stop greedy algorithm when the heap is empty or all speed changes locate in center±3sigma
       top.modify();
@@ -84,11 +86,11 @@ public class LsGreedy extends ValueRepair {
 
     /**
      * modify values of repaired points, to make the difference of its speed variation and center is
-     * 1 sigma
+     * 1 sigma.
      */
     public void modify() {
       double temp;
-      if (sigma < eps) {
+      if (sigma < EPSILON) {
         temp = Math.abs(u - center);
       } else {
         temp = Math.max(sigma, Math.abs(u - center) / 3);

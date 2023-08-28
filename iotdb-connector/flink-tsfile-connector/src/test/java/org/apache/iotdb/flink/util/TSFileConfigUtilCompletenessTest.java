@@ -73,8 +73,6 @@ public class TSFileConfigUtilCompletenessTest {
       "setTSFileStorageFs",
       "setUseKerberos",
       "setValueEncoder",
-      "setFreqEncodingSNR",
-      "setFreqEncodingBlockSize",
       "setMaxTsBlockLineNumber",
       "setMaxTsBlockSizeInBytes",
       "setPatternMatchingThreshold",

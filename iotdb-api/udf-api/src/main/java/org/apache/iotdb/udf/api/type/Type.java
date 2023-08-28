@@ -16,35 +16,36 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.udf.api.type;
 
 /** A substitution class for TsDataType in UDF APIs. */
 public enum Type {
-  /** BOOLEAN */
+  /* BOOLEAN */
   BOOLEAN((byte) 0),
 
-  /** INT32 */
+  /* INT32 */
   INT32((byte) 1),
 
-  /** INT64 */
+  /* INT64 */
   INT64((byte) 2),
 
-  /** FLOAT */
+  /* FLOAT */
   FLOAT((byte) 3),
 
-  /** DOUBLE */
+  /* DOUBLE */
   DOUBLE((byte) 4),
 
-  /** TEXT */
+  /* TEXT */
   TEXT((byte) 5);
 
-  private final byte type;
+  private final byte dataType;
 
   Type(byte type) {
-    this.type = type;
+    this.dataType = type;
   }
 
   public byte getType() {
-    return type;
+    return dataType;
   }
 }

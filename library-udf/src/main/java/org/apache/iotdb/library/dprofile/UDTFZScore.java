@@ -38,7 +38,9 @@ import java.util.ArrayList;
 public class UDTFZScore implements UDTF {
   ArrayList<Double> value = new ArrayList<>();
   ArrayList<Long> timestamp = new ArrayList<>();
-  String compute = "batch";
+  static final String BATCH_COMPUTE = "batch";
+  static final String STREAM_COMPUTE = "stream";
+  String compute = BATCH_COMPUTE;
   double avg = 0.0d;
   double sd = 0.0d;
   double sum = 0.0d;
@@ -50,9 +52,11 @@ public class UDTFZScore implements UDTF {
         .validateInputSeriesNumber(1)
         .validateInputSeriesDataType(0, Type.FLOAT, Type.DOUBLE, Type.INT32, Type.INT64)
         .validate(
-            x -> ((String) x).equalsIgnoreCase("batch") || ((String) x).equalsIgnoreCase("stream"),
+            x ->
+                ((String) x).equalsIgnoreCase(BATCH_COMPUTE)
+                    || ((String) x).equalsIgnoreCase(STREAM_COMPUTE),
             "Parameter \"compute\" is illegal. Please use \"batch\" (for default) or \"stream\".",
-            validator.getParameters().getStringOrDefault("compute", "batch"))
+            validator.getParameters().getStringOrDefault("compute", BATCH_COMPUTE))
         .validate(
             x -> ((Double) x) > 0,
             "Parameter \"sd\" is illegal. It should be larger than 0.",
@@ -67,8 +71,8 @@ public class UDTFZScore implements UDTF {
     sum = 0.0d;
     squareSum = 0.0d;
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
-    compute = parameters.getStringOrDefault("compute", "batch");
-    if (compute.equalsIgnoreCase("stream")) {
+    compute = parameters.getStringOrDefault("compute", BATCH_COMPUTE);
+    if (compute.equalsIgnoreCase(STREAM_COMPUTE)) {
       avg = parameters.getDouble("avg");
       sd = parameters.getDouble("sd");
     }
@@ -76,9 +80,9 @@ public class UDTFZScore implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
-    if (compute.equalsIgnoreCase("stream") && sd > 0) {
+    if (compute.equalsIgnoreCase(STREAM_COMPUTE) && sd > 0) {
       collector.putDouble(row.getTime(), (Util.getValueAsDouble(row) - avg) / sd);
-    } else if (compute.equalsIgnoreCase("batch")) {
+    } else if (compute.equalsIgnoreCase(BATCH_COMPUTE)) {
       double v = Util.getValueAsDouble(row);
       if (Double.isFinite(v)) {
         value.add(v);
@@ -91,7 +95,7 @@ public class UDTFZScore implements UDTF {
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
-    if (compute.equalsIgnoreCase("batch")) {
+    if (compute.equalsIgnoreCase(BATCH_COMPUTE)) {
       avg = sum / value.size();
       sd = Math.sqrt(squareSum / value.size() - avg * avg);
       for (int i = 0; i < value.size(); i++) {

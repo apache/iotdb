@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.library.dprofile.util;
 
 import java.util.Arrays;
@@ -24,16 +25,18 @@ import java.util.Random;
 // based on KLL Sketch in DataSketch. See
 // https://github.com/apache/datasketches-java/tree/master/src/main/java/org/apache/datasketches/kll
 public abstract class KLLSketchForQuantile {
-  long N;
+  long n;
   int maxMemoryNum;
   long[] num;
   boolean level0Sorted;
   int cntLevel;
-  int[] levelPos, levelMaxSize;
-  long XORSHIFT = new Random().nextInt(); // 0x2333333319260817L;
-  //  Random test_random = new Random();
+  int[] levelPos;
+  int[] levelMaxSize;
+  long XORSHIFT;
 
-  public KLLSketchForQuantile() {}
+  protected KLLSketchForQuantile() {
+    XORSHIFT = new Random().nextInt();
+  }
 
   protected abstract int calcMaxMemoryNum(int maxMemoryByte);
 
@@ -43,34 +46,13 @@ public abstract class KLLSketchForQuantile {
     return levelPos[level + 1] - levelPos[level];
   }
 
-  public void show() {
-    for (int i = 0; i < cntLevel; i++) {
-      System.out.print("\t");
-      System.out.print("[" + (levelPos[i + 1] - levelPos[i]) + "]");
-      System.out.print("\t");
-    }
-    System.out.println();
-  }
-
-  public void showNum() {
-    for (int i = 0; i < cntLevel; i++) {
-      System.out.print("\t|");
-      for (int j = levelPos[i]; j < levelPos[i + 1]; j++) System.out.print(num[j] + ",");
-      System.out.print("|\t");
-    }
-    System.out.println();
-  }
-
   public void update(long x) { // signed long
-    if (levelPos[0] == 0) compact();
+    if (levelPos[0] == 0) {
+      compact();
+    }
     num[--levelPos[0]] = x;
-    N++;
+    n++;
     level0Sorted = false;
-
-    //    boolean flag=false;
-    //    for(int i=0;i<cntLevel;i++)if(levelPos[i+1]-levelPos[i]>levelMaxSize[i])flag=true;
-    //    if(flag)compact();
-    //    System.out.println("\t\t\t"+x);
   }
 
   protected abstract void compact();
@@ -80,73 +62,97 @@ public abstract class KLLSketchForQuantile {
     XORSHIFT ^= XORSHIFT << 25;
     XORSHIFT ^= XORSHIFT >>> 27;
     return (int) ((XORSHIFT * 0x2545F4914F6CDD1DL) & 1);
-    //    return test_random.nextInt()&1;
   }
 
-  protected void randomlyHalveDownToLeft(int L, int R) {
+  protected void randomlyHalveDownToLeft(int l, int r) {
     int delta = getNextRand01();
-    int mid = (L + R) >>> 1;
-    for (int i = L, j = L; i < mid; i++, j += 2) num[i] = num[j + delta];
+    int mid = (l + r) >>> 1;
+    for (int i = l, j = l; i < mid; i++, j += 2) {
+      num[i] = num[j + delta];
+    }
   }
 
-  protected void mergeSortWithoutSpace(int L1, int mid, int L2, int R2) {
-    int p1 = L1, p2 = L2, cntPos = mid;
-    while (p1 < mid || p2 < R2) {
-      if (p1 < mid && (p2 == R2 || num[p1] < num[p2])) num[cntPos++] = num[p1++];
-      else num[cntPos++] = num[p2++];
+  protected void mergeSortWithoutSpace(int l1, int mid, int l2, int r2) {
+    int p1 = l1;
+    int p2 = l2;
+    int cntPos = mid;
+    while (p1 < mid || p2 < r2) {
+      if (p1 < mid && (p2 == r2 || num[p1] < num[p2])) {
+        num[cntPos++] = num[p1++];
+      } else {
+        num[cntPos++] = num[p2++];
+      }
     }
   }
 
   protected int findRankInLevel(int level, long v) {
-    int L = levelPos[level], R = levelPos[level + 1];
+    int l = levelPos[level];
+    int r = levelPos[level + 1];
     if (level == 0 && !level0Sorted) {
-      Arrays.sort(num, L, R);
+      Arrays.sort(num, l, r);
       level0Sorted = true;
     }
-    R--;
-    if (L > R || num[L] >= v) return 0;
-    while (L < R) {
-      int mid = (L + R + 1) >> 1;
-      if (num[mid] < v) L = mid;
-      else R = mid - 1;
+    r--;
+    if (l > r || num[l] >= v) {
+      return 0;
     }
-    return (L - levelPos[level] + 1) * (1 << level);
+    while (l < r) {
+      int mid = (l + r + 1) >> 1;
+      if (num[mid] < v) {
+        l = mid;
+      } else {
+        r = mid - 1;
+      }
+    }
+    return (l - levelPos[level] + 1) * (1 << level);
   }
 
   public int getApproxRank(long v) {
     int approxRank = 0;
     for (int i = 0; i < cntLevel; i++) {
       approxRank += findRankInLevel(i, v);
-      //      for (int j = levelPos[i]; j < levelPos[i + 1]; j++)
-      //        if (num[j] < v) approxRank += 1 << i;
     }
     return approxRank;
   }
 
-  public long findMaxValueWithRank(long K) {
-    long L = Long.MIN_VALUE, R = Long.MAX_VALUE, mid;
-    while (L < R) {
-      mid = L + ((R - L) >>> 1);
-      if (mid == L) mid++;
-      if (getApproxRank(mid) <= K) L = mid;
-      else R = mid - 1;
+  public long findMaxValueWithRank(long k) {
+    long l = Long.MIN_VALUE;
+    long r = Long.MAX_VALUE;
+    long mid;
+    while (l < r) {
+      mid = l + ((r - l) >>> 1);
+      if (mid == l) {
+        mid++;
+      }
+      if (getApproxRank(mid) <= k) {
+        l = mid;
+      } else {
+        r = mid - 1;
+      }
     }
-    return L;
+    return l;
   }
 
-  public long findMinValueWithRank(long K) {
-    long L = Long.MIN_VALUE, R = Long.MAX_VALUE, mid;
-    while (L < R) {
-      mid = L + ((R - L) >>> 1);
-      if (mid == R) mid--;
-      if (getApproxRank(mid) >= K) R = mid;
-      else L = mid + 1;
+  public long findMinValueWithRank(long k) {
+    long l = Long.MIN_VALUE;
+    long r = Long.MAX_VALUE;
+    long mid;
+    while (l < r) {
+      mid = l + ((r - l) >>> 1);
+      if (mid == r) {
+        mid--;
+      }
+      if (getApproxRank(mid) >= k) {
+        r = mid;
+      } else {
+        l = mid + 1;
+      }
     }
-    return L;
+    return l;
   }
 
   public long getN() {
-    return N;
+    return n;
   }
 
   public int getMaxMemoryNum() {
@@ -158,15 +164,16 @@ public abstract class KLLSketchForQuantile {
   }
 
   public boolean exactResult() {
-    return this.N == this.getNumLen();
+    return this.n == this.getNumLen();
   }
 
-  public long getExactResult(int K) {
-    int L = levelPos[0], R = levelPos[1];
+  public long getExactResult(int k) {
+    int l = levelPos[0];
+    int r = levelPos[1];
     if (!level0Sorted) {
-      Arrays.sort(num, L, R);
+      Arrays.sort(num, l, r);
       level0Sorted = true;
     }
-    return num[L + K];
+    return num[l + k];
   }
 }

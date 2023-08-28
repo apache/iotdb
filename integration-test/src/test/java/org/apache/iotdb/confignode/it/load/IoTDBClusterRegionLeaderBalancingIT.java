@@ -43,11 +43,14 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.sql.Connection;
+import java.sql.Statement;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @RunWith(IoTDBTestRunner.class)
@@ -130,7 +133,7 @@ public class IoTDBClusterRegionLeaderBalancingIT {
   }
 
   @Test
-  public void testMCFLeaderDistribution() throws Exception {
+  public void testMCFLeaderDistributionWithUnknownStatus() throws Exception {
     final int retryNum = 50;
 
     TSStatus status;
@@ -232,6 +235,114 @@ public class IoTDBClusterRegionLeaderBalancingIT {
         }
       }
       Assert.assertTrue(isDistributionBalanced);
+    }
+  }
+
+  @Test
+  public void testMCFLeaderDistributionWithReadOnlyStatus() throws Exception {
+    final int retryNum = 50;
+
+    TSStatus status;
+    final int storageGroupNum = 3;
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+
+      for (int i = 0; i < storageGroupNum; i++) {
+        // Set StorageGroups
+        status = client.setDatabase(new TDatabaseSchema(sg + i));
+        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+        // Create a DataRegionGroup for each StorageGroup
+        Map<TSeriesPartitionSlot, TTimeSlotList> seriesSlotMap = new HashMap<>();
+        seriesSlotMap.put(
+            new TSeriesPartitionSlot(1),
+            new TTimeSlotList()
+                .setTimePartitionSlots(Collections.singletonList(new TTimePartitionSlot(100))));
+        Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> sgSlotsMap = new HashMap<>();
+        sgSlotsMap.put(sg + i, seriesSlotMap);
+        TDataPartitionTableResp dataPartitionTableResp =
+            client.getOrCreateDataPartitionTable(new TDataPartitionReq(sgSlotsMap));
+        Assert.assertEquals(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+            dataPartitionTableResp.getStatus().getCode());
+      }
+
+      // Check leader distribution
+      Map<Integer, AtomicInteger> leaderCounter = new ConcurrentHashMap<>();
+      TShowRegionResp showRegionResp;
+      boolean isDistributionBalanced = false;
+      for (int retry = 0; retry < retryNum; retry++) {
+        leaderCounter.clear();
+        showRegionResp = client.showRegion(new TShowRegionReq());
+        showRegionResp
+            .getRegionInfoList()
+            .forEach(
+                regionInfo -> {
+                  if (RegionRoleType.Leader.getRoleType().equals(regionInfo.getRoleType())) {
+                    leaderCounter
+                        .computeIfAbsent(regionInfo.getDataNodeId(), empty -> new AtomicInteger(0))
+                        .getAndIncrement();
+                  }
+                });
+
+        // All DataNodes have Region-leader
+        isDistributionBalanced = leaderCounter.size() == testDataNodeNum;
+        // Each DataNode has exactly 1 Region-leader
+        for (AtomicInteger leaderCount : leaderCounter.values()) {
+          if (leaderCount.get() != 1) {
+            isDistributionBalanced = false;
+          }
+        }
+
+        if (isDistributionBalanced) {
+          break;
+        } else {
+          TimeUnit.SECONDS.sleep(1);
+        }
+      }
+      Assert.assertTrue(isDistributionBalanced);
+    }
+
+    try (Connection connection =
+            EnvFactory.getEnv()
+                .getConnectionWithSpecifiedDataNode(EnvFactory.getEnv().getDataNodeWrapper(0));
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET SYSTEM TO READONLY ON LOCAL");
+    }
+
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+
+      // Make sure there exist one ReadOnly DataNode
+      EnvFactory.getEnv()
+          .ensureNodeStatus(
+              Collections.singletonList(EnvFactory.getEnv().getDataNodeWrapper(0)),
+              Collections.singletonList(NodeStatus.ReadOnly));
+
+      // Check leader distribution
+      TShowRegionResp showRegionResp;
+      AtomicBoolean isDistributionBalanced = new AtomicBoolean();
+      for (int retry = 0; retry < retryNum; retry++) {
+        isDistributionBalanced.set(true);
+        showRegionResp = client.showRegion(new TShowRegionReq());
+        showRegionResp
+            .getRegionInfoList()
+            .forEach(
+                regionInfo -> {
+                  if (RegionRoleType.Leader.getRoleType().equals(regionInfo.getRoleType())
+                      && NodeStatus.ReadOnly.getStatus().equals(regionInfo.getStatus())) {
+                    // ReadOnly DataNode couldn't have Region-leader
+                    isDistributionBalanced.set(false);
+                  }
+                });
+
+        if (isDistributionBalanced.get()) {
+          break;
+        } else {
+          TimeUnit.SECONDS.sleep(1);
+        }
+      }
+      Assert.assertTrue(isDistributionBalanced.get());
     }
   }
 }

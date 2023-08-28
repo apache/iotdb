@@ -22,23 +22,15 @@ package org.apache.iotdb.pipe.api.event.dml.insertion;
 import org.apache.iotdb.pipe.api.event.Event;
 
 /**
- * TsFileInsertionEvent is used to define the event of writing TsFile. Event data stores in disks,
- * which is compressed and encoded, and requires IO cost for computational processing.
+ * {@link TsFileInsertionEvent} is used to define the event of writing TsFile. Event data stores in
+ * disks, which is compressed and encoded, and requires IO cost for computational processing.
  */
 public interface TsFileInsertionEvent extends Event {
 
   /**
    * The method is used to convert the TsFileInsertionEvent into several TabletInsertionEvents.
    *
-   * @return the list of TsFileInsertionEvent
+   * @return {@code Iterable<TabletInsertionEvent>} the list of TabletInsertionEvent
    */
   Iterable<TabletInsertionEvent> toTabletInsertionEvents();
-
-  /**
-   * The method is used to compact several TabletInsertionEvents into one TsFileInsertionEvent. The
-   * underlying data in TabletInsertionEvents will be stored into a TsFile.
-   *
-   * @return TsFileInsertionEvent
-   */
-  TsFileInsertionEvent toTsFileInsertionEvent(Iterable<TabletInsertionEvent> iterable);
 }

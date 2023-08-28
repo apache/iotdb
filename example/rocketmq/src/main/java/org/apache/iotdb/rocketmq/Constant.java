@@ -16,9 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.rocketmq;
 
 public class Constant {
+
+  private Constant() {}
 
   public static final String TOPIC = "RocketMQ-Test";
   public static final String PRODUCER_GROUP = "IoTDBConsumer";

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.library.util;
 
 import org.apache.iotdb.udf.api.exception.UDFException;
@@ -30,20 +31,20 @@ public class LinearRegression {
   double[] x, y, e, yhead;
   int n;
   double sumx, sumy, xbar, ybar, xxbar, yybar, xybar;
-  double beta1, beta0, rss, ssr, R2, svar, svar1, svar0;
+  double beta1, beta0, rss, ssr, r2, svar, svar1, svar0;
 
-  public LinearRegression(double[] a, double[] b) throws Exception {
+  public LinearRegression(double[] a, double[] b) throws UDFException {
     x = a.clone();
     y = b.clone();
     n = x.length;
     if (x.length == 0 || y.length == 0) {
-      throw new Exception("Empty input array(s).");
+      throw new UDFException("Empty input array(s).");
     }
     if (x.length != y.length) {
-      throw new Exception("Different input array length.");
+      throw new UDFException("Different input array length.");
     }
     if (x.length == 1) { // cannot do regression
-      throw new Exception("Input series should be longer than 1.");
+      throw new UDFException("Input series should be longer than 1.");
     }
     e = new double[n];
     yhead = new double[n];
@@ -66,7 +67,7 @@ public class LinearRegression {
     beta1 = xybar / xxbar;
     beta0 = ybar - beta1 * xbar;
     // analyze results
-    int df = n - 2;
+    final int df = n - 2;
     rss = 0.0; // residual sum of squares
     ssr = 0.0; // regression sum of squares
     for (int i = 0; i < n; i++) {
@@ -75,7 +76,7 @@ public class LinearRegression {
       rss += (yhead[i] - y[i]) * (yhead[i] - y[i]);
       ssr += (yhead[i] - ybar) * (yhead[i] - ybar);
     }
-    R2 = ssr / yybar;
+    r2 = ssr / yybar;
     svar = rss / df;
     svar1 = svar / xxbar;
     svar0 = svar / n + xbar * xbar * svar1;

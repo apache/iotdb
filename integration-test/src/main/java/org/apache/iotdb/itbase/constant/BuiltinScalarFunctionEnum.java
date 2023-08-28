@@ -24,7 +24,7 @@ public enum BuiltinScalarFunctionEnum {
   CAST("cast"),
   REPLACE("replace"),
   SUBSTRING("substring"),
-  ROUND("round");
+  ROUND("round"),
   ;
 
   private final String functionName;

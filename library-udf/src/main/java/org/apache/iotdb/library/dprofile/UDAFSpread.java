@@ -29,16 +29,22 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
+import java.io.IOException;
+
 /**
  * This function is used to calculate the spread of time series, that is, the maximum value minus
  * the minimum value.
  */
 public class UDAFSpread implements UDTF {
 
-  int intMin = Integer.MAX_VALUE, intMax = Integer.MIN_VALUE;
-  long longMin = Long.MAX_VALUE, longMax = Long.MIN_VALUE;
-  float floatMin = Float.MAX_VALUE, floatMax = -Float.MAX_VALUE;
-  double doubleMin = Double.MAX_VALUE, doubleMax = -Double.MAX_VALUE;
+  int intMin = Integer.MAX_VALUE;
+  int intMax = Integer.MIN_VALUE;
+  long longMin = Long.MAX_VALUE;
+  long longMax = Long.MIN_VALUE;
+  float floatMin = Float.MAX_VALUE;
+  float floatMax = -Float.MAX_VALUE;
+  double doubleMin = Double.MAX_VALUE;
+  double doubleMax = -Double.MAX_VALUE;
   Type dataType;
 
   @Override
@@ -59,16 +65,18 @@ public class UDAFSpread implements UDTF {
   public void transform(Row row, PointCollector pc) throws Exception {
     switch (dataType) {
       case INT32:
-        transformInt(row, pc);
+        transformInt(row);
         break;
       case INT64:
-        transformLong(row, pc);
+        transformLong(row);
         break;
       case FLOAT:
-        transformFloat(row, pc);
+        transformFloat(row);
         break;
       case DOUBLE:
-        transformDouble(row, pc);
+        transformDouble(row);
+        break;
+      default:
         break;
     }
   }
@@ -93,19 +101,19 @@ public class UDAFSpread implements UDTF {
     }
   }
 
-  private void transformInt(Row row, PointCollector pc) throws Exception {
+  private void transformInt(Row row) throws IOException {
     int v = row.getInt(0);
     intMin = Math.min(intMin, v);
     intMax = Math.max(intMax, v);
   }
 
-  private void transformLong(Row row, PointCollector pc) throws Exception {
+  private void transformLong(Row row) throws IOException {
     long v = row.getLong(0);
     longMin = Math.min(longMin, v);
     longMax = Math.max(longMax, v);
   }
 
-  private void transformFloat(Row row, PointCollector pc) throws Exception {
+  private void transformFloat(Row row) throws IOException {
     float v = row.getFloat(0);
     if (Float.isFinite(v)) {
       floatMin = Math.min(floatMin, v);
@@ -113,11 +121,11 @@ public class UDAFSpread implements UDTF {
     }
   }
 
-  private void transformDouble(Row row, PointCollector pc) throws Exception {
+  private void transformDouble(Row row) throws IOException {
     double v = row.getDouble(0);
     if (Double.isFinite(v)) {
-      doubleMin = doubleMin < v ? doubleMin : v;
-      doubleMax = doubleMax > v ? doubleMax : v;
+      doubleMin = Math.min(doubleMin, v);
+      doubleMax = Math.max(doubleMax, v);
     }
   }
 }

@@ -30,6 +30,7 @@ public interface Row {
    * Returns the timestamp of this row.
    *
    * @return timestamp
+   * @throws IOException if an I/O error occurs
    */
   long getTime() throws IOException;
 
@@ -40,6 +41,7 @@ public interface Row {
    *
    * @param columnIndex index of the specified column
    * @return the int value at the specified column in this row
+   * @throws IOException if an I/O error occurs
    */
   int getInt(int columnIndex) throws IOException;
 
@@ -50,6 +52,7 @@ public interface Row {
    *
    * @param columnIndex index of the specified column
    * @return the long value at the specified column in this row
+   * @throws IOException if an I/O error occurs
    */
   long getLong(int columnIndex) throws IOException;
 
@@ -60,6 +63,7 @@ public interface Row {
    *
    * @param columnIndex index of the specified column
    * @return the float value at the specified column in this row
+   * @throws IOException if an I/O error occurs
    */
   float getFloat(int columnIndex) throws IOException;
 
@@ -71,6 +75,7 @@ public interface Row {
    *
    * @param columnIndex index of the specified column
    * @return the double value at the specified column in this row
+   * @throws IOException if an I/O error occurs
    */
   double getDouble(int columnIndex) throws IOException;
 
@@ -82,6 +87,7 @@ public interface Row {
    *
    * @param columnIndex index of the specified column
    * @return the boolean value at the specified column in this row
+   * @throws IOException if an I/O error occurs
    */
   boolean getBoolean(int columnIndex) throws IOException;
 
@@ -92,6 +98,7 @@ public interface Row {
    *
    * @param columnIndex index of the specified column
    * @return the Binary value at the specified column in this row
+   * @throws IOException if an I/O error occurs
    */
   Binary getBinary(int columnIndex) throws IOException;
 
@@ -102,6 +109,7 @@ public interface Row {
    *
    * @param columnIndex index of the specified column
    * @return the String value at the specified column in this row
+   * @throws IOException if an I/O error occurs
    */
   String getString(int columnIndex) throws IOException;
 
@@ -122,7 +130,7 @@ public interface Row {
   boolean isNull(int columnIndex);
 
   /**
-   * Returns the number of columns
+   * Returns the number of columns.
    *
    * @return the number of columns
    */

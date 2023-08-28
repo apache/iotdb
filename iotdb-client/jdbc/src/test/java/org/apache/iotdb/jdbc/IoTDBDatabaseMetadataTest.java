@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -136,10 +137,6 @@ public class IoTDBDatabaseMetadataTest {
     when(execStatementResp.getDataTypeList()).thenReturn(dataTypeList);
     when(execStatementResp.getColumns()).thenReturn(columnsList);
     execStatementResp.columnNameIndexMap = columnNameIndexMap;
-    when(client.getProperties().getWatermarkSecretKey()).thenReturn("IoTDB*2019@Beijing");
-    when(client.getProperties().getWatermarkBitString()).thenReturn("100101110100");
-    when(client.getProperties().getWatermarkParamMarkRate()).thenReturn(5);
-    when(client.getProperties().getWatermarkParamMaxRightBit()).thenReturn(5);
     ResultSet rs = databaseMetaData.getCatalogs();
     assertEquals(2, rs.findColumn("TYPE_CAT"));
   }

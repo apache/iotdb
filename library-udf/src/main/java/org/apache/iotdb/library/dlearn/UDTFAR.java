@@ -34,7 +34,6 @@ import java.util.List;
 
 public class UDTFAR implements UDTF {
   private int p;
-  private long interval;
   private List<Long> timeWindow = new ArrayList<>();
   private List<Double> valueWindow = new ArrayList<>();
 
@@ -67,8 +66,9 @@ public class UDTFAR implements UDTF {
     int count = 0;
     long maxFreqInterval = timeWindow.get(1) - timeWindow.get(0);
     for (int i = 2; i < timeWindow.size(); i++) {
-      if (maxFreqInterval == timeWindow.get(i) - timeWindow.get(i - 1)) count++;
-      else {
+      if (maxFreqInterval == timeWindow.get(i) - timeWindow.get(i - 1)) {
+        count++;
+      } else {
         count--;
         if (count == 0) {
           maxFreqInterval = timeWindow.get(i) - timeWindow.get(i - 1);
@@ -76,7 +76,7 @@ public class UDTFAR implements UDTF {
         }
       }
     }
-    this.interval = maxFreqInterval;
+    long interval = maxFreqInterval;
 
     List<Long> imputedTimeWindow = new ArrayList<>();
     List<Double> imputedValueWindow = new ArrayList<>();
@@ -102,8 +102,9 @@ public class UDTFAR implements UDTF {
     for (int i = 0; i <= p; i++) {
       resultCovariances[i] = 0;
       for (int j = 0; j < newLength - i; j++) {
-        if (j + i < newLength)
+        if (j + i < newLength) {
           resultCovariances[i] += imputedValueWindow.get(j) * imputedValueWindow.get(j + i);
+        }
       }
       resultCovariances[i] /= newLength - i;
     }
@@ -111,16 +112,18 @@ public class UDTFAR implements UDTF {
     double[] epsilons = new double[p + 1];
     double[] kappas = new double[p + 1];
     double[][] alphas = new double[p + 1][p + 1];
-    // alphas[i][j] denotes alpha_i^{(j)}
     epsilons[0] = resultCovariances[0];
     for (int i = 1; i <= p; i++) {
       double tmpSum = 0.0;
-      for (int j = 1; j <= i - 1; j++) tmpSum += alphas[j][i - 1] * resultCovariances[i - j];
+      for (int j = 1; j <= i - 1; j++) {
+        tmpSum += alphas[j][i - 1] * resultCovariances[i - j];
+      }
       kappas[i] = (resultCovariances[i] - tmpSum) / epsilons[i - 1];
       alphas[i][i] = kappas[i];
       if (i > 1) {
-        for (int j = 1; j <= i - 1; j++)
+        for (int j = 1; j <= i - 1; j++) {
           alphas[j][i] = alphas[j][i - 1] - kappas[i] * alphas[i - j][i - 1];
+        }
       }
       epsilons[i] = (1 - kappas[i] * kappas[i]) * epsilons[i - 1];
     }

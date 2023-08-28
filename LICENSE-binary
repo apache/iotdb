@@ -223,7 +223,7 @@ org.apache.commons:commons-lang3:3.8.1
 commons-lang:commons-lang:2.6
 com.nimbusds:content-type:2.0
 com.google.code.gson:gson:2.8.6
-com.google.guava.guava:24.1.1
+com.google.guava.guava:32.1.2-jre
 com.fasterxml.jackson.core:jackson-annotations:2.10.0
 com.fasterxml.jackson.core:jackson-core:2.10.0
 com.fasterxml.jackson.core:jackson-databind:2.10.0

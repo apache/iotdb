@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tool;
 
+import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.cli.utils.JlineUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -89,10 +90,12 @@ public class ExportCsv extends AbstractCsvTool {
 
   private static int linesPerFile = 10000;
 
-  private static final int EXPORT_PER_LINE_COUNT = 10000;
-
   private static long timeout = -1;
 
+  @SuppressWarnings({
+    "squid:S3776",
+    "squid:S2093"
+  }) // Suppress high Cognitive Complexity warning, ignore try-with-resources
   /** main function of export csv tool. */
   public static void main(String[] args) {
     Options options = createOptions();
@@ -103,14 +106,14 @@ public class ExportCsv extends AbstractCsvTool {
     hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
 
     if (args == null || args.length == 0) {
-      System.out.println("Too few params input, please check the following hint.");
+      IoTPrinter.println("Too few params input, please check the following hint.");
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
       System.exit(CODE_ERROR);
     }
     try {
       commandLine = parser.parse(options, args);
     } catch (ParseException e) {
-      System.out.println(e.getMessage());
+      IoTPrinter.println(e.getMessage());
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
       System.exit(CODE_ERROR);
     }
@@ -125,7 +128,6 @@ public class ExportCsv extends AbstractCsvTool {
       if (!checkTimeFormat()) {
         System.exit(CODE_ERROR);
       }
-
       session = new Session(host, Integer.parseInt(port), username, password);
       session.open(false);
       timestampPrecision = session.getTimestampPrecision();
@@ -138,7 +140,7 @@ public class ExportCsv extends AbstractCsvTool {
         if (sqlFile == null) {
           LineReader lineReader = JlineUtils.getLineReader(username, host, port);
           sql = lineReader.readLine(TSFILEDB_CLI_PREFIX + "> please input query: ");
-          System.out.println(sql);
+          IoTPrinter.println(sql);
           String[] values = sql.trim().split(";");
           for (int i = 0; i < values.length; i++) {
             dumpResult(values[i], i);
@@ -151,16 +153,16 @@ public class ExportCsv extends AbstractCsvTool {
       }
 
     } catch (IOException e) {
-      System.out.println("Failed to operate on file, because " + e.getMessage());
+      IoTPrinter.println("Failed to operate on file, because " + e.getMessage());
       exitCode = CODE_ERROR;
     } catch (ArgsErrorException e) {
-      System.out.println("Invalid args: " + e.getMessage());
+      IoTPrinter.println("Invalid args: " + e.getMessage());
       exitCode = CODE_ERROR;
     } catch (IoTDBConnectionException | StatementExecutionException e) {
-      System.out.println("Connect failed because " + e.getMessage());
+      IoTPrinter.println("Connect failed because " + e.getMessage());
       exitCode = CODE_ERROR;
     } catch (TException e) {
-      System.out.println(
+      IoTPrinter.println(
           "Can not get the timestamp precision from server because " + e.getMessage());
       exitCode = CODE_ERROR;
     } finally {
@@ -169,7 +171,7 @@ public class ExportCsv extends AbstractCsvTool {
           session.close();
         } catch (IoTDBConnectionException e) {
           exitCode = CODE_ERROR;
-          System.out.println(
+          IoTPrinter.println(
               "Encounter an error when closing session, error is: " + e.getMessage());
         }
       }
@@ -305,8 +307,8 @@ public class ExportCsv extends AbstractCsvTool {
   /**
    * This method will be called, if the query commands are written in a sql file.
    *
-   * @param filePath
-   * @throws IOException
+   * @param filePath sql file path
+   * @throws IOException exception
    */
   private static void dumpFromSqlFile(String filePath) throws IOException {
     try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
@@ -332,7 +334,7 @@ public class ExportCsv extends AbstractCsvTool {
       List<Object> headers = new ArrayList<>();
       List<String> names = sessionDataSet.getColumnNames();
       List<String> types = sessionDataSet.getColumnTypes();
-      if (needDataTypePrinted) {
+      if (Boolean.TRUE.equals(needDataTypePrinted)) {
         for (int i = 0; i < names.size(); i++) {
           if (!"Time".equals(names.get(i)) && !"Device".equals(names.get(i))) {
             headers.add(String.format("%s(%s)", names.get(i), types.get(i)));
@@ -345,9 +347,9 @@ public class ExportCsv extends AbstractCsvTool {
       }
       writeCsvFile(sessionDataSet, path, headers, linesPerFile);
       sessionDataSet.closeOperationHandle();
-      System.out.println("Export completely!");
+      IoTPrinter.println("Export completely!");
     } catch (StatementExecutionException | IoTDBConnectionException | IOException e) {
-      System.out.println("Cannot dump result because: " + e.getMessage());
+      IoTPrinter.println("Cannot dump result because: " + e.getMessage());
     }
   }
 
@@ -366,6 +368,7 @@ public class ExportCsv extends AbstractCsvTool {
     }
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void writeCsvFile(
       SessionDataSet sessionDataSet, String filePath, List<Object> headers, int linesPerFile)
       throws IOException, IoTDBConnectionException, StatementExecutionException {

@@ -90,7 +90,7 @@ public class UDTFSpline implements UDTF {
                             / (samplePoints - 1)
                         + 0.5);
         double yhead = psf.value(approximation);
-        collector.putDouble(minimumTimestamp + (long) approximation, yhead);
+        collector.putDouble(minimumTimestamp + approximation, yhead);
       }
     }
   }

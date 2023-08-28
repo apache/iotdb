@@ -57,4 +57,6 @@ public class TNonblockingSocketWrapper {
       return null;
     }
   }
+
+  private TNonblockingSocketWrapper() {}
 }

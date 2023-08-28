@@ -53,7 +53,7 @@ public abstract class TsFileOutputFormat<T> extends FileOutputFormat<T> {
   @Nullable protected TSFileConfig config;
 
   protected transient Configuration hadoopConf = null;
-  private FileOutputStream fos = null;
+  private transient FileOutputStream fos = null;
   protected transient TsFileWriter writer = null;
 
   protected TsFileOutputFormat(String path, Schema schema, TSFileConfig config) {
@@ -77,7 +77,7 @@ public abstract class TsFileOutputFormat<T> extends FileOutputFormat<T> {
     // Use TsFile API to write instead of FSDataOutputStream.
     this.stream.close();
     Path actualFilePath = getAcutalFilePath();
-    TsFileOutput out;
+    TsFileOutput out = null;
     try {
       if (actualFilePath.getFileSystem().isDistributedFS()) {
         // HDFS

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.it.trigger;
 
-import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -546,11 +546,11 @@ public class IoTDBTriggerManagementIT {
         } catch (Exception e) {
           assertEquals(
               TSStatusCode.NO_PERMISSION.getStatusCode()
-                  + ": No permissions for this operation, please add privilege CREATE_TRIGGER",
+                  + ": No permissions for this operation, please add privilege USE_TRIGGER",
               e.getMessage());
         }
 
-        statement.execute("GRANT USER `zmty` PRIVILEGES CREATE_TRIGGER on root.test.stateless.a");
+        statement.execute("GRANT USER `zmty` PRIVILEGES USE_TRIGGER on root.test.stateless.a");
 
         try {
           statement2.execute(
@@ -576,7 +576,7 @@ public class IoTDBTriggerManagementIT {
         } catch (Exception e) {
           assertEquals(
               TSStatusCode.NO_PERMISSION.getStatusCode()
-                  + ": No permissions for this operation, please add privilege CREATE_TRIGGER",
+                  + ": No permissions for this operation, please add privilege USE_TRIGGER",
               e.getMessage());
         }
       }
@@ -608,11 +608,11 @@ public class IoTDBTriggerManagementIT {
         } catch (Exception e) {
           assertEquals(
               TSStatusCode.NO_PERMISSION.getStatusCode()
-                  + ": No permissions for this operation, please add privilege DROP_TRIGGER",
+                  + ": No permissions for this operation, please add privilege USE_TRIGGER",
               e.getMessage());
         }
 
-        statement.execute("GRANT USER `zmty` PRIVILEGES CREATE_TRIGGER on root.test.stateless.b");
+        statement.execute("GRANT USER `zmty` PRIVILEGES USE_TRIGGER on root.test.stateless.b");
 
         try {
           statement2.execute("drop trigger " + STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a");
@@ -620,11 +620,11 @@ public class IoTDBTriggerManagementIT {
         } catch (Exception e) {
           assertEquals(
               TSStatusCode.NO_PERMISSION.getStatusCode()
-                  + ": No permissions for this operation, please add privilege DROP_TRIGGER",
+                  + ": No permissions for this operation, please add privilege USE_TRIGGER",
               e.getMessage());
         }
 
-        statement.execute("GRANT USER `zmty` PRIVILEGES DROP_TRIGGER on root.test.stateless.a");
+        statement.execute("GRANT USER `zmty` PRIVILEGES USE_TRIGGER on root.test.stateless.a");
 
         try {
           statement2.execute("drop trigger " + STATELESS_TRIGGER_BEFORE_INSERTION_PREFIX + "a");

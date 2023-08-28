@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -51,8 +52,8 @@ public class TsFileWriteWithTablet {
     try {
       String path = "Tablet.tsfile";
       File f = FSFactoryProducer.getFSFactory().getFile(path);
-      if (f.exists() && !f.delete()) {
-        throw new RuntimeException("can not delete " + f.getAbsolutePath());
+      if (f.exists()) {
+        Files.delete(f.toPath());
       }
 
       try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
@@ -64,12 +65,8 @@ public class TsFileWriteWithTablet {
         // register nonAligned timeseries
         tsFileWriter.registerTimeseries(new Path(DEVICE_1), measurementSchemas);
 
-        List<MeasurementSchema> writeMeasurementScheams = new ArrayList<>();
         // example 1
-        writeMeasurementScheams.add(measurementSchemas.get(0));
-        writeMeasurementScheams.add(measurementSchemas.get(1));
-        writeMeasurementScheams.add(measurementSchemas.get(2));
-        writeWithTablet(tsFileWriter, DEVICE_1, writeMeasurementScheams, 10000, 0, 0);
+        writeWithTablet(tsFileWriter, DEVICE_1, measurementSchemas, 10000, 0, 0);
       }
     } catch (Exception e) {
       logger.error("meet error in TsFileWrite with tablet", e);

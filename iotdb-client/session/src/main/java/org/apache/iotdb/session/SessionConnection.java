@@ -44,6 +44,7 @@ import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSFastLastDataQueryForOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
@@ -63,6 +64,7 @@ import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.session.util.SessionUtils;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -72,10 +74,10 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.security.SecureRandom;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import java.util.StringJoiner;
 
 public class SessionConnection {
@@ -173,11 +175,12 @@ public class SessionConnection {
     }
   }
 
+  @SuppressWarnings({"squid:S1751"}) // Loops with at most one iteration should be refactored
   private void initClusterConn() throws IoTDBConnectionException {
-    for (TEndPoint endPoint : endPointList) {
+    for (TEndPoint tEndPoint : endPointList) {
       try {
-        session.defaultEndPoint = endPoint;
-        init(endPoint);
+        session.defaultEndPoint = tEndPoint;
+        init(tEndPoint);
       } catch (IoTDBConnectionException e) {
         if (!reconnect()) {
           logger.error("Cluster has no nodes to connect");
@@ -449,6 +452,53 @@ public class SessionConnection {
         execResp.queryResult,
         execResp.isIgnoreTimeStamp(),
         execResp.moreData);
+  }
+
+  protected Pair<SessionDataSet, TEndPoint> executeLastDataQueryForOneDevice(
+      String db, String device, List<String> sensors, boolean isLegalPathNodes, long timeOut)
+      throws StatementExecutionException, IoTDBConnectionException {
+    TSFastLastDataQueryForOneDeviceReq req =
+        new TSFastLastDataQueryForOneDeviceReq(sessionId, db, device, sensors, statementId);
+    req.setFetchSize(session.fetchSize);
+    req.setEnableRedirectQuery(enableRedirect);
+    req.setLegalPathNodes(isLegalPathNodes);
+    req.setTimeout(timeOut);
+    TSExecuteStatementResp tsExecuteStatementResp = null;
+    TEndPoint redirectedEndPoint = null;
+    try {
+      tsExecuteStatementResp = client.executeFastLastDataQueryForOneDeviceV2(req);
+      RpcUtils.verifySuccessWithRedirection(tsExecuteStatementResp.getStatus());
+    } catch (RedirectException e) {
+      redirectedEndPoint = e.getEndPoint();
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          req.setSessionId(sessionId);
+          req.setStatementId(statementId);
+          tsExecuteStatementResp = client.executeFastLastDataQueryForOneDeviceV2(req);
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(logForReconnectionFailure());
+      }
+    }
+
+    RpcUtils.verifySuccess(tsExecuteStatementResp.getStatus());
+    return new Pair<>(
+        new SessionDataSet(
+            "",
+            tsExecuteStatementResp.getColumns(),
+            tsExecuteStatementResp.getDataTypeList(),
+            tsExecuteStatementResp.columnNameIndexMap,
+            tsExecuteStatementResp.getQueryId(),
+            statementId,
+            client,
+            sessionId,
+            tsExecuteStatementResp.queryResult,
+            tsExecuteStatementResp.isIgnoreTimeStamp(),
+            tsExecuteStatementResp.moreData),
+        redirectedEndPoint);
   }
 
   protected SessionDataSet executeLastDataQuery(List<String> paths, long time, long timeOut)
@@ -886,9 +936,12 @@ public class SessionConnection {
     }
   }
 
+  @SuppressWarnings({
+    "squid:S3776"
+  }) // ignore Cognitive Complexity of methods should not be too high
   private boolean reconnect() {
     boolean connectedSuccess = false;
-    Random random = new Random();
+    SecureRandom random = new SecureRandom();
     for (int i = 1; i <= SessionConfig.RETRY_NUM; i++) {
       if (transport != null) {
         transport.close();
@@ -1137,10 +1190,10 @@ public class SessionConnection {
       return MSG_RECONNECTION_FAIL;
     }
     StringJoiner urls = new StringJoiner(",");
-    for (TEndPoint endPoint : endPointList) {
+    for (TEndPoint end : endPointList) {
       StringJoiner url = new StringJoiner(":");
-      url.add(endPoint.getIp());
-      url.add(String.valueOf(endPoint.getPort()));
+      url.add(end.getIp());
+      url.add(String.valueOf(end.getPort()));
       urls.add(url.toString());
     }
     return MSG_RECONNECTION_FAIL.concat(urls.toString());

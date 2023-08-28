@@ -27,11 +27,12 @@ import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.type.Type;
 
 /**
  * calculate the integral or the area under the curve of input series $unit$ is the time scale for
- * the area calculation, chosen from 1s(second, default), 1m(minute), 1h(hour), 1d(day)
+ * the area calculation, chosen from 1s(second, default), 1m(minute), 1h(hour), 1d(day).
  */
 public class UDAFIntegral implements UDTF {
 
@@ -83,7 +84,7 @@ public class UDAFIntegral implements UDTF {
         unitTime = 3600000L * 24L;
         break;
       default:
-        throw new Exception(
+        throw new UDFException(
             "Unknown time unit input: "
                 + parameters.getStringOrDefault(TIME_UNIT_KEY, TIME_UNIT_S));
     }

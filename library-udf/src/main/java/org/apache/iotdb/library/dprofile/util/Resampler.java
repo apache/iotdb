@@ -42,8 +42,8 @@ public class Resampler {
   private final String aggregator; // method to aggregate
   private final String interpolator; // method to interpolate
   private long currentTime; // start time of the window, left close & right open
-  private long startTime,
-      endTime; // start time (contained) and end time (not contained) of resampling
+  private long startTime;
+  private long endTime; // start time (contained) and end time (not contained) of resampling
   private boolean outer = true; // if to use outer interpolate
 
   public Resampler(long newPeriod, String aggregator, String interpolator) {
@@ -60,7 +60,7 @@ public class Resampler {
     this.currentTime = this.startTime;
   }
 
-  /** 加入新的数据点 insert new datapoint */
+  /** 加入新的数据点 insert new datapoint. */
   public void insert(long time, double value) {
     if (Double.isNaN(value)
         || (startTime > 0 && time < startTime)
@@ -79,7 +79,7 @@ public class Resampler {
     valueWindow.add(value);
   }
 
-  /** process all data in buffer */
+  /** process all data in buffer. */
   public void flush() {
     do { // process data in the last window in first cycle
       downSample();
@@ -164,7 +164,6 @@ public class Resampler {
     double ret = Double.NaN;
     switch (interpolator) {
       case "nan":
-        ret = Double.NaN;
         break;
       case "ffill":
         if (t >= source.get(1).time) {
@@ -192,22 +191,22 @@ public class Resampler {
     return ret;
   }
 
-  /** judge if there is a next point in the buffer */
+  /** judge if there is a next point in the buffer. */
   public boolean hasNext() {
     return !timeBuffer.isEmpty();
   }
 
-  /** return the timestamp of the current point in buffer */
+  /** return the timestamp of the current point in buffer. */
   public long getOutTime() {
     return timeBuffer.getHead();
   }
 
-  /** return the value of the current point in buffer */
+  /** return the value of the current point in buffer. */
   public double getOutValue() {
     return valueBuffer.getHead();
   }
 
-  /** move to next data point in buffer */
+  /** move to next data point in buffer. */
   public void next() {
     timeBuffer.pop();
     valueBuffer.pop();

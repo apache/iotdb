@@ -68,7 +68,7 @@ public class MissDetector {
     SimpleRegression regression = new SimpleRegression();
     while (i + windowSize < getLen()) {
       for (int j = 0; j < windowSize; j++) {
-        data[j][0] = getTime().get(i + j) - startTime;
+        data[j][0] = (double) getTime().get(i + j) - startTime;
         data[j][1] = getValue().get(i + j);
       }
       regression.addData(data);
@@ -91,19 +91,19 @@ public class MissDetector {
     int bindex = start;
     while (bindex > 0) {
       bindex--;
-      regression.addData(getTime().get(bindex) - startTime, getValue().get(bindex));
+      regression.addData((double) getTime().get(bindex) - startTime, getValue().get(bindex));
       double alpha = regression.getRSquare();
       if ((horizon && getValue().get(bindex) != standard) || (!horizon && alpha < threshold)) {
         break;
       }
     }
-    regression.removeData(getTime().get(bindex) - startTime, getValue().get(bindex));
+    regression.removeData((double) getTime().get(bindex) - startTime, getValue().get(bindex));
     if (bindex == 0) {
       return end;
     }
     int findex = end;
     while (findex < getLen()) {
-      regression.addData(getTime().get(findex) - startTime, getValue().get(findex));
+      regression.addData((double) getTime().get(findex) - startTime, getValue().get(findex));
       double alpha = regression.getRSquare();
       if ((horizon && getValue().get(findex) != standard) || (!horizon && alpha < threshold)) {
         break;

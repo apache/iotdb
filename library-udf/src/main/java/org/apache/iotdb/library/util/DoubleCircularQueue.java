@@ -16,14 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.library.util;
 
-/** Circular queue for double */
+/** Circular queue for double. */
 public class DoubleCircularQueue {
 
-  private static int INITCAP = 64;
+  private static final int INITCAP = 64;
 
-  private int head, tail, size, minLen;
+  private int head;
+  private int tail;
+  private int size;
+  private int minLen;
   private double[] data;
 
   public DoubleCircularQueue(int capacity) {
@@ -37,7 +41,7 @@ public class DoubleCircularQueue {
   }
 
   /**
-   * push value into the back of queue
+   * push value into the back of queue.
    *
    * @param value value to push
    */
@@ -51,7 +55,7 @@ public class DoubleCircularQueue {
   }
 
   /**
-   * pop value from the front of queue
+   * pop value from the front of queue.
    *
    * @return value in the front
    */
@@ -59,7 +63,7 @@ public class DoubleCircularQueue {
     if (isEmpty()) {
       throw new IllegalArgumentException("Error: Queue is Empty!");
     }
-    double ret = data[head];
+    final double ret = data[head];
     head = (head + 1) % data.length;
     size--;
     if (size < data.length / 4 && data.length / 2 >= minLen) {
@@ -69,7 +73,7 @@ public class DoubleCircularQueue {
   }
 
   /**
-   * get the value in the front
+   * get the value in the front.
    *
    * @return value in the front
    */
@@ -77,12 +81,11 @@ public class DoubleCircularQueue {
     if (isEmpty()) {
       throw new IllegalArgumentException("Error: Queue is Empty!");
     }
-    double ret = data[head];
-    return ret;
+    return data[head];
   }
 
   /**
-   * judge if circular queue is empty
+   * judge if circular queue is empty.
    *
    * @return if empty, return true; else return false
    */
@@ -91,7 +94,7 @@ public class DoubleCircularQueue {
   }
 
   /**
-   * judge if circular queue is full
+   * judge if circular queue is full.
    *
    * @return if full, return true; else return false
    */
@@ -100,7 +103,7 @@ public class DoubleCircularQueue {
   }
 
   /**
-   * change size of queue
+   * change size of queue.
    *
    * @param newLength new length of queue
    */
@@ -115,7 +118,7 @@ public class DoubleCircularQueue {
   }
 
   /**
-   * get value of given index
+   * get value of given index.
    *
    * @param index index
    * @return value to queue
@@ -128,7 +131,7 @@ public class DoubleCircularQueue {
   }
 
   /**
-   * get number of values in queue
+   * get number of values in queue.
    *
    * @return number of values
    */

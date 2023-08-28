@@ -16,17 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.external.api;
 
 import java.util.Properties;
 
 /**
  * An interface to load properties from external properties file to override the default
- * configurations
+ * configurations.
  */
 public interface IPropertiesLoader {
   /**
-   * Load Properties from specific file
+   * Load Properties from specific file.
    *
    * @return a property list with values in file.
    */

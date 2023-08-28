@@ -21,8 +21,8 @@ package org.apache.iotdb.it.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.modification.Deletion;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -69,7 +69,7 @@ public class TsFileGenerator implements AutoCloseable {
 
   public void registerTimeseries(String path, List<MeasurementSchema> measurementSchemaList) {
     if (device2MeasurementSchema.containsKey(path)) {
-      logger.error(String.format("Register same device %s.", path));
+      logger.error("Register same device {}.", path);
       return;
     }
     writer.registerTimeseries(new Path(path), measurementSchemaList);
@@ -80,7 +80,7 @@ public class TsFileGenerator implements AutoCloseable {
   public void registerAlignedTimeseries(String path, List<MeasurementSchema> measurementSchemaList)
       throws WriteProcessException {
     if (device2MeasurementSchema.containsKey(path)) {
-      logger.error(String.format("Register same device %s.", path));
+      logger.error("Register same device {}.", path);
       return;
     }
     writer.registerAlignedTimeseries(new Path(path), measurementSchemaList);
@@ -126,7 +126,7 @@ public class TsFileGenerator implements AutoCloseable {
       tablet.reset();
     }
 
-    logger.info(String.format("Write %d points into device %s", number, device));
+    logger.info("Write {} points into device {}", number, device);
   }
 
   public void generateData(
@@ -255,8 +255,7 @@ public class TsFileGenerator implements AutoCloseable {
         for (long j = startTime; j <= endTime; j++) {
           timeSet.remove(j);
         }
-        logger.info(
-            String.format("Delete %d - %d timestamp of device %s", startTime, endTime, device));
+        logger.info("Delete {} - {} timestamp of device {}", startTime, endTime, device);
       }
     }
   }

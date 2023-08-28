@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.it.udf;
 
-import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -251,6 +251,35 @@ public class IoTDBUDTFHybridQueryIT {
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testNestedMappableAndNonMappableUDF() {
+    String[] retArray =
+        new String[] {
+          "0,0", "1,1", "2,2",
+        };
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select abs(m4(s1, \"windowSize\" = \"1\")) from root.vehicle.d1 where time <=2")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(resultSet.getMetaData().getColumnName(2));
+          assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
+    } catch (SQLException throwable) {
+      throwable.printStackTrace();
+      fail(throwable.getMessage());
     }
   }
 }

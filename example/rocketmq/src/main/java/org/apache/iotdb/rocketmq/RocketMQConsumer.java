@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.rocketmq;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -41,7 +42,7 @@ import java.util.List;
 public class RocketMQConsumer {
 
   private static final Logger logger = LoggerFactory.getLogger(RocketMQConsumer.class);
-  private static Session session;
+  private Session session;
   private DefaultMQPushConsumer consumer;
   private String producerGroup;
   private String serverAddresses;
@@ -141,6 +142,7 @@ public class RocketMQConsumer {
         case BOOLEAN:
           values.add(Boolean.parseBoolean(valuesStr[i]));
           break;
+        default:
       }
     }
 

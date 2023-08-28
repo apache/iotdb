@@ -31,11 +31,8 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        java: [ 8, 11, 17 ]
+        java: [11]
         os: [ ubuntu-latest, windows-latest ]
-        include:
-          - java: 8
-            os: macos-latest
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -51,8 +48,6 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
-      - name: Check Apache Rat
-        run: mvn -B apache-rat:check -P site -P code-coverage
       - name: Adjust network dynamic TCP ports range
         if: ${{ runner.os == 'Windows' }}
         shell: pwsh
@@ -65,16 +60,17 @@ jobs:
         if: ${{ runner.os == 'Linux' }}
         shell: bash
         run: sudo sysctl -w net.core.somaxconn=65535
-      - name: Adjust Mac kernel somaxconn
-        if: ${{ runner.os == 'macOS' }}
-        shell: bash
-        run: sudo sysctl -w kern.ipc.somaxconn=65535
+#      - name: Adjust Mac kernel somaxconn
+#        if: ${{ runner.os == 'macOS' }}
+#        shell: bash
+#        run: sudo sysctl -w kern.ipc.somaxconn=65535
       - name: IT/UT Test
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
         # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
         run: |
           mvn clean verify \
+          -P with-integration-tests \
           -DskipUTs \
           -DintegrationTest.forkCount=2 \
           -pl integration-test \

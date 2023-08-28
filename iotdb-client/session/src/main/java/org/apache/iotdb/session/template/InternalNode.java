@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.session.template;
 
 import org.apache.iotdb.isession.template.TemplateNode;
@@ -49,6 +50,7 @@ public class InternalNode extends TemplateNode {
     }
   }
 
+  @Override
   public Map<String, TemplateNode> getChildren() {
     return children;
   }

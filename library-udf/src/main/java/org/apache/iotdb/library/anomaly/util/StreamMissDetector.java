@@ -33,7 +33,7 @@ public class StreamMissDetector {
   private final LongCircularQueue timeBuffer = new LongCircularQueue();
   private final BooleanCircularQueue labelBuffer = new BooleanCircularQueue();
   private final SimpleRegression regression = new SimpleRegression();
-  private final double threshold = 0.9999;
+  private static final double THRESHOLD = 0.9999;
   private int minLength;
   private int state;
   private long startTime;
@@ -58,7 +58,7 @@ public class StreamMissDetector {
         if (timeWindow.getSize() >= getWindowSize()) {
           linearRegress(0, getWindowSize());
           double alpha = regression.getRSquare();
-          if (Double.isNaN(alpha) || alpha > threshold) {
+          if (Double.isNaN(alpha) || alpha > THRESHOLD) {
             missingStartIndex = 0;
             state = 2;
           } else {
@@ -71,7 +71,7 @@ public class StreamMissDetector {
         if (timeWindow.getSize() >= getWindowSize() * 2) {
           linearRegress(getWindowSize(), getWindowSize() * 2);
           double alpha = regression.getRSquare();
-          if (Double.isNaN(alpha) || alpha > threshold) {
+          if (Double.isNaN(alpha) || alpha > THRESHOLD) {
             missingStartIndex = backExtend();
             state = 2;
           } else {
@@ -86,9 +86,9 @@ public class StreamMissDetector {
         }
         break;
       case 2:
-        regression.addData(time - startTime, value);
+        regression.addData((double) time - startTime, value);
         double alpha = regression.getRSquare();
-        if ((horizon && value != standard) || (!horizon && alpha < threshold)) {
+        if ((horizon && value != standard) || (!horizon && alpha < THRESHOLD)) {
           int missingEndIndex = timeWindow.getSize() - 1;
           for (int i = 0; i < missingStartIndex; i++) {
             timeBuffer.push(timeWindow.pop());
@@ -104,6 +104,9 @@ public class StreamMissDetector {
           regression.clear();
           state = 0;
         }
+        break;
+      default:
+        break;
     }
   }
 
@@ -129,6 +132,9 @@ public class StreamMissDetector {
           labelBuffer.push(label);
           valueWindow.pop();
         }
+        break;
+      default:
+        break;
     }
   }
 
@@ -138,20 +144,20 @@ public class StreamMissDetector {
     int bindex = getWindowSize();
     while (bindex > 0) {
       bindex--;
-      regression.addData(timeWindow.get(bindex) - startTime, valueWindow.get(bindex));
+      regression.addData((double) timeWindow.get(bindex) - startTime, valueWindow.get(bindex));
       double alpha = regression.getRSquare();
-      if ((horizon && valueWindow.get(bindex) != standard) || (!horizon && alpha < threshold)) {
+      if ((horizon && valueWindow.get(bindex) != standard) || (!horizon && alpha < THRESHOLD)) {
         break;
       }
     }
-    regression.removeData(timeWindow.get(bindex) - startTime, valueWindow.get(bindex));
+    regression.removeData((double) timeWindow.get(bindex) - startTime, valueWindow.get(bindex));
     return bindex + 1;
   }
 
   private void linearRegress(int start, int end) {
     double[][] data = new double[getWindowSize()][2];
     for (int i = start; i < end; i++) {
-      data[i - start][0] = timeWindow.get(i) - startTime;
+      data[i - start][0] = (double) timeWindow.get(i) - startTime;
       data[i - start][1] = valueWindow.get(i);
     }
     regression.addData(data);

@@ -15,6 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.iotdb.flink;
 
 import org.apache.iotdb.flink.tsfile.RowTSRecordConverter;
@@ -33,6 +34,8 @@ import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.tuple.Tuple7;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.types.Row;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -42,6 +45,8 @@ import java.util.stream.Collectors;
 
 /** The example of writing to TsFile via Flink DataSet API. */
 public class FlinkTsFileBatchSink {
+
+  private static Logger logger = LoggerFactory.getLogger(FlinkTsFileBatchSink.class);
 
   public static final String DEFAULT_TEMPLATE = "template";
 
@@ -72,20 +77,20 @@ public class FlinkTsFileBatchSink {
     RowTSRecordConverter converter = new RowTSRecordConverter(rowTypeInfo);
     TSRecordOutputFormat<Row> outputFormat = new TSRecordOutputFormat<>(schema, converter);
 
-    List<Tuple7> data = new ArrayList<>(7);
-    data.add(new Tuple7(1L, 2L, 3L, 4L, 5L, 6L, 7L));
-    data.add(new Tuple7(2L, 3L, 4L, 5L, 6L, 7L, 8L));
-    data.add(new Tuple7(3L, 4L, 5L, 6L, 7L, 8L, 9L));
-    data.add(new Tuple7(4L, 5L, 6L, 7L, 8L, 9L, 10L));
-    data.add(new Tuple7(6L, 6L, 7L, 8L, 9L, 10L, 11L));
-    data.add(new Tuple7(7L, 7L, 8L, 9L, 10L, 11L, 12L));
-    data.add(new Tuple7(8L, 8L, 9L, 10L, 11L, 12L, 13L));
+    List<Tuple7<Long, Long, Long, Long, Long, Long, Long>> data = new ArrayList<>(7);
+    data.add(new Tuple7<>(1L, 2L, 3L, 4L, 5L, 6L, 7L));
+    data.add(new Tuple7<>(2L, 3L, 4L, 5L, 6L, 7L, 8L));
+    data.add(new Tuple7<>(3L, 4L, 5L, 6L, 7L, 8L, 9L));
+    data.add(new Tuple7<>(4L, 5L, 6L, 7L, 8L, 9L, 10L));
+    data.add(new Tuple7<>(6L, 6L, 7L, 8L, 9L, 10L, 11L));
+    data.add(new Tuple7<>(7L, 7L, 8L, 9L, 10L, 11L, 12L));
+    data.add(new Tuple7<>(8L, 8L, 9L, 10L, 11L, 12L, 13L));
 
     ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
     // If the parallelism > 1, flink create a directory and each subtask will create a tsfile under
     // the directory.
     env.setParallelism(1);
-    DataSet<Tuple7> source =
+    DataSet<Tuple7<Long, Long, Long, Long, Long, Long, Long>> source =
         env.fromCollection(
             data,
             Types.TUPLE(
@@ -117,7 +122,7 @@ public class FlinkTsFileBatchSink {
             .collect(Collectors.toList());
     String[] result = TsFileUtils.readTsFile(path, paths);
     for (String row : result) {
-      System.out.println(row);
+      logger.info(row);
     }
   }
 }

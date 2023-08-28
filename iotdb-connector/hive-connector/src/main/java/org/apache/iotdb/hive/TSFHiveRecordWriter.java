@@ -19,7 +19,6 @@
 package org.apache.iotdb.hive;
 
 import org.apache.iotdb.hadoop.fileSystem.HDFSOutput;
-import org.apache.iotdb.hadoop.tsfile.TSFRecordWriter;
 import org.apache.iotdb.hadoop.tsfile.record.HDFSTSRecord;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
@@ -40,7 +39,7 @@ import java.io.IOException;
  */
 public class TSFHiveRecordWriter implements FileSinkOperator.RecordWriter {
 
-  private static final Logger logger = LoggerFactory.getLogger(TSFRecordWriter.class);
+  private static final Logger logger = LoggerFactory.getLogger(TSFHiveRecordWriter.class);
 
   private TsFileWriter writer;
 

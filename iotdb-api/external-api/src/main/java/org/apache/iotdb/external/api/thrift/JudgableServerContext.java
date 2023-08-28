@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.external.api.thrift;
 
 import org.apache.thrift.server.ServerContext;
@@ -29,7 +30,11 @@ public interface JudgableServerContext extends ServerContext {
    */
   boolean whenConnect();
 
-  /** @return false if we do not allow this connection */
+  /**
+   * this method will be called when a client disconnects to the IoTDB server.
+   *
+   * @return false if we do not allow this connection
+   */
   boolean whenDisconnect();
 
   @Override
@@ -40,5 +45,5 @@ public interface JudgableServerContext extends ServerContext {
   @Override
   default boolean isWrapperFor(Class<?> iface) {
     return false;
-  };
+  }
 }

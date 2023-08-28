@@ -38,10 +38,9 @@
   <allow pkg="org\.apache\.iotdb\.tools.*" regex="true"/>
   <subpackage name="db.it">
     <disallow pkg="org.apache.iotdb.jdbc.*"/>
-    <allow class="org.apache.iotdb.db.constant.TestConstant" />
-    <allow class="org.apache.iotdb.db.tools.watermark.WatermarkDetector" />
+    <allow class="org.apache.iotdb.db.utils.constant.TestConstant" />
     <allow class="org.apache.iotdb.db.utils.MathUtils" />
-    <allow class="org.apache.iotdb.db.wal.utils.WALMode" />
+    <allow class="org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode" />
     <allow class="org.fusesource.mqtt.client.QoS" />
     <allow class="org.apache.iotdb.commons.path.PartialPath" />
     <allow pkg="java.text"/>
@@ -67,7 +66,7 @@
     <allow class="org.apache.iotdb.commons.exception.IllegalPathException" />
     <allow class="org.apache.commons.codec.digest.DigestUtils" />
     <allow class="org.apache.iotdb.commons.trigger.service.TriggerExecutableManager" />
-    <allow class="org.apache.iotdb.db.mpp.plan.statement.AuthorType" />
+    <allow class="org.apache.iotdb.db.queryengine.plan.statement.AuthorType" />
     <allow class="org.apache.iotdb.commons.trigger.TriggerInformation" />
     <allow class="org.apache.iotdb.commons.udf.UDFInformation" />
     <allow class="org.apache.iotdb.commons.cq.CQState" />
@@ -88,7 +87,7 @@
   <subpackage name="session.it">
     <allow class="org.apache.iotdb.commons.conf.IoTDBConstant" />
     <allow class="org.apache.iotdb.db.conf.IoTDBDescriptor" />
-    <allow class="org.apache.iotdb.db.conf.OperationType" />
+    <allow class="org.apache.iotdb.db.protocol.thrift.OperationType" />
     <allow class="org.apache.iotdb.db.it.utils.AlignedWriteUtil" />
     <allow class="org.apache.iotdb.commons.cluster.NodeStatus" />
     <allow class="org.apache.iotdb.tsfile.common.constant.TsFileConstant" />

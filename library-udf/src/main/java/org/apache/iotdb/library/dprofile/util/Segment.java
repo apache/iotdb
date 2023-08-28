@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.library.dprofile.util;
 
 import org.apache.iotdb.library.util.LinearRegression;
@@ -25,10 +26,15 @@ import org.apache.commons.lang3.ArrayUtils;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 /** Util for segment. */
 public class Segment {
-  private static double calculate_error(double[] y1, double[] y2) throws Exception {
+  private Segment() {
+    throw new IllegalStateException("Utility class");
+  }
+
+  private static double calculateError(double[] y1, double[] y2) throws Exception {
     double[] y = ArrayUtils.addAll(y1, y2);
     int l = y.length;
     double[] x = new double[l];
@@ -39,123 +45,120 @@ public class Segment {
     return linearFit.getMAbsE();
   }
 
-  public static ArrayList<double[]> bottom_up(double[] value, double max_error) throws Exception {
-    ArrayList<double[]> seg_ts = new ArrayList<>();
+  public static List<double[]> bottomUp(double[] value, double maxError) throws Exception {
+    List<double[]> segTs = new ArrayList<>();
     if (value.length <= 3) {
-      ArrayList<double[]> ret = new ArrayList<>();
+      List<double[]> ret = new ArrayList<>();
       ret.add(value);
       return ret;
     }
     if (value.length % 2 == 0) {
       for (int i = 0; i < value.length; i += 2) {
-        seg_ts.add(Arrays.copyOfRange(value, i, i + 2));
+        segTs.add(Arrays.copyOfRange(value, i, i + 2));
       }
     } else {
       for (int i = 0; i < value.length - 3; i += 2) {
-        seg_ts.add(Arrays.copyOfRange(value, i, i + 2));
+        segTs.add(Arrays.copyOfRange(value, i, i + 2));
       }
-      seg_ts.add(Arrays.copyOfRange(value, value.length - 3, value.length));
+      segTs.add(Arrays.copyOfRange(value, value.length - 3, value.length));
     }
-    ArrayList<Double> merge_cost = new ArrayList<>();
-    for (int i = 0; i < seg_ts.size() - 1; i++) {
-      merge_cost.add(calculate_error(seg_ts.get(i), seg_ts.get(i + 1)));
+    ArrayList<Double> mergeCost = new ArrayList<>();
+    for (int i = 0; i < segTs.size() - 1; i++) {
+      mergeCost.add(calculateError(segTs.get(i), segTs.get(i + 1)));
     }
-    while (Collections.min(merge_cost) < max_error) {
-      int index = merge_cost.indexOf(Collections.min(merge_cost));
-      seg_ts.set(index, ArrayUtils.addAll(seg_ts.get(index), seg_ts.get(index + 1)));
-      seg_ts.remove(index + 1);
-      merge_cost.remove(index);
-      if (seg_ts.size() == 1) {
+    while (Collections.min(mergeCost) < maxError) {
+      int index = mergeCost.indexOf(Collections.min(mergeCost));
+      segTs.set(index, ArrayUtils.addAll(segTs.get(index), segTs.get(index + 1)));
+      segTs.remove(index + 1);
+      mergeCost.remove(index);
+      if (segTs.size() == 1) {
         break;
       }
-      if (index + 1 < seg_ts.size()) {
-        merge_cost.set(index, calculate_error(seg_ts.get(index), seg_ts.get(index + 1)));
+      if (index + 1 < segTs.size()) {
+        mergeCost.set(index, calculateError(segTs.get(index), segTs.get(index + 1)));
       }
       if (index > 0) {
-        merge_cost.set(index - 1, calculate_error(seg_ts.get(index - 1), seg_ts.get(index)));
+        mergeCost.set(index - 1, calculateError(segTs.get(index - 1), segTs.get(index)));
       }
     }
-    return seg_ts;
+    return segTs;
   }
 
-  private static double[] best_line(
-      double max_error, double[] input_df, double[] w, int start_idx, double upper_bound)
+  private static double[] bestLine(
+      double maxError, double[] inputDf, double[] w, int startIdx, double upperBound)
       throws Exception {
     double error = 0.0;
-    int idx = start_idx + w.length;
-    double[] S_prev = w.clone();
-    if (idx >= input_df.length) {
-      return S_prev;
+    int idx = startIdx + w.length;
+    double[] sPrev = w.clone();
+    if (idx >= inputDf.length) {
+      return sPrev;
     }
-    while (error <= max_error) {
-      double[] S = ArrayUtils.addAll(S_prev, input_df[idx]);
+    while (error <= maxError) {
+      double[] s = ArrayUtils.addAll(sPrev, inputDf[idx]);
       idx++;
-      double[] times = new double[S.length];
+      double[] times = new double[s.length];
       for (int i = 0; i < times.length; i++) {
         times[i] = i;
       }
-      error = new LinearRegression(times, S).getMAbsE();
-      if (error <= max_error) {
-        S_prev = S.clone();
+      error = new LinearRegression(times, s).getMAbsE();
+      if (error <= maxError) {
+        sPrev = s.clone();
       }
-      if (S_prev.length > upper_bound || idx >= input_df.length) {
+      if (sPrev.length > upperBound || idx >= inputDf.length) {
         break;
       }
     }
-    return S_prev;
+    return sPrev;
   }
 
-  public static double[] approximated_segment(double[] in_seq) throws Exception {
-    if (in_seq.length <= 2) {
-      return in_seq;
+  public static double[] approximatedSegment(double[] inSeq) throws Exception {
+    if (inSeq.length <= 2) {
+      return inSeq;
     }
-    double[] times = new double[in_seq.length];
+    double[] times = new double[inSeq.length];
     for (int i = 0; i < times.length; i++) {
       times[i] = i;
     }
-    return new LinearRegression(times, in_seq).getYhead();
+    return new LinearRegression(times, inSeq).getYhead();
   }
 
-  private static ArrayList<double[]> swab(
-      double[] input_df, double max_error, int seg_num, int in_window_size) throws Exception {
-    int cur_nr = 0;
-    int w_nr = cur_nr + in_window_size;
-    int tot_size = input_df.length;
-    double[] w = Arrays.copyOfRange(input_df, cur_nr, w_nr);
-    int lower_bound = w_nr / 2;
-    int upper_bound = 2 * w_nr;
-    ArrayList<double[]> seg_ts = new ArrayList<>();
-    boolean last_run = false;
+  private static List<double[]> swab(double[] inputDf, double maxError, int inWindowSize)
+      throws Exception {
+    int curNr = 0;
+    int wNr = curNr + inWindowSize;
+    int totSize = inputDf.length;
+    double[] w = Arrays.copyOfRange(inputDf, curNr, wNr);
+    int upperBound = 2 * wNr;
+    List<double[]> segTs = new ArrayList<>();
+    boolean lastRun = false;
     while (true) {
-      ArrayList<double[]> T = bottom_up(w, max_error);
-      seg_ts.add(T.get(0));
-      if (cur_nr >= tot_size || last_run) {
-        if (T.size() > 1) {
-          seg_ts.add(approximated_segment(T.get(1)));
+      List<double[]> t = bottomUp(w, maxError);
+      segTs.add(t.get(0));
+      if (curNr >= totSize || lastRun) {
+        if (t.size() > 1) {
+          segTs.add(approximatedSegment(t.get(1)));
         }
         break;
       }
-      cur_nr += T.get(0).length - 1;
-      w_nr = cur_nr + in_window_size;
-      if (input_df.length <= w_nr) {
-        w_nr = -1;
-        last_run = true;
-        w = Arrays.copyOfRange(input_df, cur_nr, input_df.length);
+      curNr += t.get(0).length - 1;
+      wNr = curNr + inWindowSize;
+      if (inputDf.length <= wNr) {
+        lastRun = true;
+        w = Arrays.copyOfRange(inputDf, curNr, inputDf.length);
       } else {
-        w = Arrays.copyOfRange(input_df, cur_nr, w_nr);
+        w = Arrays.copyOfRange(inputDf, curNr, wNr);
       }
       Arrays.sort(w);
-      w = best_line(max_error, input_df, w, cur_nr, upper_bound);
-      if (w.length > upper_bound) {
-        w = Arrays.copyOfRange(w, 0, upper_bound);
+      w = bestLine(maxError, inputDf, w, curNr, upperBound);
+      if (w.length > upperBound) {
+        w = Arrays.copyOfRange(w, 0, upperBound);
       }
     }
-    return seg_ts;
+    return segTs;
   }
 
-  public static ArrayList<double[]> swab_alg(
-      double[] df, long[] timestamp, double max_error, int windowsize) throws Exception {
-    ArrayList<double[]> res_df1 = swab(df, max_error, 10, windowsize);
-    return res_df1;
+  public static List<double[]> swabAlg(double[] df, double maxError, int windowsize)
+      throws Exception {
+    return swab(df, maxError, windowsize);
   }
 }

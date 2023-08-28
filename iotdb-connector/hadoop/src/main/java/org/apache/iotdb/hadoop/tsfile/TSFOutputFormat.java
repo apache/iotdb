@@ -35,7 +35,7 @@ import java.util.Objects;
 public class TSFOutputFormat extends FileOutputFormat<NullWritable, HDFSTSRecord> {
 
   private static final Logger logger = LoggerFactory.getLogger(TSFOutputFormat.class);
-  private static final String extension = "";
+  private static final String EXTENSION = "";
   private static Schema schema;
 
   public static Schema getSchema() {
@@ -50,7 +50,7 @@ public class TSFOutputFormat extends FileOutputFormat<NullWritable, HDFSTSRecord
   public RecordWriter<NullWritable, HDFSTSRecord> getRecordWriter(TaskAttemptContext job)
       throws IOException {
 
-    Path outputPath = getDefaultWorkFile(job, extension);
+    Path outputPath = getDefaultWorkFile(job, EXTENSION);
     logger.info(
         "The task attempt id is {}, the output path is {}", job.getTaskAttemptID(), outputPath);
     return new TSFRecordWriter(job, outputPath, Objects.requireNonNull(schema));

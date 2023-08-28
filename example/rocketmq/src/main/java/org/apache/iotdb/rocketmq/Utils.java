@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.rocketmq;
 
 public class Utils {
@@ -24,7 +25,7 @@ public class Utils {
     throw new IllegalStateException("Utility class");
   }
 
-  public static int ConvertStringToInteger(String device) {
+  public static int convertStringToInteger(String device) {
     int sum = 0;
     for (char c : device.toCharArray()) {
       sum += c;

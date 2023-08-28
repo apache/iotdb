@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.isession;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -41,6 +42,7 @@ public class SessionDataSet implements AutoCloseable {
 
   private final IoTDBRpcDataSet ioTDBRpcDataSet;
 
+  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
   public SessionDataSet(
       String sql,
       List<String> columnNameList,
@@ -70,6 +72,7 @@ public class SessionDataSet implements AutoCloseable {
             0);
   }
 
+  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
   public SessionDataSet(
       String sql,
       List<String> columnNameList,
@@ -100,6 +103,7 @@ public class SessionDataSet implements AutoCloseable {
             timeout);
   }
 
+  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
   public SessionDataSet(
       String sql,
       List<String> columnNameList,
@@ -243,7 +247,7 @@ public class SessionDataSet implements AutoCloseable {
       return ioTDBRpcDataSet.isNull(columnIndex);
     }
 
-    public boolean isNull(String columnName) throws StatementExecutionException {
+    public boolean isNull(String columnName) {
       return ioTDBRpcDataSet.isNull(columnName);
     }
 

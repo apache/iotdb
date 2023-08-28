@@ -118,24 +118,24 @@ public class UDAFPeriod implements UDTF {
     return corr;
   }
 
-  /** auto correlation (pearson of subseries) */
+  /** auto correlation (pearson of subseries). */
   private double pearson(double[] x, int subLength) {
-    double sum_x = 0;
-    double sum_y = 0;
-    double sum_xx = 0;
-    double sum_yy = 0;
-    double sum_xy = 0;
+    double sumX = 0;
+    double sumY = 0;
+    double sumXX = 0;
+    double sumYY = 0;
+    double sumXY = 0;
     int s1 = 0;
     int s2 = x.length - subLength;
     for (int i = 0; i < subLength; i++) {
-      sum_x += x[s1 + i];
-      sum_y += x[s2 + i];
-      sum_xx += x[s1 + i] * x[s1 + i];
-      sum_yy += x[s2 + i] * x[s2 + i];
-      sum_xy += x[s1 + i] * x[s2 + i];
+      sumX += x[s1 + i];
+      sumY += x[s2 + i];
+      sumXX += x[s1 + i] * x[s1 + i];
+      sumYY += x[s2 + i] * x[s2 + i];
+      sumXY += x[s1 + i] * x[s2 + i];
     }
-    return (subLength * sum_xy - sum_x * sum_y)
-        / Math.sqrt(subLength * sum_xx - sum_x * sum_x)
-        / Math.sqrt(subLength * sum_yy - sum_y * sum_y);
+    return (subLength * sumXY - sumX * sumY)
+        / Math.sqrt(subLength * sumXX - sumX * sumX)
+        / Math.sqrt(subLength * sumYY - sumY * sumY);
   }
 }

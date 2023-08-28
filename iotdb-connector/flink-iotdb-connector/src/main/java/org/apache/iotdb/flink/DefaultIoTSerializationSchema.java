@@ -80,6 +80,8 @@ public class DefaultIoTSerializationSchema implements IoTSerializationSchema<Map
         case BOOLEAN:
           values.add(Boolean.parseBoolean(valuesStr[i]));
           break;
+        default:
+          continue;
       }
     }
 

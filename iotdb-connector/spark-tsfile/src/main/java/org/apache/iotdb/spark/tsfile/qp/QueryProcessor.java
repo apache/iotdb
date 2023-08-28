@@ -129,7 +129,7 @@ public class QueryProcessor {
       return ret;
     }
     // a list of conjunctions linked by or
-    return filterOperator.childOperators;
+    return filterOperator.getChildOperators();
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -169,16 +169,13 @@ public class QueryProcessor {
                 "The same key filter has been specified more than once: " + singlePath);
           }
         } else {
-          switch (child.getSinglePath()) {
-            case SQLConstant.RESERVED_TIME:
-              if (timeFilter != null) {
-                throw new QueryOperatorException("time filter has been specified more than once");
-              }
-              timeFilter = child;
-              break;
-            default:
-              valueList.add(child);
-              break;
+          if (SQLConstant.RESERVED_TIME.equals(child.getSinglePath())) {
+            if (timeFilter != null) {
+              throw new QueryOperatorException("time filter has been specified more than once");
+            }
+            timeFilter = child;
+          } else {
+            valueList.add(child);
           }
         }
       }
@@ -189,7 +186,7 @@ public class QueryProcessor {
 
     } else if (valueList.size() > 1) {
       valueFilter = new FilterOperator(SQLConstant.KW_AND, false);
-      valueFilter.childOperators = valueList;
+      valueFilter.setChildOperators(valueList);
     }
 
     return new SingleQuery(columnFilterOperators, timeFilter, valueFilter);

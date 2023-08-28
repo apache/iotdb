@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cli;
 
+import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.cli.utils.JlineUtils;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 
@@ -65,10 +66,14 @@ public class IoTDBSyntaxHighlighter implements Highlighter {
   }
 
   @Override
-  public void setErrorPattern(Pattern errorPattern) {}
+  public void setErrorPattern(Pattern errorPattern) {
+    IoTPrinter.print("");
+  }
 
   @Override
-  public void setErrorIndex(int errorIndex) {}
+  public void setErrorIndex(int errorIndex) {
+    IoTPrinter.print("");
+  }
 
   private boolean isKeyword(String token) {
     return JlineUtils.SQL_KEYWORDS.contains(token.toUpperCase());

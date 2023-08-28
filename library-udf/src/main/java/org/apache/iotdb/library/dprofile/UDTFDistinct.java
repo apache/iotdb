@@ -85,6 +85,9 @@ public class UDTFDistinct implements UDTF {
         break;
       case BOOLEAN:
         booleanSet = new BooleanHashSet();
+        break;
+      default:
+        break;
     }
   }
 
@@ -108,6 +111,9 @@ public class UDTFDistinct implements UDTF {
         break;
       case BOOLEAN:
         booleanSet.add(row.getBoolean(0));
+        break;
+      default:
+        break;
     }
   }
 
@@ -155,6 +161,9 @@ public class UDTFDistinct implements UDTF {
           pc.putBoolean(i, booleanIterator.next());
           i++;
         }
+        break;
+      default:
+        break;
     }
   }
 
@@ -178,6 +187,9 @@ public class UDTFDistinct implements UDTF {
         break;
       case BOOLEAN:
         booleanSet.clear();
+        break;
+      default:
+        break;
     }
   }
 }

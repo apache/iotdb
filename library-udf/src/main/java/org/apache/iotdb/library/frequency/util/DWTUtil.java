@@ -16,16 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.library.frequency.util;
 
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
-/** Util for UDTFDWT and UDTFIDWT */
+/** Util for UDTFDWT and UDTFIDWT. */
 public class DWTUtil {
   /** The number of coefficients. */
   private int ncof;
-  /** layers to decompose，When transforming, point numbers should be no less than ncof */
+  /** layers to decompose，When transforming, point numbers should be no less than ncof. */
   private int layer;
   /** Centering. */
   private int ioff;
@@ -37,13 +38,13 @@ public class DWTUtil {
 
   private double[] cr;
 
-  /** Data storage */
+  /** Data storage. */
   private double[] data;
 
   /** Workspace. */
   private double[] workspace = new double[1024];
 
-  public DWTUtil(String method, String coef, int layer, ArrayList<Double> data) {
+  public DWTUtil(String method, String coef, int layer, List<Double> data) {
     this.data = data.stream().mapToDouble(Double::valueOf).toArray();
     this.layer = layer;
     if (method.equalsIgnoreCase("Haar") || method.equalsIgnoreCase("DB2")) {
@@ -96,6 +97,7 @@ public class DWTUtil {
   public static boolean isPower2(int x) {
     return x > 0 && (x & (x - 1)) == 0;
   }
+
   /**
    * Log of base 2.
    *

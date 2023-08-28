@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile;
 
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -35,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -49,8 +51,12 @@ public class TsFileWriteAlignedWithTSRecord {
 
   public static void main(String[] args) throws IOException {
     File f = FSFactoryProducer.getFSFactory().getFile("alignedRecord.tsfile");
-    if (f.exists() && !f.delete()) {
-      throw new RuntimeException("can not delete " + f.getAbsolutePath());
+    if (f.exists()) {
+      try {
+        Files.delete(f.toPath());
+      } catch (IOException e) {
+        throw new IOException("can not delete " + f.getAbsolutePath());
+      }
     }
 
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
@@ -62,12 +68,8 @@ public class TsFileWriteAlignedWithTSRecord {
       // register timeseries
       tsFileWriter.registerAlignedTimeseries(new Path(DEVICE_1), measurementSchemas);
 
-      List<IMeasurementSchema> writeMeasurementScheams = new ArrayList<>();
       // example1
-      writeMeasurementScheams.add(measurementSchemas.get(0));
-      writeMeasurementScheams.add(measurementSchemas.get(1));
-      writeMeasurementScheams.add(measurementSchemas.get(2));
-      writeAligned(tsFileWriter, DEVICE_1, writeMeasurementScheams, 1000000, 0, 0);
+      writeAligned(tsFileWriter, DEVICE_1, measurementSchemas, 1000000, 0, 0);
     } catch (WriteProcessException e) {
       logger.error("write TSRecord failed", e);
     }
@@ -76,7 +78,7 @@ public class TsFileWriteAlignedWithTSRecord {
   private static void writeAligned(
       TsFileWriter tsFileWriter,
       String deviceId,
-      List<IMeasurementSchema> schemas,
+      List<MeasurementSchema> schemas,
       long rowSize,
       long startTime,
       long startValue)

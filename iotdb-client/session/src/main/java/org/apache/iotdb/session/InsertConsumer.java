@@ -26,6 +26,6 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 @FunctionalInterface
 public interface InsertConsumer<T> {
 
-  void insert(SessionConnection connection, T record)
+  void insert(SessionConnection connection, T recordReq)
       throws IoTDBConnectionException, StatementExecutionException, RedirectException;
 }

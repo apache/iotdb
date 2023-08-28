@@ -33,6 +33,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.io.File;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -57,6 +58,16 @@ public class IoTDBUDFManagementIT {
   private static final String FUNCTION_TYPE_NATIVE = "native";
   private static final String FUNCTION_TYPE_BUILTIN_UDTF = "built-in UDTF";
   private static final String FUNCTION_TYPE_EXTERNAL_UDTF = "external UDTF";
+
+  private static final String UDF_LIB_PREFIX =
+      System.getProperty("user.dir")
+          + File.separator
+          + "target"
+          + File.separator
+          + "test-classes"
+          + File.separator;
+
+  private static final String UDF_JAR_PREFIX = new File(UDF_LIB_PREFIX).toURI().toString();
 
   @Before
   public void setUp() throws Exception {
@@ -217,14 +228,45 @@ public class IoTDBUDFManagementIT {
   }
 
   @Test
+  public void testCreateFunctionWithURI() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format(
+              "create function udf as 'org.apache.iotdb.db.query.udf.example.Adder' using URI '%s'",
+              UDF_JAR_PREFIX + "udf-example.jar"));
+
+      statement.execute(
+          String.format(
+              "create function udf1 as 'org.apache.iotdb.db.query.udf.example.Adder' using URI '%s'",
+              UDF_JAR_PREFIX + "udf-example.jar"));
+
+      try (ResultSet resultSet = statement.executeQuery("show functions")) {
+        int count = 0;
+        while (resultSet.next()) {
+          ++count;
+        }
+        Assert.assertEquals(
+            2 + NATIVE_FUNCTIONS_COUNT + BUILTIN_FUNCTIONS_COUNT + BUILTIN_SCALAR_FUNCTIONS_COUNT,
+            count);
+        assertEquals(3, resultSet.getMetaData().getColumnCount());
+        statement.execute("drop function udf");
+        statement.execute("drop function udf1");
+      } catch (Exception e) {
+        fail();
+      }
+    }
+  }
+
+  @Test
   public void testCreateFunctionWithInvalidURI() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try {
         statement.execute(
             String.format(
-                "create stateless trigger %s before insert on root.test.stateless.* as '%s' using URI '%s' with (\"name\"=\"%s\")",
-                "a", "org.apache.iotdb.test", "", "test"));
+                "create function udf as 'org.apache.iotdb.db.query.udf.example.Adder' using URI '%s'",
+                ""));
         fail();
       } catch (Exception e) {
         assertTrue(e.getMessage().contains("URI"));
@@ -233,8 +275,8 @@ public class IoTDBUDFManagementIT {
       try {
         statement.execute(
             String.format(
-                "create stateless trigger %s before insert on root.test.stateless.* as '%s' using URI '%s' with (\"name\"=\"%s\")",
-                "a", "org.apache.iotdb.test", "file:///data/udf/upload-test.jar", "test"));
+                "create function udf as 'org.apache.iotdb.db.query.udf.example.Adder' using URI '%s'",
+                "file:///data/udf/upload-test.jar"));
         fail();
       } catch (Exception e) {
         assertTrue(e.getMessage().contains("URI"));

@@ -15,6 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.iotdb.flink;
 
 import org.apache.iotdb.flink.tsfile.RowRowRecordParser;
@@ -27,9 +28,10 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.datastream.DataStreamUtils;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.types.Row;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.Arrays;
@@ -40,7 +42,9 @@ import java.util.stream.Collectors;
 /** The example of reading TsFile via Flink DataStream API. */
 public class FlinkTsFileStreamSource {
 
-  public static void main(String[] args) {
+  private static Logger logger = LoggerFactory.getLogger(FlinkTsFileStreamSource.class);
+
+  public static void main(String[] args) throws Exception {
     String path = "test.tsfile";
     TsFileUtils.writeTsFile(path);
     new File(path).deleteOnExit();
@@ -71,9 +75,10 @@ public class FlinkTsFileStreamSource {
     inputFormat.setFilePath("source.tsfile");
     DataStream<Row> source = senv.createInput(inputFormat);
     DataStream<String> rowString = source.map(Row::toString);
-    Iterator<String> result = DataStreamUtils.collect(rowString);
+    Iterator<String> result = rowString.executeAndCollect();
     while (result.hasNext()) {
-      System.out.println(result.next());
+      String next = result.next();
+      logger.info(next);
     }
   }
 }

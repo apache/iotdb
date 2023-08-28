@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.pipe.api;
 
-import org.apache.iotdb.pipe.api.customizer.PipeParameterValidator;
-import org.apache.iotdb.pipe.api.customizer.PipeParameters;
-import org.apache.iotdb.pipe.api.customizer.connector.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -46,7 +46,7 @@ import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
  *       PipeConnector#handshake()} will be called to create a connection with sink.
  *   <li>While the collaboration task is in progress:
  *       <ul>
- *         <li>PipeCollector captures the events and wraps them into three types of Event instances.
+ *         <li>PipeExtractor captures the events and wraps them into three types of Event instances.
  *         <li>PipeProcessor processes the event and then passes them to the PipeConnector.
  *         <li>PipeConnector serializes the events into binaries and send them to sinks. The
  *             following 3 methods will be called: {@link
@@ -127,10 +127,15 @@ public interface PipeConnector extends PipePlugin {
    * @throws PipeConnectionException if the connection is broken
    * @throws Exception the user can throw errors if necessary
    */
-  void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception;
+  default void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
+    for (final TabletInsertionEvent tabletInsertionEvent :
+        tsFileInsertionEvent.toTabletInsertionEvents()) {
+      transfer(tabletInsertionEvent);
+    }
+  }
 
   /**
-   * This method is used to transfer the Event.
+   * This method is used to transfer the generic events, including HeartbeatEvent.
    *
    * @param event Event to be transferred
    * @throws PipeConnectionException if the connection is broken

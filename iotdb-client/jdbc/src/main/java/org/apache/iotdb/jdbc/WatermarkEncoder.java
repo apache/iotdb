@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -31,5 +32,5 @@ public interface WatermarkEncoder {
 
   boolean needEncode(long timestamp);
 
-  RowRecord encodeRecord(RowRecord record);
+  RowRecord encodeRecord(RowRecord rowRecord);
 }

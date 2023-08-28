@@ -67,7 +67,9 @@ public class UDTFOutlier implements UDTF {
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
     if (!row.isNull(0)) {
-      if (i >= w && (i - w) % s == 0) detect();
+      if (i >= w && (i - w) % s == 0) {
+        detect();
+      }
 
       if (i >= w) {
         currentValueWindow.remove(0);
@@ -90,10 +92,14 @@ public class UDTFOutlier implements UDTF {
   private void detect() {
     for (int j = 0; j < w; j++) {
       int cnt = 0;
-      for (int l = 0; l < w; l++)
-        if (Math.abs(currentValueWindow.get(j) - currentValueWindow.get(l)) <= this.r) cnt++;
-      if (cnt < this.k && !outliers.keySet().contains(currentTimeWindow.get(j)))
+      for (int l = 0; l < w; l++) {
+        if (Math.abs(currentValueWindow.get(j) - currentValueWindow.get(l)) <= this.r) {
+          cnt++;
+        }
+      }
+      if (cnt < this.k && !outliers.keySet().contains(currentTimeWindow.get(j))) {
         outliers.put(currentTimeWindow.get(j), currentValueWindow.get(j));
+      }
     }
   }
 }

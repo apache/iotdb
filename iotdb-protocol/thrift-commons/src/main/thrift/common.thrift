@@ -179,7 +179,8 @@ enum TAggregationType {
   EXTREME,
   COUNT_IF,
   TIME_DURATION,
-  MODE
+  MODE,
+  COUNT_TIME
 }
 
 // for MLNode

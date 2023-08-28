@@ -27,6 +27,7 @@ import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
+import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.type.Type;
 
 /** This function is used for timestamp repair. */
@@ -63,7 +64,7 @@ public class UDTFTimestampRepair implements UDTF {
     } else if ("Cluster".equalsIgnoreCase(intervalMethod)) {
       intervalMode = -3;
     } else {
-      throw new Exception("Illegal method.");
+      throw new UDFException("Illegal method.");
     }
   }
 
@@ -95,7 +96,7 @@ public class UDTFTimestampRepair implements UDTF {
         }
         break;
       default:
-        throw new Exception();
+        throw new UDFException("");
     }
   }
 }

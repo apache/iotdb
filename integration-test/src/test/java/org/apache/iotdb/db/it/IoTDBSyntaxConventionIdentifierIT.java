@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.db.mpp.common.header.ColumnHeaderConstant;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -145,6 +145,9 @@ public class IoTDBSyntaxConventionIdentifierIT {
     String[] createNodeNames = {
       "a_1",
       "aaa",
+      "in",
+      "between",
+      "is",
       "`select`",
       "`a.b`",
       "`111`",
@@ -172,6 +175,9 @@ public class IoTDBSyntaxConventionIdentifierIT {
     String[] resultTimeseries = {
       "root.sg1.d1.a_1",
       "root.sg1.d1.aaa",
+      "root.sg1.d1.in",
+      "root.sg1.d1.between",
+      "root.sg1.d1.is",
       "root.sg1.d1.select",
       "root.sg1.d1.`a.b`",
       "root.sg1.d1.`111`",
@@ -199,6 +205,9 @@ public class IoTDBSyntaxConventionIdentifierIT {
     String[] selectNodeNames = {
       "a_1",
       "aaa",
+      "in",
+      "between",
+      "is",
       "`select`",
       "`a.b`",
       "`111`",
@@ -226,6 +235,9 @@ public class IoTDBSyntaxConventionIdentifierIT {
     String[] suffixInResultColumns = {
       "a_1",
       "aaa",
+      "in",
+      "between",
+      "is",
       "select",
       "`a.b`",
       "`111`",
@@ -344,31 +356,6 @@ public class IoTDBSyntaxConventionIdentifierIT {
 
       try {
         statement.execute("create timeseries root.sg1.d1.``a` INT32");
-        fail();
-      } catch (Exception ignored) {
-      }
-
-      // unsupported
-      try {
-        statement.execute("create timeseries root.sg1.d1.contains INT32");
-        fail();
-      } catch (Exception ignored) {
-      }
-
-      try {
-        statement.execute("create timeseries root.sg1.d1.and INT32");
-        fail();
-      } catch (Exception ignored) {
-      }
-
-      try {
-        statement.execute("create timeseries root.sg1.d1.or INT32");
-        fail();
-      } catch (Exception ignored) {
-      }
-
-      try {
-        statement.execute("create timeseries root.sg1.d1.not INT32");
         fail();
       } catch (Exception ignored) {
       }
@@ -616,32 +603,10 @@ public class IoTDBSyntaxConventionIdentifierIT {
   public void testUserName() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      String[] userNames =
-          new String[] {
-            "userid",
-            "userid0",
-            "user_id",
-            "user0id",
-            "`22233`",
-            "`userab!`",
-            "`user'ab'`",
-            "`usera.b`",
-            "`usera``b`"
-          };
+      String[] userNames = new String[] {"userid", "userid0", "user_id", "user0id", "`a22233`"};
 
       String[] resultNames =
-          new String[] {
-            "root",
-            "userid",
-            "userid0",
-            "user_id",
-            "user0id",
-            "22233",
-            "userab!",
-            "user'ab'",
-            "usera.b",
-            "usera`b"
-          };
+          new String[] {"root", "userid", "userid0", "user_id", "user0id", "a22233"};
 
       String createUsersSql = "create user %s 'pwd123' ";
       for (String userName : userNames) {
@@ -703,31 +668,9 @@ public class IoTDBSyntaxConventionIdentifierIT {
   public void testRoleName() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      String[] roleNames =
-          new String[] {
-            "roleid",
-            "roleid0",
-            "role_id",
-            "role0id",
-            "`22233`",
-            "`roleab!`",
-            "`role'ab'`",
-            "`rolea.b`",
-            "`rolea``b`"
-          };
+      String[] roleNames = new String[] {"roleid", "roleid0", "role_id", "role0id", "`a22233`"};
 
-      String[] resultNames =
-          new String[] {
-            "roleid",
-            "roleid0",
-            "role_id",
-            "role0id",
-            "22233",
-            "roleab!",
-            "role'ab'",
-            "rolea.b",
-            "rolea`b"
-          };
+      String[] resultNames = new String[] {"roleid", "roleid0", "role_id", "role0id", "a22233"};
       String createRolesSql = "create role %s";
       for (String roleName : roleNames) {
         statement.execute(String.format(createRolesSql, roleName));
@@ -814,7 +757,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
   //      String createTimeSereisSql = "CREATE TIMESERIES %s FLOAT";
   //      String createTriggerSql =
   //          "create trigger %s before insert on %s "
-  //              + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'";
+  //              + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'";
   //      for (int i = 0; i < timeseries.length; ++i) {
   //        statement.execute(String.format(createTimeSereisSql, timeseries[i]));
   //        statement.execute(String.format(createTriggerSql, triggerNames[i], timeseries[i]));
@@ -840,14 +783,14 @@ public class IoTDBSyntaxConventionIdentifierIT {
   //      try {
   //        statement.execute(
   //            "create trigger trigger` before insert on root.sg1.d1  "
-  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+  //                + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'");
   //      } catch (Exception ignored) {
   //      }
   //
   //      try {
   //        statement.execute(
   //            "create trigger `trigger`` before insert on root.sg1.d1  "
-  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+  //                + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'");
   //        fail();
   //      } catch (Exception ignored) {
   //      }
@@ -855,7 +798,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
   //      try {
   //        statement.execute(
   //            "create trigger 111 before insert on root.sg1.d1  "
-  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+  //                + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'");
   //        fail();
   //      } catch (Exception ignored) {
   //      }
@@ -863,7 +806,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
   //      try {
   //        statement.execute(
   //            "create trigger 'tri' before insert on root.sg1.d1  "
-  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+  //                + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'");
   //        fail();
   //      } catch (Exception ignored) {
   //      }
@@ -871,7 +814,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
   //      try {
   //        statement.execute(
   //            "create trigger \"tri\" before insert on root.sg1.d1  "
-  //                + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+  //                + "as 'org.apache.iotdb.db.storageengine.trigger.example.Accumulator'");
   //        fail();
   //      } catch (Exception ignored) {
   //      }

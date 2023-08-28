@@ -23,7 +23,7 @@ public class QueryProcessorException extends Exception {
 
   private static final long serialVersionUID = -8987915921329335088L;
 
-  private String errMsg;
+  private final String errMsg;
 
   QueryProcessorException(String msg) {
     super(msg);

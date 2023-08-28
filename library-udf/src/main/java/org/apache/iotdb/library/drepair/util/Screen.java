@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.library.drepair.util;
 
 import org.apache.iotdb.library.util.Util;
@@ -29,7 +30,8 @@ import java.util.Arrays;
 
 public class Screen extends ValueRepair {
 
-  private double smin, smax;
+  private double smin;
+  private double smax;
   private double w;
 
   public Screen(RowIterator dataIterator) throws Exception {

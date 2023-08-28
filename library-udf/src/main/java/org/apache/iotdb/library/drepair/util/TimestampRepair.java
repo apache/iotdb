@@ -16,14 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.library.drepair.util;
 
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowIterator;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 
@@ -36,7 +34,6 @@ public class TimestampRepair {
   protected double[] repairedValue;
   protected long deltaT;
   protected long start0;
-  private static final Logger logger = LoggerFactory.getLogger(TimestampRepair.class);
 
   public TimestampRepair(RowIterator dataIterator, int intervalMode, int startPointMode)
       throws Exception {
@@ -72,25 +69,25 @@ public class TimestampRepair {
       noRepair();
       return;
     }
-    int n_ = (int) Math.ceil((time[n - 1] - start0) / (double) deltaT + 1.0);
-    repaired = new long[n_];
-    repairedValue = new double[n_];
-    int m_ = this.n;
-    long[][] f = new long[n_ + 1][m_ + 1];
-    int[][] steps = new int[n_ + 1][m_ + 1];
+    int n0 = (int) Math.ceil((time[n - 1] - start0) / (double) deltaT + 1.0);
+    repaired = new long[n0];
+    repairedValue = new double[n0];
+    int m0 = this.n;
+    long[][] f = new long[n0 + 1][m0 + 1];
+    int[][] steps = new int[n0 + 1][m0 + 1];
     // dynamic programming
     int addCostRatio = 100000;
-    for (int i = 0; i < n_ + 1; i++) {
+    for (int i = 0; i < n0 + 1; i++) {
       f[i][0] = (long) addCostRatio * i;
       steps[i][0] = 1;
     }
-    for (int i = 0; i < m_ + 1; i++) {
+    for (int i = 0; i < m0 + 1; i++) {
       f[0][i] = (long) addCostRatio * i;
       steps[0][i] = 2;
     }
 
-    for (int i = 1; i < n_ + 1; i++) {
-      for (int j = 1; j < m_ + 1; j++) {
+    for (int i = 1; i < n0 + 1; i++) {
+      for (int j = 1; j < m0 + 1; j++) {
 
         if (time[j - 1] == start0 + (i - 1) * deltaT) {
           // if timestamps are equal, then temporary minimum operation time equals to matched
@@ -116,53 +113,26 @@ public class TimestampRepair {
       }
     }
 
-    int i = n_;
-    int j = m_;
-    double unionSet = 0;
-    double joinSet = 0;
+    int i = n0;
+    int j = m0;
 
     while (i >= 1 && j >= 1) {
       long ps = start0 + (i - 1) * deltaT;
       if (steps[i][j] == 0) {
         repaired[i - 1] = ps;
         repairedValue[i - 1] = original[j - 1];
-        /*
-        if(logger.isDebugEnabled()){
-          logger.debug(time[j - 1] + "," + ps + "," + original[j - 1]);
-        }
-        */
-        unionSet += 1;
-        joinSet += 1;
         i--;
         j--;
       } else if (steps[i][j] == 1) {
         // add points
         repaired[i - 1] = ps;
         repairedValue[i - 1] = Double.NaN;
-        unionSet += 1;
-        /*
-        if(logger.isDebugEnabled()){
-          logger.debug("add, " + ps + "," + original[j - 1]);
-        }
-        */
         i--;
       } else {
         // delete points
-        unionSet += 1;
-        /*
-        if(logger.isDebugEnabled()){
-          logger.debug(time[j - 1] + ",delete" + "," + original[j - 1]);
-        }
-        */
         j--;
       }
     }
-    /*
-    if(logger.isDebugEnabled()) {
-      logger.debug(joinSet / unionSet);
-      logger.debug(f[n_][m_] / n_);
-    }
-     */
   }
 
   public double[] getRepairedValue() {

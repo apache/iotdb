@@ -1123,4 +1123,65 @@ public class IoTDBAlignByDeviceIT {
       fail(e.getMessage());
     }
   }
+
+  /**
+   * data structure D, time, s1, s2; d1: 1, 10, 20; d2: 1, 12, 22; d3: 1, null, 33
+   *
+   * <p>Query Sql: select s1 from root.good.** where s2 > 1 align by device
+   */
+  @Test
+  public void removeDeviceWhereMeasurementWhenNoDeviceSelectTest() {
+    String[] mockDataSql =
+        new String[] {
+          "create timeseries root.good.d1.s1 WITH DATATYPE=INT32;",
+          "create timeseries root.good.d1.s2 WITH DATATYPE=INT32;",
+          "create timeseries root.good.d2.s1 WITH DATATYPE=INT32;",
+          "create timeseries root.good.d2.s2 WITH DATATYPE=INT32;",
+          "create timeseries root.good.d3.s2 WITH DATATYPE=INT32;",
+          "insert into root.good.d1(time, s1, s2) values(1, 10, 20);",
+          "insert into root.good.d2(time, s1, s2) values(1, 12, 22);",
+          "insert into root.good.d3(time, s2) values(1, 33);"
+        };
+
+    String[] retArray = new String[] {"1,root.good.d1,10", "1,root.good.d2,12"};
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      for (String sql : mockDataSql) {
+        statement.execute(sql);
+      }
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 from root.good.** where s2 > 1 align by device")) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        List<Integer> actualIndexToExpectedIndexList =
+            checkHeader(
+                resultSetMetaData,
+                "Time,Device,s1",
+                new int[] {Types.TIMESTAMP, Types.VARCHAR, Types.INTEGER});
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder
+                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
+          }
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(retArray.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(
+          "Meets exception in removeDeviceWhereMeasurementWhenNoDeviceSelectTest: "
+              + e.getMessage());
+    }
+  }
 }

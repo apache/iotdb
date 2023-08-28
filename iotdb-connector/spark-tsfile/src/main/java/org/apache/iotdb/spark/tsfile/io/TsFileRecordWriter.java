@@ -28,10 +28,13 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
 public class TsFileRecordWriter extends RecordWriter<NullWritable, TSRecord> {
+  private static final Logger logger = LoggerFactory.getLogger(TsFileRecordWriter.class);
 
   private TsFileWriter tsFileWriter = null;
 
@@ -52,7 +55,7 @@ public class TsFileRecordWriter extends RecordWriter<NullWritable, TSRecord> {
     try {
       tsFileWriter.write(tsRecord);
     } catch (WriteProcessException e) {
-      e.printStackTrace();
+      logger.error("The TsFileWriter write error", e);
     }
   }
 }

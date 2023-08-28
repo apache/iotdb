@@ -31,22 +31,46 @@ public interface AccessStrategy {
 
   enum AccessStrategyType {
 
-    /** @see MappableRowByRowAccessStrategy */
+    /**
+     * Represents the access strategy type for mappable row-by-row access.
+     *
+     * @see MappableRowByRowAccessStrategy
+     */
     MAPPABLE_ROW_BY_ROW,
 
-    /** @see RowByRowAccessStrategy */
+    /**
+     * Represents the access strategy type for row-by-row access.
+     *
+     * @see RowByRowAccessStrategy
+     */
     ROW_BY_ROW,
 
-    /** @see SlidingTimeWindowAccessStrategy */
+    /**
+     * Represents the access strategy type for sliding time window access.
+     *
+     * @see SlidingTimeWindowAccessStrategy
+     */
     SLIDING_TIME_WINDOW,
 
-    /** @see SlidingSizeWindowAccessStrategy */
+    /**
+     * Represents the access strategy type for sliding size window access.
+     *
+     * @see SlidingSizeWindowAccessStrategy
+     */
     SLIDING_SIZE_WINDOW,
 
-    /** @see SessionTimeWindowAccessStrategy */
+    /**
+     * Represents the access strategy type for session time window access.
+     *
+     * @see SessionTimeWindowAccessStrategy
+     */
     SESSION_TIME_WINDOW,
 
-    /** @see StateWindowAccessStrategy */
+    /**
+     * Represents the access strategy type for state window access.
+     *
+     * @see StateWindowAccessStrategy
+     */
     STATE_WINDOW
   }
 

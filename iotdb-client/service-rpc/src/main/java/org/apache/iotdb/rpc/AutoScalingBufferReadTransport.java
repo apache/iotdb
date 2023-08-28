@@ -65,10 +65,14 @@ public class AutoScalingBufferReadTransport extends NonOpenTransport {
   }
 
   @Override
-  public void updateKnownMessageSize(long size) throws TTransportException {}
+  public void updateKnownMessageSize(long size) throws TTransportException {
+    // do Nothing
+  }
 
   @Override
-  public void checkReadBytesAvailable(long numBytes) throws TTransportException {}
+  public void checkReadBytesAvailable(long numBytes) throws TTransportException {
+    // do Nothing
+  }
 
   @Override
   public final byte[] getBuffer() {

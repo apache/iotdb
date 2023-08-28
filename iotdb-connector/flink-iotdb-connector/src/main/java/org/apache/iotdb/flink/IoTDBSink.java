@@ -57,7 +57,7 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
 
   private int batchSize = 0;
   private int flushIntervalMs = 3000;
-  private List<Event> batchList;
+  private transient List<Event> batchList;
   private int sessionPoolSize = 2;
 
   public IoTDBSink(IoTDBSinkOptions options, IoTSerializationSchema<IN> schema) {
@@ -188,7 +188,7 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
   private void flush() throws Exception {
     if (batchSize > 0) {
       synchronized (batchList) {
-        if (batchList.size() > 0) {
+        if (!batchList.isEmpty()) {
           List<String> deviceIds = new ArrayList<>();
           List<Long> timestamps = new ArrayList<>();
           List<List<String>> measurementsList = new ArrayList<>();

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.pulsar;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -53,7 +54,7 @@ public class PulsarConsumer {
   public void consumeInParallel() throws ClassNotFoundException {
     ExecutorService executor = Executors.newFixedThreadPool(CONSUMER_NUM);
     for (int i = 0; i < consumerList.size(); i++) {
-      PulsarConsumerThread consumerExecutor = new PulsarConsumerThread(consumerList.get(i), pool);
+      PulsarConsumerThread consumerExecutor = new PulsarConsumerThread(consumerList.get(i));
       executor.submit(consumerExecutor);
     }
   }
@@ -74,7 +75,7 @@ public class PulsarConsumer {
 
   private static void addStorageGroup(String storageGroup)
       throws IoTDBConnectionException, StatementExecutionException {
-    pool.setStorageGroup(storageGroup);
+    pool.createDatabase(storageGroup);
   }
 
   private static void createTimeseries(String[] sql)

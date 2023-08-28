@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.spark.tsfile.qp.optimizer;
 
-import org.apache.iotdb.spark.tsfile.qp.common.BasicOperator;
 import org.apache.iotdb.spark.tsfile.qp.common.FilterOperator;
 import org.apache.iotdb.spark.tsfile.qp.exception.MergeFilterException;
 
@@ -130,14 +129,5 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
       filter.setChildrenList(ret);
       return null;
     }
-  }
-
-  private boolean allIsBasic(List<FilterOperator> children) {
-    for (FilterOperator child : children) {
-      if (!(child instanceof BasicOperator)) {
-        return false;
-      }
-    }
-    return true;
   }
 }

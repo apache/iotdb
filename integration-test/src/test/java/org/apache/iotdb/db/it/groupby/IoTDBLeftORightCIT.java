@@ -29,9 +29,9 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import static org.apache.iotdb.db.constant.TestConstant.count;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualWithDescOrderTest;
+import static org.apache.iotdb.db.utils.constant.TestConstant.count;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 
 @RunWith(IoTDBTestRunner.class)

@@ -33,9 +33,9 @@ import org.apache.iotdb.udf.api.type.Type;
 public class UDAFCov implements UDTF {
 
   private long count = 0;
-  private double sum_x = 0.0;
-  private double sum_y = 0.0;
-  private double sum_xy = 0.0;
+  private double sumX = 0.0;
+  private double sumY = 0.0;
+  private double sumXY = 0.0;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -50,9 +50,9 @@ public class UDAFCov implements UDTF {
       throws Exception {
     configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
     count = 0;
-    sum_x = 0;
-    sum_y = 0;
-    sum_xy = 0;
+    sumX = 0;
+    sumY = 0;
+    sumXY = 0;
   }
 
   @Override
@@ -64,16 +64,16 @@ public class UDAFCov implements UDTF {
     double y = Util.getValueAsDouble(row, 1);
     if (Double.isFinite(x) && Double.isFinite(y)) { // skip NaN rows
       count++;
-      sum_x += x;
-      sum_y += y;
-      sum_xy += x * y;
+      sumX += x;
+      sumY += y;
+      sumXY += x * y;
     }
   }
 
   @Override
   public void terminate(PointCollector collector) throws Exception {
     if (count > 0) { // calculate Cov only when there is more than 1 point
-      double cov = (sum_xy - sum_x * sum_y / count) / count;
+      double cov = (sumXY - sumX * sumY / count) / count;
       collector.putDouble(0, cov);
     } else {
       collector.putDouble(0, Double.NaN);

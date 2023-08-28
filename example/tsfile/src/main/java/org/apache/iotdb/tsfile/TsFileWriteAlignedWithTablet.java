@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile;
 
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -33,6 +34,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -47,8 +49,12 @@ public class TsFileWriteAlignedWithTablet {
 
   public static void main(String[] args) throws IOException {
     File f = FSFactoryProducer.getFSFactory().getFile("alignedTablet.tsfile");
-    if (f.exists() && !f.delete()) {
-      throw new RuntimeException("can not delete " + f.getAbsolutePath());
+    if (f.exists()) {
+      try {
+        Files.delete(f.toPath());
+      } catch (IOException e) {
+        throw new IOException("can not delete " + f.getAbsolutePath());
+      }
     }
 
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
@@ -60,12 +66,8 @@ public class TsFileWriteAlignedWithTablet {
       // register align timeseries
       tsFileWriter.registerAlignedTimeseries(new Path(DEVICE_1), measurementSchemas);
 
-      List<MeasurementSchema> writeMeasurementScheams = new ArrayList<>();
       // example 1
-      writeMeasurementScheams.add(measurementSchemas.get(0));
-      writeMeasurementScheams.add(measurementSchemas.get(1));
-      writeMeasurementScheams.add(measurementSchemas.get(2));
-      writeAlignedWithTablet(tsFileWriter, DEVICE_1, writeMeasurementScheams, 200000, 0, 0);
+      writeAlignedWithTablet(tsFileWriter, DEVICE_1, measurementSchemas, 200000, 0, 0);
 
       writeNonAlignedWithTablet(tsFileWriter); // write nonAligned timeseries
     } catch (WriteProcessException e) {

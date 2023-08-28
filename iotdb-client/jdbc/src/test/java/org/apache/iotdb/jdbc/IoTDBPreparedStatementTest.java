@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -36,6 +37,8 @@ import java.sql.Types;
 import java.time.ZoneId;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -86,17 +89,17 @@ public class IoTDBPreparedStatementTest {
     IoTDBPreparedStatement ps =
         new IoTDBPreparedStatement(connection, client, sessionId, sql, zoneId);
     ps.setString(1, "123");
-    ps.execute();
+    assertFalse(ps.execute());
   }
 
   @SuppressWarnings("resource")
-  @Test(expected = SQLException.class)
+  @Test
   public void unsetArgument() throws SQLException {
     String sql =
         "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > ?";
     IoTDBPreparedStatement ps =
         new IoTDBPreparedStatement(connection, client, sessionId, sql, zoneId);
-    ps.execute();
+    assertThrows(SQLException.class, () -> ps.execute());
   }
 
   @SuppressWarnings("resource")
