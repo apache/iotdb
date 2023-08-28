@@ -75,11 +75,18 @@ public class PipeRealtimeDataRegionLogExtractor extends PipeRealtimeDataRegionEx
   }
 
   private void extractHeartbeat(PipeRealtimeEvent event) {
+    if (pendingQueue.peekLast() instanceof PipeHeartbeatEvent) {
+      // if the last event in the pending queue is a heartbeat event, we should not extract any more
+      // heartbeat events to avoid OOM when the pipe is stopped.
+      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
+      return;
+    }
+
     if (!pendingQueue.waitedOffer(event)) {
       // this would not happen, but just in case.
       // pendingQueue is unbounded, so it should never reach capacity.
       LOGGER.error(
-          "extract: pending queue of PipeRealtimeDataRegionTsFileExtractor {} "
+          "extract: pending queue of PipeRealtimeDataRegionLogExtractor {} "
               + "has reached capacity, discard heartbeat event {}",
           this,
           event);
