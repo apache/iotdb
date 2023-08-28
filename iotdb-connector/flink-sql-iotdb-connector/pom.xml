@@ -29,6 +29,7 @@
     </parent>
     <artifactId>flink-sql-iotdb-connector</artifactId>
     <version>1.2.0-SNAPSHOT</version>
+    <name>IoTDB: Connector: Apache Flink SQL Connector</name>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <flink.version>1.17.0</flink.version>
