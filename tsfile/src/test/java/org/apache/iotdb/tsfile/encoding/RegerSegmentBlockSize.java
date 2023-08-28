@@ -1120,21 +1120,6 @@ public class RegerSegmentBlockSize {
         return b;
     }
 
-    private static int getIstarClose(int alpha, ArrayList<Integer> j_star_list) {
-        int min_i = 0;
-        int min_dis = Integer.MAX_VALUE;
-        for (int i : j_star_list) {
-            if (abs(alpha - i) < min_dis) {
-                min_i = i;
-                min_dis = abs(alpha - i);
-            }
-        }
-        if (min_dis == 0) {
-            System.out.println("get IstarClose error");
-            return 0;
-        }
-        return min_i;
-    }
 
     // adjust 0 to n
     private static ArrayList<Integer> adjust0n1(
@@ -1298,6 +1283,21 @@ public class RegerSegmentBlockSize {
 //    b.add(getBitWith(timestamp_delta_max - timestamp_delta_min));
 //    b.add(getBitWith(value_delta_max - value_delta_min));
         return b;
+    }
+    private static int getIstarClose(int alpha, ArrayList<Integer> j_star_list) {
+        int min_i = 0;
+        int min_dis = Integer.MAX_VALUE;
+        for (int i : j_star_list) {
+            if (abs(alpha - i) < min_dis) {
+                min_i = i;
+                min_dis = abs(alpha - i);
+            }
+        }
+        if (min_dis == 0) {
+            System.out.println("get IstarClose error");
+            return 0;
+        }
+        return min_i;
     }
 
     public static int getIStar(
