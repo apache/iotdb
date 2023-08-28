@@ -58,7 +58,8 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
         averageUncompressedChunkSize
             * taskInfo.getFileInfoList().size()
             * taskInfo.getMaxConcurrentSeriesNum()
-            * taskInfo.getMaxChunkMetadataNumInSeries();
+            * taskInfo.getMaxChunkMetadataNumInSeries()
+            / compressionRatio;
     long maxTargetChunkWriterSize =
         config.getTargetChunkSize() * taskInfo.getMaxConcurrentSeriesNum();
     long targetChunkWriterSize =
