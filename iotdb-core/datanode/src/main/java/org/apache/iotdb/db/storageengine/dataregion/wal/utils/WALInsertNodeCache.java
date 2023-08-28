@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -26,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALByteBufReader;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import com.github.benmanes.caffeine.cache.CacheLoader;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -50,8 +52,10 @@ public class WALInsertNodeCache {
   private static final Logger logger = LoggerFactory.getLogger(WALInsertNodeCache.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  // LRU cache, find InsertNode by WALEntryPosition
-  private final LoadingCache<WALEntryPosition, InsertNode> lruCache;
+  // LRU cache, find Pair<ByteBuffer, InsertNode> by WALEntryPosition
+  private final LoadingCache<WALEntryPosition, Pair<ByteBuffer, InsertNode>> lruCache;
+  private final boolean isBatchLoadEnabled;
+
   // ids of all pinned memTables
   private final Set<Long> memTablesNeedSearch = ConcurrentHashMap.newKeySet();
 
@@ -61,17 +65,55 @@ public class WALInsertNodeCache {
             // TODO: pipe module should determine how to configure this param
             .maximumWeight(config.getAllocateMemoryForWALPipeCache())
             .weigher(
-                (Weigher<WALEntryPosition, InsertNode>) (position, buffer) -> position.getSize())
+                (Weigher<WALEntryPosition, Pair<ByteBuffer, InsertNode>>)
+                    (position, pair) -> position.getSize())
             .build(new WALInsertNodeCacheLoader());
+    isBatchLoadEnabled =
+        config.getAllocateMemoryForWALPipeCache() >= 3 * config.getWalFileSizeThresholdInByte();
   }
 
-  public InsertNode get(WALEntryPosition position) {
-    InsertNode res = lruCache.getIfPresent(position);
-    // batch load from the wal file
-    if (res == null) {
-      res = lruCache.getAll(Collections.singleton(position)).get(position);
+  @TestOnly
+  public boolean isBatchLoadEnabled() {
+    return isBatchLoadEnabled;
+  }
+
+  public InsertNode getInsertNode(WALEntryPosition position) {
+    final Pair<ByteBuffer, InsertNode> pair =
+        isBatchLoadEnabled
+            ? lruCache.getAll(Collections.singleton(position)).get(position)
+            : lruCache.get(position);
+
+    if (pair == null) {
+      throw new IllegalStateException();
     }
-    return res;
+
+    if (pair.getRight() == null) {
+      pair.setRight(parse(pair.getLeft()));
+    }
+
+    return pair.getRight();
+  }
+
+  private InsertNode parse(ByteBuffer buffer) {
+    PlanNode node = WALEntry.deserializeForConsensus(buffer);
+    if (node instanceof InsertNode) {
+      return (InsertNode) node;
+    } else {
+      return null;
+    }
+  }
+
+  public ByteBuffer getByteBuffer(WALEntryPosition position) {
+    final Pair<ByteBuffer, InsertNode> pair =
+        isBatchLoadEnabled
+            ? lruCache.getAll(Collections.singleton(position)).get(position)
+            : lruCache.get(position);
+
+    if (pair == null) {
+      throw new IllegalStateException();
+    }
+
+    return pair.getLeft();
   }
 
   boolean contains(WALEntryPosition position) {
@@ -91,26 +133,21 @@ public class WALInsertNodeCache {
     memTablesNeedSearch.clear();
   }
 
-  class WALInsertNodeCacheLoader implements CacheLoader<WALEntryPosition, InsertNode> {
-    private InsertNode parse(ByteBuffer buffer) {
-      PlanNode node = WALEntry.deserializeForConsensus(buffer);
-      if (node instanceof InsertNode) {
-        return (InsertNode) node;
-      } else {
-        return null;
-      }
-    }
+  class WALInsertNodeCacheLoader
+      implements CacheLoader<WALEntryPosition, Pair<ByteBuffer, InsertNode>> {
 
     @Override
-    public @Nullable InsertNode load(@NonNull WALEntryPosition key) throws Exception {
-      return parse(key.read());
+    public @Nullable Pair<ByteBuffer, InsertNode> load(@NonNull WALEntryPosition key)
+        throws Exception {
+      return new Pair<>(key.read(), null);
     }
 
     /** Batch load all wal entries in the file when any one key is absent. */
     @Override
-    public @NonNull Map<@NonNull WALEntryPosition, @NonNull InsertNode> loadAll(
+    public @NonNull Map<@NonNull WALEntryPosition, @NonNull Pair<ByteBuffer, InsertNode>> loadAll(
         @NonNull Iterable<? extends @NonNull WALEntryPosition> keys) {
-      Map<WALEntryPosition, InsertNode> res = new HashMap<>();
+      Map<WALEntryPosition, Pair<ByteBuffer, InsertNode>> res = new HashMap<>();
+
       for (WALEntryPosition pos : keys) {
         if (res.containsKey(pos) || !pos.canRead()) {
           continue;
@@ -128,6 +165,7 @@ public class WALInsertNodeCache {
           }
           continue;
         }
+
         // batch load when wal file is sealed
         long position = 0;
         try (FileChannel channel = pos.openReadFileChannel();
@@ -141,12 +179,9 @@ public class WALInsertNodeCache {
             if ((memTablesNeedSearch.contains(memTableId) || pos.getPosition() == position)
                 && type.needSearch()) {
               buffer.clear();
-              InsertNode node = parse(buffer);
-              if (node != null) {
-                res.put(
-                    new WALEntryPosition(pos.getIdentifier(), walFileVersionId, position, size),
-                    node);
-              }
+              res.put(
+                  new WALEntryPosition(pos.getIdentifier(), walFileVersionId, position, size),
+                  new Pair<>(buffer, null));
             }
             position += size;
           }
@@ -157,6 +192,7 @@ public class WALInsertNodeCache {
               e);
         }
       }
+
       return res;
     }
   }
@@ -166,7 +202,9 @@ public class WALInsertNodeCache {
   }
 
   private static class InstanceHolder {
-    private InstanceHolder() {}
+    private InstanceHolder() {
+      // do nothing
+    }
 
     private static final WALInsertNodeCache INSTANCE = new WALInsertNodeCache();
   }
