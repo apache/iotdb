@@ -271,7 +271,10 @@ public class DeleteDataNode extends WritePlanNode implements WALEntryValue {
             o ->
                 new DeleteDataNode(
                     getPlanNodeId(),
-                    // pick the smaller path list to execute the deletion
+                    // Pick the smaller path list to execute the deletion.
+                    // E.g. There is only one path(root.sg.**) in pathList and two paths(root.sg.d1,
+                    // root.sg.d2) in a map entry in regionToPatternMap. Choose the original path is
+                    // better.
                     this.pathList.size() < regionToPatternMap.get(o).size()
                         ? this.pathList
                         : regionToPatternMap.get(o),
