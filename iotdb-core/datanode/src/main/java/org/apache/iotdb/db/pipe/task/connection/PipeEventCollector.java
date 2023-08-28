@@ -20,17 +20,18 @@
 package org.apache.iotdb.db.pipe.task.connection;
 
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
 import org.apache.iotdb.pipe.api.event.Event;
 
+import java.util.Deque;
 import java.util.LinkedList;
-import java.util.Queue;
 
 public class PipeEventCollector implements EventCollector {
 
   private final BoundedBlockingPendingQueue<Event> pendingQueue;
 
-  private final Queue<Event> bufferQueue;
+  private final Deque<Event> bufferQueue;
 
   public PipeEventCollector(BoundedBlockingPendingQueue<Event> pendingQueue) {
     this.pendingQueue = pendingQueue;
@@ -50,7 +51,13 @@ public class PipeEventCollector implements EventCollector {
       if (pendingQueue.waitedOffer(bufferedEvent)) {
         bufferQueue.poll();
       } else {
-        bufferQueue.offer(event);
+        // We can NOT keep too many PipeHeartbeatEvent in bufferQueue because they may cause OOM.
+        if (event instanceof PipeHeartbeatEvent
+            && bufferQueue.peekLast() instanceof PipeHeartbeatEvent) {
+          ((EnrichedEvent) event).decreaseReferenceCount(PipeEventCollector.class.getName());
+        } else {
+          bufferQueue.offer(event);
+        }
         return;
       }
     }
