@@ -236,12 +236,12 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.model.ForecastModeInformation.INPUT_TYPE_LIST;
 import static org.apache.iotdb.commons.model.ForecastModeInformation.PREDICT_INDEX_LIST;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 import static org.apache.iotdb.db.protocol.client.ConfigNodeClient.MSG_RECONNECTION_FAIL;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.and;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.longValue;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.lte;
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory.time;
-import static org.apache.iotdb.db.schemaengine.SchemaConstant.ROOT;
 
 public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 

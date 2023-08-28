@@ -192,15 +192,14 @@ public class ModelManager {
   }
 
   public TGetModelInfoResp getModelInfo(TGetModelInfoReq req) {
-    ConsensusReadResponse response =
-        configManager.getConsensusManager().read(new GetModelInfoPlan(req));
-    if (response.getDataset() != null) {
-      return ((GetModelInfoResp) response.getDataset()).convertToThriftResponse();
-    } else {
-      LOGGER.warn("Unexpected error happened while getting model: ", response.getException());
+    try {
+      DataSet response = configManager.getConsensusManager().read(new GetModelInfoPlan(req));
+      return ((GetModelInfoResp) response).convertToThriftResponse();
+    } catch (ConsensusException e) {
+      LOGGER.warn("Unexpected error happened while getting model: ", e);
       // consensus layer related errors
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      res.setMessage(response.getException().toString());
+      res.setMessage(e.getMessage());
       return new TGetModelInfoResp(res);
     }
   }
