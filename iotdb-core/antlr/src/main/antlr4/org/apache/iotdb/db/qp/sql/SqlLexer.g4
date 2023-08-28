@@ -330,6 +330,10 @@ GRANT
     : G R A N T
     ;
 
+OPTION
+    : O P T I O N
+    ;
+
 GROUP
     : G R O U P
     ;

@@ -39,6 +39,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
   private String newPassword;
   private String[] privilegeList;
   private List<PartialPath> nodeNameList;
+  private boolean grantOpt;
 
   /**
    * Constructor with AuthorType.
@@ -159,6 +160,14 @@ public class AuthorStatement extends Statement implements IConfigStatement {
 
   public void setNodeNameList(List<PartialPath> nodeNameList) {
     this.nodeNameList = nodeNameList;
+  }
+
+  public boolean getGrantOpt() {
+    return grantOpt;
+  }
+
+  public void setGrantOpt(boolean grantOpt) {
+    this.grantOpt = grantOpt;
   }
 
   @Override
