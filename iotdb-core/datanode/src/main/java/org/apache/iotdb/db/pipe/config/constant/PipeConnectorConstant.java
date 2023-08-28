@@ -33,7 +33,7 @@ public class PipeConnectorConstant {
   public static final boolean CONNECTOR_IOTDB_BATCH_MODE_ENABLED_DEFAULT_VALUE = true;
 
   public static final String CONNECTOR_IOTDB_BATCH_DELAY_KEY = "connector.batch.max-delay-seconds";
-  public static final int CONNECTOR_IOTDB_BATCH_DELAY_DEFAULT_VALUE = 10;
+  public static final int CONNECTOR_IOTDB_BATCH_DELAY_DEFAULT_VALUE = 1;
 
   public static final String CONNECTOR_IOTDB_BATCH_SIZE_KEY = "connector.batch.size-bytes";
   public static final long CONNECTOR_IOTDB_BATCH_SIZE_DEFAULT_VALUE = 16 * MB;
