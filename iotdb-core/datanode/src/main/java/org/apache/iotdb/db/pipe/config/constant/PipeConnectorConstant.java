@@ -51,6 +51,14 @@ public class PipeConnectorConstant {
   public static final String CONNECTOR_IOTDB_SYNC_CONNECTOR_VERSION_KEY = "connector.version";
   public static final String CONNECTOR_IOTDB_SYNC_CONNECTOR_VERSION_DEFAULT_VALUE = "1.1";
 
+  public static final String CONNECTOR_IOTDB_OPC_UA_CONNECTOR_TCP_BIND_PORT_KEY =
+      "connector.tcp.bind.port";
+  public static final int CONNECTOR_IOTDB_OPC_UA_CONNECTOR_TCP_BIND_PORT_DEFAULT_VALUE = 12686;
+
+  public static final String CONNECTOR_IOTDB_OPC_UA_CONNECTOR_HTTPS_BIND_PORT_KEY =
+      "connector.https.bind.port";
+  public static final int CONNECTOR_IOTDB_OPC_UA_CONNECTOR_HTTPS_BIND_PORT_DEFAULT_VALUE = 8443;
+
   private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");
   }
