@@ -26,11 +26,6 @@ import java.io.IOException;
 
 public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEstimator {
 
-  /**
-   * The metadata algorithm is: maxChunkMetaDataSize * maxChunkNumber * fileSize * maxSeriesNumber
-   *
-   * @return estimate metadata memory cost
-   */
   @Override
   public long calculatingMetadataMemoryCost(CompactionTaskInfo taskInfo) {
     long cost = 0;
@@ -39,7 +34,7 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
         Math.min(
             taskInfo.getTotalChunkMetadataSize(),
             taskInfo.getFileInfoList().size()
-                * taskInfo.getMaxChunkMetadataNumInDevice()
+                * taskInfo.getMaxChunkMetadataNumInSeries()
                 * taskInfo.getMaxChunkMetadataSize());
 
     // add ChunkMetadata size of targetFileWriter
@@ -54,9 +49,7 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
   }
 
   /**
-   * The data algorithm is: (targetChunkSize * maxConcurrentSeriesNumber) + modsFileSize +
-   * (totalFileSize * compressionRatio / totalChunkNum) * maxConcurrentSeriesNum *
-   * maxConcurrentFileNum
+   * The data algorithm is: targetChunkWriterSize + mods file size + read chunk size
    *
    * @return estimate data memory cost
    */

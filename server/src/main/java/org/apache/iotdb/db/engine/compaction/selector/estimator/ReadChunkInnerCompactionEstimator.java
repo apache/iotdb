@@ -29,9 +29,11 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
     long cost = 0;
     // add ChunkMetadata size of MultiTsFileDeviceIterator
     cost +=
-        taskInfo.getFileInfoList().size()
-            * taskInfo.getMaxChunkMetadataNumInDevice()
-            * taskInfo.getMaxChunkMetadataSize();
+        Math.min(
+            taskInfo.getTotalChunkMetadataSize(),
+            taskInfo.getFileInfoList().size()
+                * taskInfo.getMaxChunkMetadataNumInDevice()
+                * taskInfo.getMaxChunkMetadataSize());
 
     // add ChunkMetadata size of targetFileWriter
     long sizeForFileWriter =
