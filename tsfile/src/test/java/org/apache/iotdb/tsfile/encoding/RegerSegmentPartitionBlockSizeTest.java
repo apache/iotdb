@@ -13,9 +13,8 @@ import java.util.Objects;
 import java.util.Stack;
 
 import static java.lang.Math.abs;
-import static java.lang.Math.max;
 
-public class RegerSegmentPartitionBlockSize {
+public class RegerSegmentPartitionBlockSizeTest {
     public static int getBitWith(int num) {
         if (num == 0) return 1;
         else return 32 - Integer.numberOfLeadingZeros(num);
@@ -298,64 +297,6 @@ public class RegerSegmentPartitionBlockSize {
         result.add(td_common);
     }
 
-    // ----------------------------------------basic function----------------------------------------
-    public static int getResidualCost(
-            ArrayList<ArrayList<Integer>> ts_block,
-            ArrayList<Float> theta,
-            int segment_size) {
-        int block_size = ts_block.size();
-        float theta0_r = theta.get(0);
-        float theta1_r = theta.get(1);
-        float theta0_v = theta.get(2);
-        float theta1_v = theta.get(3);
-        int max_interval = Integer.MIN_VALUE;
-        int max_value = Integer.MIN_VALUE;
-        int timestamp_delta_min = Integer.MAX_VALUE;
-        int value_delta_min = Integer.MAX_VALUE;
-        ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
-        ArrayList<Integer> tmp = new ArrayList<>(2);
-        int length = 0;
-        for (int j = 1; j < block_size; j++) {
-            int epsilon_r;
-            int epsilon_v;
-
-            epsilon_r =
-                    ts_block.get(j).get(0)
-                            - (int) ((double) theta0_r + (double) theta1_r * (double) ts_block.get(j - 1).get(0));
-            epsilon_v =
-                    ts_block.get(j).get(1)
-                            - (int) ((double) theta0_v + (double) theta1_v * (double) ts_block.get(j - 1).get(1));
-
-            if (epsilon_r > max_interval) {
-                max_interval = epsilon_r;
-                tmp.set(0, max_interval);
-            }
-            if (epsilon_v > max_value) {
-                max_value = epsilon_v;
-                tmp.set(1, max_value);
-            }
-            if (j % segment_size == 0) {
-                ts_block_delta.add(tmp);
-                tmp = new ArrayList<>();
-                max_interval = Integer.MIN_VALUE;
-                max_value = Integer.MIN_VALUE;
-            }
-
-            if (epsilon_r < timestamp_delta_min) {
-                timestamp_delta_min = epsilon_r;
-            }
-            if (epsilon_v < value_delta_min) {
-                value_delta_min = epsilon_v;
-            }
-
-        }
-        for (ArrayList<Integer> segment_max:  ts_block_delta) {
-            length += segment_max.get(0) - timestamp_delta_min;
-            length += segment_max.get(1) - value_delta_min;
-        }
-        return length;
-    }
-
     public static ArrayList<ArrayList<Integer>> getEncodeBitsRegression(
             ArrayList<ArrayList<Integer>> ts_block,
             int block_size,
@@ -409,14 +350,6 @@ public class RegerSegmentPartitionBlockSize {
                     (float) (m_reg * sum_squ_XY_v - sum_X_v * sum_Y_v)
                             / (float) (m_reg * sum_squ_X_v - sum_X_v * sum_X_v);
         }
-        ArrayList<ArrayList<Integer>> ts_block_delta_segment = new ArrayList<>();
-        ArrayList<Integer> tmp_segment = new ArrayList<>(2);
-
-
-        int max_interval_segment = Integer.MIN_VALUE;
-        int max_value_segment = Integer.MIN_VALUE;
-        tmp_segment.add(max_interval_segment);
-        tmp_segment.add(max_value_segment);
 
         ArrayList<Integer> tmp0 = new ArrayList<>();
         tmp0.add(ts_block.get(0).get(0));
@@ -449,31 +382,15 @@ public class RegerSegmentPartitionBlockSize {
             tmp.add(epsilon_r);
             tmp.add(epsilon_v);
             ts_block_delta.add(tmp);
-
-            if (epsilon_r > max_interval_segment) {
-                max_interval_segment = epsilon_r;
-                tmp_segment.set(0, max_interval_segment);
-            }
-            if (epsilon_v > max_value_segment) {
-                max_value_segment = epsilon_v;
-                tmp_segment.set(1, max_value_segment);
-            }
-            if (j % segment_size == 0) {
-                ts_block_delta_segment.add(tmp_segment);
-                tmp_segment = new ArrayList<>();
-                max_interval_segment = Integer.MIN_VALUE;
-                max_value_segment = Integer.MIN_VALUE;
-                tmp_segment.add(max_interval_segment);
-                tmp_segment.add(max_value_segment);
-            }
-
         }
 //
 //    timestamp_delta_min -= 1;
 //    value_delta_min -= 1;
 
         int max_interval = Integer.MIN_VALUE;
+        int max_interval_i = -1;
         int max_value = Integer.MIN_VALUE;
+        int max_value_i = -1;
         int length = 0;
         for (int j = block_size - 1; j > 0; j--) {
             //      int epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
@@ -488,23 +405,22 @@ public class RegerSegmentPartitionBlockSize {
                             - (int)
                             ((double) (theta0_v + value_delta_min)
                                     + (double) theta1_v * (double) ts_block.get(j - 1).get(1));
-//            length += epsilon_r;
-//            length += epsilon_v;
+            length += epsilon_r;
+            length += epsilon_v;
             if (epsilon_r > max_interval) {
                 max_interval = epsilon_r;
+                max_interval_i = j;
             }
             if (epsilon_v > max_value) {
                 max_value = epsilon_v;
+                max_value_i = j;
             }
             ArrayList<Integer> tmp = new ArrayList<>();
             tmp.add(epsilon_r);
             tmp.add(epsilon_v);
             ts_block_delta.set(j, tmp);
         }
-        for (ArrayList<Integer> segment_max:  ts_block_delta_segment) {
-            length += getBitWith(segment_max.get(0) - timestamp_delta_min);
-            length += getBitWith( segment_max.get(1) - value_delta_min);
-        }
+
 //    System.out.println("timestamp_delta_min: "+timestamp_delta_min);
 //    System.out.println("value_delta_min: "+value_delta_min);
 
@@ -750,7 +666,7 @@ public class RegerSegmentPartitionBlockSize {
         if (alpha == 0) {
             for (int j = 2; j < block_size; j++) {
                 if (!max_index.contains(j) && !max_index.contains(alpha + 1)) continue;
-                ArrayList<Integer> b = adjust0(ts_block, alpha, j, theta,segment_size);
+                ArrayList<Integer> b = adjust0(ts_block, alpha, j, theta);
                 if (b.get(0) < raw_abs_sum) {
                     raw_abs_sum = b.get(0);
                     j_star_list.clear();
@@ -759,7 +675,7 @@ public class RegerSegmentPartitionBlockSize {
                     j_star_list.add(j);
                 }
             }
-            ArrayList<Integer> b = adjust0n1(ts_block, theta,segment_size);
+            ArrayList<Integer> b = adjust0n1(ts_block, theta);
             if (b.get(0) < raw_abs_sum) {
                 raw_abs_sum = b.get(0);
                 j_star_list.clear();
@@ -771,7 +687,7 @@ public class RegerSegmentPartitionBlockSize {
         else if (alpha == block_size - 1) {
             for (int j = 1; j < block_size - 1; j++) {
                 if (!max_index.contains(j) && !max_index.contains(alpha + 1)) continue;
-                ArrayList<Integer> b = adjustn(ts_block, alpha, j, theta,segment_size);
+                ArrayList<Integer> b = adjustn(ts_block, alpha, j, theta);
                 if (b.get(0) < raw_abs_sum) {
                     raw_abs_sum = b.get(0);
                     j_star_list.clear();
@@ -780,7 +696,7 @@ public class RegerSegmentPartitionBlockSize {
                     j_star_list.add(j);
                 }
             }
-            ArrayList<Integer> b = adjustn0(ts_block, theta,segment_size);
+            ArrayList<Integer> b = adjustn0(ts_block, theta);
             if (b.get(0) < raw_abs_sum) {
                 raw_abs_sum = b.get(0);
                 j_star_list.clear();
@@ -793,7 +709,7 @@ public class RegerSegmentPartitionBlockSize {
             for (int j = 1; j < block_size; j++) {
                 if (!max_index.contains(j) && !max_index.contains(alpha + 1)) continue;
                 if (alpha != j && (alpha + 1) != j) {
-                    ArrayList<Integer> b = adjustAlphaToJ(ts_block, alpha, j, theta,segment_size);
+                    ArrayList<Integer> b = adjustAlphaToJ(ts_block, alpha, j, theta);
                     if (b.get(0) < raw_abs_sum) {
                         raw_abs_sum = b.get(0);
                         j_star_list.clear();
@@ -803,7 +719,7 @@ public class RegerSegmentPartitionBlockSize {
                     }
                 }
             }
-            ArrayList<Integer> b = adjustTo0(ts_block, alpha, theta,segment_size);
+            ArrayList<Integer> b = adjustTo0(ts_block, alpha, theta);
             if (b.get(0) < raw_abs_sum) {
                 raw_abs_sum = b.get(0);
                 j_star_list.clear();
@@ -811,7 +727,7 @@ public class RegerSegmentPartitionBlockSize {
             } else if (b.get(0) == raw_abs_sum) {
                 j_star_list.add(0);
             }
-            b = adjustTon(ts_block, alpha, theta,segment_size);
+            b = adjustTon(ts_block, alpha, theta);
             if (b.get(0) < raw_abs_sum) {
                 raw_abs_sum = b.get(0);
                 j_star_list.clear();
@@ -828,22 +744,18 @@ public class RegerSegmentPartitionBlockSize {
     }
 
 
-
     private static ArrayList<Integer> adjustTo0(
-            ArrayList<ArrayList<Integer>> ts_block, int alpha, ArrayList<Float> theta, int segment_size) {
+            ArrayList<ArrayList<Integer>> ts_block, int alpha, ArrayList<Float> theta) {
         int block_size = ts_block.size();
         assert alpha != block_size - 1;
         assert alpha != 0;
         ArrayList<Integer> b = new ArrayList<>();
         int timestamp_delta_min = Integer.MAX_VALUE;
         int value_delta_min = Integer.MAX_VALUE;
+        int timestamp_delta_max = Integer.MIN_VALUE;
+        int value_delta_max = Integer.MIN_VALUE;
+        ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
 
-        ArrayList<ArrayList<Integer>> ts_block_delta_segment = new ArrayList<>();
-        ArrayList<Integer> tmp_segment = new ArrayList<>(2);
-        int max_interval_segment = Integer.MIN_VALUE;
-        int max_value_segment = Integer.MIN_VALUE;
-        tmp_segment.add(max_interval_segment);
-        tmp_segment.add(max_value_segment);
         float theta0_t = theta.get(0);
         float theta1_t = theta.get(1);
         float theta0_v = theta.get(2);
@@ -874,46 +786,37 @@ public class RegerSegmentPartitionBlockSize {
                         ts_block.get(i).get(1)
                                 - (int) (theta0_v + theta1_v * (float) ts_block.get(i - 1).get(1));
             }
+            ArrayList<Integer> tmp0 = new ArrayList<>();
+            tmp0.add(timestamp_delta_i);
+            tmp0.add(value_delta_i);
+            ts_block_delta.add(tmp0);
 
+            if (timestamp_delta_i > timestamp_delta_max) {
+                timestamp_delta_max = timestamp_delta_i;
+            }
             if (timestamp_delta_i < timestamp_delta_min) {
                 timestamp_delta_min = timestamp_delta_i;
             }
-
+            if (value_delta_i > value_delta_max) {
+                value_delta_max = value_delta_i;
+            }
             if (value_delta_i < value_delta_min) {
                 value_delta_min = value_delta_i;
             }
-
-            if (timestamp_delta_i > max_interval_segment) {
-                max_interval_segment = timestamp_delta_i;
-                tmp_segment.set(0, max_interval_segment);
-            }
-            if (value_delta_i > max_value_segment) {
-                max_value_segment = value_delta_i;
-                tmp_segment.set(1, max_value_segment);
-            }
-            if (i % segment_size == 0) {
-                ts_block_delta_segment.add(tmp_segment);
-                tmp_segment = new ArrayList<>();
-                max_interval_segment = Integer.MIN_VALUE;
-                max_value_segment = Integer.MIN_VALUE;
-                tmp_segment.add(max_interval_segment);
-                tmp_segment.add(max_value_segment);
-            }
         }
         int length = 0;
-        for (ArrayList<Integer> segment_max:  ts_block_delta_segment) {
-            length += getBitWith(segment_max.get(0) - timestamp_delta_min);
-            length += getBitWith( segment_max.get(1) - value_delta_min);
+        for (ArrayList<Integer> integers : ts_block_delta) {
+            length += (integers.get(0) - timestamp_delta_min);
+            length += (integers.get(1) - value_delta_min);
         }
-
         b.add(length);
-
+//    b.add(getBitWith(timestamp_delta_max - timestamp_delta_min));
+//    b.add(getBitWith(value_delta_max - value_delta_min));
         return b;
     }
 
-
     private static ArrayList<Integer> adjustTon(
-            ArrayList<ArrayList<Integer>> ts_block, int alpha, ArrayList<Float> theta, int segment_size) {
+            ArrayList<ArrayList<Integer>> ts_block, int alpha, ArrayList<Float> theta) {
         int block_size = ts_block.size();
         assert alpha != block_size - 1;
         assert alpha != 0;
@@ -922,12 +825,7 @@ public class RegerSegmentPartitionBlockSize {
         int value_delta_min = Integer.MAX_VALUE;
         int timestamp_delta_max = Integer.MIN_VALUE;
         int value_delta_max = Integer.MIN_VALUE;
-        ArrayList<ArrayList<Integer>> ts_block_delta_segment = new ArrayList<>();
-        ArrayList<Integer> tmp_segment = new ArrayList<>(2);
-        int max_interval_segment = Integer.MIN_VALUE;
-        int max_value_segment = Integer.MIN_VALUE;
-        tmp_segment.add(max_interval_segment);
-        tmp_segment.add(max_value_segment);
+
         float theta0_t = theta.get(0);
         float theta1_t = theta.get(1);
         float theta0_v = theta.get(2);
@@ -976,35 +874,19 @@ public class RegerSegmentPartitionBlockSize {
             if (value_delta_i < value_delta_min) {
                 value_delta_min = value_delta_i;
             }
-            if (timestamp_delta_i > max_interval_segment) {
-                max_interval_segment = timestamp_delta_i;
-                tmp_segment.set(0, max_interval_segment);
-            }
-            if (value_delta_i > max_value_segment) {
-                max_value_segment = value_delta_i;
-                tmp_segment.set(1, max_value_segment);
-            }
-            if (i % segment_size == 0) {
-                ts_block_delta_segment.add(tmp_segment);
-                tmp_segment = new ArrayList<>();
-                max_interval_segment = Integer.MIN_VALUE;
-                max_value_segment = Integer.MIN_VALUE;
-                tmp_segment.add(max_interval_segment);
-                tmp_segment.add(max_value_segment);
-            }
         }
-
-        for (ArrayList<Integer> segment_max:  ts_block_delta_segment) {
-            length += getBitWith(segment_max.get(0) - timestamp_delta_min);
-            length += getBitWith( segment_max.get(1) - value_delta_min);
+        for (ArrayList<Integer> integers : ts_block_delta) {
+            length += (integers.get(0) - timestamp_delta_min);
+            length += (integers.get(1) - value_delta_min);
         }
         b.add(length);
-
+//    b.add(getBitWith(timestamp_delta_max - timestamp_delta_min));
+//    b.add(getBitWith(value_delta_max - value_delta_min));
         return b;
     }
 
     private static ArrayList<Integer> adjustAlphaToJ(
-            ArrayList<ArrayList<Integer>> ts_block, int alpha, int j, ArrayList<Float> theta, int segment_size) {
+            ArrayList<ArrayList<Integer>> ts_block, int alpha, int j, ArrayList<Float> theta) {
 
         int block_size = ts_block.size();
         assert alpha != block_size - 1;
@@ -1016,12 +898,7 @@ public class RegerSegmentPartitionBlockSize {
         int value_delta_min = Integer.MAX_VALUE;
         int timestamp_delta_max = Integer.MIN_VALUE;
         int value_delta_max = Integer.MIN_VALUE;
-        ArrayList<ArrayList<Integer>> ts_block_delta_segment = new ArrayList<>();
-        ArrayList<Integer> tmp_segment = new ArrayList<>(2);
-        int max_interval_segment = Integer.MIN_VALUE;
-        int max_value_segment = Integer.MIN_VALUE;
-        tmp_segment.add(max_interval_segment);
-        tmp_segment.add(max_value_segment);
+
         float theta0_t = theta.get(0);
         float theta1_t = theta.get(1);
         float theta0_v = theta.get(2);
@@ -1076,27 +953,11 @@ public class RegerSegmentPartitionBlockSize {
             if (value_delta_i < value_delta_min) {
                 value_delta_min = value_delta_i;
             }
-            if (timestamp_delta_i > max_interval_segment) {
-                max_interval_segment = timestamp_delta_i;
-                tmp_segment.set(0, max_interval_segment);
-            }
-            if (value_delta_i > max_value_segment) {
-                max_value_segment = value_delta_i;
-                tmp_segment.set(1, max_value_segment);
-            }
-            if (i % segment_size == 0) {
-                ts_block_delta_segment.add(tmp_segment);
-                tmp_segment = new ArrayList<>();
-                max_interval_segment = Integer.MIN_VALUE;
-                max_value_segment = Integer.MIN_VALUE;
-                tmp_segment.add(max_interval_segment);
-                tmp_segment.add(max_value_segment);
-            }
         }
 
-        for (ArrayList<Integer> segment_max:  ts_block_delta_segment) {
-            length += getBitWith(segment_max.get(0) - timestamp_delta_min);
-            length += getBitWith( segment_max.get(1) - value_delta_min);
+        for (ArrayList<Integer> integers : ts_block_delta) {
+            length += (integers.get(0) - timestamp_delta_min);
+            length += (integers.get(1) - value_delta_min);
         }
         b.add(length);
 
@@ -1107,19 +968,13 @@ public class RegerSegmentPartitionBlockSize {
 
     // adjust n to 0
     private static ArrayList<Integer> adjustn0(
-            ArrayList<ArrayList<Integer>> ts_block, ArrayList<Float> theta, int segment_size) {
+            ArrayList<ArrayList<Integer>> ts_block, ArrayList<Float> theta) {
         int block_size = ts_block.size();
         ArrayList<Integer> b = new ArrayList<>();
         int timestamp_delta_max = Integer.MIN_VALUE;
         int value_delta_max = Integer.MIN_VALUE;
         int timestamp_delta_min = Integer.MAX_VALUE;
         int value_delta_min = Integer.MAX_VALUE;
-        ArrayList<ArrayList<Integer>> ts_block_delta_segment = new ArrayList<>();
-        ArrayList<Integer> tmp_segment = new ArrayList<>(2);
-        int max_interval_segment = Integer.MIN_VALUE;
-        int max_value_segment = Integer.MIN_VALUE;
-        tmp_segment.add(max_interval_segment);
-        tmp_segment.add(max_value_segment);
         float theta0_t = theta.get(0);
         float theta1_t = theta.get(1);
         float theta0_v = theta.get(2);
@@ -1150,22 +1005,6 @@ public class RegerSegmentPartitionBlockSize {
             if (value_delta_i < value_delta_min) {
                 value_delta_min = value_delta_i;
             }
-            if (timestamp_delta_i > max_interval_segment) {
-                max_interval_segment = timestamp_delta_i;
-                tmp_segment.set(0, max_interval_segment);
-            }
-            if (value_delta_i > max_value_segment) {
-                max_value_segment = value_delta_i;
-                tmp_segment.set(1, max_value_segment);
-            }
-            if (i % segment_size == 0) {
-                ts_block_delta_segment.add(tmp_segment);
-                tmp_segment = new ArrayList<>();
-                max_interval_segment = Integer.MIN_VALUE;
-                max_value_segment = Integer.MIN_VALUE;
-                tmp_segment.add(max_interval_segment);
-                tmp_segment.add(max_value_segment);
-            }
         }
         int timestamp_delta_i;
         int value_delta_i;
@@ -1180,18 +1019,6 @@ public class RegerSegmentPartitionBlockSize {
         tmp0.add(value_delta_i);
         ts_block_delta.add(tmp0);
 
-        if (timestamp_delta_i > max_interval_segment) {
-            max_interval_segment = timestamp_delta_i;
-            tmp_segment.set(0, max_interval_segment);
-        }
-        if (value_delta_i > max_value_segment) {
-            max_value_segment = value_delta_i;
-            tmp_segment.set(1, max_value_segment);
-        }
-        ts_block_delta_segment.add(tmp_segment);
-
-
-
         if (timestamp_delta_i > timestamp_delta_max) {
             timestamp_delta_max = timestamp_delta_i;
         }
@@ -1204,9 +1031,9 @@ public class RegerSegmentPartitionBlockSize {
         if (value_delta_i < value_delta_min) {
             value_delta_min = value_delta_i;
         }
-        for (ArrayList<Integer> segment_max:  ts_block_delta_segment) {
-            length += getBitWith(segment_max.get(0) - timestamp_delta_min);
-            length += getBitWith( segment_max.get(1) - value_delta_min);
+        for (ArrayList<Integer> integers : ts_block_delta) {
+            length += (integers.get(0) - timestamp_delta_min);
+            length += (integers.get(1) - value_delta_min);
         }
         b.add(length);
 
@@ -1217,7 +1044,7 @@ public class RegerSegmentPartitionBlockSize {
 
     // adjust n to no 0
     private static ArrayList<Integer> adjustn(
-            ArrayList<ArrayList<Integer>> ts_block, int alpha, int j, ArrayList<Float> theta, int segment_size) {
+            ArrayList<ArrayList<Integer>> ts_block, int alpha, int j, ArrayList<Float> theta) {
         int block_size = ts_block.size();
         assert alpha == block_size - 1;
         assert j != 0;
@@ -1226,12 +1053,6 @@ public class RegerSegmentPartitionBlockSize {
         int value_delta_min = Integer.MAX_VALUE;
         int timestamp_delta_max = Integer.MIN_VALUE;
         int value_delta_max = Integer.MIN_VALUE;
-        ArrayList<ArrayList<Integer>> ts_block_delta_segment = new ArrayList<>();
-        ArrayList<Integer> tmp_segment = new ArrayList<>(2);
-        int max_interval_segment = Integer.MIN_VALUE;
-        int max_value_segment = Integer.MIN_VALUE;
-        tmp_segment.add(max_interval_segment);
-        tmp_segment.add(max_value_segment);
 
         float theta0_t = theta.get(0);
         float theta1_t = theta.get(1);
@@ -1275,24 +1096,6 @@ public class RegerSegmentPartitionBlockSize {
                 if (value_delta_i < value_delta_min) {
                     value_delta_min = value_delta_i;
                 }
-
-                if (timestamp_delta_i > max_interval_segment) {
-                    max_interval_segment = timestamp_delta_i;
-                    tmp_segment.set(0, max_interval_segment);
-                }
-                if (value_delta_i > max_value_segment) {
-                    max_value_segment = value_delta_i;
-                    tmp_segment.set(1, max_value_segment);
-                }
-                if (i % segment_size == 0) {
-                    ts_block_delta_segment.add(tmp_segment);
-                    tmp_segment = new ArrayList<>();
-                    max_interval_segment = Integer.MIN_VALUE;
-                    max_value_segment = Integer.MIN_VALUE;
-                    tmp_segment.add(max_interval_segment);
-                    tmp_segment.add(max_value_segment);
-                }
-
                 timestamp_delta_i =
                         ts_block.get(alpha).get(0)
                                 - (int) (theta0_t + theta1_t * (float) ts_block.get(j - 1).get(0));
@@ -1317,252 +1120,13 @@ public class RegerSegmentPartitionBlockSize {
             if (value_delta_i < value_delta_min) {
                 value_delta_min = value_delta_i;
             }
-
-            if (timestamp_delta_i > max_interval_segment) {
-                max_interval_segment = timestamp_delta_i;
-                tmp_segment.set(0, max_interval_segment);
-            }
-            if (value_delta_i > max_value_segment) {
-                max_value_segment = value_delta_i;
-                tmp_segment.set(1, max_value_segment);
-            }
-            int i_new = (i>j? i+1:i);
-            if (i_new % segment_size == 0) {
-                ts_block_delta_segment.add(tmp_segment);
-                tmp_segment = new ArrayList<>();
-                max_interval_segment = Integer.MIN_VALUE;
-                max_value_segment = Integer.MIN_VALUE;
-                tmp_segment.add(max_interval_segment);
-                tmp_segment.add(max_value_segment);
-            }
         }
 
-        for (ArrayList<Integer> segment_max:  ts_block_delta_segment) {
-            length += getBitWith(segment_max.get(0) - timestamp_delta_min);
-            length += getBitWith( segment_max.get(1) - value_delta_min);
+        for (ArrayList<Integer> integers : ts_block_delta) {
+            length += (integers.get(0) - timestamp_delta_min);
+            length += (integers.get(1) - value_delta_min);
         }
         b.add(length);
-//    b.add(getBitWith(timestamp_delta_max - timestamp_delta_min));
-//    b.add(getBitWith(value_delta_max - value_delta_min));
-        return b;
-    }
-    // adjust 0 to n
-    private static ArrayList<Integer> adjust0n1(
-            ArrayList<ArrayList<Integer>> ts_block, ArrayList<Float> theta, int segment_size) {
-        int block_size = ts_block.size();
-        ArrayList<Integer> b = new ArrayList<>();
-        int timestamp_delta_min = Integer.MAX_VALUE;
-        int value_delta_min = Integer.MAX_VALUE;
-        int timestamp_delta_max = Integer.MIN_VALUE;
-        int value_delta_max = Integer.MIN_VALUE;
-        ArrayList<ArrayList<Integer>> ts_block_delta_segment = new ArrayList<>();
-        ArrayList<Integer> tmp_segment = new ArrayList<>(2);
-        int max_interval_segment = Integer.MIN_VALUE;
-        int max_value_segment = Integer.MIN_VALUE;
-        tmp_segment.add(max_interval_segment);
-        tmp_segment.add(max_value_segment);
-
-        float theta0_t = theta.get(0);
-        float theta1_t = theta.get(1);
-        float theta0_v = theta.get(2);
-        float theta1_v = theta.get(3);
-        ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
-        int length = 0;
-        for (int i = 2; i < block_size; i++) {
-            int timestamp_delta_i;
-            int value_delta_i;
-            timestamp_delta_i =
-                    ts_block.get(i).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(i - 1).get(0));
-            value_delta_i =
-                    ts_block.get(i).get(1) - (int) (theta0_v + theta1_v * (float) ts_block.get(i - 1).get(1));
-            ArrayList<Integer> tmp0 = new ArrayList<>();
-            tmp0.add(timestamp_delta_i);
-            tmp0.add(value_delta_i);
-            ts_block_delta.add(tmp0);
-            if (timestamp_delta_i > timestamp_delta_max) {
-                timestamp_delta_max = timestamp_delta_i;
-            }
-            if (timestamp_delta_i < timestamp_delta_min) {
-                timestamp_delta_min = timestamp_delta_i;
-            }
-            if (value_delta_i > value_delta_max) {
-                value_delta_max = value_delta_i;
-            }
-            if (value_delta_i < value_delta_min) {
-                value_delta_min = value_delta_i;
-            }
-            if (timestamp_delta_i > max_interval_segment) {
-                max_interval_segment = timestamp_delta_i;
-                tmp_segment.set(0, max_interval_segment);
-            }
-            if (value_delta_i > max_value_segment) {
-                max_value_segment = value_delta_i;
-                tmp_segment.set(1, max_value_segment);
-            }
-            if (i % segment_size == 0) {
-                ts_block_delta_segment.add(tmp_segment);
-                tmp_segment = new ArrayList<>();
-                max_interval_segment = Integer.MIN_VALUE;
-                max_value_segment = Integer.MIN_VALUE;
-                tmp_segment.add(max_interval_segment);
-                tmp_segment.add(max_value_segment);
-            }
-        }
-        int timestamp_delta_i;
-        int value_delta_i;
-        timestamp_delta_i =
-                ts_block.get(0).get(0)
-                        - (int) (theta0_t + theta1_t * (float) ts_block.get(block_size - 1).get(0));
-        value_delta_i =
-                ts_block.get(0).get(1)
-                        - (int) (theta0_v + theta1_v * (float) ts_block.get(block_size - 1).get(1));
-        ArrayList<Integer> tmp0 = new ArrayList<>();
-        tmp0.add(timestamp_delta_i);
-        tmp0.add(value_delta_i);
-        ts_block_delta.add(tmp0);
-        if (timestamp_delta_i > timestamp_delta_max) {
-            timestamp_delta_max = timestamp_delta_i;
-        }
-        if (timestamp_delta_i < timestamp_delta_min) {
-            timestamp_delta_min = timestamp_delta_i;
-        }
-        if (value_delta_i > value_delta_max) {
-            value_delta_max = value_delta_i;
-        }
-        if (value_delta_i < value_delta_min) {
-            value_delta_min = value_delta_i;
-        }
-        if (timestamp_delta_i > max_interval_segment) {
-            max_interval_segment = timestamp_delta_i;
-            tmp_segment.set(0, max_interval_segment);
-        }
-        if (value_delta_i > max_value_segment) {
-            max_value_segment = value_delta_i;
-            tmp_segment.set(1, max_value_segment);
-        }
-
-        ts_block_delta_segment.add(tmp_segment);
-
-
-
-        for (ArrayList<Integer> segment_max:  ts_block_delta_segment) {
-            length += getBitWith(segment_max.get(0) - timestamp_delta_min);
-            length += getBitWith( segment_max.get(1) - value_delta_min);
-        }
-        b.add(length);
-
-//    b.add(getBitWith(timestamp_delta_max - timestamp_delta_min));
-//    b.add(getBitWith(value_delta_max - value_delta_min));
-        return b;
-    }
-
-    // adjust 0 to no n
-    private static ArrayList<Integer> adjust0(
-            ArrayList<ArrayList<Integer>> ts_block, int alpha, int j, ArrayList<Float> theta, int segment_size) {
-        int block_size = ts_block.size();
-        assert alpha == 0;
-        assert j != block_size;
-
-        ArrayList<Integer> b = new ArrayList<>();
-        int timestamp_delta_min = Integer.MAX_VALUE;
-        int value_delta_min = Integer.MAX_VALUE;
-        int timestamp_delta_max = Integer.MIN_VALUE;
-        int value_delta_max = Integer.MIN_VALUE;
-        ArrayList<ArrayList<Integer>> ts_block_delta_segment = new ArrayList<>();
-        ArrayList<Integer> tmp_segment = new ArrayList<>(2);
-        int max_interval_segment = Integer.MIN_VALUE;
-        int max_value_segment = Integer.MIN_VALUE;
-        tmp_segment.add(max_interval_segment);
-        tmp_segment.add(max_value_segment);
-
-        float theta0_t = theta.get(0);
-        float theta1_t = theta.get(1);
-        float theta0_v = theta.get(2);
-        float theta1_v = theta.get(3);
-
-        ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
-        int length = 0;
-
-        for (int i = 2; i < block_size; i++) {
-            int timestamp_delta_i;
-            int value_delta_i;
-            if (i != j) {
-                timestamp_delta_i =
-                        ts_block.get(i).get(0)
-                                - (int) (theta0_t + theta1_t * (float) ts_block.get(i - 1).get(0));
-                value_delta_i =
-                        ts_block.get(i).get(1)
-                                - (int) (theta0_v + theta1_v * (float) ts_block.get(i - 1).get(1));
-            } else {
-                timestamp_delta_i =
-                        ts_block.get(j).get(0)
-                                - (int) (theta0_t + theta1_t * (float) ts_block.get(alpha).get(0));
-                value_delta_i =
-                        ts_block.get(j).get(1)
-                                - (int) (theta0_v + theta1_v * (float) ts_block.get(alpha).get(1));
-                ArrayList<Integer> tmp0 = new ArrayList<>();
-                tmp0.add(timestamp_delta_i);
-                tmp0.add(value_delta_i);
-                ts_block_delta.add(tmp0);
-                if (timestamp_delta_i > timestamp_delta_max) {
-                    timestamp_delta_max = timestamp_delta_i;
-                }
-                if (timestamp_delta_i < timestamp_delta_min) {
-                    timestamp_delta_min = timestamp_delta_i;
-                }
-                if (value_delta_i > value_delta_max) {
-                    value_delta_max = value_delta_i;
-                }
-                if (value_delta_i < value_delta_min) {
-                    value_delta_min = value_delta_i;
-                }
-                timestamp_delta_i =
-                        ts_block.get(alpha).get(0)
-                                - (int) (theta0_t + theta1_t * (float) ts_block.get(j - 1).get(0));
-                value_delta_i =
-                        ts_block.get(alpha).get(1)
-                                - (int) (theta0_v + theta1_v * (float) ts_block.get(j - 1).get(1));
-            }
-            ArrayList<Integer> tmp0 = new ArrayList<>();
-            tmp0.add(timestamp_delta_i);
-            tmp0.add(value_delta_i);
-            ts_block_delta.add(tmp0);
-            if (timestamp_delta_i > timestamp_delta_max) {
-                timestamp_delta_max = timestamp_delta_i;
-            }
-            if (timestamp_delta_i < timestamp_delta_min) {
-                timestamp_delta_min = timestamp_delta_i;
-            }
-            if (value_delta_i > value_delta_max) {
-                value_delta_max = value_delta_i;
-            }
-            if (value_delta_i < value_delta_min) {
-                value_delta_min = value_delta_i;
-            }
-            if (timestamp_delta_i > max_interval_segment) {
-                max_interval_segment = timestamp_delta_i;
-                tmp_segment.set(0, max_interval_segment);
-            }
-            if (value_delta_i > max_value_segment) {
-                max_value_segment = value_delta_i;
-                tmp_segment.set(1, max_value_segment);
-            }
-            if (i % segment_size == 0) {
-                ts_block_delta_segment.add(tmp_segment);
-                tmp_segment = new ArrayList<>();
-                max_interval_segment = Integer.MIN_VALUE;
-                max_value_segment = Integer.MIN_VALUE;
-                tmp_segment.add(max_interval_segment);
-                tmp_segment.add(max_value_segment);
-            }
-        }
-
-        for (ArrayList<Integer> segment_max:  ts_block_delta_segment) {
-            length += getBitWith(segment_max.get(0) - timestamp_delta_min);
-            length += getBitWith( segment_max.get(1) - value_delta_min);
-        }
-        b.add(length);
-
 //    b.add(getBitWith(timestamp_delta_max - timestamp_delta_min));
 //    b.add(getBitWith(value_delta_max - value_delta_min));
         return b;
@@ -1584,22 +1148,182 @@ public class RegerSegmentPartitionBlockSize {
         return min_i;
     }
 
+    // adjust 0 to n
+    private static ArrayList<Integer> adjust0n1(
+            ArrayList<ArrayList<Integer>> ts_block, ArrayList<Float> theta) {
+        int block_size = ts_block.size();
+        ArrayList<Integer> b = new ArrayList<>();
+        int timestamp_delta_min = Integer.MAX_VALUE;
+        int value_delta_min = Integer.MAX_VALUE;
+        int timestamp_delta_max = Integer.MIN_VALUE;
+        int value_delta_max = Integer.MIN_VALUE;
+
+        float theta0_t = theta.get(0);
+        float theta1_t = theta.get(1);
+        float theta0_v = theta.get(2);
+        float theta1_v = theta.get(3);
+        ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
+        int length = 0;
+        for (int i = 2; i < block_size; i++) {
+            int timestamp_delta_i;
+            int value_delta_i;
+            timestamp_delta_i =
+                    ts_block.get(i).get(0) - (int) (theta0_t + theta1_t * (float) ts_block.get(i - 1).get(0));
+            value_delta_i =
+                    ts_block.get(i).get(1) - (int) (theta0_v + theta1_v * (float) ts_block.get(i - 1).get(1));
+            ArrayList<Integer> tmp0 = new ArrayList<>();
+            tmp0.add(timestamp_delta_i);
+            tmp0.add(value_delta_i);
+            ts_block_delta.add(tmp0);
+            if (timestamp_delta_i > timestamp_delta_max) {
+                timestamp_delta_max = timestamp_delta_i;
+            }
+            if (timestamp_delta_i < timestamp_delta_min) {
+                timestamp_delta_min = timestamp_delta_i;
+            }
+            if (value_delta_i > value_delta_max) {
+                value_delta_max = value_delta_i;
+            }
+            if (value_delta_i < value_delta_min) {
+                value_delta_min = value_delta_i;
+            }
+        }
+        int timestamp_delta_i;
+        int value_delta_i;
+        timestamp_delta_i =
+                ts_block.get(0).get(0)
+                        - (int) (theta0_t + theta1_t * (float) ts_block.get(block_size - 1).get(0));
+        value_delta_i =
+                ts_block.get(0).get(1)
+                        - (int) (theta0_v + theta1_v * (float) ts_block.get(block_size - 1).get(1));
+        ArrayList<Integer> tmp0 = new ArrayList<>();
+        tmp0.add(timestamp_delta_i);
+        tmp0.add(value_delta_i);
+        ts_block_delta.add(tmp0);
+        if (timestamp_delta_i > timestamp_delta_max) {
+            timestamp_delta_max = timestamp_delta_i;
+        }
+        if (timestamp_delta_i < timestamp_delta_min) {
+            timestamp_delta_min = timestamp_delta_i;
+        }
+        if (value_delta_i > value_delta_max) {
+            value_delta_max = value_delta_i;
+        }
+        if (value_delta_i < value_delta_min) {
+            value_delta_min = value_delta_i;
+        }
+        for (ArrayList<Integer> integers : ts_block_delta) {
+            length += (integers.get(0) - timestamp_delta_min);
+            length += (integers.get(1) - value_delta_min);
+        }
+        b.add(length);
+
+//    b.add(getBitWith(timestamp_delta_max - timestamp_delta_min));
+//    b.add(getBitWith(value_delta_max - value_delta_min));
+        return b;
+    }
+
+    // adjust 0 to no n
+    private static ArrayList<Integer> adjust0(
+            ArrayList<ArrayList<Integer>> ts_block, int alpha, int j, ArrayList<Float> theta) {
+        int block_size = ts_block.size();
+        assert alpha == 0;
+        assert j != block_size;
+
+        ArrayList<Integer> b = new ArrayList<>();
+        int timestamp_delta_min = Integer.MAX_VALUE;
+        int value_delta_min = Integer.MAX_VALUE;
+        int timestamp_delta_max = Integer.MIN_VALUE;
+        int value_delta_max = Integer.MIN_VALUE;
+
+        float theta0_t = theta.get(0);
+        float theta1_t = theta.get(1);
+        float theta0_v = theta.get(2);
+        float theta1_v = theta.get(3);
+
+        ArrayList<ArrayList<Integer>> ts_block_delta = new ArrayList<>();
+        int length = 0;
+
+        for (int i = 2; i < block_size; i++) {
+            int timestamp_delta_i;
+            int value_delta_i;
+            if (i != j) {
+                timestamp_delta_i =
+                        ts_block.get(i).get(0)
+                                - (int) (theta0_t + theta1_t * (float) ts_block.get(i - 1).get(0));
+                value_delta_i =
+                        ts_block.get(i).get(1)
+                                - (int) (theta0_v + theta1_v * (float) ts_block.get(i - 1).get(1));
+            } else {
+                timestamp_delta_i =
+                        ts_block.get(j).get(0)
+                                - (int) (theta0_t + theta1_t * (float) ts_block.get(alpha).get(0));
+                value_delta_i =
+                        ts_block.get(j).get(1)
+                                - (int) (theta0_v + theta1_v * (float) ts_block.get(alpha).get(1));
+                ArrayList<Integer> tmp0 = new ArrayList<>();
+                tmp0.add(timestamp_delta_i);
+                tmp0.add(value_delta_i);
+                ts_block_delta.add(tmp0);
+                if (timestamp_delta_i > timestamp_delta_max) {
+                    timestamp_delta_max = timestamp_delta_i;
+                }
+                if (timestamp_delta_i < timestamp_delta_min) {
+                    timestamp_delta_min = timestamp_delta_i;
+                }
+                if (value_delta_i > value_delta_max) {
+                    value_delta_max = value_delta_i;
+                }
+                if (value_delta_i < value_delta_min) {
+                    value_delta_min = value_delta_i;
+                }
+                timestamp_delta_i =
+                        ts_block.get(alpha).get(0)
+                                - (int) (theta0_t + theta1_t * (float) ts_block.get(j - 1).get(0));
+                value_delta_i =
+                        ts_block.get(alpha).get(1)
+                                - (int) (theta0_v + theta1_v * (float) ts_block.get(j - 1).get(1));
+            }
+            ArrayList<Integer> tmp0 = new ArrayList<>();
+            tmp0.add(timestamp_delta_i);
+            tmp0.add(value_delta_i);
+            ts_block_delta.add(tmp0);
+            if (timestamp_delta_i > timestamp_delta_max) {
+                timestamp_delta_max = timestamp_delta_i;
+            }
+            if (timestamp_delta_i < timestamp_delta_min) {
+                timestamp_delta_min = timestamp_delta_i;
+            }
+            if (value_delta_i > value_delta_max) {
+                value_delta_max = value_delta_i;
+            }
+            if (value_delta_i < value_delta_min) {
+                value_delta_min = value_delta_i;
+            }
+        }
+        for (ArrayList<Integer> integers : ts_block_delta) {
+            length += (integers.get(0) - timestamp_delta_min);
+            length += (integers.get(1) - value_delta_min);
+        }
+        b.add(length);
+
+//    b.add(getBitWith(timestamp_delta_max - timestamp_delta_min));
+//    b.add(getBitWith(value_delta_max - value_delta_min));
+        return b;
+    }
 
     public static int getIStar(
             ArrayList<ArrayList<Integer>> ts_block, int block_size, int index, ArrayList<Float> theta) {
         int timestamp_delta_max = Integer.MIN_VALUE;
         int value_delta_max = Integer.MIN_VALUE;
-        int timestamp_delta_max_2 = Integer.MIN_VALUE; // 2nd_largest
-        int value_delta_max_2 = Integer.MIN_VALUE;// 2nd_largest
         int timestamp_delta_min = Integer.MAX_VALUE;
         int value_delta_min = Integer.MAX_VALUE;
-        int timestamp_delta_min_2 = Integer.MAX_VALUE; // 2nd_smallest
-        int value_delta_min_2 = Integer.MAX_VALUE; // 2nd_smallest
         int timestamp_delta_max_index = -1;
         int value_delta_max_index = -1;
         int timestamp_delta_min_index = -1;
         int value_delta_min_index = -1;
         int alpha = 0;
+        ArrayList<Integer> alpha_list = new ArrayList<>();
 
         float theta0_t = theta.get(0);
         float theta1_t = theta.get(1);
@@ -1612,50 +1336,32 @@ public class RegerSegmentPartitionBlockSize {
                         ts_block.get(j).get(1)
                                 - (int) (theta0_v + theta1_v * (float) ts_block.get(j - 1).get(1));
                 if (epsilon_v_j > value_delta_max) {
-                    value_delta_max_2 = value_delta_max;
                     value_delta_max = (int) epsilon_v_j;
                     value_delta_max_index = j;
-                } else if (epsilon_v_j > value_delta_max_2 && epsilon_v_j != value_delta_max) {
-                    value_delta_max_2 = (int) epsilon_v_j;
                 }
                 if (epsilon_v_j < value_delta_min) {
-                    value_delta_min_2 = value_delta_min;
                     value_delta_min = (int) epsilon_v_j;
                     value_delta_min_index = j;
-                } else if (epsilon_v_j < value_delta_min_2 && epsilon_v_j != value_delta_min) {
-                    value_delta_min_2 = (int) epsilon_v_j;
                 }
             }
-            if ((value_delta_max - value_delta_max_2) > block_size * (value_delta_min_2 - value_delta_min)) {
-                alpha = value_delta_max_index;
-            } else {
-                alpha = value_delta_min_index;
-            }
+            alpha_list.add(value_delta_max_index);
+            alpha_list.add(value_delta_min_index);
         } else if (index == 1) {
             for (int j = 1; j < block_size; j++) {
                 int epsilon_r_j =
                         ts_block.get(j).get(0)
                                 - (int) (theta0_t + theta1_t * (float) ts_block.get(j - 1).get(0));
                 if (epsilon_r_j > timestamp_delta_max) {
-                    timestamp_delta_max_2 = timestamp_delta_max;
                     timestamp_delta_max = (int) epsilon_r_j;
                     timestamp_delta_max_index = j;
-                } else if (epsilon_r_j > timestamp_delta_max_2 && epsilon_r_j != timestamp_delta_max) {
-                    timestamp_delta_max_2 = (int) epsilon_r_j;
                 }
                 if (epsilon_r_j < timestamp_delta_min) {
-                    timestamp_delta_min_2 = timestamp_delta_min;
                     timestamp_delta_min = (int) epsilon_r_j;
                     timestamp_delta_min_index = j;
-                } else if (epsilon_r_j < timestamp_delta_min_2 && epsilon_r_j != timestamp_delta_min) {
-                    timestamp_delta_min_2 = (int) epsilon_r_j;
                 }
             }
-            if ((timestamp_delta_max - timestamp_delta_max_2) > block_size * (timestamp_delta_min_2 - timestamp_delta_min)) {
-                alpha = timestamp_delta_max_index;
-            } else {
-                alpha = timestamp_delta_min_index;
-            }
+            alpha_list.add(timestamp_delta_max_index);
+            alpha_list.add(timestamp_delta_min_index);
         }
 
         return alpha;
@@ -1666,18 +1372,12 @@ public class RegerSegmentPartitionBlockSize {
             int block_size,
             ArrayList<Integer> raw_length,
             ArrayList<Float> theta) {
-        int timestamp_delta_max = Integer.MIN_VALUE;
-        int value_delta_max = Integer.MIN_VALUE;
-        int timestamp_delta_max_2 = Integer.MIN_VALUE; // 2nd_largest
-        int value_delta_max_2 = Integer.MIN_VALUE;// 2nd_largest
         int timestamp_delta_min = Integer.MAX_VALUE;
         int value_delta_min = Integer.MAX_VALUE;
-        int timestamp_delta_min_2 = Integer.MAX_VALUE; // 2nd_smallest
-        int value_delta_min_2 = Integer.MAX_VALUE; // 2nd_smallest
+        int timestamp_delta_max = Integer.MIN_VALUE;
+        int value_delta_max = Integer.MIN_VALUE;
         int timestamp_delta_max_index = -1;
         int value_delta_max_index = -1;
-        int timestamp_delta_min_index = -1;
-        int value_delta_min_index = -1;
 
         float theta0_t = theta.get(0);
         float theta1_t = theta.get(1);
@@ -1685,7 +1385,7 @@ public class RegerSegmentPartitionBlockSize {
         float theta1_v = theta.get(3);
 
         int i_star_bit_width = 33;
-        int alpha = 0;
+        int i_star = 0;
 
         for (int j = 1; j < block_size; j++) {
             int epsilon_r_j =
@@ -1693,63 +1393,26 @@ public class RegerSegmentPartitionBlockSize {
             int epsilon_v_j =
                     ts_block.get(j).get(1) - (int) (theta0_v + theta1_v * (float) ts_block.get(j - 1).get(1));
 
-            if (epsilon_v_j > value_delta_max) {
-                value_delta_max_2 = value_delta_max;
-                value_delta_max = (int) epsilon_v_j;
-                value_delta_max_index = j;
-            } else if (epsilon_v_j > value_delta_max_2 && epsilon_v_j != value_delta_max) {
-                value_delta_max_2 = (int) epsilon_v_j;
-            }
-            if (epsilon_v_j < value_delta_min) {
-                value_delta_min_2 = value_delta_min;
-                value_delta_min = (int) epsilon_v_j;
-                value_delta_min_index = j;
-            } else if (epsilon_v_j < value_delta_min_2 && epsilon_v_j != value_delta_min) {
-                value_delta_min_2 = (int) epsilon_v_j;
-            }
             if (epsilon_r_j > timestamp_delta_max) {
-                timestamp_delta_max_2 = timestamp_delta_max;
-                timestamp_delta_max = (int) epsilon_r_j;
+                timestamp_delta_max = epsilon_r_j;
                 timestamp_delta_max_index = j;
-            } else if (epsilon_r_j > timestamp_delta_max_2 && epsilon_r_j != timestamp_delta_max) {
-                timestamp_delta_max_2 = (int) epsilon_r_j;
             }
             if (epsilon_r_j < timestamp_delta_min) {
-                timestamp_delta_min_2 = timestamp_delta_min;
-                timestamp_delta_min = (int) epsilon_r_j;
-                timestamp_delta_min_index = j;
-            } else if (epsilon_r_j < timestamp_delta_min_2 && epsilon_r_j != timestamp_delta_min) {
-                timestamp_delta_min_2 = (int) epsilon_r_j;
+                timestamp_delta_min = epsilon_r_j;
+            }
+            if (epsilon_v_j > value_delta_max) {
+                value_delta_max = epsilon_v_j;
+                value_delta_max_index = j;
+            }
+            if (epsilon_v_j < value_delta_min) {
+                value_delta_min = epsilon_v_j;
             }
         }
-        ArrayList<ArrayList<Integer>> max_list = new ArrayList<>();
-        ArrayList<Integer> tmp = new ArrayList<>();
-        tmp.add(value_delta_max_index);
-        tmp.add(value_delta_max - value_delta_max_2);
-        max_list.add(tmp);
-        tmp = new ArrayList<>();
-
-        tmp.add(timestamp_delta_max_index);
-        tmp.add(timestamp_delta_max - timestamp_delta_max_2);
-        max_list.add(tmp);
-        tmp = new ArrayList<>();
-
-        tmp.add(timestamp_delta_min_index);
-        tmp.add(block_size * (timestamp_delta_min_2 - timestamp_delta_min));
-        max_list.add(tmp);
-        tmp = new ArrayList<>();
-
-        tmp.add(value_delta_min_index);
-        tmp.add(block_size * (value_delta_min_2 - value_delta_min));
-        max_list.add(tmp);
-
-        quickSort(max_list, 1, 0, 3);
-        alpha = max_list.get(3).get(0);
-//    timestamp_delta_max -= timestamp_delta_min;
-//    value_delta_max -= value_delta_min;
-//    if (value_delta_max <= timestamp_delta_max) i_star = timestamp_delta_max_index;
-//    else i_star = value_delta_max_index;
-        return alpha;
+        timestamp_delta_max -= timestamp_delta_min;
+        value_delta_max -= value_delta_min;
+        if (value_delta_max <= timestamp_delta_max) i_star = timestamp_delta_max_index;
+        else i_star = value_delta_max_index;
+        return i_star;
     }
 
     public static ArrayList<Byte> encode2Bytes(
@@ -1903,6 +1566,7 @@ public class RegerSegmentPartitionBlockSize {
         return bit_width_segments;
     }
 
+
     public static ArrayList<Byte> ReorderingRegressionEncoder(
             ArrayList<ArrayList<Integer>> data, int block_size, int[] third_value, int segment_size) {
         block_size++;
@@ -1915,6 +1579,7 @@ public class RegerSegmentPartitionBlockSize {
         // encode block size (Integer)
         byte[] block_size_byte = int2Bytes(block_size);
         for (byte b : block_size_byte) encoded_result.add(b);
+
 
         // ----------------------- compare data order by time, value and partition ---------------------------
         int length_time = 0;
@@ -2640,27 +2305,27 @@ public class RegerSegmentPartitionBlockSize {
         output_path_list.add(parent_dir + "\\CS-Sensors_ratio.csv"); // 0
         dataset_block_size.add(1024);
         output_path_list.add(parent_dir + "\\Metro-Traffic_ratio.csv");// 1
-        dataset_block_size.add(2048);
+        dataset_block_size.add(512);
         output_path_list.add(parent_dir + "\\USGS-Earthquakes_ratio.csv");// 2
-        dataset_block_size.add(256);
+        dataset_block_size.add(512);
         output_path_list.add(parent_dir + "\\YZ-Electricity_ratio.csv"); // 3
-        dataset_block_size.add(256);
+        dataset_block_size.add(1024);
         output_path_list.add(parent_dir + "\\GW-Magnetic_ratio.csv"); //4
         dataset_block_size.add(128);
         output_path_list.add(parent_dir + "\\TY-Fuel_ratio.csv");//5
-        dataset_block_size.add(128);
+        dataset_block_size.add(64);
         output_path_list.add(parent_dir + "\\Cyber-Vehicle_ratio.csv"); //6
-        dataset_block_size.add(256);
+        dataset_block_size.add(128);
         output_path_list.add(parent_dir + "\\Vehicle-Charge_ratio.csv");//7
         dataset_block_size.add(512);
         output_path_list.add(parent_dir + "\\Nifty-Stocks_ratio.csv");//8
-        dataset_block_size.add(512);
+        dataset_block_size.add(256);
         output_path_list.add(parent_dir + "\\TH-Climate_ratio.csv");//9
-        dataset_block_size.add(1024);
+        dataset_block_size.add(512);
         output_path_list.add(parent_dir + "\\TY-Transport_ratio.csv");//10
-        dataset_block_size.add(1024);
+        dataset_block_size.add(512);
         output_path_list.add(parent_dir + "\\EPM-Education_ratio.csv");//11
-        dataset_block_size.add(4096);
+        dataset_block_size.add(512);
 
 //    for (int file_i = 8; file_i < 9; file_i++) {
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
@@ -2688,12 +2353,12 @@ public class RegerSegmentPartitionBlockSize {
             writer.writeRecord(head); // write header to output file
 
             assert tempList != null;
-            for (File f : tempList) {
-                System.out.println(f);
-                for (int block_size_exp = 13; block_size_exp >= 4; block_size_exp--) {
+//System.out.println(inputPath);
+            for (int block_size_exp = 13; block_size_exp >= 4; block_size_exp--) {
                 int block_size = (int) Math.pow(2, block_size_exp);
                 System.out.println(block_size);
-
+                for (File f : tempList) {
+                    System.out.println(f);
                     InputStream inputStream = Files.newInputStream(f.toPath());
                     CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
                     ArrayList<ArrayList<Integer>> data = new ArrayList<>();
@@ -2720,7 +2385,7 @@ public class RegerSegmentPartitionBlockSize {
                         long s = System.nanoTime();
                         ArrayList<Byte> buffer = new ArrayList<>();
                         for (int repeat = 0; repeat < repeatTime2; repeat++)
-                            buffer = ReorderingRegressionEncoder(data, block_size, dataset_third.get(file_i), 8);
+                            buffer = ReorderingRegressionEncoder(data, block_size, dataset_third.get(file_i),8);
                         long e = System.nanoTime();
                         encodeTime += ((e - s) / repeatTime2);
                         compressed_size += buffer.size();
