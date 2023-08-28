@@ -26,11 +26,6 @@ import java.io.IOException;
 
 public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEstimator {
 
-  /**
-   * The metadata algorithm is: maxChunkMetaDataSize * maxChunkNumber * fileSize * maxSeriesNumber
-   *
-   * @return estimate metadata memory cost
-   */
   @Override
   public long calculatingMetadataMemoryCost(CompactionTaskInfo taskInfo) {
     long cost = 0;
@@ -53,13 +48,6 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
     return cost;
   }
 
-  /**
-   * The data algorithm is: (targetChunkSize * maxConcurrentSeriesNumber) + modsFileSize +
-   * (totalFileSize * compressionRatio / totalChunkNum) * maxConcurrentSeriesNum *
-   * maxConcurrentFileNum
-   *
-   * @return estimate data memory cost
-   */
   @Override
   public long calculatingDataMemoryCost(CompactionTaskInfo taskInfo) throws IOException {
     if (taskInfo.getTotalChunkNum() == 0) {
