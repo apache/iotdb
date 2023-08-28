@@ -319,8 +319,8 @@ public class RgerPDouble{
           resultCovariances_value[i] += ts_block.get(j).get(1) * ts_block.get(j + i).get(1);
         }
       }
-      resultCovariances_timestamp[i] /= length - i;
-      resultCovariances_value[i] /= length - i;
+      resultCovariances_timestamp[i] /= (length - i);
+      resultCovariances_value[i] /= (length - i);
     }
 
     double[] epsilons_timestamp = new double[p + 1];
@@ -340,9 +340,19 @@ public class RgerPDouble{
         tmpSum_timestamp += alphas_timestamp[j][i - 1] * resultCovariances_timestamp[i - j];
         tmpSum_value += alphas_value[j][i - 1] * resultCovariances_value[i - j];
       }
-      kappas_timestamp[i] =
-              (resultCovariances_timestamp[i] - tmpSum_timestamp) / epsilons_timestamp[i - 1];
-      kappas_value[i] = (resultCovariances_value[i] - tmpSum_value) / epsilons_value[i - 1];
+      if(epsilons_timestamp[i - 1]==0){
+        kappas_timestamp[i] =0;
+      }
+      else {
+        kappas_timestamp[i] =
+                (resultCovariances_timestamp[i] - tmpSum_timestamp) / epsilons_timestamp[i - 1];
+      }
+      if(epsilons_value[i - 1]==0){
+        kappas_value[i] =0;
+      }
+      else{
+        kappas_value[i] = (resultCovariances_value[i] - tmpSum_value) / epsilons_value[i - 1];
+      }
       alphas_timestamp[i][i] = kappas_timestamp[i];
       alphas_value[i][i] = kappas_value[i];
       if (i > 1) {

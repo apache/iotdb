@@ -2,6 +2,7 @@ package org.apache.iotdb.tsfile.encoding;
 
 import com.csvreader.CsvReader;
 import com.csvreader.CsvWriter;
+import org.apache.commons.math3.stat.regression.OLSMultipleLinearRegression;
 
 import java.io.File;
 import java.io.IOException;
@@ -14,7 +15,9 @@ import java.util.Stack;
 
 import static java.lang.Math.abs;
 
-public class RgerPDoubleCopy{
+public class RgerPIntPara{
+
+
   public static int zigzag(int num) {
     if (num < 0) {
       return 2 * (-num) - 1;
@@ -71,7 +74,7 @@ public class RgerPDoubleCopy{
     return dest;
   }
 
-  public static byte[] double2bytes(double dou) {
+  public static byte[] double2Bytes(double dou) {
     long value = Double.doubleToRawLongBits(dou);
     byte[] bytes = new byte[8];
     for (int i = 0; i < 8; i++) {
@@ -137,7 +140,21 @@ public class RgerPDoubleCopy{
     }
     return result;
   }
-
+//  public static byte[] bitPacking(ArrayList<ArrayList<Integer>> numbers, int index, int bit_width,int p) {
+//    int block_num = numbers.size() / 8;
+//    byte[] result = new byte[bit_width * block_num];
+//    for (int i = 0; i < block_num; i++) {
+//      for (int j = 0; j < bit_width; j++) {
+//        int tmp_int = 0;
+//        for (int k = 0; k < 8; k++) {
+//          tmp_int += (((numbers.get(i * 8 + k + 1).get(index) >> j) % 2) << k);
+//        }
+//        //        System.out.println(Integer.toBinaryString(tmp_int));
+//        result[i * bit_width + j] = (byte) tmp_int;
+//      }
+//    }
+//    return result;
+//  }
   public static byte[] bitPacking(ArrayList<ArrayList<Integer>> numbers, int index, int start, int block_num, int bit_width) {
     block_num = block_num / 8;
     byte[] result = new byte[bit_width * block_num];
@@ -251,7 +268,7 @@ public class RgerPDoubleCopy{
   }
 
   public static void splitTimeStamp3(
-          ArrayList<ArrayList<Integer>> ts_block, ArrayList<Integer> result) {
+      ArrayList<ArrayList<Integer>> ts_block,  ArrayList<Integer> result) {
     // int max_deviation = Integer.MIN_VALUE;
 
     int td_common = 0;
@@ -304,74 +321,147 @@ public class RgerPDoubleCopy{
   }
 
   public static void terminate(
-          ArrayList<ArrayList<Integer>> ts_block, ArrayList<Double> coefficient, int p) {
+      ArrayList<ArrayList<Integer>> ts_block, ArrayList<Integer> coefficient, int p) {
     int length = ts_block.size();
     assert length > p;
+    int size=length-p;
 
-    double[] resultCovariances_value = new double[p + 1];
-    double[] resultCovariances_timestamp = new double[p + 1];
-    for (int i = 0; i <= p; i++) {
-      resultCovariances_value[i] = 0;
-      resultCovariances_timestamp[i] = 0;
-      for (int j = 0; j < length - i; j++) {
-        if (j + i < length) {
-          resultCovariances_timestamp[i] += ts_block.get(j).get(0) * ts_block.get(j + i).get(0);
-          resultCovariances_value[i] += ts_block.get(j).get(1) * ts_block.get(j + i).get(1);
+//        boolean flag1=false;
+//        for(int i=0;i<ts_block.size();i++){
+//            if(ts_block.get(i).get(0)!=0){
+//                flag1=true;
+//                break;
+//            }
+//        }
+//        int pre1=ts_block.get(0).get(0);
+//        boolean flag3=true;
+//        for(int i=1;i<ts_block.size();i++){
+//            if(ts_block.get(i).get(0)!=pre1){
+//                flag3=false;
+//                break;
+//            }
+//            pre1=ts_block.get(i).get(0);
+//        }
+//        boolean flag2=false;
+//        for(int i=0;i<ts_block.size();i++){
+//            if(ts_block.get(i).get(1)!=0){
+//                flag2=true;
+//                break;
+//            }
+//        }
+//        int pre2=ts_block.get(0).get(1);
+//        boolean flag4=true;
+//        for(int i=1;i<ts_block.size();i++){
+//            if(ts_block.get(i).get(1)!=pre2){
+//                flag4=false;
+//                break;
+//            }
+//            pre2=ts_block.get(i).get(1);
+//        }
+
+//        double[] param;
+//        if(flag1==true && flag3==false) {
+//            OLSMultipleLinearRegression ols1 = new OLSMultipleLinearRegression();
+//            double[][] X1 = new double[size][p];
+//            double[] Y1 = new double[size];
+//            for (int i = 0; i < size; i++) {
+//                X1[i] = new double[p];
+//                for (int j = 0; j < p; j++) {
+//                    X1[i][j] = ts_block.get(i + j).get(0);
+//                }
+//                Y1[i] = ts_block.get(i + p).get(0);
+//            }
+//            ols1.newSampleData(Y1, X1);
+//            param = ols1.estimateRegressionParameters(); //结果的第1项是常数项， 之后依次序为各个特征的系数
+//            //System.out.println(Arrays.toString(param));
+//        }
+//        else{
+//            param=new double[p+1];
+//            for(int i=0;i<=p;i++){
+//                param[i]=0;
+//            }
+//        }
+
+    double[] param;
+    try{
+      OLSMultipleLinearRegression ols1 = new OLSMultipleLinearRegression();
+      double[][] X1 = new double[size][p];
+      double[] Y1 = new double[size];
+      for (int i = 0; i < size; i++) {
+        X1[i] = new double[p];
+        for (int j = 0; j < p; j++) {
+          X1[i][j] = ts_block.get(i + j).get(0);
         }
+        Y1[i] = ts_block.get(i + p).get(0);
       }
-      resultCovariances_timestamp[i] /= length - i;
-      resultCovariances_value[i] /= length - i;
+      ols1.newSampleData(Y1, X1);
+      param = ols1.estimateRegressionParameters(); //结果的第1项是常数项， 之后依次序为各个特征的系数
+      //System.out.println(Arrays.toString(param));
+    }catch (Exception e){
+      param=new double[p+1];
+      for(int i=0;i<=p;i++){
+        param[i]=0;
+      }
     }
 
-    double[] epsilons_timestamp = new double[p + 1];
-    double[] epsilons_value = new double[p + 1];
-    double[] kappas_timestamp = new double[p + 1];
-    double[] kappas_value = new double[p + 1];
-    double[][] alphas_timestamp = new double[p + 1][p + 1];
-    double[][] alphas_value = new double[p + 1][p + 1];
-    // alphas_timestamp[i][j] denotes alpha_i^{(j)}
-    // alphas_value[i][j] denotes alpha_i^{(j)}
-    epsilons_timestamp[0] = resultCovariances_timestamp[0];
-    epsilons_value[0] = resultCovariances_value[0];
-    for (int i = 1; i <= p; i++) {
-      double tmpSum_timestamp = 0.0;
-      double tmpSum_value = 0.0;
-      for (int j = 1; j <= i - 1; j++) {
-        tmpSum_timestamp += alphas_timestamp[j][i - 1] * resultCovariances_timestamp[i - j];
-        tmpSum_value += alphas_value[j][i - 1] * resultCovariances_value[i - j];
-      }
-      kappas_timestamp[i] =
-              (resultCovariances_timestamp[i] - tmpSum_timestamp) / epsilons_timestamp[i - 1];
-      kappas_value[i] = (resultCovariances_value[i] - tmpSum_value) / epsilons_value[i - 1];
-      alphas_timestamp[i][i] = kappas_timestamp[i];
-      alphas_value[i][i] = kappas_value[i];
-      if (i > 1) {
-        for (int j = 1; j <= i - 1; j++) {
-          alphas_timestamp[j][i] =
-                  alphas_timestamp[j][i - 1] - kappas_timestamp[i] * alphas_timestamp[i - j][i - 1];
-          alphas_value[j][i] =
-                  alphas_value[j][i - 1] - kappas_value[i] * alphas_value[i - j][i - 1];
+//        double[] param2;
+//        if(flag2==true && flag4==false) {
+//            OLSMultipleLinearRegression ols2 = new OLSMultipleLinearRegression();
+//            double[][] X2 = new double[size][p];
+//            double[] Y2 = new double[size];
+//            for (int i = 0; i < size; i++) {
+//                X2[i] = new double[p];
+//                for (int j = 0; j < p; j++) {
+//                    X2[i][j] = ts_block.get(i + j).get(1);
+//                }
+//                Y2[i] = ts_block.get(i + p).get(1);
+//            }
+//            ols2.newSampleData(Y2, X2);
+//            param2 = ols2.estimateRegressionParameters(); //结果的第1项是常数项， 之后依次序为各个特征的系数
+//            //System.out.println(Arrays.toString(param2));
+//        }
+//        else{
+//            param2=new double[p+1];
+//            for(int i=0;i<=p;i++){
+//                param2[i]=0;
+//            }
+//        }
+
+    double[] param2;
+    try{
+      OLSMultipleLinearRegression ols2 = new OLSMultipleLinearRegression();
+      double[][] X2 = new double[size][p];
+      double[] Y2 = new double[size];
+      for (int i = 0; i < size; i++) {
+        X2[i] = new double[p];
+        for (int j = 0; j < p; j++) {
+          X2[i][j] = ts_block.get(i + j).get(1);
         }
+        Y2[i] = ts_block.get(i + p).get(1);
       }
-      epsilons_timestamp[i] =
-              (1 - kappas_timestamp[i] * kappas_timestamp[i]) * epsilons_timestamp[i - 1];
-      epsilons_value[i] = (1 - kappas_value[i] * kappas_value[i]) * epsilons_value[i - 1];
+      ols2.newSampleData(Y2, X2);
+      param2 = ols2.estimateRegressionParameters(); //结果的第1项是常数项， 之后依次序为各个特征的系数
+      //System.out.println(Arrays.toString(param2));
+    }catch (Exception exception){
+      param2=new double[p+1];
+      for(int i=0;i<=p;i++){
+        param2[i]=0;
+      }
     }
 
     for (int i = 0; i <= p; i++) {
-      coefficient.add((double) alphas_timestamp[i][p]);
-      coefficient.add((double) alphas_value[i][p]);
-      //      System.out.println(alphas_value[i][3]);
+      coefficient.add((int) param[i]);
+      coefficient.add((int) param2[i]);
     }
   }
   // --------------------------------------  base function -----------------------------------------------------
 
   private static ArrayList<ArrayList<Integer>> getEncodeBitsRegressionP(
-          ArrayList<ArrayList<Integer>> ts_block,
-          int block_size,
-          ArrayList<Integer> raw_length,
-          ArrayList<Double> coefficient,
-          int p) {
+      ArrayList<ArrayList<Integer>> ts_block,
+      int block_size,
+      ArrayList<Integer> raw_length,
+      ArrayList<Integer> coefficient,
+      int p) {
     int timestamp_delta_min = Integer.MAX_VALUE;
     int value_delta_min = Integer.MAX_VALUE;
     int max_timestamp = Integer.MIN_VALUE;
@@ -388,11 +478,11 @@ public class RgerPDoubleCopy{
     ts_block_delta.add(tmp0);
     // regression residual
     for (int j = 1; j < p; j++) {
-      double epsilon_r = (double) ((double) ts_block.get(j).get(0) - coefficient.get(0));
-      double epsilon_v = (double) ((double) ts_block.get(j).get(1) - coefficient.get(1));
+      int epsilon_r = (int) ((int) ts_block.get(j).get(0) - coefficient.get(0));
+      int epsilon_v = (int) ((int) ts_block.get(j).get(1) - coefficient.get(1));
       for (int pi = 1; pi <= j; pi++) {
-        epsilon_r -= (double) (coefficient.get(2 * pi) * (double) ts_block.get(j - pi).get(0));
-        epsilon_v -= (double) (coefficient.get(2 * pi + 1) * (double) ts_block.get(j - pi).get(1));
+        epsilon_r -= (int) (coefficient.get(2 * pi) * (double) ts_block.get(j - pi).get(0));
+        epsilon_v -= (int) (coefficient.get(2 * pi + 1) * (double) ts_block.get(j - pi).get(1));
       }
 
       //      if(epsilon_r<timestamp_delta_min){
@@ -408,46 +498,46 @@ public class RgerPDoubleCopy{
       //        max_value = epsilon_v;
       //      }
       ArrayList<Integer> tmp = new ArrayList<>();
-      tmp.add((int) epsilon_r);
-      tmp.add((int) epsilon_v);
+      tmp.add(epsilon_r);
+      tmp.add(epsilon_v);
       ts_block_delta.add(tmp);
     }
 
     // regression residual
     for (int j = p; j < block_size; j++) {
-      double epsilon_r = (double) ts_block.get(j).get(0) - coefficient.get(0);
-      double epsilon_v = (double) ts_block.get(j).get(1) - coefficient.get(1);
+      int epsilon_r = (int) ((int) ts_block.get(j).get(0) - coefficient.get(0));
+      int epsilon_v = (int) ((int) ts_block.get(j).get(1) - coefficient.get(1));
       for (int pi = 1; pi <= p; pi++) {
-        epsilon_r -= coefficient.get(2 * pi) * (double) ts_block.get(j - pi).get(0);
-        epsilon_v -= coefficient.get(2 * pi + 1) * (double) ts_block.get(j - pi).get(1);
+        epsilon_r -= (int) (coefficient.get(2 * pi) * (double) ts_block.get(j - pi).get(0));
+        epsilon_v -= (int) (coefficient.get(2 * pi + 1) * (double) ts_block.get(j - pi).get(1));
       }
 
       if (epsilon_r < timestamp_delta_min) {
-        timestamp_delta_min = (int) epsilon_r;
+        timestamp_delta_min = epsilon_r;
       }
       if (epsilon_v < value_delta_min) {
-        value_delta_min = (int) epsilon_v;
+        value_delta_min = epsilon_v;
       }
       if (epsilon_r > max_timestamp) {
-        max_timestamp = (int) epsilon_r;
+        max_timestamp = epsilon_r;
       }
       if (epsilon_v > max_value) {
-        max_value = (int) epsilon_v;
+        max_value = epsilon_v;
       }
       ArrayList<Integer> tmp = new ArrayList<>();
-      tmp.add((int) epsilon_r);
-      tmp.add((int) epsilon_v);
+      tmp.add(epsilon_r);
+      tmp.add(epsilon_v);
       ts_block_delta.add(tmp);
     }
     int length = 0;
-    for (int j = block_size - 1; j >= p; j--) {
-      double epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
-      double epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
+    for (int j = block_size -1; j >= p; j--) {
+      int epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
+      int epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
       length += epsilon_r;
       length += epsilon_v;
       ArrayList<Integer> tmp = new ArrayList<>();
-      tmp.add((int) epsilon_r);
-      tmp.add((int) epsilon_v);
+      tmp.add(epsilon_r);
+      tmp.add(epsilon_v);
       ts_block_delta.set(j, tmp);
     }
     int max_bit_width_interval = getBitWith(max_timestamp - timestamp_delta_min);
@@ -466,11 +556,11 @@ public class RgerPDoubleCopy{
   }
 
   public static int getBetaP(
-          ArrayList<ArrayList<Integer>> ts_block,
-          int alpha,
-          int block_size,
-          ArrayList<Double> coefficient,
-          int p) {
+      ArrayList<ArrayList<Integer>> ts_block,
+      int alpha,
+      int block_size,
+      ArrayList<Integer> coefficient,
+      int p) {
     int timestamp_delta_min = Integer.MAX_VALUE;
     int value_delta_min = Integer.MAX_VALUE;
     int max_timestamp = Integer.MIN_VALUE;
@@ -492,43 +582,43 @@ public class RgerPDoubleCopy{
     }
     terminate(ts_block, coefficient, p);
     for (int j = p; j < block_size; j++) {
-      double epsilon_r = (double) ts_block.get(j).get(0) - coefficient.get(0);
-      double epsilon_v = (double) ts_block.get(j).get(1) - coefficient.get(1);
+      int epsilon_r = (int) ((int) ts_block.get(j).get(0) - coefficient.get(0));
+      int epsilon_v = (int) ((int) ts_block.get(j).get(1) - coefficient.get(1));
       for (int pi = 1; pi <= p; pi++) {
         epsilon_r -= (int) (coefficient.get(2 * pi) * (double) ts_block.get(j - pi).get(0));
         epsilon_v -= (int) (coefficient.get(2 * pi + 1) * (double) ts_block.get(j - pi).get(1));
       }
 
       if (epsilon_r < timestamp_delta_min) {
-        timestamp_delta_min = (int) epsilon_r;
+        timestamp_delta_min = epsilon_r;
       }
       if (epsilon_v < value_delta_min) {
-        value_delta_min = (int) epsilon_v;
+        value_delta_min = epsilon_v;
       }
       if (epsilon_r > max_timestamp) {
-        max_timestamp = (int) epsilon_r;
+        max_timestamp = epsilon_r;
       }
       if (epsilon_v > max_value) {
-        max_value = (int) epsilon_v;
+        max_value = epsilon_v;
       }
       ArrayList<Integer> tmp = new ArrayList<>();
-      tmp.add((int) epsilon_r);
-      tmp.add((int) epsilon_v);
+      tmp.add(epsilon_r);
+      tmp.add(epsilon_v);
       ts_block_delta.add(tmp);
     }
-    for (int j = 0; j < block_size - p; j++) {
+    for (int j = 0; j < block_size-p; j++) {
       raw_abs_sum += ts_block_delta.get(j).get(0);
       raw_abs_sum += ts_block_delta.get(j).get(1);
     }
     // regression residual
     for (int j = p; j < block_size; j++) {
-      double epsilon_r = (double) ts_block.get(j).get(0) - coefficient.get(0);
-      double epsilon_v = (double) ts_block.get(j).get(1) - coefficient.get(1);
+      int epsilon_r = (int) ((int) ts_block.get(j).get(0) - coefficient.get(0));
+      int epsilon_v = (int) ((int) ts_block.get(j).get(1) - coefficient.get(1));
       for (int pi = 1; pi <= p; pi++) {
-        epsilon_r -= (coefficient.get(2 * pi) * (double) ts_block.get(j - pi).get(0));
-        epsilon_v -= (coefficient.get(2 * pi + 1) * (double) ts_block.get(j - pi).get(1));
+        epsilon_r -= (int) (coefficient.get(2 * pi) * (double) ts_block.get(j - pi).get(0));
+        epsilon_v -= (int) (coefficient.get(2 * pi + 1) * (double) ts_block.get(j - pi).get(1));
       }
-      if (j != alpha && ((int) epsilon_r == max_timestamp || (int) epsilon_v == max_value)) {
+      if (j != alpha && (epsilon_r == max_timestamp || epsilon_v == max_value)) {
         max_index.add(j);
       }
     }
@@ -553,11 +643,11 @@ public class RgerPDoubleCopy{
           continue;
         }
         ArrayList<Integer> b = adjustCase2(ts_block, alpha, j, coefficient, p);
-        if (b.get(0) < raw_abs_sum) {
+        if (b.get(0)  < raw_abs_sum) {
           raw_abs_sum = b.get(0);
           j_star_list.clear();
           j_star_list.add(j);
-        } else if (b.get(0) == raw_abs_sum) {
+        } else if (b.get(0)  == raw_abs_sum) {
           j_star_list.add(j);
         }
       }
@@ -575,11 +665,11 @@ public class RgerPDoubleCopy{
           continue;
         }
         ArrayList<Integer> b = adjustCase3(ts_block, alpha, j, coefficient, p);
-        if (b.get(0) < raw_abs_sum) {
+        if (b.get(0)  < raw_abs_sum) {
           raw_abs_sum = b.get(0);
           j_star_list.clear();
           j_star_list.add(j);
-        } else if (b.get(0) == raw_abs_sum) {
+        } else if (b.get(0)  == raw_abs_sum) {
           j_star_list.add(j);
         }
       }
@@ -602,21 +692,21 @@ public class RgerPDoubleCopy{
           continue;
         }
         ArrayList<Integer> b = adjustCase4(ts_block, alpha, j, coefficient, p);
-        if (b.get(0) < raw_abs_sum) {
+        if (b.get(0)  < raw_abs_sum) {
           raw_abs_sum = b.get(0);
           j_star_list.clear();
           j_star_list.add(j);
-        } else if (b.get(0) == raw_abs_sum) {
+        } else if (b.get(0)  == raw_abs_sum) {
           j_star_list.add(j);
         }
       }
       ArrayList<Integer> b = adjustCase5(ts_block, alpha, coefficient, p);
-      if (b.get(0) < raw_abs_sum) {
+      if (b.get(0)  < raw_abs_sum) {
         raw_abs_sum = b.get(0);
         j_star_list.clear();
         j_star_list.add(block_size);
         //        System.out.println("j_star_list adjust0n1");
-      } else if (b.get(0) == raw_abs_sum) {
+      } else if (b.get(0)  == raw_abs_sum) {
         j_star_list.add(block_size);
       }
 
@@ -644,11 +734,11 @@ public class RgerPDoubleCopy{
           continue;
         }
         b = adjustCase1(ts_block, alpha, j, coefficient, p);
-        if (b.get(0) < raw_abs_sum) {
+        if (b.get(0)  < raw_abs_sum) {
           raw_abs_sum = b.get(0);
           j_star_list.clear();
           j_star_list.add(j);
-        } else if (b.get(0) == raw_abs_sum) {
+        } else if (b.get(0)  == raw_abs_sum) {
           j_star_list.add(j);
         }
       }
@@ -666,11 +756,11 @@ public class RgerPDoubleCopy{
           continue;
         }
         b = adjustCase2(ts_block, alpha, j, coefficient, p);
-        if (b.get(0) < raw_abs_sum) {
+        if (b.get(0)  < raw_abs_sum) {
           raw_abs_sum = b.get(0);
           j_star_list.clear();
           j_star_list.add(j);
-        } else if (b.get(0) == raw_abs_sum) {
+        } else if (b.get(0)  == raw_abs_sum) {
           j_star_list.add(j);
         }
       }
@@ -688,11 +778,11 @@ public class RgerPDoubleCopy{
           continue;
         }
         b = adjustCase3(ts_block, alpha, j, coefficient, p);
-        if (b.get(0) < raw_abs_sum) {
+        if (b.get(0)  < raw_abs_sum) {
           raw_abs_sum = b.get(0);
           j_star_list.clear();
           j_star_list.add(j);
-        } else if (b.get(0) == raw_abs_sum) {
+        } else if (b.get(0)  == raw_abs_sum) {
           j_star_list.add(j);
         }
       }
@@ -715,21 +805,21 @@ public class RgerPDoubleCopy{
           continue;
         }
         b = adjustCase4(ts_block, alpha, j, coefficient, p);
-        if (b.get(0) < raw_abs_sum) {
+        if (b.get(0)  < raw_abs_sum) {
           raw_abs_sum = b.get(0);
           j_star_list.clear();
           j_star_list.add(j);
-        } else if (b.get(0) == raw_abs_sum) {
+        } else if (b.get(0)  == raw_abs_sum) {
           j_star_list.add(j);
         }
       }
 
       b = adjustCase5(ts_block, alpha, coefficient, p);
-      if (b.get(0) < raw_abs_sum) {
+      if (b.get(0)  < raw_abs_sum) {
         raw_abs_sum = b.get(0);
         j_star_list.clear();
         j_star_list.add(0);
-      } else if (b.get(0) == raw_abs_sum) {
+      } else if (b.get(0)  == raw_abs_sum) {
         j_star_list.add(0);
       }
     } // p < alpha <= n-p
@@ -755,11 +845,11 @@ public class RgerPDoubleCopy{
           continue;
         }
         b = adjustCase1(ts_block, alpha, j, coefficient, p);
-        if (b.get(0) < raw_abs_sum) {
+        if (b.get(0)  < raw_abs_sum) {
           raw_abs_sum = b.get(0);
           j_star_list.clear();
           j_star_list.add(j);
-        } else if (b.get(0) == raw_abs_sum) {
+        } else if (b.get(0)  == raw_abs_sum) {
           j_star_list.add(j);
         }
       }
@@ -777,11 +867,11 @@ public class RgerPDoubleCopy{
           continue;
         }
         b = adjustCase2(ts_block, alpha, j, coefficient, p);
-        if (b.get(0) < raw_abs_sum) {
+        if (b.get(0)  < raw_abs_sum) {
           raw_abs_sum = b.get(0);
           j_star_list.clear();
           j_star_list.add(j);
-        } else if (b.get(0) == raw_abs_sum) {
+        } else if (b.get(0)  == raw_abs_sum) {
           j_star_list.add(j);
         }
       }
@@ -799,11 +889,11 @@ public class RgerPDoubleCopy{
           continue;
         }
         b = adjustCase3(ts_block, alpha, j, coefficient, p);
-        if (b.get(0) < raw_abs_sum) {
+        if (b.get(0)  < raw_abs_sum) {
           raw_abs_sum = b.get(0);
           j_star_list.clear();
           j_star_list.add(j);
-        } else if (b.get(0) == raw_abs_sum) {
+        } else if (b.get(0)  == raw_abs_sum) {
           j_star_list.add(j);
         }
       }
@@ -826,20 +916,20 @@ public class RgerPDoubleCopy{
           continue;
         }
         b = adjustCase4(ts_block, alpha, j, coefficient, p);
-        if (b.get(0) < raw_abs_sum) {
+        if (b.get(0)  < raw_abs_sum) {
           raw_abs_sum = b.get(0);
           j_star_list.clear();
           j_star_list.add(j);
-        } else if (b.get(0) == raw_abs_sum) {
+        } else if (b.get(0)  == raw_abs_sum) {
           j_star_list.add(j);
         }
       }
       b = adjustCase5(ts_block, alpha, coefficient, p);
-      if (b.get(0) < raw_abs_sum) {
+      if (b.get(0)  < raw_abs_sum) {
         raw_abs_sum = b.get(0);
         j_star_list.clear();
         j_star_list.add(0);
-      } else if (b.get(0) == raw_abs_sum) {
+      } else if (b.get(0)  == raw_abs_sum) {
         j_star_list.add(0);
       }
     }
@@ -854,7 +944,7 @@ public class RgerPDoubleCopy{
           ArrayList<ArrayList<Integer>> ts_block,
           int alpha,
           int j_star,
-          ArrayList<Double> coefficient,
+          ArrayList<Integer> coefficient,
           int p) {
     ArrayList<ArrayList<Integer>> tmp_ts_block = (ArrayList<ArrayList<Integer>>) ts_block.clone();
     int block_size = ts_block.size();
@@ -875,27 +965,27 @@ public class RgerPDoubleCopy{
 
     // regression residual
     for (int j = p; j < block_size; j++) {
-      double epsilon_r = (double) ts_block.get(j).get(0) - coefficient.get(0);
-      double epsilon_v = (double) ts_block.get(j).get(1) - coefficient.get(1);
+      int epsilon_r = ts_block.get(j).get(0) - coefficient.get(0);
+      int epsilon_v = ts_block.get(j).get(1) - coefficient.get(1);
       for (int pi = 1; pi <= p; pi++) {
-        epsilon_r -= coefficient.get(2 * pi) * (double) ts_block.get(j - pi).get(0);
-        epsilon_v -= coefficient.get(2 * pi + 1) * (double) ts_block.get(j - pi).get(1);
+        epsilon_r -= coefficient.get(2 * pi) *  ts_block.get(j - pi).get(0);
+        epsilon_v -= coefficient.get(2 * pi + 1) *  ts_block.get(j - pi).get(1);
       }
       ArrayList<Integer> tmp0 = new ArrayList<>();
-      tmp0.add((int) epsilon_r);
-      tmp0.add((int) epsilon_v);
+      tmp0.add(epsilon_r);
+      tmp0.add(epsilon_v);
       ts_block_delta.add(tmp0);
       if (epsilon_r < timestamp_delta_min) {
-        timestamp_delta_min = (int) epsilon_r;
+        timestamp_delta_min = epsilon_r;
       }
       if (epsilon_v < value_delta_min) {
-        value_delta_min = (int) epsilon_v;
+        value_delta_min = epsilon_v;
       }
       if (epsilon_r > max_timestamp) {
-        max_timestamp = (int) epsilon_r;
+        max_timestamp = epsilon_r;
       }
       if (epsilon_v > max_value) {
-        max_value = (int) epsilon_v;
+        max_value = epsilon_v;
       }
     }
     int length = 0;
@@ -917,7 +1007,7 @@ public class RgerPDoubleCopy{
           ArrayList<ArrayList<Integer>> ts_block,
           int alpha,
           int j_star,
-          ArrayList<Double> coefficient,
+          ArrayList<Integer> coefficient,
           int p) {
     ArrayList<ArrayList<Integer>> tmp_ts_block = (ArrayList<ArrayList<Integer>>) ts_block.clone();
     int block_size = ts_block.size();
@@ -938,27 +1028,27 @@ public class RgerPDoubleCopy{
 
     // regression residual
     for (int j = p; j < block_size; j++) {
-      double epsilon_r = (double) ts_block.get(j).get(0) - coefficient.get(0);
-      double epsilon_v = (double) ts_block.get(j).get(1) - coefficient.get(1);
+      int epsilon_r = (int) ((int) ts_block.get(j).get(0) - coefficient.get(0));
+      int epsilon_v = (int) ((int) ts_block.get(j).get(1) - coefficient.get(1));
       for (int pi = 1; pi <= p; pi++) {
-        epsilon_r -= coefficient.get(2 * pi) * (double) ts_block.get(j - pi).get(0);
-        epsilon_v -= coefficient.get(2 * pi + 1) * (double) ts_block.get(j - pi).get(1);
+        epsilon_r -= (int) (coefficient.get(2 * pi) * (double) ts_block.get(j - pi).get(0));
+        epsilon_v -= (int) (coefficient.get(2 * pi + 1) * (double) ts_block.get(j - pi).get(1));
       }
       ArrayList<Integer> tmp0 = new ArrayList<>();
-      tmp0.add((int) epsilon_r);
-      tmp0.add((int) epsilon_v);
+      tmp0.add(epsilon_r);
+      tmp0.add(epsilon_v);
       ts_block_delta.add(tmp0);
       if (epsilon_r < timestamp_delta_min) {
-        timestamp_delta_min = (int) epsilon_r;
+        timestamp_delta_min = epsilon_r;
       }
       if (epsilon_v < value_delta_min) {
-        value_delta_min = (int) epsilon_v;
+        value_delta_min = epsilon_v;
       }
       if (epsilon_r > max_timestamp) {
-        max_timestamp = (int) epsilon_r;
+        max_timestamp = epsilon_r;
       }
       if (epsilon_v > max_value) {
-        max_value = (int) epsilon_v;
+        max_value = epsilon_v;
       }
     }
     int length = 0;
@@ -975,7 +1065,7 @@ public class RgerPDoubleCopy{
           ArrayList<ArrayList<Integer>> ts_block,
           int alpha,
           int j_star,
-          ArrayList<Double> coefficient,
+          ArrayList<Integer> coefficient,
           int p) {
     ArrayList<ArrayList<Integer>> tmp_ts_block = (ArrayList<ArrayList<Integer>>) ts_block.clone();
     int block_size = ts_block.size();
@@ -997,27 +1087,27 @@ public class RgerPDoubleCopy{
 
     // regression residual
     for (int j = p; j < block_size; j++) {
-      double epsilon_r = (double) ts_block.get(j).get(0) - coefficient.get(0);
-      double epsilon_v = (double) ts_block.get(j).get(1) - coefficient.get(1);
+      int epsilon_r = (int) ((int) ts_block.get(j).get(0) - coefficient.get(0));
+      int epsilon_v = (int) ((int) ts_block.get(j).get(1) - coefficient.get(1));
       for (int pi = 1; pi <= p; pi++) {
-        epsilon_r -= coefficient.get(2 * pi) * (double) ts_block.get(j - pi).get(0);
-        epsilon_v -= coefficient.get(2 * pi + 1) * (double) ts_block.get(j - pi).get(1);
+        epsilon_r -= (int) (coefficient.get(2 * pi) * (double) ts_block.get(j - pi).get(0));
+        epsilon_v -= (int) (coefficient.get(2 * pi + 1) * (double) ts_block.get(j - pi).get(1));
       }
       ArrayList<Integer> tmp0 = new ArrayList<>();
-      tmp0.add((int) epsilon_r);
-      tmp0.add((int) epsilon_v);
+      tmp0.add(epsilon_r);
+      tmp0.add(epsilon_v);
       ts_block_delta.add(tmp0);
       if (epsilon_r < timestamp_delta_min) {
-        timestamp_delta_min = (int) epsilon_r;
+        timestamp_delta_min = epsilon_r;
       }
       if (epsilon_v < value_delta_min) {
-        value_delta_min = (int) epsilon_v;
+        value_delta_min = epsilon_v;
       }
       if (epsilon_r > max_timestamp) {
-        max_timestamp = (int) epsilon_r;
+        max_timestamp = epsilon_r;
       }
       if (epsilon_v > max_value) {
-        max_value = (int) epsilon_v;
+        max_value = epsilon_v;
       }
     }
     int length = 0;
@@ -1034,7 +1124,7 @@ public class RgerPDoubleCopy{
           ArrayList<ArrayList<Integer>> ts_block,
           int alpha,
           int j_star,
-          ArrayList<Double> coefficient,
+          ArrayList<Integer> coefficient,
           int p) {
     ArrayList<ArrayList<Integer>> tmp_ts_block = (ArrayList<ArrayList<Integer>>) ts_block.clone();
     int block_size = ts_block.size();
@@ -1056,27 +1146,27 @@ public class RgerPDoubleCopy{
 
     // regression residual
     for (int j = p; j < block_size; j++) {
-      double epsilon_r = (double) ts_block.get(j).get(0) - coefficient.get(0);
-      double epsilon_v = (double) ts_block.get(j).get(1) - coefficient.get(1);
+      int epsilon_r = (int) ((int) ts_block.get(j).get(0) - coefficient.get(0));
+      int epsilon_v = (int) ((int) ts_block.get(j).get(1) - coefficient.get(1));
       for (int pi = 1; pi <= p; pi++) {
-        epsilon_r -= coefficient.get(2 * pi) * (double) ts_block.get(j - pi).get(0);
-        epsilon_v -= coefficient.get(2 * pi + 1) * (double) ts_block.get(j - pi).get(1);
+        epsilon_r -= (int) (coefficient.get(2 * pi) * (double) ts_block.get(j - pi).get(0));
+        epsilon_v -= (int) (coefficient.get(2 * pi + 1) * (double) ts_block.get(j - pi).get(1));
       }
       ArrayList<Integer> tmp0 = new ArrayList<>();
-      tmp0.add((int) epsilon_r);
-      tmp0.add((int) epsilon_v);
+      tmp0.add(epsilon_r);
+      tmp0.add(epsilon_v);
       ts_block_delta.add(tmp0);
       if (epsilon_r < timestamp_delta_min) {
-        timestamp_delta_min = (int) epsilon_r;
+        timestamp_delta_min = epsilon_r;
       }
       if (epsilon_v < value_delta_min) {
-        value_delta_min = (int) epsilon_v;
+        value_delta_min = epsilon_v;
       }
       if (epsilon_r > max_timestamp) {
-        max_timestamp = (int) epsilon_r;
+        max_timestamp = epsilon_r;
       }
       if (epsilon_v > max_value) {
-        max_value = (int) epsilon_v;
+        max_value = epsilon_v;
       }
     }
     int length = 0;
@@ -1090,7 +1180,7 @@ public class RgerPDoubleCopy{
   }
 
   private static ArrayList<Integer> adjustCase5(
-          ArrayList<ArrayList<Integer>> ts_block, int alpha, ArrayList<Double> coefficient, int p) {
+          ArrayList<ArrayList<Integer>> ts_block, int alpha, ArrayList<Integer> coefficient, int p) {
     ArrayList<ArrayList<Integer>> tmp_ts_block = (ArrayList<ArrayList<Integer>>) ts_block.clone();
     int block_size = ts_block.size();
     ArrayList<Integer> tmp_tv = tmp_ts_block.get(alpha);
@@ -1110,27 +1200,27 @@ public class RgerPDoubleCopy{
 
     // regression residual
     for (int j = p; j < block_size; j++) {
-      double epsilon_r = (double) ts_block.get(j).get(0) - coefficient.get(0);
-      double epsilon_v = (double) ts_block.get(j).get(1) - coefficient.get(1);
+      int epsilon_r = (int) ((int) ts_block.get(j).get(0) - coefficient.get(0));
+      int epsilon_v = (int) ((int) ts_block.get(j).get(1) - coefficient.get(1));
       for (int pi = 1; pi <= p; pi++) {
-        epsilon_r -= coefficient.get(2 * pi) * (double) ts_block.get(j - pi).get(0);
-        epsilon_v -= coefficient.get(2 * pi + 1) * (double) ts_block.get(j - pi).get(1);
+        epsilon_r -= (int) (coefficient.get(2 * pi) * (double) ts_block.get(j - pi).get(0));
+        epsilon_v -= (int) (coefficient.get(2 * pi + 1) * (double) ts_block.get(j - pi).get(1));
       }
       ArrayList<Integer> tmp0 = new ArrayList<>();
-      tmp0.add((int) epsilon_r);
-      tmp0.add((int) epsilon_v);
+      tmp0.add(epsilon_r);
+      tmp0.add(epsilon_v);
       ts_block_delta.add(tmp0);
       if (epsilon_r < timestamp_delta_min) {
-        timestamp_delta_min = (int) epsilon_r;
+        timestamp_delta_min = epsilon_r;
       }
       if (epsilon_v < value_delta_min) {
-        value_delta_min = (int) epsilon_v;
+        value_delta_min = epsilon_v;
       }
       if (epsilon_r > max_timestamp) {
-        max_timestamp = (int) epsilon_r;
+        max_timestamp = epsilon_r;
       }
       if (epsilon_v > max_value) {
-        max_value = (int) epsilon_v;
+        max_value = epsilon_v;
       }
     }
     int length = 0;
@@ -1164,7 +1254,7 @@ public class RgerPDoubleCopy{
           ArrayList<ArrayList<Integer>> ts_block,
           int block_size,
           int index,
-          ArrayList<Double> coefficient,
+          ArrayList<Integer> coefficient,
           int p) {
     int timestamp_delta_max = Integer.MIN_VALUE;
     int value_delta_max = Integer.MIN_VALUE;
@@ -1175,23 +1265,23 @@ public class RgerPDoubleCopy{
 
     if (index == 0) {
       for (int j = 1; j < p; j++) {
-        double epsilon_v_j = (double) ts_block.get(j).get(1) - coefficient.get(1);
+        int epsilon_v_j = (int) ((int) ts_block.get(j).get(1) - coefficient.get(1));
         for (int pi = 1; pi <= j; pi++) {
-          epsilon_v_j -= coefficient.get(2 * pi + 1) * (double) ts_block.get(j - pi).get(1);
+          epsilon_v_j -= (int) (coefficient.get(2 * pi + 1) * (int) ts_block.get(j - pi).get(1));
 
         }
         if (epsilon_v_j > value_delta_max) {
-          value_delta_max = (int) epsilon_v_j;
+          value_delta_max = epsilon_v_j;
           value_delta_max_index = j;
         }
       }
       for (int j = p; j < block_size; j++) {
-        double epsilon_v_j = (double) ((double) ts_block.get(j).get(1) - coefficient.get(1));
+        int epsilon_v_j = (int) ((int) ts_block.get(j).get(1) - coefficient.get(1));
         for (int pi = 1; pi <= p; pi++) {
-          epsilon_v_j -= (double) (coefficient.get(2 * pi + 1) * (double) ts_block.get(j - pi).get(1));
+          epsilon_v_j -= (int) (coefficient.get(2 * pi + 1) * (int) ts_block.get(j - pi).get(1));
         }
         if (epsilon_v_j > value_delta_max) {
-          value_delta_max = (int) epsilon_v_j;
+          value_delta_max = epsilon_v_j;
           value_delta_max_index = j;
         }
       }
@@ -1199,24 +1289,23 @@ public class RgerPDoubleCopy{
       i_star = value_delta_max_index;
     } else if (index == 1) {
       for (int j = 1; j < p; j++) {
-        double epsilon_r_j = (double) ((int) ts_block.get(j).get(0) - coefficient.get(0));
+        int epsilon_r_j = (int) ((int) ts_block.get(j).get(0) - coefficient.get(0));
         for (int pi = 1; pi <= j; pi++) {
-          epsilon_r_j -= (double) (coefficient.get(2 * pi) * (double) ts_block.get(j - pi).get(0));
-
+          epsilon_r_j -= (int) (coefficient.get(2 * pi) * (int) ts_block.get(j - pi).get(0));
         }
         if (epsilon_r_j > timestamp_delta_max) {
-          timestamp_delta_max = (int) epsilon_r_j;
+          timestamp_delta_max = epsilon_r_j;
           timestamp_delta_max_index = j;
         }
       }
 
       for (int j = p; j < block_size; j++) {
-        double epsilon_r_j = (double) ((int) ts_block.get(j).get(0) - coefficient.get(0));
+        int epsilon_r_j = (int) ((int) ts_block.get(j).get(0) - coefficient.get(0));
         for (int pi = 1; pi <= p; pi++) {
-          epsilon_r_j -= (double) (coefficient.get(2 * pi) * (double) ts_block.get(j - pi).get(0));
+          epsilon_r_j -= (int) (coefficient.get(2 * pi) * (int) ts_block.get(j - pi).get(0));
         }
         if (epsilon_r_j > timestamp_delta_max) {
-          timestamp_delta_max = (int) epsilon_r_j;
+          timestamp_delta_max = epsilon_r_j;
           timestamp_delta_max_index = j;
         }
       }
@@ -1230,7 +1319,7 @@ public class RgerPDoubleCopy{
           ArrayList<ArrayList<Integer>> ts_block,
           int block_size,
           ArrayList<Integer> raw_length,
-          ArrayList<Double> coefficient,
+          ArrayList<Integer> coefficient,
           int p) {
     int timestamp_delta_min = Integer.MAX_VALUE;
     int value_delta_min = Integer.MAX_VALUE;
@@ -1243,47 +1332,47 @@ public class RgerPDoubleCopy{
 
     // regression residual
     for (int j = 1; j < p; j++) {
-      double epsilon_r = (double) ((double) ts_block.get(j).get(0) - coefficient.get(0));
-      double epsilon_v = (double) ((double) ts_block.get(j).get(1) - coefficient.get(1));
+      int epsilon_r = (int) ((int) ts_block.get(j).get(0) - coefficient.get(0));
+      int epsilon_v = (int) ((int) ts_block.get(j).get(1) - coefficient.get(1));
       for (int pi = 1; pi <= j; pi++) {
-        epsilon_r -= (double) (coefficient.get(2 * pi) * (double) ts_block.get(j - pi).get(0));
-        epsilon_v -= (double) (coefficient.get(2 * pi + 1) * (double) ts_block.get(j - pi).get(1));
+        epsilon_r -= (int) (coefficient.get(2 * pi) * (int) ts_block.get(j - pi).get(0));
+        epsilon_v -= (int) (coefficient.get(2 * pi + 1) * (int) ts_block.get(j - pi).get(1));
       }
 
       if (epsilon_r < timestamp_delta_min) {
-        timestamp_delta_min = (int) epsilon_r;
+        timestamp_delta_min = epsilon_r;
       }
       if (epsilon_v < value_delta_min) {
-        value_delta_min = (int) epsilon_v;
+        value_delta_min = epsilon_v;
       }
       if (epsilon_r > timestamp_delta_max) {
-        timestamp_delta_max = (int) epsilon_r;
+        timestamp_delta_max = epsilon_r;
       }
       if (epsilon_v > value_delta_max) {
-        value_delta_max = (int) epsilon_v;
+        value_delta_max = epsilon_v;
       }
     }
 
     // regression residual
     for (int j = p; j < block_size; j++) {
-      double epsilon_r = (double) ((double) ts_block.get(j).get(0) - coefficient.get(0));
-      double epsilon_v = (double) ((double) ts_block.get(j).get(1) - coefficient.get(1));
+      int epsilon_r = (int) ((int) ts_block.get(j).get(0) - coefficient.get(0));
+      int epsilon_v = (int) ((int) ts_block.get(j).get(1) - coefficient.get(1));
       for (int pi = 1; pi <= p; pi++) {
-        epsilon_r -= (double) (coefficient.get(2 * pi) * (double) ts_block.get(j - pi).get(0));
-        epsilon_v -= (double) (coefficient.get(2 * pi + 1) * (double) ts_block.get(j - pi).get(1));
+        epsilon_r -= (int) (coefficient.get(2 * pi) * (int) ts_block.get(j - pi).get(0));
+        epsilon_v -= (int) (coefficient.get(2 * pi + 1) * (int) ts_block.get(j - pi).get(1));
       }
 
       if (epsilon_r < timestamp_delta_min) {
-        timestamp_delta_min = (int) epsilon_r;
+        timestamp_delta_min = epsilon_r;
       }
       if (epsilon_v < value_delta_min) {
-        value_delta_min = (int) epsilon_v;
+        value_delta_min = epsilon_v;
       }
       if (epsilon_r > timestamp_delta_max) {
-        timestamp_delta_max = (int) epsilon_r;
+        timestamp_delta_max = epsilon_r;
       }
       if (epsilon_v > value_delta_max) {
-        value_delta_max = (int) epsilon_v;
+        value_delta_max = epsilon_v;
       }
     }
     timestamp_delta_max -= timestamp_delta_min;
@@ -1292,44 +1381,43 @@ public class RgerPDoubleCopy{
     else i_star = value_delta_max_index;
     return i_star;
   }
-
   public static ArrayList<Byte> encode2Bytes(
           ArrayList<ArrayList<Integer>> ts_block_delta,
           ArrayList<Integer> raw_length,
-          ArrayList<Double> coefficient,
+          ArrayList<Integer> coefficient,
           ArrayList<Integer> result2,
           int p) {
     ArrayList<Byte> encoded_result = new ArrayList<>();
 
     // encode interval0 and value0
-    for (int i = 0; i < p; i++) {
+    for(int i=0;i<p;i++){
       byte[] interval0_byte = int2Bytes(ts_block_delta.get(i).get(0));
       for (byte b : interval0_byte) encoded_result.add(b);
       byte[] value0_byte = int2Bytes(ts_block_delta.get(i).get(1));
       for (byte b : value0_byte) encoded_result.add(b);
     }
     // encode theta
-    byte[] theta0_r_byte = double2bytes(coefficient.get(0) + (double) raw_length.get(3));
+    byte[] theta0_r_byte = int2Bytes(coefficient.get(0) + raw_length.get(3));
     for (byte b : theta0_r_byte) encoded_result.add(b);
-    byte[] theta0_v_byte = double2bytes(coefficient.get(1) + (double) raw_length.get(4));
+    byte[] theta0_v_byte = int2Bytes(coefficient.get(1) + raw_length.get(4));
     for (byte b : theta0_v_byte) encoded_result.add(b);
 
 
     for (int i = 2; i < coefficient.size(); i++) {
-      byte[] theta_byte = double2bytes(coefficient.get(i));
+      byte[] theta_byte = int2Bytes(coefficient.get(i));
       for (byte b : theta_byte) encoded_result.add(b);
     }
 
     byte[] max_bit_width_interval_byte = bitWidth2Bytes(raw_length.get(1));
     for (byte b : max_bit_width_interval_byte) encoded_result.add(b);
-    byte[] timestamp_bytes = bitPacking(ts_block_delta, 0, p, ts_block_delta.size() - p, raw_length.get(1));
+    byte[] timestamp_bytes = bitPacking(ts_block_delta, 0, p, ts_block_delta.size()-p,raw_length.get(1));
     for (byte b : timestamp_bytes) encoded_result.add(b);
 
 
     // encode value
     byte[] max_bit_width_value_byte = bitWidth2Bytes(raw_length.get(2));
     for (byte b : max_bit_width_value_byte) encoded_result.add(b);
-    byte[] value_bytes = bitPacking(ts_block_delta, 1, p, ts_block_delta.size() - p, raw_length.get(2));
+    byte[] value_bytes = bitPacking(ts_block_delta, 1,  p, ts_block_delta.size()-p,raw_length.get(2));
     for (byte b : value_bytes) encoded_result.add(b);
 
     byte[] td_common_byte = int2Bytes(result2.get(0));
@@ -1337,7 +1425,6 @@ public class RgerPDoubleCopy{
 
     return encoded_result;
   }
-
   public static ArrayList<Byte> encodeRLEBitWidth2Bytes(
           ArrayList<ArrayList<Integer>> bit_width_segments) {
     ArrayList<Byte> encoded_result = new ArrayList<>();
@@ -1474,21 +1561,21 @@ public class RgerPDoubleCopy{
       ArrayList<Integer> result1 = new ArrayList<>();
       splitTimeStamp3(ts_block_time, result1);
       ArrayList<Integer> raw_length = new ArrayList<>();
-      ArrayList<Double> coefficient = new ArrayList<>();
+      ArrayList<Integer> coefficient = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegressionP(ts_block_time, block_size, raw_length, coefficient, p);
       length_time += encode2Bytes(ts_block_delta, raw_length, coefficient, result1, p).size();
 
       ArrayList<Integer> result2 = new ArrayList<>();
       splitTimeStamp3(ts_block_value, result2);
       ArrayList<Integer> raw_length_value = new ArrayList<>();
-      ArrayList<Double> coefficient_value = new ArrayList<>();
+      ArrayList<Integer> coefficient_value = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta_value = getEncodeBitsRegressionP(ts_block_value, block_size, raw_length_value, coefficient_value, p);
       length_value += encode2Bytes(ts_block_delta_value, raw_length_value, coefficient_value, result2, p).size();
 
       ArrayList<Integer> result3 = new ArrayList<>();
       splitTimeStamp3(ts_block_partition, result3);
       ArrayList<Integer> raw_length_partition = new ArrayList<>();
-      ArrayList<Double> coefficient_partition = new ArrayList<>();
+      ArrayList<Integer> coefficient_partition = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta_partition = getEncodeBitsRegressionP(ts_block_partition, block_size, raw_length_partition, coefficient_partition, p);
       length_partition += encode2Bytes(ts_block_delta_partition, raw_length_partition, coefficient_partition, result3, p).size();
     }
@@ -1509,7 +1596,7 @@ public class RgerPDoubleCopy{
         splitTimeStamp3(ts_block, result2);
 
         ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
-        ArrayList<Double> coefficient = new ArrayList<>();
+        ArrayList<Integer> coefficient = new ArrayList<>();
         ArrayList<ArrayList<Integer>> ts_block_delta =
                 getEncodeBitsRegressionP(ts_block, block_size, raw_length, coefficient ,p);
 
@@ -1517,7 +1604,7 @@ public class RgerPDoubleCopy{
         // time-order
         quickSort(ts_block, 0, 0, block_size - 1);
         ArrayList<Integer> time_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
-        ArrayList<Double> coefficient_time = new ArrayList<>();
+        ArrayList<Integer> coefficient_time = new ArrayList<>();
         ArrayList<ArrayList<Integer>> ts_block_delta_time =
                 getEncodeBitsRegressionP(ts_block, block_size, time_length, coefficient_time, p);
 
@@ -1526,7 +1613,7 @@ public class RgerPDoubleCopy{
 
 
         ArrayList<Integer> reorder_length = new ArrayList<>();
-        ArrayList<Double> coefficient_reorder = new ArrayList<>();
+        ArrayList<Integer> coefficient_reorder = new ArrayList<>();
         ArrayList<ArrayList<Integer>> ts_block_delta_reorder =
                 getEncodeBitsRegressionP(ts_block, block_size, reorder_length, coefficient_reorder, p);
 
@@ -1648,13 +1735,13 @@ public class RgerPDoubleCopy{
 
         quickSort(ts_block, 0, 0, block_size - 1);
         ArrayList<Integer> raw_length = new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
-        ArrayList<Double> coefficient = new ArrayList<>();
+        ArrayList<Integer> coefficient = new ArrayList<>();
         ArrayList<ArrayList<Integer>> ts_block_delta = getEncodeBitsRegressionP(ts_block, block_size, raw_length, coefficient, p);
         // value-order
         quickSort(ts_block, 1, 0, block_size - 1);
 
         ArrayList<Integer> reorder_length = new ArrayList<>();
-        ArrayList<Double> coefficient_reorder = new ArrayList<>();
+        ArrayList<Integer> coefficient_reorder = new ArrayList<>();
         ArrayList<ArrayList<Integer>> ts_block_delta_reorder = getEncodeBitsRegressionP( ts_block, block_size, reorder_length, coefficient_reorder, p);
 
         for (ArrayList<Integer> datum : ts_block) {
@@ -1675,7 +1762,7 @@ public class RgerPDoubleCopy{
           }
         }
         ArrayList<Integer> partition_length = new ArrayList<>();
-        ArrayList<Double> coefficient_partition = new ArrayList<>();
+        ArrayList<Integer> coefficient_partition = new ArrayList<>();
         ArrayList<ArrayList<Integer>> ts_block_delta_partition = getEncodeBitsRegressionP( ts_block_partition, block_size, partition_length, coefficient_partition, p);
         int choose = min3(partition_length.get(0),reorder_length.get(0),raw_length.get(0));
         if(choose == 0){
@@ -1744,7 +1831,7 @@ public class RgerPDoubleCopy{
       ArrayList<Integer> raw_length =
               new ArrayList<>(); // length,max_bit_width_interval,max_bit_width_value,max_bit_width_deviation
       ArrayList<Integer> i_star_ready = new ArrayList<>();
-      ArrayList<Double> coefficient = new ArrayList<>();
+      ArrayList<Integer> coefficient = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta =
               getEncodeBitsRegressionP(ts_block, remaining_length, raw_length, coefficient, p);
 
@@ -1752,7 +1839,7 @@ public class RgerPDoubleCopy{
       quickSort(ts_block, 1, 0, remaining_length - 1);
       ArrayList<Integer> reorder_length = new ArrayList<>();
       ArrayList<Integer> i_star_ready_reorder = new ArrayList<>();
-      ArrayList<Double> coefficient_reorder = new ArrayList<>();
+      ArrayList<Integer> coefficient_reorder = new ArrayList<>();
       ArrayList<ArrayList<Integer>> ts_block_delta_reorder =
               getEncodeBitsRegressionP(
                       ts_block, remaining_length, reorder_length, coefficient_reorder, p);
@@ -1788,17 +1875,15 @@ public class RgerPDoubleCopy{
     return encoded_result;
   }
 
-  private static ArrayList<Byte> encodeSegment2Bytes(ArrayList<ArrayList<Integer>> delta_segments,
-                                                     ArrayList<ArrayList<Integer>> bit_width_segments,
-                                                     ArrayList<Integer> raw_length, int segment_size, ArrayList<Double> coefficient, ArrayList<Integer> result2, int p) {
+  private static ArrayList<Byte> encodeSegment2Bytes(ArrayList<ArrayList<Integer>> delta_segments, ArrayList<ArrayList<Integer>> bit_width_segments, ArrayList<Integer> raw_length, int segment_size,ArrayList<Integer> coefficient,ArrayList<Integer> result2, int p) {
     ArrayList<Byte> encoded_result = new ArrayList<>();
     int block_size = delta_segments.size();
-    int segment_n = (block_size - p) / segment_size;
+    int segment_n = (block_size -p) / segment_size;
     // encode theta
 
 
     // encode interval0 and value0
-    for (int i = 0; i < p; i++) {
+    for(int i=0;i<p;i++){
       byte[] interval0_byte = int2Bytes(delta_segments.get(i).get(0));
       for (byte b : interval0_byte) encoded_result.add(b);
       byte[] value0_byte = int2Bytes(delta_segments.get(i).get(1));
@@ -1806,14 +1891,14 @@ public class RgerPDoubleCopy{
     }
 
     // encode theta
-    byte[] theta0_r_byte = double2bytes(coefficient.get(0) + (double) raw_length.get(3));
+    byte[] theta0_r_byte = float2bytes(coefficient.get(0) + raw_length.get(3));
     for (byte b : theta0_r_byte) encoded_result.add(b);
-    byte[] theta0_v_byte = double2bytes(coefficient.get(1) + (double) raw_length.get(4));
+    byte[] theta0_v_byte = float2bytes(coefficient.get(1) + raw_length.get(4));
     for (byte b : theta0_v_byte) encoded_result.add(b);
 
 
     for (int i = 2; i < coefficient.size(); i++) {
-      byte[] theta_byte = double2bytes(coefficient.get(i));
+      byte[] theta_byte = int2Bytes(coefficient.get(i));
       for (byte b : theta_byte) encoded_result.add(b);
     }
 
@@ -1875,7 +1960,7 @@ public class RgerPDoubleCopy{
   }
 
   public static ArrayList<ArrayList<Integer>> ReorderingRegressionDecoder(
-          ArrayList<Byte> encoded, int td) {
+      ArrayList<Byte> encoded, int td) {
     ArrayList<ArrayList<Integer>> data = new ArrayList<>();
     int decode_pos = 0;
     int block_size = bytes2Integer(encoded, decode_pos, 4);
@@ -2055,7 +2140,7 @@ public class RgerPDoubleCopy{
 
 
   public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
-    String parent_dir = "E:\\encoding-reorder-xjzgithub\\vldb\\compression_ratio\\p_double";
+    String parent_dir = "E:\\encoding-reorder-xjzgithub\\vldb\\compression_ratio\\p_int";
     String input_parent_dir = "E:\\encoding-reorder-xjzgithub\\reorder\\iotdb_test_small\\";
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
@@ -2079,18 +2164,18 @@ public class RgerPDoubleCopy{
     dataset_name.add("TY-Transport");
     dataset_name.add("EPM-Education");
 
-    int[] dataset_0 = {547, 2816};
-    int[] dataset_1 = {1719, 3731};
-    int[] dataset_2 = {-48, -11, 6, 25, 52};
-    int[] dataset_3 = {8681, 13584};
-    int[] dataset_4 = {79, 184, 274};
-    int[] dataset_5 = {17, 68};
+    int[] dataset_0 = {547,2816};
+    int[] dataset_1 = {1719,3731};
+    int[] dataset_2 = {-48,-11,6,25,52};
+    int[] dataset_3 = {8681,13584};
+    int[] dataset_4 = {79,184,274};
+    int[] dataset_5 = {17,68};
     int[] dataset_6 = {677};
-    int[] dataset_7 = {1047, 1725};
-    int[] dataset_8 = {227, 499, 614, 1013};
-    int[] dataset_9 = {474, 678};
-    int[] dataset_10 = {4, 30, 38, 49, 58};
-    int[] dataset_11 = {5182, 8206};
+    int[] dataset_7 = {1047,1725};
+    int[] dataset_8 = {227,499,614,1013};
+    int[] dataset_9 = {474,678};
+    int[] dataset_10 = {4,30,38,49,58};
+    int[] dataset_11 = {5182,8206};
 
     dataset_third.add(dataset_0);
     dataset_third.add(dataset_1);
@@ -2184,8 +2269,8 @@ public class RgerPDoubleCopy{
     //            "\\p\\rr_int\\GW-Magnetic_ratio.csv");
     //    dataset_map_td.add(100);
 
-    for(int file_i=11;file_i<12;file_i++){
-    //for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+    //      for(int file_i=3;file_i<4;file_i++){
+    for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
       String inputPath = input_path_list.get(file_i);
       String Output = output_path_list.get(file_i);
@@ -2201,23 +2286,23 @@ public class RgerPDoubleCopy{
       CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
 
       String[] head = {
-              "Input Direction",
-              "Encoding Algorithm",
-              //      "Compress Algorithm",
-              "Encoding Time",
-              "Decoding Time",
-              //      "Compress Time",
-              //      "Uncompress Time",
-              "Points",
-              "p",
-              "Compressed Size",
-              "Compression Ratio"
+        "Input Direction",
+        "Encoding Algorithm",
+        //      "Compress Algorithm",
+        "Encoding Time",
+        "Decoding Time",
+        //      "Compress Time",
+        //      "Uncompress Time",
+        "Points",
+        "p",
+        "Compressed Size",
+        "Compression Ratio"
       };
       writer.writeRecord(head); // write header to output file
 
       assert tempList != null;
-      for(int p=1;p<2;p++) {
-      //for (int p = 1; p < 10; p++) {
+      //        for(int p=2;p<3;p++) {
+      for (int p = 1; p < 10; p++) {
         System.out.println("p=" + p);
         for (File f : tempList) {
           //        ArrayList<Integer> flag = new ArrayList<>();
@@ -2250,7 +2335,7 @@ public class RgerPDoubleCopy{
             ArrayList<Byte> buffer = new ArrayList<>();
             for (int repeat_i = 0; repeat_i < 1; repeat_i++)
               buffer =
-                      ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_third.get(file_i), 8,p);
+                  ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_third.get(file_i),8 ,p);
 
             long e = System.nanoTime();
             encodeTime += ((e - s) / 1);
@@ -2305,14 +2390,14 @@ public class RgerPDoubleCopy{
           decodeTime /= repeatTime;
 
           String[] record = {
-                  f.toString(),
-                  "REGER-64-DOUBLE",
-                  String.valueOf(encodeTime),
-                  String.valueOf(decodeTime),
-                  String.valueOf(data.size()),
-                  String.valueOf(p),
-                  String.valueOf(compressed_size),
-                  String.valueOf(ratio)
+            f.toString(),
+            "REGER-32-INT",
+            String.valueOf(encodeTime),
+            String.valueOf(decodeTime),
+            String.valueOf(data.size()),
+            String.valueOf(p),
+            String.valueOf(compressed_size),
+            String.valueOf(ratio)
           };
           //          System.out.println(ratio);
           writer.writeRecord(record);

@@ -9,12 +9,16 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.Stack;
 
+import org.apache.commons.math3.stat.regression.OLSMultipleLinearRegression;
+import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
+
 import static java.lang.Math.abs;
 
-public class RgerPFloatCopy {
+public class RgerPFloatPara {
 
     public static int zigzag(int num) {
         if (num < 0) {
@@ -308,61 +312,134 @@ public class RgerPFloatCopy {
             ArrayList<ArrayList<Integer>> ts_block, ArrayList<Float> coefficient, int p) {
         int length = ts_block.size();
         assert length > p;
+        int size=length-p;
 
-        double[] resultCovariances_value = new double[p + 1];
-        double[] resultCovariances_timestamp = new double[p + 1];
-        for (int i = 0; i <= p; i++) {
-            resultCovariances_value[i] = 0;
-            resultCovariances_timestamp[i] = 0;
-            for (int j = 0; j < length - i; j++) {
-                if (j + i < length) {
-                    resultCovariances_timestamp[i] += ts_block.get(j).get(0) * ts_block.get(j + i).get(0);
-                    resultCovariances_value[i] += ts_block.get(j).get(1) * ts_block.get(j + i).get(1);
+//        boolean flag1=false;
+//        for(int i=0;i<ts_block.size();i++){
+//            if(ts_block.get(i).get(0)!=0){
+//                flag1=true;
+//                break;
+//            }
+//        }
+//        int pre1=ts_block.get(0).get(0);
+//        boolean flag3=true;
+//        for(int i=1;i<ts_block.size();i++){
+//            if(ts_block.get(i).get(0)!=pre1){
+//                flag3=false;
+//                break;
+//            }
+//            pre1=ts_block.get(i).get(0);
+//        }
+//        boolean flag2=false;
+//        for(int i=0;i<ts_block.size();i++){
+//            if(ts_block.get(i).get(1)!=0){
+//                flag2=true;
+//                break;
+//            }
+//        }
+//        int pre2=ts_block.get(0).get(1);
+//        boolean flag4=true;
+//        for(int i=1;i<ts_block.size();i++){
+//            if(ts_block.get(i).get(1)!=pre2){
+//                flag4=false;
+//                break;
+//            }
+//            pre2=ts_block.get(i).get(1);
+//        }
+
+//        double[] param;
+//        if(flag1==true && flag3==false) {
+//            OLSMultipleLinearRegression ols1 = new OLSMultipleLinearRegression();
+//            double[][] X1 = new double[size][p];
+//            double[] Y1 = new double[size];
+//            for (int i = 0; i < size; i++) {
+//                X1[i] = new double[p];
+//                for (int j = 0; j < p; j++) {
+//                    X1[i][j] = ts_block.get(i + j).get(0);
+//                }
+//                Y1[i] = ts_block.get(i + p).get(0);
+//            }
+//            ols1.newSampleData(Y1, X1);
+//            param = ols1.estimateRegressionParameters(); //结果的第1项是常数项， 之后依次序为各个特征的系数
+//            //System.out.println(Arrays.toString(param));
+//        }
+//        else{
+//            param=new double[p+1];
+//            for(int i=0;i<=p;i++){
+//                param[i]=0;
+//            }
+//        }
+
+        double[] param;
+        try{
+            OLSMultipleLinearRegression ols1 = new OLSMultipleLinearRegression();
+            double[][] X1 = new double[size][p];
+            double[] Y1 = new double[size];
+            for (int i = 0; i < size; i++) {
+                X1[i] = new double[p];
+                for (int j = 0; j < p; j++) {
+                    X1[i][j] = ts_block.get(i + j).get(0);
                 }
+                Y1[i] = ts_block.get(i + p).get(0);
             }
-            resultCovariances_timestamp[i] /= length - i;
-            resultCovariances_value[i] /= length - i;
+            ols1.newSampleData(Y1, X1);
+            param = ols1.estimateRegressionParameters(); //结果的第1项是常数项， 之后依次序为各个特征的系数
+            //System.out.println(Arrays.toString(param));
+        }catch (Exception e){
+            param=new double[p+1];
+            for(int i=0;i<=p;i++){
+                param[i]=0;
+            }
         }
 
-        double[] epsilons_timestamp = new double[p + 1];
-        double[] epsilons_value = new double[p + 1];
-        double[] kappas_timestamp = new double[p + 1];
-        double[] kappas_value = new double[p + 1];
-        double[][] alphas_timestamp = new double[p + 1][p + 1];
-        double[][] alphas_value = new double[p + 1][p + 1];
-        // alphas_timestamp[i][j] denotes alpha_i^{(j)}
-        // alphas_value[i][j] denotes alpha_i^{(j)}
-        epsilons_timestamp[0] = resultCovariances_timestamp[0];
-        epsilons_value[0] = resultCovariances_value[0];
-        for (int i = 1; i <= p; i++) {
-            double tmpSum_timestamp = 0.0;
-            double tmpSum_value = 0.0;
-            for (int j = 1; j <= i - 1; j++) {
-                tmpSum_timestamp += alphas_timestamp[j][i - 1] * resultCovariances_timestamp[i - j];
-                tmpSum_value += alphas_value[j][i - 1] * resultCovariances_value[i - j];
-            }
-            kappas_timestamp[i] =
-                    (resultCovariances_timestamp[i] - tmpSum_timestamp) / epsilons_timestamp[i - 1];
-            kappas_value[i] = (resultCovariances_value[i] - tmpSum_value) / epsilons_value[i - 1];
-            alphas_timestamp[i][i] = kappas_timestamp[i];
-            alphas_value[i][i] = kappas_value[i];
-            if (i > 1) {
-                for (int j = 1; j <= i - 1; j++) {
-                    alphas_timestamp[j][i] =
-                            alphas_timestamp[j][i - 1] - kappas_timestamp[i] * alphas_timestamp[i - j][i - 1];
-                    alphas_value[j][i] =
-                            alphas_value[j][i - 1] - kappas_value[i] * alphas_value[i - j][i - 1];
+//        double[] param2;
+//        if(flag2==true && flag4==false) {
+//            OLSMultipleLinearRegression ols2 = new OLSMultipleLinearRegression();
+//            double[][] X2 = new double[size][p];
+//            double[] Y2 = new double[size];
+//            for (int i = 0; i < size; i++) {
+//                X2[i] = new double[p];
+//                for (int j = 0; j < p; j++) {
+//                    X2[i][j] = ts_block.get(i + j).get(1);
+//                }
+//                Y2[i] = ts_block.get(i + p).get(1);
+//            }
+//            ols2.newSampleData(Y2, X2);
+//            param2 = ols2.estimateRegressionParameters(); //结果的第1项是常数项， 之后依次序为各个特征的系数
+//            //System.out.println(Arrays.toString(param2));
+//        }
+//        else{
+//            param2=new double[p+1];
+//            for(int i=0;i<=p;i++){
+//                param2[i]=0;
+//            }
+//        }
+
+        double[] param2;
+        try{
+            OLSMultipleLinearRegression ols2 = new OLSMultipleLinearRegression();
+            double[][] X2 = new double[size][p];
+            double[] Y2 = new double[size];
+            for (int i = 0; i < size; i++) {
+                X2[i] = new double[p];
+                for (int j = 0; j < p; j++) {
+                    X2[i][j] = ts_block.get(i + j).get(1);
                 }
+                Y2[i] = ts_block.get(i + p).get(1);
             }
-            epsilons_timestamp[i] =
-                    (1 - kappas_timestamp[i] * kappas_timestamp[i]) * epsilons_timestamp[i - 1];
-            epsilons_value[i] = (1 - kappas_value[i] * kappas_value[i]) * epsilons_value[i - 1];
+            ols2.newSampleData(Y2, X2);
+            param2 = ols2.estimateRegressionParameters(); //结果的第1项是常数项， 之后依次序为各个特征的系数
+            //System.out.println(Arrays.toString(param2));
+        }catch (Exception exception){
+            param2=new double[p+1];
+            for(int i=0;i<=p;i++){
+                param2[i]=0;
+            }
         }
 
         for (int i = 0; i <= p; i++) {
-            coefficient.add((float) alphas_timestamp[i][p]);
-            coefficient.add((float) alphas_value[i][p]);
-            //      System.out.println(alphas_value[i][3]);
+            coefficient.add((float) param[i]);
+            coefficient.add((float) param2[i]);
         }
     }
     // --------------------------------------  base function -----------------------------------------------------
@@ -1315,24 +1392,10 @@ public class RgerPFloatCopy {
         byte[] theta0_v_byte = float2bytes(coefficient.get(1) + (float) raw_length.get(4));
         for (byte b : theta0_v_byte) encoded_result.add(b);
 
-        System.out.print("time parameter 0 : ");
-        System.out.println(coefficient.get(0) + (float) raw_length.get(3));
-        System.out.print("value parameter 0 : ");
-        System.out.println(coefficient.get(1) + (float) raw_length.get(4));
 
         for (int i = 2; i < coefficient.size(); i++) {
             byte[] theta_byte = float2bytes(coefficient.get(i));
             for (byte b : theta_byte) encoded_result.add(b);
-            if(i%2==0){
-                System.out.print("time parameter ");
-                System.out.print((int) i/2);
-                System.out.print(" : ");
-            }else{
-                System.out.print("value parameter ");
-                System.out.print((int) (i-1)/2);
-                System.out.print(" : ");
-            }
-            System.out.println(coefficient.get(i));
         }
 
         byte[] max_bit_width_interval_byte = bitWidth2Bytes(raw_length.get(1));
@@ -2068,8 +2131,89 @@ public class RgerPFloatCopy {
         return data;
     }
 
+    public static double[] dataStandardization(double array[]){
+        StandardDeviation deviation =new StandardDeviation();
+        for(int i=0;i<array.length;i++){
+            array[i]=array[i];
+        }
+        return array;
+    }
+    public static double[][] dataStandardizationDouble(double arrays[][]){
+        double [][] result = new double[arrays[0].length][arrays.length];
+        for(int i=0;i<arrays.length;i++){
+            double[] doubles = dataStandardization(arrays[i]);
+            for(int k=0;k<result.length;k++){
+                result[k][i]=doubles[k];
+            }
+        }
+        return result;
+    }
+
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
+//        double [] y ={114, 49, 84, 79, 87, 74, 77, 82, 80, 88, 123, 82, 98, 65, 61, 78, 51, 121, 78, 50, 75, 65, 113, 122, 78, 119, 45, 89, 102, 75};
+//        y = dataStandardization(y);
+//        double[][] x ={{38,13,27,25,18,29,30,20,23,32,38,28,34,19,20,25,16,36,25,17,24,18,30,35,22,34,12,26,29,21},
+//                {37,15,22,21,29,24,26,27,17,28,34,25,26,21,18,21,16,30,15,14,22,18,32,40,25,34,15,26,32,27},
+//                {12,13,21,20,20,12,8,17,19,12,25,15,19,11,11,18,13,25,17,12,15,16,24,21,15,25,7,20,21,12},
+//                {31,29,44,23,21,34,37,36,26,26,18,34,22,30,34,29,50,14,26,36,27,33,23,25,31,18,35,20,21,29},
+//                {31,29,19,24,26,18,27,24,25,29,27,27,26,32,31,28,35,27,17,25,17,31,22,26,20,22,30,23,23,24}};
+//        double[][] x ={{1,2},{},{},{},{}};
+//        x = dataStandardizationDouble(x);
+//        OLSMultipleLinearRegression regression = new OLSMultipleLinearRegression();
+//        regression.newSampleData(y,x);
+//        double rSquared = regression.calculateRSquared();
+//        double[] doubles = regression.estimateRegressionParameters();
+//        for (double d : doubles) {
+//            System.out.println("打印: " + d);
+//        }
+
+//        OLSMultipleLinearRegression ols = new OLSMultipleLinearRegression();
+//        double[][] X = new double[5][2];
+//        X[0] = new double[]{0, 0};
+//        X[1] = new double[]{1, 2};
+//        X[2] = new double[]{2, 1};
+//        X[3] = new double[]{0, 3};
+//        X[4] = new double[]{-1, 4};
+//        int size=5;
+//        //double[] Y = new double[]{11, 16, 15, 17, 18};
+//        double[] Y = new double[size];
+//        Y[0]=11;
+//        Y[1]=16;
+//        Y[2]=15;
+//        Y[3]=17;
+//        Y[4]=18;
+//        ols.newSampleData(Y, X);
+//        double[] param = ols.estimateRegressionParameters(); //结果的第1项是常数项， 之后依次序为各个特征的系数
+//        System.out.println(Arrays.toString(param));
+
+//        double [] y ={135, 155, 210, 170, 115, 130};
+//        //y = dataStandardization(y);
+//        double[][] x ={{5,1,2,10,1,2},
+//                {4,2,4,8,1,2},
+//                {3,3,6,6,1,2},
+//                {2,4,8,4,1,2},
+//                {1,5,10,2,1,2}};
+//        //x = dataStandardizationDouble(x);
+//        OLSMultipleLinearRegression regression = new OLSMultipleLinearRegression();
+//        regression.newSampleData(y,x);
+//        double rSquared = regression.calculateRSquared();
+//        double[] doubles = regression.estimateRegressionParameters();
+//        for (double d : doubles) {
+//            System.out.println("打印: " + d);
+//        }
+
+//        OLSMultipleLinearRegression ols = new OLSMultipleLinearRegression();
+//        double[][] X = new double[5][2];
+//        X[0] = new double[]{0, 0};
+//        X[1] = new double[]{1, 2};
+//        X[2] = new double[]{2, 1};
+//        X[3] = new double[]{0, 3};
+//        X[4] = new double[]{-1, 4};
+//        ols.newSampleData(new double[]{11, 16, 15, 17, 18}, X);
+//        double[] param = ols.estimateRegressionParameters(); //结果的第1项是常数项， 之后依次序为各个特征的系数
+//        System.out.println(Arrays.toString(param));
+
         String parent_dir = "E:\\encoding-reorder-xjzgithub\\vldb\\compression_ratio\\p_float";
         String input_parent_dir = "E:\\encoding-reorder-xjzgithub\\reorder\\iotdb_test_small\\";
         ArrayList<String> input_path_list = new ArrayList<>();
@@ -2149,8 +2293,8 @@ public class RgerPFloatCopy {
         output_path_list.add(parent_dir + "\\EPM-Education_ratio.csv");//11
         dataset_block_size.add(512);
 
-        for (int file_i = 11; file_i < 12; file_i++) {
-        //for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
 
             String inputPath = input_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
@@ -2181,8 +2325,8 @@ public class RgerPFloatCopy {
             writer.writeRecord(head); // write header to output file
 
             assert tempList != null;
-            for(int p=1;p<2;p++) {
-            //for (int p = 1; p < 10; p++) {
+            //        for(int p=2;p<3;p++) {
+            for (int p = 1; p < 10; p++) {
                 System.out.println("p=" + p);
                 for (File f : tempList) {
                     //        ArrayList<Integer> flag = new ArrayList<>();
@@ -2279,7 +2423,7 @@ public class RgerPFloatCopy {
                             String.valueOf(compressed_size),
                             String.valueOf(ratio)
                     };
-                              System.out.println(ratio);
+                    System.out.println(ratio);
                     writer.writeRecord(record);
                     //          break;
                 }
