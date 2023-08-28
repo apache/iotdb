@@ -2029,10 +2029,10 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
                 int i_star_2 = alpha_list.get(1);
                 int j_star_1 = getBeta(ts_block, i_star_1, block_size, raw_length, theta, segment_size);
                 int j_star_2 = getBeta(ts_block, i_star_2, block_size, raw_length, theta, segment_size);
-                System.out.println("i_star_1: "+i_star_1);
-                System.out.println("i_star_2: "+i_star_2);
-                System.out.println("j_star_1: "+j_star_1);
-                System.out.println("j_star_2: "+j_star_2);
+//                System.out.println("i_star_1: "+i_star_1);
+//                System.out.println("i_star_2: "+i_star_2);
+//                System.out.println("j_star_1: "+j_star_1);
+//                System.out.println("j_star_2: "+j_star_2);
                 if ((j_star_1 != -1 && i_star_1 != -1)) {
                     ArrayList<ArrayList<Integer>> new_ts_block_1 = (ArrayList<ArrayList<Integer>>) ts_block.clone();
                     ArrayList<Integer> new_length_1 = new ArrayList<>();
@@ -2085,7 +2085,7 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
                         }
                         isMoveable = isMovable(alpha_list, beta_list);
                     }
-                    System.out.println("adjust_count: "+adjust_count);
+//                    System.out.println("adjust_count: "+adjust_count);
 
                 }
 
@@ -2528,7 +2528,7 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
 //        String parent_dir = "C:\\Users\\xiaoj\\Desktop\\test";
-        String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\block_size_test";
+        String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\block_size";
         String input_parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
@@ -2607,8 +2607,8 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
         output_path_list.add(parent_dir + "\\EPM-Education_ratio.csv");//11
         dataset_block_size.add(512);
 
-    for (int file_i = 8; file_i < 9; file_i++) {
-//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//    for (int file_i = 8; file_i < 9; file_i++) {
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
             String inputPath = input_path_list.get(file_i);
             //      String Output = "C:\\Users\\xiaoj\\Desktop\\test.csv";//output_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
@@ -2636,8 +2636,8 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
 //System.out.println(inputPath);
             for (File f : tempList) {
                 System.out.println(f);
-                for (int block_size_exp = 9; block_size_exp >= 9; block_size_exp--) {
-//                for (int block_size_exp = 13; block_size_exp >= 4; block_size_exp--) {
+//                for (int block_size_exp = 9; block_size_exp >= 9; block_size_exp--) {
+                for (int block_size_exp = 13; block_size_exp >= 4; block_size_exp--) {
                     int block_size = (int) Math.pow(2, block_size_exp);
                     System.out.println(block_size);
 
@@ -2706,7 +2706,7 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
                     writer.writeRecord(record);
 
                 }
-                break;
+//                break;
             }
             writer.close();
         }
