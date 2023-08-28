@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.iotdb.confignode.procedure.impl.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
@@ -17,15 +36,20 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
 public class InvalidAuthCacheProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, InvalidAuthCacheState> {
@@ -157,6 +181,7 @@ public class InvalidAuthCacheProcedure
   protected InvalidAuthCacheState getInitialState() {
     return InvalidAuthCacheState.INIT;
   }
+
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeShort(ProcedureType.INVALID_DATANODE_AUTH_CACHE.getTypeCode());
@@ -164,16 +189,17 @@ public class InvalidAuthCacheProcedure
     ReadWriteIOUtils.write(user, stream);
     ReadWriteIOUtils.write(role, stream);
     ReadWriteIOUtils.write(dataNodesToInvalid.size(), stream);
-    for (Pair<TDataNodeConfiguration,Long> item : dataNodesToInvalid) {
-      ThriftCommonsSerDeUtils.serializeTDataNodeConfiguration(item.getLeft(),stream);
+    for (Pair<TDataNodeConfiguration, Long> item : dataNodesToInvalid) {
+      ThriftCommonsSerDeUtils.serializeTDataNodeConfiguration(item.getLeft(), stream);
       ReadWriteIOUtils.write(item.getRight(), stream);
     }
     ReadWriteIOUtils.write(invalidedDNs.size(), stream);
     for (TDataNodeConfiguration item : invalidedDNs) {
-      ThriftCommonsSerDeUtils.serializeTDataNodeConfiguration(item,stream);
+      ThriftCommonsSerDeUtils.serializeTDataNodeConfiguration(item, stream);
     }
     ReadWriteIOUtils.write(timeoutMS, stream);
   }
+
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
@@ -182,9 +208,8 @@ public class InvalidAuthCacheProcedure
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     this.dataNodesToInvalid = new ArrayList<>();
     for (int i = 0; i < size; i++) {
-      TDataNodeConfiguration datanode = ThriftCommonsSerDeUtils.deserializeTDataNodeConfiguration(
-              byteBuffer
-      );
+      TDataNodeConfiguration datanode =
+          ThriftCommonsSerDeUtils.deserializeTDataNodeConfiguration(byteBuffer);
       Long timestamp = ReadWriteIOUtils.readLong(byteBuffer);
       this.dataNodesToInvalid.add(new Pair<TDataNodeConfiguration, Long>(datanode, timestamp));
     }
@@ -198,7 +223,7 @@ public class InvalidAuthCacheProcedure
 
   @TestOnly
   public void removeAllDNS() {
-    Iterator<Pair<TDataNodeConfiguration,Long>> it = dataNodesToInvalid.iterator();
+    Iterator<Pair<TDataNodeConfiguration, Long>> it = dataNodesToInvalid.iterator();
     while (it.hasNext()) {
       invalidedDNs.add(it.next().getLeft());
       it.remove();
@@ -207,16 +232,16 @@ public class InvalidAuthCacheProcedure
 
   @Override
   public boolean equals(Object o) {
-    if(this == o) {
+    if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
     InvalidAuthCacheProcedure that = (InvalidAuthCacheProcedure) o;
-    return user.equals(that.user) &&
-            role.equals(that.role) &&
-            Objects.equals(dataNodesToInvalid,((InvalidAuthCacheProcedure) o).dataNodesToInvalid)
-            && Objects.equals(invalidedDNs, that.invalidedDNs);
+    return user.equals(that.user)
+        && role.equals(that.role)
+        && Objects.equals(dataNodesToInvalid, ((InvalidAuthCacheProcedure) o).dataNodesToInvalid)
+        && Objects.equals(invalidedDNs, that.invalidedDNs);
   }
 }
