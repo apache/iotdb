@@ -31,6 +31,9 @@ import java.util.List;
 public abstract class AbstractInnerSpaceEstimator extends AbstractCompactionEstimator {
 
   public long estimateInnerCompactionMemory(List<TsFileResource> resources) throws IOException {
+    if (!config.isEnableCompactionMemControl()) {
+      return 0;
+    }
     CompactionTaskInfo taskInfo = calculatingCompactionTaskInfo(resources);
     long cost = calculatingMetadataMemoryCost(taskInfo);
     cost += calculatingDataMemoryCost(taskInfo);
