@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.queryengine.plan.planner;
 
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
@@ -26,6 +28,7 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.TransformToViewExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -43,23 +46,27 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.Mea
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ForecastModelInferenceDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedInsertBaseStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.PipeEnrichedLoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalBatchActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
@@ -86,14 +93,17 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.commons.lang3.StringUtils;
+
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.TreeMap;
+
+import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 
 /**
  * This visitor is used to generate a logical plan for the statement and returns the {@link
@@ -134,11 +144,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     }
 
     if (queryStatement.isAlignByDevice()) {
-      Map<String, PlanNode> deviceToSubPlanMap =
-          queryStatement.getResultDeviceOrder() == Ordering.ASC
-              ? new TreeMap<>()
-              : new TreeMap<>(Collections.reverseOrder());
-      for (String deviceName : analysis.getDeviceToSourceExpressions().keySet()) {
+      Map<String, PlanNode> deviceToSubPlanMap = new LinkedHashMap<>();
+      for (PartialPath device : analysis.getDeviceList()) {
+        String deviceName = device.getFullPath();
         LogicalPlanBuilder subPlanBuilder = new LogicalPlanBuilder(analysis, context);
         subPlanBuilder =
             subPlanBuilder.withNewRoot(
@@ -254,7 +262,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
               .planRawDataSource(
                   sourceExpressions,
                   queryStatement.getResultTimeOrder(),
-                  analysis.getGlobalTimeFilter())
+                  analysis.getGlobalTimeFilter(),
+                  analysis.isLastLevelUseWildcard())
               .planWhereAndSourceTransform(
                   whereExpression,
                   sourceTransformExpressions,
@@ -267,7 +276,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
           analysis.hasValueFilter()
               || analysis.hasGroupByParameter()
               || needTransform(sourceTransformExpressions)
-              || cannotUseStatistics(aggregationExpressions);
+              || cannotUseStatistics(aggregationExpressions, sourceTransformExpressions);
       AggregationStep curStep;
       if (isRawDataSource) {
         planBuilder =
@@ -275,7 +284,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 .planRawDataSource(
                     sourceExpressions,
                     queryStatement.getResultTimeOrder(),
-                    analysis.getGlobalTimeFilter())
+                    analysis.getGlobalTimeFilter(),
+                    analysis.isLastLevelUseWildcard())
                 .planWhereAndSourceTransform(
                     whereExpression,
                     sourceTransformExpressions,
@@ -362,11 +372,31 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     return false;
   }
 
-  private boolean cannotUseStatistics(Set<Expression> expressions) {
+  private boolean cannotUseStatistics(
+      Set<Expression> expressions, Set<Expression> sourceTransformExpressions) {
     for (Expression expression : expressions) {
+
       if (expression instanceof FunctionExpression) {
-        if (!BuiltinAggregationFunction.canUseStatistics(
-            ((FunctionExpression) expression).getFunctionName())) {
+        FunctionExpression functionExpression = (FunctionExpression) expression;
+        if (COUNT_TIME.equalsIgnoreCase(functionExpression.getFunctionName())) {
+          String alignedDeviceId = "";
+          for (Expression countTimeExpression : sourceTransformExpressions) {
+            TimeSeriesOperand ts = (TimeSeriesOperand) countTimeExpression;
+            if (!(ts.getPath() instanceof AlignedPath
+                || ((MeasurementPath) ts.getPath()).isUnderAlignedEntity())) {
+              return true;
+            }
+            if (StringUtils.isEmpty(alignedDeviceId)) {
+              alignedDeviceId = ts.getPath().getDevice();
+            } else if (!alignedDeviceId.equalsIgnoreCase(ts.getPath().getDevice())) {
+              // count_time from only one aligned device can use AlignedSeriesAggScan
+              return true;
+            }
+          }
+          return false;
+        }
+
+        if (!BuiltinAggregationFunction.canUseStatistics(functionExpression.getFunctionName())) {
           return true;
         }
       } else {
@@ -506,9 +536,49 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   }
 
   @Override
+  public PlanNode visitPipeEnrichedInsert(
+      PipeEnrichedInsertBaseStatement pipeEnrichedInsertBaseStatement, MPPQueryContext context) {
+    InsertNode insertNode;
+
+    final InsertBaseStatement insertBaseStatement =
+        pipeEnrichedInsertBaseStatement.getInsertBaseStatement();
+    if (insertBaseStatement instanceof InsertRowStatement) {
+      insertNode =
+          (InsertRowNode) visitInsertRow((InsertRowStatement) insertBaseStatement, context);
+    } else if (insertBaseStatement instanceof InsertRowsStatement) {
+      insertNode =
+          (InsertRowsNode) visitInsertRows((InsertRowsStatement) insertBaseStatement, context);
+    } else if (insertBaseStatement instanceof InsertRowsOfOneDeviceStatement) {
+      insertNode =
+          (InsertRowsOfOneDeviceNode)
+              visitInsertRowsOfOneDevice(
+                  (InsertRowsOfOneDeviceStatement) insertBaseStatement, context);
+    } else if (insertBaseStatement instanceof InsertTabletStatement) {
+      insertNode =
+          (InsertTabletNode)
+              visitInsertTablet((InsertTabletStatement) insertBaseStatement, context);
+    } else if (insertBaseStatement instanceof InsertMultiTabletsStatement) {
+      insertNode =
+          (InsertMultiTabletsNode)
+              visitInsertMultiTablets((InsertMultiTabletsStatement) insertBaseStatement, context);
+    } else {
+      throw new UnsupportedOperationException(
+          "Unsupported insert statement type: " + insertBaseStatement.getClass().getName());
+    }
+
+    return new PipeEnrichedInsertNode(insertNode);
+  }
+
+  @Override
   public PlanNode visitLoadFile(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
     return new LoadTsFileNode(
         context.getQueryId().genPlanNodeId(), loadTsFileStatement.getResources());
+  }
+
+  @Override
+  public PlanNode visitPipeEnrichedLoadFile(
+      PipeEnrichedLoadTsFileStatement pipeEnrichedLoadTsFileStatement, MPPQueryContext context) {
+    return visitLoadFile(pipeEnrichedLoadTsFileStatement.getLoadTsFileStatement(), context);
   }
 
   @Override

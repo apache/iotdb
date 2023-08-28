@@ -1,0 +1,66 @@
+name: Multi-Cluster IT
+
+on:
+  push:
+    branches:
+      - master
+      - 'rel/1.*'
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
+  pull_request:
+    branches:
+      - master
+      - 'rel/1.*'
+    paths-ignore:
+      - 'docs/**'
+      - 'site/**'
+  # allow manually run the action:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
+
+jobs:
+  two-clusters:
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        java: [11]
+        # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
+        cluster1: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode]
+        cluster2: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode]
+    runs-on: [self-hosted, iotdb]
+    #      group: self-hosted
+    #      labels: iotdb
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v3
+        with:
+          distribution: liberica
+          java-version: ${{ matrix.java }}
+      - name: IT/UT Test
+        shell: bash
+        # we do not compile client-cpp for saving time, it is tested in client.yml
+        # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
+        run: |
+          mvn clean verify \
+          -P with-integration-tests \
+          -DskipUTs \
+          -DintegrationTest.forkCount=6 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=256 \
+          -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
+          -pl integration-test \
+          -am -PMultiClusterIT2
+      - name: Upload Artifact
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: cluster-log-java${{ matrix.java }}-${{ runner.os }}
+          path: integration-test/target/cluster-logs
+          retention-days: 1

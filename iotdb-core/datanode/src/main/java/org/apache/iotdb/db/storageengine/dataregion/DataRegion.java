@@ -47,6 +47,7 @@ import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
+import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
@@ -1818,8 +1819,6 @@ public class DataRegion implements IDataRegionForQuery {
     // mod files in mergingModification, sequenceFileList, and unsequenceFileList
     writeLock("delete");
 
-    // record files which are updated so that we can roll back them in case of exception
-    List<ModificationFile> updatedModFiles = new ArrayList<>();
     boolean hasReleasedLock = false;
 
     try {
@@ -1855,30 +1854,14 @@ public class DataRegion implements IDataRegionForQuery {
       // deviceMatchInfo contains the DeviceId means this device matched the pattern
       Set<String> deviceMatchInfo = new HashSet<>();
       deleteDataInFiles(
-          unsealedTsFileResource,
-          deletion,
-          devicePaths,
-          updatedModFiles,
-          timePartitionFilter,
-          deviceMatchInfo);
+          unsealedTsFileResource, deletion, devicePaths, timePartitionFilter, deviceMatchInfo);
       writeUnlock();
       hasReleasedLock = true;
 
       deleteDataInFiles(
-          sealedTsFileResource,
-          deletion,
-          devicePaths,
-          updatedModFiles,
-          timePartitionFilter,
-          deviceMatchInfo);
+          sealedTsFileResource, deletion, devicePaths, timePartitionFilter, deviceMatchInfo);
 
     } catch (Exception e) {
-      // roll back
-      for (ModificationFile modFile : updatedModFiles) {
-        modFile.abort();
-        // remember to close mod file
-        modFile.close();
-      }
       throw new IOException(e);
     } finally {
       if (!hasReleasedLock) {
@@ -1952,6 +1935,9 @@ public class DataRegion implements IDataRegionForQuery {
             return true;
           }
         }
+        if (databaseName.contentEquals(device.getDevice())) {
+          return false;
+        }
         Pair<Long, Long> startAndEndTime =
             tsFileResource.getPossibleStartTimeAndEndTime(device, deviceMatchInfo);
         if (startAndEndTime == null) {
@@ -1961,7 +1947,7 @@ public class DataRegion implements IDataRegionForQuery {
         deviceEndTime = startAndEndTime.getRight();
       } else {
         String deviceId = device.getFullPath();
-        if (!tsFileResource.mayContainsDevice(deviceId)) {
+        if (tsFileResource.definitelyNotContains(deviceId)) {
           // resource does not contain this device
           continue;
         }
@@ -1985,11 +1971,12 @@ public class DataRegion implements IDataRegionForQuery {
     return true;
   }
 
+  // suppress warn of Throwable catch
+  @SuppressWarnings("java:S1181")
   private void deleteDataInFiles(
       Collection<TsFileResource> tsFileResourceList,
       Deletion deletion,
       Set<PartialPath> devicePaths,
-      List<ModificationFile> updatedModFiles,
       TimePartitionFilter timePartitionFilter,
       Set<String> deviceMatchInfo)
       throws IOException {
@@ -2006,52 +1993,60 @@ public class DataRegion implements IDataRegionForQuery {
 
       ModificationFile modFile = tsFileResource.getModFile();
       if (tsFileResource.isClosed()) {
-        // delete data in sealed file
-        if (tsFileResource.isCompacting()) {
-          // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
-          // change after compaction
-          deletion.setFileOffset(Long.MAX_VALUE);
-          // write deletion into compaction modification file
-          tsFileResource.getCompactionModFile().write(deletion);
-          // write deletion into modification file to enable read during compaction
-          modFile.write(deletion);
-          // remember to close mod file
-          tsFileResource.getCompactionModFile().close();
-          modFile.close();
-        } else {
-          deletion.setFileOffset(tsFileResource.getTsFileSize());
-          // write deletion into modification file
-          boolean modFileExists = modFile.exists();
-          long originSize = modFile.getSize();
-          modFile.write(deletion);
+        long originSize = -1;
+        synchronized (modFile) {
+          try {
+            originSize = modFile.getSize();
+            // delete data in sealed file
+            if (tsFileResource.isCompacting()) {
+              // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
+              // change after compaction
+              deletion.setFileOffset(Long.MAX_VALUE);
+              // write deletion into compaction modification file
+              tsFileResource.getCompactionModFile().write(deletion);
+              // write deletion into modification file to enable read during compaction
+              modFile.write(deletion);
+              // remember to close mod file
+              tsFileResource.getCompactionModFile().close();
+              modFile.close();
+            } else {
+              deletion.setFileOffset(tsFileResource.getTsFileSize());
+              // write deletion into modification file
+              boolean modFileExists = modFile.exists();
 
-          // remember to close mod file
-          modFile.close();
+              modFile.write(deletion);
 
-          // if file length greater than 1M,execute compact.
-          modFile.compact();
+              // remember to close mod file
+              modFile.close();
 
-          if (!modFileExists) {
-            FileMetrics.getInstance().increaseModFileNum(1);
+              // if file length greater than 1M,execute compact.
+              modFile.compact();
+
+              if (!modFileExists) {
+                FileMetrics.getInstance().increaseModFileNum(1);
+              }
+
+              // The file size may be smaller than the original file, so the increment here may be
+              // negative
+              FileMetrics.getInstance().increaseModFileSize(modFile.getSize() - originSize);
+            }
+          } catch (Throwable t) {
+            if (originSize != -1) {
+              modFile.truncate(originSize);
+            }
+            throw t;
           }
-
-          // The file size may be smaller than the original file, so the increment here may be
-          // negative
-          FileMetrics.getInstance().increaseModFileSize(modFile.getSize() - originSize);
+          logger.info(
+              "[Deletion] Deletion with path:{}, time:{}-{} written into mods file:{}.",
+              deletion.getPath(),
+              deletion.getStartTime(),
+              deletion.getEndTime(),
+              modFile.getFilePath());
         }
-        logger.info(
-            "[Deletion] Deletion with path:{}, time:{}-{} written into mods file:{}.",
-            deletion.getPath(),
-            deletion.getStartTime(),
-            deletion.getEndTime(),
-            modFile.getFilePath());
       } else {
         // delete data in memory of unsealed file
         tsFileResource.getProcessor().deleteDataInMemory(deletion, devicePaths);
       }
-
-      // add a record in case of rollback
-      updatedModFiles.add(modFile);
     }
   }
 
@@ -2205,8 +2200,10 @@ public class DataRegion implements IDataRegionForQuery {
    *
    * @param newTsFileResource tsfile resource @UsedBy load external tsfile module
    * @param deleteOriginFile whether to delete origin tsfile
+   * @param isGeneratedByPipe whether the load tsfile request is generated by pipe
    */
-  public void loadNewTsFile(TsFileResource newTsFileResource, boolean deleteOriginFile)
+  public void loadNewTsFile(
+      TsFileResource newTsFileResource, boolean deleteOriginFile, boolean isGeneratedByPipe)
       throws LoadFileException {
     File tsfileToBeInserted = newTsFileResource.getTsFile();
     long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
@@ -2230,6 +2227,10 @@ public class DataRegion implements IDataRegionForQuery {
       }
       loadTsFileToUnSequence(
           tsfileToBeInserted, newTsFileResource, newFilePartitionId, deleteOriginFile);
+
+      PipeInsertionDataNodeListener.getInstance()
+          .listenToTsFile(dataRegionId, newTsFileResource, isGeneratedByPipe);
+
       FileMetrics.getInstance()
           .addFile(
               newTsFileResource.getTsFile().length(),
@@ -2438,6 +2439,7 @@ public class DataRegion implements IDataRegionForQuery {
       } else {
         Files.copy(resourceFileToLoad.toPath(), targetResourceFile.toPath());
       }
+
     } catch (IOException e) {
       logger.error(
           "File renaming failed when loading .resource file. Origin: {}, Target: {}",

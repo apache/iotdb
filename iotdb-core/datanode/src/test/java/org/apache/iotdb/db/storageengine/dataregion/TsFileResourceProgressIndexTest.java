@@ -21,6 +21,10 @@ package org.apache.iotdb.db.storageengine.dataregion;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
+import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
@@ -87,6 +91,21 @@ public class TsFileResourceProgressIndexTest {
 
   @Test
   public void testProgressIndexRecorder() {
+    HybridProgressIndex hybridProgressIndex = new HybridProgressIndex();
+    hybridProgressIndex.updateToMinimumIsAfterProgressIndex(new SimpleProgressIndex(3, 4));
+    hybridProgressIndex.updateToMinimumIsAfterProgressIndex(new SimpleProgressIndex(6, 6));
+    hybridProgressIndex.updateToMinimumIsAfterProgressIndex(
+        new RecoverProgressIndex(1, new SimpleProgressIndex(1, 2)));
+    hybridProgressIndex.updateToMinimumIsAfterProgressIndex(
+        new RecoverProgressIndex(1, new SimpleProgressIndex(1, 3)));
+    hybridProgressIndex.updateToMinimumIsAfterProgressIndex(
+        new RecoverProgressIndex(2, new SimpleProgressIndex(4, 3)));
+    hybridProgressIndex.updateToMinimumIsAfterProgressIndex(
+        new RecoverProgressIndex(3, new SimpleProgressIndex(5, 5)));
+    Assert.assertTrue(hybridProgressIndex.isAfter(new SimpleProgressIndex(6, 5)));
+    Assert.assertTrue(
+        hybridProgressIndex.isAfter(new RecoverProgressIndex(3, new SimpleProgressIndex(5, 4))));
+
     Assert.assertTrue(
         new MockProgressIndex(0).isAfter(tsFileResource.getMaxProgressIndexAfterClose()));
 
@@ -178,5 +197,25 @@ public class TsFileResourceProgressIndexTest {
     public ProgressIndexType getType() {
       throw new UnsupportedOperationException("method not implemented.");
     }
+  }
+
+  @Test
+  public void testHybridProgressIndex() {
+    final IoTProgressIndex ioTProgressIndex = new IoTProgressIndex(1, 123L);
+    final RecoverProgressIndex recoverProgressIndex =
+        new RecoverProgressIndex(1, new SimpleProgressIndex(2, 2));
+    final HybridProgressIndex hybridProgressIndex = new HybridProgressIndex();
+
+    hybridProgressIndex.updateToMinimumIsAfterProgressIndex(ioTProgressIndex);
+    hybridProgressIndex.updateToMinimumIsAfterProgressIndex(recoverProgressIndex);
+
+    Assert.assertTrue(hybridProgressIndex.isAfter(new IoTProgressIndex(1, 100L)));
+    Assert.assertTrue(
+        hybridProgressIndex.isAfter(new RecoverProgressIndex(1, new SimpleProgressIndex(1, 2))));
+
+    Assert.assertFalse(hybridProgressIndex.isAfter(new IoTProgressIndex(1, 200L)));
+    Assert.assertFalse(hybridProgressIndex.isAfter(new IoTProgressIndex(2, 200L)));
+    Assert.assertFalse(
+        hybridProgressIndex.isAfter(new RecoverProgressIndex(1, new SimpleProgressIndex(2, 21))));
   }
 }

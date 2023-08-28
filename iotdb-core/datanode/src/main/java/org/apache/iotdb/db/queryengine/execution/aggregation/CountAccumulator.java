@@ -36,7 +36,6 @@ public class CountAccumulator implements Accumulator {
   }
 
   // Column should be like: | Time | Value |
-
   @Override
   public void addInput(Column[] column, BitMap bitMap, int lastIndex) {
     int curPositionCount = column[0].getPositionCount();

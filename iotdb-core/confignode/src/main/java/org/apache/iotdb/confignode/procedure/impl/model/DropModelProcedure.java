@@ -31,7 +31,6 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
 import org.apache.iotdb.confignode.procedure.state.model.DropModelState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.db.protocol.client.MLNodeClient;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteModelMetricsReq;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -135,13 +134,13 @@ public class DropModelProcedure extends AbstractNodeProcedure<DropModelState> {
         case ML_NODE_DROPPED:
           LOGGER.info("Start to drop model [{}] on Config Nodes", modelId);
 
-          ConsensusWriteResponse response =
+          TSStatus response =
               env.getConfigManager().getConsensusManager().write(new DropModelPlan(modelId));
-          if (!response.isSuccessful()) {
+          if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             throw new ModelManagementException(
                 String.format(
                     "Failed to drop model [%s], fail to drop model on Config Nodes: %s",
-                    modelId, response.getErrorMessage()));
+                    modelId, response.getMessage()));
           }
 
           setNextState(DropModelState.CONFIG_NODE_DROPPED);

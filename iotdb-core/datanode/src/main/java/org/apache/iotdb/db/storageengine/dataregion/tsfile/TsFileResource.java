@@ -96,7 +96,7 @@ public class TsFileResource {
   protected TsFileResource next;
 
   /** time index */
-  public ITimeIndex timeIndex;
+  private ITimeIndex timeIndex;
 
   @SuppressWarnings("squid:S3077")
   private volatile ModificationFile modFile;
@@ -203,23 +203,6 @@ public class TsFileResource {
     // this method is invoked when a new TsFile is created and a newly created TsFile's the
     // tierLevel is 0 by default
     this.tierLevel = new AtomicInteger(0);
-  }
-
-  /** unsealed TsFile, for read */
-  public TsFileResource(
-      PartialPath path,
-      List<ReadOnlyMemChunk> readOnlyMemChunk,
-      List<IChunkMetadata> chunkMetadataList,
-      TsFileResource originTsFileResource)
-      throws IOException {
-    this.file = originTsFileResource.file;
-    this.timeIndex = originTsFileResource.timeIndex;
-    this.pathToReadOnlyMemChunkMap.put(path, readOnlyMemChunk);
-    this.pathToChunkMetadataListMap.put(path, chunkMetadataList);
-    this.originTsFileResource = originTsFileResource;
-    this.version = originTsFileResource.version;
-    this.isSeq = originTsFileResource.isSeq;
-    this.tierLevel = originTsFileResource.tierLevel;
   }
 
   /** unsealed TsFile, for read */
@@ -492,11 +475,12 @@ public class TsFileResource {
   }
 
   /**
-   * Whether this TsFileResource contains this device, if false, it must not contain this device, if
-   * true, it may or may not contain this device
+   * Whether this TsFile definitely not contains this device, if ture, it must not contain this
+   * device, if false, it may or may not contain this device Notice: using method be CAREFULLY and
+   * you really understand the meaning!!!!!
    */
-  public boolean mayContainsDevice(String device) {
-    return timeIndex.mayContainsDevice(device);
+  public boolean definitelyNotContains(String device) {
+    return timeIndex.definitelyNotContains(device);
   }
 
   /**
@@ -800,7 +784,7 @@ public class TsFileResource {
 
   /** @return true if the device is contained in the TsFile */
   public boolean isSatisfied(String deviceId, Filter timeFilter, boolean isSeq, boolean debug) {
-    if (!mayContainsDevice(deviceId)) {
+    if (definitelyNotContains(deviceId)) {
       if (debug) {
         DEBUG_LOGGER.info(
             "Path: {} file {} is not satisfied because of no device!", deviceId, file);
@@ -1186,6 +1170,14 @@ public class TsFileResource {
         (maxProgressIndex == null
             ? progressIndex
             : maxProgressIndex.updateToMinimumIsAfterProgressIndex(progressIndex));
+  }
+
+  public void recoverProgressIndex(ProgressIndex progressIndex) {
+    if (progressIndex == null) {
+      return;
+    }
+
+    maxProgressIndex = progressIndex;
   }
 
   public ProgressIndex getMaxProgressIndexAfterClose() throws IllegalStateException {

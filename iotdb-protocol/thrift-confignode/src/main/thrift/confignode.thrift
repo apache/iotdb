@@ -102,6 +102,7 @@ struct TRuntimeConfiguration {
 struct TDataNodeRegisterReq {
   1: required string clusterName
   2: required common.TDataNodeConfiguration dataNodeConfiguration
+  3: optional TNodeVersionInfo versionInfo
 }
 
 struct TDataNodeRegisterResp {
@@ -114,6 +115,7 @@ struct TDataNodeRegisterResp {
 struct TDataNodeRestartReq {
   1: required string clusterName
   2: required common.TDataNodeConfiguration dataNodeConfiguration
+  3: optional TNodeVersionInfo versionInfo
 }
 
 struct TDataNodeRestartResp {
@@ -366,6 +368,7 @@ struct TConfigNodeRegisterReq {
   // fields are consistent with the Seed-ConfigNode
   1: required TClusterParameters clusterParameters
   2: required common.TConfigNodeLocation configNodeLocation
+  3: optional TNodeVersionInfo versionInfo
 }
 
 struct TConfigNodeRegisterResp {
@@ -483,6 +486,12 @@ struct TShowClusterResp {
   2: required list<common.TConfigNodeLocation> configNodeList
   3: required list<common.TDataNodeLocation> dataNodeList
   4: required map<i32, string> nodeStatus
+  5: required map<i32, TNodeVersionInfo> nodeVersionInfo
+}
+
+struct TNodeVersionInfo {
+  1: required string version;
+  2: required string buildInfo;
 }
 
 struct TShowVariablesResp {

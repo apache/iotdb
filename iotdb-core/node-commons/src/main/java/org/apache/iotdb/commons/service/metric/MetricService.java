@@ -37,7 +37,8 @@ public class MetricService extends AbstractMetricService implements MetricServic
   private static final Logger LOGGER = LoggerFactory.getLogger(MetricService.class);
   private final String mbeanName =
       String.format(
-          "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName());
+          "%s:%s=%s",
+          IoTDBConstant.IOTDB_SERVICE_JMX_NAME, IoTDBConstant.JMX_TYPE, getID().getJmxName());
 
   private MetricService() {
     // empty constructor

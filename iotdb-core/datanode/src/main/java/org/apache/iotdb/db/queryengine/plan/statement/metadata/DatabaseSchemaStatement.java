@@ -40,6 +40,7 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
   private Long timePartitionInterval = null;
   private Integer schemaRegionGroupNum = null;
   private Integer dataRegionGroupNum = null;
+  private boolean enablePrintExceptionLog = true;
 
   public DatabaseSchemaStatement(DatabaseSchemaStatementType subType) {
     super();
@@ -105,6 +106,14 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
 
   public void setDataRegionGroupNum(Integer dataRegionGroupNum) {
     this.dataRegionGroupNum = dataRegionGroupNum;
+  }
+
+  public boolean getEnablePrintExceptionLog() {
+    return enablePrintExceptionLog;
+  }
+
+  public void setEnablePrintExceptionLog(boolean enablePrintExceptionLog) {
+    this.enablePrintExceptionLog = enablePrintExceptionLog;
   }
 
   @Override

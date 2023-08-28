@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -99,9 +100,11 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import com.google.common.base.Function;
-import org.apache.commons.lang.Validate;
+import org.apache.commons.lang3.Validate;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -120,6 +123,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.DEVICE;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
 
 public class LogicalPlanBuilder {
 
@@ -170,7 +174,10 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planRawDataSource(
-      Set<Expression> sourceExpressions, Ordering scanOrder, Filter timeFilter) {
+      Set<Expression> sourceExpressions,
+      Ordering scanOrder,
+      Filter timeFilter,
+      boolean lastLevelUseWildcard) {
     List<PlanNode> sourceNodeList = new ArrayList<>();
     List<PartialPath> selectedPaths =
         sourceExpressions.stream()
@@ -189,7 +196,10 @@ public class LogicalPlanBuilder {
       } else if (path instanceof AlignedPath) { // aligned series
         AlignedSeriesScanNode alignedSeriesScanNode =
             new AlignedSeriesScanNode(
-                context.getQueryId().genPlanNodeId(), (AlignedPath) path, scanOrder);
+                context.getQueryId().genPlanNodeId(),
+                (AlignedPath) path,
+                scanOrder,
+                lastLevelUseWildcard);
         alignedSeriesScanNode.setTimeFilter(timeFilter);
         // TODO: push down value filter
         alignedSeriesScanNode.setValueFilter(timeFilter);
@@ -320,6 +330,7 @@ public class LogicalPlanBuilder {
     boolean needCheckAscending = groupByTimeParameter == null;
     Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations = new HashMap<>();
     Map<PartialPath, List<AggregationDescriptor>> descendingAggregations = new HashMap<>();
+    Map<PartialPath, List<AggregationDescriptor>> countTimeAggregations = new HashMap<>();
     for (Expression aggregationExpression : aggregationExpressions) {
       createAggregationDescriptor(
           (FunctionExpression) aggregationExpression,
@@ -327,13 +338,15 @@ public class LogicalPlanBuilder {
           scanOrder,
           needCheckAscending,
           ascendingAggregations,
-          descendingAggregations);
+          descendingAggregations,
+          countTimeAggregations);
     }
 
     List<PlanNode> sourceNodeList =
         constructSourceNodeFromAggregationDescriptors(
             ascendingAggregations,
             descendingAggregations,
+            countTimeAggregations,
             scanOrder,
             timeFilter,
             groupByTimeParameter);
@@ -368,6 +381,7 @@ public class LogicalPlanBuilder {
     Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations = new HashMap<>();
     Map<PartialPath, List<AggregationDescriptor>> descendingAggregations = new HashMap<>();
     Map<AggregationDescriptor, Integer> aggregationToIndexMap = new HashMap<>();
+    Map<PartialPath, List<AggregationDescriptor>> countTimeAggregations = new HashMap<>();
 
     int index = 0;
     for (Expression aggregationExpression : aggregationExpressions) {
@@ -378,7 +392,8 @@ public class LogicalPlanBuilder {
               scanOrder,
               needCheckAscending,
               ascendingAggregations,
-              descendingAggregations);
+              descendingAggregations,
+              countTimeAggregations);
       aggregationToIndexMap.put(aggregationDescriptor, deviceViewInputIndexes.get(index));
       index++;
     }
@@ -387,6 +402,7 @@ public class LogicalPlanBuilder {
         constructSourceNodeFromAggregationDescriptors(
             ascendingAggregations,
             descendingAggregations,
+            countTimeAggregations,
             scanOrder,
             timeFilter,
             groupByTimeParameter);
@@ -423,7 +439,8 @@ public class LogicalPlanBuilder {
       Ordering scanOrder,
       boolean needCheckAscending,
       Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations,
-      Map<PartialPath, List<AggregationDescriptor>> descendingAggregations) {
+      Map<PartialPath, List<AggregationDescriptor>> descendingAggregations,
+      Map<PartialPath, List<AggregationDescriptor>> countTimeAggregations) {
     AggregationDescriptor aggregationDescriptor =
         new AggregationDescriptor(
             sourceExpression.getFunctionName(),
@@ -433,6 +450,38 @@ public class LogicalPlanBuilder {
     if (curStep.isOutputPartial()) {
       updateTypeProviderByPartialAggregation(aggregationDescriptor, context.getTypeProvider());
     }
+
+    if (COUNT_TIME.equalsIgnoreCase(sourceExpression.getFunctionName())) {
+      Map<String, Pair<List<String>, List<IMeasurementSchema>>> map = new HashMap<>();
+      for (Expression expression : sourceExpression.getCountTimeExpressions()) {
+        TimeSeriesOperand ts = (TimeSeriesOperand) expression;
+        PartialPath path = ts.getPath();
+        Pair<List<String>, List<IMeasurementSchema>> pair =
+            map.computeIfAbsent(
+                path.getDevice(), k -> new Pair<>(new ArrayList<>(), new ArrayList<>()));
+        pair.left.add(path.getMeasurement());
+        try {
+          pair.right.add(path.getMeasurementSchema());
+        } catch (MetadataException ex) {
+          throw new RuntimeException(ex);
+        }
+      }
+
+      for (Map.Entry<String, Pair<List<String>, List<IMeasurementSchema>>> entry : map.entrySet()) {
+        String device = entry.getKey();
+        Pair<List<String>, List<IMeasurementSchema>> pair = entry.getValue();
+        AlignedPath alignedPath = null;
+        try {
+          alignedPath = new AlignedPath(device, pair.left, pair.right);
+        } catch (IllegalPathException e) {
+          throw new RuntimeException(e);
+        }
+        countTimeAggregations.put(alignedPath, Collections.singletonList(aggregationDescriptor));
+      }
+
+      return aggregationDescriptor;
+    }
+
     PartialPath selectPath =
         ((TimeSeriesOperand) sourceExpression.getExpressions().get(0)).getPath();
     if (!needCheckAscending
@@ -452,13 +501,20 @@ public class LogicalPlanBuilder {
   private List<PlanNode> constructSourceNodeFromAggregationDescriptors(
       Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations,
       Map<PartialPath, List<AggregationDescriptor>> descendingAggregations,
+      Map<PartialPath, List<AggregationDescriptor>> countTimeAggregations,
       Ordering scanOrder,
       Filter timeFilter,
       GroupByTimeParameter groupByTimeParameter) {
+
     List<PlanNode> sourceNodeList = new ArrayList<>();
     boolean needCheckAscending = groupByTimeParameter == null;
-    Map<PartialPath, List<AggregationDescriptor>> groupedAscendingAggregations =
-        MetaUtils.groupAlignedAggregations(ascendingAggregations);
+    Map<PartialPath, List<AggregationDescriptor>> groupedAscendingAggregations = null;
+    if (!countTimeAggregations.isEmpty()) {
+      groupedAscendingAggregations = countTimeAggregations;
+    } else {
+      groupedAscendingAggregations = MetaUtils.groupAlignedAggregations(ascendingAggregations);
+    }
+
     for (Map.Entry<PartialPath, List<AggregationDescriptor>> pathAggregationsEntry :
         groupedAscendingAggregations.entrySet()) {
       sourceNodeList.add(

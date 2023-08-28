@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class PipeMetaKeeper {
@@ -44,6 +45,10 @@ public class PipeMetaKeeper {
 
   public void acquireReadLock() {
     pipeMetaKeeperLock.readLock().lock();
+  }
+
+  public boolean tryReadLock(long timeOut) throws InterruptedException {
+    return pipeMetaKeeperLock.readLock().tryLock(timeOut, TimeUnit.SECONDS);
   }
 
   public void releaseReadLock() {
@@ -78,6 +83,10 @@ public class PipeMetaKeeper {
 
   public Iterable<PipeMeta> getPipeMetaList() {
     return pipeNameToPipeMetaMap.values();
+  }
+
+  public PipeMeta getPipeMetaByPipeName(String pipeName) {
+    return pipeNameToPipeMetaMap.get(pipeName);
   }
 
   public void clear() {

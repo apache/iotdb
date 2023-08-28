@@ -65,12 +65,8 @@ public class TsFileWriteWithTablet {
         // register nonAligned timeseries
         tsFileWriter.registerTimeseries(new Path(DEVICE_1), measurementSchemas);
 
-        List<MeasurementSchema> writeMeasurementScheams = new ArrayList<>();
         // example 1
-        writeMeasurementScheams.add(measurementSchemas.get(0));
-        writeMeasurementScheams.add(measurementSchemas.get(1));
-        writeMeasurementScheams.add(measurementSchemas.get(2));
-        writeWithTablet(tsFileWriter, DEVICE_1, writeMeasurementScheams, 10000, 0, 0);
+        writeWithTablet(tsFileWriter, DEVICE_1, measurementSchemas, 10000, 0, 0);
       }
     } catch (Exception e) {
       logger.error("meet error in TsFileWrite with tablet", e);

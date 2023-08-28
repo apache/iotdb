@@ -61,7 +61,6 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetDataRepli
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
-import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
@@ -147,6 +146,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
@@ -174,6 +174,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelStateReq;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateAlterOperationUtil;
@@ -350,11 +351,9 @@ public class ConfigManager implements IManager {
               req.getDataNodeConfiguration().getLocation(),
               this);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return nodeManager.registerDataNode(
-            new RegisterDataNodePlan(req.getDataNodeConfiguration()));
+        return nodeManager.registerDataNode(req);
       }
     }
-
     DataNodeRegisterResp resp = new DataNodeRegisterResp();
     resp.setStatus(status);
     resp.setConfigNodeList(getNodeManager().getRegisteredConfigNodes());
@@ -364,11 +363,7 @@ public class ConfigManager implements IManager {
   @Override
   public TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req) {
     TSStatus status = confirmLeader();
-    // Notice: The Seed-ConfigNode must also have the privilege to do Node restart check.
-    // Otherwise, the IoTDB-cluster will not have the ability to restart from scratch.
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        || ConfigNodeDescriptor.getInstance().isSeedConfigNode()
-        || SystemPropertiesUtils.isSeedConfigNode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       status =
           ClusterNodeStartUtils.confirmNodeRestart(
               NodeType.DataNode,
@@ -377,10 +372,9 @@ public class ConfigManager implements IManager {
               req.getDataNodeConfiguration().getLocation(),
               this);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return nodeManager.updateDataNodeIfNecessary(req.getDataNodeConfiguration());
+        return nodeManager.updateDataNodeIfNecessary(req);
       }
     }
-
     return new TDataNodeRestartResp()
         .setStatus(status)
         .setConfigNodeList(getNodeManager().getRegisteredConfigNodes());
@@ -449,9 +443,12 @@ public class ConfigManager implements IManager {
               .sorted(Comparator.comparingInt(TDataNodeLocation::getDataNodeId))
               .collect(Collectors.toList());
       Map<Integer, String> nodeStatus = getLoadManager().getNodeStatusWithReason();
-      return new TShowClusterResp(status, configNodeLocations, dataNodeInfoLocations, nodeStatus);
+      Map<Integer, TNodeVersionInfo> nodeVersionInfo = getNodeManager().getNodeVersionInfo();
+      return new TShowClusterResp(
+          status, configNodeLocations, dataNodeInfoLocations, nodeStatus, nodeVersionInfo);
     } else {
-      return new TShowClusterResp(status, new ArrayList<>(), new ArrayList<>(), new HashMap<>());
+      return new TShowClusterResp(
+          status, new ArrayList<>(), new ArrayList<>(), new HashMap<>(), new HashMap<>());
     }
   }
 
@@ -665,8 +662,7 @@ public class ConfigManager implements IManager {
         new GetSchemaPartitionPlan(
             partitionSlotsMap.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> new ArrayList<>(e.getValue()))));
-    SchemaPartitionResp queryResult =
-        (SchemaPartitionResp) partitionManager.getSchemaPartition(getSchemaPartitionPlan);
+    SchemaPartitionResp queryResult = partitionManager.getSchemaPartition(getSchemaPartitionPlan);
     resp = queryResult.convertToRpcSchemaPartitionTableResp();
 
     LOGGER.debug("GetSchemaPartition receive paths: {}, return: {}", relatedPaths, resp);
@@ -797,8 +793,7 @@ public class ConfigManager implements IManager {
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return resp.setStatus(status);
     }
-    DataPartitionResp queryResult =
-        (DataPartitionResp) partitionManager.getDataPartition(getDataPartitionPlan);
+    DataPartitionResp queryResult = partitionManager.getDataPartition(getDataPartitionPlan);
 
     resp = queryResult.convertToTDataPartitionTableResp();
 
@@ -1034,7 +1029,7 @@ public class ConfigManager implements IManager {
               req.getConfigNodeLocation(),
               this);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return nodeManager.restartConfigNode(req.getConfigNodeLocation());
+        return ClusterNodeStartUtils.ACCEPT_NODE_RESTART;
       }
     }
     return status;
@@ -1138,7 +1133,7 @@ public class ConfigManager implements IManager {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         LOGGER.warn("Unexpected interruption during retry creating peer for consensus group");
-      } catch (Exception e) {
+      } catch (ConsensusException e) {
         LOGGER.error("Failed to create peer for consensus group", e);
         break;
       }
@@ -1671,7 +1666,7 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? pipeManager.getPipeTaskCoordinator().getAllPipeInfo()
-        : new TGetAllPipeInfoResp().setStatus(status);
+        : new TGetAllPipeInfoResp(status, Collections.emptyList());
   }
 
   @Override

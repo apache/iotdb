@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.pipe.agent.task;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeMetaKeeper;
 import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
@@ -29,6 +31,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.extractor.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.task.PipeBuilder;
 import org.apache.iotdb.db.pipe.task.PipeTask;
 import org.apache.iotdb.db.pipe.task.PipeTaskBuilder;
@@ -91,6 +94,16 @@ public class PipeTaskAgent {
     pipeMetaKeeper.acquireReadLock();
   }
 
+  public boolean tryReadLockWithTimeOut(long timeOutInSeconds) {
+    try {
+      return pipeMetaKeeper.tryReadLock(timeOutInSeconds);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn("Interruption during requiring pipeMetaKeeper lock.", e);
+      return false;
+    }
+  }
+
   private void releaseReadLock() {
     pipeMetaKeeper.releaseReadLock();
   }
@@ -105,17 +118,76 @@ public class PipeTaskAgent {
 
   ////////////////////////// Pipe Task Management Entry //////////////////////////
 
-  public synchronized List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChanges(
-      List<PipeMeta> pipeMetaListFromConfigNode) {
+  public synchronized TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChanges(
+      PipeMeta pipeMetaFromConfigNode) {
     acquireWriteLock();
     try {
-      return handlePipeMetaChangesWithoutLock(pipeMetaListFromConfigNode);
+      return handleSinglePipeMetaChangesInternal(pipeMetaFromConfigNode);
     } finally {
       releaseWriteLock();
     }
   }
 
-  private List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChangesWithoutLock(
+  private TPushPipeMetaRespExceptionMessage handleSinglePipeMetaChangesInternal(
+      PipeMeta pipeMetaFromConfigNode) {
+    // Do nothing if data node is removing or removed
+    if (PipeAgent.runtime().isShutdown()) {
+      return null;
+    }
+
+    try {
+      executeSinglePipeMetaChanges(pipeMetaFromConfigNode);
+      return null;
+    } catch (Exception e) {
+      final String pipeName = pipeMetaFromConfigNode.getStaticMeta().getPipeName();
+      final String errorMessage =
+          String.format(
+              "Failed to handle single pipe meta changes for %s, because %s",
+              pipeName, e.getMessage());
+      LOGGER.warn("Failed to handle single pipe meta changes for {}", pipeName, e);
+      return new TPushPipeMetaRespExceptionMessage(
+          pipeName, errorMessage, System.currentTimeMillis());
+    }
+  }
+
+  public synchronized TPushPipeMetaRespExceptionMessage handleDropPipe(String pipeName) {
+    acquireWriteLock();
+    try {
+      return handleDropPipeInternal(pipeName);
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  private TPushPipeMetaRespExceptionMessage handleDropPipeInternal(String pipeName) {
+    // Do nothing if data node is removing or removed
+    if (PipeAgent.runtime().isShutdown()) {
+      return null;
+    }
+
+    try {
+      dropPipe(pipeName);
+      return null;
+    } catch (Exception e) {
+      final String errorMessage =
+          String.format("Failed to drop pipe %s, because %s", pipeName, e.getMessage());
+      LOGGER.warn("Failed to drop pipe {}", pipeName, e);
+      return new TPushPipeMetaRespExceptionMessage(
+          pipeName, errorMessage, System.currentTimeMillis());
+    }
+  }
+
+  public synchronized List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChanges(
+      List<PipeMeta> pipeMetaListFromConfigNode) {
+    acquireWriteLock();
+    try {
+      return handlePipeMetaChangesInternal(pipeMetaListFromConfigNode);
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  private List<TPushPipeMetaRespExceptionMessage> handlePipeMetaChangesInternal(
       List<PipeMeta> pipeMetaListFromConfigNode) {
     // Do nothing if data node is removing or removed
     if (PipeAgent.runtime().isShutdown()) {
@@ -127,41 +199,10 @@ public class PipeTaskAgent {
     // Iterate through pipe meta list from config node, check if pipe meta exists on data node
     // or has changed
     for (final PipeMeta metaFromConfigNode : pipeMetaListFromConfigNode) {
-      final String pipeName = metaFromConfigNode.getStaticMeta().getPipeName();
-
       try {
-        final PipeMeta metaOnDataNode = pipeMetaKeeper.getPipeMeta(pipeName);
-
-        // If pipe meta does not exist on data node, create a new pipe
-        if (metaOnDataNode == null) {
-          if (createPipe(metaFromConfigNode)) {
-            // If the status recorded in config node is RUNNING, start the pipe
-            startPipe(pipeName, metaFromConfigNode.getStaticMeta().getCreationTime());
-          }
-          // If the status recorded in config node is STOPPED or DROPPED, do nothing
-          continue;
-        }
-
-        // If pipe meta exists on data node, check if it has changed
-        final PipeStaticMeta staticMetaOnDataNode = metaOnDataNode.getStaticMeta();
-        final PipeStaticMeta staticMetaFromConfigNode = metaFromConfigNode.getStaticMeta();
-
-        // First check if pipe static meta has changed, if so, drop the pipe and create a new one
-        if (!staticMetaOnDataNode.equals(staticMetaFromConfigNode)) {
-          dropPipe(pipeName);
-          if (createPipe(metaFromConfigNode)) {
-            startPipe(pipeName, metaFromConfigNode.getStaticMeta().getCreationTime());
-          }
-          // If the status is STOPPED or DROPPED, do nothing
-          continue;
-        }
-
-        // Then check if pipe runtime meta has changed, if so, update the pipe
-        final PipeRuntimeMeta runtimeMetaOnDataNode = metaOnDataNode.getRuntimeMeta();
-        final PipeRuntimeMeta runtimeMetaFromConfigNode = metaFromConfigNode.getRuntimeMeta();
-        handlePipeRuntimeMetaChanges(
-            staticMetaFromConfigNode, runtimeMetaFromConfigNode, runtimeMetaOnDataNode);
+        executeSinglePipeMetaChanges(metaFromConfigNode);
       } catch (Exception e) {
+        final String pipeName = metaFromConfigNode.getStaticMeta().getPipeName();
         final String errorMessage =
             String.format(
                 "Failed to handle pipe meta changes for %s, because %s", pipeName, e.getMessage());
@@ -193,7 +234,42 @@ public class PipeTaskAgent {
     return exceptionMessages;
   }
 
-  private void handlePipeRuntimeMetaChanges(
+  private void executeSinglePipeMetaChanges(final PipeMeta metaFromConfigNode) {
+    final String pipeName = metaFromConfigNode.getStaticMeta().getPipeName();
+    final PipeMeta metaOnDataNode = pipeMetaKeeper.getPipeMeta(pipeName);
+
+    // If pipe meta does not exist on data node, create a new pipe
+    if (metaOnDataNode == null) {
+      if (createPipe(metaFromConfigNode)) {
+        // If the status recorded in config node is RUNNING, start the pipe
+        startPipe(pipeName, metaFromConfigNode.getStaticMeta().getCreationTime());
+      }
+      // If the status recorded in config node is STOPPED or DROPPED, do nothing
+      return;
+    }
+
+    // If pipe meta exists on data node, check if it has changed
+    final PipeStaticMeta staticMetaOnDataNode = metaOnDataNode.getStaticMeta();
+    final PipeStaticMeta staticMetaFromConfigNode = metaFromConfigNode.getStaticMeta();
+
+    // First check if pipe static meta has changed, if so, drop the pipe and create a new one
+    if (!staticMetaOnDataNode.equals(staticMetaFromConfigNode)) {
+      dropPipe(pipeName);
+      if (createPipe(metaFromConfigNode)) {
+        startPipe(pipeName, metaFromConfigNode.getStaticMeta().getCreationTime());
+      }
+      // If the status is STOPPED or DROPPED, do nothing
+      return;
+    }
+
+    // Then check if pipe runtime meta has changed, if so, update the pipe
+    final PipeRuntimeMeta runtimeMetaOnDataNode = metaOnDataNode.getRuntimeMeta();
+    final PipeRuntimeMeta runtimeMetaFromConfigNode = metaFromConfigNode.getRuntimeMeta();
+    executeSinglePipeRuntimeMetaChanges(
+        staticMetaFromConfigNode, runtimeMetaFromConfigNode, runtimeMetaOnDataNode);
+  }
+
+  private void executeSinglePipeRuntimeMetaChanges(
       @NotNull PipeStaticMeta pipeStaticMeta,
       @NotNull PipeRuntimeMeta runtimeMetaFromConfigNode,
       @NotNull PipeRuntimeMeta runtimeMetaOnDataNode) {
@@ -294,13 +370,13 @@ public class PipeTaskAgent {
   public synchronized void dropAllPipeTasks() {
     acquireWriteLock();
     try {
-      dropAllPipeTasksWithoutLock();
+      dropAllPipeTasksInternal();
     } finally {
       releaseWriteLock();
     }
   }
 
-  private void dropAllPipeTasksWithoutLock() {
+  private void dropAllPipeTasksInternal() {
     for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
       try {
         dropPipe(
@@ -313,6 +389,40 @@ public class PipeTaskAgent {
             e);
       }
     }
+  }
+
+  public synchronized void stopAllPipesWithCriticalException() {
+    acquireWriteLock();
+    try {
+      stopAllPipesWithCriticalExceptionInternal();
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  private void stopAllPipesWithCriticalExceptionInternal() {
+    pipeMetaKeeper
+        .getPipeMetaList()
+        .forEach(
+            pipeMeta -> {
+              final PipeStaticMeta staticMeta = pipeMeta.getStaticMeta();
+              final PipeRuntimeMeta runtimeMeta = pipeMeta.getRuntimeMeta();
+
+              if (runtimeMeta.getStatus().get() == PipeStatus.RUNNING) {
+                runtimeMeta
+                    .getConsensusGroupId2TaskMetaMap()
+                    .values()
+                    .forEach(
+                        pipeTaskMeta -> {
+                          for (final PipeRuntimeException e : pipeTaskMeta.getExceptionMessages()) {
+                            if (e instanceof PipeRuntimeCriticalException) {
+                              stopPipe(staticMeta.getPipeName(), staticMeta.getCreationTime());
+                              return;
+                            }
+                          }
+                        });
+              }
+            });
   }
 
   ////////////////////////// Manage by Pipe Name //////////////////////////
@@ -669,18 +779,26 @@ public class PipeTaskAgent {
 
   public synchronized void collectPipeMetaList(THeartbeatReq req, THeartbeatResp resp)
       throws TException {
-    acquireReadLock();
+    // If the pipe heartbeat is separated from the cluster heartbeat, then the lock doesn't
+    // need to be acquired
+    if (!req.isNeedPipeMetaList()) {
+      return;
+    }
+    // Try the lock instead of directly acquire it to prevent the block of the cluster heartbeat
+    // 10s is the half of the HEARTBEAT_TIMEOUT_TIME defined in class BaseNodeCache in ConfigNode
+    if (!tryReadLockWithTimeOut(10)) {
+      return;
+    }
     try {
-      collectPipeMetaListWithoutLock(req, resp);
+      collectPipeMetaListInternal(resp);
     } finally {
       releaseReadLock();
     }
   }
 
-  private void collectPipeMetaListWithoutLock(THeartbeatReq req, THeartbeatResp resp)
-      throws TException {
+  private void collectPipeMetaListInternal(THeartbeatResp resp) throws TException {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
-    if (PipeAgent.runtime().isShutdown() || !req.isNeedPipeMetaList()) {
+    if (PipeAgent.runtime().isShutdown()) {
       return;
     }
 
@@ -700,13 +818,13 @@ public class PipeTaskAgent {
       throws TException {
     acquireReadLock();
     try {
-      collectPipeMetaListWithoutLock(req, resp);
+      collectPipeMetaListInternal(req, resp);
     } finally {
       releaseReadLock();
     }
   }
 
-  private void collectPipeMetaListWithoutLock(TPipeHeartbeatReq req, TPipeHeartbeatResp resp)
+  private void collectPipeMetaListInternal(TPipeHeartbeatReq req, TPipeHeartbeatResp resp)
       throws TException {
     // Do nothing if data node is removing or removed, or request does not need pipe meta list
     if (PipeAgent.runtime().isShutdown()) {
@@ -724,5 +842,7 @@ public class PipeTaskAgent {
       throw new TException(e);
     }
     resp.setPipeMetaList(pipeMetaBinaryList);
+
+    PipeInsertionDataNodeListener.getInstance().listenToHeartbeat(true);
   }
 }

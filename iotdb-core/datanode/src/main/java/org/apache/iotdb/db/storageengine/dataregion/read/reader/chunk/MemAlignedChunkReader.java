@@ -33,16 +33,18 @@ import java.util.List;
 /** To read aligned chunk data in memory. */
 public class MemAlignedChunkReader implements IChunkReader {
 
-  private List<IPageReader> pageReaderList;
+  private final List<IPageReader> pageReaderList;
 
-  public MemAlignedChunkReader(AlignedReadOnlyMemChunk readableChunk, Filter filter) {
+  public MemAlignedChunkReader(
+      AlignedReadOnlyMemChunk readableChunk, Filter filter, boolean queryAllSensors) {
     // we treat one ReadOnlyMemChunk as one Page
     this.pageReaderList =
         Collections.singletonList(
             new MemAlignedPageReader(
                 readableChunk.getTsBlock(),
                 (AlignedChunkMetadata) readableChunk.getChunkMetaData(),
-                filter));
+                filter,
+                queryAllSensors));
   }
 
   @Override

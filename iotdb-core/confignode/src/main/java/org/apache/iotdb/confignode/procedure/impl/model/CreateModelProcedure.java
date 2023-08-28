@@ -31,7 +31,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.node.AbstractNodeProcedure;
 import org.apache.iotdb.confignode.procedure.state.model.CreateModelState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.protocol.client.MLNodeClient;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -92,13 +92,13 @@ public class CreateModelProcedure extends AbstractNodeProcedure<CreateModelState
 
           LOGGER.info("Start to add model [{}] in ModelTable on Config Nodes", modelId);
 
-          ConsensusWriteResponse response =
+          TSStatus response =
               configManager.getConsensusManager().write(new CreateModelPlan(modelInformation));
-          if (!response.isSuccessful()) {
+          if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             throw new ModelManagementException(
                 String.format(
                     "Failed to add model [%s] in ModelTable on Config Nodes: %s",
-                    modelId, response.getErrorMessage()));
+                    modelId, response.getMessage()));
           }
 
           setNextState(CreateModelState.CONFIG_NODE_ACTIVE);
@@ -165,9 +165,13 @@ public class CreateModelProcedure extends AbstractNodeProcedure<CreateModelState
       case VALIDATED:
         LOGGER.info("Start [VALIDATED] rollback of model [{}]", modelInformation.getModelId());
 
-        env.getConfigManager()
-            .getConsensusManager()
-            .write(new DropModelPlan(modelInformation.getModelId()));
+        try {
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(new DropModelPlan(modelInformation.getModelId()));
+        } catch (ConsensusException e) {
+          LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+        }
         break;
 
       default:

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.it.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
@@ -59,6 +60,7 @@ import static org.apache.iotdb.confignode.it.utils.ConfigNodeTestUtils.generateP
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBAutoRegionGroupExtensionIT {
+
   private static final String testDataRegionGroupExtensionPolicy = "AUTO";
   private static final String testConsensusProtocolClass = ConsensusFactory.RATIS_CONSENSUS;
   private static final int testReplicationFactor = 1;
@@ -159,14 +161,12 @@ public class IoTDBAutoRegionGroupExtensionIT {
     }
 
     // The number of SchemaRegionGroups should not less than the testMinSchemaRegionGroupNum
-    TShowRegionResp showRegionReq =
+    TShowRegionResp resp =
         client.showRegion(
             new TShowRegionReq().setConsensusGroupType(TConsensusGroupType.SchemaRegion));
-    Assert.assertEquals(
-        TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionReq.getStatus().getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
     Map<String, AtomicInteger> regionCounter = new ConcurrentHashMap<>();
-    showRegionReq
-        .getRegionInfoList()
+    resp.getRegionInfoList()
         .forEach(
             regionInfo ->
                 regionCounter
@@ -177,14 +177,12 @@ public class IoTDBAutoRegionGroupExtensionIT {
         (sg, regionCount) -> Assert.assertTrue(regionCount.get() >= testMinSchemaRegionGroupNum));
 
     // The number of DataRegionGroups should not less than the testMinDataRegionGroupNum
-    showRegionReq =
+    resp =
         client.showRegion(
             new TShowRegionReq().setConsensusGroupType(TConsensusGroupType.DataRegion));
-    Assert.assertEquals(
-        TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionReq.getStatus().getCode());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
     regionCounter.clear();
-    showRegionReq
-        .getRegionInfoList()
+    resp.getRegionInfoList()
         .forEach(
             regionInfo ->
                 regionCounter

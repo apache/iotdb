@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -132,11 +133,12 @@ public class LoadTsFileManager {
     }
   }
 
-  public boolean loadAll(String uuid) throws IOException, LoadFileException {
+  public boolean loadAll(String uuid, boolean isGeneratedByPipe)
+      throws IOException, LoadFileException {
     if (!uuid2WriterManager.containsKey(uuid)) {
       return false;
     }
-    uuid2WriterManager.get(uuid).loadAll();
+    uuid2WriterManager.get(uuid).loadAll(isGeneratedByPipe);
     clean(uuid);
     return true;
   }
@@ -162,6 +164,8 @@ public class LoadTsFileManager {
     try {
       Files.delete(loadDirPath);
       LOGGER.info("Load dir {} was deleted.", loadDirPath);
+    } catch (DirectoryNotEmptyException e) {
+      LOGGER.info("Load dir {} is not empty, skip deleting.", loadDirPath);
     } catch (IOException e) {
       LOGGER.warn(MESSAGE_DELETE_FAIL, loadDirPath, e);
     }
@@ -179,6 +183,8 @@ public class LoadTsFileManager {
     try {
       Files.delete(loadDirPath);
       LOGGER.info("Load dir {} was deleted.", loadDirPath);
+    } catch (DirectoryNotEmptyException e) {
+      LOGGER.info("Load dir {} is not empty, skip deleting.", loadDirPath);
     } catch (IOException e) {
       LOGGER.warn(MESSAGE_DELETE_FAIL, loadDirPath, e);
     }
@@ -244,7 +250,7 @@ public class LoadTsFileManager {
       }
     }
 
-    private void loadAll() throws IOException, LoadFileException {
+    private void loadAll(boolean isGeneratedByPipe) throws IOException, LoadFileException {
       if (isClosed) {
         throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
       }
@@ -254,7 +260,10 @@ public class LoadTsFileManager {
           writer.endChunkGroup();
         }
         writer.endFile();
-        entry.getKey().getDataRegion().loadNewTsFile(generateResource(writer), true);
+        entry
+            .getKey()
+            .getDataRegion()
+            .loadNewTsFile(generateResource(writer), true, isGeneratedByPipe);
       }
     }
 
@@ -286,6 +295,8 @@ public class LoadTsFileManager {
       }
       try {
         Files.delete(taskDir.toPath());
+      } catch (DirectoryNotEmptyException e) {
+        LOGGER.info("Task dir {} is not empty, skip deleting.", taskDir.getPath());
       } catch (IOException e) {
         LOGGER.warn(MESSAGE_DELETE_FAIL, taskDir.getPath(), e);
       }

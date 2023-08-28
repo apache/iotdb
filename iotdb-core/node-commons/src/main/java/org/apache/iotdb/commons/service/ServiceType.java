@@ -26,6 +26,7 @@ public enum ServiceType {
   RPC_SERVICE("RPC ServerService", "RPCService"),
   INFLUX_SERVICE("InfluxDB Protocol Service", "InfluxDB Protocol"),
   MQTT_SERVICE("MQTTService", "MqttService"),
+  AIR_GAP_SERVICE("AirGapService", "AirGapService"),
   MONITOR_SERVICE("Monitor ServerService", "Monitor"),
   STAT_MONITOR_SERVICE("Statistics ServerService", "StatMonitorService"),
   WAL_SERVICE("WAL ServerService", "WalService"),
@@ -76,7 +77,10 @@ public enum ServiceType {
   PIPE_PLUGIN_CLASSLOADER_MANAGER_SERVICE(
       "Pipe Plugin Classloader Manager Service", "PipePluginClassLoader"),
   PIPE_RUNTIME_AGENT("Pipe Runtime Agent", "PipeRuntimeAgent"),
-  MLNode_RPC_SERVICE("Rpc Service for MLNode", "MLNodeRPCService");
+  MLNode_RPC_SERVICE("Rpc Service for MLNode", "MLNodeRPCService"),
+  SESSION_MANAGER("Session Manager", "RpcSession"),
+  CONFIG_NODE("Config Node", "ConfigNode"),
+  DATA_NODE("Data Node", "DataNode");
   private final String name;
   private final String jmxName;
 

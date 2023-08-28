@@ -189,7 +189,7 @@ public class RecoverProgressIndex implements ProgressIndex {
     for (int i = 0; i < size; i++) {
       final int dataNodeId = ReadWriteIOUtils.readInt(byteBuffer);
       final SimpleProgressIndex simpleProgressIndex =
-          SimpleProgressIndex.deserializeFrom(byteBuffer);
+          (SimpleProgressIndex) ProgressIndexType.deserializeFrom(byteBuffer);
       recoverProgressIndex.dataNodeId2LocalIndex.put(dataNodeId, simpleProgressIndex);
     }
     return recoverProgressIndex;
@@ -200,7 +200,8 @@ public class RecoverProgressIndex implements ProgressIndex {
     final int size = ReadWriteIOUtils.readInt(stream);
     for (int i = 0; i < size; i++) {
       final int dataNodeId = ReadWriteIOUtils.readInt(stream);
-      final SimpleProgressIndex simpleProgressIndex = SimpleProgressIndex.deserializeFrom(stream);
+      final SimpleProgressIndex simpleProgressIndex =
+          (SimpleProgressIndex) ProgressIndexType.deserializeFrom(stream);
       recoverProgressIndex.dataNodeId2LocalIndex.put(dataNodeId, simpleProgressIndex);
     }
     return recoverProgressIndex;
