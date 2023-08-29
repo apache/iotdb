@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.it.env.cluster.env;
 
-import com.sun.org.apache.bcel.internal.classfile.Unknown;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -246,16 +245,18 @@ public abstract class AbstractEnv implements BaseEnv {
 
   private Map<String, Integer> countNodeStatus(Map<Integer, String> nodeStatus) {
     Map<String, Integer> result = new HashMap<>();
-    nodeStatus.values().forEach(status -> result.put(status, result.getOrDefault(status, 0)+1));
+    nodeStatus.values().forEach(status -> result.put(status, result.getOrDefault(status, 0) + 1));
     return result;
   }
 
-  private final Predicate<Map<Integer, String>> statusCheckNoUnknown = nodeStatus -> countNodeStatus(nodeStatus).getOrDefault("Unknown", 0) == 0;
+  private final Predicate<Map<Integer, String>> statusCheckNoUnknown =
+      nodeStatus -> countNodeStatus(nodeStatus).getOrDefault("Unknown", 0) == 0;
 
-  private final Predicate<Map<Integer, String>> statusCheckOneUnknownThreeRunning = nodeStatus -> {
-    Map<String, Integer> count = countNodeStatus(nodeStatus);
-    return count.getOrDefault("Unknown", 0) == 1 && count.getOrDefault("Running", 0) == 3;
-  };
+  private final Predicate<Map<Integer, String>> statusCheckOneUnknownThreeRunning =
+      nodeStatus -> {
+        Map<String, Integer> count = countNodeStatus(nodeStatus);
+        return count.getOrDefault("Unknown", 0) == 1 && count.getOrDefault("Running", 0) == 3;
+      };
 
   public void testWorkingAllFine() {
     testWorking(statusCheckNoUnknown);
