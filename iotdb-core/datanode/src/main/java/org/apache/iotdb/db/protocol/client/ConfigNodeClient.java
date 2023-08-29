@@ -307,7 +307,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         configLeader = null;
       }
       logger.warn(
-          "Failed to connect to ConfigNode {} from DataNode {}, because the current node is not leader, try next node",
+          "Failed to connect to ConfigNode {} from DataNode {}, because the current node is not leader or not ready yet, will try again later",
           configNode,
           config.getAddressAndPort());
       return true;

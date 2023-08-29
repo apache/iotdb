@@ -319,6 +319,11 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
   }
 
   @Override
+  public void notifyLeaderReady() {
+    applicationStateMachine.event().notifyLeaderReady();
+  }
+
+  @Override
   public void notifyConfigurationChanged(
       long term, long index, RaftConfigurationProto newRaftConfiguration) {
     applicationStateMachine
