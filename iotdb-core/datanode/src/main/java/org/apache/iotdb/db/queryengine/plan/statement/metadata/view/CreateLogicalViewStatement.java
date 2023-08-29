@@ -75,6 +75,9 @@ public class CreateLogicalViewStatement extends Statement {
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
     TSStatus status =
         AuthorityChecker.getTSStatus(
             AuthorityChecker.checkFullPathListPermission(

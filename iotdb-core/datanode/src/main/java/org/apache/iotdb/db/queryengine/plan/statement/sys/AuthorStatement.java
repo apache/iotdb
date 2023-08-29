@@ -216,11 +216,14 @@ public class AuthorStatement extends Statement implements IConfigStatement {
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           return status;
         }
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        }
         return AuthorityChecker.getTSStatus(
             AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER.ordinal()),
             new PrivilegeType[] {PrivilegeType.MANAGE_USER});
       case UPDATE_USER:
-        if (this.userName.equals(userName)) {
+        if (AuthorityChecker.SUPER_USER.equals(userName) || this.userName.equals(userName)) {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         }
         return AuthorityChecker.getTSStatus(
@@ -231,6 +234,9 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       case GRANT_USER:
       case REVOKE_USER:
       case LIST_USER_PRIVILEGE:
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        }
         return AuthorityChecker.getTSStatus(
             AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER.ordinal()),
             new PrivilegeType[] {PrivilegeType.MANAGE_USER});
@@ -241,11 +247,17 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       case REVOKE_ROLE:
       case LIST_ROLE:
       case LIST_ROLE_PRIVILEGE:
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        }
         return AuthorityChecker.getTSStatus(
             AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_ROLE.ordinal()),
             new PrivilegeType[] {PrivilegeType.MANAGE_ROLE});
       case GRANT_USER_ROLE:
       case REVOKE_USER_ROLE:
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        }
         TSStatus status1 =
             AuthorityChecker.getTSStatus(
                 AuthorityChecker.checkSystemPermission(

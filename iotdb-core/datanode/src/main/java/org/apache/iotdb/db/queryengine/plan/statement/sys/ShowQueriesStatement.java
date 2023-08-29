@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowStatement;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.time.ZoneId;
 import java.util.Collections;
@@ -61,6 +62,9 @@ public class ShowQueriesStatement extends ShowStatement {
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MAINTAIN.ordinal()),
         new PrivilegeType[] {PrivilegeType.MAINTAIN});

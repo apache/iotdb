@@ -30,6 +30,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.google.common.collect.ImmutableList;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -67,18 +69,13 @@ public class RenameLogicalViewStatement extends Statement implements IConfigStat
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    TSStatus status =
-        AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkFullPathPermission(
-                userName, oldName, PrivilegeType.WRITE_SCHEMA.ordinal()),
-            new PrivilegeType[] {PrivilegeType.WRITE_SCHEMA});
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return AuthorityChecker.getTSStatus(
-          AuthorityChecker.checkFullPathPermission(
-              userName, newName, PrivilegeType.WRITE_SCHEMA.ordinal()),
-          new PrivilegeType[] {PrivilegeType.WRITE_SCHEMA});
+    if (AuthorityChecker.SUPER_USER.equals(userName)) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
-    return status;
+    return AuthorityChecker.getTSStatus(
+        AuthorityChecker.checkFullPathListPermission(
+            userName, ImmutableList.of(oldName, newName), PrivilegeType.WRITE_SCHEMA.ordinal()),
+        new PrivilegeType[] {PrivilegeType.WRITE_SCHEMA});
   }
 
   @Override
