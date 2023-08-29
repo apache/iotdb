@@ -23,15 +23,18 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
-import org.apache.iotdb.confignode.procedure.state.InvalidAuthCacheState;
+import org.apache.iotdb.confignode.procedure.state.AuthOperationProcedureState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -48,60 +51,51 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 
-public class InvalidAuthCacheProcedure
-    extends StateMachineProcedure<ConfigNodeProcedureEnv, InvalidAuthCacheState> {
-  private static final Logger LOGGER = LoggerFactory.getLogger(InvalidAuthCacheProcedure.class);
+import static org.apache.iotdb.confignode.procedure.state.AuthOperationProcedureState.DATANODE_AUTHCACHE_INVALIDING;
+import static org.apache.iotdb.confignode.procedure.state.cq.CreateCQState.INACTIVE;
+
+public class AuthOperationProcedure
+    extends StateMachineProcedure<ConfigNodeProcedureEnv, AuthOperationProcedureState> {
+  private static final Logger LOGGER = LoggerFactory.getLogger(AuthOperationProcedure.class);
 
   private String user;
   private String role;
 
-  private int timeoutMS;
+  private AuthorPlan plan;
 
-  private static final int RETRY_THRESHOLD = 1;
+  private int timeoutMS;
+  private static final String CONSENSUS_WRITE_ERROR =
+          "Failed in the write API executing the consensus layer due to: ";
+
+  private static final int RETRY_THRESHOLD = 2;
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   private List<Pair<TDataNodeConfiguration, Long>> dataNodesToInvalid;
 
-  private Set<TDataNodeConfiguration> invalidedDNs;
+  private List<TDataNodeConfiguration> datanodes;
 
-  public InvalidAuthCacheProcedure() {
+  public AuthOperationProcedure() {
     super();
   }
 
-  public InvalidAuthCacheProcedure(String user, String role, List<TDataNodeConfiguration> alldns) {
+  public AuthOperationProcedure(AuthorPlan plan, List<TDataNodeConfiguration> alldns) {
     super();
-    this.user = user;
-    this.role = role;
-    this.dataNodesToInvalid = new ArrayList<>();
-    for (TDataNodeConfiguration item : alldns) {
-      this.dataNodesToInvalid.add(new Pair<>(item, System.currentTimeMillis()));
-    }
-    invalidedDNs = new HashSet<>();
+    this.user = plan.getUserName();
+    this.role = plan.getRoleName();
+    this.plan = plan;
+    this.datanodes = alldns;
     this.timeoutMS = commonConfig.getDatanodeTokenTimeoutMS();
   }
 
   @Override
-  protected Flow executeFromState(ConfigNodeProcedureEnv env, InvalidAuthCacheState state) {
-    if (dataNodesToInvalid.isEmpty()) {
-      return Flow.NO_MORE_STATE;
-    }
+  protected Flow executeFromState(ConfigNodeProcedureEnv env, AuthOperationProcedureState state) {
     try {
       switch (state) {
         case INIT:
-          LOGGER.info("Start to invalid auth cache for user: {}, role {}", user, role);
-          // shall we need to check if the user/role has been deleted?
-          if (dataNodesToInvalid.isEmpty()) {
-            setNextState(InvalidAuthCacheState.DATANODE_AUTHCACHE_INVALID_DONE);
-            break;
-          }
-          setNextState(InvalidAuthCacheState.DATANODE_AUTHCACHE_INVALIDING);
-          break;
+          writePlan(env);
+          return Flow.HAS_MORE_STATE;
         case DATANODE_AUTHCACHE_INVALIDING:
-          if (dataNodesToInvalid.isEmpty()) {
-            setNextState(InvalidAuthCacheState.DATANODE_AUTHCACHE_INVALID_DONE);
-          }
           TInvalidatePermissionCacheReq req = new TInvalidatePermissionCacheReq();
           TSStatus status;
           req.setUsername(user);
@@ -109,7 +103,6 @@ public class InvalidAuthCacheProcedure
           Iterator<Pair<TDataNodeConfiguration, Long>> it = dataNodesToInvalid.iterator();
           while (it.hasNext()) {
             if (it.next().getRight() + this.timeoutMS < System.currentTimeMillis()) {
-              invalidedDNs.add(it.next().getLeft());
               it.remove();
               continue;
             }
@@ -120,63 +113,80 @@ public class InvalidAuthCacheProcedure
                         req,
                         DataNodeRequestType.INVALIDATE_PERMISSION_CACHE);
             if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              invalidedDNs.add(it.next().getLeft());
               it.remove();
             }
           }
           if (dataNodesToInvalid.isEmpty()) {
-            setNextState(InvalidAuthCacheState.DATANODE_AUTHCACHE_INVALID_DONE);
+            return Flow.NO_MORE_STATE;
           } else {
-            setNextState(InvalidAuthCacheState.DATANODE_AUTHCACHE_INVALIDING);
+            setNextState(AuthOperationProcedureState.DATANODE_AUTHCACHE_INVALIDING);
           }
           break;
-        case DATANODE_AUTHCACHE_INVALID_DONE:
-          LOGGER.info("finish invalid auth cache for user:{}, role {}", user, role);
-          return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
-        LOGGER.error("Fail in invalid auth cache", e);
+        LOGGER.error("Fail when execute {} ", plan);
         setFailure(new ProcedureException(e.getMessage()));
       } else {
         LOGGER.error(
-            "Retrievable error trying to invalid auth cache :[user : {}, role : {}] in datanode",
-            user,
-            role,
+            "Retrievable error trying to execute plan {}, state: {}", plan, state,
             e);
         if (getCycles() > RETRY_THRESHOLD) {
           setFailure(
               new ProcedureException(
                   String.format(
-                      "Fail to invalid auth cahce, user: %s, role: %s, datanode:%s",
-                      user, role, dataNodesToInvalid.toString())));
+                      "Fail to execute plan [%s] at state[%s]", plan.toString(),state )));
         }
       }
     }
     return Flow.HAS_MORE_STATE;
   }
 
-  @Override
-  protected boolean isRollbackSupported(InvalidAuthCacheState state) {
-    return false;
+  private void writePlan(ConfigNodeProcedureEnv env) {
+    TSStatus res;
+    try {
+      res = env.getConfigManager()
+              .getConsensusManager()
+              .write(this.plan);
+    }  catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+    }
+    if (res.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.debug("Execute auth plan {} success.", plan);
+      setNextState(DATANODE_AUTHCACHE_INVALIDING);
+      dataNodesToInvalid = new ArrayList<>();
+      for (TDataNodeConfiguration item : datanodes) {
+        this.dataNodesToInvalid.add(new Pair<>(item, System.currentTimeMillis()));
+      }
+    } else {
+      LOGGER.info("Failed to execute plan {} because {}", plan, res.message);
+      setFailure(new ProcedureException(new IoTDBException(res.message, res.code)));
+    }
   }
 
   @Override
-  protected void rollbackState(ConfigNodeProcedureEnv env, InvalidAuthCacheState state) {}
-
-  @Override
-  protected InvalidAuthCacheState getState(int stateId) {
-    return InvalidAuthCacheState.values()[stateId];
+  protected boolean isRollbackSupported(AuthOperationProcedureState state) {
+    return state == AuthOperationProcedureState.INIT;
   }
 
   @Override
-  protected int getStateId(InvalidAuthCacheState state) {
+  protected void rollbackState(ConfigNodeProcedureEnv env, AuthOperationProcedureState state) {}
+
+  @Override
+  protected AuthOperationProcedureState getState(int stateId) {
+    return AuthOperationProcedureState.values()[stateId];
+  }
+
+  @Override
+  protected int getStateId(AuthOperationProcedureState state) {
     return state.ordinal();
   }
 
   @Override
-  protected InvalidAuthCacheState getInitialState() {
-    return InvalidAuthCacheState.INIT;
+  protected AuthOperationProcedureState getInitialState() {
+    return AuthOperationProcedureState.INIT;
   }
 
   @Override
@@ -189,10 +199,6 @@ public class InvalidAuthCacheProcedure
     for (Pair<TDataNodeConfiguration, Long> item : dataNodesToInvalid) {
       ThriftCommonsSerDeUtils.serializeTDataNodeConfiguration(item.getLeft(), stream);
       ReadWriteIOUtils.write(item.getRight(), stream);
-    }
-    ReadWriteIOUtils.write(invalidedDNs.size(), stream);
-    for (TDataNodeConfiguration item : invalidedDNs) {
-      ThriftCommonsSerDeUtils.serializeTDataNodeConfiguration(item, stream);
     }
     ReadWriteIOUtils.write(timeoutMS, stream);
   }
@@ -210,21 +216,7 @@ public class InvalidAuthCacheProcedure
       Long timestamp = ReadWriteIOUtils.readLong(byteBuffer);
       this.dataNodesToInvalid.add(new Pair<TDataNodeConfiguration, Long>(datanode, timestamp));
     }
-    this.invalidedDNs = new HashSet<>();
-    size = ReadWriteIOUtils.readInt(byteBuffer);
-    for (int i = 0; i < size; i++) {
-      this.invalidedDNs.add(ThriftCommonsSerDeUtils.deserializeTDataNodeConfiguration(byteBuffer));
-    }
     this.timeoutMS = ReadWriteIOUtils.readInt(byteBuffer);
-  }
-
-  @TestOnly
-  public void removeAllDNS() {
-    Iterator<Pair<TDataNodeConfiguration, Long>> it = dataNodesToInvalid.iterator();
-    while (it.hasNext()) {
-      invalidedDNs.add(it.next().getLeft());
-      it.remove();
-    }
   }
 
   @Override
@@ -235,10 +227,8 @@ public class InvalidAuthCacheProcedure
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    InvalidAuthCacheProcedure that = (InvalidAuthCacheProcedure) o;
-    return user.equals(that.user)
-        && role.equals(that.role)
-        && Objects.equals(dataNodesToInvalid, ((InvalidAuthCacheProcedure) o).dataNodesToInvalid)
-        && Objects.equals(invalidedDNs, that.invalidedDNs);
+    AuthOperationProcedure that = (AuthOperationProcedure) o;
+    return plan.equals(that.plan)
+        && Objects.equals(dataNodesToInvalid, ((AuthOperationProcedure) o).dataNodesToInvalid);
   }
 }

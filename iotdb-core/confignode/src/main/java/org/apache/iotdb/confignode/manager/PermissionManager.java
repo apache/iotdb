@@ -67,10 +67,9 @@ public class PermissionManager {
           || authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateRole) {
         tsStatus = getConsensusManager().write(authorPlan);
       } else {
-        tsStatus = getConsensusManager().write(authorPlan);
-        if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          tsStatus = invalidateCache(authorPlan.getUserName(), authorPlan.getRoleName());
-        }
+        List<TDataNodeConfiguration> allDataNodes =
+                configManager.getNodeManager().getRegisteredDataNodes();
+        tsStatus = configManager.getProcedureManager().OperateAuthPlan(authorPlan, allDataNodes);
       }
       return tsStatus;
     } catch (ConsensusException e) {
@@ -114,20 +113,5 @@ public class PermissionManager {
   public TAuthizedPatternTreeResp fetchAuthizedPTree(String username, int permission)
       throws AuthException {
     return authorInfo.generateAuthizedPTree(username, permission);
-  }
-
-  /**
-   * When the permission information of a user or role is changed will clear all datanode
-   * permissions related to the user or role. We use procedure to invalid cache: procedure can make
-   * sure all datanode can be invalided.
-   */
-  public TSStatus invalidateCache(String username, String roleName) {
-    List<TDataNodeConfiguration> allDataNodes =
-        configManager.getNodeManager().getRegisteredDataNodes();
-    // invalid procedure should run immediately.
-    if (!allDataNodes.isEmpty()) {
-      return configManager.getProcedureManager().invalidAuthCache(username, roleName, allDataNodes);
-    }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 }

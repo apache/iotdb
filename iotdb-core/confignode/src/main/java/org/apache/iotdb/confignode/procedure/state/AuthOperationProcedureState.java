@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.confignode.procedure.state;
 
-public enum InvalidAuthCacheState {
+public enum AuthOperationProcedureState {
   INIT,
+  CONFIGNODE_AUTH_ALTER,
   DATANODE_AUTHCACHE_INVALIDING,
-  DATANODE_AUTHCACHE_INVALID_DONE
+  AUTH_OPERATION_DONE
 }

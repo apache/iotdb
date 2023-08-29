@@ -37,6 +37,7 @@ import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
@@ -70,7 +71,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
-import org.apache.iotdb.confignode.procedure.impl.sync.InvalidAuthCacheProcedure;
+import org.apache.iotdb.confignode.procedure.impl.sync.AuthOperationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.CreateTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.DropTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
@@ -885,10 +886,10 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus invalidAuthCache(String user, String role, List<TDataNodeConfiguration> dns) {
+  public TSStatus OperateAuthPlan(AuthorPlan authorPlan, List<TDataNodeConfiguration> dns) {
     try {
       final long procedureId =
-          executor.submitProcedure(new InvalidAuthCacheProcedure(user, role, dns));
+          executor.submitProcedure(new AuthOperationProcedure(authorPlan, dns));
       List<TSStatus> statusList = new ArrayList<>();
       boolean isSucceed =
           waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
