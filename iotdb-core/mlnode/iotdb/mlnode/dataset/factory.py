@@ -20,8 +20,8 @@ from typing import cast
 from torch.utils.data import Dataset
 
 from iotdb.mlnode.constant import TaskType
-from iotdb.mlnode.das.dataset import TsForecastDataset
-from iotdb.mlnode.das.source import IoTDBDataSource
+from iotdb.mlnode.dataset.dataset import TsForecastDataset
+from iotdb.mlnode.dataset.source import IoTDBDataSource
 from iotdb.mlnode.exception import UnsupportedError
 from iotdb.mlnode.parser import ForecastTaskOptions, TaskOptions
 

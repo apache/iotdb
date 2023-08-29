@@ -20,8 +20,8 @@ from typing import Tuple
 import numpy as np
 from torch.utils.data import Dataset
 
-from iotdb.mlnode.das.source import DataSource
-from iotdb.mlnode.das.utils.time_features import time_features
+from iotdb.mlnode.dataset.source import DataSource
+from iotdb.mlnode.dataset.utils.time_features import time_features
 
 
 class TsForecastDataset(Dataset):

@@ -29,7 +29,7 @@ from iotdb.mlnode.algorithm.hyperparameter import HyperparameterName
 from iotdb.mlnode.algorithm.metric import build_metrics, forecast_metric_names
 from iotdb.mlnode.client import client_manager
 from iotdb.mlnode.constant import OptionsKey, ModelInputName
-from iotdb.mlnode.das.dataset import TsForecastDataset
+from iotdb.mlnode.dataset.dataset import TsForecastDataset
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.parser import ForecastTaskOptions
 from iotdb.mlnode.storage import model_storage
@@ -95,10 +95,11 @@ class ForecastingTrainingTrial(BasicTrial):
         A training trial, accept all parameters needed and train a single model.
         """
         self.model_configs = model_hyperparameters
+        # model_config contains the parameters which are needed to be saved after training.
         self.model_configs[HyperparameterName.INPUT_VARS.value] = dataset.get_variable_num()
         self.model_configs[OptionsKey.INPUT_LENGTH.value] = task_options.input_length
         self.model_configs[OptionsKey.PREDICT_LENGTH.value] = task_options.predict_length
-        model = create_forecast_model(task_options, self.model_configs)
+        model = create_forecast_model(task_options.model_type, self.model_configs)
 
         super(ForecastingTrainingTrial, self).__init__(model_id, model, task_hyperparameters, dataset)
         self.trial_id = trial_id

@@ -377,7 +377,7 @@ def parse_dict(input_hyperparameters: Dict[str, str], hyperparameter_template_ma
     for hyperparameter_name in hyperparameter_template_map.keys():
         hyperparameter_template = hyperparameter_template_map[hyperparameter_name]
 
-        # if user define current hyperparameter
+        # if user defines current hyperparameter
         if hyperparameter_name in input_hyperparameters.keys():
             value = hyperparameter_template.parse(input_hyperparameters[hyperparameter_name])
             hyperparameter_template.validate_value(value)

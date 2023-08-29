@@ -20,8 +20,8 @@ from typing import cast
 
 from iotdb.mlnode.config import descriptor
 from iotdb.mlnode.constant import TaskType, TSStatusCode
-from iotdb.mlnode.das.dataset import TsForecastDataset
-from iotdb.mlnode.das.factory import create_dataset
+from iotdb.mlnode.dataset.dataset import TsForecastDataset
+from iotdb.mlnode.dataset.factory import create_dataset
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.parser import (ForecastTaskOptions, parse_forecast_request,
                                  parse_task_options)

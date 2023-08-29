@@ -25,7 +25,7 @@ from typing import Dict
 import pandas as pd
 import psutil
 
-from iotdb.mlnode.das.dataset import TsForecastDataset
+from iotdb.mlnode.dataset.dataset import TsForecastDataset
 from iotdb.mlnode.log import logger
 from iotdb.mlnode.parser import ForecastTaskOptions
 from iotdb.mlnode.process.task import (ForecastAutoTuningTrainingTask,
