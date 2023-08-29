@@ -463,7 +463,6 @@ public class CompactionUtils {
     }
     if (removeSuccessFileNum != 0) {
       fileSizes = Arrays.copyOfRange(fileSizes, 0, removeSuccessFileNum);
-      fileNames = fileNames.subList(0, removeSuccessFileNum);
       FileMetrics.getInstance().deleteFile(fileSizes, seq, fileNames);
     }
   }
