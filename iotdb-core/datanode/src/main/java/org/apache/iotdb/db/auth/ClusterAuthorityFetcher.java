@@ -119,8 +119,8 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   }
 
   @Override
-  public PathPatternTree getAuthizedPatternTree(String username, int permission) {
-    boolean originFetch = false;
+  public PathPatternTree getAuthizedPatternTree(String username, int permission)
+      throws AuthException {
     PathPatternTree patternTree = new PathPatternTree();
     User user = iAuthorCache.getUserCache(username);
     if (user != null) {

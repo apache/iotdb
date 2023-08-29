@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.auth.authorizer;
 
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
@@ -26,7 +27,6 @@ import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.junit.After;
@@ -53,7 +53,8 @@ public class LocalFileAuthorizerTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    authorizer = AuthorizerManager.getInstance();
+
+    authorizer = BasicAuthorizer.getInstance();
     user = new User("user", "password");
     nodeName = new PartialPath("root.laptop.d1");
   }
@@ -113,30 +114,28 @@ public class LocalFileAuthorizerTest {
     authorizer.createUser(user.getName(), user.getPassword());
     String admin = "root";
     authorizer.grantPrivilegeToUser(
-        admin, user.getName(), nodeName, PrivilegeType.READ_DATA.ordinal(), false);
+        user.getName(), nodeName, PrivilegeType.READ_DATA.ordinal(), false);
     try {
       authorizer.grantPrivilegeToUser(
-          admin, user.getName(), nodeName, PrivilegeType.READ_DATA.ordinal(), false);
+          user.getName(), nodeName, PrivilegeType.READ_DATA.ordinal(), false);
     } catch (AuthException e) {
       assertEquals("User user already has READ_DATA on root.laptop.d1", e.getMessage());
     }
     try {
-      authorizer.grantPrivilegeToUser(
-          admin, "error", nodeName, PrivilegeType.READ_DATA.ordinal(), false);
+      authorizer.grantPrivilegeToUser("error", nodeName, PrivilegeType.READ_DATA.ordinal(), false);
     } catch (AuthException e) {
       assertEquals("No such user error", e.getMessage());
     }
 
     try {
-      authorizer.grantPrivilegeToUser(
-          admin, "root", nodeName, PrivilegeType.READ_DATA.ordinal(), false);
+      authorizer.grantPrivilegeToUser("root", nodeName, PrivilegeType.READ_DATA.ordinal(), false);
     } catch (AuthException e) {
       Assert.assertEquals(
           "Invalid operation, administrator already has all privileges", e.getMessage());
     }
 
     try {
-      authorizer.grantPrivilegeToUser(admin, user.getName(), nodeName, 100, false);
+      authorizer.grantPrivilegeToUser(user.getName(), nodeName, 100, false);
     } catch (AuthException e) {
       assertEquals("Invalid privilegeId 100", e.getMessage());
     }
@@ -189,9 +188,9 @@ public class LocalFileAuthorizerTest {
   @Test
   public void testRolePermission() throws AuthException {
     authorizer.createRole(roleName);
-    authorizer.grantPrivilegeToRole(admin, roleName, nodeName, 1, false);
+    authorizer.grantPrivilegeToRole(roleName, nodeName, 1, false);
     try {
-      authorizer.grantPrivilegeToRole(admin, roleName, nodeName, 1, false);
+      authorizer.grantPrivilegeToRole(roleName, nodeName, 1, false);
     } catch (AuthException e) {
       assertEquals("Role role already has WRITE_DATA on root.laptop.d1", e.getMessage());
     }
@@ -208,7 +207,7 @@ public class LocalFileAuthorizerTest {
       assertEquals("No such role role", e.getMessage());
     }
     try {
-      authorizer.grantPrivilegeToRole(admin, roleName, nodeName, 1, false);
+      authorizer.grantPrivilegeToRole(roleName, nodeName, 1, false);
     } catch (AuthException e) {
       assertEquals("No such role role", e.getMessage());
     }
@@ -219,8 +218,8 @@ public class LocalFileAuthorizerTest {
     authorizer.createUser(user.getName(), user.getPassword());
     authorizer.createRole(roleName);
     authorizer.grantRoleToUser(roleName, user.getName());
-    authorizer.grantPrivilegeToUser("root", user.getName(), nodeName, 1, false);
-    authorizer.grantPrivilegeToRole(admin, roleName, nodeName, 3, false);
+    authorizer.grantPrivilegeToUser(user.getName(), nodeName, 1, false);
+    authorizer.grantPrivilegeToRole(roleName, nodeName, 3, false);
 
     // a user can get all role permissions.
     Set<Integer> permissions = authorizer.getPrivileges(user.getName(), nodeName);
@@ -280,7 +279,7 @@ public class LocalFileAuthorizerTest {
 
   @Test
   public void testListUser() throws AuthException {
-    IAuthorizer authorizer = AuthorizerManager.getInstance();
+    IAuthorizer authorizer = BasicAuthorizer.getInstance();
     List<String> userList = authorizer.listAllUsers();
     assertEquals(1, userList.size());
     assertEquals(CommonDescriptor.getInstance().getConfig().getAdminName(), userList.get(0));
@@ -311,7 +310,7 @@ public class LocalFileAuthorizerTest {
 
   @Test
   public void testListRole() throws AuthException {
-    IAuthorizer authorizer = AuthorizerManager.getInstance();
+    IAuthorizer authorizer = BasicAuthorizer.getInstance();
     List<String> roleList = authorizer.listAllRoles();
     assertEquals(0, roleList.size());
 
@@ -341,7 +340,7 @@ public class LocalFileAuthorizerTest {
 
   @Test
   public void testReplaceAllUsers() throws AuthException {
-    IAuthorizer authorizer = AuthorizerManager.getInstance();
+    IAuthorizer authorizer = BasicAuthorizer.getInstance();
     Assert.assertEquals("root", authorizer.listAllUsers().get(0));
     User user = new User("user", "user");
     HashMap<String, User> users = new HashMap<>();
@@ -352,7 +351,7 @@ public class LocalFileAuthorizerTest {
 
   @Test
   public void testReplaceAllRole() throws AuthException {
-    IAuthorizer authorizer = AuthorizerManager.getInstance();
+    IAuthorizer authorizer = BasicAuthorizer.getInstance();
     Role role = new Role("role");
     HashMap<String, Role> roles = new HashMap<>();
     roles.put("role", role);

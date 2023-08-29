@@ -94,7 +94,7 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
    * @throws IOException
    */
   @Override
-  public Role loadRoles() throws IOException {
+  public Role loadRole(String rolename) throws IOException {
     File roleProfile =
         SystemFileFactory.INSTANCE.getFile(
             roleDirPath + File.separator + rolename + IoTDBConstant.PROFILE_SUFFIX);
@@ -258,5 +258,10 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
     } else if (!SystemFileFactory.INSTANCE.getFile(roleDirPath).exists()) {
       logger.error("role info dir {} can not be created", roleDirPath);
     }
+  }
+
+  @Override
+  public void cleanRoleFolder() throws IOException {
+    SystemFileFactory.INSTANCE.getFile(roleDirPath).delete();
   }
 }

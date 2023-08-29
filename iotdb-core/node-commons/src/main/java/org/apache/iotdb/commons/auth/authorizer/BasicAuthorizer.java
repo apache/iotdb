@@ -45,7 +45,7 @@ import java.util.Map;
 import java.util.Set;
 
 public abstract class BasicAuthorizer implements IAuthorizer, IService {
-
+  // works at config node.
   private static final Logger logger = LoggerFactory.getLogger(BasicAuthorizer.class);
   private static final Set<Integer> ADMIN_PRIVILEGES;
   private static final String NO_SUCH_ROLE_EXCEPTION = "No such role : %s";
@@ -193,7 +193,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
           userManager.revokeRoleFromUser(roleName, user);
         } catch (AuthException e) {
           logger.warn(
-              "Error encountered when revoking a role {} from user {} after deletion, because {}",
+              "Error encountered when revoking a role {} from user {} after deletion",
               roleName,
               user,
               e);

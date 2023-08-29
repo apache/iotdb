@@ -429,7 +429,10 @@ public class AuthorInfo implements SnapshotProcessor {
     try {
       pPtree.serialize(dataOutputStream);
     } catch (IOException e) {
-      throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
+      resp.setStatus(
+          RpcUtils.getStatus(
+              TSStatusCode.EXECUTE_STATEMENT_ERROR, "Get error when serialize pattern tree."));
+      return resp;
     }
     resp.setPathPatternTree(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
     resp.setPermissionInfo(getUserPermissionInfo(username));

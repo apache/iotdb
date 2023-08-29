@@ -51,9 +51,9 @@ public interface IRoleManager extends SnapshotProcessor {
    * Delete a role.
    *
    * @param rolename the rolename of the role.
-   * @throws AuthException if exception is raised while finding the role.
+   * @return boolean, true means we have the role in roleManager.
    */
-  void deleteRole(String rolename) throws AuthException;
+  boolean deleteRole(String rolename);
 
   /**
    * Grant a privilege on a seriesPath to a role.
@@ -84,7 +84,7 @@ public interface IRoleManager extends SnapshotProcessor {
       throws AuthException;
 
   /** Re-initialize this object. */
-  void reset();
+  void reset() throws AuthException;
 
   /**
    * List all roles in the database.

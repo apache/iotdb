@@ -44,17 +44,10 @@ public abstract class BasicRoleManager implements IRoleManager {
   protected IRoleAccessor accessor;
   protected HashLock lock;
 
-  BasicRoleManager(LocalFileRoleAccessor accessor) throws AuthException {
+  BasicRoleManager(LocalFileRoleAccessor accessor) {
     this.roleMap = new HashMap<>();
     this.accessor = accessor;
     this.lock = new HashLock();
-    for (String roleName : accessor.listAllRoles()) {
-      try {
-        accessor.loadRole(roleName);
-      } catch (IOException e) {
-        throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
-      }
-    }
   }
 
   @Override
@@ -81,10 +74,16 @@ public abstract class BasicRoleManager implements IRoleManager {
   }
 
   @Override
-  public void deleteRole(String rolename) throws AuthException {
+  public boolean deleteRole(String rolename) {
     lock.writeLock(rolename);
-    roleMap.remove(rolename);
-    lock.writeUnlock(rolename);
+    try {
+      if (roleMap.remove(rolename) != null) {
+        return true;
+      }
+    } finally {
+      lock.writeUnlock(rolename);
+    }
+    return false;
   }
 
   @Override
@@ -144,9 +143,16 @@ public abstract class BasicRoleManager implements IRoleManager {
   }
 
   @Override
-  public void reset() {
+  public void reset() throws AuthException {
     accessor.reset();
     roleMap.clear();
+    for (String roleName : accessor.listAllRoles()) {
+      try {
+        accessor.loadRole(roleName);
+      } catch (IOException e) {
+        throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
+      }
+    }
   }
 
   @Override
