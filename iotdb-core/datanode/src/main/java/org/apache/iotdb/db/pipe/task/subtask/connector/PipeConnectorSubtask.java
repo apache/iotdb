@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.task.subtask.connector;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.db.pipe.task.connection.BoundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.subtask.DecoratingLock;
@@ -52,10 +53,6 @@ public class PipeConnectorSubtask extends PipeSubtask {
   private final BoundedBlockingPendingQueue<Event> inputPendingQueue;
   private final PipeConnector outputPipeConnector;
 
-  // For heartbeat scheduling
-  private static final int HEARTBEAT_CHECK_INTERVAL = 1000;
-  private int executeOnceInvokedTimes;
-
   // For thread pool to execute callbacks
   protected final DecoratingLock callbackDecoratingLock = new DecoratingLock();
   protected ExecutorService subtaskCallbackListeningExecutor;
@@ -67,7 +64,6 @@ public class PipeConnectorSubtask extends PipeSubtask {
     super(taskID);
     this.inputPendingQueue = inputPendingQueue;
     this.outputPipeConnector = outputPipeConnector;
-    executeOnceInvokedTimes = 0;
   }
 
   @Override
@@ -93,15 +89,6 @@ public class PipeConnectorSubtask extends PipeSubtask {
 
   @Override
   protected synchronized boolean executeOnce() {
-    try {
-      if (executeOnceInvokedTimes++ % HEARTBEAT_CHECK_INTERVAL == 0) {
-        outputPipeConnector.heartbeat();
-      }
-    } catch (Exception e) {
-      throw new PipeConnectionException(
-          "PipeConnector: failed to connect to the target system.", e);
-    }
-
     final Event event = lastEvent != null ? lastEvent : inputPendingQueue.waitedPoll();
     // Record this event for retrying on connection failure or other exceptions
     lastEvent = event;
@@ -114,6 +101,16 @@ public class PipeConnectorSubtask extends PipeSubtask {
         outputPipeConnector.transfer((TabletInsertionEvent) event);
       } else if (event instanceof TsFileInsertionEvent) {
         outputPipeConnector.transfer((TsFileInsertionEvent) event);
+      } else if (event instanceof PipeHeartbeatEvent) {
+        try {
+          outputPipeConnector.heartbeat();
+          outputPipeConnector.transfer(event);
+        } catch (Exception e) {
+          throw new PipeConnectionException(
+              "PipeConnector: " + outputPipeConnector.getClass().getName() + " heartbeat failed",
+              e);
+        }
+        ((PipeHeartbeatEvent) event).onTransferred();
       } else {
         outputPipeConnector.transfer(event);
       }

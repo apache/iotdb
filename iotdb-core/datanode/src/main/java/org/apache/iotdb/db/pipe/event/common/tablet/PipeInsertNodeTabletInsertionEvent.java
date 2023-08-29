@@ -35,6 +35,7 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.util.function.BiConsumer;
 
 public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
@@ -73,7 +74,19 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   }
 
   public InsertNode getInsertNode() throws WALPipeException {
-    return walEntryHandler.getValue();
+    return walEntryHandler.getInsertNode();
+  }
+
+  public ByteBuffer getByteBuffer() throws WALPipeException {
+    return walEntryHandler.getByteBuffer();
+  }
+
+  // This method is a pre-determination of whether to use binary transfers.
+  // If the insert node is null in cache, it means that we need to read the bytebuffer from the wal,
+  // and when the pattern is default, we can transfer the bytebuffer directly without serializing or
+  // deserializing
+  public InsertNode getInsertNodeViaCacheIfPossible() {
+    return walEntryHandler.getInsertNodeViaCacheIfPossible();
   }
 
   /////////////////////////// EnrichedEvent ///////////////////////////
@@ -131,7 +144,8 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   public Iterable<TabletInsertionEvent> processRowByRow(BiConsumer<Row, RowCollector> consumer) {
     try {
       if (dataContainer == null) {
-        dataContainer = new TabletInsertionDataContainer(getInsertNode(), getPattern());
+        dataContainer =
+            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), getPattern());
       }
       return dataContainer.processRowByRow(consumer);
     } catch (Exception e) {
@@ -143,7 +157,8 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   public Iterable<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer) {
     try {
       if (dataContainer == null) {
-        dataContainer = new TabletInsertionDataContainer(getInsertNode(), getPattern());
+        dataContainer =
+            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), getPattern());
       }
       return dataContainer.processTablet(consumer);
     } catch (Exception e) {
@@ -160,12 +175,19 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   public Tablet convertToTablet() {
     try {
       if (dataContainer == null) {
-        dataContainer = new TabletInsertionDataContainer(getInsertNode(), getPattern());
+        dataContainer =
+            new TabletInsertionDataContainer(pipeTaskMeta, this, getInsertNode(), getPattern());
       }
       return dataContainer.convertToTablet();
     } catch (Exception e) {
       throw new PipeException("Convert to tablet error.", e);
     }
+  }
+
+  /////////////////////////// parsePattern ///////////////////////////
+
+  public TabletInsertionEvent parseEventWithPattern() {
+    return new PipeRawTabletInsertionEvent(convertToTablet(), isAligned, pipeTaskMeta, this, true);
   }
 
   /////////////////////////// Object ///////////////////////////

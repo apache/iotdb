@@ -20,13 +20,13 @@
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.AuthorityInformationStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 
 import java.util.Collections;
 import java.util.List;
 
-public class ShowStatement extends Statement {
+public class ShowStatement extends AuthorityInformationStatement {
 
   long limit = 0;
   long offset = 0;

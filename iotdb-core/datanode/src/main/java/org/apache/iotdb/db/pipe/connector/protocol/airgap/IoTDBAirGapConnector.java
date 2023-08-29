@@ -25,9 +25,12 @@ import org.apache.iotdb.db.pipe.connector.payload.airgap.AirGapOneByteResponse;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferInsertNodeReq;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.connector.protocol.IoTDBConnector;
+import org.apache.iotdb.db.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -173,6 +176,25 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
     // PipeProcessor can change the type of TabletInsertionEvent
+    if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
+        && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
+      LOGGER.warn(
+          "IoTDBAirGapConnector only support "
+              + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
+              + "Ignore {}.",
+          tabletInsertionEvent);
+      return;
+    }
+
+    if (((EnrichedEvent) tabletInsertionEvent).shouldParsePattern()) {
+      if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+        transfer(
+            ((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent).parseEventWithPattern());
+      } else { // tabletInsertionEvent instanceof PipeRawTabletInsertionEvent
+        transfer(((PipeRawTabletInsertionEvent) tabletInsertionEvent).parseEventWithPattern());
+      }
+      return;
+    }
 
     final int socketIndex = nextSocketIndex();
     final Socket socket = sockets.get(socketIndex);
@@ -180,14 +202,8 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
     try {
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         doTransfer(socket, (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
-      } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-        doTransfer(socket, (PipeRawTabletInsertionEvent) tabletInsertionEvent);
       } else {
-        LOGGER.warn(
-            "IoTDBAirGapConnector only support "
-                + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
-                + "Ignore {}.",
-            tabletInsertionEvent);
+        doTransfer(socket, (PipeRawTabletInsertionEvent) tabletInsertionEvent);
       }
     } catch (IOException e) {
       isSocketAlive.set(socketIndex, false);
@@ -210,6 +226,13 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       return;
     }
 
+    if (((EnrichedEvent) tsFileInsertionEvent).shouldParsePattern()) {
+      for (final TabletInsertionEvent event : tsFileInsertionEvent.toTabletInsertionEvents()) {
+        transfer(event);
+      }
+      return;
+    }
+
     final int socketIndex = nextSocketIndex();
     final Socket socket = sockets.get(socketIndex);
 
@@ -228,16 +251,22 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
 
   @Override
   public void transfer(Event event) {
-    LOGGER.warn("IoTDBAirGapConnector does not support transfer generic event: {}.", event);
+    if (!(event instanceof PipeHeartbeatEvent)) {
+      LOGGER.warn("IoTDBAirGapConnector does not support transfer generic event: {}.", event);
+    }
   }
 
   private void doTransfer(
       Socket socket, PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, WALPipeException, IOException {
-    if (!send(
-        socket,
-        PipeTransferInsertNodeReq.toTransferInsertNodeBytes(
-            pipeInsertNodeTabletInsertionEvent.getInsertNode()))) {
+    final byte[] bytes =
+        pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible() == null
+            ? PipeTransferTabletBinaryReq.toTransferInsertNodeBytes(
+                pipeInsertNodeTabletInsertionEvent.getByteBuffer())
+            : PipeTransferTabletInsertNodeReq.toTransferInsertNodeBytes(
+                pipeInsertNodeTabletInsertionEvent.getInsertNode());
+
+    if (!send(socket, bytes)) {
       throw new PipeException(
           String.format(
               "Transfer PipeInsertNodeTabletInsertionEvent %s error. Socket: %s",
@@ -249,7 +278,7 @@ public class IoTDBAirGapConnector extends IoTDBConnector {
       throws PipeException, IOException {
     if (!send(
         socket,
-        PipeTransferTabletReq.toTPipeTransferTabletBytes(
+        PipeTransferTabletRawReq.toTPipeTransferTabletBytes(
             pipeRawTabletInsertionEvent.convertToTablet(),
             pipeRawTabletInsertionEvent.isAligned()))) {
       throw new PipeException(

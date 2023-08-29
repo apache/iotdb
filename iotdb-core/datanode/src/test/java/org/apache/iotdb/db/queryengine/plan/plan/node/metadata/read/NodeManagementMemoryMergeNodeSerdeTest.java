@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
@@ -95,7 +96,10 @@ public class NodeManagementMemoryMergeNodeSerdeTest {
     ExchangeNode exchangeNode = new ExchangeNode(new PlanNodeId("exchange"));
     NodePathsSchemaScanNode childPathsSchemaScanNode =
         new NodePathsSchemaScanNode(
-            new PlanNodeId("NodePathsScan"), new PartialPath("root.ln"), -1);
+            new PlanNodeId("NodePathsScan"),
+            new PartialPath("root.ln"),
+            -1,
+            SchemaConstant.ALL_MATCH_SCOPE);
     IdentitySinkNode sinkNode =
         new IdentitySinkNode(
             new PlanNodeId("sink"),

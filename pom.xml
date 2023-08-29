@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache</groupId>
         <artifactId>apache</artifactId>
-        <version>23</version>
+        <version>30</version>
     </parent>
     <groupId>org.apache.iotdb</groupId>
     <artifactId>iotdb-parent</artifactId>
@@ -79,6 +79,7 @@
         </mailingList>
     </mailingLists>
     <modules>
+        <module>integration-test</module>
         <module>iotdb-api</module>
         <module>iotdb-client</module>
         <module>iotdb-connector</module>
@@ -112,6 +113,8 @@
             we'll stay at 0.14.1.
         -->
         <thrift.version>0.14.1</thrift.version>
+        <!-- This is the version of the thrift binary -->
+        <iotdb-tools-thrift.version>0.14.1.0</iotdb-tools-thrift.version>
         <airline.version>0.8</airline.version>
         <jackson.version>2.13.5</jackson.version>
         <disrupter.version>3.4.2</disrupter.version>
@@ -207,6 +210,8 @@
         <thrift.exec.absolute.path/>
         <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
         <boost.include.dir/>
+        <!-- websocket -->
+        <websocket.version>1.5.3</websocket.version>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
@@ -1290,9 +1295,9 @@
                                 <configuration>
                                     <artifactItems>
                                         <artifactItem>
-                                            <groupId>org.apache.iotdb</groupId>
+                                            <groupId>org.apache.iotdb.tools</groupId>
                                             <artifactId>iotdb-tools-thrift</artifactId>
-                                            <version>${project.version}</version>
+                                            <version>${iotdb-tools-thrift.version}</version>
                                             <classifier>${os.classifier}</classifier>
                                             <type>zip</type>
                                             <overWrite>true</overWrite>
@@ -1353,11 +1358,10 @@
             <dependencies>
                 <!-- This ensures the iotdb-tools-thift module is build first -->
                 <dependency>
-                    <groupId>org.apache.iotdb</groupId>
+                    <groupId>org.apache.iotdb.tools</groupId>
                     <artifactId>iotdb-tools-thrift</artifactId>
-                    <version>1.3.0-SNAPSHOT</version>
+                    <version>${iotdb-tools-thrift.version}</version>
                     <type>pom</type>
-                    <scope>provided</scope>
                 </dependency>
             </dependencies>
         </profile>
@@ -1366,13 +1370,6 @@
             <id>with-integration-tests</id>
             <modules>
                 <module>integration-test</module>
-            </modules>
-        </profile>
-        <!-- Enable the building of the tools (Currently this only adds building of the Thrift module) -->
-        <profile>
-            <id>with-tools</id>
-            <modules>
-                <module>tools</module>
             </modules>
         </profile>
         <!-- Make sure the source assembly has the right name -->

@@ -39,6 +39,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -131,9 +132,11 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
@@ -758,11 +761,13 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSchemaNodeManagementResp getNodePathsPartition(PartialPath partialPath, Integer level) {
+  public TSchemaNodeManagementResp getNodePathsPartition(
+      PartialPath partialPath, PathPatternTree scope, Integer level) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       GetNodePathsPartitionPlan getNodePathsPartitionPlan = new GetNodePathsPartitionPlan();
       getNodePathsPartitionPlan.setPartialPath(partialPath);
+      getNodePathsPartitionPlan.setScope(scope);
       if (null != level) {
         getNodePathsPartitionPlan.setLevel(level);
       }
@@ -1427,9 +1432,14 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TShowDatabaseResp showDatabase(GetDatabasePlan getDatabasePlan) {
+  public TShowDatabaseResp showDatabase(TGetDatabaseReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      PathPatternTree scope =
+          req.getScopePatternTree() == null
+              ? SchemaConstant.ALL_MATCH_SCOPE
+              : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
+      GetDatabasePlan getDatabasePlan = new GetDatabasePlan(req.getDatabasePathPattern(), scope);
       return getClusterSchemaManager().showDatabase(getDatabasePlan);
     } else {
       return new TShowDatabaseResp().setStatus(status);
@@ -1505,10 +1515,14 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TGetPathsSetTemplatesResp getPathsSetTemplate(String req) {
+  public TGetPathsSetTemplatesResp getPathsSetTemplate(TGetPathsSetTemplatesReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.getPathsSetTemplate(req);
+      PathPatternTree scope =
+          req.getScopePatternTree() == null
+              ? SchemaConstant.ALL_MATCH_SCOPE
+              : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
+      return clusterSchemaManager.getPathsSetTemplate(req.getTemplateName(), scope);
     } else {
       return new TGetPathsSetTemplatesResp(status);
     }

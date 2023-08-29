@@ -20,6 +20,7 @@ package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty.DefaultProperty;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -39,6 +40,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
+import org.apache.iotdb.metrics.metricsets.system.SystemMetrics;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -54,6 +56,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -796,9 +799,6 @@ public class IoTDBConfig {
 
   private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
 
-  /** time interval in minute for calculating query frequency. Unit: minute */
-  private int frequencyIntervalInMinute = 1;
-
   /** time cost(ms) threshold for slow query. Unit: millisecond */
   private long slowQueryThreshold = 30000;
 
@@ -1256,6 +1256,18 @@ public class IoTDBConfig {
       }
     }
     this.tierDataDirs = tierDataDirs;
+    reloadSystemMetrics();
+  }
+
+  void reloadSystemMetrics() {
+    ArrayList<String> diskDirs = new ArrayList<>();
+    diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getSystemDir());
+    diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getConsensusDir());
+    diskDirs.addAll(Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
+    diskDirs.addAll(Arrays.asList(CommonDescriptor.getInstance().getConfig().getWalDirs()));
+    diskDirs.add(CommonDescriptor.getInstance().getConfig().getSyncDir());
+    diskDirs.add(IoTDBDescriptor.getInstance().getConfig().getSortTmpDir());
+    SystemMetrics.getInstance().setDiskDirs(diskDirs);
   }
 
   // if IOTDB_DATA_HOME is not set, then we keep dataHomeDir prefix being the same with IOTDB_HOME
@@ -2507,14 +2519,6 @@ public class IoTDBConfig {
 
   public void setMaxWaitingTimeWhenInsertBlocked(int maxWaitingTimeWhenInsertBlocked) {
     this.maxWaitingTimeWhenInsertBlockedInMs = maxWaitingTimeWhenInsertBlocked;
-  }
-
-  public int getFrequencyIntervalInMinute() {
-    return frequencyIntervalInMinute;
-  }
-
-  public void setFrequencyIntervalInMinute(int frequencyIntervalInMinute) {
-    this.frequencyIntervalInMinute = frequencyIntervalInMinute;
   }
 
   public long getSlowQueryThreshold() {

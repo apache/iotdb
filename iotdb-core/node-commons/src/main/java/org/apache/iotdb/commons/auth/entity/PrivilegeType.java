@@ -38,6 +38,7 @@ public enum PrivilegeType {
   MAINTAIN,
   AUDIT;
 
+
   private static final int PRIVILEGE_COUNT = values().length;
 
   private final boolean isPathRelevant;

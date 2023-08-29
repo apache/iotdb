@@ -318,6 +318,15 @@ public class PathPatternTree {
     root.serialize(buffer);
   }
 
+  public ByteBuffer serialize() throws IOException {
+    PublicBAOS baos = new PublicBAOS();
+    serialize(baos);
+    ByteBuffer serializedPatternTree = ByteBuffer.allocate(baos.size());
+    serializedPatternTree.put(baos.getBuf(), 0, baos.size());
+    serializedPatternTree.flip();
+    return serializedPatternTree;
+  }
+
   public static PathPatternTree deserialize(ByteBuffer buffer) {
     PathPatternNode<Void, VoidSerializer> root =
         PathPatternNode.deserializeNode(buffer, VoidSerializer.getInstance());

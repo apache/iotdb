@@ -111,9 +111,11 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipeSinkReq;
@@ -447,10 +449,14 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TCountDatabaseResp countMatchedDatabases(List<String> storageGroupPathPattern) {
+  public TCountDatabaseResp countMatchedDatabases(TGetDatabaseReq req) {
+    PathPatternTree scope =
+        req.getScopePatternTree() == null
+            ? SchemaConstant.ALL_MATCH_SCOPE
+            : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
+    CountDatabasePlan plan = new CountDatabasePlan(req.getDatabasePathPattern(), scope);
     CountDatabaseResp countDatabaseResp =
-        (CountDatabaseResp)
-            configManager.countMatchedDatabases(new CountDatabasePlan(storageGroupPathPattern));
+        (CountDatabaseResp) configManager.countMatchedDatabases(plan);
 
     TCountDatabaseResp resp = new TCountDatabaseResp();
     countDatabaseResp.convertToRPCCountStorageGroupResp(resp);
@@ -458,10 +464,14 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TDatabaseSchemaResp getMatchedDatabaseSchemas(List<String> storageGroupPathPattern) {
+  public TDatabaseSchemaResp getMatchedDatabaseSchemas(TGetDatabaseReq req) {
+    PathPatternTree scope =
+        req.getScopePatternTree() == null
+            ? SchemaConstant.ALL_MATCH_SCOPE
+            : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
+    GetDatabasePlan plan = new GetDatabasePlan(req.getDatabasePathPattern(), scope);
     DatabaseSchemaResp databaseSchemaResp =
-        (DatabaseSchemaResp)
-            configManager.getMatchedDatabaseSchemas(new GetDatabasePlan(storageGroupPathPattern));
+        (DatabaseSchemaResp) configManager.getMatchedDatabaseSchemas(plan);
 
     return databaseSchemaResp.convertToRPCStorageGroupSchemaResp();
   }
@@ -484,8 +494,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   public TSchemaNodeManagementResp getSchemaNodeManagementPartition(TSchemaNodeManagementReq req) {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
+    PathPatternTree scope =
+        req.getScopePatternTree() == null
+            ? SchemaConstant.ALL_MATCH_SCOPE
+            : PathPatternTree.deserialize(ByteBuffer.wrap(req.getScopePatternTree()));
     PartialPath partialPath = patternTree.getAllPathPatterns().get(0);
-    return configManager.getNodePathsPartition(partialPath, req.getLevel());
+    return configManager.getNodePathsPartition(partialPath, scope, req.getLevel());
   }
 
   @Override
@@ -822,8 +836,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TShowDatabaseResp showDatabase(List<String> storageGroupPathPattern) {
-    return configManager.showDatabase(new GetDatabasePlan(storageGroupPathPattern));
+  public TShowDatabaseResp showDatabase(TGetDatabaseReq req) {
+    return configManager.showDatabase(req);
   }
 
   @Override
@@ -847,7 +861,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TGetPathsSetTemplatesResp getPathsSetTemplate(String req) {
+  public TGetPathsSetTemplatesResp getPathsSetTemplate(TGetPathsSetTemplatesReq req) {
     return configManager.getPathsSetTemplate(req);
   }
 

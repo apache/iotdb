@@ -48,7 +48,6 @@
                                 <descriptor>src/assembly/datanode.xml</descriptor>
                                 <descriptor>src/assembly/confignode.xml</descriptor>
                                 <descriptor>src/assembly/cli.xml</descriptor>
-                                <descriptor>src/assembly/grafana-plugin.xml</descriptor>
                                 <descriptor>src/assembly/library-udf.xml</descriptor>
                                 <descriptor>src/assembly/spark-connector.xml</descriptor>
                             </descriptors>
@@ -84,7 +83,6 @@
                                         <include>apache-iotdb-${project.version}-datanode-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-cli-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-confignode-bin.zip</include>
-                                        <include>apache-iotdb-${project.version}-grafana-plugin-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-library-udf-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-spark-connector-bin.zip</include>
                                     </includes>
@@ -111,12 +109,6 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-grafana-plugin</artifactId>
-            <version>${project.version}</version>
-            <type>pom</type>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-confignode</artifactId>
             <version>${project.version}</version>
             <type>zip</type>
@@ -125,33 +117,21 @@
             <groupId>org.apache.iotdb</groupId>
             <artifactId>library-udf</artifactId>
             <version>${project.version}</version>
-            <type>jar</type>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>spark-iotdb-connector_2.11</artifactId>
             <version>${project.version}</version>
-            <type>jar</type>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>spark-iotdb-connector_2.12</artifactId>
             <version>${project.version}</version>
-            <type>jar</type>
         </dependency>
     </dependencies>
     <profiles>
         <profile>
             <id>with-cpp</id>
-            <dependencies>
-                <dependency>
-                    <groupId>org.apache.iotdb</groupId>
-                    <artifactId>client-cpp</artifactId>
-                    <version>${project.version}</version>
-                    <type>pom</type>
-                    <!--            <classifier>${os.classifier}</classifier>-->
-                </dependency>
-            </dependencies>
             <build>
                 <plugins>
                     <plugin>
@@ -202,6 +182,76 @@
                     </plugin>
                 </plugins>
             </build>
+            <dependencies>
+                <dependency>
+                    <groupId>org.apache.iotdb</groupId>
+                    <artifactId>client-cpp</artifactId>
+                    <version>${project.version}</version>
+                    <type>pom</type>
+                    <!--            <classifier>${os.classifier}</classifier>-->
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>with-grafana-plugin</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <version>${maven.assembly.version}</version>
+                        <executions>
+                            <!-- Package binaries-->
+                            <execution>
+                                <id>all-bin</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                                <configuration>
+                                    <descriptors combine.children="append">
+                                        <descriptor>src/assembly/grafana-plugin.xml</descriptor>
+                                    </descriptors>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!--
+                      Create SHA512 checksum files for the release artifacts.
+                    -->
+                    <plugin>
+                        <groupId>net.nicoulaj.maven.plugins</groupId>
+                        <artifactId>checksum-maven-plugin</artifactId>
+                        <version>1.8</version>
+                        <executions>
+                            <execution>
+                                <id>sign-source-release</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>files</goal>
+                                </goals>
+                                <configuration>
+                                    <fileSets>
+                                        <fileSet>
+                                            <includes combine.children="append">
+                                                <include>apache-iotdb-${project.version}-grafana-plugin-bin.zip</include>
+                                            </includes>
+                                        </fileSet>
+                                    </fileSets>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+            <dependencies>
+                <dependency>
+                    <groupId>org.apache.iotdb</groupId>
+                    <artifactId>iotdb-grafana-plugin</artifactId>
+                    <version>${project.version}</version>
+                    <type>pom</type>
+                </dependency>
+            </dependencies>
         </profile>
     </profiles>
 </project>

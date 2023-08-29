@@ -159,7 +159,7 @@ public class CommonConfig {
 
   private int pipeExtractorAssignerDisruptorRingBufferSize = 65536;
   private int pipeExtractorMatcherCacheSize = 1024;
-  private int pipeExtractorPendingQueueCapacity = 16;
+  private int pipeExtractorPendingQueueCapacity = 256;
   private int pipeExtractorPendingQueueTabletLimit = pipeExtractorPendingQueueCapacity / 2;
   private int pipeDataStructureTabletRowSize = 2048;
 

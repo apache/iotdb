@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.realtime;
 
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpochManager;
@@ -46,6 +47,12 @@ public class PipeRealtimeEventFactory {
             insertNode.isGeneratedByPipe()),
         insertNode,
         resource);
+  }
+
+  public static PipeRealtimeEvent createRealtimeEvent(
+      String dataRegionId, boolean shouldPrintMessage) {
+    return new PipeRealtimeEvent(
+        new PipeHeartbeatEvent(dataRegionId, shouldPrintMessage), null, null, null);
   }
 
   private PipeRealtimeEventFactory() {
