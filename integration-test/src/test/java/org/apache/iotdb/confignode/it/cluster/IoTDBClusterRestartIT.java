@@ -166,7 +166,7 @@ public class IoTDBClusterRestartIT {
       EnvFactory.getEnv().shutdownConfigNode(i);
     }
     logger.info("Shutdown all ConfigNode");
-    // restart any 2 of them, the cluster should work fine
+    // restart without seed ConfigNode, the cluster should still work
     for (int i = 1; i < testConfigNodeNum; i++) {
       EnvFactory.getEnv().startConfigNode(i);
     }
