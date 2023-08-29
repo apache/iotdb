@@ -160,6 +160,7 @@ public class LoadTsFileStatement extends Statement {
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
+    // no need to check here, it will be checked in process phase
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
