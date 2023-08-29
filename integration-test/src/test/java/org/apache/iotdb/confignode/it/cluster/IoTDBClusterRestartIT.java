@@ -162,7 +162,7 @@ public class IoTDBClusterRestartIT {
     final int testConfigNodeNum = 3, testDataNodeNum = 1;
     setUp(testConfigNodeNum, testDataNodeNum);
     // shutdown all 3 ConfigNodes
-    for (int i = 0; i < testConfigNodeNum; i++) {
+    for (int i = testConfigNodeNum-1; i >= 0; i--) {
       EnvFactory.getEnv().shutdownConfigNode(i);
     }
     logger.info("Shutdown all ConfigNode");
