@@ -23,16 +23,21 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.TsFileMetricManager;
 import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionExceptionHandler;
+import org.apache.iotdb.db.engine.compaction.execute.exception.CompactionMemoryNotEnoughException;
 import org.apache.iotdb.db.engine.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.execute.utils.log.CompactionLogger;
+import org.apache.iotdb.db.engine.compaction.selector.estimator.AbstractInnerSpaceEstimator;
+import org.apache.iotdb.db.engine.compaction.selector.estimator.FastCompactionInnerCompactionEstimator;
+import org.apache.iotdb.db.engine.compaction.selector.estimator.ReadChunkInnerCompactionEstimator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsManager;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
@@ -69,6 +74,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
   protected long maxModsFileSize;
 
+  protected AbstractInnerSpaceEstimator innerSpaceEstimator;
+
   public InnerSpaceCompactionTask(
       long timePartition,
       TsFileManager tsFileManager,
@@ -87,6 +94,13 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     this.selectedTsFileResourceList = selectedTsFileResourceList;
     this.sequence = sequence;
     this.performer = performer;
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionMemControl()) {
+      if (this.performer instanceof ReadChunkInnerCompactionEstimator) {
+        innerSpaceEstimator = new ReadChunkInnerCompactionEstimator();
+      } else if (!sequence && this.performer instanceof FastCompactionInnerCompactionEstimator) {
+        innerSpaceEstimator = new FastCompactionInnerCompactionEstimator();
+      }
+    }
     isHoldingReadLock = new boolean[selectedTsFileResourceList.size()];
     isHoldingWriteLock = new boolean[selectedTsFileResourceList.size()];
     for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
@@ -317,6 +331,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             isSequence());
       }
     } finally {
+      SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
       releaseAllLocksAndResetStatus();
       return isSuccess;
     }
@@ -458,9 +473,27 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           return false;
         }
       }
+      if (innerSpaceEstimator != null) {
+        memoryCost = innerSpaceEstimator.estimateInnerCompactionMemory(selectedTsFileResourceList);
+      }
+      SystemInfo.getInstance().addCompactionMemoryCost(memoryCost, 60);
     } catch (Throwable e) {
+      if (e instanceof InterruptedException) {
+        LOGGER.warn("Interrupted when allocating memory for compaction", e);
+        Thread.currentThread().interrupt();
+      } else if (e instanceof CompactionMemoryNotEnoughException) {
+        LOGGER.warn("No enough memory for current compaction task {}", this, e);
+      }
       releaseAllLocksAndResetStatus();
-      throw e;
+      return false;
+    } finally {
+      try {
+        if (innerSpaceEstimator != null) {
+          innerSpaceEstimator.close();
+        }
+      } catch (IOException e) {
+        LOGGER.warn("Failed to close InnerSpaceCompactionMemoryEstimator");
+      }
     }
     return true;
   }

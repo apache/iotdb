@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.engine.compaction.selector.estimator;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -28,11 +29,14 @@ import java.util.List;
  * its corresponding implementation.
  */
 public abstract class AbstractInnerSpaceEstimator extends AbstractCompactionEstimator {
-  public abstract long estimateInnerCompactionMemory(List<TsFileResource> resources);
 
-  public long estimateCrossCompactionMemory(
-      List<TsFileResource> seqResources, TsFileResource unseqResource) throws IOException {
-    throw new RuntimeException(
-        "This kind of estimator cannot be used to estimate cross space compaction task");
+  public long estimateInnerCompactionMemory(List<TsFileResource> resources) throws IOException {
+    if (!config.isEnableCompactionMemControl()) {
+      return 0;
+    }
+    CompactionTaskInfo taskInfo = calculatingCompactionTaskInfo(resources);
+    long cost = calculatingMetadataMemoryCost(taskInfo);
+    cost += calculatingDataMemoryCost(taskInfo);
+    return cost;
   }
 }

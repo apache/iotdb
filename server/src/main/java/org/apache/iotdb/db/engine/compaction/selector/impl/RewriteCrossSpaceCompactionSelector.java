@@ -24,7 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.selector.ICompactionSelector;
 import org.apache.iotdb.db.engine.compaction.selector.ICrossSpaceSelector;
-import org.apache.iotdb.db.engine.compaction.selector.estimator.AbstractCompactionEstimator;
+import org.apache.iotdb.db.engine.compaction.selector.estimator.AbstractCrossSpaceEstimator;
 import org.apache.iotdb.db.engine.compaction.selector.utils.CrossCompactionTaskResource;
 import org.apache.iotdb.db.engine.compaction.selector.utils.CrossSpaceCompactionCandidate;
 import org.apache.iotdb.db.engine.compaction.selector.utils.CrossSpaceCompactionCandidate.CrossCompactionTaskResourceSplit;
@@ -39,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -59,7 +60,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   private final int maxCrossCompactionFileNum;
   private final long maxCrossCompactionFileSize;
 
-  private AbstractCompactionEstimator compactionEstimator;
+  private final AbstractCrossSpaceEstimator compactionEstimator;
 
   public RewriteCrossSpaceCompactionSelector(
       String logicalStorageGroupName,
@@ -81,8 +82,9 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileSize();
 
     this.compactionEstimator =
-        ICompactionSelector.getCompactionEstimator(
-            IoTDBDescriptor.getInstance().getConfig().getCrossCompactionPerformer(), false);
+        (AbstractCrossSpaceEstimator)
+            ICompactionSelector.getCompactionEstimator(
+                IoTDBDescriptor.getInstance().getConfig().getCrossCompactionPerformer(), false);
   }
 
   /**
@@ -168,8 +170,15 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         }
       }
 
+      List<TsFileResource> newSelectedSeqResources = new ArrayList<>(taskResource.getSeqFiles());
+      newSelectedSeqResources.addAll(targetSeqFiles);
+      List<TsFileResource> newSelectedUnseqResources =
+          new ArrayList<>(taskResource.getUnseqFiles());
+      newSelectedUnseqResources.add(unseqFile);
+
       long memoryCost =
-          compactionEstimator.estimateCrossCompactionMemory(targetSeqFiles, unseqFile);
+          compactionEstimator.estimateCrossCompactionMemory(
+              newSelectedSeqResources, newSelectedUnseqResources);
       if (!canAddToTaskResource(taskResource, unseqFile, targetSeqFiles, memoryCost)) {
         break;
       }
@@ -247,7 +256,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
 
     if (taskResource.getTotalFileNums() + 1 + seqFiles.size() <= maxCrossCompactionFileNum
         && taskResource.getTotalFileSize() + totalFileSize <= maxCrossCompactionFileSize
-        && taskResource.getTotalMemoryCost() + memoryCost < memoryBudget) {
+        && memoryCost < memoryBudget) {
       return true;
     }
     return false;

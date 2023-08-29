@@ -55,6 +55,8 @@ public abstract class AbstractCompactionTask {
   protected boolean crossTask;
   protected boolean innerSeqTask;
 
+  protected long memoryCost = 0L;
+
   public AbstractCompactionTask(
       String storageGroupName,
       String dataRegionId,

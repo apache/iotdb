@@ -16,11 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.engine.compaction.selector.estimator;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -28,11 +30,27 @@ import java.util.List;
  * its corresponding implementation.
  */
 public abstract class AbstractCrossSpaceEstimator extends AbstractCompactionEstimator {
-  public abstract long estimateCrossCompactionMemory(
-      List<TsFileResource> seqResources, TsFileResource unseqResource) throws IOException;
 
-  public long estimateInnerCompactionMemory(List<TsFileResource> resources) {
-    throw new RuntimeException(
-        "This kind of estimator cannot be used to estimate inner space compaction task");
+  public long estimateCrossCompactionMemory(
+      List<TsFileResource> seqResources, List<TsFileResource> unseqResources) throws IOException {
+    if (!config.isEnableCompactionMemControl()) {
+      return 0;
+    }
+    List<TsFileResource> resources = new ArrayList<>(seqResources.size() + unseqResources.size());
+    resources.addAll(seqResources);
+    resources.addAll(unseqResources);
+    if (!CompactionEstimateUtils.addReadLock(resources)) {
+      return -1L;
+    }
+
+    long cost = 0;
+    try {
+      CompactionTaskInfo taskInfo = calculatingCompactionTaskInfo(resources);
+      cost += calculatingMetadataMemoryCost(taskInfo);
+      cost += calculatingDataMemoryCost(taskInfo);
+    } finally {
+      CompactionEstimateUtils.releaseReadLock(resources);
+    }
+    return cost;
   }
 }

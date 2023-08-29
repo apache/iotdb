@@ -64,7 +64,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   protected List<TsFileResource> holdWriteLockList = new ArrayList<>();
   protected double selectedSeqFileSize = 0;
   protected double selectedUnseqFileSize = 0;
-  protected long memoryCost = 0L;
 
   public CrossSpaceCompactionTask(
       long timePartition,

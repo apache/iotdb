@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.compaction.selector;
 import org.apache.iotdb.db.engine.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.selector.estimator.AbstractCompactionEstimator;
-import org.apache.iotdb.db.engine.compaction.selector.estimator.ReadPointCrossCompactionEstimator;
+import org.apache.iotdb.db.engine.compaction.selector.estimator.FastCrossSpaceCompactionEstimator;
 import org.apache.iotdb.db.engine.compaction.selector.utils.CrossCompactionTaskResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
@@ -66,7 +66,7 @@ public interface ICompactionSelector {
       case READ_POINT:
       case FAST:
         if (!isInnerSpace) {
-          return new ReadPointCrossCompactionEstimator();
+          return new FastCrossSpaceCompactionEstimator();
         }
       default:
         throw new RuntimeException(
