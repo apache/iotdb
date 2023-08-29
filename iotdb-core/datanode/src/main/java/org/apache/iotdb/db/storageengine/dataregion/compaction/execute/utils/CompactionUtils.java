@@ -447,7 +447,7 @@ public class CompactionUtils {
   public static void deleteSourceTsFileAndUpdateFileMetrics(
       List<TsFileResource> resources, boolean seq) {
     long[] fileSizes = new long[resources.size()];
-    List<String> fileNames = new ArrayList<>();
+    List<String> fileNames = new ArrayList<>(resources.size());
     int removeSuccessFileNum = 0;
     for (TsFileResource resource : resources) {
       if (!resource.remove()) {
