@@ -504,7 +504,7 @@ public class DatabasePartitionTable {
           regionId);
       return;
     }
-    regionGroup.getReplicaSet().getDataNodeLocations().add(node);
+    regionGroup.addRegionLocation(node);
   }
 
   private void removeRegionOldLocation(TConsensusGroupId regionId, TDataNodeLocation node) {
@@ -525,7 +525,7 @@ public class DatabasePartitionTable {
           regionId);
       return;
     }
-    regionGroup.getReplicaSet().getDataNodeLocations().remove(node);
+    regionGroup.removeRegionLocation(node);
   }
 
   /**

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
@@ -37,6 +38,10 @@ public class PageElement {
   public List<PageHeader> valuePageHeaders;
 
   public TsBlock batchData;
+
+  // pointReader is used to replace batchData to get rid of huge memory cost by loading data point
+  // in a lazy way
+  public IPointReader pointReader;
 
   // compressed page data
   public ByteBuffer pageData;
@@ -56,6 +61,8 @@ public class PageElement {
 
   public ChunkMetadataElement chunkMetadataElement;
 
+  public boolean needForceDecoding;
+
   public PageElement(
       PageHeader pageHeader,
       ByteBuffer pageData,
@@ -70,6 +77,7 @@ public class PageElement {
     this.startTime = pageHeader.getStartTime();
     this.chunkMetadataElement = chunkMetadataElement;
     this.isLastPage = isLastPage;
+    this.needForceDecoding = chunkMetadataElement.needForceDecoding;
   }
 
   @SuppressWarnings("squid:S107")
@@ -91,13 +99,14 @@ public class PageElement {
     this.startTime = pageHeader.getStartTime();
     this.chunkMetadataElement = chunkMetadataElement;
     this.isLastPage = isLastPage;
+    this.needForceDecoding = chunkMetadataElement.needForceDecoding;
   }
 
   public void deserializePage() throws IOException {
     if (iChunkReader instanceof AlignedChunkReader) {
-      this.batchData =
+      this.pointReader =
           ((AlignedChunkReader) iChunkReader)
-              .readPageData(pageHeader, valuePageHeaders, pageData, valuePageDatas);
+              .getPagePointReader(pageHeader, valuePageHeaders, pageData, valuePageDatas);
     } else {
       this.batchData = ((ChunkReader) iChunkReader).readPageData(pageHeader, pageData);
     }

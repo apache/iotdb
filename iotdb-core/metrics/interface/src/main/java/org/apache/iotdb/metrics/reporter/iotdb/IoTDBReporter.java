@@ -36,14 +36,14 @@ public abstract class IoTDBReporter implements Reporter {
    *
    * @param metric the target metric
    * @param name the name of metric
+   * @param time the target time of metric
    * @param tags the tags of metric
    */
-  public void writeMetricToIoTDB(IMetric metric, String name, String... tags) {
+  public void writeMetricToIoTDB(IMetric metric, String name, long time, String... tags) {
     if (!(metric instanceof DoNothingMetric)) {
       Map<String, Object> values = new HashMap<>();
       metric.constructValueMap(values);
-      writeMetricToIoTDB(
-          values, IoTDBMetricsUtils.generatePath(name, tags), System.currentTimeMillis());
+      writeMetricToIoTDB(values, IoTDBMetricsUtils.generatePath(name, tags), time);
     }
   }
 

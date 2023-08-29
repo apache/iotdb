@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.pipe.connector;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.pipe.connector.v1.IoTDBThriftReceiverV1;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferHandshakeReq;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferTabletReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
+import org.apache.iotdb.db.pipe.receiver.thrift.IoTDBThriftReceiverV1;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -48,7 +48,7 @@ public class PipeReceiverTest {
           mock(IPartitionFetcher.class),
           mock(ISchemaFetcher.class));
       receiver.receive(
-          PipeTransferTabletReq.toTPipeTransferReq(
+          PipeTransferTabletRawReq.toTPipeTransferReq(
               new Tablet(
                   "root.sg.d",
                   Collections.singletonList(new MeasurementSchema("s", TSDataType.INT32))),

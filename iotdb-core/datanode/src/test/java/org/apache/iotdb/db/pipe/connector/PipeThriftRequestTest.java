@@ -20,12 +20,12 @@
 package org.apache.iotdb.db.pipe.connector;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.pipe.connector.v1.reponse.PipeTransferFilePieceResp;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFilePieceReq;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferFileSealReq;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferHandshakeReq;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferInsertNodeReq;
-import org.apache.iotdb.db.pipe.connector.v1.request.PipeTransferTabletReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.reponse.PipeTransferFilePieceResp;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFilePieceReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferFileSealReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferHandshakeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -59,8 +59,8 @@ public class PipeThriftRequestTest {
 
   @Test
   public void testPipeTransferInsertNodeReq() {
-    PipeTransferInsertNodeReq req =
-        PipeTransferInsertNodeReq.toTPipeTransferReq(
+    PipeTransferTabletInsertNodeReq req =
+        PipeTransferTabletInsertNodeReq.toTPipeTransferReq(
             new InsertRowNode(
                 new PlanNodeId(""),
                 new PartialPath(new String[] {"root", "sg", "d"}),
@@ -70,7 +70,8 @@ public class PipeThriftRequestTest {
                 1,
                 new Object[] {1},
                 false));
-    PipeTransferInsertNodeReq deserializeReq = PipeTransferInsertNodeReq.fromTPipeTransferReq(req);
+    PipeTransferTabletInsertNodeReq deserializeReq =
+        PipeTransferTabletInsertNodeReq.fromTPipeTransferReq(req);
 
     Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
     Assert.assertEquals(req.getType(), deserializeReq.getType());
@@ -102,15 +103,15 @@ public class PipeThriftRequestTest {
       t.addValue("s6", 0, "2");
       t.addValue("s1", 1, 1);
       t.addValue("s6", 1, "1");
-      PipeTransferTabletReq req = PipeTransferTabletReq.toTPipeTransferReq(t, false);
-      PipeTransferTabletReq deserializeReq = PipeTransferTabletReq.fromTPipeTransferReq(req);
+      PipeTransferTabletRawReq req = PipeTransferTabletRawReq.toTPipeTransferReq(t, false);
+      PipeTransferTabletRawReq deserializeReq = PipeTransferTabletRawReq.fromTPipeTransferReq(req);
 
       Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
       Assert.assertEquals(req.getType(), deserializeReq.getType());
       Assert.assertArrayEquals(req.getBody(), deserializeReq.getBody());
 
       Statement statement =
-          req.constructStatement(); // will call PipeTransferTabletReq.sortTablet() here
+          req.constructStatement(); // will call PipeTransferTabletRawReq.sortTablet() here
       List<PartialPath> paths = new ArrayList<>();
       paths.add(new PartialPath(new String[] {"root", "sg", "d", "s1"}));
       paths.add(new PartialPath(new String[] {"root", "sg", "d", "s2"}));

@@ -20,52 +20,22 @@
 
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <parent>
-        <artifactId>iotdb-parent</artifactId>
-        <groupId>org.apache.iotdb</groupId>
-        <version>1.3.0-SNAPSHOT</version>
-        <relativePath>../../pom.xml</relativePath>
-    </parent>
     <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.apache.iotdb</groupId>
+        <artifactId>iotdb-core</artifactId>
+        <version>1.3.0-SNAPSHOT</version>
+    </parent>
     <artifactId>iotdb-consensus</artifactId>
-    <name>IoTDB Consensus</name>
+    <name>IoTDB: Core: Consensus</name>
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
-        <ratis.version>2.5.2-8d897ea-SNAPSHOT</ratis.version>
+        <ratis.version>2.5.2-8efe8a1-SNAPSHOT</ratis.version>
         <consensus.test.skip>false</consensus.test.skip>
         <consensus.it.skip>${consensus.test.skip}</consensus.it.skip>
         <consensus.ut.skip>${consensus.test.skip}</consensus.ut.skip>
     </properties>
-    <dependencies>
-        <!-- https://mvnrepository.com/artifact/org.apache.ratis/ratis-server -->
-        <dependency>
-            <groupId>org.apache.ratis</groupId>
-            <artifactId>ratis-server</artifactId>
-            <version>${ratis.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.ratis</groupId>
-            <artifactId>ratis-common</artifactId>
-            <version>${ratis.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.ratis</groupId>
-            <artifactId>ratis-grpc</artifactId>
-            <version>${ratis.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>node-commons</artifactId>
-            <version>${project.version}</version>
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>thrift-iot-consensus</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-    </dependencies>
     <build>
         <plugins>
             <!-- generate test codes into test-jar-->
@@ -93,6 +63,35 @@
             </plugin>
         </plugins>
     </build>
+    <dependencies>
+        <!-- https://mvnrepository.com/artifact/org.apache.ratis/ratis-server -->
+        <dependency>
+            <groupId>org.apache.ratis</groupId>
+            <artifactId>ratis-server</artifactId>
+            <version>${ratis.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.ratis</groupId>
+            <artifactId>ratis-common</artifactId>
+            <version>${ratis.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.ratis</groupId>
+            <artifactId>ratis-grpc</artifactId>
+            <version>${ratis.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>node-commons</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift-consensus</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
     <profiles>
         <profile>
             <id>skipConsensusTests</id>

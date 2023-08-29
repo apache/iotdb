@@ -31,7 +31,7 @@ import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
-import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
@@ -60,6 +60,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
@@ -163,28 +164,23 @@ public class RegionWriteExecutor {
         return response;
       }
 
-      ConsensusWriteResponse writeResponse =
-          executePlanNodeInConsensusLayer(context.getRegionId(), node);
-      if (writeResponse.getStatus() != null) {
-        response.setAccepted(
-            TSStatusCode.SUCCESS_STATUS.getStatusCode() == writeResponse.getStatus().getCode());
-        response.setMessage(writeResponse.getStatus().message);
-        response.setStatus(writeResponse.getStatus());
-      } else {
-        LOGGER.error(
-            "Something wrong happened while calling consensus layer's write API.",
-            writeResponse.getException());
+      try {
+        TSStatus status = executePlanNodeInConsensusLayer(context.getRegionId(), node);
+        response.setAccepted(TSStatusCode.SUCCESS_STATUS.getStatusCode() == status.getCode());
+        response.setMessage(status.getMessage());
+        response.setStatus(status);
+      } catch (ConsensusException e) {
+        LOGGER.error("Failed in the write API executing the consensus layer due to: ", e);
         response.setAccepted(false);
-        response.setMessage(writeResponse.getException().toString());
+        response.setMessage(e.toString());
         response.setStatus(
-            RpcUtils.getStatus(
-                TSStatusCode.EXECUTE_STATEMENT_ERROR, writeResponse.getErrorMessage()));
+            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage()));
       }
       return response;
     }
 
-    private ConsensusWriteResponse executePlanNodeInConsensusLayer(
-        ConsensusGroupId groupId, PlanNode planNode) {
+    private TSStatus executePlanNodeInConsensusLayer(ConsensusGroupId groupId, PlanNode planNode)
+        throws ConsensusException {
       if (groupId instanceof DataRegionId) {
         return dataRegionConsensus.write(groupId, planNode);
       } else {
@@ -222,77 +218,68 @@ public class RegionWriteExecutor {
       return executeDataInsert(node, context);
     }
 
+    @Override
+    public RegionExecutionResult visitPipeEnrichedInsert(
+        PipeEnrichedInsertNode node, WritePlanNodeExecutionContext context) {
+      return executeDataInsert(node, context);
+    }
+
     private RegionExecutionResult executeDataInsert(
         InsertNode insertNode, WritePlanNodeExecutionContext context) {
       RegionExecutionResult response = new RegionExecutionResult();
       context.getRegionWriteValidationRWLock().readLock().lock();
       try {
-
-        ConsensusWriteResponse writeResponse =
-            fireTriggerAndInsert(context.getRegionId(), insertNode);
-
-        if (writeResponse.getStatus() != null) {
-          response.setAccepted(
-              TSStatusCode.SUCCESS_STATUS.getStatusCode() == writeResponse.getStatus().getCode());
-          if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != writeResponse.getStatus().getCode()) {
-            response.setMessage(writeResponse.getStatus().message);
-            response.setStatus(writeResponse.getStatus());
-          } else {
-            response.setMessage(writeResponse.getStatus().message);
-          }
-        } else {
-          LOGGER.warn(
-              "Something wrong happened while calling consensus layer's write API.",
-              writeResponse.getException());
-          response.setAccepted(false);
-          response.setMessage(writeResponse.getException().toString());
-          response.setStatus(
-              RpcUtils.getStatus(
-                  TSStatusCode.WRITE_PROCESS_ERROR, writeResponse.getException().toString()));
+        TSStatus status = fireTriggerAndInsert(context.getRegionId(), insertNode);
+        response.setAccepted(TSStatusCode.SUCCESS_STATUS.getStatusCode() == status.getCode());
+        response.setMessage(status.message);
+        if (!response.isAccepted()) {
+          response.setStatus(status);
         }
-
+        return response;
+      } catch (ConsensusException e) {
+        LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+        response.setAccepted(false);
+        response.setMessage(e.toString());
+        response.setStatus(RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_ERROR, e.toString()));
         return response;
       } finally {
         context.getRegionWriteValidationRWLock().readLock().unlock();
       }
     }
 
-    private ConsensusWriteResponse fireTriggerAndInsert(
-        ConsensusGroupId groupId, PlanNode planNode) {
+    private TSStatus fireTriggerAndInsert(ConsensusGroupId groupId, PlanNode planNode)
+        throws ConsensusException {
       long triggerCostTime = 0;
-      ConsensusWriteResponse writeResponse;
+      TSStatus status;
       long startTime = System.nanoTime();
       // fire Trigger before the insertion
       TriggerFireResult result = triggerFireVisitor.process(planNode, TriggerEvent.BEFORE_INSERT);
       triggerCostTime += (System.nanoTime() - startTime);
       if (result.equals(TriggerFireResult.TERMINATION)) {
-        TSStatus triggerError = new TSStatus(TSStatusCode.TRIGGER_FIRE_ERROR.getStatusCode());
-        triggerError.setMessage(
-            "Failed to complete the insertion because trigger error before the insertion.");
-        writeResponse = ConsensusWriteResponse.newBuilder().setStatus(triggerError).build();
+        status =
+            RpcUtils.getStatus(
+                TSStatusCode.TRIGGER_FIRE_ERROR.getStatusCode(),
+                "Failed to complete the insertion because trigger error before the insertion.");
       } else {
-        boolean hasFailedTriggerBeforeInsertion =
-            result.equals(TriggerFireResult.FAILED_NO_TERMINATION);
-
         long startWriteTime = System.nanoTime();
-        writeResponse = dataRegionConsensus.write(groupId, planNode);
+        status = dataRegionConsensus.write(groupId, planNode);
         PERFORMANCE_OVERVIEW_METRICS.recordScheduleStorageCost(System.nanoTime() - startWriteTime);
 
         // fire Trigger after the insertion
-        if (writeResponse.isSuccessful()) {
-          startTime = System.nanoTime();
-          result = triggerFireVisitor.process(planNode, TriggerEvent.AFTER_INSERT);
-          if (hasFailedTriggerBeforeInsertion || !result.equals(TriggerFireResult.SUCCESS)) {
-            TSStatus triggerError = new TSStatus(TSStatusCode.TRIGGER_FIRE_ERROR.getStatusCode());
-            triggerError.setMessage(
-                "Meet trigger error before/after the insertion, the insertion itself is completed.");
-            writeResponse = ConsensusWriteResponse.newBuilder().setStatus(triggerError).build();
-          }
-          triggerCostTime += (System.nanoTime() - startTime);
+        startTime = System.nanoTime();
+        boolean hasFailedTriggerBeforeInsertion =
+            result.equals(TriggerFireResult.FAILED_NO_TERMINATION);
+        result = triggerFireVisitor.process(planNode, TriggerEvent.AFTER_INSERT);
+        if (hasFailedTriggerBeforeInsertion || !result.equals(TriggerFireResult.SUCCESS)) {
+          status =
+              RpcUtils.getStatus(
+                  TSStatusCode.TRIGGER_FIRE_ERROR.getStatusCode(),
+                  "Meet trigger error before/after the insertion, the insertion itself is completed.");
         }
+        triggerCostTime += (System.nanoTime() - startTime);
       }
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleTriggerCost(triggerCostTime);
-      return writeResponse;
+      return status;
     }
 
     @Override

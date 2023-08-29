@@ -47,6 +47,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -135,12 +136,9 @@ public class TriggerManager {
   public TGetTriggerTableResp getTriggerTable(boolean onlyStateful) {
     try {
       return ((TriggerTableResp)
-              configManager
-                  .getConsensusManager()
-                  .read(new GetTriggerTablePlan(onlyStateful))
-                  .getDataset())
+              configManager.getConsensusManager().read(new GetTriggerTablePlan(onlyStateful)))
           .convertToThriftResponse();
-    } catch (IOException e) {
+    } catch (IOException | ConsensusException e) {
       LOGGER.error("Fail to get TriggerTable", e);
       return new TGetTriggerTableResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
@@ -150,21 +148,29 @@ public class TriggerManager {
   }
 
   public TGetLocationForTriggerResp getLocationOfStatefulTrigger(String triggerName) {
-    return ((TriggerLocationResp)
-            configManager
-                .getConsensusManager()
-                .read(new GetTriggerLocationPlan(triggerName))
-                .getDataset())
-        .convertToThriftResponse();
+    try {
+      return ((TriggerLocationResp)
+              configManager.getConsensusManager().read(new GetTriggerLocationPlan(triggerName)))
+          .convertToThriftResponse();
+    } catch (ConsensusException e) {
+      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      return new TGetLocationForTriggerResp(
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+              .setMessage(e.getMessage()));
+    }
   }
 
   public TGetJarInListResp getTriggerJar(TGetJarInListReq req) {
-    return ((JarResp)
-            configManager
-                .getConsensusManager()
-                .read(new GetTriggerJarPlan(req.getJarNameList()))
-                .getDataset())
-        .convertToThriftResponse();
+    try {
+      return ((JarResp)
+              configManager.getConsensusManager().read(new GetTriggerJarPlan(req.getJarNameList())))
+          .convertToThriftResponse();
+    } catch (ConsensusException e) {
+      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return new JarResp(res, Collections.emptyList()).convertToThriftResponse();
+    }
   }
 
   /**
@@ -191,16 +197,13 @@ public class TriggerManager {
       NodeManager nodeManager = configManager.getNodeManager();
 
       transferResult =
-          consensusManager
-              .write(new UpdateTriggersOnTransferNodesPlan(newUnknownDataNodeList))
-              .getStatus();
+          consensusManager.write(new UpdateTriggersOnTransferNodesPlan(newUnknownDataNodeList));
       if (transferResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return transferResult;
       }
 
       List<String> transferringTriggers =
-          ((TransferringTriggersResp)
-                  consensusManager.read(new GetTransferringTriggersPlan()).getDataset())
+          ((TransferringTriggersResp) consensusManager.read(new GetTransferringTriggersPlan()))
               .getTransferringTriggers();
 
       for (String trigger : transferringTriggers) {
@@ -215,13 +218,16 @@ public class TriggerManager {
         }
 
         transferResult =
-            consensusManager
-                .write(new UpdateTriggerLocationPlan(trigger, newDataNodeLocation))
-                .getStatus();
+            consensusManager.write(new UpdateTriggerLocationPlan(trigger, newDataNodeLocation));
         if (transferResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           return transferResult;
         }
       }
+    } catch (ConsensusException e) {
+      LOGGER.warn("Failed in the read/write API executing the consensus layer due to: ", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      return res;
     } finally {
       triggerInfo.releaseTriggerTableLock();
     }

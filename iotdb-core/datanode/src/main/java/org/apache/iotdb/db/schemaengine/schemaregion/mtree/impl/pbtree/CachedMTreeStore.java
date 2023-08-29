@@ -457,6 +457,7 @@ public class CachedMTreeStore implements IMTreeStore<ICachedMNode> {
   public void clear() {
     lock.writeLock();
     try {
+      CacheMemoryManager.getInstance().clearCachedMTreeStore(this);
       regionStatistics.setCacheManager(null);
       cacheManager.clear(root);
       root = null;

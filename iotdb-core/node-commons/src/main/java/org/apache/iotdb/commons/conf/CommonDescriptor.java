@@ -326,12 +326,12 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_connector_pending_queue_size",
                 String.valueOf(config.getPipeConnectorPendingQueueSize()))));
-
-    config.setPipeAsyncConnectorRPCThriftCompressionEnabled(
+    config.setPipeConnectorRPCThriftCompressionEnabled(
         Boolean.parseBoolean(
             properties.getProperty(
-                "pipe_async_connector_rpc_thrift_compression_enable",
-                String.valueOf(config.isPipeAsyncConnectorRPCThriftCompressionEnabled()))));
+                "pipe_connector_rpc_thrift_compression_enabled",
+                String.valueOf(config.isPipeConnectorRPCThriftCompressionEnabled()))));
+
     config.setPipeAsyncConnectorSelectorNumber(
         Integer.parseInt(
             properties.getProperty(
@@ -377,6 +377,17 @@ public class CommonDescriptor {
         Boolean.parseBoolean(
             properties.getProperty(
                 "pipe_auto_restart_enabled", String.valueOf(config.getPipeAutoRestartEnabled()))));
+
+    config.setPipeAirGapReceiverEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_air_gap_receiver_enabled",
+                Boolean.toString(config.getPipeAirGapReceiverEnabled()))));
+    config.setPipeAirGapReceiverPort(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_air_gap_receiver_port",
+                Integer.toString(config.getPipeAirGapReceiverPort()))));
   }
 
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
