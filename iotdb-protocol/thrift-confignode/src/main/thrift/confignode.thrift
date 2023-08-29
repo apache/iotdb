@@ -376,11 +376,6 @@ struct TConfigNodeRegisterResp {
   2: optional i32 configNodeId
 }
 
-struct TConfigNodeRestartReq {
-  1: required string clusterName
-  2: required common.TConfigNodeLocation configNodeLocation
-}
-
 struct TAddConsensusGroupReq {
   1: required list<common.TConfigNodeLocation> configNodeList
 }
@@ -1025,15 +1020,6 @@ service IConfigNodeRPCService {
 
   /** The ConfigNode-leader will notify the Non-Seed-ConfigNode that the registration success */
   common.TSStatus notifyRegisterSuccess()
-
-  /**
-   * Restart an existed ConfigNode
-   *
-   * @return SUCCESS_STATUS if ConfigNode restart request is accepted
-   *         REJECT_NODE_START if the configuration chek of the ConfigNode to be restarted fails,
-   *                           and a detailed error message will be returned.
-   */
-  common.TSStatus restartConfigNode(TConfigNodeRestartReq req)
 
   /**
    * Remove the specific ConfigNode from the cluster
