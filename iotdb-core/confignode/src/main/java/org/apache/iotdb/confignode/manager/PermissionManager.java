@@ -31,7 +31,6 @@ import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -68,7 +67,7 @@ public class PermissionManager {
         tsStatus = getConsensusManager().write(authorPlan);
       } else {
         List<TDataNodeConfiguration> allDataNodes =
-                configManager.getNodeManager().getRegisteredDataNodes();
+            configManager.getNodeManager().getRegisteredDataNodes();
         tsStatus = configManager.getProcedureManager().OperateAuthPlan(authorPlan, allDataNodes);
       }
       return tsStatus;

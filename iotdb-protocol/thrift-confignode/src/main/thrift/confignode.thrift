@@ -312,18 +312,24 @@ struct TAuthorizerResp {
 struct TUserResp {
   1: required string username
   2: required string password
-  3: required list<string> privilegeList
+  3: required list<TPathPrivilege> privilegeList
   4: required set<i32> sysPriSet
   5: required set<i32> sysPriSetGrantOpt
-  5: required list<string> roleList
-  6: required bool isOpenIdUser
+  6: required list<string> roleList
+  7: required bool isOpenIdUser
 }
 
 struct TRoleResp {
   1: required string roleName
-  2: required list<string> privilegeList
+  2: required list<TPathPrivilege> privilegeList
   3: required set<i32> sysPriSet
   4: required set<i32> sysPriSetGrantOpt
+}
+
+struct TPathPrivilege {
+  1: required string path
+  2: required set<i32> priSet
+  3: required set<i32> priGrantOpt;
 }
 
 struct TPermissionInfoResp {

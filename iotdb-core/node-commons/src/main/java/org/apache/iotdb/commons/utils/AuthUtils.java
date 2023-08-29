@@ -361,7 +361,8 @@ public class AuthUtils {
   public static TPermissionInfoResp generateEmptyPermissionInfoResp() {
     TPermissionInfoResp permissionInfoResp = new TPermissionInfoResp();
     permissionInfoResp.setUserInfo(
-        new TUserResp("", "", new ArrayList<>(), new HashSet<>(), new ArrayList<>(), false));
+        new TUserResp(
+            "", "", new ArrayList<>(), new HashSet<>(), new HashSet<>(), new ArrayList<>(), false));
     Map<String, TRoleResp> roleInfo = new HashMap<>();
     roleInfo.put("", new TRoleResp("", new ArrayList<>(), new HashSet<>(), new HashSet<>()));
     permissionInfoResp.setRoleInfo(roleInfo);

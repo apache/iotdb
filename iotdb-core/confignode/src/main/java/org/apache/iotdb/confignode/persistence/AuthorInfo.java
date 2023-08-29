@@ -41,6 +41,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
@@ -471,15 +472,17 @@ public class AuthorInfo implements SnapshotProcessor {
     TPermissionInfoResp result = new TPermissionInfoResp();
     TUserResp tUserResp = new TUserResp();
     Map<String, TRoleResp> tRoleRespMap = new HashMap();
-    List<String> userPrivilegeList = new ArrayList<>();
+    List<TPathPrivilege> userPrivilegeList = new ArrayList<>();
 
     // User permission information
     User user = authorizer.getUser(username);
     if (user.getPathPrivilegeList() != null) {
       for (PathPrivilege pathPrivilege : user.getPathPrivilegeList()) {
-        userPrivilegeList.add(pathPrivilege.getPath().getFullPath());
-        String privilegeIdList = pathPrivilege.getPrivileges().toString();
-        userPrivilegeList.add(privilegeIdList.substring(1, privilegeIdList.length() - 1));
+        TPathPrivilege path = new TPathPrivilege();
+        path.setPath(pathPrivilege.getPath().getFullPath());
+        path.setPriSet(pathPrivilege.getPrivileges());
+        path.setPriGrantOpt(pathPrivilege.getGrantOpt());
+        userPrivilegeList.add(path);
       }
       tUserResp.setUsername(user.getName());
       tUserResp.setPassword(user.getPassword());
@@ -492,14 +495,18 @@ public class AuthorInfo implements SnapshotProcessor {
     if (user.getRoleList() != null) {
       for (String roleName : user.getRoleList()) {
         Role role = authorizer.getRole(roleName);
-        List<String> rolePrivilegeList = new ArrayList<>();
+        List<TPathPrivilege> rolePrivilegeList = new ArrayList<>();
         for (PathPrivilege pathPrivilege : role.getPathPrivilegeList()) {
-          rolePrivilegeList.add(pathPrivilege.getPath().getFullPath());
-          String privilegeIdList = pathPrivilege.getPrivileges().toString();
-          rolePrivilegeList.add(privilegeIdList.substring(1, privilegeIdList.length() - 1));
+          TPathPrivilege path = new TPathPrivilege();
+          path.setPath(pathPrivilege.getPath().getFullPath());
+          path.setPriSet(pathPrivilege.getPrivileges());
+          path.setPriGrantOpt(pathPrivilege.getGrantOpt());
+          rolePrivilegeList.add(path);
         }
         tRoleRespMap.put(
-            roleName, new TRoleResp(roleName, rolePrivilegeList, role.getSysPrivilege(), role.getSysPriGrantOpt()));
+            roleName,
+            new TRoleResp(
+                roleName, rolePrivilegeList, role.getSysPrivilege(), role.getSysPriGrantOpt()));
       }
     }
     result.setUserInfo(tUserResp);

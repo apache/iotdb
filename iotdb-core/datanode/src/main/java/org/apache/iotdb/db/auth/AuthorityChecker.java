@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -104,7 +105,8 @@ public class AuthorityChecker {
     return false;
   }
 
-  public static PathPatternTree getAuthorizedPathTree(String username, int permission) {
+  public static PathPatternTree getAuthorizedPathTree(String username, int permission)
+      throws AuthException {
     PathPatternTree pathTree = authorityFetcher.getAuthizedPatternTree(username, permission);
     return pathTree;
   }

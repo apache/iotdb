@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
@@ -47,13 +46,11 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 
 import static org.apache.iotdb.confignode.procedure.state.AuthOperationProcedureState.DATANODE_AUTHCACHE_INVALIDING;
-import static org.apache.iotdb.confignode.procedure.state.cq.CreateCQState.INACTIVE;
 
 public class AuthOperationProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, AuthOperationProcedureState> {
@@ -66,7 +63,7 @@ public class AuthOperationProcedure
 
   private int timeoutMS;
   private static final String CONSENSUS_WRITE_ERROR =
-          "Failed in the write API executing the consensus layer due to: ";
+      "Failed in the write API executing the consensus layer due to: ";
 
   private static final int RETRY_THRESHOLD = 2;
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
@@ -128,14 +125,11 @@ public class AuthOperationProcedure
         LOGGER.error("Fail when execute {} ", plan);
         setFailure(new ProcedureException(e.getMessage()));
       } else {
-        LOGGER.error(
-            "Retrievable error trying to execute plan {}, state: {}", plan, state,
-            e);
+        LOGGER.error("Retrievable error trying to execute plan {}, state: {}", plan, state, e);
         if (getCycles() > RETRY_THRESHOLD) {
           setFailure(
               new ProcedureException(
-                  String.format(
-                      "Fail to execute plan [%s] at state[%s]", plan.toString(),state )));
+                  String.format("Fail to execute plan [%s] at state[%s]", plan.toString(), state)));
         }
       }
     }
@@ -145,10 +139,8 @@ public class AuthOperationProcedure
   private void writePlan(ConfigNodeProcedureEnv env) {
     TSStatus res;
     try {
-      res = env.getConfigManager()
-              .getConsensusManager()
-              .write(this.plan);
-    }  catch (ConsensusException e) {
+      res = env.getConfigManager().getConsensusManager().write(this.plan);
+    } catch (ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());

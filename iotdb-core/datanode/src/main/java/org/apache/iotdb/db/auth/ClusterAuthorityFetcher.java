@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
+import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
@@ -57,10 +58,8 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 
 public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   private static final Logger logger = LoggerFactory.getLogger(ClusterAuthorityFetcher.class);
@@ -139,14 +138,14 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
               }
             }
           } else {
-            fetchAuthizedPatternTree(username, permission);
+            return fetchAuthizedPatternTree(username, permission);
           }
         }
       }
       patternTree.constructTree();
       return patternTree;
     } else {
-      fetchAuthizedPatternTree(username, permission);
+      return fetchAuthizedPatternTree(username, permission);
     }
   }
 
@@ -360,24 +359,26 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   /** Cache user. */
   public User cacheUser(TPermissionInfoResp tPermissionInfoResp) {
     User user = new User();
-    List<String> privilegeList = tPermissionInfoResp.getUserInfo().getPrivilegeList();
+    List<TPathPrivilege> privilegeList = tPermissionInfoResp.getUserInfo().getPrivilegeList();
     List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
     user.setName(tPermissionInfoResp.getUserInfo().getUsername());
     user.setPassword(tPermissionInfoResp.getUserInfo().getPassword());
-    for (int i = 0; i < privilegeList.size(); i += 2) {
-      String path = privilegeList.get(i);
-      String privilege = privilegeList.get(i + 1);
+    for (int i = 0; i < privilegeList.size(); i++) {
       try {
-        pathPrivilegeList.add(toPathPrivilege(new PartialPath(path), privilege));
+        PathPrivilege pathPri = new PathPrivilege();
+        pathPri.setPath(new PartialPath(privilegeList.get(i).getPath()));
+        pathPri.setPrivileges(privilegeList.get(i).getPriSet());
+        pathPri.setGrantOpt(privilegeList.get(i).getPriGrantOpt());
+        pathPrivilegeList.add(pathPri);
       } catch (MetadataException e) {
-        logger.error("Failed to parse path {}.", path, e);
+        logger.error("Failed to parse path {}.", privilegeList.get(i).getPath(), e);
       }
     }
     user.setOpenIdUser(tPermissionInfoResp.getUserInfo().isIsOpenIdUser());
     user.setPrivilegeList(pathPrivilegeList);
     user.setRoleList(tPermissionInfoResp.getUserInfo().getRoleList());
     user.setSysPrivilegeSet(tPermissionInfoResp.getUserInfo().getSysPriSet());
-    user.setSysPriGrantOpt(tPermissionInfoResp.getUserInfo().sysPriSetGrantOpt());
+    user.setSysPriGrantOpt(tPermissionInfoResp.getUserInfo().getSysPriSetGrantOpt());
     for (String roleName : tPermissionInfoResp.getRoleInfo().keySet()) {
       iAuthorCache.putRoleCache(roleName, cacheRole(roleName, tPermissionInfoResp));
     }
@@ -387,46 +388,25 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   /** Cache role. */
   public Role cacheRole(String roleName, TPermissionInfoResp tPermissionInfoResp) {
     Role role = new Role();
-    List<String> privilegeList = tPermissionInfoResp.getRoleInfo().get(roleName).getPrivilegeList();
+    List<TPathPrivilege> privilegeList =
+        tPermissionInfoResp.getRoleInfo().get(roleName).getPrivilegeList();
     List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
     role.setName(tPermissionInfoResp.getRoleInfo().get(roleName).getRoleName());
-    for (int i = 0; i < privilegeList.size(); i += 2) {
-      String path = privilegeList.get(i);
-      String privilege = privilegeList.get(i + 1);
+    for (int i = 0; i < privilegeList.size(); i++) {
       try {
-        pathPrivilegeList.add(toPathPrivilege(new PartialPath(path), privilege));
+        PathPrivilege pathPri = new PathPrivilege();
+        pathPri.setPath(new PartialPath(privilegeList.get(i).getPath()));
+        pathPri.setPrivileges(privilegeList.get(i).getPriSet());
+        pathPri.setGrantOpt(privilegeList.get(i).getPriGrantOpt());
+        pathPrivilegeList.add(pathPri);
       } catch (MetadataException e) {
-        logger.error("Failed to parse path {}.", path, e);
+        logger.error("Failed to parse path {}.", privilegeList.get(i).getPath(), e);
       }
     }
-    role.setSysPriGrantOpt(tPermissionInfoResp.getRoleInfo().get(roleName).sysPriSetGrantOpt());
+    role.setSysPriGrantOpt(tPermissionInfoResp.getRoleInfo().get(roleName).getSysPriSetGrantOpt());
     role.setSysPrivilegeSet(tPermissionInfoResp.getRoleInfo().get(roleName).getSysPriSet());
     role.setPrivilegeList(pathPrivilegeList);
     return role;
-  }
-
-  /**
-   * Convert user privilege information obtained from confignode to {@link PathPrivilege}.
-   *
-   * @param path permission path
-   * @param privilege privilegeIds
-   * @return
-   */
-  private PathPrivilege toPathPrivilege(PartialPath path, String privilege) {
-    PathPrivilege pathPrivilege = new PathPrivilege();
-    pathPrivilege.setPath(path);
-    Set<Integer> privilegeIds = new HashSet<>();
-    pathPrivilege.setPrivileges(privilegeIds);
-    if (privilege.trim().length() != 0) {
-      String[] privileges = privilege.replace(" ", "").split(",");
-      for (String p : privileges) {
-        if (p.contains("with_grant_option")) {
-          pathPrivilege.getGrantOpt().add(Integer.parseInt(p));
-        }
-        privilegeIds.add(Integer.parseInt(p));
-      }
-    }
-    return pathPrivilege;
   }
 
   private TAuthorizerReq statementToAuthorizerReq(AuthorStatement authorStatement)
