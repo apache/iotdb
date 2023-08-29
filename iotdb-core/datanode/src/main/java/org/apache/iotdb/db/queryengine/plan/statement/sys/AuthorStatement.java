@@ -221,30 +221,26 @@ public class AuthorStatement extends Statement implements IConfigStatement {
         }
         return AuthorityChecker.getTSStatus(
             AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER.ordinal()),
-            new PrivilegeType[] {PrivilegeType.MANAGE_USER});
+            PrivilegeType.MANAGE_USER);
       case UPDATE_USER:
         if (AuthorityChecker.SUPER_USER.equals(userName) || this.userName.equals(userName)) {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         }
         return AuthorityChecker.getTSStatus(
             AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER.ordinal()),
-            new PrivilegeType[] {PrivilegeType.MANAGE_USER});
+            PrivilegeType.MANAGE_USER);
       case LIST_USER:
       case DROP_USER:
-      case GRANT_USER:
-      case REVOKE_USER:
       case LIST_USER_PRIVILEGE:
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         }
         return AuthorityChecker.getTSStatus(
             AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_USER.ordinal()),
-            new PrivilegeType[] {PrivilegeType.MANAGE_USER});
+            PrivilegeType.MANAGE_USER);
 
       case CREATE_ROLE:
       case DROP_ROLE:
-      case GRANT_ROLE:
-      case REVOKE_ROLE:
       case LIST_ROLE:
       case LIST_ROLE_PRIVILEGE:
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
@@ -252,23 +248,22 @@ public class AuthorStatement extends Statement implements IConfigStatement {
         }
         return AuthorityChecker.getTSStatus(
             AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_ROLE.ordinal()),
-            new PrivilegeType[] {PrivilegeType.MANAGE_ROLE});
-      case GRANT_USER_ROLE:
-      case REVOKE_USER_ROLE:
+            PrivilegeType.MANAGE_ROLE);
+
+      case GRANT_USER:
+      case REVOKE_USER:
+      case GRANT_ROLE:
+      case REVOKE_ROLE:
         if (AuthorityChecker.SUPER_USER.equals(userName)) {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         }
-        TSStatus status1 =
-            AuthorityChecker.getTSStatus(
-                AuthorityChecker.checkSystemPermission(
-                    userName, PrivilegeType.MANAGE_USER.ordinal()),
-                new PrivilegeType[] {PrivilegeType.MANAGE_USER});
-        if (status1.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          return AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_ROLE.ordinal()),
-              new PrivilegeType[] {PrivilegeType.MANAGE_ROLE});
-        }
-        return status1;
+        return AuthorityChecker.getTSStatus(
+            AuthorityChecker.checkGrantOption(userName, privilegeList, nodeNameList, authorType),
+            "Has no permission to " + authorType);
+      case GRANT_USER_ROLE:
+      case REVOKE_USER_ROLE:
+        // TODO ?
+        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       default:
         throw new IllegalArgumentException("Unknown authorType: " + authorType);
     }

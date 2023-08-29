@@ -195,13 +195,16 @@ class AutoCreateSchemaExecutor {
       List<String> measurementList,
       List<TSDataType> dataTypeList,
       MPPQueryContext context) {
-    TSStatus status =
-        AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(
-                context.getSession().getUserName(), PrivilegeType.EXTEND_TEMPLATE.ordinal()),
-            new PrivilegeType[] {PrivilegeType.EXTEND_TEMPLATE});
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+    String userName = context.getSession().getUserName();
+    if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+      TSStatus status =
+          AuthorityChecker.getTSStatus(
+              AuthorityChecker.checkSystemPermission(
+                  userName, PrivilegeType.EXTEND_TEMPLATE.ordinal()),
+              PrivilegeType.EXTEND_TEMPLATE);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+      }
     }
     internalExtendTemplate(templateName, measurementList, dataTypeList, null, null, context);
   }
@@ -209,13 +212,16 @@ class AutoCreateSchemaExecutor {
   // Used for insert records or tablets
   void autoExtendTemplate(
       Map<String, TemplateExtendInfo> templateExtendInfoMap, MPPQueryContext context) {
-    TSStatus status =
-        AuthorityChecker.getTSStatus(
-            AuthorityChecker.checkSystemPermission(
-                context.getSession().getUserName(), PrivilegeType.EXTEND_TEMPLATE.ordinal()),
-            new PrivilegeType[] {PrivilegeType.EXTEND_TEMPLATE});
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+    String userName = context.getSession().getUserName();
+    if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+      TSStatus status =
+          AuthorityChecker.getTSStatus(
+              AuthorityChecker.checkSystemPermission(
+                  userName, PrivilegeType.EXTEND_TEMPLATE.ordinal()),
+              PrivilegeType.EXTEND_TEMPLATE);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+      }
     }
     TemplateExtendInfo templateExtendInfo;
     for (Map.Entry<String, TemplateExtendInfo> entry : templateExtendInfoMap.entrySet()) {

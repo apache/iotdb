@@ -55,6 +55,6 @@ public class ShowTriggersStatement extends ShowStatement implements IConfigState
     }
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_TRIGGER.ordinal()),
-        new PrivilegeType[] {PrivilegeType.USE_TRIGGER});
+        PrivilegeType.USE_TRIGGER);
   }
 }

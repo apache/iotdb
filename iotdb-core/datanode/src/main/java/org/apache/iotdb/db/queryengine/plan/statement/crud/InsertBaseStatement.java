@@ -140,10 +140,12 @@ public abstract class InsertBaseStatement extends Statement {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
+    List<PartialPath> checkedPaths = getPaths();
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkFullPathListPermission(
-            userName, getPaths(), PrivilegeType.WRITE_DATA.ordinal()),
-        new PrivilegeType[] {PrivilegeType.WRITE_DATA});
+            userName, checkedPaths, PrivilegeType.WRITE_DATA.ordinal()),
+        checkedPaths,
+        PrivilegeType.WRITE_DATA);
   }
 
   public abstract ISchemaValidation getSchemaValidation();

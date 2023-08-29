@@ -80,9 +80,11 @@ public class SetTTLStatement extends Statement implements IConfigStatement {
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
+    List<PartialPath> checkedPaths = getPaths();
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkPatternPermission(
-            userName, getPaths(), PrivilegeType.WRITE_SCHEMA.ordinal()),
-        new PrivilegeType[] {PrivilegeType.WRITE_SCHEMA});
+            userName, checkedPaths, PrivilegeType.WRITE_SCHEMA.ordinal()),
+        checkedPaths,
+        PrivilegeType.WRITE_SCHEMA);
   }
 }

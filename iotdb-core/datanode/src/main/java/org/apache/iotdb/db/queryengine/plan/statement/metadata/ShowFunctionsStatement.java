@@ -55,6 +55,6 @@ public class ShowFunctionsStatement extends ShowStatement implements IConfigStat
     }
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_UDF.ordinal()),
-        new PrivilegeType[] {PrivilegeType.USE_UDF});
+        PrivilegeType.USE_UDF);
   }
 }

@@ -67,7 +67,7 @@ public class ShowPipesStatement extends ShowStatement implements IConfigStatemen
     }
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_PIPE.ordinal()),
-        new PrivilegeType[] {PrivilegeType.USE_PIPE});
+        PrivilegeType.USE_PIPE);
   }
 
   @Override

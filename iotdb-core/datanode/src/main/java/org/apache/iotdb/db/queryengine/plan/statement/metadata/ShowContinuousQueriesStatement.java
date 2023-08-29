@@ -61,6 +61,6 @@ public class ShowContinuousQueriesStatement extends ShowStatement implements ICo
     }
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_CQ.ordinal()),
-        new PrivilegeType[] {PrivilegeType.USE_CQ});
+        PrivilegeType.USE_CQ);
   }
 }

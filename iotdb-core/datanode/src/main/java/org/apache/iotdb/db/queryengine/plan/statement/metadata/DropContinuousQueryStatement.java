@@ -69,6 +69,6 @@ public class DropContinuousQueryStatement extends Statement implements IConfigSt
     }
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_CQ.ordinal()),
-        new PrivilegeType[] {PrivilegeType.USE_CQ});
+        PrivilegeType.USE_CQ);
   }
 }

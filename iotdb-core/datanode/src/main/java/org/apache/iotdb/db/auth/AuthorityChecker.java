@@ -26,17 +26,23 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.List;
 
 public class AuthorityChecker {
 
   public static final String SUPER_USER = CommonDescriptor.getInstance().getConfig().getAdminName();
+
+  private static final String NO_PERMISSION_PROMOTION =
+      "No permissions for this operation, please add privilege ";
+
   private static final Logger logger = LoggerFactory.getLogger(AuthorityChecker.class);
 
   private static final AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
@@ -64,43 +70,73 @@ public class AuthorityChecker {
         : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode()).setMessage(errMsg);
   }
 
-  public static TSStatus getTSStatus(boolean hasPermission, PrivilegeType[] neededPrivileges) {
-    StringBuilder prompt =
-        new StringBuilder("No permissions for this operation, please add privilege ");
-    prompt.append(neededPrivileges[0]);
-    for (int i = 1; i < neededPrivileges.length; i++) {
-      prompt.append(" and ");
-      prompt.append(neededPrivileges[i]);
-    }
+  public static TSStatus getTSStatus(boolean hasPermission, PrivilegeType neededPrivilege) {
     return hasPermission
         ? new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode()).setMessage(prompt.toString());
+        : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+            .setMessage(NO_PERMISSION_PROMOTION + neededPrivilege);
+  }
+
+  public static TSStatus getTSStatus(
+      boolean hasPermission, PartialPath path, PrivilegeType neededPrivilege) {
+    return hasPermission
+        ? new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        : new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode())
+            .setMessage(NO_PERMISSION_PROMOTION + neededPrivilege + " on " + path);
+  }
+
+  public static TSStatus getTSStatus(
+      List<Integer> noPermissionIndexList,
+      List<PartialPath> pathList,
+      PrivilegeType neededPrivilege) {
+    if (noPermissionIndexList.isEmpty()) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+    StringBuilder prompt = new StringBuilder(NO_PERMISSION_PROMOTION);
+    prompt.append(neededPrivilege);
+    prompt.append(" on [");
+    prompt.append(pathList.get(noPermissionIndexList.get(0)));
+    for (int i = 1; i < noPermissionIndexList.size(); i++) {
+      prompt.append(", ");
+      prompt.append(pathList.get(noPermissionIndexList.get(i)));
+    }
+    prompt.append(" ]");
+    return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode()).setMessage(prompt.toString());
   }
 
   public static boolean checkFullPathPermission(
-      String username, PartialPath fullPath, int permission) {
+      String userName, PartialPath fullPath, int permission) {
     // TODO
     return true;
   }
 
-  public static boolean checkFullPathListPermission(
-      String username, List<PartialPath> fullPaths, int permission) {
-    // TODO
-    return true;
+  public static List<Integer> checkFullPathListPermission(
+      String userName, List<PartialPath> fullPaths, int permission) {
+    // TODO return the index list of no permission fullPaths
+    return Collections.emptyList();
   }
 
-  public static boolean checkPatternPermission(
-      String username, List<PartialPath> pathPatterns, int permission) {
+  public static List<Integer> checkPatternPermission(
+      String userName, List<PartialPath> pathPatterns, int permission) {
     // TODO
-    return true;
+    return Collections.emptyList();
   }
 
-  public static PathPatternTree getAuthorizedPathTree(String username, int permission) {
+  public static PathPatternTree getAuthorizedPathTree(String userName, int permission) {
     // TODO
     return new PathPatternTree();
   }
 
-  public static boolean checkSystemPermission(String username, int permission) {
+  public static boolean checkSystemPermission(String userName, int permission) {
+    // TODO
+    return true;
+  }
+
+  public static boolean checkGrantOption(
+      String userName,
+      String[] privilegeList,
+      List<PartialPath> nodeNameList,
+      AuthorType authorType) {
     // TODO
     return true;
   }

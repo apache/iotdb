@@ -67,7 +67,7 @@ public class ShowQueriesStatement extends ShowStatement {
     }
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MAINTAIN.ordinal()),
-        new PrivilegeType[] {PrivilegeType.MAINTAIN});
+        PrivilegeType.MAINTAIN);
   }
 
   public void setWhereCondition(WhereCondition whereCondition) {

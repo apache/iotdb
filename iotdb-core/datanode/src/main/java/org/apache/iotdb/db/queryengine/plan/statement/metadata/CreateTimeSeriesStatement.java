@@ -73,7 +73,7 @@ public class CreateTimeSeriesStatement extends Statement {
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkFullPathPermission(
             userName, path, PrivilegeType.WRITE_SCHEMA.ordinal()),
-        new PrivilegeType[] {PrivilegeType.WRITE_SCHEMA});
+        PrivilegeType.WRITE_SCHEMA);
   }
 
   public PartialPath getPath() {

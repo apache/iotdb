@@ -41,7 +41,7 @@ public class ShowVariablesStatement extends ShowStatement implements IConfigStat
     }
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MAINTAIN.ordinal()),
-        new PrivilegeType[] {PrivilegeType.MAINTAIN});
+        PrivilegeType.MAINTAIN);
   }
 
   @Override

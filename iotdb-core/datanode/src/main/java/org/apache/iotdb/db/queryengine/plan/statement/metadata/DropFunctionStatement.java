@@ -69,6 +69,6 @@ public class DropFunctionStatement extends Statement implements IConfigStatement
     }
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_UDF.ordinal()),
-        new PrivilegeType[] {PrivilegeType.USE_UDF});
+        PrivilegeType.USE_UDF);
   }
 }

@@ -94,7 +94,7 @@ public class CreatePipeStatement extends Statement implements IConfigStatement {
     }
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_PIPE.ordinal()),
-        new PrivilegeType[] {PrivilegeType.USE_PIPE});
+        PrivilegeType.USE_PIPE);
   }
 
   @Override

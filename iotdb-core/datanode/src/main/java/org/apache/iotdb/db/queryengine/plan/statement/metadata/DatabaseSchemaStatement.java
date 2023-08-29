@@ -148,7 +148,7 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
     }
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MANAGE_DATABASE.ordinal()),
-        new PrivilegeType[] {PrivilegeType.MANAGE_DATABASE});
+        PrivilegeType.MANAGE_DATABASE);
   }
 
   @Override

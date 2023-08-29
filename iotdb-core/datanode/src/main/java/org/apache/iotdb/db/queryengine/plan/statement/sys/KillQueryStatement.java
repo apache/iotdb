@@ -63,7 +63,7 @@ public class KillQueryStatement extends Statement implements IConfigStatement {
     }
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkSystemPermission(userName, PrivilegeType.MAINTAIN.ordinal()),
-        new PrivilegeType[] {PrivilegeType.MAINTAIN});
+        PrivilegeType.MAINTAIN);
   }
 
   @Override

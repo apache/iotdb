@@ -82,12 +82,14 @@ public class CreateLogicalViewStatement extends Statement {
         AuthorityChecker.getTSStatus(
             AuthorityChecker.checkFullPathListPermission(
                 userName, getSourcePaths().fullPathList, PrivilegeType.READ_SCHEMA.ordinal()),
-            new PrivilegeType[] {PrivilegeType.READ_SCHEMA});
+            getSourcePaths().fullPathList,
+            PrivilegeType.READ_SCHEMA);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return AuthorityChecker.getTSStatus(
           AuthorityChecker.checkFullPathListPermission(
               userName, getTargetPathList(), PrivilegeType.WRITE_SCHEMA.ordinal()),
-          new PrivilegeType[] {PrivilegeType.WRITE_SCHEMA});
+          getTargetPathList(),
+          PrivilegeType.WRITE_SCHEMA);
     }
     return status;
   }

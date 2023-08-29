@@ -263,20 +263,23 @@ public class LoadTsfileAnalyzer {
         final TimeseriesMetadata timeseriesMetadata = pair.right;
 
         // check WRITE_DATA permission of timeseries
-        TSStatus status;
-        try {
-          status =
-              AuthorityChecker.getTSStatus(
-                  AuthorityChecker.checkFullPathPermission(
-                      context.getSession().getUserName(),
-                      new PartialPath(device, timeseriesMetadata.getMeasurementId()),
-                      PrivilegeType.WRITE_DATA.ordinal()),
-                  new PrivilegeType[] {PrivilegeType.WRITE_DATA});
-        } catch (IllegalPathException e) {
-          throw new RuntimeException(e);
-        }
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+        String userName = context.getSession().getUserName();
+        if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+          TSStatus status;
+          try {
+            status =
+                AuthorityChecker.getTSStatus(
+                    AuthorityChecker.checkFullPathPermission(
+                        userName,
+                        new PartialPath(device, timeseriesMetadata.getMeasurementId()),
+                        PrivilegeType.WRITE_DATA.ordinal()),
+                    PrivilegeType.WRITE_DATA);
+          } catch (IllegalPathException e) {
+            throw new RuntimeException(e);
+          }
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+          }
         }
 
         final TSDataType dataType = timeseriesMetadata.getTsDataType();
@@ -393,17 +396,6 @@ public class LoadTsfileAnalyzer {
         System.arraycopy(devicePrefixNodes, 0, databasePrefixNodes, 0, databasePrefixNodesLength);
 
         databaseSet.add(new PartialPath(databasePrefixNodes));
-      }
-
-      TSStatus status =
-          AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkPatternPermission(
-                  context.getSession().getUserName(),
-                  new ArrayList<>(databaseSet),
-                  PrivilegeType.WRITE_DATA.ordinal()),
-              new PrivilegeType[] {PrivilegeType.WRITE_DATA});
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
       }
 
       databaseSet.removeAll(alreadySetDatabases);

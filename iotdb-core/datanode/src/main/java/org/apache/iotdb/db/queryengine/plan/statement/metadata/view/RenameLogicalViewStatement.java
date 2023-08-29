@@ -72,10 +72,12 @@ public class RenameLogicalViewStatement extends Statement implements IConfigStat
     if (AuthorityChecker.SUPER_USER.equals(userName)) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     }
+    List<PartialPath> checkedPaths = ImmutableList.of(oldName, newName);
     return AuthorityChecker.getTSStatus(
         AuthorityChecker.checkFullPathListPermission(
-            userName, ImmutableList.of(oldName, newName), PrivilegeType.WRITE_SCHEMA.ordinal()),
-        new PrivilegeType[] {PrivilegeType.WRITE_SCHEMA});
+            userName, checkedPaths, PrivilegeType.WRITE_SCHEMA.ordinal()),
+        checkedPaths,
+        PrivilegeType.WRITE_SCHEMA);
   }
 
   @Override
