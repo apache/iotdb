@@ -41,7 +41,6 @@ import org.junit.After;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.rocksdb.Env;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -102,7 +101,7 @@ public class IoTDBClusterRestartIT {
       EnvFactory.getEnv().startDataNode(i);
     }
 
-    ((AbstractEnv) EnvFactory.getEnv()).testWorking();
+    ((AbstractEnv) EnvFactory.getEnv()).testWorkingAllFine();
   }
 
   @Test
@@ -176,7 +175,7 @@ public class IoTDBClusterRestartIT {
         }
       }
       logger.info("Restarted");
-      ((AbstractEnv) EnvFactory.getEnv()).testWorking();
+      ((AbstractEnv) EnvFactory.getEnv()).testWorkingSpecial();
       logger.info("Working without ConfigNode-" + notStart);
     }
   }
