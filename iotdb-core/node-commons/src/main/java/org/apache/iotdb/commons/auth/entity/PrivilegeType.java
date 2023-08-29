@@ -38,13 +38,6 @@ public enum PrivilegeType {
   MAINTAIN,
   AUDIT;
 
-  private enum scope {
-    NULL,
-    SYSTEMPRIVILEGE,
-    PATHPRIVILEGE,
-    ROLEPRIVILEGE;
-  }
-
   private static final int PRIVILEGE_COUNT = values().length;
 
   private final boolean isPathRelevant;
@@ -57,40 +50,27 @@ public enum PrivilegeType {
     this.isPathRelevant = isPathRelevant;
   }
 
-  scope getAuthScope() {
-    switch (this) {
-      case READ_DATA:
-      case READ_SCHEMA:
-      case WRITE_DATA:
-      case WRITE_SCHEMA:
-        return scope.PATHPRIVILEGE;
-      case MANAGE_USER:
-      case MANAGE_ROLE:
-      case USE_TRIGGER:
-      case USE_UDF:
-      case USE_CQ:
-      case USE_PIPE:
-      case MANAGE_DATABASE:
-      case MAINTAIN:
-      case AUDIT:
-        return scope.SYSTEMPRIVILEGE;
-      default:
-        return scope.NULL;
-    }
-  }
-
-  /**
-   * Some privileges need a seriesPath as parameter, while others do not. This method returns which
-   * privileges need a seriesPath.
-   *
-   * @param type An integer that represents a privilege.
-   * @return Whether this privilege need a seriesPath or not.
-   */
-  public static boolean isPathRelevant(int type) {
-    return 0 <= type && type < PRIVILEGE_COUNT && values()[type].isPathRelevant;
-  }
-
   public boolean isPathRelevant() {
     return isPathRelevant;
+  }
+
+  public static int getSysPriCount() {
+    int size = 0;
+    for (PrivilegeType item : PrivilegeType.values()) {
+      if (!item.isPathRelevant()) {
+        size++;
+      }
+    }
+    return size;
+  }
+
+  public static int getPathPriCount() {
+    int size = 0;
+    for (PrivilegeType item : PrivilegeType.values()) {
+      if (item.isPathRelevant()) {
+        size++;
+      }
+    }
+    return size;
   }
 }

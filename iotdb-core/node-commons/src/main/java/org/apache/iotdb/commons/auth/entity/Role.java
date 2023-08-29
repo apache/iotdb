@@ -43,7 +43,7 @@ public class Role {
 
   private Set<Integer> sysPriGrantOpt;
 
-  public static final int sysPriSize = 10;
+  private static final int SYS_PRI_SIZE = PrivilegeType.getSysPriCount();
 
   public Role() {
     // empty constructor
@@ -183,26 +183,22 @@ public class Role {
     if (sysPriGrantOpt == null) {
       sysPriGrantOpt = new HashSet<>();
     }
-    for (int i = 0; i < sysPriSize; i++) {
-      if ((privilegeMask & (0b1 << i)) != 0) {
+    for (int i = 0; i < SYS_PRI_SIZE; i++) {
+      if ((privilegeMask & (1 << i)) != 0) {
         sysPrivilegeSet.add(posToSysPri(i));
       }
-      if ((privilegeMask & (0b1 << i + 16)) != 0) {
+      if ((privilegeMask & (1 << (i + 16))) != 0) {
         sysPriGrantOpt.add(posToSysPri(i));
       }
     }
   }
-  // ??
+
   public void addSysPrivilege(int privilegeId) {
-    if (!sysPrivilegeSet.contains(privilegeId)) {
-      sysPrivilegeSet.add(privilegeId);
-    }
+    sysPrivilegeSet.add(privilegeId);
   }
 
   public void removeSysPrivilege(int privilegeId) {
-    if (sysPrivilegeSet.contains(PrivilegeType.values()[privilegeId])) {
-      sysPrivilegeSet.remove(PrivilegeType.values()[privilegeId]);
-    }
+    sysPrivilegeSet.remove(privilegeId);
   }
 
   /** ------------ check func ---------------* */
@@ -223,7 +219,7 @@ public class Role {
   }
 
   public boolean checkSysPrivilege(int privilegeId) {
-    return sysPrivilegeSet.contains(PrivilegeType.values()[privilegeId]);
+    return sysPrivilegeSet.contains(privilegeId);
   }
 
   /** ----------- misc --------------------* */
@@ -237,7 +233,9 @@ public class Role {
     }
     Role role = (Role) o;
     return Objects.equals(name, role.name)
-        && Objects.equals(pathPrivilegeList, role.pathPrivilegeList);
+        && Objects.equals(pathPrivilegeList, role.pathPrivilegeList)
+        && Objects.equals(sysPrivilegeSet, role.sysPrivilegeSet)
+        && Objects.equals(sysPriGrantOpt, role.sysPriGrantOpt);
   }
 
   @Override

@@ -31,7 +31,6 @@ import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -68,9 +67,9 @@ public class PermissionManager {
           || authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateRole) {
         tsStatus = getConsensusManager().write(authorPlan);
       } else {
-        tsStatus = invalidateCache(authorPlan.getUserName(), authorPlan.getRoleName());
+        tsStatus = getConsensusManager().write(authorPlan);
         if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          tsStatus = getConsensusManager().write(authorPlan);
+          tsStatus = invalidateCache(authorPlan.getUserName(), authorPlan.getRoleName());
         }
       }
       return tsStatus;
@@ -125,23 +124,6 @@ public class PermissionManager {
   public TSStatus invalidateCache(String username, String roleName) {
     List<TDataNodeConfiguration> allDataNodes =
         configManager.getNodeManager().getRegisteredDataNodes();
-    TInvalidatePermissionCacheReq req = new TInvalidatePermissionCacheReq();
-    //    TSStatus status;
-    //    req.setUsername(username);
-    //    req.setRoleName(roleName);
-    //    List<TDataNodeConfiguration> dnsToInvalid = new ArrayList<>();
-    //    for (TDataNodeConfiguration dataNodeInfo : allDataNodes) {
-    //      status =
-    //          SyncDataNodeClientPool.getInstance()
-    //              .sendSyncRequestToDataNodeWithRetry(
-    //                  dataNodeInfo.getLocation().getInternalEndPoint(),
-    //                  req,
-    //                  DataNodeRequestType.INVALIDATE_PERMISSION_CACHE);
-    //      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-    //        dnsToInvalid.add(dataNodeInfo);
-    //      }
-    //    }
-
     // invalid procedure should run immediately.
     if (!allDataNodes.isEmpty()) {
       return configManager.getProcedureManager().invalidAuthCache(username, roleName, allDataNodes);

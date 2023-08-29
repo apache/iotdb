@@ -120,8 +120,9 @@ public class AuthorInfo implements SnapshotProcessor {
     TPermissionInfoResp result = new TPermissionInfoResp();
     try {
       if (paths.isEmpty()) {
-        if (authorizer.checkUserPrivileges(username, null, permission)) ;
-        status = true;
+        if (authorizer.checkUserPrivileges(username, null, permission)) {
+          status = true;
+        }
       }
       for (PartialPath path : paths) {
         if (!checkOnePath(username, path, permission)) {
@@ -167,6 +168,7 @@ public class AuthorInfo implements SnapshotProcessor {
     String password = authorPlan.getPassword();
     String newPassword = authorPlan.getNewPassword();
     Set<Integer> permissions = authorPlan.getPermissions();
+    boolean grantOpt = authorPlan.getGrantOpt();
     List<PartialPath> nodeNameList = authorPlan.getNodeNameList();
     try {
       switch (authorType) {
@@ -187,27 +189,27 @@ public class AuthorInfo implements SnapshotProcessor {
           break;
         case GrantRole:
           for (int i : permissions) {
+            if (nodeNameList == null) {
+              authorizer.grantPrivilegeToRole(roleName, null, i, grantOpt);
+              continue;
+            }
             for (PartialPath path : nodeNameList) {
-              // LSL  need to check if its grant opt.
-              authorizer.grantPrivilegeToRole(
-                  authorPlan.getCurrentUser(), roleName, path, i, false);
+              authorizer.grantPrivilegeToRole(roleName, path, i, grantOpt);
             }
           }
           break;
         case GrantUser:
           for (int i : permissions) {
             if (nodeNameList == null) {
-              authorizer.grantPrivilegeToUser(null, userName, null, i, false);
+              authorizer.grantPrivilegeToUser(userName, null, i, grantOpt);
               continue;
             }
             for (PartialPath path : nodeNameList) {
-              // need to check if its grant opt.
-              authorizer.grantPrivilegeToUser(null, userName, path, i, false);
+              authorizer.grantPrivilegeToUser(userName, path, i, grantOpt);
             }
           }
           break;
         case GrantRoleToUser:
-          // LSL need to check if current user has this role;
           authorizer.grantRoleToUser(roleName, userName);
           break;
         case RevokeUser:
@@ -298,7 +300,6 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
-  // LSL
   public PermissionInfoResp executeListRolePrivileges(AuthorPlan plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
     Map<String, List<String>> permissionInfo = new HashMap<>();
@@ -328,7 +329,6 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
-  // LSL
   public PermissionInfoResp executeListUserPrivileges(AuthorPlan plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
     Map<String, List<String>> permissionInfo = new HashMap<>();
@@ -345,11 +345,6 @@ public class AuthorInfo implements SnapshotProcessor {
       for (PrivilegeType privilegeType : PrivilegeType.values()) {
         userPrivilegesList.add(privilegeType.toString());
       }
-      userPrivilegesList.add("FLUSH");
-      userPrivilegesList.add("MERGE");
-      userPrivilegesList.add("CLEAR CACHE");
-      userPrivilegesList.add("ALTER SYSTEM");
-      userPrivilegesList.add("SCHEMA SNAPSHOT");
     } else {
       List<String> rolePrivileges = new ArrayList<>();
       Set<String> userPrivilegeSet = new HashSet<>();
@@ -433,8 +428,8 @@ public class AuthorInfo implements SnapshotProcessor {
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     try {
       pPtree.serialize(dataOutputStream);
-    } catch (Exception ignore) {
-
+    } catch (IOException e) {
+      throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
     }
     resp.setPathPatternTree(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
     resp.setPermissionInfo(getUserPermissionInfo(username));
@@ -477,7 +472,6 @@ public class AuthorInfo implements SnapshotProcessor {
 
     // User permission information
     User user = authorizer.getUser(username);
-    // LSL
     if (user.getPathPrivilegeList() != null) {
       for (PathPrivilege pathPrivilege : user.getPathPrivilegeList()) {
         userPrivilegeList.add(pathPrivilege.getPath().getFullPath());

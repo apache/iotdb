@@ -68,7 +68,6 @@ public abstract class BasicUserManager implements IUserManager {
    *
    * @throws AuthException if an exception is raised when interacting with the lower storage.
    */
-  // shall we really have a root user's profile in our storage?
   private void initAdmin() throws AuthException {
     User admin;
     try {
@@ -126,11 +125,8 @@ public abstract class BasicUserManager implements IUserManager {
       if (!userDirPath.exists()) {
         reset();
       }
-      accessor.saveUser(user);
       userMap.put(username, user);
       return true;
-    } catch (IOException e) {
-      throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
     } finally {
       lock.writeUnlock(username);
     }
@@ -221,14 +217,7 @@ public abstract class BasicUserManager implements IUserManager {
         throw new AuthException(
             TSStatusCode.USER_NOT_EXIST, String.format(NO_SUCH_USER_ERROR, username));
       }
-      String oldPassword = user.getPassword();
       user.setPassword(AuthUtils.encryptPassword(newPassword));
-      try {
-        accessor.saveUser(user);
-      } catch (IOException e) {
-        user.setPassword(oldPassword);
-        throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
-      }
       return true;
     } finally {
       lock.writeUnlock(username);
@@ -248,12 +237,6 @@ public abstract class BasicUserManager implements IUserManager {
         return false;
       }
       user.getRoleList().add(roleName);
-      try {
-        accessor.saveUser(user);
-      } catch (IOException e) {
-        user.getRoleList().remove(roleName);
-        throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
-      }
       return true;
     } finally {
       lock.writeUnlock(username);
@@ -273,12 +256,6 @@ public abstract class BasicUserManager implements IUserManager {
         return false;
       }
       user.getRoleList().remove(roleName);
-      try {
-        accessor.saveUser(user);
-      } catch (IOException e) {
-        user.getRoleList().add(roleName);
-        throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
-      }
       return true;
     } finally {
       lock.writeUnlock(username);
@@ -289,6 +266,9 @@ public abstract class BasicUserManager implements IUserManager {
   public void reset() throws AuthException {
     accessor.reset();
     userMap.clear();
+    for (String name : accessor.listAllUsers()) {
+      getUser(name);
+    }
     initAdmin();
   }
 
@@ -321,12 +301,6 @@ public abstract class BasicUserManager implements IUserManager {
       return;
     }
     user.setUseWaterMark(useWaterMark);
-    try {
-      accessor.saveUser(user);
-    } catch (IOException e) {
-      user.setUseWaterMark(oldFlag);
-      throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
-    }
   }
 
   @Override

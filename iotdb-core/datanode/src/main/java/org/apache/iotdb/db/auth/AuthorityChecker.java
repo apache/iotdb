@@ -20,248 +20,157 @@
 package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
-import org.apache.iotdb.commons.utils.AuthUtils;
-import org.apache.iotdb.db.protocol.session.IClientSession;
-import org.apache.iotdb.db.protocol.thrift.OperationType;
-import org.apache.iotdb.db.queryengine.plan.statement.Statement;
-import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
+import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
+import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
-import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.utils.Binary;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.google.common.util.concurrent.SettableFuture;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
-import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
-
+// Authority checker is SingleTon working at datanode.
+// It checks permission in local. DCL statement will send to confignode.
 public class AuthorityChecker {
 
   private static final String SUPER_USER =
       CommonDescriptor.getInstance().getConfig().getAdminName();
-  private static final Logger logger = LoggerFactory.getLogger(AuthorityChecker.class);
 
-  private static final AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
+  private static IAuthorityFetcher authorityFetcher;
+
+  private long heartBeatTimeStamp = 0;
+
+  private static final CommonConfig config = CommonDescriptor.getInstance().getConfig();
 
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
-  private AuthorityChecker() {
-    // Empty constructor
+  /** SingleTon. */
+  private static class AuthorityCheckerHolder {
+    private static final AuthorityChecker INSTANCE = new AuthorityChecker();
+
+    private AuthorityCheckerHolder() {
+      // Empty constructor
+    }
   }
 
-  /**
-   * Check permission(datanode to confignode).
-   *
-   * @param username username
-   * @param paths paths in List structure
-   * @return if permission-check is passed
-   */
-  public static boolean checkFullPathListPermission(
-      String username, List<PartialPath> paths, int permission) throws AuthException {
-    // this function will throw auth_exception for illegal permission;
-    AuthUtils.validatePrivilege(paths.get(0), permission);
+  public static AuthorityChecker getInstance() {
+    return AuthorityChecker.AuthorityCheckerHolder.INSTANCE;
+  }
 
+  public AuthorityChecker() {
+    authorityFetcher = new ClusterAuthorityFetcher(new BasicAuthorityCache());
+  }
+
+  // Authority checker will not check whether the paths or permission is legal.
+  public static boolean checkFullPathListPermission(
+      String username, List<PartialPath> paths, int permission) {
+    long startTime = System.nanoTime();
     if (SUPER_USER.equals(username)) {
       return true;
     }
-
-    TSStatus status = authorizerManager.checkFullPathPrivilegeList(username, paths, permission);
+    TSStatus status = authorityFetcher.checkUserPathPrivileges(username, paths, permission);
+    PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return true;
     }
-
     return false;
   }
 
   private static boolean checkFullPathPermission(
-      String username, PartialPath fullPath, int permission) throws AuthException {
-    try {
-      AuthUtils.validatePrivilege(fullPath, permission);
-      if (SUPER_USER.equals(username)) {
-        return true;
-      }
-      TSStatus status = authorizerManager.checkFullPathPrivilege(username, fullPath, permission);
-      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return true;
-      }
-    } catch (AuthException e) {
-      logger.error(
-          "Error occurs when checking the seriesPath {} for user {}", fullPath, username, e);
-      throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, e);
+      String username, PartialPath fullPath, int permission) {
+    long startTime = System.nanoTime();
+    if (SUPER_USER.equals(username)) {
+      return true;
+    }
+    List<PartialPath> path = new ArrayList<>();
+    path.add(fullPath);
+    TSStatus status = authorityFetcher.checkUserPathPrivileges(username, path, permission);
+    PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return true;
     }
     return false;
   }
 
-  public static PathPatternTree getAuthorizedPathTree(String username, int permission)
-      throws AuthException {
-    AuthUtils.validatePrivilege(permission);
-    PathPatternTree pathTree = authorizerManager.getAuthizedPattern(username, permission);
+  public static PathPatternTree getAuthorizedPathTree(String username, int permission) {
+    PathPatternTree pathTree = authorityFetcher.getAuthizedPatternTree(username, permission);
     return pathTree;
   }
 
-  public static boolean checkSystemPermission(String username, int permission)
-      throws AuthException {
-    try {
-      AuthUtils.validatePrivilege(null, permission);
-      if (SUPER_USER.equals(username)) {
-        return true;
-      }
-      TSStatus status = authorizerManager.checkUserSysPrivilege(username, permission);
-      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return true;
-      }
-    } catch (AuthException e) {
-      logger.error(
-          "Error occurs when checking the systemPri {} for user {}", permission, username, e);
-      throw new AuthException(TSStatusCode.ILLEGAL_PARAMETER, e);
-    }
-    return false;
-  }
-
-  /** Check whether specific Session has the authorization to given plan. */
-  public static TSStatus checkAuthority(Statement statement, IClientSession session) {
+  public static boolean checkSystemPermission(String username, int permission) {
     long startTime = System.nanoTime();
-    try {
-      if (!checkAuthorization(statement, session.getUsername())) {
-        StringBuilder prompt =
-            new StringBuilder("No permissions for this operation, please add privilege ");
-        int[] permissions = translateToPermissionId(statement.getType());
-        for (int i = 0; i < permissions.length; i++) {
-          if (i != 0) {
-            prompt.append(" or ");
-          }
-          prompt.append(PrivilegeType.values()[permissions[i]]);
-        }
-        return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION, prompt.toString());
-      }
-    } catch (AuthException e) {
-      logger.warn("Meets error while checking authorization.", e);
-      return RpcUtils.getStatus(e.getCode(), e.getMessage());
-    } catch (Exception e) {
-      return onQueryException(
-          e, OperationType.CHECK_AUTHORITY.getName(), TSStatusCode.EXECUTE_STATEMENT_ERROR);
-    } finally {
-      PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
-    }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-  }
-
-  /**
-   * Check whether specific user has the authorization to given plan.
-   *
-   * @throws AuthException if encountered authentication failure
-   * @return true if the authority permission has passed
-   */
-  public static boolean checkAuthorization(Statement statement, String username)
-      throws AuthException {
-    if (!statement.isAuthenticationRequired()) {
+    if (SUPER_USER.equals(username)) {
       return true;
     }
-    String targetUser = null;
-    if (statement instanceof AuthorStatement) {
-      targetUser = ((AuthorStatement) statement).getUserName();
+    TSStatus status = authorityFetcher.checkUserSysPrivileges(username, permission);
+    PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return true;
     }
     return false;
-    //    return AuthorityChecker.checkPermission(
-    //        username, statement.getPaths(), statement.getType(), targetUser);
   }
 
-  // here for grant option and alter password opeartion
-  private static int[] translateToPermissionId(StatementType type) {
-    switch (type) {
-      case SHOW_SCHEMA_TEMPLATE:
-      case SHOW_NODES_IN_SCHEMA_TEMPLATE:
-      case SHOW_PATH_SET_SCHEMA_TEMPLATE:
-      case SHOW_PATH_USING_SCHEMA_TEMPLATE:
-        return new int[] {
-          PrivilegeType.READ_SCHEMA.ordinal(), PrivilegeType.WRITE_SCHEMA.ordinal()
-        };
-      case STORAGE_GROUP_SCHEMA:
-      case DELETE_STORAGE_GROUP:
-        return new int[] {PrivilegeType.MANAGE_DATABASE.ordinal()};
-      case TTL:
-      case CREATE_TIMESERIES:
-      case CREATE_ALIGNED_TIMESERIES:
-      case CREATE_MULTI_TIMESERIES:
-      case DELETE_TIMESERIES:
-      case DROP_INDEX:
-      case ALTER_TIMESERIES:
-      case CREATE_TEMPLATE:
-      case DROP_TEMPLATE:
-      case SET_TEMPLATE:
-      case ACTIVATE_TEMPLATE:
-      case DEACTIVATE_TEMPLATE:
-      case UNSET_TEMPLATE:
-      case CREATE_LOGICAL_VIEW:
-      case ALTER_LOGICAL_VIEW:
-      case RENAME_LOGICAL_VIEW:
-      case DELETE_LOGICAL_VIEW:
-        return new int[] {PrivilegeType.WRITE_SCHEMA.ordinal()};
-      case SHOW:
-      case QUERY:
-      case GROUP_BY_TIME:
-      case QUERY_INDEX:
-      case AGGREGATION:
-      case UDAF:
-      case UDTF:
-      case LAST:
-      case FILL:
-      case GROUP_BY_FILL:
-      case SELECT_INTO:
-      case COUNT:
-      case CREATE_FUNCTION:
-      case DROP_FUNCTION:
-        return new int[] {PrivilegeType.READ_DATA.ordinal(), PrivilegeType.WRITE_DATA.ordinal()};
-      case INSERT:
-      case DELETE:
-      case LOAD_DATA:
-      case CREATE_INDEX:
-      case BATCH_INSERT:
-      case BATCH_INSERT_ONE_DEVICE:
-      case BATCH_INSERT_ROWS:
-      case MULTI_BATCH_INSERT:
-      case PIPE_ENRICHED_INSERT:
-        return new int[] {PrivilegeType.WRITE_DATA.ordinal()};
-      case CREATE_USER:
-      case DELETE_USER:
-      case LIST_USER:
-      case LIST_USER_ROLES:
-      case LIST_USER_PRIVILEGE:
-      case MODIFY_PASSWORD:
-        return new int[] {PrivilegeType.MANAGE_USER.ordinal()};
-      case CREATE_ROLE:
-      case DELETE_ROLE:
-      case LIST_ROLE:
-      case LIST_ROLE_USERS:
-      case LIST_ROLE_PRIVILEGE:
-        return new int[] {PrivilegeType.MANAGE_ROLE.ordinal()};
-      case CREATE_TRIGGER:
-      case DROP_TRIGGER:
-        return new int[] {PrivilegeType.USE_TRIGGER.ordinal()};
-      case CREATE_CONTINUOUS_QUERY:
-      case DROP_CONTINUOUS_QUERY:
-      case SHOW_CONTINUOUS_QUERIES:
-        return new int[] {PrivilegeType.USE_CQ.ordinal()};
-      case CREATE_PIPEPLUGIN:
-      case DROP_PIPEPLUGIN:
-      case SHOW_PIPEPLUGINS:
-      case CREATE_PIPE:
-      case START_PIPE:
-      case STOP_PIPE:
-      case DROP_PIPE:
-      case SHOW_PIPES:
-        return new int[] {PrivilegeType.USE_PIPE.ordinal()};
-      default:
-        logger.error("Unrecognizable operator type ({}) for AuthorityChecker.", type);
-        return new int[] {-1};
+  public boolean invalidateCache(String username, String roleName) {
+    return authorityFetcher.getAuthorCache().invalidateCache(username, roleName);
+  }
+
+  public SettableFuture<ConfigTaskResult> queryPermission(AuthorStatement authorStatement) {
+    return authorityFetcher.queryPermission(authorStatement);
+  }
+
+  public SettableFuture<ConfigTaskResult> operatePermission(AuthorStatement authorStatement) {
+    return authorityFetcher.operatePermission(authorStatement);
+  }
+
+  public void refreshToken() {
+    long currnetTime = System.currentTimeMillis();
+    if (heartBeatTimeStamp == 0) {
+      heartBeatTimeStamp = currnetTime;
+      return;
     }
+    if (currnetTime - heartBeatTimeStamp > config.getDatanodeTokenTimeoutMS()) {
+      authorityFetcher.setCacheOutDate();
+    }
+  }
+
+  public void buildTSBlock(
+      Map<String, List<String>> authorizerInfo, SettableFuture<ConfigTaskResult> future) {
+    List<TSDataType> types = new ArrayList<>();
+    for (int i = 0; i < authorizerInfo.size(); i++) {
+      types.add(TSDataType.TEXT);
+    }
+    TsBlockBuilder builder = new TsBlockBuilder(types);
+    List<ColumnHeader> headerList = new ArrayList<>();
+
+    for (String header : authorizerInfo.keySet()) {
+      headerList.add(new ColumnHeader(header, TSDataType.TEXT));
+    }
+    // The Time column will be ignored by the setting of ColumnHeader.
+    // So we can put a meaningless value here
+    for (String value : authorizerInfo.get(headerList.get(0).getColumnName())) {
+      builder.getTimeColumnBuilder().writeLong(0L);
+      builder.getColumnBuilder(0).writeBinary(new Binary(value));
+      builder.declarePosition();
+    }
+    for (int i = 1; i < headerList.size(); i++) {
+      for (String value : authorizerInfo.get(headerList.get(i).getColumnName())) {
+        builder.getColumnBuilder(i).writeBinary(new Binary(value));
+      }
+    }
+
+    DatasetHeader datasetHeader = new DatasetHeader(headerList, true);
+    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }

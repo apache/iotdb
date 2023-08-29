@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
-import org.apache.iotdb.confignode.manager.PermissionManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.StateMachineProcedure;
@@ -55,8 +54,6 @@ public class InvalidAuthCacheProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, InvalidAuthCacheState> {
   private static final Logger LOGGER = LoggerFactory.getLogger(InvalidAuthCacheProcedure.class);
 
-  private PermissionManager permissionManager;
-
   private String user;
   private String role;
 
@@ -79,8 +76,7 @@ public class InvalidAuthCacheProcedure
     this.role = role;
     this.dataNodesToInvalid = new ArrayList<>();
     for (TDataNodeConfiguration item : alldns) {
-      this.dataNodesToInvalid.add(
-          new Pair<TDataNodeConfiguration, Long>(item, System.currentTimeMillis()));
+      this.dataNodesToInvalid.add(new Pair<>(item, System.currentTimeMillis()));
     }
     invalidedDNs = new HashSet<>();
     this.timeoutMS = commonConfig.getDatanodeTokenTimeoutMS();
@@ -94,7 +90,7 @@ public class InvalidAuthCacheProcedure
     try {
       switch (state) {
         case INIT:
-          LOGGER.info("Start to invalid auth cache for " + "user: %s, role %s", user, role);
+          LOGGER.info("Start to invalid auth cache for user: {}, role {}", user, role);
           // shall we need to check if the user/role has been deleted?
           if (dataNodesToInvalid.isEmpty()) {
             setNextState(InvalidAuthCacheState.DATANODE_AUTHCACHE_INVALID_DONE);
@@ -135,7 +131,7 @@ public class InvalidAuthCacheProcedure
           }
           break;
         case DATANODE_AUTHCACHE_INVALID_DONE:
-          LOGGER.info("finish invalid auth cache for user:%s, role %s", user, role);
+          LOGGER.info("finish invalid auth cache for user:{}, role {}", user, role);
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {
@@ -144,8 +140,10 @@ public class InvalidAuthCacheProcedure
         setFailure(new ProcedureException(e.getMessage()));
       } else {
         LOGGER.error(
-            "Retrievable error trying to invalid auth cache :[user : %s, role : %s] in datanode",
-            user, role, e);
+            "Retrievable error trying to invalid auth cache :[user : {}, role : {}] in datanode",
+            user,
+            role,
+            e);
         if (getCycles() > RETRY_THRESHOLD) {
           setFailure(
               new ProcedureException(
@@ -164,9 +162,7 @@ public class InvalidAuthCacheProcedure
   }
 
   @Override
-  protected void rollbackState(ConfigNodeProcedureEnv env, InvalidAuthCacheState state) {
-    // do nothing;
-  }
+  protected void rollbackState(ConfigNodeProcedureEnv env, InvalidAuthCacheState state) {}
 
   @Override
   protected InvalidAuthCacheState getState(int stateId) {

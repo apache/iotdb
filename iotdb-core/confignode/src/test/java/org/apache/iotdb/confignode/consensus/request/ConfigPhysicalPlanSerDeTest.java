@@ -549,6 +549,7 @@ public class ConfigPhysicalPlanSerDeTest {
             "passwd",
             "",
             new HashSet<>(),
+            false,
             new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);

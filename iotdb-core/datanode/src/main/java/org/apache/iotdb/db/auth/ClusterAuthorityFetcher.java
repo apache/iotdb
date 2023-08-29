@@ -56,6 +56,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -120,41 +121,37 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   @Override
   public PathPatternTree getAuthizedPatternTree(String username, int permission) {
     boolean originFetch = false;
+    PathPatternTree patternTree = new PathPatternTree();
     User user = iAuthorCache.getUserCache(username);
     if (user != null) {
-      if (!user.getRoleList().isEmpty()) {
-        for (String role : user.getRoleList()) {
-          if (iAuthorCache.getRoleCache(role) == null) {
-            originFetch = true;
-          }
-        }
-      }
-    } else {
-      originFetch = true;
-    }
-    if (!originFetch) {
-      PathPatternTree patternTree = new PathPatternTree();
       for (PathPrivilege path : user.getPathPrivilegeList()) {
         if (path.getPrivileges().contains(permission)) {
           patternTree.appendPathPattern(path.getPath());
         }
       }
-      for (String role : user.getRoleList()) {
-        Role cachedRole = iAuthorCache.getRoleCache(role);
-        for (PathPrivilege path : cachedRole.getPathPrivilegeList()) {
-          if (path.getPrivileges().contains(permission)) {
-            patternTree.appendPathPattern(path.getPath());
+      if (!user.getRoleList().isEmpty()) {
+        for (String roleName : user.getRoleList()) {
+          Role role = iAuthorCache.getRoleCache(roleName);
+          if (role != null) {
+            for (PathPrivilege path : role.getPathPrivilegeList()) {
+              if (path.getPrivileges().contains(permission)) {
+                patternTree.appendPathPattern(path.getPath());
+              }
+            }
+          } else {
+            fetchAuthizedPatternTree(username, permission);
           }
         }
       }
       patternTree.constructTree();
       return patternTree;
     } else {
-      return fetchAuthizedPatternTree(username, permission);
+      fetchAuthizedPatternTree(username, permission);
     }
   }
 
-  public PathPatternTree fetchAuthizedPatternTree(String username, int permission) {
+  private PathPatternTree fetchAuthizedPatternTree(String username, int permission)
+      throws AuthException {
     TCheckUserPrivilegesReq req = new TCheckUserPrivilegesReq(username, null, permission);
     TAuthizedPatternTreeResp authizedPatternTree = new TAuthizedPatternTreeResp();
     try (ConfigNodeClient configNodeClient =
@@ -162,7 +159,6 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       authizedPatternTree = configNodeClient.fetchAuthizedPatternTree(req);
     } catch (ClientManagerException | TException e) {
       logger.error("Failed to connect to config node.");
-      authizedPatternTree = new TAuthizedPatternTreeResp();
       authizedPatternTree.setStatus(
           RpcUtils.getStatus(
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "Failed to connect to config node."));
@@ -171,10 +167,11 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       iAuthorCache.putUserCache(username, cacheUser(authizedPatternTree.getPermissionInfo()));
       PathPatternTree patternTree =
           PathPatternTree.deserialize(ByteBuffer.wrap(authizedPatternTree.getPathPatternTree()));
-      patternTree.constructTree();
       return patternTree;
+    } else {
+      throw new AuthException(
+          TSStatusCode.EXECUTE_STATEMENT_ERROR, authizedPatternTree.getStatus().getMessage());
     }
-    return null;
   }
 
   @Override
@@ -183,7 +180,6 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     User user = iAuthorCache.getUserCache(username);
     if (user != null) {
       if (!user.isOpenIdUser()) {
-        // check user first
         if (!user.checkSysPrivilege(permission)) {
           if (user.getRoleList().isEmpty()) {
             return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION);
@@ -261,7 +257,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
             new IoTDBException(
                 authorizerResp.getStatus().message, authorizerResp.getStatus().code));
       } else {
-        AuthorizerManager.getInstance().buildTSBlock(authorizerResp.getAuthorizerInfo(), future);
+        AuthorityChecker.getInstance().buildTSBlock(authorizerResp.getAuthorizerInfo(), future);
       }
     } catch (ClientManagerException | TException e) {
       logger.error("Failed to connect to config node.");
@@ -332,11 +328,11 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     }
   }
 
-  public TSStatus checkSysPriFromConfigNode(String username, int permission) {
-    return checkPathFromConfigNode(username, new ArrayList<>(), permission);
+  private TSStatus checkSysPriFromConfigNode(String username, int permission) {
+    return checkPathFromConfigNode(username, Collections.emptyList(), permission);
   }
 
-  public TSStatus checkPathFromConfigNode(
+  private TSStatus checkPathFromConfigNode(
       String username, List<PartialPath> allPath, int permission) {
     TCheckUserPrivilegesReq req =
         new TCheckUserPrivilegesReq(

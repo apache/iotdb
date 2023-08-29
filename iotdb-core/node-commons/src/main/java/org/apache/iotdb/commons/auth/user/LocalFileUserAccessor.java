@@ -61,6 +61,8 @@ public class LocalFileUserAccessor implements IUserAccessor {
   private static final String STRING_ENCODING = "utf-8";
   private static final String userSnapshotFileName = "system" + File.separator + "users";
 
+  private static final String ROLE_SUFFIX = "_role";
+
   private final String userDirPath;
   /**
    * Reused buffer for primitive types encoding/decoding, which aim to reduce memory fragments. Use
@@ -116,7 +118,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
 
       File roleOfUser =
           SystemFileFactory.INSTANCE.getFile(
-              userDirPath, File.separator + username + "_role" + IoTDBConstant.PROFILE_SUFFIX);
+              userDirPath, File.separator + username + ROLE_SUFFIX + IoTDBConstant.PROFILE_SUFFIX);
 
       if (!roleOfUser.isFile() || !roleOfUser.exists()) {
         // System may crush before a newer file is renamed.
@@ -130,15 +132,14 @@ public class LocalFileUserAccessor implements IUserAccessor {
                     + TEMP_SUFFIX);
         if (newRoleProfile.exists() && newRoleProfile.isFile()) {
           if (!newRoleProfile.renameTo(roleOfUser)) {
-            logger.error(" New role profile renaming not succeed.");
+            logger.warn(" New role profile renaming not succeed.");
           }
         }
       }
 
-      // need check: if we delete before and rename it , should we re get file?
       roleOfUser =
           SystemFileFactory.INSTANCE.getFile(
-              userDirPath, File.separator + username + "_role" + IoTDBConstant.PROFILE_SUFFIX);
+              userDirPath, File.separator + username + ROLE_SUFFIX + IoTDBConstant.PROFILE_SUFFIX);
 
       if (roleOfUser.exists()) {
         inputStream = new FileInputStream(roleOfUser);
@@ -201,9 +202,6 @@ public class LocalFileUserAccessor implements IUserAccessor {
               outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
         }
 
-        //        IOUtils.writeInt(outputStream, user.isUseWaterMark() ? 1 : 0,
-        // encodingBufferLocal);
-        //
         outputStream.flush();
       } catch (Exception e) {
         throw new IOException(e);
@@ -217,7 +215,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
             userDirPath
                 + File.separator
                 + user.getName()
-                + "_role"
+                + ROLE_SUFFIX
                 + IoTDBConstant.PROFILE_SUFFIX
                 + TEMP_SUFFIX);
     try (BufferedOutputStream roleOutputStream =
@@ -242,7 +240,11 @@ public class LocalFileUserAccessor implements IUserAccessor {
     IOUtils.replaceFile(userProfile, oldUserFile);
     File oldURoleFile =
         SystemFileFactory.INSTANCE.getFile(
-            userDirPath + File.separator + user.getName() + "_role" + IoTDBConstant.PROFILE_SUFFIX);
+            userDirPath
+                + File.separator
+                + user.getName()
+                + ROLE_SUFFIX
+                + IoTDBConstant.PROFILE_SUFFIX);
     IOUtils.replaceFile(roleProfile, oldURoleFile);
   }
 
@@ -261,8 +263,9 @@ public class LocalFileUserAccessor implements IUserAccessor {
     File backFile =
         SystemFileFactory.INSTANCE.getFile(
             userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
+    // The user may be not flush. So if not find the file, just return true;
     if (!userProfile.exists() && !backFile.exists()) {
-      return false;
+      return true;
     }
     if ((userProfile.exists() && !userProfile.delete())
         || (backFile.exists() && !backFile.delete())) {
@@ -277,16 +280,16 @@ public class LocalFileUserAccessor implements IUserAccessor {
   public boolean deleteURole(String username) throws IOException {
     File uRoleProfile =
         SystemFileFactory.INSTANCE.getFile(
-            userDirPath + File.separator + username + "_role" + IoTDBConstant.PROFILE_SUFFIX);
+            userDirPath + File.separator + username + ROLE_SUFFIX + IoTDBConstant.PROFILE_SUFFIX);
     File backProfile =
         SystemFileFactory.INSTANCE.getFile(
             userDirPath
                 + File.separator
                 + username
-                + "_role"
+                + ROLE_SUFFIX
                 + IoTDBConstant.PROFILE_SUFFIX
                 + TEMP_SUFFIX);
-    // This role dont have any role.
+    // This role don't have any role.
     if (!uRoleProfile.exists() && !backProfile.exists()) {
       return true;
     }

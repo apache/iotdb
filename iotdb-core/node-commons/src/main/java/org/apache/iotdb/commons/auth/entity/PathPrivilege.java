@@ -39,10 +39,10 @@ public class PathPrivilege {
   private static final Logger logger = LoggerFactory.getLogger(PathPrivilege.class);
 
   // privilege capacity: read_data, write_data, read_schema, write_schema;
-  private static final Integer priCap = 4;
+  private static final int PATH_PRI_SIZE = PrivilegeType.getPathPriCount();
   private Set<Integer> privileges;
 
-  // grantopt store the privileges that can be grant to others
+  // grantopt show whether the privileges can be grant to / revoke from others.
   // The privilege that can be grant to others must exist in privileges.
   // The set of grantopt must be a subset of privileges.
   private Set<Integer> grantOpts;
@@ -74,49 +74,35 @@ public class PathPrivilege {
     this.grantOpts = grantOpts;
   }
 
-  public boolean grantPrivilege(Integer privilege, boolean grantOpt) {
-    if (!basicCheck(privilege)) {
-      return false;
-    }
-    if (!privileges.contains(privilege)) {
-      privileges.add(privilege);
-    }
-    if (grantOpt && !grantOpts.contains(privilege)) {
+  public boolean grantPrivilege(int privilege, boolean grantOpt) {
+    privileges.add(privilege);
+    if (grantOpt) {
       grantOpts.add(privilege);
     }
     return true;
   }
 
-  public boolean revokePrivilege(Integer privilege) {
-    basicCheck(privilege);
+  public boolean revokePrivilege(int privilege) {
     if (!privileges.contains(privilege)) {
-      logger.warn(
-          "not find privilege %s on path %s",
-          PrivilegeType.values()[privilege].toString(), path.toString());
+      logger.warn("not find privilege{} on path {}", PrivilegeType.values()[privilege], path);
       return false;
     }
     privileges.remove(privilege);
-    if (grantOpts.contains(privilege)) {
-      grantOpts.remove(privilege);
-    }
+    // when we revoke privilege from path, remove its grant option
+    grantOpts.remove(privilege);
     return true;
   }
 
-  public boolean revokeGrantOpt(Integer privilege) {
-    if (!basicCheck(privilege)) {
-      return false;
-    }
+  public boolean revokeGrantOpt(int privilege) {
     if (!privileges.contains(privilege)) {
-      logger.warn(
-          "path %s dont have privilege %s",
-          path.toString(), PrivilegeType.values()[privilege].toString());
+      logger.warn("path {} dont have privilege {}", path, PrivilegeType.values()[privilege]);
       return false;
     }
     grantOpts.remove(privilege);
     return true;
   }
 
-  private Integer posToPri(int pos) {
+  private int posToPri(int pos) {
     switch (pos) {
       case 0:
         return PrivilegeType.READ_DATA.ordinal();
@@ -127,11 +113,11 @@ public class PathPrivilege {
       case 3:
         return PrivilegeType.WRITE_SCHEMA.ordinal();
       default:
-        return -1; // this should raise an error ?
+        return -1;
     }
   }
 
-  private Integer priToPos(PrivilegeType pri) {
+  private int priToPos(PrivilegeType pri) {
     switch (pri) {
       case READ_DATA:
         return 0;
@@ -146,26 +132,12 @@ public class PathPrivilege {
     }
   }
 
-  private boolean basicCheck(Integer privilege) {
-    if (!(privilege == PrivilegeType.READ_DATA.ordinal()
-        || privilege == PrivilegeType.WRITE_DATA.ordinal()
-        || privilege == PrivilegeType.READ_SCHEMA.ordinal()
-        || privilege == PrivilegeType.WRITE_SCHEMA.ordinal())) {
-      logger.warn(
-          String.format(
-              "Get an illegal privilege %s for path %s",
-              PrivilegeType.values()[privilege].toString(), path.toString()));
-      return false;
-    }
-    return true;
-  }
-
   public void setAllPrivileges(int privs) {
-    for (int i = 0; i < priCap; i++) {
-      if (((0x1 << i) & privs) != 0) {
+    for (int i = 0; i < PATH_PRI_SIZE; i++) {
+      if (((1 << i) & privs) != 0) {
         privileges.add(posToPri(i));
       }
-      if ((((0x1 << (i + 4) & privs) != 0))) {
+      if (((1 << (i + 16) & privs) != 0)) {
         grantOpts.add(posToPri(i));
       }
     }
@@ -222,7 +194,6 @@ public class PathPrivilege {
     return builder.toString();
   }
 
-  // here is not good. LSL
   public ByteBuffer serialize() {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -237,7 +208,6 @@ public class PathPrivilege {
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
 
-  // here is not good. LSL
   public void deserialize(ByteBuffer buffer) {
     privileges = new HashSet<>();
     SerializeUtils.deserializeIntSet(privileges, buffer);

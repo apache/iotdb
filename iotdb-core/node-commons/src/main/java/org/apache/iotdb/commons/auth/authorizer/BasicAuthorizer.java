@@ -139,23 +139,18 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public void grantPrivilegeToUser(
-      String currentName, String username, PartialPath path, int privilegeId, boolean grantOpt)
-      throws AuthException {
+      String username, PartialPath path, int privilegeId, boolean grantOpt) throws AuthException {
     if (isAdmin(username)) {
       throw new AuthException(
           TSStatusCode.NO_PERMISSION,
           "Invalid operation, administrator already has all privileges");
     }
-    // currentName equals null mean followers apply author plan.
-    if (currentName == null
-        || (isAdmin(currentName) || checkUserPrivilegeGrantOpt(currentName, path, privilegeId))) {
-      if (!userManager.grantPrivilegeToUser(username, path, privilegeId, grantOpt)) {
-        throw new AuthException(
-            TSStatusCode.ALREADY_HAS_PRIVILEGE,
-            String.format(
-                "User %s already has %s on %s",
-                username, PrivilegeType.values()[privilegeId], (path != null ? path : "system")));
-      }
+    if (!userManager.grantPrivilegeToUser(username, path, privilegeId, grantOpt)) {
+      throw new AuthException(
+          TSStatusCode.ALREADY_HAS_PRIVILEGE,
+          String.format(
+              "User %s already has %s on %s",
+              username, PrivilegeType.values()[privilegeId], (path != null ? path : "system")));
     }
   }
 
@@ -207,23 +202,14 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     }
   }
 
-  // When role/user A grant privilege to B,
-  // we have to make sure that A have the privilege and grant option.
   @Override
   public void grantPrivilegeToRole(
-      String currentName, String roleName, PartialPath path, int privilegeId, boolean grantOpt)
-      throws AuthException {
-
-    if (currentName == null
-        || isAdmin(currentName)
-        || checkUserPrivilegeGrantOpt(currentName, path, privilegeId)) {
-      if (!roleManager.grantPrivilegeToRole(roleName, path, privilegeId, grantOpt)) {
-        throw new AuthException(
-            TSStatusCode.ALREADY_HAS_PRIVILEGE,
-            String.format(
-                "Role %s already has %s on %s",
-                roleName, PrivilegeType.values()[privilegeId], path));
-      }
+      String roleName, PartialPath path, int privilegeId, boolean grantOpt) throws AuthException {
+    if (!roleManager.grantPrivilegeToRole(roleName, path, privilegeId, grantOpt)) {
+      throw new AuthException(
+          TSStatusCode.ALREADY_HAS_PRIVILEGE,
+          String.format(
+              "Role %s already has %s on %s", roleName, PrivilegeType.values()[privilegeId], path));
     }
   }
 

@@ -30,8 +30,6 @@ public interface IRoleAccessor extends SnapshotProcessor {
   /**
    * Deserialize a role from lower storage.
    *
-   * @param rolename The name of the role to be deserialized.
-   * @return The role object or null if no such role.
    * @throws IOException if IOException is raised when interacting with lower storage.
    */
   Role loadRole(String rolename) throws IOException;
@@ -52,6 +50,13 @@ public interface IRoleAccessor extends SnapshotProcessor {
    * @throws IOException if IOException is raised when interacting with lower storage.
    */
   boolean deleteRole(String rolename) throws IOException;
+
+  /**
+   * Delete role's folders.
+   *
+   * @throws IOException
+   */
+  void cleanRoleFolder() throws IOException;
 
   /**
    * List all roles in this database.

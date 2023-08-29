@@ -251,4 +251,5 @@ keyWords
     | WITHOUT
     | WRITABLE
     | WRITE
+    | AUDIT
     ;

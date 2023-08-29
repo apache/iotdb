@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +34,9 @@ import java.util.Map.Entry;
 
 /**
  * This class reads roles from local files through LocalFileRoleAccessor and manages them in a hash
- * map.
+ * map. We save all roles in our memory. Before providing service, we should load all role
+ * information from filesystem. Access filesystem only happens at starting、taking snapshot、 loading
+ * snapshot.
  */
 public abstract class BasicRoleManager implements IRoleManager {
 
@@ -41,28 +44,24 @@ public abstract class BasicRoleManager implements IRoleManager {
   protected IRoleAccessor accessor;
   protected HashLock lock;
 
-  BasicRoleManager(LocalFileRoleAccessor accessor) {
+  BasicRoleManager(LocalFileRoleAccessor accessor) throws AuthException {
     this.roleMap = new HashMap<>();
     this.accessor = accessor;
     this.lock = new HashLock();
+    for (String roleName : accessor.listAllRoles()) {
+      try {
+        accessor.loadRole(roleName);
+      } catch (IOException e) {
+        throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
+      }
+    }
   }
 
   @Override
-  public Role getRole(String rolename) throws AuthException {
+  public Role getRole(String rolename) {
     lock.readLock(rolename);
     Role role = roleMap.get(rolename);
-    try {
-      if (role == null) {
-        role = accessor.loadRole(rolename);
-        if (role != null) {
-          roleMap.put(rolename, role);
-        }
-      }
-    } catch (IOException e) {
-      throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
-    } finally {
-      lock.readUnlock(rolename);
-    }
+    lock.readUnlock(rolename);
     return role;
   }
 
@@ -75,33 +74,17 @@ public abstract class BasicRoleManager implements IRoleManager {
       return false;
     }
     lock.writeLock(rolename);
-    try {
-      role = new Role(rolename);
-      accessor.saveRole(role);
-      roleMap.put(rolename, role);
-      return true;
-    } catch (IOException e) {
-      throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
-    } finally {
-      lock.writeUnlock(rolename);
-    }
+    role = new Role(rolename);
+    roleMap.put(rolename, role);
+    lock.writeUnlock(rolename);
+    return true;
   }
 
   @Override
-  public boolean deleteRole(String rolename) throws AuthException {
+  public void deleteRole(String rolename) throws AuthException {
     lock.writeLock(rolename);
-    try {
-      if (accessor.deleteRole(rolename)) {
-        roleMap.remove(rolename);
-        return true;
-      } else {
-        return false;
-      }
-    } catch (IOException e) {
-      throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
-    } finally {
-      lock.writeUnlock(rolename);
-    }
+    roleMap.remove(rolename);
+    lock.writeUnlock(rolename);
   }
 
   @Override
@@ -168,9 +151,12 @@ public abstract class BasicRoleManager implements IRoleManager {
 
   @Override
   public List<String> listAllRoles() {
-    // When we create role, we will create a real file.
-    // So when we list roles, just get them form files.
-    List<String> rtlist = accessor.listAllRoles();
+
+    List<String> rtlist = new ArrayList<>();
+    roleMap.forEach(
+        (name, item) -> {
+          rtlist.add(name);
+        });
     rtlist.sort(null);
     return rtlist;
   }

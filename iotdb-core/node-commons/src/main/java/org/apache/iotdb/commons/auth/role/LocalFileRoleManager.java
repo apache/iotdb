@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.auth.role;
 
+import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.Role;
 
 import org.apache.thrift.TException;
@@ -29,7 +30,7 @@ import java.util.Map;
 
 public class LocalFileRoleManager extends BasicRoleManager {
 
-  public LocalFileRoleManager(String roleDirPath) {
+  public LocalFileRoleManager(String roleDirPath) throws AuthException {
     super(new LocalFileRoleAccessor(roleDirPath));
   }
 

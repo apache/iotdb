@@ -90,12 +90,11 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
   }
 
   /**
-   * @param rolename The name of the role to be deserialized.
    * @return role struct
    * @throws IOException
    */
   @Override
-  public Role loadRole(String rolename) throws IOException {
+  public Role loadRoles() throws IOException {
     File roleProfile =
         SystemFileFactory.INSTANCE.getFile(
             roleDirPath + File.separator + rolename + IoTDBConstant.PROFILE_SUFFIX);

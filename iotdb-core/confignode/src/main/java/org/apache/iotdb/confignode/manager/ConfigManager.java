@@ -995,14 +995,15 @@ public class ConfigManager implements IManager {
       try {
         return permissionManager.fetchAuthizedPTree(username, permission);
       } catch (AuthException e) {
-        TAuthizedPatternTreeResp resp = AuthUtils.generateEmptyAuthizedPTree(username, permission);
+        TAuthizedPatternTreeResp resp = new TAuthizedPatternTreeResp();
         status
             .setCode(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
             .setMessage(e.getMessage());
+        resp.setStatus(status);
         return resp;
       }
     } else {
-      TAuthizedPatternTreeResp resp = AuthUtils.generateEmptyAuthizedPTree(username, permission);
+      TAuthizedPatternTreeResp resp = new TAuthizedPatternTreeResp();
       resp.setStatus(status);
       return resp;
     }
