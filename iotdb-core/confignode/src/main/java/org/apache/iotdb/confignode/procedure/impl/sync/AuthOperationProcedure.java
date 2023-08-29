@@ -183,7 +183,7 @@ public class AuthOperationProcedure
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.INVALID_DATANODE_AUTH_CACHE.getTypeCode());
+    stream.writeShort(ProcedureType.AUTH_OPERATE_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(user, stream);
     ReadWriteIOUtils.write(role, stream);

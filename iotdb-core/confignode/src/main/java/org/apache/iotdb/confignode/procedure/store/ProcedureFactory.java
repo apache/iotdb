@@ -44,9 +44,9 @@ import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.statemachine.RegionMigrateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.sync.AuthOperationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.CreatePipeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.DropPipeProcedure;
-import org.apache.iotdb.confignode.procedure.impl.sync.InvalidAuthCacheProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.StartPipeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.sync.StopPipeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.trigger.CreateTriggerProcedure;
@@ -166,8 +166,8 @@ public class ProcedureFactory implements IProcedureFactory {
       case DROP_MODEL_PROCEDURE:
         procedure = new DropModelProcedure();
         break;
-      case INVALID_DATANODE_AUTH_CACHE:
-        procedure = new InvalidAuthCacheProcedure();
+      case AUTH_OPERATE_PROCEDURE:
+        procedure = new AuthOperationProcedure();
         break;
       default:
         LOGGER.error("unknown Procedure type: " + typeCode);

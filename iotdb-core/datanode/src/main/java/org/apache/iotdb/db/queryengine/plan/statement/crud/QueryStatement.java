@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -155,8 +156,12 @@ public class QueryStatement extends AuthorityInformationStatement {
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    this.authorityScope =
-        AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_DATA.ordinal());
+    try {
+      this.authorityScope =
+          AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_DATA.ordinal());
+    } catch (AuthException e) {
+      return new TSStatus(e.getCode().getStatusCode());
+    }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

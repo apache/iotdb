@@ -91,18 +91,7 @@ public abstract class BasicUserManager implements IUserManager {
   public User getUser(String username) throws AuthException {
     lock.readLock(username);
     User user = userMap.get(username);
-    try {
-      if (user == null) {
-        user = accessor.loadUser(username);
-        if (user != null) {
-          userMap.put(username, user);
-        }
-      }
-    } catch (IOException e) {
-      throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
-    } finally {
-      lock.readUnlock(username);
-    }
+    lock.readUnlock(username);
     return user;
   }
 
@@ -267,7 +256,11 @@ public abstract class BasicUserManager implements IUserManager {
     accessor.reset();
     userMap.clear();
     for (String name : accessor.listAllUsers()) {
-      getUser(name);
+      try {
+        accessor.loadUser(name);
+      } catch (IOException e) {
+        throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
+      }
     }
     initAdmin();
   }

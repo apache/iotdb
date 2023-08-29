@@ -115,21 +115,30 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
+  // if All paths fail, return No permission;
+  // if some paths fail, return SUCCESS and failed index list
+  // if all path success, return success and empty index list
   public TPermissionInfoResp checkUserPrivileges(
       String username, List<PartialPath> paths, int permission) {
     boolean status = true;
     TPermissionInfoResp result = new TPermissionInfoResp();
+    List<Integer> failedList = new ArrayList<>();
     try {
       if (paths.isEmpty()) {
         if (authorizer.checkUserPrivileges(username, null, permission)) {
           status = true;
         }
       }
+      int pos = 0;
       for (PartialPath path : paths) {
         if (!checkOnePath(username, path, permission)) {
-          status = false;
-          break;
+          failedList.add(pos);
+          continue;
         }
+        pos++;
+      }
+      if (failedList.size() == paths.size()) {
+        status = false;
       }
     } catch (AuthException e) {
       status = false;
@@ -138,6 +147,7 @@ public class AuthorInfo implements SnapshotProcessor {
       try {
         // Bring this user's permission information back to the datanode for caching
         result = getUserPermissionInfo(username);
+        result.setFailPos(failedList);
         result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       } catch (AuthException e) {
         result.setStatus(RpcUtils.getStatus(e.getCode(), e.getMessage()));
@@ -437,6 +447,64 @@ public class AuthorInfo implements SnapshotProcessor {
     }
     resp.setPathPatternTree(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
     resp.setPermissionInfo(getUserPermissionInfo(username));
+    return resp;
+  }
+
+  public TPermissionInfoResp checkUserPrivilegeGrantOpt(
+      String username, PartialPath path, int permission) throws AuthException {
+    User user = authorizer.getUser(username);
+    TPermissionInfoResp resp = new TPermissionInfoResp();
+    boolean status = false;
+    if (user == null) {
+      resp.setStatus(RpcUtils.getStatus(TSStatusCode.USER_NOT_EXIST, "No such user : " + username));
+      return resp;
+    }
+    try {
+      if (path != null) {
+        if (user.checkPathPrivilegeGrantOpt(path, permission)) {
+          status = true;
+        }
+        if (!status) {
+          for (String roleName : user.getRoleList()) {
+            Role role = authorizer.getRole(roleName);
+            if (role.checkPathPrivilegeGrantOpt(path, permission)) {
+              status = true;
+              break;
+            }
+          }
+        }
+      } else {
+        if (user.getSysPrivilege().contains(permission)
+            && user.getSysPriGrantOpt().contains(permission)) {
+          status = true;
+        }
+        if (!status) {
+          for (String roleName : user.getRoleList()) {
+            Role role = authorizer.getRole(roleName);
+            if (role.getSysPrivilege().contains(permission)
+                && role.getSysPriGrantOpt().contains(permission)) {
+              status = true;
+              break;
+            }
+          }
+        }
+      }
+    } catch (AuthException e) {
+      status = false;
+    }
+    if (status) {
+      try {
+        // Bring this user's permission information back to the datanode for caching
+        resp = getUserPermissionInfo(username);
+        resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+      } catch (AuthException e) {
+        resp.setStatus(RpcUtils.getStatus(e.getCode(), e.getMessage()));
+      }
+    } else {
+      resp = AuthUtils.generateEmptyPermissionInfoResp();
+      resp.setStatus(RpcUtils.getStatus(TSStatusCode.NO_PERMISSION));
+    }
+
     return resp;
   }
 

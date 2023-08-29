@@ -113,4 +113,9 @@ public class PermissionManager {
       throws AuthException {
     return authorInfo.generateAuthizedPTree(username, permission);
   }
+
+  public TPermissionInfoResp checkUserPrivilegeGrantOpt(
+      String username, PartialPath path, int permission) throws AuthException {
+    return authorInfo.checkUserPrivilegeGrantOpt(username, path, permission);
+  }
 }

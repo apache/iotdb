@@ -532,6 +532,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
               req.getPassword(),
               req.getNewPassword(),
               req.getPermissions(),
+              req.isGrantOpt(),
               AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList())));
     } catch (AuthException e) {
       LOGGER.error(e.getMessage());
@@ -555,6 +556,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
               req.getPassword(),
               req.getNewPassword(),
               req.getPermissions(),
+              req.isGrantOpt(),
               AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList())));
     } catch (AuthException e) {
       LOGGER.error(e.getMessage());
@@ -580,6 +582,14 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TAuthizedPatternTreeResp fetchAuthizedPatternTree(TCheckUserPrivilegesReq req) {
     return configManager.fetchAuthizedPatternTree(req.getUsername(), req.getPermission());
+  }
+
+  @Override
+  public TPermissionInfoResp checkUserPrivilegeGrantOpt(TCheckUserPrivilegesReq req) {
+    List<PartialPath> partialPath =
+        AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getPaths()));
+    return configManager.checkUserPrivilegeGrantOpt(
+        req.getUsername(), partialPath.get(0), req.getPermission());
   }
 
   @Override

@@ -19,8 +19,7 @@ package org.apache.iotdb.db.protocol.rest.filter;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.db.auth.AuthorizerManager;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceConfig;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
@@ -42,7 +41,7 @@ import java.io.IOException;
 @Provider
 public class AuthorizationFilter implements ContainerRequestFilter {
 
-  private final IAuthorizer authorizer = AuthorizerManager.getInstance();
+  private final AuthorityChecker authorizer = AuthorityChecker.getInstance();
   private final UserCache userCache = UserCache.getInstance();
   IoTDBRestServiceConfig config = IoTDBRestServiceDescriptor.getInstance().getConfig();
 
@@ -116,7 +115,7 @@ public class AuthorizationFilter implements ContainerRequestFilter {
     User user = new User();
     user.setUsername(split[0]);
     user.setPassword(split[1]);
-    TSStatus tsStatus = ((AuthorizerManager) authorizer).checkUser(split[0], split[1]);
+    TSStatus tsStatus = authorizer.checkUser(split[0], split[1]);
     if (tsStatus.code != 200) {
       Response resp =
           Response.status(Status.UNAUTHORIZED)

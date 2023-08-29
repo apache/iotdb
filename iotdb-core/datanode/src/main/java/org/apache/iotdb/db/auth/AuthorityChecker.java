@@ -21,19 +21,19 @@ package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
-import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
-import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.plan.statement.AuthorType;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -41,10 +41,10 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.SettableFuture;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.ArrayList;
 
 // Authority checker is SingleTon working at datanode.
 // It checks permission in local. DCL statement will send to confignode.
@@ -81,8 +81,12 @@ public class AuthorityChecker {
     authorityFetcher = new ClusterAuthorityFetcher(new BasicAuthorityCache());
   }
 
-  public boolean invalidateCache(String username, String roleName) {
-    return authorityFetcher.getAuthorCache().invalidateCache(username, roleName);
+  public boolean invalidateCache(String userName, String roleName) {
+    return authorityFetcher.getAuthorCache().invalidateCache(userName, roleName);
+  }
+
+  public TSStatus checkUser(String userName, String password) {
+    return authorityFetcher.checkUser(userName, password);
   }
 
   public SettableFuture<ConfigTaskResult> queryPermission(AuthorStatement authorStatement) {
@@ -162,9 +166,9 @@ public class AuthorityChecker {
     }
     List<PartialPath> path = new ArrayList<>();
     path.add(fullPath);
-    TSStatus status = authorityFetcher.checkUserPathPrivileges(userName, path, permission);
+    List<Integer> failIndex = authorityFetcher.checkUserPathPrivileges(userName, path, permission);
     PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (failIndex.isEmpty()) {
       return true;
     }
     return false;
@@ -176,18 +180,35 @@ public class AuthorityChecker {
     if (SUPER_USER.equals(userName)) {
       Collections.emptyList();
     }
-    TSStatus status = authorityFetcher.checkUserPathPrivileges(userName, fullPaths, permission);
+    List<Integer> failIndex =
+        authorityFetcher.checkUserPathPrivileges(userName, fullPaths, permission);
     PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
-    return Collections.emptyList();
+    return failIndex;
   }
 
   public static List<Integer> checkPatternPermission(
       String userName, List<PartialPath> pathPatterns, int permission) {
-    // TODO
-    return Collections.emptyList();
+    long startTime = System.nanoTime();
+    if (SUPER_USER.equals(userName)) {
+      Collections.emptyList();
+    }
+    List<Integer> failIndex =
+        authorityFetcher.checkUserPathPrivileges(userName, pathPatterns, permission);
+    PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
+    return failIndex;
   }
 
-  public static PathPatternTree getAuthorizedPathTree(String userName, int permission) throws AuthException {
+  public static boolean checkUserPrivilegeGrantOpt(
+      String username, PartialPath path, int permission) {
+    long startTime = System.nanoTime();
+    if (SUPER_USER.equals(username)) {
+      return true;
+    }
+    return authorityFetcher.checkUserPrivilegeGrantOpt(username, path, permission);
+  }
+
+  public static PathPatternTree getAuthorizedPathTree(String userName, int permission)
+      throws AuthException {
     PathPatternTree pathTree = authorityFetcher.getAuthizedPatternTree(userName, permission);
     return pathTree;
   }

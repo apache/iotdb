@@ -302,7 +302,8 @@ struct TAuthorizerReq {
   4: required string password
   5: required string newPassword
   6: required set<i32> permissions
-  7: required binary nodeNameList
+  7: required bool grantOpt
+  8: required binary nodeNameList
 }
 
 struct TAuthorizerResp {
@@ -330,13 +331,14 @@ struct TRoleResp {
 struct TPathPrivilege {
   1: required string path
   2: required set<i32> priSet
-  3: required set<i32> priGrantOpt;
+  3: required set<i32> priGrantOpt
 }
 
 struct TPermissionInfoResp {
   1: required common.TSStatus status
-  2: optional TUserResp userInfo
-  3: optional map<string, TRoleResp> roleInfo
+  2: required list<i32> failPos
+  3: optional TUserResp userInfo
+  4: optional map<string, TRoleResp> roleInfo
 }
 
 struct TAuthizedPatternTreeResp {
@@ -356,6 +358,7 @@ struct TCheckUserPrivilegesReq {
   1: required string username
   2: required binary paths
   3: required i32 permission
+  4: optional bool grantOpt
 }
 
 // ConfigNode
@@ -1037,6 +1040,8 @@ service IConfigNodeRPCService {
   TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req)
 
   TAuthizedPatternTreeResp fetchAuthizedPatternTree(TCheckUserPrivilegesReq req)
+
+  TPermissionInfoResp checkUserPrivilegeGrantOpt(TCheckUserPrivilegesReq req)
 
 
   // ======================================================

@@ -34,9 +34,11 @@ public interface IAuthorityFetcher {
 
   TSStatus checkUser(String username, String password);
 
-  TSStatus checkUserPathPrivileges(String username, List<PartialPath> allPath, int permission);
+  List<Integer> checkUserPathPrivileges(String username, List<PartialPath> allPath, int permission);
 
   TSStatus checkUserSysPrivileges(String username, int permisssion);
+
+  boolean checkUserPrivilegeGrantOpt(String username, PartialPath path, int permission);
 
   PathPatternTree getAuthizedPatternTree(String username, int permission) throws AuthException;
 
