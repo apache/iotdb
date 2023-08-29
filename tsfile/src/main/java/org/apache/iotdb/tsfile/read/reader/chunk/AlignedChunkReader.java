@@ -30,10 +30,10 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.page.AlignedPageReader;
 
 import java.io.IOException;
@@ -272,7 +272,7 @@ public class AlignedChunkReader implements IChunkReader {
   }
 
   /** Read data from compressed page data. Uncompress the page and decode it to tsblock data. */
-  public TsBlock readPageData(
+  public IPointReader getPagePointReader(
       PageHeader timePageHeader,
       List<PageHeader> valuePageHeaders,
       ByteBuffer compressedTimePageData,
@@ -317,7 +317,7 @@ public class AlignedChunkReader implements IChunkReader {
             null);
     alignedPageReader.initTsBlockBuilder(valueTypes);
     alignedPageReader.setDeleteIntervalList(valueDeleteIntervalList);
-    return alignedPageReader.getAllSatisfiedData();
+    return alignedPageReader.getLazyPointReader();
   }
 
   private ByteBuffer uncompressPageData(
