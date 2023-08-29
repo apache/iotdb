@@ -687,10 +687,9 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
 //        max_index.add(i);
 //      }
 //    }
-//    raw_bit_width_timestamp = getBitWith(raw_timestamp_delta_max - timestamp_delta_min);
-//    raw_bit_width_value = getBitWith(raw_value_delta_max - value_delta_min);
+
 //
-// alpha == 1
+        // alpha == 1
         if (alpha == 0) {
             for (int j = 2; j < block_size; j++) {
 //                if (!max_index.contains(j) && !max_index.contains(alpha + 1)) continue;
@@ -2980,11 +2979,17 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
                         raw_length = new_length_2;
                     }
                 }
-
+                ArrayList<Integer> beta_list = new ArrayList<>();
                 if ((j_star_1 != -1 && i_star_1 != -1) || (j_star_2 != -1 && i_star_2 != -1)) {
                     alpha_list = getIStar(ts_block, block_size, raw_length, theta);
+                    int alpha_size = alpha_list.size();
+                    for (int alpha_i = alpha_size - 1; alpha_i >= 0 ;alpha_i --){
+                        if(beta_list.contains(alpha_list.get(alpha_i))){
+                            alpha_list.remove(alpha_i);
+                        }
+                    }
 
-                    ArrayList<Integer> beta_list = new ArrayList<>();
+                        beta_list = new ArrayList<>();
                     for (int alpha : alpha_list) {
                         beta_list.add(getBeta(ts_block, alpha, block_size, raw_length, theta, segment_size));
                     }
@@ -3481,7 +3486,7 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
             for (File f : tempList) {
                 System.out.println(f);
 //                for (int block_size_exp = 9; block_size_exp >= 9; block_size_exp--) {
-                for (int block_size_exp = 10; block_size_exp >= 4; block_size_exp--) {
+                for (int block_size_exp = 12; block_size_exp >= 4; block_size_exp--) {
                     int block_size = (int) Math.pow(2, block_size_exp);
                     System.out.println(block_size);
 
