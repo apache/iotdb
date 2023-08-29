@@ -49,8 +49,10 @@ public class PipeRealtimeEventFactory {
         resource);
   }
 
-  public static PipeRealtimeEvent createRealtimeEvent(String dataRegionId) {
-    return new PipeRealtimeEvent(new PipeHeartbeatEvent(dataRegionId), null, null, null);
+  public static PipeRealtimeEvent createRealtimeEvent(
+      String dataRegionId, boolean shouldPrintMessage) {
+    return new PipeRealtimeEvent(
+        new PipeHeartbeatEvent(dataRegionId, shouldPrintMessage), null, null, null);
   }
 
   private PipeRealtimeEventFactory() {

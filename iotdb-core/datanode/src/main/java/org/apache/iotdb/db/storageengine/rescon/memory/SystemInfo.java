@@ -242,6 +242,9 @@ public class SystemInfo {
   }
 
   public synchronized void resetCompactionMemoryCost(long compactionMemoryCost) {
+    if (!config.isEnableCompactionMemControl()) {
+      return;
+    }
     this.compactionMemoryCost.addAndGet(-compactionMemoryCost);
   }
 
