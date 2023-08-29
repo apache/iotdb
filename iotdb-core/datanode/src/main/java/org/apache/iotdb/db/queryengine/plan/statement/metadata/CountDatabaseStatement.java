@@ -20,26 +20,14 @@
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 
 public class CountDatabaseStatement extends CountStatement implements IConfigStatement {
 
-  private PathPatternTree authorityScope = SchemaConstant.ALL_MATCH_SCOPE;
-
   public CountDatabaseStatement(PartialPath partialPath) {
     super(partialPath);
-  }
-
-  public PathPatternTree getAuthorityScope() {
-    return authorityScope;
-  }
-
-  public void setAuthorityScope(PathPatternTree authorityScope) {
-    this.authorityScope = authorityScope;
   }
 
   @Override

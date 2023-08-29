@@ -100,7 +100,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       patternTree.constructTree();
       List<String> devicePaths = patternTree.getAllDevicePatterns();
       Map<String, List<String>> storageGroupToDeviceMap =
-          partitionCache.getStorageGroupToDevice(devicePaths, true, false);
+          partitionCache.getStorageGroupToDevice(devicePaths, true, false, null);
       SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
       if (null == schemaPartition) {
         TSchemaPartitionTableResp schemaPartitionTableResp =
@@ -125,13 +125,13 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   @Override
-  public SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree) {
+  public SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree, String userName) {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       patternTree.constructTree();
       List<String> devicePaths = patternTree.getAllDevicePatterns();
       Map<String, List<String>> storageGroupToDeviceMap =
-          partitionCache.getStorageGroupToDevice(devicePaths, true, true);
+          partitionCache.getStorageGroupToDevice(devicePaths, true, true, userName);
       SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
       if (null == schemaPartition) {
         TSchemaPartitionTableResp schemaPartitionTableResp =
@@ -251,10 +251,10 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   @Override
   public DataPartition getOrCreateDataPartition(
-      List<DataPartitionQueryParam> dataPartitionQueryParams) {
+      List<DataPartitionQueryParam> dataPartitionQueryParams, String userName) {
 
     Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParams =
-        splitDataPartitionQueryParam(dataPartitionQueryParams, true);
+        splitDataPartitionQueryParam(dataPartitionQueryParams, true, userName);
     DataPartition dataPartition = partitionCache.getDataPartition(splitDataPartitionQueryParams);
 
     if (null == dataPartition) {
@@ -293,13 +293,15 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   /** split data partition query param by database */
   private Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParam(
-      List<DataPartitionQueryParam> dataPartitionQueryParams, boolean isAutoCreate) {
+      List<DataPartitionQueryParam> dataPartitionQueryParams,
+      boolean isAutoCreate,
+      String userName) {
     List<String> devicePaths = new ArrayList<>();
     for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
       devicePaths.add(dataPartitionQueryParam.getDevicePath());
     }
     Map<String, String> deviceToStorageGroupMap =
-        partitionCache.getDeviceToStorageGroup(devicePaths, true, isAutoCreate);
+        partitionCache.getDeviceToStorageGroup(devicePaths, true, isAutoCreate, userName);
     Map<String, List<DataPartitionQueryParam>> result = new HashMap<>();
     for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
       String devicePath = dataPartitionQueryParam.getDevicePath();

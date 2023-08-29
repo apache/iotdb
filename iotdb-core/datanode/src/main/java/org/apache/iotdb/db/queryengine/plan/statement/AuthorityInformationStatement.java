@@ -16,45 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.iotdb.db.queryengine.plan.statement.metadata;
+package org.apache.iotdb.db.queryengine.plan.statement;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
-import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import java.util.Collections;
-import java.util.List;
+public abstract class AuthorityInformationStatement extends Statement {
+  protected PathPatternTree authorityScope = SchemaConstant.ALL_MATCH_SCOPE;
 
-public class ShowTriggersStatement extends ShowStatement implements IConfigStatement {
-
-  @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitShowTriggers(this, context);
-  }
-
-  @Override
-  public QueryType getQueryType() {
-    return QueryType.READ;
-  }
-
-  @Override
-  public List<PartialPath> getPaths() {
-    return Collections.emptyList();
+  public PathPatternTree getAuthorityScope() {
+    return authorityScope;
   }
 
   @Override
   public TSStatus checkPermissionBeforeProcess(String userName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_TRIGGER.ordinal()),
-        PrivilegeType.USE_TRIGGER);
+    this.authorityScope =
+        AuthorityChecker.getAuthorizedPathTree(userName, PrivilegeType.READ_SCHEMA.ordinal());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 }

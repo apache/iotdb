@@ -20,8 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.statement.metadata.template;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowStatement;
@@ -33,7 +31,6 @@ public class ShowPathsUsingTemplateStatement extends ShowStatement {
 
   private PartialPath pathPattern;
 
-  private PathPatternTree authorityScope = SchemaConstant.ALL_MATCH_SCOPE;
   private String templateName;
 
   public ShowPathsUsingTemplateStatement(PartialPath pathPattern, String templateName) {
@@ -41,14 +38,6 @@ public class ShowPathsUsingTemplateStatement extends ShowStatement {
     statementType = StatementType.SHOW_PATH_USING_SCHEMA_TEMPLATE;
     this.pathPattern = pathPattern;
     this.templateName = templateName;
-  }
-
-  public PathPatternTree getAuthorityScope() {
-    return authorityScope;
-  }
-
-  public void setAuthorityScope(PathPatternTree authorityScope) {
-    this.authorityScope = authorityScope;
   }
 
   @Override
