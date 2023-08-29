@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.ConsensusGroup;
 import org.apache.iotdb.consensus.common.Peer;
@@ -233,7 +234,13 @@ public class ReplicateTest {
           CHECK_POINT_GAP, servers.get(2).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
 
     } catch (IOException e) {
-      logger.info("can not start IoTConsensus because", e);
+      if (e.getCause() instanceof StartupException) {
+        // just succeed when can not bind socket
+        logger.info("Can not start IoTConsensus because", e);
+      } else {
+        logger.error("Failed because", e);
+        Assert.fail("Failed because " + e.getMessage());
+      }
     }
   }
 
@@ -296,7 +303,13 @@ public class ReplicateTest {
       Assert.assertEquals(stateMachines.get(0).getData(), stateMachines.get(1).getData());
       Assert.assertEquals(stateMachines.get(2).getData(), stateMachines.get(1).getData());
     } catch (IOException e) {
-      logger.info("can not start IoTConsensus because", e);
+      if (e.getCause() instanceof StartupException) {
+        // just succeed when can not bind socket
+        logger.info("Can not start IoTConsensus because", e);
+      } else {
+        logger.error("Failed because", e);
+        Assert.fail("Failed because " + e.getMessage());
+      }
     }
   }
 
