@@ -262,9 +262,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private static final String SYSTEM = "system";
 
-  // store NodeStatus, used to reset when node recovers from full disk
-  private NodeStatus nodeStatus;
-
   public DataNodeInternalRPCServiceImpl() {
     super();
     partitionFetcher = ClusterPartitionFetcher.getInstance();
@@ -1301,13 +1298,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             "The remaining disk usage ratio:{} is less than disk_spec_warning_threshold:{}, set system to readonly!",
             freeDiskRatio,
             commonConfig.getDiskSpaceWarningThreshold());
-        this.nodeStatus = commonConfig.getNodeStatus();
         commonConfig.setNodeStatus(NodeStatus.ReadOnly);
         commonConfig.setStatusReason(NodeStatus.DISK_FULL);
       } else if (commonConfig.getNodeStatus().equals(NodeStatus.ReadOnly)
-          && commonConfig.getStatusReason().equals(NodeStatus.DISK_FULL)
-          && this.nodeStatus != null) {
-        commonConfig.setNodeStatus(this.nodeStatus);
+          && commonConfig.getStatusReason().equals(NodeStatus.DISK_FULL)) {
+        commonConfig.setNodeStatus(NodeStatus.Running);
         commonConfig.setStatusReason(null);
       }
     }
