@@ -499,7 +499,7 @@ public class AuthorInfo implements SnapshotProcessor {
           rolePrivilegeList.add(privilegeIdList.substring(1, privilegeIdList.length() - 1));
         }
         tRoleRespMap.put(
-            roleName, new TRoleResp(roleName, rolePrivilegeList, role.getSysPrivilege()));
+            roleName, new TRoleResp(roleName, rolePrivilegeList, role.getSysPrivilege(), role.getSysPriGrantOpt()));
       }
     }
     result.setUserInfo(tUserResp);

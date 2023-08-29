@@ -252,4 +252,5 @@ keyWords
     | WRITABLE
     | WRITE
     | AUDIT
+    | OPTION
     ;

@@ -363,7 +363,7 @@ public class AuthUtils {
     permissionInfoResp.setUserInfo(
         new TUserResp("", "", new ArrayList<>(), new HashSet<>(), new ArrayList<>(), false));
     Map<String, TRoleResp> roleInfo = new HashMap<>();
-    roleInfo.put("", new TRoleResp("", new ArrayList<>(), new HashSet<>()));
+    roleInfo.put("", new TRoleResp("", new ArrayList<>(), new HashSet<>(), new HashSet<>()));
     permissionInfoResp.setRoleInfo(roleInfo);
     return permissionInfoResp;
   }

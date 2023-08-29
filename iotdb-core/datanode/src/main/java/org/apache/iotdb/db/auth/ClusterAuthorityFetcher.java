@@ -377,6 +377,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     user.setPrivilegeList(pathPrivilegeList);
     user.setRoleList(tPermissionInfoResp.getUserInfo().getRoleList());
     user.setSysPrivilegeSet(tPermissionInfoResp.getUserInfo().getSysPriSet());
+    user.setSysPriGrantOpt(tPermissionInfoResp.getUserInfo().sysPriSetGrantOpt());
     for (String roleName : tPermissionInfoResp.getRoleInfo().keySet()) {
       iAuthorCache.putRoleCache(roleName, cacheRole(roleName, tPermissionInfoResp));
     }
@@ -398,6 +399,8 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         logger.error("Failed to parse path {}.", path, e);
       }
     }
+    role.setSysPriGrantOpt(tPermissionInfoResp.getRoleInfo().get(roleName).sysPriSetGrantOpt());
+    role.setSysPrivilegeSet(tPermissionInfoResp.getRoleInfo().get(roleName).getSysPriSet());
     role.setPrivilegeList(pathPrivilegeList);
     return role;
   }
@@ -417,6 +420,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     if (privilege.trim().length() != 0) {
       String[] privileges = privilege.replace(" ", "").split(",");
       for (String p : privileges) {
+        if (p.contains("with_grant_option")) {
+          pathPrivilege.getGrantOpt().add(Integer.parseInt(p));
+        }
         privilegeIds.add(Integer.parseInt(p));
       }
     }
