@@ -401,7 +401,7 @@ public class SystemPropertiesUtils {
   private static synchronized void storeSystemProperties(Properties systemProperties)
       throws IOException {
     try (FileOutputStream fileOutputStream = new FileOutputStream(systemPropertiesFile)) {
-      systemProperties.store(fileOutputStream, "");
+      systemProperties.store(fileOutputStream, " DO NOT MODIFY THIS FILE !!!");
     }
   }
 }
