@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
@@ -43,6 +44,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
@@ -125,9 +127,10 @@ public class PartitionCache {
    * @param devicePaths the devices that need to hit
    * @param tryToFetch whether try to get all database from config node
    * @param isAutoCreate whether auto create database when cache miss
+   * @param userName
    */
   public Map<String, List<String>> getStorageGroupToDevice(
-      List<String> devicePaths, boolean tryToFetch, boolean isAutoCreate) {
+      List<String> devicePaths, boolean tryToFetch, boolean isAutoCreate, String userName) {
     StorageGroupCacheResult<List<String>> result =
         new StorageGroupCacheResult<List<String>>() {
           @Override
@@ -136,7 +139,7 @@ public class PartitionCache {
             map.get(storageGroupName).add(device);
           }
         };
-    getStorageGroupCacheResult(result, devicePaths, tryToFetch, isAutoCreate);
+    getStorageGroupCacheResult(result, devicePaths, tryToFetch, isAutoCreate, userName);
     return result.getMap();
   }
 
@@ -146,9 +149,10 @@ public class PartitionCache {
    * @param devicePaths the devices that need to hit
    * @param tryToFetch whether try to get all database from config node
    * @param isAutoCreate whether auto create database when cache miss
+   * @param userName
    */
   public Map<String, String> getDeviceToStorageGroup(
-      List<String> devicePaths, boolean tryToFetch, boolean isAutoCreate) {
+      List<String> devicePaths, boolean tryToFetch, boolean isAutoCreate, String userName) {
     StorageGroupCacheResult<String> result =
         new StorageGroupCacheResult<String>() {
           @Override
@@ -156,7 +160,7 @@ public class PartitionCache {
             map.put(device, storageGroupName);
           }
         };
-    getStorageGroupCacheResult(result, devicePaths, tryToFetch, isAutoCreate);
+    getStorageGroupCacheResult(result, devicePaths, tryToFetch, isAutoCreate, userName);
     return result.getMap();
   }
 
@@ -211,10 +215,11 @@ public class PartitionCache {
    *
    * @param result the result of get database cache
    * @param devicePaths the devices that need to hit
+   * @param userName
    * @throws RuntimeException if failed to create database
    */
   private void createStorageGroupAndUpdateCache(
-      StorageGroupCacheResult<?> result, List<String> devicePaths)
+      StorageGroupCacheResult<?> result, List<String> devicePaths, String userName)
       throws ClientManagerException, MetadataException, TException {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -236,8 +241,16 @@ public class PartitionCache {
         // try to create databases one by one until done or one database fail
         Set<String> successFullyCreatedStorageGroup = new HashSet<>();
         for (String storageGroupName : storageGroupNamesNeedCreated) {
-          // TODO Need to check MANAGE_DATABASE permission, but there are too many functions needed
-          // to change for transmit of userName.
+          if (!AuthorityChecker.SUPER_USER.equals(userName)) {
+            TSStatus status =
+                AuthorityChecker.getTSStatus(
+                    AuthorityChecker.checkSystemPermission(
+                        userName, PrivilegeType.MANAGE_DATABASE.ordinal()),
+                    PrivilegeType.MANAGE_DATABASE);
+            if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+            }
+          }
           TDatabaseSchema storageGroupSchema = new TDatabaseSchema();
           storageGroupSchema.setName(storageGroupName);
           TSStatus tsStatus = client.setDatabase(storageGroupSchema);
@@ -313,12 +326,14 @@ public class PartitionCache {
    * @param devicePaths the devices that need to hit
    * @param tryToFetch whether try to get all database from confignode
    * @param isAutoCreate whether auto create database when device miss
+   * @param userName
    */
   private void getStorageGroupCacheResult(
       StorageGroupCacheResult<?> result,
       List<String> devicePaths,
       boolean tryToFetch,
-      boolean isAutoCreate) {
+      boolean isAutoCreate,
+      String userName) {
     // miss when devicePath contains *
     for (String devicePath : devicePaths) {
       if (devicePath.contains("*")) {
@@ -335,7 +350,7 @@ public class PartitionCache {
         getStorageGroupMap(result, devicePaths, true);
         if (!result.isSuccess() && isAutoCreate) {
           // try to auto create database of failed device
-          createStorageGroupAndUpdateCache(result, devicePaths);
+          createStorageGroupAndUpdateCache(result, devicePaths, userName);
           // third try to hit database in fast-fail way
           getStorageGroupMap(result, devicePaths, true);
           if (!result.isSuccess()) {

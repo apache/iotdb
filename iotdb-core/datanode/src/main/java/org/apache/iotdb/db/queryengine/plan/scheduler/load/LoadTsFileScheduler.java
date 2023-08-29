@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.StorageExecutor;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
@@ -488,7 +489,9 @@ public class LoadTsFileScheduler implements IScheduler {
       for (int i = 0; i < size; i += TRANSMIT_LIMIT) {
         List<Pair<String, TTimePartitionSlot>> subSlotList =
             slotList.subList(i, Math.min(size, i + TRANSMIT_LIMIT));
-        DataPartition dataPartition = fetcher.getOrCreateDataPartition(toQueryParam(subSlotList));
+        DataPartition dataPartition =
+            fetcher.getOrCreateDataPartition(
+                toQueryParam(subSlotList), AuthorityChecker.SUPER_USER);
         replicaSets.addAll(
             subSlotList.stream()
                 .map(pair -> dataPartition.getDataRegionReplicaSetForWriting(pair.left, pair.right))
