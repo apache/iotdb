@@ -127,17 +127,17 @@ public class ConfigNode implements ConfigNodeMBean {
       if (SystemPropertiesUtils.isRestarted()) {
         LOGGER.info("{} is in restarting process...", ConfigNodeConstant.GLOBAL_NAME);
 
-        int configNodeId;
-        if (!SystemPropertiesUtils.isSeedConfigNode()) {
-          // The non-seed-ConfigNodes should send restart request and be checked (ip and port) by
-          // leader before initConsensusManager
-          sendRestartConfigNodeRequest();
-          configNodeId = CONF.getConfigNodeId();
-        } else {
-          configNodeId = SEED_CONFIG_NODE_ID;
-        }
+        int configNodeId = CONF.getConfigNodeId();
         configManager.initConsensusManager();
+        while (configManager.getConsensusManager().getLeader() == null) {
+          // leader has not been elected yet, wait 1 second
+          LOGGER.info("Leader has not been elected yet, wait for 1 second");
+          try {
+            Thread.sleep(1000);
+          } catch (Exception e) {
 
+          }
+        }
         setUpMetricService();
         // Notice: We always set up Seed-ConfigNode's RPC service lastly to ensure
         // that the external service is not provided until ConfigNode is fully available

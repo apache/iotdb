@@ -32,15 +32,17 @@ import org.apache.iotdb.it.env.cluster.config.MppCommonConfig;
 import org.apache.iotdb.it.env.cluster.config.MppJVMConfig;
 import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
+import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 
 import org.apache.thrift.TException;
 import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
+import org.rocksdb.Env;
+import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -50,15 +52,14 @@ import java.util.concurrent.TimeUnit;
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBClusterRestartIT {
+  private static final Logger logger = IoTDBTestLogger.logger;
 
   private static final String ratisConsensusProtocolClass =
       "org.apache.iotdb.consensus.ratis.RatisConsensus";
-  private static final int testConfigNodeNum = 2;
-  private static final int testDataNodeNum = 2;
+
   private static final int testReplicationFactor = 2;
 
-  @Before
-  public void setUp() throws Exception {
+  public void setUp(int configNodeNum, int dataNodeNum) {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
@@ -70,7 +71,7 @@ public class IoTDBClusterRestartIT {
         .setDataReplicationFactor(testReplicationFactor);
 
     // Init 2C2D cluster environment
-    EnvFactory.getEnv().initClusterEnvironment(testConfigNodeNum, testDataNodeNum);
+    EnvFactory.getEnv().initClusterEnvironment(configNodeNum, dataNodeNum);
   }
 
   @After
@@ -80,6 +81,8 @@ public class IoTDBClusterRestartIT {
 
   @Test
   public void clusterRestartTest() throws InterruptedException {
+    final int testConfigNodeNum = 2, testDataNodeNum = 2;
+    setUp(testConfigNodeNum, testDataNodeNum);
     // Shutdown all cluster nodes
     for (int i = 0; i < testConfigNodeNum; i++) {
       EnvFactory.getEnv().shutdownConfigNode(i);
@@ -105,6 +108,8 @@ public class IoTDBClusterRestartIT {
   @Test
   public void clusterRestartAfterUpdateDataNodeTest()
       throws InterruptedException, ClientManagerException, IOException, TException {
+    final int testConfigNodeNum = 2, testDataNodeNum = 2;
+    setUp(testConfigNodeNum, testDataNodeNum);
     // Shutdown all DataNodes
     for (int i = 0; i < testDataNodeNum; i++) {
       EnvFactory.getEnv().shutdownDataNode(i);
@@ -152,4 +157,27 @@ public class IoTDBClusterRestartIT {
   }
 
   // TODO: Add persistence tests in the future
+
+  @Test
+  public void clusterRestartWithoutSeedConfigNode() {
+    final int testConfigNodeNum = 3, testDataNodeNum = 1;
+    setUp(testConfigNodeNum, testDataNodeNum);
+
+    for (int notStart = 0; notStart < testConfigNodeNum; notStart++) {
+      // shutdown all 3 ConfigNodes
+      for (int i = 0; i < testConfigNodeNum; i++) {
+        EnvFactory.getEnv().shutdownConfigNode(i);
+      }
+      logger.info("Shutdown all ConfigNode");
+      // restart any 2 of them, the cluster should work fine
+      for (int i = 0; i < testConfigNodeNum; i++) {
+        if (i != notStart) {
+          EnvFactory.getEnv().startConfigNode(i);
+        }
+      }
+      logger.info("Restarted");
+      ((AbstractEnv) EnvFactory.getEnv()).testWorking();
+      logger.info("Working without ConfigNode-" + notStart);
+    }
+  }
 }
