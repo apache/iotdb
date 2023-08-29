@@ -24,10 +24,10 @@ import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
 import java.io.IOException;
 
-public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEstimator {
+public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimator {
 
   @Override
-  public long calculatingMetadataMemoryCost(CompactionTaskInfo taskInfo) {
+  protected long calculatingMetadataMemoryCost(CompactionTaskInfo taskInfo) {
     long cost = 0;
     // add ChunkMetadata size of MultiTsFileDeviceIterator
     cost +=
@@ -49,10 +49,11 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
   }
 
   @Override
-  public long calculatingDataMemoryCost(CompactionTaskInfo taskInfo) throws IOException {
+  protected long calculatingDataMemoryCost(CompactionTaskInfo taskInfo) throws IOException {
     if (taskInfo.getTotalChunkNum() == 0) {
       return taskInfo.getModificationFileSize();
     }
+
     long maxConcurrentSeriesNum =
         Math.max(config.getSubCompactionTaskNum(), taskInfo.getMaxConcurrentSeriesNum());
     long averageUncompressedChunkSize =
