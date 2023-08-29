@@ -39,6 +39,9 @@ public class PointElement {
     } else {
       this.pointReader = pageElement.batchData.getTsBlockAlignedRowIterator();
     }
+    if (!pointReader.hasNextTimeValuePair()) {
+      return;
+    }
     this.timeValuePair = pointReader.nextTimeValuePair();
     this.timestamp = timeValuePair.getTimestamp();
     this.priority = pageElement.priority;
