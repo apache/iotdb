@@ -29,8 +29,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -110,10 +110,6 @@ public abstract class BasicUserManager implements IUserManager {
     lock.writeLock(username);
     try {
       user = new User(username, AuthUtils.encryptPassword(password));
-      File userDirPath = new File(accessor.getDirPath());
-      if (!userDirPath.exists()) {
-        reset();
-      }
       userMap.put(username, user);
       return true;
     } finally {
@@ -267,7 +263,11 @@ public abstract class BasicUserManager implements IUserManager {
 
   @Override
   public List<String> listAllUsers() {
-    List<String> rtlist = accessor.listAllUsers();
+    List<String> rtlist = new ArrayList<>();
+    userMap.forEach(
+        (name, item) -> {
+          rtlist.add(name);
+        });
     rtlist.sort(null);
     return rtlist;
   }

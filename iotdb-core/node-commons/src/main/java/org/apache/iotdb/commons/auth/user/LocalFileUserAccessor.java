@@ -376,4 +376,9 @@ public class LocalFileUserAccessor implements IUserAccessor {
   public String getDirPath() {
     return userDirPath;
   }
+
+  @Override
+  public void cleanUserFolder() {
+    SystemFileFactory.INSTANCE.getFile(userDirPath).delete();
+  }
 }

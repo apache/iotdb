@@ -35,6 +35,7 @@ public class LocalFileUserManager extends BasicUserManager {
 
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
+    accessor.cleanUserFolder();
     for (Map.Entry<String, User> entry : userMap.entrySet()) {
       accessor.saveUser(entry.getValue());
     }

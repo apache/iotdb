@@ -55,6 +55,7 @@ public class LocalFileAuthorizerTest {
     EnvironmentUtils.envSetUp();
 
     authorizer = BasicAuthorizer.getInstance();
+    authorizer.reset();
     user = new User("user", "password");
     nodeName = new PartialPath("root.laptop.d1");
   }
@@ -336,17 +337,6 @@ public class LocalFileAuthorizerTest {
         assertEquals("newRole" + i, roleList.get(i / 2));
       }
     }
-  }
-
-  @Test
-  public void testReplaceAllUsers() throws AuthException {
-    IAuthorizer authorizer = BasicAuthorizer.getInstance();
-    Assert.assertEquals("root", authorizer.listAllUsers().get(0));
-    User user = new User("user", "user");
-    HashMap<String, User> users = new HashMap<>();
-    users.put("user", user);
-    authorizer.replaceAllUsers(users);
-    Assert.assertEquals("user", authorizer.listAllUsers().get(1));
   }
 
   @Test

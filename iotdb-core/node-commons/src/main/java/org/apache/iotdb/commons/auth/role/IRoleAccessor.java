@@ -56,7 +56,7 @@ public interface IRoleAccessor extends SnapshotProcessor {
    *
    * @throws IOException
    */
-  void cleanRoleFolder() throws IOException;
+  void cleanRoleFolder();
 
   /**
    * List all roles in this database.

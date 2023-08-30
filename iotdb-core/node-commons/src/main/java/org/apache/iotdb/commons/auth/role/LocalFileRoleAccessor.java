@@ -261,7 +261,7 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
   }
 
   @Override
-  public void cleanRoleFolder() throws IOException {
+  public void cleanRoleFolder() {
     SystemFileFactory.INSTANCE.getFile(roleDirPath).delete();
   }
 }

@@ -25,10 +25,10 @@ import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -79,17 +79,19 @@ public class AuthorizerManagerTest {
     TPermissionInfoResp result = new TPermissionInfoResp();
     TUserResp tUserResp = new TUserResp();
     Map<String, TRoleResp> tRoleRespMap = new HashMap();
-    List<String> userPrivilegeList = new ArrayList<>();
-    List<String> rolePrivilegeList = new ArrayList<>();
+    List<TPathPrivilege> userPrivilegeList = new ArrayList<>();
+    List<TPathPrivilege> rolePrivilegeList = new ArrayList<>();
     List<Role> roleList1 = new ArrayList<>();
     roleList1.add(role1);
     roleList1.add(role2);
 
     // User permission information
     for (PathPrivilege pathPrivilege : user.getPathPrivilegeList()) {
-      userPrivilegeList.add(pathPrivilege.getPath().getFullPath());
-      String privilegeIdList = pathPrivilege.getPrivileges().toString();
-      userPrivilegeList.add(privilegeIdList.substring(1, privilegeIdList.length() - 1));
+      TPathPrivilege pathPri = new TPathPrivilege();
+      pathPri.setPath(pathPrivilege.getPath().getFullPath());
+      pathPri.setPriSet(pathPrivilege.getPrivileges());
+      pathPri.setPriGrantOpt(pathPrivilege.getGrantOpt());
+      userPrivilegeList.add(pathPri);
     }
     tUserResp.setUsername(user.getName());
     tUserResp.setPassword(user.getPassword());
@@ -113,22 +115,22 @@ public class AuthorizerManagerTest {
 
     // User has permission
     Assert.assertEquals(
-        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorityFetcher
             .checkUserPathPrivileges(
                 "user",
                 Collections.singletonList(new PartialPath("root.ln")),
                 PrivilegeType.READ_DATA.ordinal())
-            .getCode());
+            .size(),
+        0);
     // User does not have permission
     Assert.assertEquals(
-        TSStatusCode.NO_PERMISSION.getStatusCode(),
         authorityFetcher
             .checkUserPathPrivileges(
                 "user",
                 Collections.singletonList(new PartialPath("root.ln")),
                 PrivilegeType.WRITE_DATA.ordinal())
-            .getCode());
+            .size(),
+        1);
 
     // Authenticate users with roles
     authorityFetcher.getAuthorCache().invalidateCache(user.getName(), "");
@@ -141,9 +143,11 @@ public class AuthorizerManagerTest {
       rolePrivilegeList = new ArrayList<>();
       tRoleResp.setRoleName(role.getName());
       for (PathPrivilege pathPrivilege : role.getPathPrivilegeList()) {
-        rolePrivilegeList.add(pathPrivilege.getPath().getFullPath());
-        String privilegeIdList = pathPrivilege.getPrivileges().toString();
-        rolePrivilegeList.add(privilegeIdList.substring(1, privilegeIdList.length() - 1));
+        TPathPrivilege pathPri = new TPathPrivilege();
+        pathPri.setPath(pathPrivilege.getPath().getFullPath());
+        pathPri.setPriSet(pathPrivilege.getPrivileges());
+        pathPri.setPriGrantOpt(pathPrivilege.getGrantOpt());
+        rolePrivilegeList.add(pathPri);
       }
       tRoleResp.setPrivilegeList(rolePrivilegeList);
       tRoleRespMap.put(role.getName(), tRoleResp);
@@ -158,22 +162,22 @@ public class AuthorizerManagerTest {
 
     // role has permission
     Assert.assertEquals(
-        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
         authorityFetcher
             .checkUserPathPrivileges(
                 "user",
                 Collections.singletonList(new PartialPath("root.ln")),
                 PrivilegeType.READ_DATA.ordinal())
-            .getCode());
+            .size(),
+        0);
     // role does not have permission
     Assert.assertEquals(
-        TSStatusCode.NO_PERMISSION.getStatusCode(),
         authorityFetcher
             .checkUserPathPrivileges(
                 "user",
                 Collections.singletonList(new PartialPath("root.ln")),
                 PrivilegeType.MANAGE_USER.ordinal())
-            .getCode());
+            .size(),
+        1);
 
     authorityFetcher.getAuthorCache().invalidateCache(user.getName(), "");
 
