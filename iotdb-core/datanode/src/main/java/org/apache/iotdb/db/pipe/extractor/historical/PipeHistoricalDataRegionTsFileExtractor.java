@@ -42,6 +42,8 @@ import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayDeque;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Queue;
 import java.util.stream.Collectors;
 
@@ -55,6 +57,9 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeHistoricalDataRegionTsFileExtractor.class);
+
+  private static final Map<Integer, Long> dataRegionIdToPipeFlushedTimeMap = new HashMap<>();
+  private static final long PIPE_MIN_FLUSH_INTERVAL_IN_MS = 2000;
 
   private PipeTaskMeta pipeTaskMeta;
   private ProgressIndex startIndex;
@@ -85,6 +90,9 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     startIndex = environment.getPipeTaskMeta().getProgressIndex();
 
     dataRegionId = environment.getRegionId();
+    synchronized (dataRegionIdToPipeFlushedTimeMap) {
+      dataRegionIdToPipeFlushedTimeMap.putIfAbsent(dataRegionId, 0L);
+    }
 
     pattern = parameters.getStringOrDefault(EXTRACTOR_PATTERN_KEY, EXTRACTOR_PATTERN_DEFAULT_VALUE);
 
@@ -133,7 +141,13 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     // If we don't invoke flushDataRegionAllTsFiles() in the realtime only mode, the data generated
     // between the creation time of the pipe the time when the pipe starts will be lost.
     if (historicalDataExtractionTimeLowerBound != Long.MIN_VALUE) {
-      flushDataRegionAllTsFiles();
+      synchronized (dataRegionIdToPipeFlushedTimeMap) {
+        Long lastFlushedByPipeTime = dataRegionIdToPipeFlushedTimeMap.get(dataRegionId);
+        if (System.currentTimeMillis() - lastFlushedByPipeTime >= PIPE_MIN_FLUSH_INTERVAL_IN_MS) {
+          flushDataRegionAllTsFiles();
+          dataRegionIdToPipeFlushedTimeMap.replace(dataRegionId, System.currentTimeMillis());
+        }
+      }
     }
   }
 
@@ -163,7 +177,13 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
     dataRegion.writeLock("Pipe: start to extract historical TsFile");
     try {
-      dataRegion.syncCloseAllWorkingTsFileProcessors();
+      synchronized (dataRegionIdToPipeFlushedTimeMap) {
+        Long lastFlushedByPipeTime = dataRegionIdToPipeFlushedTimeMap.get(dataRegionId);
+        if (System.currentTimeMillis() - lastFlushedByPipeTime >= PIPE_MIN_FLUSH_INTERVAL_IN_MS) {
+          dataRegion.syncCloseAllWorkingTsFileProcessors();
+          dataRegionIdToPipeFlushedTimeMap.replace(dataRegionId, System.currentTimeMillis());
+        }
+      }
 
       final TsFileManager tsFileManager = dataRegion.getTsFileManager();
       tsFileManager.readLock();
@@ -174,7 +194,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             tsFileManager.getTsFileList(true).stream()
                 .filter(
                     resource ->
-                        !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
+                        resource.isClosed()
+                            && !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
                             && isTsFileResourceOverlappedWithTimeRange(resource)
                             && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
                 .map(
@@ -193,7 +214,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             tsFileManager.getTsFileList(false).stream()
                 .filter(
                     resource ->
-                        !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
+                        resource.isClosed()
+                            && !startIndex.isAfter(resource.getMaxProgressIndexAfterClose())
                             && isTsFileResourceOverlappedWithTimeRange(resource)
                             && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
                 .map(
