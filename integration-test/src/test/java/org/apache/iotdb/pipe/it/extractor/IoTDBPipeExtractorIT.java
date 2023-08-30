@@ -519,6 +519,11 @@ public class IoTDBPipeExtractorIT {
     }
   }
 
+  @Test
+  public void testStartTimeAndEndTime() {
+    // TODO
+  }
+
   private void assertTimeseriesCountOnReceiver(BaseEnv receiverEnv, int count) {
     try (Connection connection = receiverEnv.getConnection();
         Statement statement = connection.createStatement()) {
