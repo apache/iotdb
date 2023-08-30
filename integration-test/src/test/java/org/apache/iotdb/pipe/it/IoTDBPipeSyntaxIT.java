@@ -95,7 +95,7 @@ public class IoTDBPipeSyntaxIT {
                       + "'connector'='iotdb-thrift-connector',"
                       + "'connector.ip'='%s',"
                       + "'connector.port'='%s',"
-                      + "'connector.batch.enabled'='false')",
+                      + "'connector.batch.enable'='false')",
                   pipeName, receiverIp, receiverPort));
         } catch (SQLException e) {
           e.printStackTrace();
@@ -144,7 +144,7 @@ public class IoTDBPipeSyntaxIT {
                     + "'extractor.realtime.mode'='hybrid',"
                     + "'extractor.history.enable'='false') "
                     + " with connector ("
-                    + "'connector.batch.enabled'='false', "
+                    + "'connector.batch.enable'='false', "
                     + "'connector.port'='%s',"
                     + "'connector.ip'='%s',"
                     + "'connector'='iotdb-thrift-connector')",
@@ -176,7 +176,7 @@ public class IoTDBPipeSyntaxIT {
             String.format(
                 "create pipe p1"
                     + " with connector ("
-                    + "'connector.batch.enabled'='false', "
+                    + "'connector.batch.enable'='false', "
                     + "'connector.port'='%s',"
                     + "'connector.ip'='%s',"
                     + "'connector'='iotdb-thrift-connector') "
@@ -235,7 +235,7 @@ public class IoTDBPipeSyntaxIT {
                     + "'connector'='iotdb-thrift-connector',"
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
-                    + "'connector.batch.enabled'='false')",
+                    + "'connector.batch.enable'='false')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -253,7 +253,7 @@ public class IoTDBPipeSyntaxIT {
                     + "'connector'='iotdb-thrift-connector',"
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
-                    + "'connector.batch.enabled'='false')",
+                    + "'connector.batch.enable'='false')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -285,7 +285,7 @@ public class IoTDBPipeSyntaxIT {
                     + "'connector'='iotdb-thrift-connector',"
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
-                    + "'connector.batch.enabled'='false')",
+                    + "'connector.batch.enable'='false')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -303,7 +303,7 @@ public class IoTDBPipeSyntaxIT {
                     + "'connector'='iotdb-thrift-connector',"
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
-                    + "'connector.batch.enabled'='false')",
+                    + "'connector.batch.enable'='false')",
                 receiverIp, receiverPort));
         fail();
       } catch (SQLException ignored) {
@@ -320,7 +320,7 @@ public class IoTDBPipeSyntaxIT {
                     + "'connector'='iotdb-thrift-connector',"
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
-                    + "'connector.batch.enabled'='false')",
+                    + "'connector.batch.enable'='false')",
                 receiverIp, receiverPort));
         fail();
       } catch (SQLException ignored) {
@@ -337,7 +337,7 @@ public class IoTDBPipeSyntaxIT {
                     + "'connector'='invalid-param',"
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
-                    + "'connector.batch.enabled'='false')",
+                    + "'connector.batch.enable'='false')",
                 receiverIp, receiverPort));
         fail();
       } catch (SQLException ignored) {
@@ -367,7 +367,7 @@ public class IoTDBPipeSyntaxIT {
                     + "'connector'='iotdb-thrift-connector',"
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
-                    + "'connector.batch.enabled'='false')",
+                    + "'connector.batch.enable'='false')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -384,7 +384,7 @@ public class IoTDBPipeSyntaxIT {
                     + "'connector'='iotdb-thrift-connector',"
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
-                    + "'connector.batch.enabled'='false')",
+                    + "'connector.batch.enable'='false')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -401,7 +401,7 @@ public class IoTDBPipeSyntaxIT {
                     + "'connector'='iotdb-thrift-connector',"
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
-                    + "'connector.batch.enabled'='false')",
+                    + "'connector.batch.enable'='false')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -418,7 +418,7 @@ public class IoTDBPipeSyntaxIT {
                     + "'connector'='iotdb-thrift-connector',"
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
-                    + "'connector.batch.enabled'='false')",
+                    + "'connector.batch.enable'='false')",
                 receiverIp, receiverPort));
         fail();
       } catch (SQLException ignored) {
@@ -434,7 +434,7 @@ public class IoTDBPipeSyntaxIT {
                     + "'connector'='iotdb-thrift-connector',"
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
-                    + "'connector.batch.enabled'='false')",
+                    + "'connector.batch.enable'='false')",
                 receiverIp, receiverPort));
         fail();
       } catch (SQLException ignored) {
@@ -450,7 +450,7 @@ public class IoTDBPipeSyntaxIT {
                     + "'connector'='iotdb-thrift-connector',"
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
-                    + "'connector.batch.enabled'='false')",
+                    + "'connector.batch.enable'='false')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -467,7 +467,7 @@ public class IoTDBPipeSyntaxIT {
                     + "'connector'='iotdb-thrift-connector',"
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
-                    + "'connector.batch.enabled'='false')",
+                    + "'connector.batch.enable'='false')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -484,7 +484,7 @@ public class IoTDBPipeSyntaxIT {
                     + "'connector'='iotdb-thrift-connector',"
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
-                    + "'connector.batch.enabled'='false')",
+                    + "'connector.batch.enable'='false')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -501,7 +501,7 @@ public class IoTDBPipeSyntaxIT {
                     + "'connector'='iotdb-thrift-connector',"
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
-                    + "'connector.batch.enabled'='false')",
+                    + "'connector.batch.enable'='false')",
                 receiverIp, receiverPort));
         fail();
       } catch (SQLException ignored) {
@@ -517,7 +517,7 @@ public class IoTDBPipeSyntaxIT {
                     + "'connector'='iotdb-thrift-connector',"
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
-                    + "'connector.batch.enabled'='false')",
+                    + "'connector.batch.enable'='false')",
                 receiverIp, receiverPort));
         fail();
       } catch (SQLException ignored) {
@@ -532,7 +532,7 @@ public class IoTDBPipeSyntaxIT {
                     + "'connector'='iotdb-thrift-connector',"
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
-                    + "'connector.batch.enabled'='false')",
+                    + "'connector.batch.enable'='false')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -548,7 +548,7 @@ public class IoTDBPipeSyntaxIT {
                     + "\"connector\"=\"iotdb-thrift-connector\","
                     + "\"connector.ip\"=\"%s\","
                     + "\"connector.port\"=\"%s\","
-                    + "\"connector.batch.enabled\"=\"false\")",
+                    + "\"connector.batch.enable\"=\"false\")",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -564,7 +564,7 @@ public class IoTDBPipeSyntaxIT {
                     + "'connector'=\"iotdb-thrift-connector\","
                     + "\"connector.ip\"='%s',"
                     + "'connector.port'=\"%s\","
-                    + "\"connector.batch.enabled\"='false')",
+                    + "\"connector.batch.enable\"='false')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -580,7 +580,7 @@ public class IoTDBPipeSyntaxIT {
                     + "connector=iotdb-thrift-connector,"
                     + "connector.ip=%s,"
                     + "connector.port=%s,"
-                    + "connector.batch.enabled=false)",
+                    + "connector.batch.enable=false)",
                 receiverIp, receiverPort));
         fail();
       } catch (SQLException ignored) {
@@ -595,7 +595,7 @@ public class IoTDBPipeSyntaxIT {
                     + "'connector'=`iotdb-thrift-connector`,"
                     + "'connector.ip'=`%s`,"
                     + "'connector.port'=`%s`,"
-                    + "'connector.batch.enabled'=`false`)",
+                    + "'connector.batch.enable'=`false`)",
                 receiverIp, receiverPort));
         fail();
       } catch (SQLException ignored) {
@@ -620,7 +620,7 @@ public class IoTDBPipeSyntaxIT {
       Map<String, String> connectorAttributes = new HashMap<>();
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enabled", "false");
+      connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
@@ -638,7 +638,7 @@ public class IoTDBPipeSyntaxIT {
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      connectorAttributes.replace("connector.batch.enabled", "true");
+      connectorAttributes.replace("connector.batch.enable", "true");
 
       status =
           client.createPipe(

@@ -87,7 +87,7 @@ public class IoTDBPipeSwitchStatusIT {
       Map<String, String> connectorAttributes = new HashMap<>();
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enabled", "false");
+      connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
@@ -166,7 +166,7 @@ public class IoTDBPipeSwitchStatusIT {
       Map<String, String> connectorAttributes = new HashMap<>();
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enabled", "false");
+      connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
@@ -229,7 +229,7 @@ public class IoTDBPipeSwitchStatusIT {
       Map<String, String> connectorAttributes = new HashMap<>();
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enabled", "false");
+      connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
@@ -283,7 +283,7 @@ public class IoTDBPipeSwitchStatusIT {
       Map<String, String> connectorAttributes = new HashMap<>();
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enabled", "false");
+      connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 

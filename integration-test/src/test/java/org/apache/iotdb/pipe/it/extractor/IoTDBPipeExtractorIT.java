@@ -97,7 +97,7 @@ public class IoTDBPipeExtractorIT {
       extractorAttributes.put("extractor.history.enabled", "true");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enabled", "false");
+      connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
@@ -185,7 +185,7 @@ public class IoTDBPipeExtractorIT {
                   + "'connector'='iotdb-thrift-connector',"
                   + "'connector.ip'='%s',"
                   + "'connector.port'='%s',"
-                  + "'connector.batch.enabled'='false')",
+                  + "'connector.batch.enable'='false')",
               "%s", receiverIp, receiverPort);
 
       List<String> invalidStartTimes =
@@ -249,7 +249,7 @@ public class IoTDBPipeExtractorIT {
       extractorAttributes.put("extractor.pattern", null);
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enabled", "false");
+      connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
@@ -329,7 +329,7 @@ public class IoTDBPipeExtractorIT {
       extractorAttributes.put("extractor.pattern", "root.db1");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enabled", "false");
+      connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
@@ -432,7 +432,7 @@ public class IoTDBPipeExtractorIT {
       Map<String, String> connectorAttributes = new HashMap<>();
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enabled", "false");
+      connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 

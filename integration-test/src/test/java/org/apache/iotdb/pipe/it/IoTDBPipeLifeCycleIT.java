@@ -99,7 +99,7 @@ public class IoTDBPipeLifeCycleIT {
       Map<String, String> connectorAttributes = new HashMap<>();
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enabled", "false");
+      connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
@@ -173,7 +173,7 @@ public class IoTDBPipeLifeCycleIT {
       extractorAttributes.put("extractor.history.end-time", "2100.01.01T00:00:00");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enabled", "false");
+      connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
@@ -240,7 +240,7 @@ public class IoTDBPipeLifeCycleIT {
       extractorAttributes.put("extractor.mode", "log");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enabled", "false");
+      connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
@@ -311,7 +311,7 @@ public class IoTDBPipeLifeCycleIT {
       extractorAttributes.put("extractor.mode", "file");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enabled", "false");
+      connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
@@ -383,7 +383,7 @@ public class IoTDBPipeLifeCycleIT {
       extractorAttributes.put("extractor.mode", "hybrid");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enabled", "false");
+      connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
@@ -452,7 +452,7 @@ public class IoTDBPipeLifeCycleIT {
       Map<String, String> connectorAttributes = new HashMap<>();
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enabled", "false");
+      connectorAttributes.put("connector.batch.enable", "false");
       connectorAttributes.put("connector.ip", receiverIp);
       connectorAttributes.put("connector.port", Integer.toString(receiverPort));
 
