@@ -15,7 +15,7 @@ import java.util.Stack;
 import static java.lang.Math.abs;
 import static java.lang.Math.min;
 
-public class RegerSegmentPartitionBlockSizeTest {
+public class QRegerSegmentPartitionBlockSize {
     public static int getBitWith(int num) {
         if (num == 0) return 1;
         else return 32 - Integer.numberOfLeadingZeros(num);
@@ -3854,7 +3854,7 @@ public class RegerSegmentPartitionBlockSizeTest {
                         long s = System.nanoTime();
                         ArrayList<Byte> buffer = new ArrayList<>();
                         for (int repeat = 0; repeat < repeatTime2; repeat++)
-                            buffer = ReorderingRegressionEncoder(data, block_size, dataset_third.get(file_i), 8, dataset_k.get(file_i));
+                            buffer = ReorderingRegressionEncoder(data, block_size, dataset_third.get(file_i), 16, dataset_k.get(file_i));
                         long e = System.nanoTime();
                         encodeTime += ((e - s) / repeatTime2);
                         compressed_size += buffer.size();

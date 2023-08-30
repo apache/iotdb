@@ -1970,7 +1970,7 @@ public class RegerSegmentSegmentSize {
     output_path_list.add(parent_dir + "\\USGS-Earthquakes_ratio.csv");// 2
     dataset_block_size.add(256);
     output_path_list.add(parent_dir + "\\YZ-Electricity_ratio.csv"); // 3
-    dataset_block_size.add(256);
+    dataset_block_size.add(128);
     output_path_list.add(parent_dir + "\\GW-Magnetic_ratio.csv"); //4
     dataset_block_size.add(128);
     output_path_list.add(parent_dir + "\\TY-Fuel_ratio.csv");//5
@@ -1988,7 +1988,7 @@ public class RegerSegmentSegmentSize {
     output_path_list.add(parent_dir + "\\EPM-Education_ratio.csv");//11
     dataset_block_size.add(64);
 
-//    for (int file_i = 8; file_i < 9; file_i++) {
+//    for (int file_i = 3; file_i < 4; file_i++) {
         for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
       String inputPath = input_path_list.get(file_i);
       //      String Output = "C:\\Users\\xiaoj\\Desktop\\test.csv";//output_path_list.get(file_i);
