@@ -229,7 +229,7 @@ public abstract class AbstractEnv implements BaseEnv {
       fail();
     }
 
-    testWorkingAllFine();
+    testWorkingAllRunning();
   }
 
   public String getTestClassName() {
@@ -249,24 +249,18 @@ public abstract class AbstractEnv implements BaseEnv {
     return result;
   }
 
-  private final Predicate<Map<Integer, String>> statusCheckNoUnknown =
-      nodeStatus -> countNodeStatus(nodeStatus).getOrDefault("Unknown", 0) == 0;
-
-  private final Predicate<Map<Integer, String>> statusCheckOneUnknownThreeRunning =
-      nodeStatus -> {
-        Map<String, Integer> count = countNodeStatus(nodeStatus);
-        return count.getOrDefault("Unknown", 0) == 1 && count.getOrDefault("Running", 0) == 3;
-      };
-
-  public void testWorkingAllFine() {
-    testWorking(statusCheckNoUnknown);
+  public void testWorkingAllRunning() {
+    testWorking(nodeStatusMap -> nodeStatusMap.values().stream().allMatch("Running"::equals));
   }
 
-  public void testWorkingSpecial() {
-    testWorking(statusCheckOneUnknownThreeRunning);
+  public void testWorkingOneUnknownThreeRunning() {
+    testWorking(nodeStatus -> {
+      Map<String, Integer> count = countNodeStatus(nodeStatus);
+      return count.getOrDefault("Unknown", 0) == 1 && count.getOrDefault("Running", 0) == 3;
+    });
   }
 
-  private void testWorking(Predicate<Map<Integer, String>> statusCheck) {
+  public void testWorking(Predicate<Map<Integer, String>> statusCheck) {
     logger.info("Testing DataNode connection...");
     List<String> endpoints =
         dataNodeWrapperList.stream()
@@ -724,7 +718,7 @@ public abstract class AbstractEnv implements BaseEnv {
 
     if (isNeedVerify) {
       // Test whether register success
-      testWorkingAllFine();
+      testWorkingAllRunning();
     }
   }
 
@@ -749,7 +743,7 @@ public abstract class AbstractEnv implements BaseEnv {
 
     if (isNeedVerify) {
       // Test whether register success
-      testWorkingAllFine();
+      testWorkingAllRunning();
     }
   }
 

@@ -101,7 +101,7 @@ public class IoTDBClusterRestartIT {
       EnvFactory.getEnv().startDataNode(i);
     }
 
-    ((AbstractEnv) EnvFactory.getEnv()).testWorkingAllFine();
+    ((AbstractEnv) EnvFactory.getEnv()).testWorkingAllRunning();
   }
 
   @Test
@@ -171,7 +171,7 @@ public class IoTDBClusterRestartIT {
       EnvFactory.getEnv().startConfigNode(i);
     }
     logger.info("Restarted");
-    ((AbstractEnv) EnvFactory.getEnv()).testWorkingSpecial();
+    ((AbstractEnv) EnvFactory.getEnv()).testWorkingOneUnknownThreeRunning();
     logger.info("Working without Seed-ConfigNode");
   }
 }
