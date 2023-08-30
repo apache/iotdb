@@ -3641,8 +3641,8 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
         dataset_block_size.add(512);
         dataset_k.add(5);
 
-    for (int file_i = 3; file_i < 4; file_i++) {
-//        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
+//    for (int file_i = 3; file_i < 4; file_i++) {
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
             String inputPath = input_path_list.get(file_i);
             //      String Output = "C:\\Users\\xiaoj\\Desktop\\test.csv";//output_path_list.get(file_i);
             String Output = output_path_list.get(file_i);
@@ -3672,7 +3672,7 @@ public class RegerSegmentPartitionBlockSizeTestOptimal {
             for (File f : tempList) {
                 System.out.println(f);
 //                for (int block_size_exp = 7; block_size_exp >= 7; block_size_exp--) {
-                for (int block_size_exp = 10; block_size_exp >= 4; block_size_exp--) {
+                for (int block_size_exp = 13; block_size_exp >= 4; block_size_exp--) {
                     int block_size = (int) Math.pow(2, block_size_exp);
                     System.out.println(block_size);
 

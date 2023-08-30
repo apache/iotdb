@@ -368,11 +368,10 @@ public class RegerSegmentPartitionSegmentSizeTest {
     // delta to Regression
     for (int j = 1; j < block_size; j++) {
       int epsilon_r =
-              ts_block.get(j).get(0)
-                      - (int) ((double) theta0_r + (double) theta1_r * (double) ts_block.get(j - 1).get(0));
+              (int) (ts_block.get(j).get(0)
+                      -  (theta0_r + theta1_r * (float) ts_block.get(j - 1).get(0)));
       int epsilon_v =
-              ts_block.get(j).get(1)
-                      - (int) ((double) theta0_v + (double) theta1_v * (double) ts_block.get(j - 1).get(1));
+              (int) (ts_block.get(j).get(1)  -  ( theta0_v +  theta1_v * (float) ts_block.get(j - 1).get(1)));
 
       //      int epsilon_r = ts_block.get(j).get(0) - (int) (theta0_r + theta1_r *
       // (double)ts_block.get(j-1).get(0));
@@ -421,15 +420,14 @@ public class RegerSegmentPartitionSegmentSizeTest {
       //      int epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
       //      int epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
       int epsilon_r =
-              ts_block.get(j).get(0)
-                      - (int)
-                      ((double) (theta0_r + timestamp_delta_min)
-                              + (double) theta1_r * (double) ts_block.get(j - 1).get(0));
+              (int) (ts_block.get(j).get(0)  -
+                      ( (theta0_r + timestamp_delta_min)
+                              +  theta1_r * (float) ts_block.get(j - 1).get(0)));
       int epsilon_v =
-              ts_block.get(j).get(1)
-                      - (int)
-                      ((double) (theta0_v + value_delta_min)
-                              + (double) theta1_v * (double) ts_block.get(j - 1).get(1));
+              (int) (ts_block.get(j).get(1)
+                      -
+                      ((theta0_v + value_delta_min)
+                              +  theta1_v * (float) ts_block.get(j - 1).get(1)));
 //            System.out.println("getBitWith(epsilon_r) :"+getBitWith(epsilon_r));
 //            System.out.println("getBitWith(epsilon_v) :"+getBitWith(epsilon_v));
 
@@ -557,11 +555,11 @@ public class RegerSegmentPartitionSegmentSizeTest {
     // delta to Regression
     for (int j = 1; j < block_size; j++) {
       int epsilon_r =
-              ts_block.get(j).get(0)
-                      - (int) ((double) theta0_r + (double) theta1_r * (double) ts_block.get(j - 1).get(0));
+              (int) (ts_block.get(j).get(0)
+                      -  (theta0_r + theta1_r * (float) ts_block.get(j - 1).get(0)));
       int epsilon_v =
-              ts_block.get(j).get(1)
-                      - (int) ((double) theta0_v + (double) theta1_v * (double) ts_block.get(j - 1).get(1));
+              (int) (ts_block.get(j).get(1)
+                      - (theta0_v +  theta1_v * (float) ts_block.get(j - 1).get(1)));
 
       //      int epsilon_r = ts_block.get(j).get(0) - (int) (theta0_r + theta1_r *
       // (double)ts_block.get(j-1).get(0));
@@ -610,15 +608,15 @@ public class RegerSegmentPartitionSegmentSizeTest {
       //      int epsilon_r = ts_block_delta.get(j).get(0) - timestamp_delta_min;
       //      int epsilon_v = ts_block_delta.get(j).get(1) - value_delta_min;
       int epsilon_r =
-              ts_block.get(j).get(0)
-                      - (int)
-                      ((double) (theta0_r + timestamp_delta_min)
-                              + (double) theta1_r * (double) ts_block.get(j - 1).get(0));
+              (int) (ts_block.get(j).get(0)
+                      -
+                      ( (theta0_r + timestamp_delta_min)
+                              +  theta1_r * (float) ts_block.get(j - 1).get(0)));
       int epsilon_v =
-              ts_block.get(j).get(1)
-                      - (int)
-                      ((double) (theta0_v + value_delta_min)
-                              + (double) theta1_v * (double) ts_block.get(j - 1).get(1));
+              (int) (ts_block.get(j).get(1)
+                      -
+                      ( (theta0_v + value_delta_min)
+                              + theta1_v * (float) ts_block.get(j - 1).get(1)));
 //            System.out.println("getBitWith(epsilon_r) :"+getBitWith(epsilon_r));
 //            System.out.println("getBitWith(epsilon_v) :"+getBitWith(epsilon_v));
 
