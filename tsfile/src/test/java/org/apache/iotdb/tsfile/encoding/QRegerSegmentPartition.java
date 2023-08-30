@@ -14,7 +14,7 @@ import java.util.Stack;
 
 import static java.lang.Math.abs;
 
-public class QRegerSegmentPartitionSegmentSize {
+public class QRegerSegmentPartition {
   public static int getBitWith(int num) {
     if (num == 0) return 1;
     else return 32 - Integer.numberOfLeadingZeros(num);
@@ -3697,9 +3697,10 @@ public class QRegerSegmentPartitionSegmentSize {
     return data;
   }
 
+
   public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
 //        String parent_dir = "C:\\Users\\xiaoj\\Desktop\\test";
-    String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\segment_size_test";
+    String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\segment_test";
     String input_parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\";
     ArrayList<String> input_path_list = new ArrayList<>();
     ArrayList<String> output_path_list = new ArrayList<>();
@@ -3756,7 +3757,7 @@ public class QRegerSegmentPartitionSegmentSize {
 
     output_path_list.add(parent_dir + "\\CS-Sensors_ratio.csv"); // 0
     dataset_block_size.add(1024);
-    dataset_k.add(6);
+    dataset_k.add(5);
     output_path_list.add(parent_dir + "\\Metro-Traffic_ratio.csv");// 1
     dataset_block_size.add(512);
     dataset_k.add(7);
@@ -3768,13 +3769,13 @@ public class QRegerSegmentPartitionSegmentSize {
     dataset_k.add(1);
     output_path_list.add(parent_dir + "\\GW-Magnetic_ratio.csv"); //4
     dataset_block_size.add(128);
-    dataset_k.add(3);
+    dataset_k.add(6);
     output_path_list.add(parent_dir + "\\TY-Fuel_ratio.csv");//5
     dataset_block_size.add(64);
-    dataset_k.add(2);
+    dataset_k.add(5);
     output_path_list.add(parent_dir + "\\Cyber-Vehicle_ratio.csv"); //6
     dataset_block_size.add(128);
-    dataset_k.add(3);
+    dataset_k.add(4);
     output_path_list.add(parent_dir + "\\Vehicle-Charge_ratio.csv");//7
     dataset_block_size.add(512);
     dataset_k.add(8);
@@ -3789,10 +3790,10 @@ public class QRegerSegmentPartitionSegmentSize {
     dataset_k.add(9);
     output_path_list.add(parent_dir + "\\EPM-Education_ratio.csv");//11
     dataset_block_size.add(512);
-    dataset_k.add(4);
+    dataset_k.add(5);
 
-    for (int file_i = 11; file_i < 12; file_i++) {
-//        for (int file_i = 4; file_i < input_path_list.size(); file_i++) {
+//    for (int file_i = 8; file_i < 9; file_i++) {
+        for (int file_i = 0; file_i < input_path_list.size(); file_i++) {
       String inputPath = input_path_list.get(file_i);
       //      String Output = "C:\\Users\\xiaoj\\Desktop\\test.csv";//output_path_list.get(file_i);
       String Output = output_path_list.get(file_i);
@@ -3811,50 +3812,47 @@ public class QRegerSegmentPartitionSegmentSize {
         "Decoding Time",
         "Points",
         "Compressed Size",
-              "Segment Size",
         "Compression Ratio"
       };
       writer.writeRecord(head); // write header to output file
 
       assert tempList != null;
+//System.out.println(inputPath);
       for (File f : tempList) {
         System.out.println(f);
-        for(int segment_size_exp = 6;segment_size_exp>2;segment_size_exp--){
-        int segment_size = (int) Math.pow(2, segment_size_exp);
-        System.out.println(segment_size);
+        InputStream inputStream = Files.newInputStream(f.toPath());
+        CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
+        ArrayList<ArrayList<Integer>> data = new ArrayList<>();
+        ArrayList<ArrayList<Integer>> data_decoded = new ArrayList<>();
 
-          InputStream inputStream = Files.newInputStream(f.toPath());
-          CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
-          ArrayList<ArrayList<Integer>> data = new ArrayList<>();
-          ArrayList<ArrayList<Integer>> data_decoded = new ArrayList<>();
-
-          // add a column to "data"
-          loader.readHeaders();
-          data.clear();
-          while (loader.readRecord()) {
-            ArrayList<Integer> tmp = new ArrayList<>();
-            tmp.add(Integer.valueOf(loader.getValues()[0]));
-            tmp.add(Integer.valueOf(loader.getValues()[1]));
-            data.add(tmp);
-          }
-          inputStream.close();
-          long encodeTime = 0;
-          long decodeTime = 0;
-          double ratio = 0;
-          double compressed_size = 0;
-          int repeatTime2 = 1;
-
-          for (int i = 0; i < repeatTime; i++) {
-            long s = System.nanoTime();
-            ArrayList<Byte> buffer = new ArrayList<>();
-            for (int repeat = 0; repeat < repeatTime2; repeat++)
-              buffer = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i),dataset_third.get(file_i),segment_size, dataset_k.get(file_i));
-            long e = System.nanoTime();
-            encodeTime += ((e - s) / repeatTime2);
-            compressed_size += buffer.size();
-            double ratioTmp = (double) buffer.size() / (double) (data.size() * Integer.BYTES * 2);
-            ratio += ratioTmp;
-            s = System.nanoTime();
+        // add a column to "data"
+        loader.readHeaders();
+        data.clear();
+        while (loader.readRecord()) {
+          ArrayList<Integer> tmp = new ArrayList<>();
+          tmp.add(Integer.valueOf(loader.getValues()[0]));
+          tmp.add(Integer.valueOf(loader.getValues()[1]));
+          //          tmp.add(Float.valueOf(loader.getValues()[0]).intValue());
+          //          tmp.add(Float.valueOf(loader.getValues()[1]).intValue());
+          data.add(tmp);
+        }
+        inputStream.close();
+        long encodeTime = 0;
+        long decodeTime = 0;
+        double ratio = 0;
+        double compressed_size = 0;
+        int repeatTime2 = 1;
+        for (int i = 0; i < repeatTime; i++) {
+          long s = System.nanoTime();
+          ArrayList<Byte> buffer = new ArrayList<>();
+          for (int repeat = 0; repeat < repeatTime2; repeat++)
+            buffer = ReorderingRegressionEncoder(data, dataset_block_size.get(file_i), dataset_third.get(file_i), 16, dataset_k.get(file_i));
+          long e = System.nanoTime();
+          encodeTime += ((e - s) / repeatTime2);
+          compressed_size += buffer.size();
+          double ratioTmp = (double) buffer.size() / (double) (data.size() * Integer.BYTES * 2);
+          ratio += ratioTmp;
+          s = System.nanoTime();
 //          for(int repeat=0;repeat<1;repeat++)
 //            data_decoded = ReorderingRegressionDecoder(buffer);
 ////                    for(int p=0;p< data.size();p++){
@@ -3864,34 +3862,28 @@ public class QRegerSegmentPartitionSegmentSize {
 ////          //              System.out.println(data_decoded.get(p).get(1));
 ////                      }
 ////                    }//||  Objects.equals(data.get(p).get(1), data_decoded.get(p).get(1))
-            e = System.nanoTime();
-            decodeTime += ((e - s) / repeatTime2);
-          }
-
-          ratio /= repeatTime;
-          compressed_size /= repeatTime;
-          encodeTime /= repeatTime;
-          decodeTime /= repeatTime;
-
-          String[] record = {
-                  f.toString(),
-                  "REGER",
-                  String.valueOf(encodeTime),
-                  String.valueOf(decodeTime),
-                  String.valueOf(data.size()),
-                  String.valueOf(compressed_size),
-                  String.valueOf(segment_size_exp),
-                  String.valueOf(ratio)
-          };
-          System.out.println(ratio);
-          writer.writeRecord(record);
-
+          e = System.nanoTime();
+          decodeTime += ((e - s) / repeatTime2);
         }
+
+        ratio /= repeatTime;
+        compressed_size /= repeatTime;
+        encodeTime /= repeatTime;
+        decodeTime /= repeatTime;
+
+        String[] record = {
+          f.toString(),
+          "REGER",
+          String.valueOf(encodeTime),
+          String.valueOf(decodeTime),
+          String.valueOf(data.size()),
+          String.valueOf(compressed_size),
+          String.valueOf(ratio)
+        };
+        System.out.println(ratio);
+        writer.writeRecord(record);
 //        break;
       }
-
-//System.out.println(inputPath);
-
       writer.close();
     }
   }
