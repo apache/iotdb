@@ -28,17 +28,11 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Comparator;
-import java.util.concurrent.PriorityBlockingQueue;
-
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_OPC_UA_ENABLE_CACHE_DATA_DEFAULT_VALUE;
-import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_OPC_UA_ENABLE_CACHE_DATA_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_OPC_UA_HTTPS_BIND_PORT_KEY;
 import static org.apache.iotdb.db.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_OPC_UA_TCP_BIND_PORT_DEFAULT_VALUE;
@@ -58,9 +52,6 @@ public class IoTDBOpcUaConnector implements PipeConnector {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBOpcUaConnector.class);
 
   private OpcUaServer server;
-  private boolean enableCacheData;
-  private final PriorityBlockingQueue<Pair<Long, Event>> events =
-      new PriorityBlockingQueue<>(11, Comparator.comparing(o -> o.left));
 
   @Override
   public void validate(PipeParameterValidator validator) throws Exception {
@@ -87,11 +78,6 @@ public class IoTDBOpcUaConnector implements PipeConnector {
 
     server = IoTDBOpcUaServerUtils.getIoTDBOpcUaServer(tcpBindPort, httpsBindPort, user, password);
     server.startup();
-
-    enableCacheData =
-        parameters.getBooleanOrDefault(
-            CONNECTOR_IOTDB_OPC_UA_ENABLE_CACHE_DATA_KEY,
-            CONNECTOR_IOTDB_OPC_UA_ENABLE_CACHE_DATA_DEFAULT_VALUE);
   }
 
   @Override

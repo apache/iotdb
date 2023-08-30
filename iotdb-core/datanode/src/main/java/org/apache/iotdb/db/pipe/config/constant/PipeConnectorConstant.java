@@ -60,10 +60,6 @@ public class PipeConnectorConstant {
   public static final String CONNECTOR_IOTDB_OPC_UA_HTTPS_BIND_PORT_KEY = "connector.https.port";
   public static final int CONNECTOR_IOTDB_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE = 8443;
 
-  public static final String CONNECTOR_IOTDB_OPC_UA_ENABLE_CACHE_DATA_KEY =
-      "connector.cache.enable";
-  public static final boolean CONNECTOR_IOTDB_OPC_UA_ENABLE_CACHE_DATA_DEFAULT_VALUE = true;
-
   private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");
   }
