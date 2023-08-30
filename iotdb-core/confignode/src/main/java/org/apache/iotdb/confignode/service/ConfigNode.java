@@ -129,12 +129,12 @@ public class ConfigNode implements ConfigNodeMBean {
         int configNodeId = CONF.getConfigNodeId();
         configManager.initConsensusManager();
         while (configManager.getConsensusManager().getLeader() == null) {
-          // leader has not been elected yet, wait 1 second
           LOGGER.info("Leader has not been elected yet, wait for 1 second");
           try {
             Thread.sleep(1000);
-          } catch (Exception e) {
-
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOGGER.warn("Unexpected interruption during waiting for leader election.");
           }
         }
         setUpMetricService();
