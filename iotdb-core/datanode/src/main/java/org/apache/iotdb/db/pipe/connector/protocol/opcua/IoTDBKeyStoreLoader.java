@@ -55,7 +55,7 @@ class IoTDBKeyStoreLoader {
   IoTDBKeyStoreLoader load(Path baseDir, char[] password) throws Exception {
     KeyStore keyStore = KeyStore.getInstance("PKCS12");
 
-    File serverKeyStore = baseDir.resolve("example-server.pfx").toFile();
+    File serverKeyStore = baseDir.resolve("iotdb-server.pfx").toFile();
 
     logger.info("Loading KeyStore at {}", serverKeyStore);
 

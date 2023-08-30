@@ -54,7 +54,9 @@ public class WebsocketConnector implements PipeConnector {
       new PriorityQueue<>(Comparator.comparing(o -> o.left));
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {}
+  public void validate(PipeParameterValidator validator) throws Exception {
+    // The port is optional
+  }
 
   @Override
   public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
@@ -74,7 +76,9 @@ public class WebsocketConnector implements PipeConnector {
   }
 
   @Override
-  public void heartbeat() throws Exception {}
+  public void heartbeat() throws Exception {
+    // Server side, do nothing
+  }
 
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) {
@@ -107,7 +111,9 @@ public class WebsocketConnector implements PipeConnector {
   }
 
   @Override
-  public void transfer(Event event) throws Exception {}
+  public void transfer(Event event) throws Exception {
+    // Do nothing when receive heartbeat or other events
+  }
 
   @Override
   public void close() throws Exception {

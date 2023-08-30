@@ -65,6 +65,7 @@ import java.security.cert.X509Certificate;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static org.eclipse.milo.opcua.sdk.server.api.config.OpcUaServerConfig.USER_TOKEN_POLICY_ANONYMOUS;
@@ -277,8 +278,7 @@ public class IoTDBOpcUaServerUtils {
     BaseEventTypeNode eventNode =
         server
             .getEventFactory()
-            .createEvent(new NodeId(pseudoNameSpaceIndex, eventId++), Identifiers.BaseEventType);
-
+            .createEvent(new NodeId(pseudoNameSpaceIndex, UUID.randomUUID()), Identifiers.BaseEventType);
     // Use eventNode here because other nodes doesn't support values and times simultaneously
     for (int columnIndex = 0; columnIndex < tablet.getSchemas().size(); ++columnIndex) {
 
@@ -286,19 +286,19 @@ public class IoTDBOpcUaServerUtils {
 
       // Source name --> Sensor path, like root.test.d_0.s_0
       eventNode.setSourceName(
-          tablet.deviceId + tablet.getSchemas().get(columnIndex).getMeasurementId());
+          tablet.deviceId + "." + tablet.getSchemas().get(columnIndex).getMeasurementId());
 
       // Source node --> Sensor type, like double
       eventNode.setSourceNode(convertToOpcDataType(dataType));
-
-      // time --> timeStamp
-      eventNode.setTime(new DateTime(tablet.timestamps[columnIndex]));
 
       for (int rowIndex = 0; rowIndex < tablet.rowSize; ++rowIndex) {
         // Filter null value
         if (tablet.bitMaps[columnIndex].isMarked(rowIndex)) {
           continue;
         }
+
+        // time --> timeStamp
+        eventNode.setTime(new DateTime(tablet.timestamps[rowIndex]));
 
         // Message --> Value
         switch (dataType) {
