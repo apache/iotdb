@@ -25,13 +25,15 @@ import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimator {
 
   @Override
-  public long calculatingMetadataMemoryCost(InnerCompactionTaskInfo taskInfo) {
+  public long calculatingMetadataMemoryCost(CompactionTaskInfo taskInfo) {
     long cost = 0;
     // add ChunkMetadata size of MultiTsFileDeviceIterator
     cost +=
-        taskInfo.getFileInfoList().size()
-            * taskInfo.getMaxChunkMetadataNumInDevice()
-            * taskInfo.getMaxChunkMetadataSize();
+        Math.min(
+            taskInfo.getTotalChunkMetadataSize(),
+            taskInfo.getFileInfoList().size()
+                * taskInfo.getMaxChunkMetadataNumInDevice()
+                * taskInfo.getMaxChunkMetadataSize());
 
     // add ChunkMetadata size of targetFileWriter
     long sizeForFileWriter =
@@ -45,15 +47,27 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
   }
 
   @Override
-  public long calculatingDataMemoryCost(InnerCompactionTaskInfo taskInfo) {
-    // add max target chunk size and max source chunk size
-    long cost =
-        2
-            * taskInfo.getMaxConcurrentSeriesNum()
-            * IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
+  public long calculatingDataMemoryCost(CompactionTaskInfo taskInfo) {
+    if (taskInfo.getTotalChunkNum() == 0) {
+      return taskInfo.getModificationFileSize();
+    }
+    long averageUncompressedChunkSize =
+        taskInfo.getTotalFileSize() * compressionRatio / taskInfo.getTotalChunkNum();
 
-    // add modification file size
-    cost += taskInfo.getModificationFileSize();
-    return cost;
+    long maxConcurrentSeriesSizeOfTotalFiles =
+        averageUncompressedChunkSize
+            * taskInfo.getFileInfoList().size()
+            * taskInfo.getMaxConcurrentSeriesNum()
+            * taskInfo.getMaxChunkMetadataNumInSeries()
+            / compressionRatio;
+    long maxTargetChunkWriterSize =
+        config.getTargetChunkSize() * taskInfo.getMaxConcurrentSeriesNum();
+    long targetChunkWriterSize =
+        Math.min(maxConcurrentSeriesSizeOfTotalFiles, maxTargetChunkWriterSize);
+
+    long chunkSizeFromSourceFile =
+        averageUncompressedChunkSize * taskInfo.getMaxConcurrentSeriesNum();
+
+    return targetChunkWriterSize + chunkSizeFromSourceFile + taskInfo.getModificationFileSize();
   }
 }
