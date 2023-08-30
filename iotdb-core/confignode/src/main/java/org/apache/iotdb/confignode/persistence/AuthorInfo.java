@@ -563,6 +563,7 @@ public class AuthorInfo implements SnapshotProcessor {
       tUserResp.setPrivilegeList(userPrivilegeList);
       tUserResp.setRoleList(user.getRoleList());
       tUserResp.setSysPriSet(user.getSysPrivilege());
+      tUserResp.setSysPriSetGrantOpt(user.getSysPriGrantOpt());
     }
 
     // Permission information for roles owned by users
