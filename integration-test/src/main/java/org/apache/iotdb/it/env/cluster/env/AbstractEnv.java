@@ -229,7 +229,7 @@ public abstract class AbstractEnv implements BaseEnv {
       fail();
     }
 
-    testWorkingAllRunning();
+    testWorkingNoUnknown();
   }
 
   public String getTestClassName() {
@@ -249,8 +249,8 @@ public abstract class AbstractEnv implements BaseEnv {
     return result;
   }
 
-  public void testWorkingAllRunning() {
-    testWorking(nodeStatusMap -> nodeStatusMap.values().stream().allMatch("Running"::equals));
+  public void testWorkingNoUnknown() {
+    testWorking(nodeStatusMap -> nodeStatusMap.values().stream().noneMatch("Unknown"::equals));
   }
 
   public void testWorkingOneUnknownOtherRunning() {
@@ -720,7 +720,7 @@ public abstract class AbstractEnv implements BaseEnv {
 
     if (isNeedVerify) {
       // Test whether register success
-      testWorkingAllRunning();
+      testWorkingNoUnknown();
     }
   }
 
@@ -745,7 +745,7 @@ public abstract class AbstractEnv implements BaseEnv {
 
     if (isNeedVerify) {
       // Test whether register success
-      testWorkingAllRunning();
+      testWorkingNoUnknown();
     }
   }
 

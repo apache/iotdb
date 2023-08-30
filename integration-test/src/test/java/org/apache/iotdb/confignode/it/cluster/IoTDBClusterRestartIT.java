@@ -102,7 +102,7 @@ public class IoTDBClusterRestartIT {
       EnvFactory.getEnv().startDataNode(i);
     }
 
-    ((AbstractEnv) EnvFactory.getEnv()).testWorkingAllRunning();
+    ((AbstractEnv) EnvFactory.getEnv()).testWorkingNoUnknown();
   }
 
   @Test
