@@ -68,6 +68,10 @@ public class LocalFileRoleAccessorTest {
         PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.a.b.c" + j));
         pathPrivilege.getPrivileges().add(j);
         roles[i].getPathPrivilegeList().add(pathPrivilege);
+        roles[i].getSysPrivilege().add(i + 4);
+        if (i % 2 != 0) {
+          roles[i].getSysPriGrantOpt().add(i+4);
+        }
       }
     }
 

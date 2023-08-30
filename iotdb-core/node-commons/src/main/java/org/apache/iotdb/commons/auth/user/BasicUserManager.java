@@ -118,20 +118,11 @@ public abstract class BasicUserManager implements IUserManager {
   }
 
   @Override
-  public boolean deleteUser(String username) throws AuthException {
+  public boolean deleteUser(String username) {
     lock.writeLock(username);
-    try {
-      if (accessor.deleteUser(username)) {
-        userMap.remove(username);
-        return true;
-      } else {
-        return false;
-      }
-    } catch (IOException e) {
-      throw new AuthException(TSStatusCode.AUTH_IO_EXCEPTION, e);
-    } finally {
-      lock.writeUnlock(username);
-    }
+    userMap.remove(username);
+    lock.writeUnlock(username);
+    return true;
   }
 
   @Override

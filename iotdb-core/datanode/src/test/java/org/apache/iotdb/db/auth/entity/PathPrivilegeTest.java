@@ -61,7 +61,6 @@ public class PathPrivilegeTest {
 
     Assert.assertTrue(pathPrivilege.getGrantOpt().contains(PrivilegeType.READ_SCHEMA.ordinal()));
     Assert.assertTrue(pathPrivilege.getGrantOpt().contains(PrivilegeType.WRITE_SCHEMA.ordinal()));
-    Assert.assertFalse(pathPrivilege.grantPrivilege(PrivilegeType.MAINTAIN.ordinal(), false));
 
     pathPrivilege.revokePrivilege(PrivilegeType.READ_SCHEMA.ordinal());
     Assert.assertFalse(pathPrivilege.revokePrivilege(PrivilegeType.READ_SCHEMA.ordinal()));

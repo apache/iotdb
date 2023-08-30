@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -185,12 +186,10 @@ public class AuthOperationProcedure
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeShort(ProcedureType.AUTH_OPERATE_PROCEDURE.getTypeCode());
     super.serialize(stream);
-    ReadWriteIOUtils.write(user, stream);
-    ReadWriteIOUtils.write(role, stream);
-    ReadWriteIOUtils.write(dataNodesToInvalid.size(), stream);
-    for (Pair<TDataNodeConfiguration, Long> item : dataNodesToInvalid) {
-      ThriftCommonsSerDeUtils.serializeTDataNodeConfiguration(item.getLeft(), stream);
-      ReadWriteIOUtils.write(item.getRight(), stream);
+    ReadWriteIOUtils.write(datanodes.size(), stream);
+    ReadWriteIOUtils.write(plan.serializeToByteBuffer(),stream);
+    for (TDataNodeConfiguration item : datanodes) {
+      ThriftCommonsSerDeUtils.serializeTDataNodeConfiguration(item, stream);
     }
     ReadWriteIOUtils.write(timeoutMS, stream);
   }
@@ -198,15 +197,17 @@ public class AuthOperationProcedure
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
-    this.user = ReadWriteIOUtils.readString(byteBuffer);
-    this.role = ReadWriteIOUtils.readString(byteBuffer);
     int size = ReadWriteIOUtils.readInt(byteBuffer);
+    try {
+      this.plan = (AuthorPlan) ConfigPhysicalPlan.Factory.create(byteBuffer);
+    } catch (IOException e) {
+      LOGGER.error("IO error when deserialize authplan.", e);
+    }
     this.dataNodesToInvalid = new ArrayList<>();
     for (int i = 0; i < size; i++) {
       TDataNodeConfiguration datanode =
           ThriftCommonsSerDeUtils.deserializeTDataNodeConfiguration(byteBuffer);
-      Long timestamp = ReadWriteIOUtils.readLong(byteBuffer);
-      this.dataNodesToInvalid.add(new Pair<TDataNodeConfiguration, Long>(datanode, timestamp));
+      this.datanodes.add(datanode);
     }
     this.timeoutMS = ReadWriteIOUtils.readInt(byteBuffer);
   }

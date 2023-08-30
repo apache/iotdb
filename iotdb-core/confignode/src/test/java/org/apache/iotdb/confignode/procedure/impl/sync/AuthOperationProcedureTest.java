@@ -23,6 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeResource;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
@@ -33,11 +36,12 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.fail;
 
-public class InvalidDatanodeAuthCacheProcedureTest {
+public class AuthOperationProcedureTest {
 
   @Test
   public void serializeDeserializeTest() throws IOException {
@@ -58,22 +62,31 @@ public class InvalidDatanodeAuthCacheProcedureTest {
 
     List<TDataNodeConfiguration> datanodes = new ArrayList<>();
     datanodes.add(dataNodeConfiguration);
-    InvalidAuthCacheProcedure proc = new InvalidAuthCacheProcedure("user1", "", datanodes);
 
     try {
-      proc.serialize(outputStream);
-      ByteBuffer buffer =
-          ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-      InvalidAuthCacheProcedure proc2 =
-          (InvalidAuthCacheProcedure) ProcedureFactory.getInstance().create(buffer);
-      Assert.assertTrue(proc.equals(proc2));
-      proc2.removeAllDNS();
-      byteArrayOutputStream.reset();
-      proc2.serialize(outputStream);
-      buffer = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-      InvalidAuthCacheProcedure proc3 =
-          (InvalidAuthCacheProcedure) ProcedureFactory.getInstance().create(buffer);
-      Assert.assertTrue(proc2.equals(proc3));
+      int begin = ConfigPhysicalPlanType.CreateUser.ordinal();
+      int end =   ConfigPhysicalPlanType.ListRoleUsers.ordinal();
+      for (int i = begin; i <= end; i++) {
+        PartialPath path = new PartialPath(new String("root.t1"));
+        AuthOperationProcedure proc = new AuthOperationProcedure(
+                new AuthorPlan(ConfigPhysicalPlanType.values()[i],
+                        "user1",
+                        "role1",
+                        "123456",
+                        "123456",
+                        Collections.singleton(1),
+                        false,
+                        Collections.singletonList(path)
+                        ), datanodes
+        );
+        proc.serialize(outputStream);
+        ByteBuffer buffer =
+                ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+
+        AuthOperationProcedure proc2 =
+                (AuthOperationProcedure) ProcedureFactory.getInstance().create(buffer);
+        Assert.assertTrue(proc.equals(proc2));
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail();

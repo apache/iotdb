@@ -564,6 +564,7 @@ public class ConfigPhysicalPlanSerDeTest {
             "",
             "",
             new HashSet<>(),
+            false,
             new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -577,6 +578,7 @@ public class ConfigPhysicalPlanSerDeTest {
             "",
             "newpwd",
             new HashSet<>(),
+            false,
             new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -587,7 +589,7 @@ public class ConfigPhysicalPlanSerDeTest {
     nodeNameList.add(new PartialPath("root.abc.**"));
     req0 =
         new AuthorPlan(
-            ConfigPhysicalPlanType.GrantUser, "tempuser", "", "", "", permissions, nodeNameList);
+            ConfigPhysicalPlanType.GrantUser, "tempuser", "", "", "", permissions,false, nodeNameList);
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
@@ -600,6 +602,7 @@ public class ConfigPhysicalPlanSerDeTest {
             "",
             "",
             permissions,
+            false,
             nodeNameList);
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -613,6 +616,7 @@ public class ConfigPhysicalPlanSerDeTest {
             "",
             "",
             new HashSet<>(),
+            false,
             new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -620,14 +624,14 @@ public class ConfigPhysicalPlanSerDeTest {
     // revoke user
     req0 =
         new AuthorPlan(
-            ConfigPhysicalPlanType.RevokeUser, "tempuser", "", "", "", permissions, nodeNameList);
+            ConfigPhysicalPlanType.RevokeUser, "tempuser", "", "", "", permissions,false, nodeNameList);
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // revoke role
     req0 =
         new AuthorPlan(
-            ConfigPhysicalPlanType.RevokeRole, "", "temprole", "", "", permissions, nodeNameList);
+            ConfigPhysicalPlanType.RevokeRole, "", "temprole", "", "", permissions,false, nodeNameList);
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
@@ -640,6 +644,7 @@ public class ConfigPhysicalPlanSerDeTest {
             "",
             "",
             new HashSet<>(),
+            false,
             new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -653,6 +658,7 @@ public class ConfigPhysicalPlanSerDeTest {
             "",
             "",
             new HashSet<>(),
+            false,
             new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -666,6 +672,7 @@ public class ConfigPhysicalPlanSerDeTest {
             "",
             "",
             new HashSet<>(),
+            false,
             new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -673,14 +680,14 @@ public class ConfigPhysicalPlanSerDeTest {
     // list user
     req0 =
         new AuthorPlan(
-            ConfigPhysicalPlanType.ListUser, "", "", "", "", new HashSet<>(), new ArrayList<>());
+            ConfigPhysicalPlanType.ListUser, "", "", "", "", new HashSet<>(),false, new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // list role
     req0 =
         new AuthorPlan(
-            ConfigPhysicalPlanType.ListRole, "", "", "", "", new HashSet<>(), new ArrayList<>());
+            ConfigPhysicalPlanType.ListRole, "", "", "", "", new HashSet<>(), false,new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
@@ -693,6 +700,7 @@ public class ConfigPhysicalPlanSerDeTest {
             "",
             "",
             new HashSet<>(),
+            false,
             new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -706,6 +714,7 @@ public class ConfigPhysicalPlanSerDeTest {
             "",
             "",
             new HashSet<>(),
+            false,
             new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -719,6 +728,7 @@ public class ConfigPhysicalPlanSerDeTest {
             "",
             "",
             new HashSet<>(),
+            false,
             new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -732,6 +742,7 @@ public class ConfigPhysicalPlanSerDeTest {
             "",
             "",
             new HashSet<>(),
+            false,
             new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -745,6 +756,7 @@ public class ConfigPhysicalPlanSerDeTest {
             "",
             "",
             new HashSet<>(),
+            false,
             new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -758,6 +770,7 @@ public class ConfigPhysicalPlanSerDeTest {
             "",
             "",
             new HashSet<>(),
+            false,
             new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);

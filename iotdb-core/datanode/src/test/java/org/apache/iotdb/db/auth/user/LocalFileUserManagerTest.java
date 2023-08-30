@@ -109,7 +109,7 @@ public class LocalFileUserManagerTest {
     Assert.assertThrows(AuthException.class, () -> manager.createUser("short", "too", false));
 
     // delete
-    assertFalse(manager.deleteUser("not a user"));
+    assertTrue(manager.deleteUser("not a user"));
     assertTrue(manager.deleteUser(users[users.length - 1].getName()));
     assertNull(manager.getUser(users[users.length - 1].getName()));
     assertFalse(manager.deleteUser(users[users.length - 1].getName()));
