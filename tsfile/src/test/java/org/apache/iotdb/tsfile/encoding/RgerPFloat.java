@@ -685,6 +685,7 @@ public class RgerPFloat {
         for (int j = p; j < block_size; j++) {
             float epsilon_r = (float) ts_block.get(j).get(0) - coefficient.get(0);
             float epsilon_v = (float) ts_block.get(j).get(1) - coefficient.get(1);
+//            System.out.println("p="+p);
             for (int pi = 1; pi <= p; pi++) {
                 epsilon_r -= (coefficient.get(2 * pi) * (float) ts_block.get(j - pi).get(0));
                 epsilon_v -= (coefficient.get(2 * pi + 1) * (float) ts_block.get(j - pi).get(1));
@@ -1858,8 +1859,9 @@ public class RgerPFloat {
                 }
                 ArrayList<Integer> beta_list;
                 beta_list = new ArrayList<>();
+//                System.out.println("coefficient: "+coefficient);
                 for (int alpha : alpha_list) {
-                    beta_list.add(getBetaP(ts_block, alpha, block_size, raw_length, coefficient, segment_size));
+                    beta_list.add(getBetaP(ts_block, alpha, block_size, raw_length, coefficient, p));
                 }
                 ArrayList<Integer> isMoveable = isMovable(alpha_list, beta_list);
                 int adjust_count = 0;
@@ -1901,7 +1903,7 @@ public class RgerPFloat {
                     }
                     beta_list = new ArrayList<>();
                     for (int alpha : alpha_list) {
-                        beta_list.add(getBetaP(ts_block, alpha, block_size, raw_length, coefficient, segment_size));
+                        beta_list.add(getBetaP(ts_block, alpha, block_size, raw_length, coefficient, p));
                     }
                     isMoveable = isMovable(alpha_list, beta_list);
                 }
@@ -2005,21 +2007,21 @@ public class RgerPFloat {
                     ts_block = ts_block_partition;
                     ts_block_delta = ts_block_delta_partition;
                     coefficient =  coefficient_partition;
-                    alpha_list = getIStarPK(ts_block, block_size, 0, coefficient, k, p);
+                    alpha_list = getIStarPK(ts_block, block_size, 0, coefficient, p, k);
                 } else if (choose == 1) {
                     raw_length = reorder_length;
                     quickSort(ts_block, 1, 0, block_size - 1);
                     ts_block_delta = ts_block_delta_reorder;
                     coefficient =  coefficient_reorder;
-                    alpha_list = getIStarPK(ts_block, block_size, 1, coefficient, k, p);
+                    alpha_list = getIStarPK(ts_block, block_size, 1, coefficient ,p, k);
                 }else {
                     quickSort(ts_block, 0, 0, block_size - 1);
-                    alpha_list = getIStarPK(ts_block, block_size, 0, coefficient, k, p);
+                    alpha_list = getIStarPK(ts_block, block_size, 0, coefficient, p, k);
                 }
                 ArrayList<Integer> beta_list;
                 beta_list = new ArrayList<>();
                 for (int alpha : alpha_list) {
-                    beta_list.add(getBetaP(ts_block, alpha, block_size, raw_length, coefficient, segment_size));
+                    beta_list.add(getBetaP(ts_block, alpha, block_size, raw_length, coefficient, p));
                 }
                 ArrayList<Integer> isMoveable = isMovable(alpha_list, beta_list);
                 int adjust_count = 0;
@@ -2061,7 +2063,7 @@ public class RgerPFloat {
                     }
                     beta_list = new ArrayList<>();
                     for (int alpha : alpha_list) {
-                        beta_list.add(getBetaP(ts_block, alpha, block_size, raw_length, coefficient, segment_size));
+                        beta_list.add(getBetaP(ts_block, alpha, block_size, raw_length, coefficient, p));
                     }
                     isMoveable = isMovable(alpha_list, beta_list);
                 }
@@ -2603,7 +2605,7 @@ public class RgerPFloat {
 
 
                         long e = System.nanoTime();
-                        encodeTime += ((e - s) / 1);
+                        encodeTime += ((e - s));
                         compressed_size += buffer.size();
                         double ratioTmp = (double) buffer.size() / (double) (data.size() * Integer.BYTES * 2);
                         ratio += ratioTmp;
@@ -2611,7 +2613,7 @@ public class RgerPFloat {
                         //          data_decoded =
                         // ReorderingRegressionDecoder(buffer,dataset_map_td.get(file_i));
                         e = System.nanoTime();
-                        decodeTime += ((e - s) / 1);
+                        decodeTime += ((e - s));
 
                         //          for(int j=0;j<256;j++){
                         //            if(!data.get(j).get(0).equals(data_decoded.get(j).get(0))){

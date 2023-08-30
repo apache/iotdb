@@ -1934,7 +1934,7 @@ public class RgerPInt{
         ArrayList<Integer> beta_list;
         beta_list = new ArrayList<>();
         for (int alpha : alpha_list) {
-          beta_list.add(getBetaP(ts_block, alpha, block_size, raw_length, coefficient, segment_size));
+          beta_list.add(getBetaP(ts_block, alpha, block_size, raw_length, coefficient, p));
         }
         ArrayList<Integer> isMoveable = isMovable(alpha_list, beta_list);
         int adjust_count = 0;
@@ -1976,7 +1976,7 @@ public class RgerPInt{
           }
           beta_list = new ArrayList<>();
           for (int alpha : alpha_list) {
-            beta_list.add(getBetaP(ts_block, alpha, block_size, raw_length, coefficient, segment_size));
+            beta_list.add(getBetaP(ts_block, alpha, block_size, raw_length, coefficient, p));
           }
           isMoveable = isMovable(alpha_list, beta_list);
         }
@@ -2081,21 +2081,21 @@ public class RgerPInt{
           ts_block = ts_block_partition;
           ts_block_delta = ts_block_delta_partition;
           coefficient =  coefficient_partition;
-          alpha_list = getIStarPK(ts_block, block_size, 0, coefficient, k, p);
+          alpha_list = getIStarPK(ts_block, block_size, 0, coefficient, p, k);
         } else if (choose == 1) {
           raw_length = reorder_length;
           quickSort(ts_block, 1, 0, block_size - 1);
           ts_block_delta = ts_block_delta_reorder;
           coefficient =  coefficient_reorder;
-          alpha_list = getIStarPK(ts_block, block_size, 1, coefficient, k, p);
+          alpha_list = getIStarPK(ts_block, block_size, 1, coefficient, p, k);
         }else {
           quickSort(ts_block, 0, 0, block_size - 1);
-          alpha_list = getIStarPK(ts_block, block_size, 0, coefficient, k, p);
+          alpha_list = getIStarPK(ts_block, block_size, 0, coefficient, p, k);
         }
         ArrayList<Integer> beta_list;
         beta_list = new ArrayList<>();
         for (int alpha : alpha_list) {
-          beta_list.add(getBetaP(ts_block, alpha, block_size, raw_length, coefficient, segment_size));
+          beta_list.add(getBetaP(ts_block, alpha, block_size, raw_length, coefficient, p));
         }
         ArrayList<Integer> isMoveable = isMovable(alpha_list, beta_list);
         int adjust_count = 0;
@@ -2137,7 +2137,7 @@ public class RgerPInt{
           }
           beta_list = new ArrayList<>();
           for (int alpha : alpha_list) {
-            beta_list.add(getBetaP(ts_block, alpha, block_size, raw_length, coefficient, segment_size));
+            beta_list.add(getBetaP(ts_block, alpha, block_size, raw_length, coefficient, p));
           }
           isMoveable = isMovable(alpha_list, beta_list);
         }
