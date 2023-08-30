@@ -168,6 +168,11 @@ public interface IStateMachine {
     default void notifyConfigurationChanged(long term, long index, List<Peer> newConfiguration) {
       // do nothing default
     }
+
+    /** Notify the {@link IStateMachine} that this server becomes ready after changed to leader. */
+    default void notifyLeaderReady() {
+      // do nothing default
+    }
   }
 
   /**

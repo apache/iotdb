@@ -50,6 +50,7 @@ public class SimpleConsensusServerImpl implements IStateMachine {
     stateMachine.start();
     // Notify itself as the leader
     stateMachine.event().notifyLeaderChanged(peer.getGroupId(), peer.getNodeId());
+    stateMachine.event().notifyLeaderReady();
   }
 
   @Override
