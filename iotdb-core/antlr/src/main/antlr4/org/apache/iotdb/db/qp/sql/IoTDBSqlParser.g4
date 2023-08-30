@@ -846,12 +846,17 @@ alterUser
 
 // Grant User Privileges
 grantUser
-    : GRANT USER userName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)?
+    : GRANT USER userName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)? (grantOpt)?
     ;
 
 // Grant Role Privileges
 grantRole
-    : GRANT ROLE roleName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)?
+    : GRANT ROLE roleName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)? (grantOpt)?
+    ;
+
+// Grant Option
+grantOpt
+    : WITH GRANT OPTION
     ;
 
 // Grant User Role

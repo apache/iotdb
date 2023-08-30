@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.commons.auth.entity;
 
-import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.SerializeUtils;
 
 import java.io.ByteArrayOutputStream;
@@ -28,26 +25,21 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
 /** This class contains all information of a User. */
-public class User {
+public class User extends Role {
 
-  private String name;
   private String password;
-  private List<PathPrivilege> privilegeList;
+
   private List<String> roleList;
+
   private boolean isOpenIdUser = false; // default NO openIdUser
 
   private boolean useWaterMark = false; // default NO watermark
-
-  /**
-   * The latest time when the user is referenced. Reserved to provide session control or LRU
-   * mechanism in the future.
-   */
-  private long lastActiveTime;
 
   public User() {
     // empty constructor
@@ -60,90 +52,50 @@ public class User {
    * @param password -user password
    */
   public User(String name, String password) {
-    this.name = name;
+    super(name);
     this.password = password;
-    this.privilegeList = new ArrayList<>();
     this.roleList = new ArrayList<>();
   }
 
-  public String getName() {
-    return name;
-  }
-
-  public void setName(String name) {
-    this.name = name;
-  }
-
-  public String getPassword() {
-    return password;
-  }
-
+  /** ---------- set func ---------------* */
   public void setPassword(String password) {
     this.password = password;
   }
 
-  public List<PathPrivilege> getPrivilegeList() {
-    return privilegeList;
+  public void setUseWaterMark(boolean useWaterMark) {
+    this.useWaterMark = useWaterMark;
   }
 
-  public void setPrivilegeList(List<PathPrivilege> privilegeList) {
-    this.privilegeList = privilegeList;
+  public void setOpenIdUser(boolean openIdUser) {
+    isOpenIdUser = openIdUser;
+  }
+
+  public void setRoleList(List<String> roles) {
+    roleList = roles;
+  }
+
+  /** ------------ get func ----------------* */
+  public String getPassword() {
+    return password;
+  }
+
+  public boolean isUseWaterMark() {
+    return useWaterMark;
+  }
+
+  public boolean isOpenIdUser() {
+    return isOpenIdUser;
+  }
+
+  public boolean hasRole(String role) {
+    return roleList.contains(role);
   }
 
   public List<String> getRoleList() {
     return roleList;
   }
 
-  public void setRoleList(List<String> roleList) {
-    this.roleList = roleList;
-  }
-
-  public long getLastActiveTime() {
-    return lastActiveTime;
-  }
-
-  public void setLastActiveTime(long lastActiveTime) {
-    this.lastActiveTime = lastActiveTime;
-  }
-
-  public boolean hasPrivilege(PartialPath path, int privilegeId) {
-    return AuthUtils.hasPrivilege(path, privilegeId, privilegeList);
-  }
-
-  public void addPrivilege(PartialPath path, int privilegeId) {
-    AuthUtils.addPrivilege(path, privilegeId, privilegeList);
-  }
-
-  public void removePrivilege(PartialPath path, int privilegeId) {
-    AuthUtils.removePrivilege(path, privilegeId, privilegeList);
-  }
-
-  /**
-   * set the privilege.
-   *
-   * @param path -path
-   * @param privileges -set of integer to determine privilege
-   */
-  public void setPrivileges(PartialPath path, Set<Integer> privileges) {
-    for (PathPrivilege pathPrivilege : privilegeList) {
-      if (pathPrivilege.getPath().equals(path)) {
-        pathPrivilege.setPrivileges(privileges);
-      }
-    }
-  }
-
-  public boolean hasRole(String roleName) {
-    return roleList.contains(roleName);
-  }
-
-  public Set<Integer> getPrivileges(PartialPath path) throws AuthException {
-    return AuthUtils.getPrivileges(path, privilegeList);
-  }
-
-  public boolean checkPrivilege(PartialPath path, int privilegeId) throws AuthException {
-    return AuthUtils.checkPrivilege(path, privilegeId, privilegeList);
-  }
-
+  /** -------------- misc ----------------* */
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -154,47 +106,47 @@ public class User {
     }
     User user = (User) o;
 
-    return lastActiveTime == user.lastActiveTime && contentEquals(user);
+    return contentEquals(user);
   }
 
   private boolean contentEquals(User user) {
-    return Objects.equals(name, user.name)
+    return Objects.equals(super.getName(), user.getName())
         && Objects.equals(password, user.password)
-        && Objects.equals(privilegeList, user.privilegeList)
+        && Objects.equals(super.getPathPrivilegeList(), user.getPathPrivilegeList())
+        && Objects.equals(super.getSysPrivilege(), user.getSysPrivilege())
         && Objects.equals(roleList, user.roleList);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, password, privilegeList, roleList, lastActiveTime, isOpenIdUser);
+    return Objects.hash(
+        super.getName(),
+        password,
+        super.getPathPrivilegeList(),
+        super.getSysPrivilege(),
+        roleList,
+        isOpenIdUser);
   }
 
-  public boolean isUseWaterMark() {
-    return useWaterMark;
-  }
-
-  public void setUseWaterMark(boolean useWaterMark) {
-    this.useWaterMark = useWaterMark;
-  }
-
-  public boolean isOpenIdUser() {
-    return isOpenIdUser;
-  }
-
-  public void setOpenIdUser(boolean openIdUser) {
-    isOpenIdUser = openIdUser;
-  }
-
+  @Override
   public ByteBuffer serialize() {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
 
-    SerializeUtils.serialize(name, dataOutputStream);
+    SerializeUtils.serialize(super.getName(), dataOutputStream);
     SerializeUtils.serialize(password, dataOutputStream);
 
     try {
-      dataOutputStream.writeInt(privilegeList.size());
-      for (PathPrivilege pathPrivilege : privilegeList) {
+      dataOutputStream.writeInt(super.getSysPrivilege().size());
+      for (Integer item : super.getSysPrivilege()) {
+        dataOutputStream.writeInt(item);
+      }
+      dataOutputStream.writeInt(super.getSysPriGrantOpt().size());
+      for (Integer item : super.getSysPriGrantOpt()) {
+        dataOutputStream.writeInt(item);
+      }
+      dataOutputStream.writeInt(super.getPathPrivilegeList().size());
+      for (PathPrivilege pathPrivilege : super.getPathPrivilegeList()) {
         dataOutputStream.write(pathPrivilege.serialize().array());
       }
       dataOutputStream.writeBoolean(useWaterMark);
@@ -207,15 +159,29 @@ public class User {
   }
 
   public void deserialize(ByteBuffer buffer) {
-    name = SerializeUtils.deserializeString(buffer);
+    super.setName(SerializeUtils.deserializeString(buffer));
     password = SerializeUtils.deserializeString(buffer);
+    int systemPriSize = buffer.getInt();
+    Set<Integer> sysPri = new HashSet<>();
+    for (int i = 0; i < systemPriSize; i++) {
+      sysPri.add(buffer.getInt());
+    }
+    super.setSysPrivilegeSet(sysPri);
+    int sysPriGrantOptSize = buffer.getInt();
+    Set<Integer> grantOpt = new HashSet<>();
+    for (int i = 0; i < sysPriGrantOptSize; i++) {
+      grantOpt.add(buffer.getInt());
+    }
+    super.setSysPriGrantOpt(grantOpt);
+
     int privilegeListSize = buffer.getInt();
-    privilegeList = new ArrayList<>(privilegeListSize);
+    List<PathPrivilege> privilegeList = new ArrayList<>(privilegeListSize);
     for (int i = 0; i < privilegeListSize; i++) {
       PathPrivilege pathPrivilege = new PathPrivilege();
       pathPrivilege.deserialize(buffer);
       privilegeList.add(pathPrivilege);
     }
+    super.setPrivilegeList(privilegeList);
     useWaterMark = buffer.get() == 1;
     roleList = SerializeUtils.deserializeStringList(buffer);
   }
@@ -224,21 +190,21 @@ public class User {
   public String toString() {
     return "User{"
         + "name='"
-        + name
+        + super.getName()
         + '\''
         + ", password='"
         + password
         + '\''
-        + ", privilegeList="
-        + privilegeList
+        + ", pathPrivilegeList="
+        + super.getPathPrivilegeList()
+        + ", sysPrivilegeSet="
+        + super.getSysPrivilege()
         + ", roleList="
         + roleList
         + ", isOpenIdUser="
         + isOpenIdUser
         + ", useWaterMark="
         + useWaterMark
-        + ", lastActiveTime="
-        + lastActiveTime
         + '}';
   }
 }

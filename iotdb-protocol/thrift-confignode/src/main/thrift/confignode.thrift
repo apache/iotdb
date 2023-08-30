@@ -302,7 +302,8 @@ struct TAuthorizerReq {
   4: required string password
   5: required string newPassword
   6: required set<i32> permissions
-  7: required binary nodeNameList
+  7: required bool grantOpt
+  8: required binary nodeNameList
 }
 
 struct TAuthorizerResp {
@@ -313,20 +314,39 @@ struct TAuthorizerResp {
 struct TUserResp {
   1: required string username
   2: required string password
-  3: required list<string> privilegeList
-  4: required list<string> roleList
-  5: required bool isOpenIdUser
+  3: required list<TPathPrivilege> privilegeList
+  4: required set<i32> sysPriSet
+  5: required set<i32> sysPriSetGrantOpt
+  6: required list<string> roleList
+  7: required bool isOpenIdUser
 }
 
 struct TRoleResp {
   1: required string roleName
-  2: required list<string> privilegeList
+  2: required list<TPathPrivilege> privilegeList
+  3: required set<i32> sysPriSet
+  4: required set<i32> sysPriSetGrantOpt
+}
+
+struct TPathPrivilege {
+  1: required string path
+  2: required set<i32> priSet
+  3: required set<i32> priGrantOpt
 }
 
 struct TPermissionInfoResp {
   1: required common.TSStatus status
-  2: optional TUserResp userInfo
-  3: optional map<string, TRoleResp> roleInfo
+  2: optional list<i32> failPos
+  3: optional TUserResp userInfo
+  4: optional map<string, TRoleResp> roleInfo
+}
+
+struct TAuthizedPatternTreeResp {
+  1: required common.TSStatus status
+  2: required string username
+  3: required i32 privilegeId
+  4: required binary pathPatternTree
+  5: required TPermissionInfoResp permissionInfo
 }
 
 struct TLoginReq {
@@ -338,6 +358,7 @@ struct TCheckUserPrivilegesReq {
   1: required string username
   2: required binary paths
   3: required i32 permission
+  4: optional bool grantOpt
 }
 
 // ConfigNode
@@ -1017,6 +1038,11 @@ service IConfigNodeRPCService {
    *         NO_PERMISSION_ERROR if the user does not have this permission
    */
   TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req)
+
+  TAuthizedPatternTreeResp fetchAuthizedPatternTree(TCheckUserPrivilegesReq req)
+
+  TPermissionInfoResp checkUserPrivilegeGrantOpt(TCheckUserPrivilegesReq req)
+
 
   // ======================================================
   // ConfigNode

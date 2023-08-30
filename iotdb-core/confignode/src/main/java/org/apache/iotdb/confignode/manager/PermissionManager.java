@@ -21,18 +21,16 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
-import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -68,10 +66,9 @@ public class PermissionManager {
           || authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateRole) {
         tsStatus = getConsensusManager().write(authorPlan);
       } else {
-        tsStatus = invalidateCache(authorPlan.getUserName(), authorPlan.getRoleName());
-        if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          tsStatus = getConsensusManager().write(authorPlan);
-        }
+        List<TDataNodeConfiguration> allDataNodes =
+            configManager.getNodeManager().getRegisteredDataNodes();
+        tsStatus = configManager.getProcedureManager().OperateAuthPlan(authorPlan, allDataNodes);
       }
       return tsStatus;
     } catch (ConsensusException e) {
@@ -112,28 +109,13 @@ public class PermissionManager {
     return authorInfo.checkUserPrivileges(username, paths, permission);
   }
 
-  /**
-   * When the permission information of a user or role is changed will clear all datanode
-   * permissions related to the user or role.
-   */
-  public TSStatus invalidateCache(String username, String roleName) {
-    List<TDataNodeConfiguration> allDataNodes =
-        configManager.getNodeManager().getRegisteredDataNodes();
-    TInvalidatePermissionCacheReq req = new TInvalidatePermissionCacheReq();
-    TSStatus status;
-    req.setUsername(username);
-    req.setRoleName(roleName);
-    for (TDataNodeConfiguration dataNodeInfo : allDataNodes) {
-      status =
-          SyncDataNodeClientPool.getInstance()
-              .sendSyncRequestToDataNodeWithRetry(
-                  dataNodeInfo.getLocation().getInternalEndPoint(),
-                  req,
-                  DataNodeRequestType.INVALIDATE_PERMISSION_CACHE);
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return status;
-      }
-    }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  public TAuthizedPatternTreeResp fetchAuthizedPTree(String username, int permission)
+      throws AuthException {
+    return authorInfo.generateAuthizedPTree(username, permission);
+  }
+
+  public TPermissionInfoResp checkUserPrivilegeGrantOpt(
+      String username, List<PartialPath> paths, int permission) throws AuthException {
+    return authorInfo.checkUserPrivilegeGrantOpt(username, paths, permission);
   }
 }

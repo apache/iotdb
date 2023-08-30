@@ -69,6 +69,7 @@ import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
@@ -531,6 +532,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
               req.getPassword(),
               req.getNewPassword(),
               req.getPermissions(),
+              req.isGrantOpt(),
               AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList())));
     } catch (AuthException e) {
       LOGGER.error(e.getMessage());
@@ -554,6 +556,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
               req.getPassword(),
               req.getNewPassword(),
               req.getPermissions(),
+              req.isGrantOpt(),
               AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getNodeNameList())));
     } catch (AuthException e) {
       LOGGER.error(e.getMessage());
@@ -574,6 +577,19 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     List<PartialPath> partialPaths =
         AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getPaths()));
     return configManager.checkUserPrivileges(req.getUsername(), partialPaths, req.getPermission());
+  }
+
+  @Override
+  public TAuthizedPatternTreeResp fetchAuthizedPatternTree(TCheckUserPrivilegesReq req) {
+    return configManager.fetchAuthizedPatternTree(req.getUsername(), req.getPermission());
+  }
+
+  @Override
+  public TPermissionInfoResp checkUserPrivilegeGrantOpt(TCheckUserPrivilegesReq req) {
+    List<PartialPath> partialPath =
+        AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getPaths()));
+    return configManager.checkUserPrivilegeGrantOpt(
+        req.getUsername(), partialPath, req.getPermission());
   }
 
   @Override

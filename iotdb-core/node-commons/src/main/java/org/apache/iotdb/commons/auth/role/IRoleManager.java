@@ -51,10 +51,9 @@ public interface IRoleManager extends SnapshotProcessor {
    * Delete a role.
    *
    * @param rolename the rolename of the role.
-   * @return True if the role is successfully deleted, false if the role does not exists.
-   * @throws AuthException if exception is raised while finding the role.
+   * @return boolean, true means we have the role in roleManager.
    */
-  boolean deleteRole(String rolename) throws AuthException;
+  boolean deleteRole(String rolename);
 
   /**
    * Grant a privilege on a seriesPath to a role.
@@ -63,10 +62,11 @@ public interface IRoleManager extends SnapshotProcessor {
    * @param path The seriesPath on which the privilege takes effect. If the privilege is a
    *     seriesPath-free privilege, this should be "root".
    * @param privilegeId An integer that represents a privilege.
+   * @param grantOpt Whether the privilege can be granted to other role/user.
    * @return True if the permission is successfully added, false if the permission already exists.
    * @throws AuthException If the role does not exist or the privilege or the seriesPath is illegal.
    */
-  boolean grantPrivilegeToRole(String rolename, PartialPath path, int privilegeId)
+  boolean grantPrivilegeToRole(String rolename, PartialPath path, int privilegeId, boolean grantOpt)
       throws AuthException;
 
   /**
@@ -74,7 +74,7 @@ public interface IRoleManager extends SnapshotProcessor {
    *
    * @param rolename The rolename of the role from which the privilege should be removed.
    * @param path The seriesPath on which the privilege takes effect. If the privilege is a
-   *     seriesPath-free privilege like 'CREATE_USER', this should be "root".
+   *     seriesPath-free privilege like 'CREATE_USER', this should be "null".
    * @param privilegeId An integer that represents a privilege.
    * @return True if the permission is successfully revoked, false if the permission does not
    *     exists.
@@ -84,7 +84,7 @@ public interface IRoleManager extends SnapshotProcessor {
       throws AuthException;
 
   /** Re-initialize this object. */
-  void reset();
+  void reset() throws AuthException;
 
   /**
    * List all roles in the database.

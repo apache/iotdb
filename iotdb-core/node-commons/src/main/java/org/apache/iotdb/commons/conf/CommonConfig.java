@@ -195,6 +195,8 @@ public class CommonConfig {
   // maximum number of Cluster Databases allowed
   private int databaseLimitThreshold = -1;
 
+  private int datanodeTokenTimeoutMS = 180 * 1000; // 3 minutes
+
   CommonConfig() {
     // Empty constructor
   }
@@ -751,5 +753,13 @@ public class CommonConfig {
 
   public void setDatabaseLimitThreshold(int databaseLimitThreshold) {
     this.databaseLimitThreshold = databaseLimitThreshold;
+  }
+
+  public int getDatanodeTokenTimeoutMS() {
+    return datanodeTokenTimeoutMS;
+  }
+
+  public void setDatanodeTokenTimeoutMS(int timeoutMS) {
+    this.datanodeTokenTimeoutMS = timeoutMS;
   }
 }

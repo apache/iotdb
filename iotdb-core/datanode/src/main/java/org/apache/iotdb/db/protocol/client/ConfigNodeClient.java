@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
@@ -554,6 +555,20 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.checkUserPrivileges(req), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TAuthizedPatternTreeResp fetchAuthizedPatternTree(TCheckUserPrivilegesReq req)
+      throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.fetchAuthizedPatternTree(req), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TPermissionInfoResp checkUserPrivilegeGrantOpt(TCheckUserPrivilegesReq req)
+      throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.checkUserPrivilegeGrantOpt(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override

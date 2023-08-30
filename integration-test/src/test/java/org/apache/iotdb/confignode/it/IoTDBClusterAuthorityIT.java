@@ -80,6 +80,7 @@ public class IoTDBClusterAuthorityIT {
             "",
             "",
             new HashSet<>(),
+            false,
             AuthUtils.serializePartialPathList(new ArrayList<>()));
     TAuthorizerResp authorizerResp = client.queryPermission(authorizerReq);
     status = authorizerResp.getStatus();
@@ -96,6 +97,7 @@ public class IoTDBClusterAuthorityIT {
                 "",
                 "",
                 new HashSet<>(),
+                false,
                 AuthUtils.serializePartialPathList(new ArrayList<>()));
         status = client.operatePermission(authorizerReq);
         assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -144,6 +146,7 @@ public class IoTDBClusterAuthorityIT {
               "passwd",
               "",
               new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(new ArrayList<>()));
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -169,6 +172,7 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(new ArrayList<>()));
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -182,6 +186,7 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(new ArrayList<>()));
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
@@ -198,6 +203,7 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(new ArrayList<>()));
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -214,6 +220,7 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(new ArrayList<>()));
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -227,6 +234,7 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(new ArrayList<>()));
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
@@ -243,6 +251,7 @@ public class IoTDBClusterAuthorityIT {
               "",
               "newpwd",
               new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(new ArrayList<>()));
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -258,6 +267,7 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               privilegeList,
+              false,
               AuthUtils.serializePartialPathList(nodeNameList));
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -280,6 +290,7 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               privilegeList,
+              false,
               AuthUtils.serializePartialPathList(nodeNameList));
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -293,6 +304,7 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(nodeNameList));
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -306,6 +318,7 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               revokePrivilege,
+              false,
               AuthUtils.serializePartialPathList(nodeNameList));
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -319,6 +332,7 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               revokePrivilege,
+              false,
               AuthUtils.serializePartialPathList(nodeNameList));
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -332,6 +346,7 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(nodeNameList));
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
@@ -348,6 +363,7 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(
                   Collections.singletonList(new PartialPath("root.**"))));
       authorizerResp = client.queryPermission(authorizerReq);
@@ -366,6 +382,7 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(new ArrayList<>()));
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
@@ -382,6 +399,7 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(nodeNameList));
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
@@ -398,6 +416,7 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(
                   Collections.singletonList(new PartialPath("root.**"))));
       authorizerResp = client.queryPermission(authorizerReq);
@@ -415,6 +434,7 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(new ArrayList<>()));
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
@@ -431,6 +451,7 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(new ArrayList<>()));
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
@@ -447,6 +468,7 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(new ArrayList<>()));
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
@@ -464,6 +486,7 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(new ArrayList<>()));
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -477,6 +500,7 @@ public class IoTDBClusterAuthorityIT {
               "",
               "",
               new HashSet<>(),
+              false,
               AuthUtils.serializePartialPathList(new ArrayList<>()));
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();

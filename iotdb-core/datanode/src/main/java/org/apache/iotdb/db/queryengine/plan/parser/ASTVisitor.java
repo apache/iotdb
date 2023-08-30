@@ -2177,7 +2177,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   // Alter Password
-
   @Override
   public Statement visitAlterUser(IoTDBSqlParser.AlterUserContext ctx) {
     AuthorStatement authorStatement = new AuthorStatement(AuthorType.UPDATE_USER);
@@ -2187,7 +2186,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   // Grant User Privileges
-
   @Override
   public Statement visitGrantUser(IoTDBSqlParser.GrantUserContext ctx) {
     String[] privileges = parsePrivilege(ctx.privileges());
@@ -2202,6 +2200,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
     authorStatement.setPrivilegeList(privileges);
     authorStatement.setNodeNameList(nodeNameList);
+    authorStatement.setGrantOpt(!ctx.grantOpt().isEmpty());
     return authorStatement;
   }
 
@@ -2221,6 +2220,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     authorStatement.setRoleName(parseIdentifier(ctx.roleName.getText()));
     authorStatement.setPrivilegeList(privileges);
     authorStatement.setNodeNameList(nodeNameList);
+    authorStatement.setGrantOpt(!ctx.grantOpt().isEmpty());
     return authorStatement;
   }
 

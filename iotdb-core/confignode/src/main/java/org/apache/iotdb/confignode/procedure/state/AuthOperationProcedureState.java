@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,21 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.auth;
+package org.apache.iotdb.confignode.procedure.state;
 
-import org.apache.iotdb.commons.auth.entity.Role;
-import org.apache.iotdb.commons.auth.entity.User;
-
-public interface IAuthorCache {
-  User getUserCache(String userName);
-
-  Role getRoleCache(String roleName);
-
-  void putUserCache(String userName, User user);
-
-  void putRoleCache(String roleName, Role role);
-
-  boolean invalidateCache(String userName, String roleName);
-
-  void invalidAllCache();
+public enum AuthOperationProcedureState {
+  INIT,
+  DATANODE_AUTHCACHE_INVALIDING,
 }

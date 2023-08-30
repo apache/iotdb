@@ -23,10 +23,11 @@ import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
+import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.security.encrypt.AsymmetricEncryptFactory;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
 import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
@@ -53,18 +54,6 @@ public class AuthUtils {
   private static final int MIN_LENGTH = 4;
   private static final int MAX_LENGTH = 64;
   private static final String REX_PATTERN = "^[-\\w]*$";
-
-  static {
-    try {
-      ROOT_PATH_PRIVILEGE_PATH =
-          new PartialPath(
-              IoTDBConstant.PATH_ROOT
-                  + IoTDBConstant.PATH_SEPARATOR
-                  + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
-    } catch (MetadataException e) {
-      // do nothing
-    }
-  }
 
   private AuthUtils() {
     // Empty constructor
@@ -161,6 +150,28 @@ public class AuthUtils {
     }
   }
 
+  public static void validatePatternPath(PartialPath path) throws AuthException {
+    if (!path.hasWildcard()) {
+      return;
+    } else if (!PathPatternUtil.hasWildcard(path.getTailNode())) {
+      // check a.b.*.c/a.b.**.c/a.b*.c
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PARAMETER,
+          String.format(
+              "Illegal pattern path: %s, only pattern path that end with wildcards are supported.",
+              path));
+    }
+    for (int i = 0; i < path.getNodeLength() - 1; i++) {
+      if (PathPatternUtil.hasWildcard(path.getNodes()[i])) {
+        throw new AuthException(
+            TSStatusCode.ILLEGAL_PARAMETER,
+            String.format(
+                "Illegal pattern path: %s, only pattern path that end with wildcards are supported.",
+                path));
+      }
+    }
+  }
+
   /**
    * Validate privilege on path
    *
@@ -168,36 +179,38 @@ public class AuthUtils {
    * @param privilegeId privilege Id
    * @throws AuthException contains message why path is invalid
    */
-  public static void validatePrivilegeOnPath(PartialPath path, int privilegeId)
-      throws AuthException {
+  public static void validatePrivilege(PartialPath path, int privilegeId) throws AuthException {
     validatePrivilege(privilegeId);
     PrivilegeType type = PrivilegeType.values()[privilegeId];
-    if (!path.equals(ROOT_PATH_PRIVILEGE_PATH)) {
+    if (path != null) {
       validatePath(path);
       switch (type) {
         case READ_SCHEMA:
         case WRITE_SCHEMA:
         case READ_DATA:
         case WRITE_DATA:
-        case USE_TRIGGER:
-        case MANAGE_DATABASE:
           return;
         default:
           throw new AuthException(
               TSStatusCode.UNKNOWN_AUTH_PRIVILEGE,
-              String.format("Illegal privilege %s on seriesPath %s", type, path));
+              String.format("Illegal privilege %s on seriesPath", type));
       }
     } else {
       switch (type) {
-        case READ_SCHEMA:
-        case WRITE_SCHEMA:
         case MANAGE_DATABASE:
-        case READ_DATA:
-        case WRITE_DATA:
-          validatePath(path);
+        case MANAGE_USER:
+        case MANAGE_ROLE:
+        case USE_TRIGGER:
+        case USE_CQ:
+        case USE_PIPE:
+        case USE_UDF:
+        case EXTEND_TEMPLATE:
+        case MAINTAIN:
+        case AUDIT:
           return;
         default:
-          return;
+          throw new AuthException(
+              TSStatusCode.UNKNOWN_AUTH_PRIVILEGE, String.format("Illegal privilege %s", type));
       }
     }
   }
@@ -216,7 +229,7 @@ public class AuthUtils {
   }
 
   /**
-   * Check privilege
+   * Check path privilege
    *
    * @param path series path
    * @param privilegeId privilege Id
@@ -224,23 +237,30 @@ public class AuthUtils {
    * @exception AuthException throw if path is invalid or path in privilege is invalid
    * @return True if privilege-check passed
    */
-  public static boolean checkPrivilege(
-      PartialPath path, int privilegeId, List<PathPrivilege> privilegeList) throws AuthException {
+  public static boolean checkPathPrivilege(
+      PartialPath path, int privilegeId, List<PathPrivilege> privilegeList) {
     if (privilegeList == null) {
       return false;
     }
     for (PathPrivilege pathPrivilege : privilegeList) {
-      if (path != null) {
-        if (pathPrivilege.getPath() != null
-            && pathPrivilege.getPath().matchFullPath(path)
-            && pathPrivilege.getPrivileges().contains(privilegeId)) {
-          return true;
-        }
-      } else {
-        if (pathPrivilege.getPath() == null
-            && pathPrivilege.getPrivileges().contains(privilegeId)) {
-          return true;
-        }
+      if (pathPrivilege.getPath().matchFullPath(path)
+          && pathPrivilege.getPrivileges().contains(privilegeId)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public static boolean checkPathPrivilegeGrantOpt(
+      PartialPath path, int privilegeId, List<PathPrivilege> privilegeList) {
+    if (privilegeList == null) {
+      return false;
+    }
+    for (PathPrivilege pathPrivilege : privilegeList) {
+      if (pathPrivilege.getPath().matchFullPath(path)
+          && pathPrivilege.getPrivileges().contains(privilegeId)
+          && pathPrivilege.getGrantOpt().contains(privilegeId)) {
+        return true;
       }
     }
     return false;
@@ -249,26 +269,20 @@ public class AuthUtils {
   /**
    * Get privileges
    *
-   * @param path The seriesPath on which the privileges take effect. If seriesPath-free privileges
-   *     are desired, this should be null
+   * @param path The seriesPath on which the privileges take effect.
    * @exception AuthException throw if path is invalid or path in privilege is invalid
    * @return The privileges granted to the role
    */
-  public static Set<Integer> getPrivileges(PartialPath path, List<PathPrivilege> privilegeList)
-      throws AuthException {
+  public static Set<Integer> getPrivileges(PartialPath path, List<PathPrivilege> privilegeList) {
     if (privilegeList == null) {
       return new HashSet<>();
     }
     Set<Integer> privileges = new HashSet<>();
     for (PathPrivilege pathPrivilege : privilegeList) {
-      if (path != null) {
-        if (pathPrivilege.getPath() != null && pathPrivilege.getPath().matchFullPath(path)) {
-          privileges.addAll(pathPrivilege.getPrivileges());
-        }
-      } else {
-        if (pathPrivilege.getPath() == null) {
-          privileges.addAll(pathPrivilege.getPrivileges());
-        }
+      if (pathPrivilege.getPath().matchFullPath(path)) {
+        privileges.addAll(pathPrivilege.getPrivileges());
+        // shall we return immediately?
+        return privileges;
       }
     }
     return privileges;
@@ -287,7 +301,6 @@ public class AuthUtils {
     for (PathPrivilege pathPrivilege : privilegeList) {
       if (pathPrivilege.getPath().equals(path)
           && pathPrivilege.getPrivileges().contains(privilegeId)) {
-        pathPrivilege.getReferenceCnt().incrementAndGet();
         return true;
       }
     }
@@ -302,7 +315,7 @@ public class AuthUtils {
    * @param privilegeList privileges in List structure of user or role
    */
   public static void addPrivilege(
-      PartialPath path, int privilegeId, List<PathPrivilege> privilegeList) {
+      PartialPath path, int privilegeId, List<PathPrivilege> privilegeList, boolean grantOption) {
     PathPrivilege targetPathPrivilege = null;
     // check PathPrivilege of target path is already existed
     for (PathPrivilege pathPrivilege : privilegeList) {
@@ -317,9 +330,7 @@ public class AuthUtils {
       privilegeList.add(targetPathPrivilege);
     }
     // add privilegeId into targetPathPrivilege
-    for (PrivilegeType privilegeType : PrivilegeType.getStorablePrivilege(privilegeId)) {
-      targetPathPrivilege.getPrivileges().add(privilegeType.ordinal());
-    }
+    targetPathPrivilege.grantPrivilege(privilegeId, grantOption);
   }
 
   /**
@@ -339,9 +350,7 @@ public class AuthUtils {
       }
     }
     if (targetPathPrivilege != null) {
-      for (PrivilegeType privilegeType : PrivilegeType.getStorablePrivilege(privilegeId)) {
-        targetPathPrivilege.getPrivileges().remove(privilegeType.ordinal());
-      }
+      targetPathPrivilege.revokePrivilege(privilegeId);
       if (targetPathPrivilege.getPrivileges().isEmpty()) {
         privilegeList.remove(targetPathPrivilege);
       }
@@ -352,11 +361,21 @@ public class AuthUtils {
   public static TPermissionInfoResp generateEmptyPermissionInfoResp() {
     TPermissionInfoResp permissionInfoResp = new TPermissionInfoResp();
     permissionInfoResp.setUserInfo(
-        new TUserResp("", "", new ArrayList<>(), new ArrayList<>(), false));
+        new TUserResp(
+            "", "", new ArrayList<>(), new HashSet<>(), new HashSet<>(), new ArrayList<>(), false));
     Map<String, TRoleResp> roleInfo = new HashMap<>();
-    roleInfo.put("", new TRoleResp("", new ArrayList<>()));
+    roleInfo.put("", new TRoleResp("", new ArrayList<>(), new HashSet<>(), new HashSet<>()));
     permissionInfoResp.setRoleInfo(roleInfo);
     return permissionInfoResp;
+  }
+
+  public static TAuthizedPatternTreeResp generateEmptyAuthizedPTree(
+      String username, int privilegeId) {
+    TAuthizedPatternTreeResp resp = new TAuthizedPatternTreeResp();
+    resp.setUsername(username);
+    resp.setPrivilegeId(privilegeId);
+    resp.setPermissionInfo(generateEmptyPermissionInfoResp());
+    return resp;
   }
 
   /**

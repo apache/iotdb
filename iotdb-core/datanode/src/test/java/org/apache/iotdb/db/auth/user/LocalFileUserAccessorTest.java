@@ -36,7 +36,6 @@ import java.io.IOException;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -62,13 +61,14 @@ public class LocalFileUserAccessorTest {
 
   @Test
   public void test() throws IOException, IllegalPathException {
-    User[] users = new User[5];
+    User[] users = new User[4];
     for (int i = 0; i < users.length; i++) {
       users[i] = new User("user" + i, "password" + i);
       for (int j = 0; j <= i; j++) {
         PathPrivilege pathPrivilege = new PathPrivilege(new PartialPath("root.a.b.c" + j));
         pathPrivilege.getPrivileges().add(j);
-        users[i].getPrivilegeList().add(pathPrivilege);
+        users[i].getPathPrivilegeList().add(pathPrivilege);
+        users[i].getSysPrivilege().add(j + 5);
         users[i].getRoleList().add("role" + j);
       }
     }
@@ -101,7 +101,7 @@ public class LocalFileUserAccessorTest {
     }
 
     // delete
-    assertFalse(accessor.deleteUser("not a user"));
+    assertTrue(accessor.deleteUser("not a user"));
     assertTrue(accessor.deleteUser(users[users.length - 1].getName()));
     usernames = accessor.listAllUsers();
     assertEquals(users.length - 1, usernames.size());
