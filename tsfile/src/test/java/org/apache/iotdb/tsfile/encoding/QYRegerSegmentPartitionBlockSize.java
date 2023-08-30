@@ -3523,8 +3523,8 @@ public class QYRegerSegmentPartitionBlockSize {
 
     public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
 //        String parent_dir = "C:\\Users\\xiaoj\\Desktop\\test";
-        String parent_dir = "E:\\encoding-reorder-my\\vldb\\compression_ratio\\block_size";
-        String input_parent_dir = "E:\\encoding-reorder-my\\reorder\\iotdb_test_small\\";
+        String parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\vldb\\compression_ratio\\block_size_test_new";
+        String input_parent_dir = "C:\\Users\\xiaoj\\Documents\\GitHub\\encoding-reorder\\reorder\\iotdb_test_small\\";
         ArrayList<String> input_path_list = new ArrayList<>();
         ArrayList<String> output_path_list = new ArrayList<>();
         ArrayList<String> dataset_name = new ArrayList<>();
@@ -3647,7 +3647,7 @@ public class QYRegerSegmentPartitionBlockSize {
             for (File f : tempList) {
                 System.out.println(f);
 //                for (int block_size_exp = 7; block_size_exp >= 7; block_size_exp--) {
-                for (int block_size_exp = 13; block_size_exp >= 4; block_size_exp--) {
+                for (int block_size_exp = 10; block_size_exp >= 4; block_size_exp--) {
                     int block_size = (int) Math.pow(2, block_size_exp);
                     System.out.println(block_size);
 

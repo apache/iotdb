@@ -15,7 +15,7 @@ import java.util.Stack;
 import static java.lang.Math.abs;
 import static java.lang.Math.min;
 
-public class RegerSegmentPartitionBlockSizeTest {
+public class QRegerSegmentPartitionBlockSize {
     public static int getBitWith(int num) {
         if (num == 0) return 1;
         else return 32 - Integer.numberOfLeadingZeros(num);
