@@ -133,12 +133,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
     return dataContainer.processTablet(consumer);
   }
 
-  /////////////////////////// convertToTablet ///////////////////////////
-
-  public boolean isAligned() {
-    return isAligned;
-  }
-
+  @Override
   public Tablet convertToTablet() {
     if (!shouldParsePattern()) {
       return tablet;
@@ -152,10 +147,16 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
     return dataContainer.convertToTablet();
   }
 
-  /////////////////////////// parsePattern ///////////////////////////
-
+  @Override
   public TabletInsertionEvent parseEventWithPattern() {
     return new PipeRawTabletInsertionEvent(
         convertToTablet(), isAligned, pipeTaskMeta, this, needToReport);
+  }
+
+  /////////////////////////// convertToTablet ///////////////////////////
+
+  @Override
+  public boolean isAligned() {
+    return isAligned;
   }
 }

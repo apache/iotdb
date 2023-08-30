@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.pipe.connector.protocol.websocket;
 
 import org.apache.iotdb.db.pipe.event.EnrichedEvent;
@@ -46,12 +47,12 @@ public class WebSocketConnectorServer extends WebSocketServer {
   private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketConnectorServer.class);
   private final PriorityBlockingQueue<Pair<Long, Event>> events =
       new PriorityBlockingQueue<>(11, Comparator.comparing(o -> o.left));
-  private final WebsocketConnector websocketConnector;
+  private final WebSocketConnector websocketConnector;
 
   private final ConcurrentMap<Long, Event> eventMap = new ConcurrentHashMap<>();
 
   public WebSocketConnectorServer(
-      InetSocketAddress address, WebsocketConnector websocketConnector) {
+      InetSocketAddress address, WebSocketConnector websocketConnector) {
     super(address);
     this.websocketConnector = websocketConnector;
   }

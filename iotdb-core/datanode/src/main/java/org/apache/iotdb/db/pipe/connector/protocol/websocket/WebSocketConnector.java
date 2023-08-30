@@ -43,8 +43,8 @@ import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class WebsocketConnector implements PipeConnector {
-  private static final Logger LOGGER = LoggerFactory.getLogger(WebsocketConnector.class);
+public class WebSocketConnector implements PipeConnector {
+  private static final Logger LOGGER = LoggerFactory.getLogger(WebSocketConnector.class);
   private WebSocketConnectorServer server;
   private int port;
 
@@ -85,14 +85,14 @@ public class WebsocketConnector implements PipeConnector {
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       LOGGER.warn(
-          "WebsocketConnector only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
+          "WebSocketConnector only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
               + "Current event: {}.",
           tabletInsertionEvent);
       return;
     }
     long commitId = commitIdGenerator.incrementAndGet();
     ((EnrichedEvent) tabletInsertionEvent)
-        .increaseReferenceCount(WebsocketConnector.class.getName());
+        .increaseReferenceCount(WebSocketConnector.class.getName());
     server.addEvent(new Pair<>(commitId, tabletInsertionEvent));
   }
 
@@ -100,13 +100,13 @@ public class WebsocketConnector implements PipeConnector {
   public void transfer(TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       LOGGER.warn(
-          "WebsocketConnector only support PipeTsFileInsertionEvent. Current event: {}.",
+          "WebSocketConnector only support PipeTsFileInsertionEvent. Current event: {}.",
           tsFileInsertionEvent);
       return;
     }
     long commitId = commitIdGenerator.incrementAndGet();
     ((EnrichedEvent) tsFileInsertionEvent)
-        .increaseReferenceCount(WebsocketConnector.class.getName());
+        .increaseReferenceCount(WebSocketConnector.class.getName());
     server.addEvent(new Pair<>(commitId, tsFileInsertionEvent));
   }
 
@@ -128,7 +128,7 @@ public class WebsocketConnector implements PipeConnector {
                 Optional.ofNullable(enrichedEvent)
                     .ifPresent(
                         event ->
-                            event.decreaseReferenceCount(WebsocketConnector.class.getName()))));
+                            event.decreaseReferenceCount(WebSocketConnector.class.getName()))));
 
     while (!commitQueue.isEmpty()) {
       final Pair<Long, Runnable> committer = commitQueue.peek();

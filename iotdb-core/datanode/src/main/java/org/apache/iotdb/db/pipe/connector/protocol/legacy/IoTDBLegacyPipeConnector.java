@@ -41,8 +41,6 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
@@ -167,10 +165,14 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
 
   @Override
   public void transfer(TabletInsertionEvent tabletInsertionEvent) throws Exception {
-    if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
-      doTransfer((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
-    } else if (tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
-      doTransfer((PipeRawTabletInsertionEvent) tabletInsertionEvent);
+    if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent
+        || tabletInsertionEvent instanceof PipeRawTabletInsertionEvent) {
+      final Tablet tablet = tabletInsertionEvent.convertToTablet();
+      if (tabletInsertionEvent.isAligned()) {
+        sessionPool.insertAlignedTablet(tablet);
+      } else {
+        sessionPool.insertTablet(tablet);
+      }
     } else {
       throw new NotImplementedException(
           "IoTDBLegacyPipeConnector only support "
@@ -199,26 +201,6 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
   public void transfer(Event event) throws Exception {
     if (!(event instanceof PipeHeartbeatEvent)) {
       LOGGER.warn("IoTDBLegacyPipeConnector does not support transfer generic event: {}.", event);
-    }
-  }
-
-  private void doTransfer(PipeInsertNodeTabletInsertionEvent pipeInsertNodeInsertionEvent)
-      throws IoTDBConnectionException, StatementExecutionException {
-    final Tablet tablet = pipeInsertNodeInsertionEvent.convertToTablet();
-    if (pipeInsertNodeInsertionEvent.isAligned()) {
-      sessionPool.insertAlignedTablet(tablet);
-    } else {
-      sessionPool.insertTablet(tablet);
-    }
-  }
-
-  private void doTransfer(PipeRawTabletInsertionEvent pipeTabletInsertionEvent)
-      throws PipeException, IoTDBConnectionException, StatementExecutionException {
-    final Tablet tablet = pipeTabletInsertionEvent.convertToTablet();
-    if (pipeTabletInsertionEvent.isAligned()) {
-      sessionPool.insertAlignedTablet(tablet);
-    } else {
-      sessionPool.insertTablet(tablet);
     }
   }
 

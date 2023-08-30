@@ -166,12 +166,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     }
   }
 
-  /////////////////////////// convertToTablet ///////////////////////////
-
-  public boolean isAligned() {
-    return isAligned;
-  }
-
+  @Override
   public Tablet convertToTablet() {
     try {
       if (dataContainer == null) {
@@ -184,10 +179,14 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
     }
   }
 
-  /////////////////////////// parsePattern ///////////////////////////
-
+  @Override
   public TabletInsertionEvent parseEventWithPattern() {
     return new PipeRawTabletInsertionEvent(convertToTablet(), isAligned, pipeTaskMeta, this, true);
+  }
+
+  @Override
+  public boolean isAligned() {
+    return isAligned;
   }
 
   /////////////////////////// Object ///////////////////////////
