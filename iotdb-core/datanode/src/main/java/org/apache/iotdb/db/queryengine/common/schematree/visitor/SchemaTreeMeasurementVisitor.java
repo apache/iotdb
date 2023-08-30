@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.common.schematree.visitor;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.fa.IFAState;
 import org.apache.iotdb.commons.path.fa.IFATransition;
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode;
@@ -34,6 +35,12 @@ public class SchemaTreeMeasurementVisitor extends SchemaTreeVisitor<MeasurementP
   public SchemaTreeMeasurementVisitor(
       SchemaNode root, PartialPath pathPattern, boolean isPrefixMatch) {
     super(root, pathPattern, isPrefixMatch);
+    tailNode = pathPattern.getTailNode();
+  }
+
+  public SchemaTreeMeasurementVisitor(
+      SchemaNode root, PartialPath pathPattern, boolean isPrefixMatch, PathPatternTree scope) {
+    super(root, pathPattern, isPrefixMatch, scope);
     tailNode = pathPattern.getTailNode();
   }
 

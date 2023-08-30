@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.common.schematree;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaEntityNode;
@@ -468,6 +469,171 @@ public class ClusterSchemaTreeTest {
     return root;
   }
 
+  @Test
+  public void testSchemaTreeWithScope() throws Exception {
+    SchemaNode root = generateSchemaTree();
+    PathPatternTree scope = new PathPatternTree();
+    scope.appendPathPattern(new PartialPath("root.sg.d1.**"));
+    scope.appendPathPattern(new PartialPath("root.sg.d2.status"));
+    scope.appendPathPattern(new PartialPath("root.sg.d2.a.**"));
+    scope.constructTree();
+
+    SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath> visitor =
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.sg.d2.a.s1"), 0, 0, false, scope);
+    checkVisitorResult(visitor, 1, new String[] {"root.sg.d2.a.s1"}, null, new boolean[] {true});
+
+    visitor =
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.sg.d2.s1"), 0, 0, false, scope);
+    checkVisitorResult(visitor, 0, new String[] {}, null, new boolean[] {});
+
+    visitor =
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.sg.*.s2"), 0, 0, false, scope);
+    checkVisitorResult(
+        visitor, 2, new String[] {"root.sg.d1.s2", "root.sg.d2.s2"}, new String[] {"", ""}, null);
+
+    visitor =
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.sg.*.s1"), 0, 0, false, scope);
+    checkVisitorResult(visitor, 1, new String[] {"root.sg.d1.s1"}, new String[] {""}, null);
+
+    visitor =
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.sg.*.status"), 0, 0, false, scope);
+    checkVisitorResult(
+        visitor,
+        2,
+        new String[] {"root.sg.d1.s2", "root.sg.d2.s2"},
+        new String[] {"status", "status"},
+        null);
+
+    visitor =
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.sg.d2.*.*"), 0, 0, false, scope);
+    checkVisitorResult(
+        visitor,
+        2,
+        new String[] {"root.sg.d2.a.s1", "root.sg.d2.a.s2"},
+        new String[] {"", ""},
+        new boolean[] {true, true});
+
+    visitor =
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.sg.d1"), 0, 0, true, scope);
+    checkVisitorResult(
+        visitor,
+        2,
+        new String[] {"root.sg.d1.s1", "root.sg.d1.s2"},
+        new String[] {"", ""},
+        new boolean[] {false, false});
+
+    visitor =
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.sg.*.a"), 0, 0, true, scope);
+    checkVisitorResult(
+        visitor,
+        2,
+        new String[] {"root.sg.d2.a.s1", "root.sg.d2.a.s2"},
+        new String[] {"", ""},
+        new boolean[] {true, true},
+        new int[] {0, 0});
+
+    visitor =
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.sg.*.*"), 2, 2, false, scope);
+    checkVisitorResult(
+        visitor,
+        1,
+        new String[] {"root.sg.d2.s2"},
+        new String[] {""},
+        new boolean[] {false},
+        new int[] {3});
+
+    visitor =
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.sg.*"), 2, 3, true, scope);
+    checkVisitorResult(
+        visitor,
+        2,
+        new String[] {"root.sg.d2.a.s2", "root.sg.d2.s2"},
+        new String[] {"", ""},
+        new boolean[] {true, false},
+        new int[] {4, 5});
+
+    visitor =
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.sg.d1.**"), 0, 0, false, scope);
+    checkVisitorResult(
+        visitor,
+        2,
+        new String[] {"root.sg.d1.s1", "root.sg.d1.s2"},
+        new String[] {"", ""},
+        new boolean[] {false, false});
+
+    visitor =
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.sg.d2.**"), 3, 1, true, scope);
+    checkVisitorResult(
+        visitor,
+        2,
+        new String[] {"root.sg.d2.a.s2", "root.sg.d2.s2"},
+        new String[] {"", ""},
+        new boolean[] {true, false},
+        new int[] {2, 3});
+
+    visitor =
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.sg.**.status"), 2, 1, true, scope);
+    checkVisitorResult(
+        visitor,
+        2,
+        new String[] {"root.sg.d2.a.s2", "root.sg.d2.s2"},
+        new String[] {"status", "status"},
+        new boolean[] {true, false},
+        new int[] {2, 3});
+
+    visitor =
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.**.*"), 10, 0, false, scope);
+    checkVisitorResult(
+        visitor,
+        5,
+        new String[] {
+          "root.sg.d1.s1", "root.sg.d1.s2", "root.sg.d2.a.s1", "root.sg.d2.a.s2", "root.sg.d2.s2"
+        },
+        new String[] {"", "", "", "", ""},
+        new boolean[] {false, false, true, true, false},
+        new int[] {1, 2, 3, 4, 5});
+
+    visitor =
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.**.*.**"), 10, 0, false, scope);
+    checkVisitorResult(
+        visitor,
+        5,
+        new String[] {
+          "root.sg.d1.s1", "root.sg.d1.s2", "root.sg.d2.a.s1", "root.sg.d2.a.s2", "root.sg.d2.s2"
+        },
+        new String[] {"", "", "", "", ""},
+        new boolean[] {false, false, true, true, false},
+        new int[] {1, 2, 3, 4, 5});
+
+    visitor =
+        createSchemaTreeVisitorWithLimitOffsetWrapper(
+            root, new PartialPath("root.*.**.**"), 10, 0, false, scope);
+    checkVisitorResult(
+        visitor,
+        5,
+        new String[] {
+          "root.sg.d1.s1", "root.sg.d1.s2", "root.sg.d2.a.s1", "root.sg.d2.a.s2", "root.sg.d2.s2"
+        },
+        new String[] {"", "", "", "", ""},
+        new boolean[] {false, false, true, true, false},
+        new int[] {1, 2, 3, 4, 5});
+  }
+
   private void checkVisitorResult(
       SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath> visitor,
       int expectedNum,
@@ -729,6 +895,18 @@ public class ClusterSchemaTreeTest {
           boolean isPrefixMatch) {
     return SchemaTreeVisitorFactory.createSchemaTreeMeasurementVisitor(
         root, pathPattern, isPrefixMatch, slimit, soffset);
+  }
+
+  protected SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath>
+      createSchemaTreeVisitorWithLimitOffsetWrapper(
+          SchemaNode root,
+          PartialPath pathPattern,
+          int slimit,
+          int soffset,
+          boolean isPrefixMatch,
+          PathPatternTree scope) {
+    return SchemaTreeVisitorFactory.createSchemaTreeMeasurementVisitor(
+        root, pathPattern, isPrefixMatch, slimit, soffset, scope);
   }
 
   @Test

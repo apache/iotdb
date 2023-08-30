@@ -558,7 +558,8 @@ public class IoTDBConfig {
   private long allocateMemoryForTimePartitionInfo = allocateMemoryForStorageEngine * 8 / 10 / 20;
 
   /** Memory allocated proportion for wal pipe cache */
-  private long allocateMemoryForWALPipeCache = allocateMemoryForConsensus / 10;
+  private long allocateMemoryForWALPipeCache =
+      Math.min(allocateMemoryForConsensus / 2, 3 * getWalFileSizeThresholdInByte());
 
   /**
    * If true, we will estimate each query's possible memory footprint before executing it and deny
@@ -798,9 +799,6 @@ public class IoTDBConfig {
   private int thriftMaxFrameSize = 536870912;
 
   private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;
-
-  /** time interval in minute for calculating query frequency. Unit: minute */
-  private int frequencyIntervalInMinute = 1;
 
   /** time cost(ms) threshold for slow query. Unit: millisecond */
   private long slowQueryThreshold = 30000;
@@ -2522,14 +2520,6 @@ public class IoTDBConfig {
 
   public void setMaxWaitingTimeWhenInsertBlocked(int maxWaitingTimeWhenInsertBlocked) {
     this.maxWaitingTimeWhenInsertBlockedInMs = maxWaitingTimeWhenInsertBlocked;
-  }
-
-  public int getFrequencyIntervalInMinute() {
-    return frequencyIntervalInMinute;
-  }
-
-  public void setFrequencyIntervalInMinute(int frequencyIntervalInMinute) {
-    this.frequencyIntervalInMinute = frequencyIntervalInMinute;
   }
 
   public long getSlowQueryThreshold() {

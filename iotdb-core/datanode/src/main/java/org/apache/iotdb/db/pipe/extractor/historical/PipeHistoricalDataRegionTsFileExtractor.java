@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayDeque;
+import java.util.Collection;
 import java.util.Queue;
 import java.util.stream.Collectors;
 
@@ -168,7 +169,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       tsFileManager.readLock();
       try {
         pendingQueue = new ArrayDeque<>(tsFileManager.size(true) + tsFileManager.size(false));
-        pendingQueue.addAll(
+
+        final Collection<PipeTsFileInsertionEvent> sequenceFileInsertionEvents =
             tsFileManager.getTsFileList(true).stream()
                 .filter(
                     resource ->
@@ -184,8 +186,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                             pattern,
                             historicalDataExtractionStartTime,
                             historicalDataExtractionEndTime))
-                .collect(Collectors.toList()));
-        pendingQueue.addAll(
+                .collect(Collectors.toList());
+        pendingQueue.addAll(sequenceFileInsertionEvents);
+
+        final Collection<PipeTsFileInsertionEvent> unsequenceFileInsertionEvents =
             tsFileManager.getTsFileList(false).stream()
                 .filter(
                     resource ->
@@ -201,11 +205,20 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                             pattern,
                             historicalDataExtractionStartTime,
                             historicalDataExtractionEndTime))
-                .collect(Collectors.toList()));
+                .collect(Collectors.toList());
+        pendingQueue.addAll(unsequenceFileInsertionEvents);
+
         pendingQueue.forEach(
             event ->
                 event.increaseReferenceCount(
                     PipeHistoricalDataRegionTsFileExtractor.class.getName()));
+
+        LOGGER.info(
+            "Pipe: start to extract historical TsFile, data region {}, "
+                + "sequence file count {}, unsequence file count {}",
+            dataRegionId,
+            sequenceFileInsertionEvents.size(),
+            unsequenceFileInsertionEvents.size());
       } finally {
         tsFileManager.readUnlock();
       }

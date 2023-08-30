@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.extractor.realtime;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.db.pipe.task.connection.UnboundedBlockingPendingQueue;
@@ -53,6 +54,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
       extractTabletInsertion(event);
     } else if (eventToExtract instanceof TsFileInsertionEvent) {
       extractTsFileInsertion(event);
+    } else if (eventToExtract instanceof PipeHeartbeatEvent) {
+      extractHeartbeat(event);
     } else {
       throw new UnsupportedOperationException(
           String.format(
@@ -151,6 +154,31 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     }
   }
 
+  private void extractHeartbeat(PipeRealtimeEvent event) {
+    if (pendingQueue.peekLast() instanceof PipeHeartbeatEvent) {
+      // if the last event in the pending queue is a heartbeat event, we should not extract any more
+      // heartbeat events to avoid OOM when the pipe is stopped.
+      event.decreaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName());
+      return;
+    }
+
+    if (!pendingQueue.waitedOffer(event)) {
+      // this would not happen, but just in case.
+      // pendingQueue is unbounded, so it should never reach capacity.
+      LOGGER.error(
+          "extract: pending queue of PipeRealtimeDataRegionHybridExtractor {} "
+              + "has reached capacity, discard heartbeat event {}",
+          this,
+          event);
+
+      // Do not report exception since the PipeHeartbeatEvent doesn't affect the correction of
+      // pipe progress.
+
+      // ignore this event.
+      event.decreaseReferenceCount(PipeRealtimeDataRegionLogExtractor.class.getName());
+    }
+  }
+
   private boolean isApproachingCapacity() {
     return pendingQueue.size()
         >= PipeConfig.getInstance().getPipeExtractorPendingQueueTabletLimit();
@@ -169,6 +197,8 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         suppliedEvent = supplyTabletInsertion(realtimeEvent);
       } else if (eventToSupply instanceof TsFileInsertionEvent) {
         suppliedEvent = supplyTsFileInsertion(realtimeEvent);
+      } else if (eventToSupply instanceof PipeHeartbeatEvent) {
+        suppliedEvent = supplyHeartbeat(realtimeEvent);
       } else {
         throw new UnsupportedOperationException(
             String.format(
@@ -251,6 +281,23 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     }
     // if the state is USING_TABLET, discard the event and poll the next one.
     return null;
+  }
+
+  private Event supplyHeartbeat(PipeRealtimeEvent event) {
+    if (event.increaseReferenceCount(PipeRealtimeDataRegionHybridExtractor.class.getName())) {
+      return event.getEvent();
+    } else {
+      // this would not happen, but just in case.
+      LOGGER.error(
+          "Heartbeat Event {} can not be supplied because "
+              + "the reference count can not be increased",
+          event.getEvent());
+
+      // Do not report exception since the PipeHeartbeatEvent doesn't affect the correction of pipe
+      // progress.
+
+      return null;
+    }
   }
 
   @Override

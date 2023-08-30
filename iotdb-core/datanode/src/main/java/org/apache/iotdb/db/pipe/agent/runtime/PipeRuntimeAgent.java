@@ -43,7 +43,9 @@ public class PipeRuntimeAgent implements IService {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeRuntimeAgent.class);
   private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
 
-  private static final AtomicBoolean isShutdown = new AtomicBoolean(false);
+  private final AtomicBoolean isShutdown = new AtomicBoolean(false);
+
+  private final PipeCronEventInjector pipeCronEventInjector = new PipeCronEventInjector();
 
   private final SimpleConsensusProgressIndexAssigner simpleConsensusProgressIndexAssigner =
       new SimpleConsensusProgressIndexAssigner();
@@ -66,6 +68,7 @@ public class PipeRuntimeAgent implements IService {
   public synchronized void start() throws StartupException {
     PipeConfig.getInstance().printAllConfigs();
     PipeAgentLauncher.launchPipeTaskAgent();
+    pipeCronEventInjector.start();
 
     isShutdown.set(false);
   }
@@ -77,6 +80,7 @@ public class PipeRuntimeAgent implements IService {
     }
     isShutdown.set(true);
 
+    pipeCronEventInjector.stop();
     PipeAgent.task().dropAllPipeTasks();
   }
 
@@ -96,6 +100,7 @@ public class PipeRuntimeAgent implements IService {
   }
 
   ////////////////////// Recover ProgressIndex Assigner //////////////////////
+
   public void assignRecoverProgressIndexForTsFileRecovery(TsFileResource tsFileResource) {
     tsFileResource.recoverProgressIndex(
         new RecoverProgressIndex(

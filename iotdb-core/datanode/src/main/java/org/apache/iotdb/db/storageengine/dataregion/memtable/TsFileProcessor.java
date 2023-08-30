@@ -84,6 +84,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -161,7 +162,7 @@ public class TsFileProcessor {
       "{}: {} get flushQueryLock write lock released";
 
   /** close file listener. */
-  private final List<CloseFileListener> closeFileListeners = new ArrayList<>();
+  private final List<CloseFileListener> closeFileListeners = new CopyOnWriteArrayList<>();
 
   /** flush file listener. */
   private final List<FlushListener> flushListeners = new ArrayList<>();

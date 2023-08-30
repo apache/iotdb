@@ -20,6 +20,7 @@ package org.apache.iotdb.db.queryengine.common.schematree;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode;
 import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeVisitorWithLimitOffsetWrapper;
 
@@ -35,5 +36,20 @@ public class ClusterSchemaTreeTestWithRelease extends ClusterSchemaTreeTest {
           boolean isPrefixMatch) {
     return new SchemaTreeVisitorWithLimitOffsetWrapper<>(
         new MockSchemaTreeMeasurementVisitor(root, pathPattern, isPrefixMatch), slimit, soffset);
+  }
+
+  @Override
+  protected SchemaTreeVisitorWithLimitOffsetWrapper<MeasurementPath>
+      createSchemaTreeVisitorWithLimitOffsetWrapper(
+          SchemaNode root,
+          PartialPath pathPattern,
+          int slimit,
+          int soffset,
+          boolean isPrefixMatch,
+          PathPatternTree scope) {
+    return new SchemaTreeVisitorWithLimitOffsetWrapper<>(
+        new MockSchemaTreeMeasurementVisitor(root, pathPattern, isPrefixMatch, scope),
+        slimit,
+        soffset);
   }
 }
