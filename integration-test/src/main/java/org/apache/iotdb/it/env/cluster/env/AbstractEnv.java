@@ -254,10 +254,11 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   public void testWorkingOneUnknownThreeRunning() {
-    testWorking(nodeStatus -> {
-      Map<String, Integer> count = countNodeStatus(nodeStatus);
-      return count.getOrDefault("Unknown", 0) == 1 && count.getOrDefault("Running", 0) == 3;
-    });
+    testWorking(
+        nodeStatus -> {
+          Map<String, Integer> count = countNodeStatus(nodeStatus);
+          return count.getOrDefault("Unknown", 0) == 1 && count.getOrDefault("Running", 0) == 3;
+        });
   }
 
   public void testWorking(Predicate<Map<Integer, String>> statusCheck) {
