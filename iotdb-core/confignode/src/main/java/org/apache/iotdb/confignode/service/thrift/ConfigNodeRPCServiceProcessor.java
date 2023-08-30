@@ -589,7 +589,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     List<PartialPath> partialPath =
         AuthUtils.deserializePartialPathList(ByteBuffer.wrap(req.getPaths()));
     return configManager.checkUserPrivilegeGrantOpt(
-        req.getUsername(), partialPath.get(0), req.getPermission());
+        req.getUsername(), partialPath, req.getPermission());
   }
 
   @Override

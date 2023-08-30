@@ -21,13 +21,13 @@ package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
-import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -64,21 +64,18 @@ import java.util.Locale;
 public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   private static final Logger logger = LoggerFactory.getLogger(ClusterAuthorityFetcher.class);
 
+  private static final CommonConfig config = CommonDescriptor.getInstance().getConfig();
   private final IAuthorCache iAuthorCache;
-  private IAuthorizer authorizer;
 
   private boolean cacheOutDate = false;
+
+  private long heartBeatTimeStamp = 0;
 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
 
   public ClusterAuthorityFetcher(IAuthorCache iAuthorCache) {
     this.iAuthorCache = iAuthorCache;
-    try {
-      authorizer = BasicAuthorizer.getInstance();
-    } catch (AuthException e) {
-      logger.error("get user or role permissionInfo failed because ", e);
-    }
   }
 
   @Override
@@ -122,30 +119,38 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   }
 
   @Override
-  public boolean checkUserPrivilegeGrantOpt(String username, PartialPath path, int permission) {
+  public boolean checkUserPrivilegeGrantOpt(
+      String username, List<PartialPath> paths, int permission) {
     checkCacheAvailable();
     User user = iAuthorCache.getUserCache(username);
     TSStatus status;
     boolean grantOpt = false;
     if (user != null) {
       if (!user.isOpenIdUser()) {
-        if (path != null) {
-          grantOpt = user.checkPathPrivilegeGrantOpt(path, permission);
-          if (!grantOpt) {
-            for (String roleNmae : user.getRoleList()) {
-              Role role = iAuthorCache.getRoleCache(roleNmae);
-              if (role != null) {
-                grantOpt = role.checkPathPrivilegeGrantOpt(path, permission);
-                if (grantOpt) {
-                  return true;
+        if (!paths.isEmpty()) {
+          for (PartialPath path : paths) {
+            grantOpt = user.checkPathPrivilegeGrantOpt(path, permission);
+            if (!grantOpt) {
+              if (user.getRoleList().isEmpty()) {
+                return false;
+              }
+              for (String roleNmae : user.getRoleList()) {
+                Role role = iAuthorCache.getRoleCache(roleNmae);
+                if (role != null) {
+                  grantOpt = role.checkPathPrivilegeGrantOpt(path, permission);
+                  if (grantOpt) {
+                    break;
+                  }
+                } else {
+                  return checkUserPrivilegeGrantOptFromConfigNode(username, path, permission);
                 }
-              } else {
-                return checkUserPrivilegeGrantOptFromConfigNode(username, path, permission);
               }
             }
-          } else {
-            return true;
+            if (!grantOpt) {
+              return false;
+            }
           }
+          return true;
         } else {
           grantOpt =
               user.getSysPrivilege().contains(permission)
@@ -161,7 +166,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
                   return true;
                 }
               } else {
-                return checkUserPrivilegeGrantOptFromConfigNode(username, path, permission);
+                return checkUserPrivilegeGrantOptFromConfigNode(username, paths, permission);
               }
             }
           } else {
@@ -171,18 +176,15 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       }
       return true;
     } else {
-      return checkUserPrivilegeGrantOptFromConfigNode(username, path, permission);
+      return checkUserPrivilegeGrantOptFromConfigNode(username, paths, permission);
     }
   }
 
   private boolean checkUserPrivilegeGrantOptFromConfigNode(
-      String username, PartialPath path, int permission) {
-    List<PartialPath> list = new ArrayList<>();
-    if (path != null) {
-      list.add(path);
-    }
+      String username, List<PartialPath> paths, int permission) {
     TCheckUserPrivilegesReq req =
-        new TCheckUserPrivilegesReq(username, AuthUtils.serializePartialPathList(list), permission);
+        new TCheckUserPrivilegesReq(
+            username, AuthUtils.serializePartialPathList(paths), permission);
     req.setGrantOpt(true);
     TPermissionInfoResp permissionInfoResp;
     try (ConfigNodeClient configNodeClient =
@@ -343,7 +345,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
             new IoTDBException(
                 authorizerResp.getStatus().message, authorizerResp.getStatus().code));
       } else {
-        AuthorityChecker.getInstance().buildTSBlock(authorizerResp.getAuthorizerInfo(), future);
+        AuthorityChecker.buildTSBlock(authorizerResp.getAuthorizerInfo(), future);
       }
     } catch (ClientManagerException | TException e) {
       logger.error("Failed to connect to config node.");
@@ -363,9 +365,15 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     return iAuthorCache;
   }
 
-  @Override
-  public void setCacheOutDate() {
-    cacheOutDate = true;
+  public void refreshToken() {
+    long currnetTime = System.currentTimeMillis();
+    if (heartBeatTimeStamp == 0) {
+      heartBeatTimeStamp = currnetTime;
+      return;
+    }
+    if (currnetTime - heartBeatTimeStamp > config.getDatanodeTokenTimeoutMS()) {
+      cacheOutDate = true;
+    }
   }
 
   private void checkCacheAvailable() {

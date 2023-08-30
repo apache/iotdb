@@ -379,6 +379,6 @@ public class LocalFileUserAccessor implements IUserAccessor {
 
   @Override
   public void cleanUserFolder() {
-    SystemFileFactory.INSTANCE.getFile(userDirPath).delete();
+    FileUtils.deleteDirectory(SystemFileFactory.INSTANCE.getFile(userDirPath));
   }
 }

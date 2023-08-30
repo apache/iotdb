@@ -83,7 +83,7 @@ public class Role {
       privs |= (0b1 << sysPriTopos(sysPri));
     }
     for (Integer sysPriGrantOpt : sysPriGrantOpt) {
-      privs |= 0b1 << (sysPriTopos(sysPriGrantOpt) + 16);
+      privs |= 1 << (sysPriTopos(sysPriGrantOpt) + 16);
     }
     return privs;
   }

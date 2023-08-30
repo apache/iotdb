@@ -106,7 +106,7 @@ public class SessionManager implements SessionManagerMBean {
     TSStatus loginStatus;
     BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
 
-    loginStatus = AuthorityChecker.getInstance().checkUser(username, password);
+    loginStatus = AuthorityChecker.checkUser(username, password);
     if (loginStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // check the version compatibility
       if (!tsProtocolVersion.equals(CURRENT_RPC_VERSION)) {

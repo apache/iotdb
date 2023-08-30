@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -334,13 +332,6 @@ public class EnvironmentUtils {
     // create data
     for (String dataDir : config.getDataDirs()) {
       createDir(dataDir);
-    }
-    // create user and roles folder
-    try {
-      BasicAuthorizer.getInstance().reset();
-    } catch (AuthException e) {
-      logger.error("create user and role folders failed", e);
-      fail(e.getMessage());
     }
   }
 

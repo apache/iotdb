@@ -385,26 +385,6 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     }
   }
 
-  //  public boolean checkRolePrivilegeGrantOpt(String roleName, PartialPath path, int privilegeId)
-  //      throws AuthException {
-  //    Role role = roleManager.getRole(roleName);
-  //    if (role == null) {
-  //      throw new AuthException(
-  //          TSStatusCode.ROLE_NOT_EXIST, String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
-  //    }
-  //    if (path != null) {
-  //      if (role.checkPathPrivilegeGrantOpt(path, privilegeId)) {
-  //        return true;
-  //      }
-  //    } else {
-  //      if (role.checkSysPrivilege(privilegeId) && role.getSysPriGrantOpt().contains(privilegeId))
-  // {
-  //        return true;
-  //      }
-  //    }
-  //    return false;
-  //  }
-
   @Override
   public Map<String, Boolean> getAllUserWaterMarkStatus() {
     Map<String, Boolean> userWaterMarkStatus = new HashMap<>();

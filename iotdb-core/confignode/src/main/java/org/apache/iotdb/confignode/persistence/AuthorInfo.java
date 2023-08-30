@@ -451,7 +451,7 @@ public class AuthorInfo implements SnapshotProcessor {
   }
 
   public TPermissionInfoResp checkUserPrivilegeGrantOpt(
-      String username, PartialPath path, int permission) throws AuthException {
+      String username, List<PartialPath> paths, int permission) throws AuthException {
     User user = authorizer.getUser(username);
     TPermissionInfoResp resp = new TPermissionInfoResp();
     boolean status = false;
@@ -460,17 +460,23 @@ public class AuthorInfo implements SnapshotProcessor {
       return resp;
     }
     try {
-      if (path != null) {
-        if (user.checkPathPrivilegeGrantOpt(path, permission)) {
-          status = true;
-        }
-        if (!status) {
-          for (String roleName : user.getRoleList()) {
-            Role role = authorizer.getRole(roleName);
-            if (role.checkPathPrivilegeGrantOpt(path, permission)) {
-              status = true;
-              break;
+      if (!paths.isEmpty()) {
+        for (PartialPath path : paths) {
+          if (user.checkPathPrivilegeGrantOpt(path, permission)) {
+            status = true;
+            continue;
+          }
+          if (!status) {
+            for (String roleName : user.getRoleList()) {
+              Role role = authorizer.getRole(roleName);
+              if (role.checkPathPrivilegeGrantOpt(path, permission)) {
+                status = true;
+                break;
+              }
             }
+          }
+          if (!status) {
+            break;
           }
         }
       } else {

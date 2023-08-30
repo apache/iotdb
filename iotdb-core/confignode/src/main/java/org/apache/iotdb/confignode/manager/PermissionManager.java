@@ -115,7 +115,7 @@ public class PermissionManager {
   }
 
   public TPermissionInfoResp checkUserPrivilegeGrantOpt(
-      String username, PartialPath path, int permission) throws AuthException {
-    return authorInfo.checkUserPrivilegeGrantOpt(username, path, permission);
+      String username, List<PartialPath> paths, int permission) throws AuthException {
+    return authorInfo.checkUserPrivilegeGrantOpt(username, paths, permission);
   }
 }

@@ -38,7 +38,7 @@ public interface IAuthorityFetcher {
 
   TSStatus checkUserSysPrivileges(String username, int permisssion);
 
-  boolean checkUserPrivilegeGrantOpt(String username, PartialPath path, int permission);
+  boolean checkUserPrivilegeGrantOpt(String username, List<PartialPath> path, int permission);
 
   PathPatternTree getAuthizedPatternTree(String username, int permission) throws AuthException;
 
@@ -48,5 +48,5 @@ public interface IAuthorityFetcher {
 
   IAuthorCache getAuthorCache();
 
-  void setCacheOutDate();
+  void refreshToken();
 }

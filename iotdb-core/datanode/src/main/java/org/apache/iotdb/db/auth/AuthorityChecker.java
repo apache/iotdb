@@ -22,7 +22,6 @@ package org.apache.iotdb.db.auth;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -55,58 +54,37 @@ public class AuthorityChecker {
   private static final String NO_PERMISSION_PROMOTION =
       "No permissions for this operation, please add privilege ";
 
-  private static IAuthorityFetcher authorityFetcher;
-
-  private long heartBeatTimeStamp = 0;
-
-  private static final CommonConfig config = CommonDescriptor.getInstance().getConfig();
+  private static final IAuthorityFetcher authorityFetcher =
+      new ClusterAuthorityFetcher(new BasicAuthorityCache());
 
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
 
-  /** SingleTon. */
-  private static class AuthorityCheckerHolder {
-    private static final AuthorityChecker INSTANCE = new AuthorityChecker();
-
-    private AuthorityCheckerHolder() {
-      // Empty constructor
-    }
-  }
-
-  public static AuthorityChecker getInstance() {
-    return AuthorityChecker.AuthorityCheckerHolder.INSTANCE;
-  }
-
   public AuthorityChecker() {
-    authorityFetcher = new ClusterAuthorityFetcher(new BasicAuthorityCache());
+    // no need to construct.
   }
 
-  public boolean invalidateCache(String userName, String roleName) {
-    return authorityFetcher.getAuthorCache().invalidateCache(userName, roleName);
+  public static IAuthorityFetcher getAuthorityFetcher() {
+    return authorityFetcher;
   }
 
-  public TSStatus checkUser(String userName, String password) {
+  public static boolean invalidateCache(String username, String rolename) {
+    return authorityFetcher.getAuthorCache().invalidateCache(username, rolename);
+  }
+
+  public static TSStatus checkUser(String userName, String password) {
     return authorityFetcher.checkUser(userName, password);
   }
 
-  public SettableFuture<ConfigTaskResult> queryPermission(AuthorStatement authorStatement) {
+  public static SettableFuture<ConfigTaskResult> queryPermission(AuthorStatement authorStatement) {
     return authorityFetcher.queryPermission(authorStatement);
   }
 
-  public SettableFuture<ConfigTaskResult> operatePermission(AuthorStatement authorStatement) {
+  public static SettableFuture<ConfigTaskResult> operatePermission(
+      AuthorStatement authorStatement) {
     return authorityFetcher.operatePermission(authorStatement);
   }
 
-  public void refreshToken() {
-    long currnetTime = System.currentTimeMillis();
-    if (heartBeatTimeStamp == 0) {
-      heartBeatTimeStamp = currnetTime;
-      return;
-    }
-    if (currnetTime - heartBeatTimeStamp > config.getDatanodeTokenTimeoutMS()) {
-      authorityFetcher.setCacheOutDate();
-    }
-  }
   /** Check whether specific Session has the authorization to given plan. */
   public static TSStatus checkAuthority(Statement statement, IClientSession session) {
     long startTime = System.nanoTime();
@@ -231,11 +209,21 @@ public class AuthorityChecker {
       String[] privilegeList,
       List<PartialPath> nodeNameList,
       AuthorType authorType) {
-    // TODO
+    long startTime = System.nanoTime();
+    boolean grantOpt;
+    for (int i = 0; i < privilegeList.length; i++) {
+      grantOpt =
+          authorityFetcher.checkUserPrivilegeGrantOpt(
+              userName, nodeNameList, PrivilegeType.valueOf(privilegeList[i]).ordinal());
+      if (!grantOpt) {
+        return false;
+      }
+    }
+    PERFORMANCE_OVERVIEW_METRICS.recordAuthCost(System.nanoTime() - startTime);
     return true;
   }
 
-  public void buildTSBlock(
+  public static void buildTSBlock(
       Map<String, List<String>> authorizerInfo, SettableFuture<ConfigTaskResult> future) {
     List<TSDataType> types = new ArrayList<>();
     for (int i = 0; i < authorizerInfo.size(); i++) {

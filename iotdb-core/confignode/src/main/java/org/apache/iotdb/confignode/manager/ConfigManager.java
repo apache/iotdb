@@ -1001,9 +1001,7 @@ public class ConfigManager implements IManager {
         return permissionManager.fetchAuthizedPTree(username, permission);
       } catch (AuthException e) {
         TAuthizedPatternTreeResp resp = new TAuthizedPatternTreeResp();
-        status
-            .setCode(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-            .setMessage(e.getMessage());
+        status.setCode(e.getCode().getStatusCode()).setMessage(e.getMessage());
         resp.setStatus(status);
         return resp;
       }
@@ -1015,16 +1013,14 @@ public class ConfigManager implements IManager {
   }
 
   public TPermissionInfoResp checkUserPrivilegeGrantOpt(
-      String username, PartialPath path, int permission) {
+      String username, List<PartialPath> paths, int permission) {
     TSStatus status = confirmLeader();
     TPermissionInfoResp resp = new TPermissionInfoResp();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       try {
-        resp = permissionManager.checkUserPrivilegeGrantOpt(username, path, permission);
+        resp = permissionManager.checkUserPrivilegeGrantOpt(username, paths, permission);
       } catch (AuthException e) {
-        status
-            .setCode(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-            .setMessage(e.getMessage());
+        status.setCode(e.getCode().getStatusCode()).setMessage(e.getMessage());
         resp.setStatus(status);
         return resp;
       }

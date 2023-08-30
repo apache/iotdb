@@ -336,7 +336,7 @@ struct TPathPrivilege {
 
 struct TPermissionInfoResp {
   1: required common.TSStatus status
-  2: required list<i32> failPos
+  2: optional list<i32> failPos
   3: optional TUserResp userInfo
   4: optional map<string, TRoleResp> roleInfo
 }

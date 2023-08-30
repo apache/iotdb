@@ -21,7 +21,5 @@ package org.apache.iotdb.confignode.procedure.state;
 
 public enum AuthOperationProcedureState {
   INIT,
-  CONFIGNODE_AUTH_ALTER,
   DATANODE_AUTHCACHE_INVALIDING,
-  AUTH_OPERATION_DONE
 }

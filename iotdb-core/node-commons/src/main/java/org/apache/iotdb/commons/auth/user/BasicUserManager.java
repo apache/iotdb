@@ -144,7 +144,7 @@ public abstract class BasicUserManager implements IUserManager {
         user.addPathPrivilege(path, privilegeId, grantOpt);
       } else {
         user.addSysPrivilege(privilegeId);
-        if(grantOpt) {
+        if (grantOpt) {
           user.getSysPriGrantOpt().add(privilegeId);
         }
       }
