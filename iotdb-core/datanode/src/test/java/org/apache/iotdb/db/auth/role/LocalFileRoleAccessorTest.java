@@ -70,7 +70,7 @@ public class LocalFileRoleAccessorTest {
         roles[i].getPathPrivilegeList().add(pathPrivilege);
         roles[i].getSysPrivilege().add(i + 4);
         if (i % 2 != 0) {
-          roles[i].getSysPriGrantOpt().add(i+4);
+          roles[i].getSysPriGrantOpt().add(i + 4);
         }
       }
     }

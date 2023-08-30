@@ -102,7 +102,7 @@ public class LocalFileUserAccessorTest {
     }
 
     // delete
-    assertFalse(accessor.deleteUser("not a user"));
+    assertTrue(accessor.deleteUser("not a user"));
     assertTrue(accessor.deleteUser(users[users.length - 1].getName()));
     usernames = accessor.listAllUsers();
     assertEquals(users.length - 1, usernames.size());

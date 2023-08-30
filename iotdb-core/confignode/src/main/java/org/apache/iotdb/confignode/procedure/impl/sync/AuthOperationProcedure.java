@@ -49,7 +49,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Objects;
 
 import static org.apache.iotdb.confignode.procedure.state.AuthOperationProcedureState.DATANODE_AUTHCACHE_INVALIDING;
 
@@ -187,29 +186,30 @@ public class AuthOperationProcedure
     stream.writeShort(ProcedureType.AUTH_OPERATE_PROCEDURE.getTypeCode());
     super.serialize(stream);
     ReadWriteIOUtils.write(datanodes.size(), stream);
-    ReadWriteIOUtils.write(plan.serializeToByteBuffer(),stream);
     for (TDataNodeConfiguration item : datanodes) {
       ThriftCommonsSerDeUtils.serializeTDataNodeConfiguration(item, stream);
     }
     ReadWriteIOUtils.write(timeoutMS, stream);
+    ReadWriteIOUtils.write(plan.serializeToByteBuffer(), stream);
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     int size = ReadWriteIOUtils.readInt(byteBuffer);
-    try {
-      this.plan = (AuthorPlan) ConfigPhysicalPlan.Factory.create(byteBuffer);
-    } catch (IOException e) {
-      LOGGER.error("IO error when deserialize authplan.", e);
-    }
-    this.dataNodesToInvalid = new ArrayList<>();
+    this.datanodes = new ArrayList<>();
     for (int i = 0; i < size; i++) {
       TDataNodeConfiguration datanode =
           ThriftCommonsSerDeUtils.deserializeTDataNodeConfiguration(byteBuffer);
       this.datanodes.add(datanode);
     }
     this.timeoutMS = ReadWriteIOUtils.readInt(byteBuffer);
+    try {
+      ReadWriteIOUtils.readInt(byteBuffer);
+      this.plan = (AuthorPlan) ConfigPhysicalPlan.Factory.create(byteBuffer);
+    } catch (IOException e) {
+      LOGGER.error("IO error when deserialize authplan.", e);
+    }
   }
 
   @Override
@@ -221,7 +221,6 @@ public class AuthOperationProcedure
       return false;
     }
     AuthOperationProcedure that = (AuthOperationProcedure) o;
-    return plan.equals(that.plan)
-        && Objects.equals(dataNodesToInvalid, ((AuthOperationProcedure) o).dataNodesToInvalid);
+    return plan.equals(that.plan) && datanodes.equals(that.datanodes);
   }
 }

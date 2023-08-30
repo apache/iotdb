@@ -65,27 +65,30 @@ public class AuthOperationProcedureTest {
 
     try {
       int begin = ConfigPhysicalPlanType.CreateUser.ordinal();
-      int end =   ConfigPhysicalPlanType.ListRoleUsers.ordinal();
+      int end = ConfigPhysicalPlanType.ListRoleUsers.ordinal();
       for (int i = begin; i <= end; i++) {
         PartialPath path = new PartialPath(new String("root.t1"));
-        AuthOperationProcedure proc = new AuthOperationProcedure(
-                new AuthorPlan(ConfigPhysicalPlanType.values()[i],
-                        "user1",
-                        "role1",
-                        "123456",
-                        "123456",
-                        Collections.singleton(1),
-                        false,
-                        Collections.singletonList(path)
-                        ), datanodes
-        );
+        AuthOperationProcedure proc =
+            new AuthOperationProcedure(
+                new AuthorPlan(
+                    ConfigPhysicalPlanType.values()[i],
+                    "user1",
+                    "role1",
+                    "123456",
+                    "123456",
+                    Collections.singleton(1),
+                    false,
+                    Collections.singletonList(path)),
+                datanodes);
         proc.serialize(outputStream);
         ByteBuffer buffer =
-                ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+            ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
 
         AuthOperationProcedure proc2 =
-                (AuthOperationProcedure) ProcedureFactory.getInstance().create(buffer);
+            (AuthOperationProcedure) ProcedureFactory.getInstance().create(buffer);
         Assert.assertTrue(proc.equals(proc2));
+        buffer.clear();
+        byteArrayOutputStream.reset();
       }
     } catch (Exception e) {
       e.printStackTrace();
